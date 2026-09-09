@@ -1,0 +1,101 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  body {
+    @apply bg-slate-50 text-slate-900 font-sans antialiased selection:bg-brand-500/20 selection:text-brand-600;
+  }
+  
+  /* Global input layout reset to prevent browser default black outlines */
+  input, select, textarea {
+    @apply outline-none transition-all;
+  }
+
+  input:focus, select:focus, textarea:focus {
+    outline: none !important;
+    border-color: #6c2bd9 !important;
+    box-shadow: 0 0 0 3px rgba(108, 43, 217, 0.15) !important;
+  }
+}
+
+/* Custom Enterprise UI utilities */
+.glass-panel {
+  @apply bg-white border border-slate-200 rounded-xl shadow-sm;
+}
+
+.glass-card {
+  @apply bg-white border border-slate-200 rounded-xl p-5 transition-all duration-200 hover:border-brand-500/40 hover:shadow-md;
+}
+
+.btn-primary {
+  background-color: #6c2bd9 !important;
+  color: #ffffff !important;
+  font-weight: 600 !important;
+  @apply px-4 py-2 text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
+}
+
+.btn-primary:hover {
+  background-color: #5b21b6 !important;
+}
+
+.btn-secondary {
+  @apply px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm;
+}
+
+.btn-gold-outline,
+.btn-purple-outline {
+  background-color: rgba(108, 43, 217, 0.08) !important;
+  color: #6c2bd9 !important;
+  border: 1px solid rgba(108, 43, 217, 0.3) !important;
+  @apply px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5;
+}
+
+.btn-gold-outline:hover,
+.btn-purple-outline:hover {
+  background-color: rgba(108, 43, 217, 0.16) !important;
+}
+
+.btn-danger {
+  @apply px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2;
+}
+
+@layer utilities {
+  .shadow-2xs {
+    box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
+  }
+}
+
+.input-field,
+.input-primary {
+  @apply w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#6c2bd9] focus:ring-2 focus:ring-[#6c2bd9]/20 transition-all shadow-sm;
+}
+
+.pl-9,
+.pl-10,
+.input-icon-left {
+  padding-left: 2.75rem !important;
+}
+
+.input-icon-right {
+  padding-right: 2.75rem !important;
+}
+
+/* Custom Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f8fafc;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #cbd5e1;
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #94a3b8;
+}
