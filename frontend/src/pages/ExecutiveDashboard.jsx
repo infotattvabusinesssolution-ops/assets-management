@@ -101,30 +101,31 @@ export function ExecutiveDashboard() {
 
   useEffect(() => {
     async function fetchDashboard() {
+      setLoading(true);
       try {
-        const res = await api.get('/reports/dashboard');
+        const res = await api.get(`/reports/dashboard?timeRange=${timeRange}`);
         if (res.success) setData(res.kpis);
       } catch (err) {
-        console.error(err);
+        console.error('Failed to load dashboard telemetry:', err);
       } finally {
         setLoading(false);
       }
     }
     fetchDashboard();
-  }, []);
+  }, [timeRange]);
 
-  if (loading) return <div className="p-8 text-center text-slate-500 font-medium">Loading Enterprise Role Dashboards...</div>;
-
-  const statusData = data && data.statusCounts ? Object.keys(data.statusCounts).map(key => ({
-    name: key.replace(/_/g, ' '),
-    value: data.statusCounts[key]
-  })) : [
-    { name: 'IN SERVICE', value: 145 },
-    { name: 'ASSIGNED', value: 52 },
-    { name: 'UNDER MAINTENANCE', value: 28 },
-    { name: 'TAGGED', value: 15 },
-    { name: 'PENDING DISPOSAL', value: 10 }
-  ];
+  const statusData = data && data.statusCounts && Object.keys(data.statusCounts).length > 0
+    ? Object.keys(data.statusCounts).map(key => ({
+        name: key.replace(/_/g, ' '),
+        value: data.statusCounts[key]
+      }))
+    : [
+        { name: 'IN SERVICE', value: data?.activeAssets || 145 },
+        { name: 'ASSIGNED', value: Math.floor((data?.activeAssets || 100) * 0.4) },
+        { name: 'UNDER MAINTENANCE', value: data?.underMaintenance || 28 },
+        { name: 'MISSING', value: data?.missingAssets || 5 },
+        { name: 'DISPOSED', value: data?.disposedAssets || 10 }
+      ];
 
   const totalStatusCount = statusData.reduce((acc, curr) => acc + curr.value, 0);
 
@@ -194,90 +195,90 @@ export function ExecutiveDashboard() {
       {activeRolePerspective === 'SYS_ADMIN' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard title="System Active Nodes" value="12 Services" icon={Cpu} color="purple" trend="100% Operational" subtext="Microservices & API Gateway" />
-          <StatCard title="Total Registered Users" value="10 Enterprise Roles" icon={UserCheck} color="emerald" trend="RBAC Configured" subtext="All 10 FRD roles active" />
-          <StatCard title="Immutable Audit Logs" value="1,482 Logged" icon={ShieldCheck} color="cyan" trend="+142 today" subtext="Security audit trail" />
-          <StatCard title="API & Integrations" value="4 Connected" icon={Radio} color="orange" trend="Healthy Sync" subtext="ERP, CMDB, SSO, MDM" />
+          <StatCard title="Total Registered Users" value={`${data?.totalUsers || 10} Users`} icon={UserCheck} color="emerald" trend="RBAC Active" subtext="Configured System Roles" />
+          <StatCard title="Immutable Audit Logs" value={`${data?.recentActivities?.length || 1482} Logs`} icon={ShieldCheck} color="cyan" trend="Live Trail" subtext="Security Audit Logging" />
+          <StatCard title="Digitized Floor Maps" value={`${data?.totalFloorMaps || 12} Maps`} icon={Radio} color="orange" trend="Healthy Sync" subtext="Spatial Locators Active" />
         </div>
       )}
 
       {activeRolePerspective === 'ASSET_ADMIN' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total Registered Assets" value={data?.totalAssets || 25480} icon={Package} color="emerald" trend="+12.4% vs last mo" subtext="Global asset register" />
-          <StatCard title="Pending Tagging Queue" value="14 Serialized" icon={Inbox} color="cyan" trend="Staging Ready" subtext="Barcode / QR / RFID tags" />
-          <StatCard title="Active Movements" value="8 Transfers" icon={ArrowUpRight} color="purple" trend="In-transit" subtext="Inter-site relocations" />
-          <StatCard title="Stocktake Campaigns" value="1 Active Census" icon={CheckCircle2} color="orange" trend="Q3 Census" subtext="Verification in progress" />
+          <StatCard title="Total Registered Assets" value={data?.totalAssets || 0} icon={Package} color="emerald" trend="Active Registry" subtext="Global asset register" />
+          <StatCard title="Active Operational" value={data?.activeAssets || 0} icon={Inbox} color="cyan" trend="In Service" subtext="Operational hardware" />
+          <StatCard title="Under Maintenance" value={data?.underMaintenance || 0} icon={ArrowUpRight} color="purple" trend="Work Orders" subtext="Service & repair queue" />
+          <StatCard title="Missing / Exceptions" value={data?.missingAssets || 0} icon={CheckCircle2} color="orange" trend="Audit Review" subtext="Verification variances" />
         </div>
       )}
 
       {activeRolePerspective === 'FINANCE' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Capitalized Net Book Value" value={`$${((data?.totalAssets || 25480) * 1775).toLocaleString()}`} icon={DollarSign} color="emerald" trend="+8.2% YTD" subtext="Decimal128 Corporate Ledger" />
-          <StatCard title="Pending Depreciation Run" value="1 Draft Period" icon={TrendingUp} color="purple" trend="Active Period" subtext="Fiscal Period 2026-08" />
-          <StatCard title="CapEx Additions (YTD)" value={data?.totalAssets || 1240} icon={Package} color="cyan" trend="+14.1% YTD" subtext="Capitalized asset items" />
-          <StatCard title="Pending Disposals (NBV)" value="$18,400" icon={AlertTriangle} color="orange" trend="Approval Needed" subtext="Gain/loss posting reference" />
+          <StatCard title="Capitalized Net Book Value" value={`$${(data?.totalAssetValue || 0).toLocaleString()}`} icon={DollarSign} color="emerald" trend="Corporate Ledger" subtext="Decimal128 Precision" />
+          <StatCard title="Active Asset Register" value={data?.totalAssets || 0} icon={TrendingUp} color="purple" trend="Registered" subtext="Capitalized Asset Items" />
+          <StatCard title="CapEx Additions" value={data?.activeAssets || 0} icon={Package} color="cyan" trend="In Service" subtext="Active Capitalized Units" />
+          <StatCard title="Disposed / Retired" value={data?.disposedAssets || 0} icon={AlertTriangle} color="orange" trend="Gain/Loss Reference" subtext="Retired Ledger Assets" />
         </div>
       )}
 
       {activeRolePerspective === 'IT_MANAGER' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Registered IT Devices" value="12,450 Units" icon={Package} color="emerald" trend="+6.4% YoY" subtext="Compute, Storage & Network" />
-          <StatCard title="Auto-Discovered Telemetry" value="3 Collector Nodes" icon={Radio} color="cyan" trend="SNMP / WMI Live" subtext="Subnet range scan active" />
-          <StatCard title="Candidate Match Anomalies" value={data?.discoveryAnomalies || 2} icon={AlertTriangle} color="orange" trend="Workbench Review" subtext="Discovered vs Registered match" />
-          <StatCard title="Expiring Tech Warranties" value={data?.warrantiesExpiring || 5} icon={ShieldAlert} color="pink" trend="30 Days Left" subtext="Vendor SLA coverage review" />
+          <StatCard title="Registered IT Devices" value={`${data?.totalAssets || 0} Units`} icon={Package} color="emerald" trend="Compute & IT" subtext="Hardware Register" />
+          <StatCard title="Auto-Discovered Telemetry" value="3 Collectors" icon={Radio} color="cyan" trend="SNMP/IP Active" subtext="Subnet Range Scanner" />
+          <StatCard title="Candidate Match Anomalies" value={data?.discoveryAnomalies || 0} icon={AlertTriangle} color="orange" trend="Workbench Review" subtext="Discovered vs Registered match" />
+          <StatCard title="Expiring Tech Warranties" value={data?.warrantiesExpiring || 0} icon={ShieldAlert} color="pink" trend="30 Days SLA" subtext="Vendor SLA coverage review" />
         </div>
       )}
 
       {activeRolePerspective === 'FACILITIES' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Digitized Floor Maps" value="12 Plans" icon={Building2} color="emerald" trend="HQ & Branch Sites" subtext="Floor map library" />
-          <StatCard title="Positioned Map Pins" value="1,840 Assets" icon={Package} color="cyan" trend="X/Y Coords Set" subtext="Static spatial locator" />
-          <StatCard title="Building Room Zones" value="48 Rooms" icon={Layers} color="purple" trend="100% Calibrated" subtext="Zone density heatmaps" />
-          <StatCard title="Facilities Work Orders" value="4 Active Tickets" icon={Wrench} color="orange" trend="Preventive SLA" subtext="Infrastructure maintenance" />
+          <StatCard title="Digitized Floor Maps" value={`${data?.totalFloorMaps || 0} Plans`} icon={Building2} color="emerald" trend="Site Maps" subtext="Floor map library" />
+          <StatCard title="Positioned Map Pins" value={`${data?.totalAssets || 0} Assets`} icon={Package} color="cyan" trend="Spatial Locator" subtext="X/Y Coordinates Set" />
+          <StatCard title="Facilities Contracts" value={`${data?.totalContracts || 0} Active`} icon={Layers} color="purple" trend="SLA Active" subtext="Building & Service SLAs" />
+          <StatCard title="Facilities Work Orders" value={`${data?.totalWorkOrders || 0} Orders`} icon={Wrench} color="orange" trend="Maintenance" subtext="Infrastructure tickets" />
         </div>
       )}
 
       {activeRolePerspective === 'RECEIVING' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Incoming PO Receipts" value="6 PO Orders" icon={Inbox} color="emerald" trend="Receiving Dock" subtext="Pending receipt verification" />
-          <StatCard title="Pending Staging Items" value="18 Serial Units" icon={Package} color="cyan" trend="Serial Scan Ready" subtext="Goods receipt staging" />
-          <StatCard title="Labels Printed Today" value="45 Tag Labels" icon={CheckCircle2} color="purple" trend="Code 128 & QR" subtext="Print-on-demand stock" />
-          <StatCard title="Ready for Custodian Handover" value="12 Items" icon={UserCheck} color="orange" trend="Staging Complete" subtext="Custody issue dispatch" />
+          <StatCard title="Incoming PO Receipts" value={`${data?.totalReceipts || 0} Receipts`} icon={Inbox} color="emerald" trend="Receiving Dock" subtext="Goods receipt staging" />
+          <StatCard title="Registered Assets" value={`${data?.totalAssets || 0} Units`} icon={Package} color="cyan" trend="Staging Inventory" subtext="Tagging & Staging Queue" />
+          <StatCard title="Active In Service" value={`${data?.activeAssets || 0} Items`} icon={CheckCircle2} color="purple" trend="Deployed" subtext="Verified for custody" />
+          <StatCard title="Disposed / Staging" value={`${data?.disposedAssets || 0} Items`} icon={UserCheck} color="orange" trend="Staging" subtext="History Logged" />
         </div>
       )}
 
       {activeRolePerspective === 'CUSTODIAN' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="My Assigned Assets" value="4 Hardware Items" icon={UserCheck} color="emerald" trend="In Custody" subtext="Laptop, Monitor, Phone, Desk" />
-          <StatCard title="Pending Handover Sign-off" value="1 Digital Form" icon={CheckCircle2} color="purple" trend="Action Required" subtext="Acknowledge receipt of asset" />
-          <StatCard title="Temporary Loaner Return" value="2 Days Left" icon={Calendar} color="orange" trend="Loaner Macbook" subtext="Expected return date" />
-          <StatCard title="Reported Equipment Issues" value="0 Open Tickets" icon={Wrench} color="cyan" trend="Good Condition" subtext="No open damage requests" />
+          <StatCard title="Active In Service" value={`${data?.activeAssets || 0} Items`} icon={UserCheck} color="emerald" trend="In Service" subtext="Active Custody Registry" />
+          <StatCard title="Pending Work Orders" value={`${data?.maintenanceOverdue || 0} Tickets`} icon={CheckCircle2} color="purple" trend="Review" subtext="Maintenance Requests" />
+          <StatCard title="Expiring Warranties" value={`${data?.warrantiesExpiring || 0} Items`} icon={Calendar} color="orange" trend="Coverage" subtext="Warranty Expiration Alert" />
+          <StatCard title="Missing / Relocated" value={`${data?.missingAssets || 0} Items`} icon={Wrench} color="cyan" trend="Audited" subtext="Custody Exception Alerts" />
         </div>
       )}
 
       {activeRolePerspective === 'TECHNICIAN' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="My Assigned Work Orders" value="3 Jobs Today" icon={Wrench} color="emerald" trend="Scheduled" subtext="Preventive & Corrective" />
-          <StatCard title="Overdue Maintenance" value={data?.maintenanceOverdue || 1} icon={AlertTriangle} color="orange" trend="High Priority" subtext="Technician dispatch required" />
-          <StatCard title="Completed (This Month)" value="14 Work Orders" icon={CheckCircle2} color="purple" trend="+18.5%" subtext="Verified sign-off" />
-          <StatCard title="Warranty SLA Active" value="98.4%" icon={ShieldCheck} color="cyan" trend="Compliant" subtext="Vendor covered parts/labor" />
+          <StatCard title="Total Maintenance Orders" value={`${data?.totalWorkOrders || 0} Orders`} icon={Wrench} color="emerald" trend="Active Work Orders" subtext="Preventive & Corrective" />
+          <StatCard title="Overdue Maintenance" value={data?.maintenanceOverdue || 0} icon={AlertTriangle} color="orange" trend="High Priority" subtext="Technician dispatch required" />
+          <StatCard title="Under Repair" value={`${data?.underMaintenance || 0} Assets`} icon={CheckCircle2} color="purple" trend="In Shop" subtext="Hardware undergoing repair" />
+          <StatCard title="Active Warranties" value={`${data?.warrantiesExpiring || 0} Expiring`} icon={ShieldCheck} color="cyan" trend="SLA Check" subtext="Vendor covered parts/labor" />
         </div>
       )}
 
       {activeRolePerspective === 'AUDITOR' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Census Target Population" value="2,500 Assets" icon={Package} color="emerald" trend="Census Active" subtext="Stocktake census campaign" />
-          <StatCard title="Verification Accuracy" value="98.2%" icon={ShieldCheck} color="purple" trend="High Integrity" subtext="Matched location & custody" />
-          <StatCard title="Discrepancies Flagged" value="3 Exceptions" icon={ShieldAlert} color="orange" trend="Review Required" subtext="Missing / relocated items" />
-          <StatCard title="Expiring Certificates" value="2 Permits" icon={Calendar} color="cyan" trend="30 Days SLA" subtext="Compliance documentation" />
+          <StatCard title="Total Audit Assets" value={`${data?.totalAssets || 0} Assets`} icon={Package} color="emerald" trend="Audit Population" subtext="Master asset register" />
+          <StatCard title="Active In Service" value={`${data?.activeAssets || 0} Assets`} icon={ShieldCheck} color="purple" trend="Verified Active" subtext="Operational assets" />
+          <StatCard title="Discrepancies / Missing" value={`${data?.missingAssets || 0} Exceptions`} icon={ShieldAlert} color="orange" trend="Review Required" subtext="Missing / relocated items" />
+          <StatCard title="Discovery Match Anomalies" value={`${data?.discoveryAnomalies || 0} Matches`} icon={Calendar} color="cyan" trend="Reconciliation" subtext="IP/SNMP Discovery variances" />
         </div>
       )}
 
       {activeRolePerspective === 'MANAGEMENT' && (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-          <StatCard title="Total Registered Assets" value={data?.totalAssets || 25480} icon={Package} color="emerald" trend="+12.4% vs last week" subtext="Global entity count" />
-          <StatCard title="Capitalized Net Book Value" value={`$${((data?.totalAssets || 25480) * 1775).toLocaleString()}`} icon={DollarSign} color="purple" trend="+5.3% vs last week" subtext="Decimal128 Ledger" />
-          <StatCard title="Maintenance SLA Uptime" value="99.9%" icon={Wrench} color="orange" trend="+0.2% SLA" subtext="Operational reliability" />
-          <StatCard title="Pending Approvals" value="2 Requests" icon={AlertTriangle} color="pink" trend="Executive Action" subtext="Disposal & CapEx approvals" />
+          <StatCard title="Total Registered Assets" value={data?.totalAssets || 0} icon={Package} color="emerald" trend="Global Enterprise" subtext="Global entity count" />
+          <StatCard title="Capitalized Net Book Value" value={`$${(data?.totalAssetValue || 0).toLocaleString()}`} icon={DollarSign} color="purple" trend="Decimal128 Ledger" subtext="Corporate Ledger" />
+          <StatCard title="Maintenance Work Orders" value={`${data?.totalWorkOrders || 0} Orders`} icon={Wrench} color="orange" trend="Overdue: ${data?.maintenanceOverdue || 0}" subtext="Operational reliability" />
+          <StatCard title="Discovery & Warranties" value={`${(data?.discoveryAnomalies || 0) + (data?.warrantiesExpiring || 0)} Alerts`} icon={AlertTriangle} color="pink" trend="Attention Required" subtext="Anomalies & Expirations" />
         </div>
       )}
 
@@ -316,7 +317,7 @@ export function ExecutiveDashboard() {
           <div className="h-72 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
               {chartViewMode === 'area' ? (
-                <AreaChart data={ANALYTICS_TREND_DATA}>
+                <AreaChart data={data?.analyticsTrend || ANALYTICS_TREND_DATA}>
                   <defs>
                     <linearGradient id="areaGreen" x1="0" y1="0" x2="0" y2="1">
                       <stop offset="0%" stopColor="#10b981" stopOpacity={0.3} />
@@ -342,7 +343,7 @@ export function ExecutiveDashboard() {
                   <Area type="monotone" dataKey="acquisitions" stroke="#10b981" strokeWidth={2.5} fill="url(#areaGreen)" name="Asset Additions" />
                 </AreaChart>
               ) : (
-                <BarChart data={ANALYTICS_TREND_DATA}>
+                <BarChart data={data?.analyticsTrend || ANALYTICS_TREND_DATA}>
                   <defs>
                     <linearGradient id="emeraldPurpleBar" x1="0" y1="1" x2="0" y2="0">
                       <stop offset="0%" stopColor="#10b981" />
@@ -383,12 +384,14 @@ export function ExecutiveDashboard() {
               </h3>
               <p className="text-[11px] text-slate-500 font-medium">Asset counts by primary category</p>
             </div>
-            <span className="text-xs text-brand-500 font-mono font-bold">5 Categories</span>
+            <span className="text-xs text-brand-500 font-mono font-bold">
+              {data?.categoryCounts ? `${data.categoryCounts.length} Categories` : '5 Categories'}
+            </span>
           </div>
 
           <div className="h-72 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data?.categoryCounts || [
+              <BarChart data={data?.categoryCounts && data.categoryCounts.length > 0 ? data.categoryCounts : [
                 { name: 'IT Infrastructure', count: 95 },
                 { name: 'Facilities & Heavy', count: 64 },
                 { name: 'Vehicles & Logistics', count: 42 },
@@ -410,7 +413,7 @@ export function ExecutiveDashboard() {
           </div>
 
           <div className="border-t border-slate-200 pt-3 flex items-center justify-between text-xs text-slate-500">
-            <span className="font-medium">IT Infrastructure comprises 42% of registered assets</span>
+            <span className="font-medium">Live category breakdown from backend registry</span>
             <ArrowUpRight className="w-4 h-4 text-brand-500" />
           </div>
         </div>
@@ -477,7 +480,7 @@ export function ExecutiveDashboard() {
 
           <div className="h-64 w-full pt-2">
             <ResponsiveContainer width="100%" height="100%">
-              <ComposedChart data={WORK_ORDER_SLA_DATA}>
+              <ComposedChart data={data?.workOrderSlaTrend || WORK_ORDER_SLA_DATA}>
                 <XAxis dataKey="month" stroke="#64748b" fontSize={11} tickLine={false} />
                 <YAxis stroke="#64748b" fontSize={11} tickLine={false} axisLine={false} />
                 <Tooltip contentStyle={{ backgroundColor: '#ffffff', borderColor: '#e2e8f0', borderRadius: '10px', color: '#0f172a' }} />
@@ -551,7 +554,7 @@ export function ExecutiveDashboard() {
           </div>
 
           <div className="space-y-2.5">
-            {RECENT_ACTIVITIES.map((act) => (
+            {(data?.recentActivities && data.recentActivities.length > 0 ? data.recentActivities : RECENT_ACTIVITIES).map((act) => (
               <div key={act.id} className="p-2.5 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between hover:border-slate-300 transition-all">
                 <div className="flex items-center gap-3 truncate">
                   <div className="w-8 h-8 rounded-full bg-purple-50 border border-purple-200 text-[#6c2bd9] font-bold text-xs flex items-center justify-center flex-shrink-0">

@@ -1,18 +1,28 @@
-import { Contract } from '../../models/Contract.js';
-import { Warranty } from '../../models/Warranty.js';
+import prisma from '../../config/prisma.js';
 
 export async function getContracts(req, res, next) {
   try {
-    const contracts = await Contract.find()
-      .populate({
-        path: 'coveredAssetIds',
-        select: 'assetId tagNumber description serialNumber siteId buildingId roomId lifecycleStatus',
-        populate: [
-          { path: 'siteId', select: 'name' },
-          { path: 'roomId', select: 'name' }
-        ]
-      })
-      .sort({ endDate: 1 });
+    const contracts = await prisma.contract.findMany({
+      include: {
+        coveredAssets: {
+          include: {
+            asset: {
+              select: {
+                id: true,
+                assetId: true,
+                tagNumber: true,
+                description: true,
+                serialNumber: true,
+                lifecycleStatus: true,
+                site: { select: { name: true } },
+                room: { select: { name: true } }
+              }
+            }
+          }
+        }
+      },
+      orderBy: { endDate: 'asc' }
+    });
     res.json({ success: true, contracts });
   } catch (err) { next(err); }
 }
@@ -20,56 +30,95 @@ export async function getContracts(req, res, next) {
 export async function createContract(req, res, next) {
   try {
     const contractNumber = req.body.contractNumber || ('CTR-' + Date.now().toString(36).toUpperCase());
-    const contract = await Contract.create({ ...req.body, contractNumber });
-    const populated = await Contract.findById(contract._id).populate({
-      path: 'coveredAssetIds',
-      select: 'assetId tagNumber description serialNumber siteId buildingId roomId lifecycleStatus'
+    const { title, contractType = 'AMC', providerName, startDate, endDate, cost, slaDetails } = req.body;
+
+    const contract = await prisma.contract.create({
+      data: {
+        contractNumber,
+        title: title || 'Contract',
+        contractType,
+        providerName: providerName || 'Vendor',
+        startDate: new Date(startDate),
+        endDate: new Date(endDate),
+        cost: cost || 0,
+        slaDetails: slaDetails || null
+      },
+      include: {
+        coveredAssets: {
+          include: { asset: true }
+        }
+      }
     });
-    res.status(201).json({ success: true, contract: populated });
+
+    res.status(201).json({ success: true, contract });
   } catch (err) { next(err); }
 }
 
 export async function getWarranties(req, res, next) {
   try {
-    const warranties = await Warranty.find()
-      .populate({
-        path: 'assetId',
-        select: 'assetId tagNumber description serialNumber siteId buildingId roomId lifecycleStatus',
-        populate: [
-          { path: 'siteId', select: 'name' },
-          { path: 'roomId', select: 'name' }
-        ]
-      })
-      .sort({ endDate: 1 });
+    const warranties = await prisma.warranty.findMany({
+      include: {
+        asset: {
+          select: {
+            id: true,
+            assetId: true,
+            tagNumber: true,
+            description: true,
+            serialNumber: true,
+            lifecycleStatus: true,
+            site: { select: { name: true } },
+            room: { select: { name: true } }
+          }
+        }
+      },
+      orderBy: { endDate: 'asc' }
+    });
     res.json({ success: true, warranties });
   } catch (err) { next(err); }
 }
 
 export async function createWarranty(req, res, next) {
   try {
-    const { assetId, providerName, warrantyNumber, startDate, endDate, terms, coverageType } = req.body;
-    let warranty = await Warranty.findOne({ assetId });
+    const { assetId, providerName, warrantyNumber, startDate, endDate, terms, coverageType = 'FULL' } = req.body;
+
+    let warranty = await prisma.warranty.findUnique({ where: { assetId } });
     if (warranty) {
-      warranty.providerName = providerName || warranty.providerName;
-      warranty.warrantyNumber = warrantyNumber || warranty.warrantyNumber;
-      warranty.startDate = startDate || warranty.startDate;
-      warranty.endDate = endDate || warranty.endDate;
-      warranty.terms = terms !== undefined ? terms : warranty.terms;
-      warranty.coverageType = coverageType || warranty.coverageType;
-      await warranty.save();
+      warranty = await prisma.warranty.update({
+        where: { assetId },
+        data: {
+          providerName: providerName || warranty.providerName,
+          warrantyNumber: warrantyNumber || warranty.warrantyNumber,
+          startDate: startDate ? new Date(startDate) : warranty.startDate,
+          endDate: endDate ? new Date(endDate) : warranty.endDate,
+          terms: terms !== undefined ? terms : warranty.terms,
+          coverageType: coverageType || warranty.coverageType
+        },
+        include: { asset: true }
+      });
     } else {
-      warranty = await Warranty.create({ assetId, providerName, warrantyNumber, startDate, endDate, terms, coverageType });
+      warranty = await prisma.warranty.create({
+        data: {
+          assetId,
+          providerName,
+          warrantyNumber,
+          startDate: new Date(startDate),
+          endDate: new Date(endDate),
+          terms,
+          coverageType
+        },
+        include: { asset: true }
+      });
     }
-    const populated = await Warranty.findById(warranty._id).populate('assetId');
-    res.status(201).json({ success: true, warranty: populated });
+
+    res.status(201).json({ success: true, warranty });
   } catch (err) { next(err); }
 }
 
 export async function getContractSummary(req, res, next) {
   try {
     const [contracts, warranties] = await Promise.all([
-      Contract.find(),
-      Warranty.find()
+      prisma.contract.findMany(),
+      prisma.warranty.findMany()
     ]);
 
     const now = new Date();
@@ -121,4 +170,3 @@ export async function getContractSummary(req, res, next) {
     });
   } catch (err) { next(err); }
 }
-

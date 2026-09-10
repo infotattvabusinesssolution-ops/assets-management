@@ -1,11 +1,11 @@
-import { WorkflowDefinition } from '../../models/WorkflowDefinition.js';
-import { WorkflowInstance } from '../../models/WorkflowInstance.js';
-import { ApprovalAction } from '../../models/ApprovalAction.js';
-import { Asset } from '../../models/Asset.js';
+import prisma from '../../config/prisma.js';
 
 export async function getDefinitions(req, res, next) {
   try {
-    const definitions = await WorkflowDefinition.find().sort({ createdAt: -1 });
+    const definitions = await prisma.workflowDefinition.findMany({
+      include: { steps: true },
+      orderBy: { createdAt: 'desc' }
+    });
     res.json({ success: true, definitions });
   } catch (err) { next(err); }
 }
@@ -13,22 +13,28 @@ export async function getDefinitions(req, res, next) {
 export async function createDefinition(req, res, next) {
   try {
     const { name, transactionType, valueThreshold, steps, active } = req.body;
-    
-    // Upsert or create definition by transactionType
-    let definition = await WorkflowDefinition.findOne({ transactionType });
+
+    let definition = await prisma.workflowDefinition.findUnique({
+      where: { transactionType }
+    });
+
     if (definition) {
-      definition.name = name || definition.name;
-      definition.valueThreshold = valueThreshold !== undefined ? valueThreshold : definition.valueThreshold;
-      definition.steps = steps || definition.steps;
-      if (active !== undefined) definition.active = active;
-      await definition.save();
+      definition = await prisma.workflowDefinition.update({
+        where: { id: definition.id },
+        data: {
+          name: name || definition.name,
+          valueThreshold: valueThreshold !== undefined ? valueThreshold : definition.valueThreshold,
+          active: active !== undefined ? active : definition.active
+        }
+      });
     } else {
-      definition = await WorkflowDefinition.create({
-        name,
-        transactionType,
-        valueThreshold: valueThreshold || 0,
-        steps: steps || [],
-        active: active !== undefined ? active : true
+      definition = await prisma.workflowDefinition.create({
+        data: {
+          name,
+          transactionType,
+          valueThreshold: valueThreshold || 0,
+          active: active !== undefined ? active : true
+        }
       });
     }
 
@@ -39,41 +45,49 @@ export async function createDefinition(req, res, next) {
 export async function toggleDefinitionStatus(req, res, next) {
   try {
     const { id } = req.params;
-    const definition = await WorkflowDefinition.findById(id);
+    const definition = await prisma.workflowDefinition.findUnique({ where: { id } });
     if (!definition) return res.status(404).json({ success: false, message: 'Workflow definition not found.' });
 
-    definition.active = !definition.active;
-    await definition.save();
+    const updated = await prisma.workflowDefinition.update({
+      where: { id },
+      data: { active: !definition.active }
+    });
 
-    res.json({ success: true, definition });
+    res.json({ success: true, definition: updated });
   } catch (err) { next(err); }
 }
 
 export async function getPendingApprovals(req, res, next) {
   try {
-    const instances = await WorkflowInstance.find({ status: 'PENDING' })
-      .populate('workflowDefinitionId')
-      .populate('requestedBy', 'username firstName lastName email roleId')
-      .sort({ createdAt: -1 });
+    const instances = await prisma.workflowInstance.findMany({
+      where: { status: 'PENDING' },
+      include: {
+        workflowDefinition: { include: { steps: true } },
+        approvalActions: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     const enrichedInstances = await Promise.all(instances.map(async (inst) => {
-      const instObj = inst.toObject();
-      const actions = await ApprovalAction.find({ workflowInstanceId: inst._id })
-        .populate('approverId', 'username firstName lastName email')
-        .sort({ timestamp: 1 });
-
-      instObj.actions = actions;
-
+      const instObj = { ...inst, actions: inst.approvalActions };
       if (instObj.entityId) {
         try {
-          const asset = await Asset.findById(instObj.entityId)
-            .populate('categoryId', 'name')
-            .populate('siteId', 'name')
-            .select('assetId description tagNumber categoryId siteId lifecycleStatus acquisitionValue');
+          const asset = await prisma.asset.findUnique({
+            where: { id: instObj.entityId },
+            select: {
+              id: true,
+              assetId: true,
+              description: true,
+              tagNumber: true,
+              lifecycleStatus: true,
+              acquisitionValue: true,
+              category: { select: { name: true } },
+              site: { select: { name: true } }
+            }
+          });
           if (asset) instObj.entityDetails = asset;
         } catch (e) {}
       }
-
       return instObj;
     }));
 
@@ -83,30 +97,36 @@ export async function getPendingApprovals(req, res, next) {
 
 export async function getWorkflowHistory(req, res, next) {
   try {
-    const instances = await WorkflowInstance.find({ status: { $ne: 'PENDING' } })
-      .populate('workflowDefinitionId')
-      .populate('requestedBy', 'username firstName lastName email')
-      .sort({ updatedAt: -1 })
-      .limit(100);
+    const instances = await prisma.workflowInstance.findMany({
+      where: { status: { not: 'PENDING' } },
+      include: {
+        workflowDefinition: { include: { steps: true } },
+        approvalActions: true
+      },
+      orderBy: { updatedAt: 'desc' },
+      take: 100
+    });
 
     const enrichedInstances = await Promise.all(instances.map(async (inst) => {
-      const instObj = inst.toObject();
-      const actions = await ApprovalAction.find({ workflowInstanceId: inst._id })
-        .populate('approverId', 'username firstName lastName email')
-        .sort({ timestamp: 1 });
-
-      instObj.actions = actions;
-
+      const instObj = { ...inst, actions: inst.approvalActions };
       if (instObj.entityId) {
         try {
-          const asset = await Asset.findById(instObj.entityId)
-            .populate('categoryId', 'name')
-            .populate('siteId', 'name')
-            .select('assetId description tagNumber categoryId siteId lifecycleStatus acquisitionValue');
+          const asset = await prisma.asset.findUnique({
+            where: { id: instObj.entityId },
+            select: {
+              id: true,
+              assetId: true,
+              description: true,
+              tagNumber: true,
+              lifecycleStatus: true,
+              acquisitionValue: true,
+              category: { select: { name: true } },
+              site: { select: { name: true } }
+            }
+          });
           if (asset) instObj.entityDetails = asset;
         } catch (e) {}
       }
-
       return instObj;
     }));
 
@@ -118,40 +138,56 @@ export async function approveStep(req, res, next) {
   try {
     const { instanceId } = req.params;
     const { decision, comments } = req.body;
+    const userId = req.user?.id || req.user?._id;
 
-    const instance = await WorkflowInstance.findById(instanceId).populate('workflowDefinitionId');
+    const instance = await prisma.workflowInstance.findUnique({
+      where: { id: instanceId },
+      include: { workflowDefinition: { include: { steps: true } } }
+    });
+
     if (!instance || instance.status !== 'PENDING') {
       return res.status(400).json({ success: false, message: 'This approval request has already been processed or completed by another approver.' });
     }
 
-    // Protection: Prevent user from approving their own request
-    if (instance.requestedBy && instance.requestedBy.toString() === req.user._id.toString()) {
+    if (instance.requestedByUserId && instance.requestedByUserId === userId) {
       return res.status(403).json({
         success: false,
         message: 'Self-approval restriction: You cannot approve or reject a workflow request that you submitted.'
       });
     }
 
-    const action = await ApprovalAction.create({
-      workflowInstanceId: instance._id,
-      stepNumber: instance.currentStepNumber,
-      approverId: req.user._id,
-      decision,
-      comments: comments || ''
+    const action = await prisma.approvalAction.create({
+      data: {
+        workflowInstanceId: instance.id,
+        stepNumber: instance.currentStepNumber,
+        approverUserId: userId,
+        decision,
+        comments: comments || ''
+      }
     });
 
+    let newStatus = instance.status;
+    let nextStepNumber = instance.currentStepNumber;
+
     if (decision === 'REJECT') {
-      instance.status = 'REJECTED';
+      newStatus = 'REJECTED';
     } else {
-      const maxSteps = instance.workflowDefinitionId?.steps?.length || 1;
+      const maxSteps = instance.workflowDefinition?.steps?.length || 1;
       if (instance.currentStepNumber >= maxSteps) {
-        instance.status = 'APPROVED';
+        newStatus = 'APPROVED';
       } else {
-        instance.currentStepNumber += 1;
+        nextStepNumber += 1;
       }
     }
 
-    await instance.save();
-    res.json({ success: true, instance, action });
+    const updatedInstance = await prisma.workflowInstance.update({
+      where: { id: instance.id },
+      data: {
+        status: newStatus,
+        currentStepNumber: nextStepNumber
+      }
+    });
+
+    res.json({ success: true, instance: updatedInstance, action });
   } catch (err) { next(err); }
 }

@@ -93,7 +93,7 @@ export function Login() {
 
       {/* Main Split-Screen Container */}
       <div className="w-full max-w-5xl bg-white border border-slate-200 shadow-2xl rounded-3xl grid grid-cols-1 lg:grid-cols-12 overflow-hidden z-10">
-        
+
         {/* Left Side: Enterprise Platform Showcase */}
         <div className="order-2 lg:order-1 lg:col-span-6 bg-slate-50 p-8 lg:p-12 flex flex-col justify-between border-t lg:border-t-0 lg:border-r border-slate-200 relative">
           <div className="space-y-8">
@@ -174,7 +174,7 @@ export function Login() {
         {/* Right Side: Authentication Form */}
         <div className="order-1 lg:order-2 lg:col-span-6 p-8 lg:p-12 flex flex-col justify-between space-y-6 bg-white">
           <div className="space-y-6">
-            
+
             {/* Header */}
             <div className="flex items-center justify-between">
               <div>
@@ -211,21 +211,20 @@ export function Login() {
 
             {/* Authentication Form */}
             <form onSubmit={handleSubmit} className="space-y-4">
-              
+
               {/* Custom Role Dropdown */}
               <div ref={dropdownRef} className="relative">
                 <label className="text-xs font-bold text-slate-700 block mb-1.5 uppercase tracking-wider">
                   Enterprise Username & Role
                 </label>
-                
+
                 <button
                   type="button"
                   onClick={() => setIsDropdownOpen(!isDropdownOpen)}
-                  className={`w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 border transition-all text-left group ${
-                    isDropdownOpen
+                  className={`w-full flex items-center justify-between p-3 rounded-xl bg-slate-50 border transition-all text-left group ${isDropdownOpen
                       ? 'border-[#6c2bd9] ring-2 ring-purple-100 shadow-md'
                       : 'border-slate-200 hover:border-slate-300'
-                  }`}
+                    }`}
                 >
                   <div className="flex items-center gap-3 truncate">
                     <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6c2bd9] flex items-center justify-center border border-purple-200 flex-shrink-0">
@@ -256,11 +255,10 @@ export function Login() {
                           key={user.username}
                           type="button"
                           onClick={() => handleUserSelect(user)}
-                          className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between transition-all group ${
-                            isSelected
+                          className={`w-full text-left p-2.5 rounded-xl flex items-center justify-between transition-all group ${isSelected
                               ? 'bg-purple-50 border border-purple-200 text-slate-900 shadow-xs'
                               : 'hover:bg-slate-50 text-slate-700 border border-transparent'
-                          }`}
+                            }`}
                         >
                           <div className="flex items-center gap-3 truncate">
                             <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6c2bd9] flex items-center justify-center border border-purple-200 flex-shrink-0">
@@ -268,9 +266,8 @@ export function Login() {
                             </div>
                             <div className="truncate">
                               <div className="flex items-center gap-2">
-                                <span className={`font-mono text-xs font-bold px-1.5 py-0.5 rounded ${
-                                  isSelected ? 'bg-[#6c2bd9] text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
-                                }`}>
+                                <span className={`font-mono text-xs font-bold px-1.5 py-0.5 rounded ${isSelected ? 'bg-[#6c2bd9] text-white' : 'bg-slate-100 text-slate-700 border border-slate-200'
+                                  }`}>
                                   {user.username}
                                 </span>
                                 <span className="text-xs font-semibold truncate text-slate-800">

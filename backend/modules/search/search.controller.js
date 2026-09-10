@@ -1,7 +1,4 @@
-import { Asset } from '../../models/Asset.js';
-import { MaintenanceWorkOrder } from '../../models/MaintenanceWorkOrder.js';
-import { StocktakeCampaign } from '../../models/StocktakeCampaign.js';
-import { Employee } from '../../models/Employee.js';
+import prisma from '../../config/prisma.js';
 
 export async function globalSearch(req, res, next) {
   try {
@@ -10,37 +7,49 @@ export async function globalSearch(req, res, next) {
       return res.json({ success: true, results: { assets: [], workOrders: [], stocktakes: [], employees: [] } });
     }
 
-    const regex = new RegExp(q.trim(), 'i');
+    const queryStr = q.trim();
 
     const [assets, workOrders, stocktakes, employees] = await Promise.all([
-      Asset.find({
-        $or: [
-          { assetId: regex },
-          { tagNumber: regex },
-          { serialNumber: regex },
-          { description: regex },
-          { hostname: regex }
-        ]
-      }).limit(10),
-      MaintenanceWorkOrder.find({
-        $or: [
-          { workOrderNumber: regex },
-          { description: regex }
-        ]
-      }).limit(5),
-      StocktakeCampaign.find({
-        $or: [
-          { campaignNumber: regex },
-          { title: regex }
-        ]
-      }).limit(5),
-      Employee.find({
-        $or: [
-          { fullName: regex },
-          { employeeCode: regex },
-          { email: regex }
-        ]
-      }).limit(5)
+      prisma.asset.findMany({
+        where: {
+          OR: [
+            { assetId: { contains: queryStr, mode: 'insensitive' } },
+            { tagNumber: { contains: queryStr, mode: 'insensitive' } },
+            { serialNumber: { contains: queryStr, mode: 'insensitive' } },
+            { description: { contains: queryStr, mode: 'insensitive' } },
+            { hostname: { contains: queryStr, mode: 'insensitive' } }
+          ]
+        },
+        take: 10
+      }),
+      prisma.maintenanceWorkOrder.findMany({
+        where: {
+          OR: [
+            { workOrderNumber: { contains: queryStr, mode: 'insensitive' } },
+            { description: { contains: queryStr, mode: 'insensitive' } }
+          ]
+        },
+        take: 5
+      }),
+      prisma.stocktakeCampaign.findMany({
+        where: {
+          OR: [
+            { campaignNumber: { contains: queryStr, mode: 'insensitive' } },
+            { title: { contains: queryStr, mode: 'insensitive' } }
+          ]
+        },
+        take: 5
+      }),
+      prisma.employee.findMany({
+        where: {
+          OR: [
+            { fullName: { contains: queryStr, mode: 'insensitive' } },
+            { employeeCode: { contains: queryStr, mode: 'insensitive' } },
+            { email: { contains: queryStr, mode: 'insensitive' } }
+          ]
+        },
+        take: 5
+      })
     ]);
 
     res.json({

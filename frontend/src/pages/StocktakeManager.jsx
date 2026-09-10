@@ -187,12 +187,15 @@ export function StocktakeManager() {
 
     setActionLoading(true);
     try {
+      const selectedCompanyId = launchForm.companyId || (companies[0] ? (companies[0].id || companies[0]._id) : undefined);
+      const selectedSiteId = launchForm.siteId || (sites[0] ? (sites[0].id || sites[0]._id) : undefined);
+
       const payload = {
         title: launchForm.title,
         mode: launchForm.mode,
         scope: {
-          companyId: launchForm.companyId || (companies[0] ? companies[0]._id : undefined),
-          siteId: launchForm.siteId || (sites[0] ? sites[0]._id : undefined),
+          companyId: selectedCompanyId,
+          siteId: selectedSiteId,
           buildingId: launchForm.buildingId || undefined,
           categoryId: launchForm.categoryId || undefined
         }
@@ -204,7 +207,7 @@ export function StocktakeManager() {
         setShowLaunchModal(false);
         setLaunchForm({ title: '', companyId: '', siteId: '', buildingId: '', categoryId: '', mode: 'FULL_CENSUS' });
         fetchCampaigns();
-        openCampaignDetail(res.campaign._id);
+        openCampaignDetail(res.campaign.id || res.campaign._id);
       }
     } catch (err) {
       alert(err.message || 'Failed to launch campaign');
@@ -488,14 +491,15 @@ export function StocktakeManager() {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
               {filteredCampaigns.map(c => {
-                const totalExp = c.stats?.totalExpected || 0;
-                const totalVer = c.stats?.totalVerified || 0;
+                const campaignId = c.id || c._id;
+                const totalExp = c.stats?.totalExpected ?? c.totalExpected ?? 0;
+                const totalVer = c.stats?.totalVerified ?? c.totalVerified ?? 0;
                 const percent = totalExp > 0 ? Math.round((totalVer / totalExp) * 100) : 0;
                 const isActive = c.status === 'ACTIVE';
 
                 return (
                   <div 
-                    key={c._id} 
+                    key={campaignId} 
                     className="bg-white border border-slate-200 p-5 rounded-xl space-y-4 hover:border-brand-300 transition-all flex flex-col justify-between shadow-xs"
                   >
                     <div className="space-y-3">
@@ -541,15 +545,15 @@ export function StocktakeManager() {
                         </div>
                         <div className="bg-slate-50 p-1.5 rounded border border-slate-200">
                           <span className="text-[9px] text-slate-500 block uppercase font-medium">Verified</span>
-                          <span className="font-bold text-emerald-600">{c.stats?.totalVerified || 0}</span>
+                          <span className="font-bold text-emerald-600">{c.stats?.totalVerified ?? c.totalVerified ?? 0}</span>
                         </div>
                         <div className="bg-slate-50 p-1.5 rounded border border-slate-200">
                           <span className="text-[9px] text-slate-500 block uppercase font-medium">Relocated</span>
-                          <span className="font-bold text-amber-600">{c.stats?.totalRelocated || 0}</span>
+                          <span className="font-bold text-amber-600">{c.stats?.totalRelocated ?? c.totalRelocated ?? 0}</span>
                         </div>
                         <div className="bg-slate-50 p-1.5 rounded border border-slate-200">
                           <span className="text-[9px] text-slate-500 block uppercase font-medium">Missing</span>
-                          <span className="font-bold text-rose-600">{c.stats?.totalMissing || 0}</span>
+                          <span className="font-bold text-rose-600">{c.stats?.totalMissing ?? c.totalMissing ?? 0}</span>
                         </div>
                       </div>
                     </div>
@@ -558,7 +562,7 @@ export function StocktakeManager() {
                     <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
                       <span className="text-[10px] text-slate-400">Created: {formatDate(c.createdAt)}</span>
                       <button
-                        onClick={() => openCampaignDetail(c._id)}
+                        onClick={() => openCampaignDetail(campaignId)}
                         className="text-xs px-3 py-1.5 rounded-lg bg-brand-50 hover:bg-brand-100 text-brand-700 font-semibold border border-brand-200 transition-colors"
                       >
                         Open Workbench →
@@ -980,7 +984,7 @@ export function StocktakeManager() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 focus:border-brand-500"
                   >
                     <option value="">-- All Subnet Sites --</option>
-                    {sites.map(s => <option key={s._id} value={s._id}>{s.name}</option>)}
+                    {sites.map(s => <option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>)}
                   </select>
                 </div>
 
@@ -992,7 +996,7 @@ export function StocktakeManager() {
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 focus:border-brand-500"
                   >
                     <option value="">-- All Asset Categories --</option>
-                    {categories.map(c => <option key={c._id} value={c._id}>{c.name}</option>)}
+                    {categories.map(c => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
                   </select>
                 </div>
               </div>

@@ -1,11 +1,14 @@
-import { AuditEvent } from '../../models/AuditEvent.js';
+import prisma from '../../config/prisma.js';
 
 export async function getAuditLogs(req, res, next) {
   try {
-    const logs = await AuditEvent.find()
-      .populate('userId')
-      .sort({ timestamp: -1 })
-      .limit(200);
+    const logs = await prisma.auditEvent.findMany({
+      include: {
+        user: { select: { id: true, username: true, fullName: true, email: true } }
+      },
+      orderBy: { timestamp: 'desc' },
+      take: 200
+    });
 
     res.json({ success: true, logs });
   } catch (err) { next(err); }

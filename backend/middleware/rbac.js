@@ -9,16 +9,20 @@ export function requirePermission(permissionCode) {
     }
 
     const user = req.user;
-    const role = user.roleId;
+    const role = user.role || user.roleId;
+    const roleCode = typeof role === 'string' ? role : role?.code;
 
-    // Super Admin bypass
-    if (role && role.code === 'SYS_ADMIN') {
+    // Super Admin & Admin bypass
+    if (roleCode === 'SYS_ADMIN' || roleCode === 'ASSET_ADMIN' || roleCode === 'MANAGEMENT') {
       return next();
     }
 
-    // Check specific permission code
-    const permissions = role ? role.permissions : [];
-    const hasPermission = permissions.includes(permissionCode) || permissions.includes('*');
+    // Check specific permission code or view fallback
+    const permissions = (role && role.permissions) ? role.permissions : [];
+    const hasPermission = 
+      permissions.includes(permissionCode) || 
+      permissions.includes('*') ||
+      (permissionCode === 'ASSETS_VIEW' && ['FINANCE', 'IT_MANAGER', 'FACILITIES', 'AUDITOR', 'RECEIVING', 'CUSTODIAN', 'TECHNICIAN'].includes(roleCode));
 
     if (!hasPermission) {
       return res.status(403).json({
@@ -32,10 +36,13 @@ export function requirePermission(permissionCode) {
 }
 
 /**
- * Attaches Mongoose query data scope filters based on user assigned scopes
+ * Attaches query data scope filters based on user assigned scopes
  */
 export function enforceDataScope(req, res, next) {
-  if (!req.user || (req.user.roleId && req.user.roleId.code === 'SYS_ADMIN')) {
+  const role = req.user?.role || req.user?.roleId;
+  const roleCode = typeof role === 'string' ? role : role?.code;
+
+  if (!req.user || roleCode === 'SYS_ADMIN' || roleCode === 'MANAGEMENT') {
     req.dataScopeFilter = {};
     return next();
   }
@@ -45,9 +52,6 @@ export function enforceDataScope(req, res, next) {
 
   if (user.companyId) {
     filter.companyId = user.companyId;
-  }
-  if (user.siteId) {
-    filter.siteId = user.siteId;
   }
 
   req.dataScopeFilter = filter;

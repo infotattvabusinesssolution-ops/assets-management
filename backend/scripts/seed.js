@@ -1,78 +1,40 @@
 import dotenv from 'dotenv';
 dotenv.config();
-import mongoose from 'mongoose';
 import bcrypt from 'bcryptjs';
-
-import { Role } from '../models/Role.js';
-import { User } from '../models/User.js';
-import { Company } from '../models/Company.js';
-import { Site, Building, Floor, Room, Zone } from '../models/Location.js';
-import { Department } from '../models/Department.js';
-import { CostCenter } from '../models/CostCenter.js';
-import { Employee } from '../models/Employee.js';
-import { Category } from '../models/Category.js';
-import { AssetClass } from '../models/AssetClass.js';
-import { Manufacturer } from '../models/Manufacturer.js';
-import { AssetModel } from '../models/Model.js';
-import { CustomFieldDefinition } from '../models/CustomFieldDefinition.js';
-import { Asset } from '../models/Asset.js';
-import { AssetBookValue } from '../models/AssetBookValue.js';
-import { AssetTransaction } from '../models/AssetTransaction.js';
-import { MaintenanceWorkOrder } from '../models/MaintenanceWorkOrder.js';
-import { StocktakeCampaign } from '../models/StocktakeCampaign.js';
-import { StocktakeExpectedAsset } from '../models/StocktakeExpectedAsset.js';
-import { FloorMap } from '../models/FloorMap.js';
-import { AssetMapPosition } from '../models/AssetMapPosition.js';
-import { DiscoveryObservation } from '../models/DiscoveryObservation.js';
-import { DiscoveryMatch } from '../models/DiscoveryMatch.js';
-import { WorkflowDefinition } from '../models/WorkflowDefinition.js';
-import { WorkflowInstance } from '../models/WorkflowInstance.js';
-import { Warranty } from '../models/Warranty.js';
-import { Contract } from '../models/Contract.js';
+import prisma from '../config/prisma.js';
 import { connectDB } from '../config/db.js';
+import { seedRtlsData } from './seedRtls.js';
 
 async function seed() {
-  console.log('🌱 Starting Enterprise FAMS Database Seeding...');
+  console.log('🌱 Starting Enterprise FAMS Database Seeding (PostgreSQL via Prisma)...');
   await connectDB();
 
+  // Clear existing records in reverse dependency order
+  console.log('🧹 Clearing existing database records...');
+  await prisma.assetBookValue.deleteMany({});
+  await prisma.assetTransaction.deleteMany({});
+  await prisma.assetMapPosition.deleteMany({});
+  await prisma.maintenanceWorkOrder.deleteMany({});
+  await prisma.stocktakeExpectedAsset.deleteMany({});
+  await prisma.stocktakeCampaign.deleteMany({});
+  await prisma.asset.deleteMany({});
+  await prisma.assetModel.deleteMany({});
+  await prisma.manufacturer.deleteMany({});
+  await prisma.assetClass.deleteMany({});
+  await prisma.category.deleteMany({});
+  await prisma.employee.deleteMany({});
+  await prisma.user.deleteMany({});
+  await prisma.role.deleteMany({});
+  await prisma.room.deleteMany({});
+  await prisma.floor.deleteMany({});
+  await prisma.building.deleteMany({});
+  await prisma.site.deleteMany({});
+  await prisma.company.deleteMany({});
 
-  // Clear existing collections
-  await Promise.all([
-    Role.deleteMany({}),
-    User.deleteMany({}),
-    Company.deleteMany({}),
-    Site.deleteMany({}),
-    Building.deleteMany({}),
-    Floor.deleteMany({}),
-    Room.deleteMany({}),
-    Department.deleteMany({}),
-    CostCenter.deleteMany({}),
-    Employee.deleteMany({}),
-    Category.deleteMany({}),
-    AssetClass.deleteMany({}),
-    Manufacturer.deleteMany({}),
-    AssetModel.deleteMany({}),
-    CustomFieldDefinition.deleteMany({}),
-    Asset.deleteMany({}),
-    AssetBookValue.deleteMany({}),
-    AssetTransaction.deleteMany({}),
-    MaintenanceWorkOrder.deleteMany({}),
-    StocktakeCampaign.deleteMany({}),
-    StocktakeExpectedAsset.deleteMany({}),
-    FloorMap.deleteMany({}),
-    AssetMapPosition.deleteMany({}),
-    DiscoveryObservation.deleteMany({}),
-    DiscoveryMatch.deleteMany({}),
-    WorkflowDefinition.deleteMany({}),
-    WorkflowInstance.deleteMany({}),
-    Warranty.deleteMany({}),
-    Contract.deleteMany({})
-  ]);
-
-  console.log('🧹 Database cleared');
+  console.log('✨ Cleaned table records');
 
   // 1. Roles
-  const roles = await Role.insertMany([
+  const rolesData = [
     { name: 'System Administrator', code: 'SYS_ADMIN', permissions: ['*'], isSystem: true },
     { name: 'Asset Administrator', code: 'ASSET_ADMIN', permissions: ['ASSETS_VIEW', 'ASSETS_CREATE', 'ASSETS_EDIT', 'ASSETS_TRANSITION'] },
     { name: 'Finance Asset Controller', code: 'FINANCE', permissions: ['ASSETS_VIEW', 'FINANCE_VIEW', 'FINANCE_RUN'] },
@@ -83,31 +45,81 @@ async function seed() {
     { name: 'Maintenance Technician', code: 'TECHNICIAN', permissions: ['WORK_ORDERS_VIEW', 'WORK_ORDERS_EDIT'] },
     { name: 'Auditor', code: 'AUDITOR', permissions: ['ASSETS_VIEW', 'AUDIT_VIEW'] },
     { name: 'Management', code: 'MANAGEMENT', permissions: ['REPORTS_VIEW', 'DASHBOARD_VIEW'] }
-  ]);
+  ];
 
-  const sysAdminRole = roles.find(r => r.code === 'SYS_ADMIN');
-  const assetAdminRole = roles.find(r => r.code === 'ASSET_ADMIN');
+  const roles = [];
+  for (const r of rolesData) {
+    const createdRole = await prisma.role.create({ data: r });
+    roles.push(createdRole);
+  }
+
   const passwordHash = await bcrypt.hash('Admin@123', 10);
 
   // 2. Company & Sites
-  const company = await Company.create({
-    code: 'CMP-GLOBAL',
-    name: 'Infotatwaa Enterprise Corp',
-    currency: 'USD',
-    taxId: 'TX-99887766'
+  const company = await prisma.company.create({
+    data: {
+      code: 'CMP-GLOBAL',
+      name: 'Infotatwaa Enterprise Corp',
+      currency: 'USD',
+      taxId: 'TX-99887766'
+    }
   });
 
-  const siteA = await Site.create({ companyId: company._id, code: 'SITE-HQ', name: 'Global HQ Campus', city: 'San Francisco', country: 'USA' });
-  const siteB = await Site.create({ companyId: company._id, code: 'SITE-EAST', name: 'Innovation Hub East', city: 'New York', country: 'USA' });
+  const siteA = await prisma.site.create({
+    data: {
+      companyId: company.id,
+      code: 'SITE-HQ',
+      name: 'Global HQ Campus',
+      city: 'San Francisco',
+      country: 'USA'
+    }
+  });
 
-  const bldgA = await Building.create({ siteId: siteA._id, code: 'BLDG-A', name: 'Executive Tower A' });
-  const floor1 = await Floor.create({ buildingId: bldgA._id, code: 'FL-01', name: 'Floor 1 Lobby & Server Room', floorNumber: 1 });
-  const floor2 = await Floor.create({ buildingId: bldgA._id, code: 'FL-02', name: 'Floor 2 Executive Suites', floorNumber: 2 });
+  const bldgA = await prisma.building.create({
+    data: {
+      siteId: siteA.id,
+      code: 'BLDG-A',
+      name: 'Executive Tower A'
+    }
+  });
 
-  const roomServer = await Room.create({ floorId: floor1._id, code: 'RM-101', name: 'Data Center Server Room 101', roomType: 'DataCenter' });
-  const roomOffice = await Room.create({ floorId: floor2._id, code: 'RM-205', name: 'Engineering Open Office 205', roomType: 'Office' });
+  const floor1 = await prisma.floor.create({
+    data: {
+      buildingId: bldgA.id,
+      code: 'FL-01',
+      name: 'Floor 1 Lobby & Server Room',
+      floorNumber: 1
+    }
+  });
 
-  // 3. Users & Employees (10 Enterprise Roles)
+  const floor2 = await prisma.floor.create({
+    data: {
+      buildingId: bldgA.id,
+      code: 'FL-02',
+      name: 'Floor 2 Executive Suites',
+      floorNumber: 2
+    }
+  });
+
+  const roomServer = await prisma.room.create({
+    data: {
+      floorId: floor1.id,
+      code: 'RM-101',
+      name: 'Data Center Server Room 101',
+      roomType: 'DataCenter'
+    }
+  });
+
+  const roomOffice = await prisma.room.create({
+    data: {
+      floorId: floor2.id,
+      code: 'RM-205',
+      name: 'Engineering Open Office 205',
+      roomType: 'Office'
+    }
+  });
+
+  // 3. Users & Employees
   const usersToCreate = [
     { username: 'admin', email: 'admin@infotatwaa.com', fullName: 'System Administrator', roleCode: 'SYS_ADMIN' },
     { username: 'asset_admin', email: 'assetadmin@infotatwaa.com', fullName: 'Asset Administrator', roleCode: 'ASSET_ADMIN' },
@@ -124,40 +136,57 @@ async function seed() {
   let adminUser = null;
   for (const u of usersToCreate) {
     const role = roles.find(r => r.code === u.roleCode);
-    const createdUser = await User.create({
-      username: u.username,
-      email: u.email,
-      passwordHash,
-      fullName: u.fullName,
-      roleId: role._id,
-      companyId: company._id,
-      siteId: siteA._id
+    const createdUser = await prisma.user.create({
+      data: {
+        username: u.username,
+        email: u.email,
+        passwordHash,
+        fullName: u.fullName,
+        roleId: role.id,
+        companyId: company.id,
+        siteId: siteA.id
+      }
     });
     if (u.roleCode === 'SYS_ADMIN') adminUser = createdUser;
   }
 
-  const employee1 = await Employee.create({
-    employeeCode: 'EMP-101',
-    fullName: 'David Miller',
-    email: 'david.m@infotatwaa.com',
-    companyId: company._id
+  const employee1 = await prisma.employee.create({
+    data: {
+      employeeCode: 'EMP-101',
+      fullName: 'David Miller',
+      email: 'david.m@infotatwaa.com',
+      companyId: company.id
+    }
   });
 
   // 4. Categories & Models
-  const catIT = await Category.create({ code: 'CAT-IT', name: 'IT Infrastructure & Compute', defaultUsefulLifeMonths: 36 });
-  const catFacility = await Category.create({ code: 'CAT-FAC', name: 'Facilities & Heavy Machinery', defaultUsefulLifeMonths: 120 });
+  const catIT = await prisma.category.create({
+    data: {
+      code: 'CAT-IT',
+      name: 'IT Infrastructure & Compute',
+      defaultUsefulLifeMonths: 36
+    }
+  });
 
-  const mfrDell = await Manufacturer.create({ name: 'Dell Technologies', website: 'https://dell.com' });
-  const modelDell = await AssetModel.create({
-    modelNumber: 'LAT-5540',
-    name: 'Dell Latitude 5540 i7 32GB',
-    manufacturerId: mfrDell._id,
-    categoryId: catIT._id
+  const mfrDell = await prisma.manufacturer.create({
+    data: {
+      name: 'Dell Technologies',
+      website: 'https://dell.com'
+    }
+  });
+
+  const modelDell = await prisma.assetModel.create({
+    data: {
+      modelNumber: 'LAT-5540',
+      name: 'Dell Latitude 5540 i7 32GB',
+      manufacturerId: mfrDell.id,
+      categoryId: catIT.id
+    }
   });
 
   // 5. Assets
-  const assets = await Asset.insertMany([
-    {
+  const asset1 = await prisma.asset.create({
+    data: {
       assetId: 'AST-2026-001',
       tagNumber: 'TAG-9001',
       barcode: 'TAG-9001',
@@ -165,22 +194,25 @@ async function seed() {
       rfidEpc: 'E280116060009001',
       serialNumber: 'SN-DELL-9001',
       description: 'Dell PowerEdge R750 Rack Server',
-      categoryId: catIT._id,
-      manufacturerId: mfrDell._id,
-      modelId: modelDell._id,
+      categoryId: catIT.id,
+      manufacturerId: mfrDell.id,
+      modelId: modelDell.id,
       lifecycleStatus: 'IN_SERVICE',
       condition: 'NEW',
-      companyId: company._id,
-      siteId: siteA._id,
-      buildingId: bldgA._id,
-      floorId: floor1._id,
-      roomId: roomServer._id,
-      custodianId: employee1._id,
+      companyId: company.id,
+      siteId: siteA.id,
+      buildingId: bldgA.id,
+      floorId: floor1.id,
+      roomId: roomServer.id,
+      custodianId: employee1.id,
       acquisitionValue: 8500.00,
       hostname: 'SRV-DB-PROD01',
-      createdBy: adminUser._id
-    },
-    {
+      createdByUserId: adminUser.id
+    }
+  });
+
+  const asset2 = await prisma.asset.create({
+    data: {
       assetId: 'AST-2026-002',
       tagNumber: 'TAG-9002',
       barcode: 'TAG-9002',
@@ -188,84 +220,55 @@ async function seed() {
       rfidEpc: 'E280116060009002',
       serialNumber: 'SN-DELL-9002',
       description: 'Dell Latitude 5540 Developer Laptop',
-      categoryId: catIT._id,
-      manufacturerId: mfrDell._id,
-      modelId: modelDell._id,
+      categoryId: catIT.id,
+      manufacturerId: mfrDell.id,
+      modelId: modelDell.id,
       lifecycleStatus: 'ASSIGNED',
       condition: 'GOOD',
-      companyId: company._id,
-      siteId: siteA._id,
-      buildingId: bldgA._id,
-      floorId: floor2._id,
-      roomId: roomOffice._id,
-      custodianId: employee1._id,
+      companyId: company.id,
+      siteId: siteA.id,
+      buildingId: bldgA.id,
+      floorId: floor2.id,
+      roomId: roomOffice.id,
+      custodianId: employee1.id,
       acquisitionValue: 1850.00,
       hostname: 'DESKTOP-DEV-DM',
-      createdBy: adminUser._id
+      createdByUserId: adminUser.id
     }
-  ]);
+  });
 
   // Book values
-  for (const ast of assets) {
-    await AssetBookValue.create({
-      assetId: ast._id,
+  await prisma.assetBookValue.create({
+    data: {
+      assetId: asset1.id,
       bookType: 'CORPORATE',
       capitalizationDate: new Date(),
-      capitalizationValue: ast.acquisitionValue,
+      capitalizationValue: asset1.acquisitionValue,
       usefulLifeMonths: 60,
       depreciationMethod: 'STRAIGHT_LINE',
       residualValue: 0,
       accumulatedDepreciation: 150.00,
-      netBookValue: Number(ast.acquisitionValue) - 150.00
-    });
-  }
-
-  // 6. Floor Map & Coordinates
-  const floorMap = await FloorMap.create({
-    title: 'Floor 1 Server Room Architectural Layout',
-    floorId: floor1._id,
-    imageUrl: 'https://images.unsplash.com/photo-1558494949-ef010cbdcc31?auto=format&fit=crop&w=1200&q=80',
-    zones: [
-      { name: 'Server Rack Zone A', points: [{ x: 0.1, y: 0.1 }, { x: 0.4, y: 0.1 }, { x: 0.4, y: 0.4 }, { x: 0.1, y: 0.4 }], color: '#10B981' }
-    ]
+      netBookValue: 8350.00
+    }
   });
 
-  await AssetMapPosition.create({
-    assetId: assets[0]._id,
-    floorMapId: floorMap._id,
-    xRatio: 0.25,
-    yRatio: 0.25,
-    updatedBy: adminUser._id,
-    active: true
+  await prisma.assetBookValue.create({
+    data: {
+      assetId: asset2.id,
+      bookType: 'CORPORATE',
+      capitalizationDate: new Date(),
+      capitalizationValue: asset2.acquisitionValue,
+      usefulLifeMonths: 60,
+      depreciationMethod: 'STRAIGHT_LINE',
+      residualValue: 0,
+      accumulatedDepreciation: 50.00,
+      netBookValue: 1800.00
+    }
   });
 
-  // 7. Work Orders
-  await MaintenanceWorkOrder.create({
-    workOrderNumber: 'WO-2026-01',
-    assetId: assets[0]._id,
-    workType: 'PREVENTIVE',
-    priority: 'HIGH',
-    status: 'OPEN',
-    description: 'Quarterly Server Fan & Dust Cleaning Inspection',
-    createdBy: adminUser._id
-  });
+  await seedRtlsData();
 
-  // 8. Stocktake Campaign
-  const campaign = await StocktakeCampaign.create({
-    campaignNumber: 'STK-2026-Q3',
-    title: 'Q3 Enterprise Hardware Census',
-    scope: { companyId: company._id, siteId: siteA._id },
-    status: 'ACTIVE',
-    createdBy: adminUser._id,
-    stats: { totalExpected: 2, totalVerified: 1, totalRelocated: 0, totalMissing: 0, totalUnregistered: 0 }
-  });
-
-  await StocktakeExpectedAsset.create([
-    { campaignId: campaign._id, assetId: assets[0]._id, expectedSiteId: siteA._id, status: 'VERIFIED_CORRECT' },
-    { campaignId: campaign._id, assetId: assets[1]._id, expectedSiteId: siteA._id, status: 'PENDING' }
-  ]);
-
-  console.log('✅ Enterprise Seed completed successfully!');
+  console.log('✅ Enterprise PostgreSQL Seed completed successfully!');
   console.log('🔑 Login Credentials: Username: admin | Password: Admin@123');
   process.exit(0);
 }

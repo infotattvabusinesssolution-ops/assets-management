@@ -14,6 +14,9 @@ import {
   FileCheck,
   Radio,
   MapPin,
+  Cpu,
+  Radar,
+  Map,
   Trash2,
   BarChart3,
   GitPullRequest,
@@ -24,12 +27,14 @@ import {
   ChevronLeft,
   ChevronRight,
   Building2,
+  Users,
   LogOut
 } from 'lucide-react';
 import clsx from 'clsx';
 
 const ALL_NAV_ITEMS = [
   { name: 'Dashboard', path: '/', icon: LayoutDashboard, roles: ['*'] },
+  { name: 'System Accounts', path: '/admin/users', icon: Users, roles: ['SYS_ADMIN'] },
   { name: 'Asset Register', path: '/assets', icon: Package, roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'IT_MANAGER', 'FACILITIES', 'RECEIVING', 'CUSTODIAN', 'AUDITOR'] },
   { name: 'Receiving Workbench', path: '/receiving', icon: Inbox, roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'RECEIVING'] },
   { name: 'Tagging & Barcodes', path: '/tagging', icon: Tag, roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'RECEIVING'] },
@@ -38,8 +43,10 @@ const ALL_NAV_ITEMS = [
   { name: 'Finance & Depreciation', path: '/finance', icon: DollarSign, roles: ['SYS_ADMIN', 'FINANCE', 'MANAGEMENT', 'AUDITOR'] },
   { name: 'Maintenance Planner', path: '/maintenance', icon: Wrench, roles: ['SYS_ADMIN', 'FACILITIES', 'TECHNICIAN'] },
   { name: 'Contracts & Warranty', path: '/contracts', icon: FileCheck, roles: ['SYS_ADMIN', 'FINANCE', 'IT_MANAGER', 'AUDITOR'] },
-  { name: 'IT Auto-Discovery', path: '/discovery', icon: Radio, roles: ['SYS_ADMIN', 'IT_MANAGER'] },
-  { name: 'Floor Maps & Locate', path: '/maps', icon: MapPin, roles: ['SYS_ADMIN', 'IT_MANAGER', 'FACILITIES', 'TECHNICIAN'] },
+  { name: 'IT Auto-Discovery', path: '/discovery', icon: Cpu, roles: ['SYS_ADMIN', 'IT_MANAGER'] },
+  { name: 'RTLS & Fixed Readers', path: '/rtls', icon: Radio, roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'IT_MANAGER', 'FACILITIES', 'TECHNICIAN', 'MANAGEMENT'] },
+  { name: 'Live RTLS Map', path: '/rtls/map', icon: Radar, roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'IT_MANAGER', 'FACILITIES', 'TECHNICIAN', 'MANAGEMENT'] },
+  { name: 'Floor Maps & Locate', path: '/maps', icon: Map, roles: ['SYS_ADMIN', 'IT_MANAGER', 'FACILITIES', 'TECHNICIAN'] },
   { name: 'Asset Disposal', path: '/disposals', icon: Trash2, roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE'] },
   { name: 'Reports & Analytics', path: '/reports', icon: BarChart3, roles: ['SYS_ADMIN', 'FINANCE', 'IT_MANAGER', 'FACILITIES', 'AUDITOR', 'MANAGEMENT'] },
   { name: 'Approval Workflows', path: '/workflows', icon: GitPullRequest, roles: ['SYS_ADMIN', 'FINANCE', 'MANAGEMENT'] },

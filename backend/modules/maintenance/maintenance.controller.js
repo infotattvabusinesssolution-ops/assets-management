@@ -1,13 +1,10 @@
-import { MaintenanceWorkOrder } from '../../models/MaintenanceWorkOrder.js';
-import { MaintenanceSchedule } from '../../models/MaintenanceSchedule.js';
-import { Asset } from '../../models/Asset.js';
-import { AssetTransaction } from '../../models/AssetTransaction.js';
+import prisma from '../../config/prisma.js';
 
 export async function getMaintenanceSummary(req, res, next) {
   try {
     const [workOrders, schedules] = await Promise.all([
-      MaintenanceWorkOrder.find(),
-      MaintenanceSchedule.find()
+      prisma.maintenanceWorkOrder.findMany(),
+      prisma.maintenanceSchedule.findMany()
     ]);
 
     const totalWorkOrders = workOrders.length;
@@ -35,13 +32,12 @@ export async function getMaintenanceSummary(req, res, next) {
         totalPartsCost += parseFloat(w.partsCost.toString() || 0);
       }
       if (w.laborHours) {
-        totalLaborHours += parseFloat(w.laborHours.toString() || 0);
-      }
-
-      // Calculate MTTR for completed corrective jobs
-      if ((w.status === 'COMPLETED' || w.status === 'VERIFIED') && w.laborHours > 0) {
-        totalMttrHours += parseFloat(w.laborHours.toString() || 0);
-        mttrCount++;
+        const hours = parseFloat(w.laborHours.toString() || 0);
+        totalLaborHours += hours;
+        if ((w.status === 'COMPLETED' || w.status === 'VERIFIED') && hours > 0) {
+          totalMttrHours += hours;
+          mttrCount++;
+        }
       }
     }
 
@@ -74,18 +70,20 @@ export async function getMaintenanceSummary(req, res, next) {
 
 export async function getWorkOrders(req, res, next) {
   try {
-    const workOrders = await MaintenanceWorkOrder.find()
-      .populate({
-        path: 'assetId',
-        populate: [
-          { path: 'categoryId' },
-          { path: 'siteId' },
-          { path: 'roomId' }
-        ]
-      })
-      .populate('assignedTechnicianId')
-      .populate('createdBy')
-      .sort({ createdAt: -1 });
+    const workOrders = await prisma.maintenanceWorkOrder.findMany({
+      include: {
+        asset: {
+          include: {
+            category: true,
+            site: true,
+            room: true
+          }
+        },
+        assignedTechnician: { select: { id: true, username: true, fullName: true } },
+        createdBy: { select: { id: true, username: true, fullName: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     res.json({ success: true, workOrders });
   } catch (err) { next(err); }
@@ -94,20 +92,37 @@ export async function getWorkOrders(req, res, next) {
 export async function createWorkOrder(req, res, next) {
   try {
     const workOrderNumber = 'WO-' + Date.now().toString(36).toUpperCase();
-    const workOrder = await MaintenanceWorkOrder.create({
-      ...req.body,
-      workOrderNumber,
-      createdBy: req.user._id
+    const userId = req.user?.id || req.user?._id;
+
+    const { assetId, workType = 'CORRECTIVE', priority = 'MEDIUM', description, assignedTechnicianId, laborHours, cost } = req.body;
+
+    const workOrder = await prisma.maintenanceWorkOrder.create({
+      data: {
+        workOrderNumber,
+        assetId,
+        workType,
+        priority,
+        description: description || 'Maintenance Work Order',
+        assignedTechnicianId: assignedTechnicianId || null,
+        laborHours: laborHours || 0,
+        cost: cost || 0,
+        createdByUserId: userId
+      }
     });
 
-    // Update asset lifecycle status
-    await Asset.findByIdAndUpdate(req.body.assetId, { lifecycleStatus: 'UNDER_MAINTENANCE' });
-    await AssetTransaction.create({
-      assetId: req.body.assetId,
-      transactionType: 'MAINTENANCE_START',
-      toStatus: 'UNDER_MAINTENANCE',
-      performedBy: req.user._id,
-      notes: `Work order created: ${workOrderNumber}`
+    await prisma.asset.update({
+      where: { id: assetId },
+      data: { lifecycleStatus: 'UNDER_MAINTENANCE' }
+    });
+
+    await prisma.assetTransaction.create({
+      data: {
+        assetId,
+        transactionType: 'MAINTENANCE_START',
+        toStatus: 'UNDER_MAINTENANCE',
+        performedByUserId: userId,
+        notes: `Work order created: ${workOrderNumber}`
+      }
     });
 
     res.status(201).json({ success: true, workOrder });
@@ -117,16 +132,27 @@ export async function createWorkOrder(req, res, next) {
 export async function updateWorkOrder(req, res, next) {
   try {
     const { id } = req.params;
-    const workOrder = await MaintenanceWorkOrder.findByIdAndUpdate(id, req.body, { new: true });
+    const userId = req.user?.id || req.user?._id;
+
+    const workOrder = await prisma.maintenanceWorkOrder.update({
+      where: { id },
+      data: req.body
+    });
 
     if (req.body.status === 'COMPLETED' && workOrder && workOrder.assetId) {
-      await Asset.findByIdAndUpdate(workOrder.assetId, { lifecycleStatus: 'IN_SERVICE' });
-      await AssetTransaction.create({
-        assetId: workOrder.assetId,
-        transactionType: 'MAINTENANCE_COMPLETE',
-        toStatus: 'IN_SERVICE',
-        performedBy: req.user._id,
-        notes: `Work order completed: ${workOrder.workOrderNumber}`
+      await prisma.asset.update({
+        where: { id: workOrder.assetId },
+        data: { lifecycleStatus: 'IN_SERVICE' }
+      });
+
+      await prisma.assetTransaction.create({
+        data: {
+          assetId: workOrder.assetId,
+          transactionType: 'MAINTENANCE_COMPLETE',
+          toStatus: 'IN_SERVICE',
+          performedByUserId: userId,
+          notes: `Work order completed: ${workOrder.workOrderNumber}`
+        }
       });
     }
 
@@ -136,12 +162,14 @@ export async function updateWorkOrder(req, res, next) {
 
 export async function getSchedules(req, res, next) {
   try {
-    const schedules = await MaintenanceSchedule.find()
-      .populate({
-        path: 'assetId',
-        populate: [{ path: 'siteId' }, { path: 'roomId' }]
-      })
-      .sort({ nextDueDate: 1 });
+    const schedules = await prisma.maintenanceSchedule.findMany({
+      include: {
+        asset: {
+          include: { site: true, room: true }
+        }
+      },
+      orderBy: { nextDueDate: 'asc' }
+    });
 
     res.json({ success: true, schedules });
   } catch (err) { next(err); }
@@ -149,7 +177,15 @@ export async function getSchedules(req, res, next) {
 
 export async function createSchedule(req, res, next) {
   try {
-    const schedule = await MaintenanceSchedule.create(req.body);
+    const { title, assetId, frequencyMonths, nextDueDate } = req.body;
+    const schedule = await prisma.maintenanceSchedule.create({
+      data: {
+        title,
+        assetId,
+        frequencyMonths: frequencyMonths || 6,
+        nextDueDate: nextDueDate ? new Date(nextDueDate) : new Date()
+      }
+    });
     res.status(201).json({ success: true, schedule });
   } catch (err) { next(err); }
 }

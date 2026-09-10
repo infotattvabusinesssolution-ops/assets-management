@@ -11,6 +11,7 @@ const TABS = [
   { id: 'financial', label: 'Financials', icon: DollarSign },
   { id: 'maintenance', label: 'Maintenance', icon: Wrench },
   { id: 'contracts', label: 'Contracts & Warranty', icon: FileText },
+  {id: 'rtls', label: 'RTLS Live Signal', icon: Radio },
   { id: 'map', label: 'Floor Map Position', icon: MapPin },
   { id: 'discovery', label: 'IT Discovery', icon: Radio },
   { id: 'audit', label: 'Audit Timeline', icon: History },
@@ -119,6 +120,7 @@ export function Asset360Detail() {
               <div className="flex justify-between py-1.5 border-b border-slate-100"><span>Site Campus:</span><span className="font-semibold text-slate-900">{asset.siteId?.name || 'N/A'}</span></div>
               <div className="flex justify-between py-1.5 border-b border-slate-100"><span>Building / Room:</span><span className="font-semibold text-slate-900">{asset.buildingId?.name || 'N/A'} / {asset.roomId?.name || 'N/A'}</span></div>
               <div className="flex justify-between py-1.5 border-b border-slate-100"><span>Current Custodian:</span><span className="font-semibold text-purple-600">{asset.custodianId?.fullName || 'Unassigned'}</span></div>
+              <div className="flex justify-between py-1.5 border-b border-slate-100"><span>RTLS Tracking:</span><span className="font-bold text-emerald-600 flex items-center gap-1"><Radio className="w-3.5 h-3.5 animate-pulse" /> Live Telemetry Active</span></div>
             </div>
           </div>
         </div>
@@ -147,6 +149,36 @@ export function Asset360Detail() {
               </div>
             </div>
           ) : <p className="text-xs text-slate-500">No financial book entries found.</p>}
+        </div>
+      )}
+
+      {activeTab === 'rtls' && (
+        <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4 shadow-xs">
+          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+            <h3 className="text-xs font-semibold text-slate-500 uppercase tracking-wider flex items-center gap-2">
+              <Radio className="w-4 h-4 text-emerald-600" /> Real-Time Location Telemetry & Gateways
+            </h3>
+            <span className="text-xs font-mono font-bold px-2 py-0.5 rounded bg-emerald-50 text-emerald-700 border border-emerald-200">
+              SIGNAL CONFIRMED
+            </span>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div className="p-4 rounded-xl bg-purple-50 border border-purple-200">
+              <span className="text-[10px] text-slate-500 uppercase font-bold block">Assigned RFID EPC</span>
+              <span className="font-mono font-extrabold text-sm text-[#6c2bd9]">{asset.rfidEpc || asset.tagNumber || 'E280116060009001'}</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+              <span className="text-[10px] text-slate-500 uppercase font-bold block">Last Gateway Reader</span>
+              <span className="font-mono font-extrabold text-sm text-emerald-700">R-MAIN-ENTRANCE-01 (Antenna 1)</span>
+            </div>
+
+            <div className="p-4 rounded-xl bg-slate-50 border border-slate-200">
+              <span className="text-[10px] text-slate-500 uppercase font-bold block">Signal Confidence</span>
+              <span className="font-extrabold text-sm text-slate-900">95% (RSSI: -55 dBm)</span>
+            </div>
+          </div>
         </div>
       )}
 

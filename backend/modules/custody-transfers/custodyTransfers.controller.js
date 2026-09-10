@@ -1,26 +1,25 @@
-import { CustodyAssignment } from '../../models/CustodyAssignment.js';
-import { AssetTransfer } from '../../models/AssetTransfer.js';
-import { Asset } from '../../models/Asset.js';
-import { AssetTransaction } from '../../models/AssetTransaction.js';
-import { withTransaction } from '../../config/db.js';
+import prisma from '../../config/prisma.js';
 
 export async function getCustodyAssignments(req, res, next) {
   try {
-    const assignments = await CustodyAssignment.find()
-      .populate({
-        path: 'assetId',
-        populate: [
-          { path: 'categoryId' },
-          { path: 'siteId' },
-          { path: 'roomId' }
-        ]
-      })
-      .populate({
-        path: 'custodianId',
-        populate: { path: 'departmentId' }
-      })
-      .populate('issuedBy')
-      .sort({ createdAt: -1 });
+    const assignments = await prisma.custodyAssignment.findMany({
+      include: {
+        asset: {
+          include: {
+            category: true,
+            site: true,
+            room: true
+          }
+        },
+        custodian: {
+          include: { department: true }
+        },
+        issuedBy: {
+          select: { id: true, username: true, fullName: true, email: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     res.json({ success: true, assignments });
   } catch (err) { next(err); }
@@ -29,40 +28,48 @@ export async function getCustodyAssignments(req, res, next) {
 export async function assignCustody(req, res, next) {
   try {
     const { assetId, custodianId, expectedReturnDate, notes } = req.body;
+    const userId = req.user?.id || req.user?._id;
 
-    const result = await withTransaction(async (session) => {
-      const asset = await Asset.findById(assetId);
+    const result = await prisma.$transaction(async (tx) => {
+      const asset = await tx.asset.findUnique({ where: { id: assetId } });
       if (!asset) throw new Error('Asset not found');
 
       // Deactivate active assignments
-      await CustodyAssignment.updateMany(
-        { assetId: asset._id, active: true },
-        { active: false },
-        { session }
-      );
+      await tx.custodyAssignment.updateMany({
+        where: { assetId: asset.id, active: true },
+        data: { active: false }
+      });
 
-      const [assignment] = await CustodyAssignment.create([{
-        assetId: asset._id,
-        custodianId,
-        issuedDate: new Date(),
-        expectedReturnDate,
-        issuedBy: req.user._id,
-        active: true
-      }], { session });
+      const assignment = await tx.custodyAssignment.create({
+        data: {
+          assetId: asset.id,
+          custodianId,
+          issuedDate: new Date(),
+          expectedReturnDate: expectedReturnDate ? new Date(expectedReturnDate) : null,
+          issuedByUserId: userId,
+          active: true
+        }
+      });
 
-      asset.custodianId = custodianId;
-      asset.assignedDate = new Date();
-      asset.lifecycleStatus = 'ASSIGNED';
-      await asset.save({ session });
+      await tx.asset.update({
+        where: { id: asset.id },
+        data: {
+          custodianId,
+          assignedDate: new Date(),
+          lifecycleStatus: 'ASSIGNED'
+        }
+      });
 
-      await AssetTransaction.create([{
-        assetId: asset._id,
-        transactionType: 'ASSIGN',
-        fromStatus: 'TAGGED',
-        toStatus: 'ASSIGNED',
-        performedBy: req.user._id,
-        notes: notes || 'Assigned custodian'
-      }], { session });
+      await tx.assetTransaction.create({
+        data: {
+          assetId: asset.id,
+          transactionType: 'ASSIGN',
+          fromStatus: asset.lifecycleStatus,
+          toStatus: 'ASSIGNED',
+          performedByUserId: userId,
+          notes: notes || 'Assigned custodian'
+        }
+      });
 
       return assignment;
     });
@@ -75,34 +82,45 @@ export async function returnCustody(req, res, next) {
   try {
     const { id } = req.params;
     const { conditionAtReturn, notes } = req.body;
+    const userId = req.user?.id || req.user?._id;
 
-    const result = await withTransaction(async (session) => {
-      const assignment = await CustodyAssignment.findById(id).session(session);
+    const result = await prisma.$transaction(async (tx) => {
+      const assignment = await tx.custodyAssignment.findUnique({ where: { id } });
       if (!assignment) throw new Error('Custody assignment not found');
       if (!assignment.active) throw new Error('Custody assignment is already inactive');
 
-      assignment.active = false;
-      assignment.actualReturnDate = new Date();
-      if (conditionAtReturn) assignment.conditionAtReturn = conditionAtReturn;
-      await assignment.save({ session });
+      const updatedAssignment = await tx.custodyAssignment.update({
+        where: { id },
+        data: {
+          active: false,
+          actualReturnDate: new Date(),
+          conditionAtReturn: conditionAtReturn || assignment.conditionAtReturn
+        }
+      });
 
-      const asset = await Asset.findById(assignment.assetId).session(session);
+      const asset = await tx.asset.findUnique({ where: { id: assignment.assetId } });
       if (asset) {
-        asset.custodianId = null;
-        asset.lifecycleStatus = 'IN_STORE';
-        await asset.save({ session });
+        await tx.asset.update({
+          where: { id: asset.id },
+          data: {
+            custodianId: null,
+            lifecycleStatus: 'IN_STORE'
+          }
+        });
 
-        await AssetTransaction.create([{
-          assetId: asset._id,
-          transactionType: 'UNASSIGN',
-          fromStatus: 'ASSIGNED',
-          toStatus: 'IN_STORE',
-          performedBy: req.user._id,
-          notes: notes || 'Custody returned to inventory'
-        }], { session });
+        await tx.assetTransaction.create({
+          data: {
+            assetId: asset.id,
+            transactionType: 'UNASSIGN',
+            fromStatus: asset.lifecycleStatus,
+            toStatus: 'IN_STORE',
+            performedByUserId: userId,
+            notes: notes || 'Custody returned to inventory'
+          }
+        });
       }
 
-      return assignment;
+      return updatedAssignment;
     });
 
     res.json({ success: true, assignment: result });
@@ -111,25 +129,23 @@ export async function returnCustody(req, res, next) {
 
 export async function getTransfers(req, res, next) {
   try {
-    const transfers = await AssetTransfer.find()
-      .populate({
-        path: 'assetId',
-        populate: [
-          { path: 'categoryId' },
-          { path: 'siteId' },
-          { path: 'roomId' }
-        ]
-      })
-      .populate('fromCompanyId')
-      .populate('fromSiteId')
-      .populate('fromRoomId')
-      .populate('fromCustodianId')
-      .populate('toCompanyId')
-      .populate('toSiteId')
-      .populate('toRoomId')
-      .populate('toCustodianId')
-      .populate('requestedBy')
-      .sort({ createdAt: -1 });
+    const transfers = await prisma.assetTransfer.findMany({
+      include: {
+        asset: {
+          include: {
+            category: true,
+            site: true,
+            room: true
+          }
+        },
+        fromCustodian: true,
+        toCustodian: true,
+        requestedBy: {
+          select: { id: true, username: true, fullName: true, email: true }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     res.json({ success: true, transfers });
   } catch (err) { next(err); }
@@ -138,33 +154,51 @@ export async function getTransfers(req, res, next) {
 export async function createTransfer(req, res, next) {
   try {
     const transferNumber = 'TRF-' + Date.now().toString(36).toUpperCase();
-    const transfer = await AssetTransfer.create({
-      ...req.body,
-      transferNumber,
-      requestedBy: req.user._id,
-      status: 'APPROVED' // Auto-approve for seamless flow
+    const userId = req.user?.id || req.user?._id;
+
+    const { assetId, transferType = 'INTER_SITE', fromSiteId, toSiteId, fromRoomId, toRoomId, fromCustodianId, toCustodianId, reason } = req.body;
+
+    const transfer = await prisma.assetTransfer.create({
+      data: {
+        transferNumber,
+        assetId,
+        transferType,
+        fromSiteId,
+        toSiteId,
+        fromRoomId,
+        toRoomId,
+        fromCustodianId,
+        toCustodianId,
+        reason,
+        requestedByUserId: userId,
+        status: 'APPROVED'
+      }
     });
 
-    // Update Asset Location & status
-    const asset = await Asset.findById(req.body.assetId);
+    const asset = await prisma.asset.findUnique({ where: { id: assetId } });
     if (asset) {
-      if (req.body.toSiteId) asset.siteId = req.body.toSiteId;
-      if (req.body.toRoomId) asset.roomId = req.body.toRoomId;
-      if (req.body.toCustodianId) asset.custodianId = req.body.toCustodianId;
-      asset.lifecycleStatus = 'IN_SERVICE';
-      await asset.save();
+      await prisma.asset.update({
+        where: { id: asset.id },
+        data: {
+          siteId: toSiteId || asset.siteId,
+          roomId: toRoomId || asset.roomId,
+          custodianId: toCustodianId || asset.custodianId,
+          lifecycleStatus: 'IN_SERVICE'
+        }
+      });
 
-      await AssetTransaction.create({
-        assetId: asset._id,
-        transactionType: 'TRANSFER_LOCATION',
-        fromStatus: 'IN_TRANSIT',
-        toStatus: 'IN_SERVICE',
-        performedBy: req.user._id,
-        notes: `Transfer completed: ${transferNumber}`
+      await prisma.assetTransaction.create({
+        data: {
+          assetId: asset.id,
+          transactionType: 'TRANSFER_LOCATION',
+          fromStatus: asset.lifecycleStatus,
+          toStatus: 'IN_SERVICE',
+          performedByUserId: userId,
+          notes: `Transfer completed: ${transferNumber}`
+        }
       });
     }
 
     res.status(201).json({ success: true, transfer });
   } catch (err) { next(err); }
 }
-

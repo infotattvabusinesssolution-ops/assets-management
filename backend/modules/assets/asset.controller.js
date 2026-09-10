@@ -1,14 +1,21 @@
-import { Asset, ASSET_STATUSES } from '../../models/Asset.js';
-import { AssetBookValue } from '../../models/AssetBookValue.js';
-import { AssetTransaction } from '../../models/AssetTransaction.js';
-import { MaintenanceWorkOrder } from '../../models/MaintenanceWorkOrder.js';
-import { StocktakeObservation } from '../../models/StocktakeObservation.js';
-import { AssetMapPosition } from '../../models/AssetMapPosition.js';
-import { DiscoveryMatch } from '../../models/DiscoveryMatch.js';
-import { Warranty } from '../../models/Warranty.js';
-import { Contract } from '../../models/Contract.js';
-import { AuditEvent } from '../../models/AuditEvent.js';
-import { withTransaction } from '../../config/db.js';
+import prisma from '../../config/prisma.js';
+
+export const ASSET_STATUSES = [
+  'REQUESTED',
+  'ORDERED',
+  'RECEIVED',
+  'TAGGED',
+  'IN_STORE',
+  'IN_SERVICE',
+  'ASSIGNED',
+  'IN_TRANSIT',
+  'UNDER_MAINTENANCE',
+  'MISSING',
+  'LOST_STOLEN',
+  'DAMAGED',
+  'RETIRED',
+  'DISPOSED'
+];
 
 export async function getAssets(req, res, next) {
   try {
@@ -26,42 +33,46 @@ export async function getAssets(req, res, next) {
       sortOrder = 'desc'
     } = req.query;
 
-    const filter = { ...req.dataScopeFilter };
+    const where = { ...req.dataScopeFilter };
 
     if (search) {
-      filter.$or = [
-        { assetId: new RegExp(search, 'i') },
-        { tagNumber: new RegExp(search, 'i') },
-        { serialNumber: new RegExp(search, 'i') },
-        { description: new RegExp(search, 'i') },
-        { hostname: new RegExp(search, 'i') }
+      where.OR = [
+        { assetId: { contains: search, mode: 'insensitive' } },
+        { tagNumber: { contains: search, mode: 'insensitive' } },
+        { serialNumber: { contains: search, mode: 'insensitive' } },
+        { description: { contains: search, mode: 'insensitive' } },
+        { hostname: { contains: search, mode: 'insensitive' } }
       ];
     }
-    if (status) filter.lifecycleStatus = status;
-    if (categoryId) filter.categoryId = categoryId;
-    if (siteId) filter.siteId = siteId;
-    if (companyId) filter.companyId = companyId;
-    if (custodianId) filter.custodianId = custodianId;
-    if (condition) filter.condition = condition;
+    if (status) where.lifecycleStatus = status;
+    if (categoryId) where.categoryId = categoryId;
+    if (siteId) where.siteId = siteId;
+    if (companyId) where.companyId = companyId;
+    if (custodianId) where.custodianId = custodianId;
+    if (condition) where.condition = condition;
 
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-    const sort = { [sortBy]: sortOrder === 'asc' ? 1 : -1 };
+    const take = parseInt(limit, 10);
 
     const [assets, total] = await Promise.all([
-      Asset.find(filter)
-        .populate('categoryId')
-        .populate('companyId')
-        .populate('siteId')
-        .populate('buildingId')
-        .populate('floorId')
-        .populate('roomId')
-        .populate('custodianId')
-        .populate('manufacturerId')
-        .populate('modelId')
-        .sort(sort)
-        .skip(skip)
-        .limit(parseInt(limit, 10)),
-      Asset.countDocuments(filter)
+      prisma.asset.findMany({
+        where,
+        include: {
+          category: true,
+          company: true,
+          site: true,
+          building: true,
+          floor: true,
+          room: true,
+          custodian: true,
+          manufacturer: true,
+          model: true
+        },
+        orderBy: { [sortBy]: sortOrder.toLowerCase() },
+        skip,
+        take
+      }),
+      prisma.asset.count({ where })
     ]);
 
     res.json({
@@ -69,9 +80,9 @@ export async function getAssets(req, res, next) {
       assets,
       pagination: {
         page: parseInt(page, 10),
-        limit: parseInt(limit, 10),
+        limit: take,
         total,
-        pages: Math.ceil(total / parseInt(limit, 10))
+        pages: Math.ceil(total / take)
       }
     });
   } catch (err) {
@@ -83,21 +94,25 @@ export async function getAsset360(req, res, next) {
   try {
     const { id } = req.params;
 
-    const asset = await Asset.findById(id)
-      .populate('categoryId')
-      .populate('assetClassId')
-      .populate('companyId')
-      .populate('siteId')
-      .populate('buildingId')
-      .populate('floorId')
-      .populate('roomId')
-      .populate('zoneId')
-      .populate('departmentId')
-      .populate('costCenterId')
-      .populate('custodianId')
-      .populate('manufacturerId')
-      .populate('modelId')
-      .populate('parentAssetId');
+    const asset = await prisma.asset.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        assetClass: true,
+        company: true,
+        site: true,
+        building: true,
+        floor: true,
+        room: true,
+        zone: true,
+        department: true,
+        costCenter: true,
+        custodian: true,
+        manufacturer: true,
+        model: true,
+        parentAsset: true
+      }
+    });
 
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
@@ -113,14 +128,37 @@ export async function getAsset360(req, res, next) {
       warranty,
       auditEvents
     ] = await Promise.all([
-      AssetBookValue.find({ assetId: asset._id }),
-      AssetTransaction.find({ assetId: asset._id }).populate('performedBy').sort({ timestamp: -1 }),
-      MaintenanceWorkOrder.find({ assetId: asset._id }).populate('assignedTechnicianId').sort({ createdAt: -1 }),
-      StocktakeObservation.find({ assetId: asset._id }).populate('campaignId').populate('observedBy').sort({ timestamp: -1 }),
-      AssetMapPosition.findOne({ assetId: asset._id, active: true }).populate('floorMapId'),
-      DiscoveryMatch.findOne({ matchedAssetId: asset._id }).populate('observationId'),
-      Warranty.findOne({ assetId: asset._id }),
-      AuditEvent.find({ entityId: asset._id }).populate('userId').sort({ timestamp: -1 }).limit(50)
+      prisma.assetBookValue.findMany({ where: { assetId: asset.id } }),
+      prisma.assetTransaction.findMany({
+        where: { assetId: asset.id },
+        include: { performedBy: true },
+        orderBy: { timestamp: 'desc' }
+      }),
+      prisma.maintenanceWorkOrder.findMany({
+        where: { assetId: asset.id },
+        include: { assignedTechnician: true },
+        orderBy: { createdAt: 'desc' }
+      }),
+      prisma.stocktakeObservation.findMany({
+        where: { assetId: asset.id },
+        include: { campaign: true, observedCustodian: true },
+        orderBy: { timestamp: 'desc' }
+      }),
+      prisma.assetMapPosition.findFirst({
+        where: { assetId: asset.id, active: true },
+        include: { floorMap: true }
+      }),
+      prisma.discoveryMatch.findFirst({
+        where: { matchedAssetId: asset.id },
+        include: { observation: true }
+      }),
+      prisma.warranty.findUnique({ where: { assetId: asset.id } }),
+      prisma.auditEvent.findMany({
+        where: { entityId: asset.id },
+        include: { user: true },
+        orderBy: { timestamp: 'desc' },
+        take: 50
+      })
     ]);
 
     res.json({
@@ -144,51 +182,131 @@ export async function getAsset360(req, res, next) {
 
 export async function createAsset(req, res, next) {
   try {
-    const result = await withTransaction(async (session) => {
-      // Auto-generate Asset ID if missing
-      if (!req.body.assetId) {
-        req.body.assetId = 'AST-' + Date.now().toString(36).toUpperCase() + Math.floor(Math.random() * 1000);
-      }
+    let { categoryId, companyId, siteId } = req.body;
 
-      req.body.createdBy = req.user._id;
-      req.body.updatedBy = req.user._id;
+    // Resolve categoryId if code passed or missing
+    let category = null;
+    if (categoryId) {
+      category = await prisma.category.findFirst({
+        where: { OR: [{ id: categoryId }, { code: categoryId }] }
+      });
+    }
+    if (!category) {
+      category = await prisma.category.findFirst({ where: { active: true } });
+    }
+    if (!category) {
+      return res.status(400).json({ success: false, message: 'Please create an Asset Category in Master Data first.' });
+    }
+    categoryId = category.id;
 
-      const [asset] = await Asset.create([req.body], { session });
+    // Resolve companyId if code passed or missing
+    let company = null;
+    if (companyId) {
+      company = await prisma.company.findFirst({
+        where: { OR: [{ id: companyId }, { code: companyId }] }
+      });
+    }
+    if (!company) {
+      company = await prisma.company.findFirst({ where: { active: true } });
+    }
+    if (!company) {
+      return res.status(400).json({ success: false, message: 'Please create a Company Entity in Master Data first.' });
+    }
+    companyId = company.id;
 
-      // Create Corporate Financial Book Value record
-      const acqValue = req.body.acquisitionValue || 0;
-      await AssetBookValue.create([{
-        assetId: asset._id,
-        bookType: 'CORPORATE',
-        capitalizationDate: req.body.inServiceDate || new Date(),
-        capitalizationValue: acqValue,
-        usefulLifeMonths: req.body.usefulLifeMonths || 60,
-        depreciationMethod: 'STRAIGHT_LINE',
-        residualValue: 0,
-        accumulatedDepreciation: 0,
-        netBookValue: acqValue
-      }], { session });
+    // Resolve siteId if code passed or missing
+    let site = null;
+    if (siteId) {
+      site = await prisma.site.findFirst({
+        where: { OR: [{ id: siteId }, { code: siteId }] }
+      });
+    }
+    if (!site) {
+      site = await prisma.site.findFirst({ where: { active: true } });
+    }
+    if (!site) {
+      return res.status(400).json({ success: false, message: 'Please create a Site Campus in Master Data first.' });
+    }
+    siteId = site.id;
 
-      // Log initial transaction
-      await AssetTransaction.create([{
-        assetId: asset._id,
-        transactionType: 'RECEIVE',
-        fromStatus: 'NONE',
-        toStatus: asset.lifecycleStatus,
-        performedBy: req.user._id,
-        notes: 'Initial Asset Registration'
-      }], { session });
+    const result = await prisma.$transaction(async (tx) => {
+      const assetId = req.body.assetId || ('AST-2026-' + Math.floor(Math.random() * 899 + 100));
+      const acqValue = parseFloat(req.body.acquisitionValue) || 0;
 
-      // Append Audit event
-      await AuditEvent.create([{
-        userId: req.user._id,
-        action: 'ASSET_CREATE',
-        entityType: 'Asset',
-        entityId: asset._id,
-        afterState: asset.toObject()
-      }], { session });
+      const newAsset = await tx.asset.create({
+        data: {
+          assetId,
+          description: req.body.description || 'New Asset',
+          categoryId,
+          companyId,
+          siteId,
+          buildingId: req.body.buildingId || null,
+          floorId: req.body.floorId || null,
+          roomId: req.body.roomId || null,
+          zoneId: req.body.zoneId || null,
+          departmentId: req.body.departmentId || null,
+          costCenterId: req.body.costCenterId || null,
+          custodianId: req.body.custodianId || null,
+          manufacturerId: req.body.manufacturerId || null,
+          modelId: req.body.modelId || null,
+          tagNumber: req.body.tagNumber || null,
+          barcode: req.body.barcode || req.body.tagNumber || null,
+          qrCode: req.body.qrCode || null,
+          rfidEpc: req.body.rfidEpc || null,
+          serialNumber: req.body.serialNumber || null,
+          lifecycleStatus: req.body.lifecycleStatus || 'RECEIVED',
+          condition: req.body.condition || 'NEW',
+          criticality: req.body.criticality || 'MEDIUM',
+          acquisitionValue: acqValue,
+          currency: req.body.currency || 'USD',
+          poNumber: req.body.poNumber || null,
+          supplierName: req.body.supplierName || null,
+          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : null,
+          inServiceDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : null,
+          hostname: req.body.hostname || null,
+          macAddress: req.body.macAddress || null,
+          ipAddress: req.body.ipAddress || null,
+          createdByUserId: req.user.id,
+          updatedByUserId: req.user.id
+        }
+      });
 
-      return asset;
+      await tx.assetBookValue.create({
+        data: {
+          assetId: newAsset.id,
+          bookType: 'CORPORATE',
+          capitalizationDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : new Date(),
+          capitalizationValue: acqValue,
+          usefulLifeMonths: req.body.usefulLifeMonths || 60,
+          depreciationMethod: 'STRAIGHT_LINE',
+          residualValue: 0,
+          accumulatedDepreciation: 0,
+          netBookValue: acqValue
+        }
+      });
+
+      await tx.assetTransaction.create({
+        data: {
+          assetId: newAsset.id,
+          transactionType: 'RECEIVE',
+          fromStatus: 'NONE',
+          toStatus: newAsset.lifecycleStatus,
+          performedByUserId: req.user.id,
+          notes: 'Initial Asset Registration'
+        }
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          userId: req.user.id,
+          action: 'ASSET_CREATE',
+          entityType: 'Asset',
+          entityId: newAsset.id,
+          afterState: newAsset
+        }
+      });
+
+      return newAsset;
     });
 
     res.status(201).json({ success: true, asset: result });
@@ -200,22 +318,29 @@ export async function createAsset(req, res, next) {
 export async function updateAsset(req, res, next) {
   try {
     const { id } = req.params;
-    const oldAsset = await Asset.findById(id);
+    const oldAsset = await prisma.asset.findUnique({ where: { id } });
 
     if (!oldAsset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
-    req.body.updatedBy = req.user._id;
-    const updatedAsset = await Asset.findByIdAndUpdate(id, req.body, { new: true });
+    const updatedAsset = await prisma.asset.update({
+      where: { id },
+      data: {
+        ...req.body,
+        updatedByUserId: req.user.id
+      }
+    });
 
-    await AuditEvent.create({
-      userId: req.user._id,
-      action: 'ASSET_UPDATE',
-      entityType: 'Asset',
-      entityId: updatedAsset._id,
-      beforeState: oldAsset.toObject(),
-      afterState: updatedAsset.toObject()
+    await prisma.auditEvent.create({
+      data: {
+        userId: req.user.id,
+        action: 'ASSET_UPDATE',
+        entityType: 'Asset',
+        entityId: updatedAsset.id,
+        beforeState: oldAsset,
+        afterState: updatedAsset
+      }
     });
 
     res.json({ success: true, asset: updatedAsset });
@@ -233,26 +358,59 @@ export async function transitionLifecycle(req, res, next) {
       return res.status(400).json({ success: false, message: `Invalid status [${toStatus}]` });
     }
 
-    const asset = await Asset.findById(id);
+    const asset = await prisma.asset.findUnique({ where: { id } });
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
     const fromStatus = asset.lifecycleStatus;
-    asset.lifecycleStatus = toStatus;
-    asset.updatedBy = req.user._id;
-    await asset.save();
-
-    await AssetTransaction.create({
-      assetId: asset._id,
-      transactionType: 'STATUS_CHANGE',
-      fromStatus,
-      toStatus,
-      performedBy: req.user._id,
-      notes: notes || `Lifecycle state changed from ${fromStatus} to ${toStatus}`
+    const updatedAsset = await prisma.asset.update({
+      where: { id },
+      data: {
+        lifecycleStatus: toStatus,
+        updatedByUserId: req.user.id
+      }
     });
 
-    res.json({ success: true, asset });
+    await prisma.assetTransaction.create({
+      data: {
+        assetId: updatedAsset.id,
+        transactionType: 'STATUS_CHANGE',
+        fromStatus,
+        toStatus,
+        performedByUserId: req.user.id,
+        notes: notes || `Lifecycle state changed from ${fromStatus} to ${toStatus}`
+      }
+    });
+
+    res.json({ success: true, asset: updatedAsset });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function deleteAsset(req, res, next) {
+  try {
+    const { id } = req.params;
+    const existing = await prisma.asset.findUnique({ where: { id } });
+
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Asset not found' });
+    }
+
+    await prisma.asset.delete({ where: { id } });
+
+    await prisma.auditEvent.create({
+      data: {
+        userId: req.user.id,
+        action: 'ASSET_DELETE',
+        entityType: 'Asset',
+        entityId: id,
+        beforeState: existing
+      }
+    });
+
+    res.json({ success: true, message: 'Asset deleted successfully' });
   } catch (err) {
     next(err);
   }

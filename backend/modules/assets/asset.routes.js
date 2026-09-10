@@ -4,7 +4,8 @@ import {
   getAsset360,
   createAsset,
   updateAsset,
-  transitionLifecycle
+  transitionLifecycle,
+  deleteAsset
 } from './asset.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 import { enforceDataScope, requirePermission } from '../../middleware/rbac.js';
@@ -19,5 +20,6 @@ router.get('/:id/360', requirePermission('ASSETS_VIEW'), getAsset360);
 router.post('/', requirePermission('ASSETS_CREATE'), createAsset);
 router.put('/:id', requirePermission('ASSETS_EDIT'), updateAsset);
 router.patch('/:id/lifecycle', requirePermission('ASSETS_TRANSITION'), transitionLifecycle);
+router.delete('/:id', requirePermission('ASSETS_DELETE'), deleteAsset);
 
 export default router;

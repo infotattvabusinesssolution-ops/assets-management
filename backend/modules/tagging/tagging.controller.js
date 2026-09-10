@@ -1,13 +1,45 @@
-import { Tag } from '../../models/Tag.js';
-import { TagHistory } from '../../models/TagHistory.js';
-import { Asset } from '../../models/Asset.js';
-import { AssetTransaction } from '../../models/AssetTransaction.js';
-import { withTransaction } from '../../config/db.js';
+import prisma from '../../config/prisma.js';
 
 export async function getTags(req, res, next) {
   try {
-    const tags = await Tag.find().populate('assetId').sort({ createdAt: -1 });
+    const tags = await prisma.tag.findMany({
+      include: { 
+        asset: {
+          include: {
+            category: true,
+            site: true,
+            company: true
+          }
+        }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
     res.json({ success: true, tags });
+  } catch (err) { next(err); }
+}
+
+export async function getTaggingStats(req, res, next) {
+  try {
+    const totalTags = await prisma.tag.count();
+    const activeAssignedTags = await prisma.tag.count({ where: { status: 'ACTIVE' } });
+    const unassignedTags = await prisma.tag.count({ where: { status: 'UNASSIGNED' } });
+    const rfidTagsCount = await prisma.tag.count({ where: { rfidEpc: { not: null } } });
+    
+    // Total assets requiring tagging (RECEIVED status)
+    const pendingTaggingAssets = await prisma.asset.count({
+      where: { lifecycleStatus: 'RECEIVED' }
+    });
+
+    res.json({
+      success: true,
+      stats: {
+        totalTags,
+        activeAssignedTags,
+        unassignedTags,
+        rfidTagsCount,
+        pendingTaggingAssets
+      }
+    });
   } catch (err) { next(err); }
 }
 
@@ -19,14 +51,16 @@ export async function generateTags(req, res, next) {
     for (let i = 0; i < count; i++) {
       const num = Math.floor(100000 + Math.random() * 900000);
       const tagNumber = `${prefix}-${num}`;
-      const rfidEpc = tagType.includes('RFID') ? `E28011606000${num}` : undefined;
+      const rfidEpc = tagType.includes('RFID') ? `E28011606000${num}` : null;
 
-      const tag = await Tag.create({
-        tagNumber,
-        tagType,
-        rfidEpc,
-        status: 'UNASSIGNED',
-        printedDate: new Date()
+      const tag = await prisma.tag.create({
+        data: {
+          tagNumber,
+          tagType,
+          rfidEpc,
+          status: 'UNASSIGNED',
+          printedDate: new Date()
+        }
       });
 
       generatedTags.push(tag);
@@ -38,55 +72,95 @@ export async function generateTags(req, res, next) {
 
 export async function associateTag(req, res, next) {
   try {
-    const { assetId, tagNumber, reason = 'Initial Tag Association' } = req.body;
+    const { assetId, tagNumber, tagType = 'BARCODE_128', reason = 'Initial Tag Association' } = req.body;
 
-    const result = await withTransaction(async (session) => {
-      const asset = await Asset.findById(assetId);
+    const result = await prisma.$transaction(async (tx) => {
+      // Find asset by id, assetId, or code
+      const asset = await tx.asset.findFirst({
+        where: { OR: [{ id: assetId }, { assetId: assetId }] }
+      });
+      
       if (!asset) throw new Error('Asset not found');
 
       const oldTagNumber = asset.tagNumber;
+      const num = Math.floor(100000 + Math.random() * 900000);
+      const generatedRfid = tagType.includes('RFID') ? `E28011606000${num}` : (asset.rfidEpc || null);
 
-      let tag = await Tag.findOne({ tagNumber });
+      let tag = await tx.tag.findUnique({ where: { tagNumber } });
       if (!tag) {
-        tag = await Tag.create([{
-          tagNumber,
-          tagType: 'BARCODE_128',
-          assetId: asset._id,
-          status: 'ACTIVE'
-        }], { session }).then(res => res[0]);
+        tag = await tx.tag.create({
+          data: {
+            tagNumber,
+            tagType,
+            rfidEpc: generatedRfid,
+            assetId: asset.id,
+            status: 'ACTIVE',
+            printedDate: new Date()
+          }
+        });
       } else {
-        tag.assetId = asset._id;
-        tag.status = 'ACTIVE';
-        await tag.save({ session });
+        tag = await tx.tag.update({
+          where: { id: tag.id },
+          data: {
+            assetId: asset.id,
+            status: 'ACTIVE',
+            tagType,
+            rfidEpc: generatedRfid || tag.rfidEpc
+          }
+        });
       }
 
-      asset.tagNumber = tagNumber;
-      if (tag.rfidEpc) asset.rfidEpc = tag.rfidEpc;
-      if (asset.lifecycleStatus === 'RECEIVED') asset.lifecycleStatus = 'TAGGED';
-      await asset.save({ session });
+      const updatedAsset = await tx.asset.update({
+        where: { id: asset.id },
+        data: {
+          tagNumber,
+          barcode: tagNumber,
+          rfidEpc: tag.rfidEpc || asset.rfidEpc,
+          lifecycleStatus: (asset.lifecycleStatus === 'RECEIVED' || asset.lifecycleStatus === 'REQUESTED') ? 'TAGGED' : asset.lifecycleStatus
+        }
+      });
 
-      if (oldTagNumber) {
-        await TagHistory.create([{
-          assetId: asset._id,
-          oldTagNumber,
-          newTagNumber: tagNumber,
-          reason,
-          replacedBy: req.user._id
-        }], { session });
+      if (oldTagNumber && oldTagNumber !== tagNumber) {
+        await tx.tagHistory.create({
+          data: {
+            assetId: asset.id,
+            oldTagNumber,
+            newTagNumber: tagNumber,
+            reason,
+            replacedByUserId: req.user.id
+          }
+        });
       }
 
-      await AssetTransaction.create([{
-        assetId: asset._id,
-        transactionType: 'TAG',
-        fromStatus: asset.lifecycleStatus,
-        toStatus: asset.lifecycleStatus,
-        performedBy: req.user._id,
-        notes: `Tag associated: ${tagNumber}`
-      }], { session });
+      await tx.assetTransaction.create({
+        data: {
+          assetId: asset.id,
+          transactionType: 'TAG',
+          fromStatus: asset.lifecycleStatus,
+          toStatus: updatedAsset.lifecycleStatus,
+          performedByUserId: req.user.id,
+          notes: `Tag associated: ${tagNumber} (${tagType})`
+        }
+      });
 
-      return { asset, tag };
+      return { asset: updatedAsset, tag };
     });
 
     res.json({ success: true, ...result });
+  } catch (err) { next(err); }
+}
+
+export async function getTagHistory(req, res, next) {
+  try {
+    const history = await prisma.tagHistory.findMany({
+      include: {
+        asset: true,
+        replacedBy: true
+      },
+      orderBy: { createdAt: 'desc' },
+      take: 50
+    });
+
+    res.json({ success: true, history });
   } catch (err) { next(err); }
 }

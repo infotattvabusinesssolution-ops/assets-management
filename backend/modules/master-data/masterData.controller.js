@@ -1,36 +1,4 @@
-import { Company } from '../../models/Company.js';
-import { Site, Building, Floor, Room, Zone } from '../../models/Location.js';
-import { Department } from '../../models/Department.js';
-import { CostCenter } from '../../models/CostCenter.js';
-import { Employee } from '../../models/Employee.js';
-import { Category } from '../../models/Category.js';
-import { AssetClass } from '../../models/AssetClass.js';
-import { Manufacturer } from '../../models/Manufacturer.js';
-import { AssetModel } from '../../models/Model.js';
-import { CustomFieldDefinition } from '../../models/CustomFieldDefinition.js';
-import { Tag } from '../../models/Tag.js';
-import { Contract } from '../../models/Contract.js';
-import { WorkflowDefinition } from '../../models/WorkflowDefinition.js';
-import { FloorMap } from '../../models/FloorMap.js';
-import { Asset } from '../../models/Asset.js';
-
-// Helper map for model mapping
-const MODEL_MAP = {
-  company: Company,
-  site: Site,
-  building: Building,
-  floor: Floor,
-  room: Room,
-  zone: Zone,
-  category: Category,
-  asset_class: AssetClass,
-  manufacturer: Manufacturer,
-  model: AssetModel,
-  department: Department,
-  cost_center: CostCenter,
-  employee: Employee,
-  custom_field: CustomFieldDefinition
-};
+import prisma from '../../config/prisma.js';
 
 export async function getMasterDataStats(req, res, next) {
   try {
@@ -52,28 +20,28 @@ export async function getMasterDataStats(req, res, next) {
       workflowsCount,
       mapsCount
     ] = await Promise.all([
-      Company.countDocuments(),
-      Site.countDocuments(),
-      Building.countDocuments(),
-      Floor.countDocuments(),
-      Room.countDocuments(),
-      Category.countDocuments(),
-      Manufacturer.countDocuments(),
-      AssetModel.countDocuments(),
-      Department.countDocuments(),
-      CostCenter.countDocuments(),
-      Employee.countDocuments(),
-      CustomFieldDefinition.countDocuments(),
-      Tag.countDocuments(),
-      Contract.countDocuments(),
-      WorkflowDefinition.countDocuments(),
-      FloorMap.countDocuments()
+      prisma.company.count(),
+      prisma.site.count(),
+      prisma.building.count(),
+      prisma.floor.count(),
+      prisma.room.count(),
+      prisma.category.count(),
+      prisma.manufacturer.count(),
+      prisma.assetModel.count(),
+      prisma.department.count(),
+      prisma.costCenter.count(),
+      prisma.employee.count(),
+      prisma.customFieldDefinition.count(),
+      prisma.tag.count(),
+      prisma.contract.count(),
+      prisma.workflowDefinition.count(),
+      prisma.floorMap.count()
     ]);
 
-    const activeCategoriesCount = await Category.countDocuments({ active: { $ne: false } });
-    const activeSitesCount = await Site.countDocuments({ active: { $ne: false } });
-    const activeEmployeesCount = await Employee.countDocuments({ active: { $ne: false } });
-    const activeModelsCount = await AssetModel.countDocuments({ active: { $ne: false } });
+    const activeCategoriesCount = await prisma.category.count({ where: { active: true } });
+    const activeSitesCount = await prisma.site.count({ where: { active: true } });
+    const activeEmployeesCount = await prisma.employee.count({ where: { active: true } });
+    const activeModelsCount = await prisma.assetModel.count({ where: { active: true } });
 
     const totalMasterRecords = companiesCount + sitesCount + buildingsCount + floorsCount + roomsCount +
       categoriesCount + manufacturersCount + modelsCount + departmentsCount + costCentersCount +
@@ -111,192 +79,196 @@ export async function getMasterDataStats(req, res, next) {
 
 export async function getCompanies(req, res, next) {
   try {
-    const filter = req.query.includeInactive === 'true' ? {} : { active: { $ne: false } };
-    const companies = await Company.find(filter).sort({ name: 1 });
+    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const companies = await prisma.company.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, companies });
   } catch (err) { next(err); }
 }
 
 export async function createCompany(req, res, next) {
   try {
-    const company = await Company.create(req.body);
+    const company = await prisma.company.create({ data: req.body });
     res.status(201).json({ success: true, company });
   } catch (err) { next(err); }
 }
 
 export async function getSites(req, res, next) {
   try {
-    const query = req.query.companyId ? { companyId: req.query.companyId } : {};
-    if (req.query.includeInactive !== 'true') {
-      query.active = { $ne: false };
-    }
-    const sites = await Site.find(query).populate('companyId').sort({ name: 1 });
+    const where = {};
+    if (req.query.companyId) where.companyId = req.query.companyId;
+    if (req.query.includeInactive !== 'true') where.active = true;
+    const sites = await prisma.site.findMany({ where, include: { company: true }, orderBy: { name: 'asc' } });
     res.json({ success: true, sites });
   } catch (err) { next(err); }
 }
 
 export async function createSite(req, res, next) {
   try {
-    const site = await Site.create(req.body);
+    const site = await prisma.site.create({ data: req.body });
     res.status(201).json({ success: true, site });
   } catch (err) { next(err); }
 }
 
 export async function getBuildings(req, res, next) {
   try {
-    const query = req.query.siteId ? { siteId: req.query.siteId } : {};
-    if (req.query.includeInactive !== 'true') {
-      query.active = { $ne: false };
-    }
-    const buildings = await Building.find(query).sort({ name: 1 });
+    const where = {};
+    if (req.query.siteId) where.siteId = req.query.siteId;
+    if (req.query.includeInactive !== 'true') where.active = true;
+    const buildings = await prisma.building.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, buildings });
   } catch (err) { next(err); }
 }
 
 export async function createBuilding(req, res, next) {
   try {
-    const building = await Building.create(req.body);
+    const building = await prisma.building.create({ data: req.body });
     res.status(201).json({ success: true, building });
   } catch (err) { next(err); }
 }
 
 export async function getFloors(req, res, next) {
   try {
-    const query = req.query.buildingId ? { buildingId: req.query.buildingId } : {};
-    if (req.query.includeInactive !== 'true') {
-      query.active = { $ne: false };
-    }
-    const floors = await Floor.find(query).sort({ floorNumber: 1 });
+    const where = {};
+    if (req.query.buildingId) where.buildingId = req.query.buildingId;
+    if (req.query.includeInactive !== 'true') where.active = true;
+    const floors = await prisma.floor.findMany({ where, orderBy: { floorNumber: 'asc' } });
     res.json({ success: true, floors });
   } catch (err) { next(err); }
 }
 
 export async function createFloor(req, res, next) {
   try {
-    const floor = await Floor.create(req.body);
+    const floor = await prisma.floor.create({ data: req.body });
     res.status(201).json({ success: true, floor });
   } catch (err) { next(err); }
 }
 
 export async function getRooms(req, res, next) {
   try {
-    const query = req.query.floorId ? { floorId: req.query.floorId } : {};
-    if (req.query.includeInactive !== 'true') {
-      query.active = { $ne: false };
-    }
-    const rooms = await Room.find(query).sort({ name: 1 });
+    const where = {};
+    if (req.query.floorId) where.floorId = req.query.floorId;
+    if (req.query.includeInactive !== 'true') where.active = true;
+    const rooms = await prisma.room.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, rooms });
   } catch (err) { next(err); }
 }
 
 export async function createRoom(req, res, next) {
   try {
-    const room = await Room.create(req.body);
+    const room = await prisma.room.create({ data: req.body });
     res.status(201).json({ success: true, room });
   } catch (err) { next(err); }
 }
 
 export async function getCategories(req, res, next) {
   try {
-    const filter = req.query.includeInactive === 'true' ? {} : { active: { $ne: false } };
-    const categories = await Category.find(filter).sort({ name: 1 });
+    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const categories = await prisma.category.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, categories });
   } catch (err) { next(err); }
 }
 
 export async function createCategory(req, res, next) {
   try {
-    const category = await Category.create(req.body);
+    const category = await prisma.category.create({ data: req.body });
     res.status(201).json({ success: true, category });
   } catch (err) { next(err); }
 }
 
 export async function getManufacturers(req, res, next) {
   try {
-    const filter = req.query.includeInactive === 'true' ? {} : { active: { $ne: false } };
-    const manufacturers = await Manufacturer.find(filter).sort({ name: 1 });
+    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const manufacturers = await prisma.manufacturer.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, manufacturers });
   } catch (err) { next(err); }
 }
 
 export async function createManufacturer(req, res, next) {
   try {
-    const manufacturer = await Manufacturer.create(req.body);
+    const manufacturer = await prisma.manufacturer.create({ data: req.body });
     res.status(201).json({ success: true, manufacturer });
   } catch (err) { next(err); }
 }
 
 export async function getModels(req, res, next) {
   try {
-    const filter = req.query.includeInactive === 'true' ? {} : { active: { $ne: false } };
-    const models = await AssetModel.find(filter).populate('manufacturerId').populate('categoryId').sort({ name: 1 });
+    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const models = await prisma.assetModel.findMany({
+      where,
+      include: { manufacturer: true, category: true },
+      orderBy: { name: 'asc' }
+    });
     res.json({ success: true, models });
   } catch (err) { next(err); }
 }
 
 export async function createModel(req, res, next) {
   try {
-    const model = await AssetModel.create(req.body);
+    const model = await prisma.assetModel.create({ data: req.body });
     res.status(201).json({ success: true, model });
   } catch (err) { next(err); }
 }
 
 export async function getDepartments(req, res, next) {
   try {
-    const filter = req.query.includeInactive === 'true' ? {} : { active: { $ne: false } };
-    const departments = await Department.find(filter).sort({ name: 1 });
+    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const departments = await prisma.department.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, departments });
   } catch (err) { next(err); }
 }
 
 export async function createDepartment(req, res, next) {
   try {
-    const department = await Department.create(req.body);
+    const department = await prisma.department.create({ data: req.body });
     res.status(201).json({ success: true, department });
   } catch (err) { next(err); }
 }
 
 export async function getCostCenters(req, res, next) {
   try {
-    const filter = req.query.includeInactive === 'true' ? {} : { active: { $ne: false } };
-    const costCenters = await CostCenter.find(filter).sort({ name: 1 });
+    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const costCenters = await prisma.costCenter.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, costCenters });
   } catch (err) { next(err); }
 }
 
 export async function createCostCenter(req, res, next) {
   try {
-    const costCenter = await CostCenter.create(req.body);
+    const costCenter = await prisma.costCenter.create({ data: req.body });
     res.status(201).json({ success: true, costCenter });
   } catch (err) { next(err); }
 }
 
 export async function getEmployees(req, res, next) {
   try {
-    const filter = req.query.includeInactive === 'true' ? {} : { active: { $ne: false } };
-    const employees = await Employee.find(filter).populate('departmentId').populate('companyId').sort({ fullName: 1 });
+    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const employees = await prisma.employee.findMany({
+      where,
+      include: { department: true, company: true },
+      orderBy: { fullName: 'asc' }
+    });
     res.json({ success: true, employees });
   } catch (err) { next(err); }
 }
 
 export async function createEmployee(req, res, next) {
   try {
-    const employee = await Employee.create(req.body);
+    const employee = await prisma.employee.create({ data: req.body });
     res.status(201).json({ success: true, employee });
   } catch (err) { next(err); }
 }
 
 export async function getCustomFields(req, res, next) {
   try {
-    const filter = req.query.includeInactive === 'true' ? {} : { active: { $ne: false } };
-    const fields = await CustomFieldDefinition.find(filter).sort({ label: 1 });
+    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const fields = await prisma.customFieldDefinition.findMany({ where, orderBy: { label: 'asc' } });
     res.json({ success: true, fields });
   } catch (err) { next(err); }
 }
 
 export async function createCustomField(req, res, next) {
   try {
-    const field = await CustomFieldDefinition.create(req.body);
+    const field = await prisma.customFieldDefinition.create({ data: req.body });
     res.status(201).json({ success: true, field });
   } catch (err) { next(err); }
 }
@@ -304,16 +276,12 @@ export async function createCustomField(req, res, next) {
 export async function updateMasterEntity(req, res, next) {
   try {
     const { entityType, id } = req.params;
-    const Model = MODEL_MAP[entityType];
-    if (!Model) {
+    const modelName = getPrismaModelName(entityType);
+    if (!modelName || !prisma[modelName]) {
       return res.status(400).json({ success: false, message: `Unsupported entity type: ${entityType}` });
     }
 
-    const updated = await Model.findByIdAndUpdate(id, req.body, { new: true, runValidators: true });
-    if (!updated) {
-      return res.status(404).json({ success: false, message: 'Record not found' });
-    }
-
+    const updated = await prisma[modelName].update({ where: { id }, data: req.body });
     res.json({ success: true, entity: updated });
   } catch (err) { next(err); }
 }
@@ -321,35 +289,35 @@ export async function updateMasterEntity(req, res, next) {
 export async function toggleMasterEntityStatus(req, res, next) {
   try {
     const { entityType, id } = req.params;
-    const Model = MODEL_MAP[entityType];
-    if (!Model) {
+    const modelName = getPrismaModelName(entityType);
+    if (!modelName || !prisma[modelName]) {
       return res.status(400).json({ success: false, message: `Unsupported entity type: ${entityType}` });
     }
 
-    const existing = await Model.findById(id);
+    const existing = await prisma[modelName].findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Record not found' });
     }
 
-    const newStatus = !existing.active;
-    existing.active = newStatus;
-    await existing.save();
+    const updated = await prisma[modelName].update({
+      where: { id },
+      data: { active: !existing.active }
+    });
 
-    res.json({ success: true, entity: existing, message: `Status updated to ${newStatus ? 'ACTIVE' : 'INACTIVE'}` });
+    res.json({ success: true, entity: updated, message: `Status updated to ${updated.active ? 'ACTIVE' : 'INACTIVE'}` });
   } catch (err) { next(err); }
 }
 
 export async function deleteMasterEntity(req, res, next) {
   try {
     const { entityType, id } = req.params;
-    const Model = MODEL_MAP[entityType];
-    if (!Model) {
+    const modelName = getPrismaModelName(entityType);
+    if (!modelName || !prisma[modelName]) {
       return res.status(400).json({ success: false, message: `Unsupported entity type: ${entityType}` });
     }
 
-    // Dependency check against Asset model
     if (entityType === 'category') {
-      const assetCount = await Asset.countDocuments({ categoryId: id });
+      const assetCount = await prisma.asset.count({ where: { categoryId: id } });
       if (assetCount > 0) {
         return res.status(400).json({
           success: false,
@@ -357,7 +325,7 @@ export async function deleteMasterEntity(req, res, next) {
         });
       }
     } else if (entityType === 'site') {
-      const assetCount = await Asset.countDocuments({ siteId: id });
+      const assetCount = await prisma.asset.count({ where: { siteId: id } });
       if (assetCount > 0) {
         return res.status(400).json({
           success: false,
@@ -365,7 +333,7 @@ export async function deleteMasterEntity(req, res, next) {
         });
       }
     } else if (entityType === 'building') {
-      const assetCount = await Asset.countDocuments({ buildingId: id });
+      const assetCount = await prisma.asset.count({ where: { buildingId: id } });
       if (assetCount > 0) {
         return res.status(400).json({
           success: false,
@@ -373,7 +341,7 @@ export async function deleteMasterEntity(req, res, next) {
         });
       }
     } else if (entityType === 'department') {
-      const assetCount = await Asset.countDocuments({ departmentId: id });
+      const assetCount = await prisma.asset.count({ where: { departmentId: id } });
       if (assetCount > 0) {
         return res.status(400).json({
           success: false,
@@ -381,7 +349,7 @@ export async function deleteMasterEntity(req, res, next) {
         });
       }
     } else if (entityType === 'employee') {
-      const assetCount = await Asset.countDocuments({ custodianId: id });
+      const assetCount = await prisma.asset.count({ where: { custodianId: id } });
       if (assetCount > 0) {
         return res.status(400).json({
           success: false,
@@ -389,7 +357,7 @@ export async function deleteMasterEntity(req, res, next) {
         });
       }
     } else if (entityType === 'manufacturer') {
-      const modelCount = await AssetModel.countDocuments({ manufacturerId: id });
+      const modelCount = await prisma.assetModel.count({ where: { manufacturerId: id } });
       if (modelCount > 0) {
         return res.status(400).json({
           success: false,
@@ -398,8 +366,27 @@ export async function deleteMasterEntity(req, res, next) {
       }
     }
 
-    await Model.findByIdAndDelete(id);
+    await prisma[modelName].delete({ where: { id } });
     res.json({ success: true, message: 'Record deleted successfully' });
   } catch (err) { next(err); }
 }
 
+function getPrismaModelName(entityType) {
+  const map = {
+    company: 'company',
+    site: 'site',
+    building: 'building',
+    floor: 'floor',
+    room: 'room',
+    zone: 'zone',
+    category: 'category',
+    asset_class: 'assetClass',
+    manufacturer: 'manufacturer',
+    model: 'assetModel',
+    department: 'department',
+    cost_center: 'costCenter',
+    employee: 'employee',
+    custom_field: 'customFieldDefinition'
+  };
+  return map[entityType];
+}

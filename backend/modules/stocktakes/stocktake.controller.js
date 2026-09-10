@@ -1,17 +1,10 @@
-import { StocktakeCampaign } from '../../models/StocktakeCampaign.js';
-import { StocktakeExpectedAsset } from '../../models/StocktakeExpectedAsset.js';
-import { StocktakeObservation } from '../../models/StocktakeObservation.js';
-import { StocktakeException } from '../../models/StocktakeException.js';
-import { Asset } from '../../models/Asset.js';
-import { withTransaction } from '../../config/db.js';
+import prisma from '../../config/prisma.js';
 
 export async function getCampaigns(req, res, next) {
   try {
-    const campaigns = await StocktakeCampaign.find()
-      .populate('scope.companyId')
-      .populate('scope.siteId')
-      .populate('createdBy')
-      .sort({ createdAt: -1 });
+    const campaigns = await prisma.stocktakeCampaign.findMany({
+      orderBy: { createdAt: 'desc' }
+    });
 
     res.json({ success: true, campaigns });
   } catch (err) { next(err); }
@@ -19,43 +12,73 @@ export async function getCampaigns(req, res, next) {
 
 export async function createCampaign(req, res, next) {
   try {
-    const { title, scope, mode = 'FULL_CENSUS' } = req.body;
+    const { title, scope = {}, mode = 'FULL_CENSUS' } = req.body;
     const campaignNumber = 'STK-' + Date.now().toString(36).toUpperCase();
+    const userId = req.user?.id || req.user?._id;
 
-    const result = await withTransaction(async (session) => {
-      const [campaign] = await StocktakeCampaign.create([{
-        campaignNumber,
-        title,
-        scope,
-        mode,
-        status: 'ACTIVE',
-        startDate: new Date(),
-        createdBy: req.user._id
-      }], { session });
+    let companyId = scope.companyId;
+    let siteId = scope.siteId;
 
-      // Build expected assets population snapshot
-      const query = { companyId: scope.companyId, siteId: scope.siteId, active: true };
-      if (scope.buildingId) query.buildingId = scope.buildingId;
-      if (scope.categoryId) query.categoryId = scope.categoryId;
+    if (!companyId) {
+      const defaultCompany = await prisma.company.findFirst({ where: { active: true } });
+      companyId = defaultCompany?.id;
+    }
 
-      const assets = await Asset.find(query);
-      const expectedDocs = assets.map(a => ({
-        campaignId: campaign._id,
-        assetId: a._id,
-        expectedSiteId: a.siteId,
-        expectedRoomId: a.roomId,
-        expectedCustodianId: a.custodianId,
-        status: 'PENDING'
-      }));
+    if (!siteId) {
+      const defaultSite = await prisma.site.findFirst({ where: { active: true } });
+      siteId = defaultSite?.id;
+    }
 
-      if (expectedDocs.length > 0) {
-        await StocktakeExpectedAsset.insertMany(expectedDocs, { session });
+    if (!companyId || !siteId) {
+      return res.status(400).json({
+        success: false,
+        message: 'A valid Company and Site are required to launch a stocktake campaign. Please ensure at least one active Company and Site exist.'
+      });
+    }
+
+    const result = await prisma.$transaction(async (tx) => {
+      const campaign = await tx.stocktakeCampaign.create({
+        data: {
+          campaignNumber,
+          title,
+          companyId,
+          siteId,
+          buildingId: scope.buildingId || null,
+          categoryId: scope.categoryId || null,
+          mode,
+          status: 'ACTIVE',
+          startDate: new Date(),
+          createdByUserId: userId
+        }
+      });
+
+      const whereClause = { active: true };
+      if (companyId) whereClause.companyId = companyId;
+      if (siteId) whereClause.siteId = siteId;
+      if (scope.buildingId) whereClause.buildingId = scope.buildingId;
+      if (scope.categoryId) whereClause.categoryId = scope.categoryId;
+
+      const assets = await tx.asset.findMany({ where: whereClause });
+
+      if (assets.length > 0) {
+        await tx.stocktakeExpectedAsset.createMany({
+          data: assets.map(a => ({
+            campaignId: campaign.id,
+            assetId: a.id,
+            expectedSiteId: a.siteId,
+            expectedRoomId: a.roomId,
+            expectedCustodianId: a.custodianId,
+            status: 'PENDING'
+          }))
+        });
       }
 
-      campaign.stats.totalExpected = assets.length;
-      await campaign.save({ session });
+      const updatedCampaign = await tx.stocktakeCampaign.update({
+        where: { id: campaign.id },
+        data: { totalExpected: assets.length }
+      });
 
-      return campaign;
+      return updatedCampaign;
     });
 
     res.status(201).json({ success: true, campaign: result });
@@ -65,33 +88,63 @@ export async function createCampaign(req, res, next) {
 export async function getCampaignDetails(req, res, next) {
   try {
     const { id } = req.params;
-    const campaign = await StocktakeCampaign.findById(id)
-      .populate('scope.companyId')
-      .populate('scope.siteId')
-      .populate('scope.buildingId')
-      .populate('scope.categoryId')
-      .populate('createdBy');
+    const campaign = await prisma.stocktakeCampaign.findUnique({ where: { id } });
 
     if (!campaign) return res.status(404).json({ success: false, message: 'Campaign not found' });
 
-    const [expectedAssets, observations, exceptions] = await Promise.all([
-      StocktakeExpectedAsset.find({ campaignId: id })
-        .populate({ path: 'assetId', populate: { path: 'categoryId' } })
-        .populate('expectedSiteId')
-        .populate('expectedRoomId')
-        .populate('expectedCustodianId')
-        .limit(300),
-      StocktakeObservation.find({ campaignId: id })
-        .populate({ path: 'assetId', populate: { path: 'categoryId' } })
-        .populate('observedRoomId')
-        .populate('observedCustodianId')
-        .populate('observedBy')
-        .sort({ timestamp: -1 }),
-      StocktakeException.find({ campaignId: id })
-        .populate({ path: 'assetId', populate: { path: 'categoryId' } })
-        .populate('resolvedBy')
-        .sort({ createdAt: -1 })
+    const [rawExpectedAssets, rawObservations, rawExceptions] = await Promise.all([
+      prisma.stocktakeExpectedAsset.findMany({
+        where: { campaignId: id },
+        take: 300
+      }),
+      prisma.stocktakeObservation.findMany({
+        where: { campaignId: id },
+        include: { observedCustodian: true },
+        orderBy: { timestamp: 'desc' }
+      }),
+      prisma.stocktakeException.findMany({
+        where: { campaignId: id },
+        orderBy: { createdAt: 'desc' }
+      })
     ]);
+
+    const assetIds = [
+      ...new Set([
+        ...rawExpectedAssets.map(e => e.assetId).filter(Boolean),
+        ...rawObservations.map(o => o.assetId).filter(Boolean),
+        ...rawExceptions.map(ex => ex.assetId).filter(Boolean)
+      ])
+    ];
+
+    const siteIds = [...new Set(rawExpectedAssets.map(e => e.expectedSiteId).filter(Boolean))];
+    const roomIds = [...new Set(rawExpectedAssets.map(e => e.expectedRoomId).filter(Boolean))];
+
+    const [assets, sites, rooms] = await Promise.all([
+      assetIds.length > 0 ? prisma.asset.findMany({ where: { id: { in: assetIds } } }) : [],
+      siteIds.length > 0 ? prisma.site.findMany({ where: { id: { in: siteIds } } }) : [],
+      roomIds.length > 0 ? prisma.room.findMany({ where: { id: { in: roomIds } } }) : []
+    ]);
+
+    const assetMap = Object.fromEntries(assets.map(a => [a.id, a]));
+    const siteMap = Object.fromEntries(sites.map(s => [s.id, s]));
+    const roomMap = Object.fromEntries(rooms.map(r => [r.id, r]));
+
+    const expectedAssets = rawExpectedAssets.map(exp => ({
+      ...exp,
+      assetId: assetMap[exp.assetId] || { id: exp.assetId, assetId: exp.assetId, description: 'Asset' },
+      expectedSiteId: siteMap[exp.expectedSiteId] || (exp.expectedSiteId ? { name: exp.expectedSiteId } : null),
+      expectedRoomId: roomMap[exp.expectedRoomId] || (exp.expectedRoomId ? { name: exp.expectedRoomId } : null)
+    }));
+
+    const observations = rawObservations.map(obs => ({
+      ...obs,
+      assetId: obs.assetId ? (assetMap[obs.assetId] || { id: obs.assetId, description: 'Asset' }) : null
+    }));
+
+    const exceptions = rawExceptions.map(ex => ({
+      ...ex,
+      assetId: ex.assetId ? (assetMap[ex.assetId] || { id: ex.assetId, description: 'Asset' }) : null
+    }));
 
     res.json({
       success: true,
@@ -107,65 +160,83 @@ export async function recordObservation(req, res, next) {
   try {
     const { id } = req.params; // campaignId
     const { tagNumber, serialNumber, scanType = 'BARCODE', observedRoomId, observedCustodianId, condition } = req.body;
+    const userId = req.user?.id || req.user?._id;
 
-    const result = await withTransaction(async (session) => {
-      // Find matching asset
+    const result = await prisma.$transaction(async (tx) => {
       let asset = null;
       if (tagNumber) {
-        asset = await Asset.findOne({ $or: [{ tagNumber }, { assetId: tagNumber }, { rfidEpc: tagNumber }] });
+        asset = await tx.asset.findFirst({
+          where: {
+            OR: [
+              { tagNumber },
+              { assetId: tagNumber },
+              { rfidEpc: tagNumber }
+            ]
+          }
+        });
       } else if (serialNumber) {
-        asset = await Asset.findOne({ serialNumber });
+        asset = await tx.asset.findFirst({ where: { serialNumber } });
       }
 
-      const observation = await StocktakeObservation.create([{
-        campaignId: id,
-        assetId: asset ? asset._id : null,
-        scannedTagNumber: tagNumber,
-        scannedSerial: serialNumber,
-        scanType,
-        observedRoomId,
-        observedCustodianId,
-        observedCondition: condition,
-        observedBy: req.user._id,
-        timestamp: new Date()
-      }], { session }).then(res => res[0]);
+      const observation = await tx.stocktakeObservation.create({
+        data: {
+          campaignId: id,
+          assetId: asset ? asset.id : null,
+          scannedTagNumber: tagNumber || null,
+          scannedSerial: serialNumber || null,
+          scanType,
+          observedRoomId: observedRoomId || null,
+          observedCustodianId: observedCustodianId || null,
+          observedCondition: condition || null,
+          observedByUserId: userId,
+          timestamp: new Date()
+        }
+      });
 
       if (asset) {
-        const expected = await StocktakeExpectedAsset.findOne({ campaignId: id, assetId: asset._id });
-        let obsStatus = 'VERIFIED_CORRECT';
+        const expected = await tx.stocktakeExpectedAsset.findUnique({
+          where: { campaignId_assetId: { campaignId: id, assetId: asset.id } }
+        });
 
+        let obsStatus = 'VERIFIED_CORRECT';
         if (expected) {
-          if (observedRoomId && expected.expectedRoomId && observedRoomId.toString() !== expected.expectedRoomId.toString()) {
+          if (observedRoomId && expected.expectedRoomId && observedRoomId !== expected.expectedRoomId) {
             obsStatus = 'RELOCATED';
           }
-          expected.status = obsStatus;
-          await expected.save({ session });
+          await tx.stocktakeExpectedAsset.update({
+            where: { id: expected.id },
+            data: { status: obsStatus }
+          });
         }
 
-        // Update campaign stats
-        await StocktakeCampaign.findByIdAndUpdate(id, {
-          $inc: { 'stats.totalVerified': 1 }
-        }, { session });
+        await tx.stocktakeCampaign.update({
+          where: { id },
+          data: { totalVerified: { increment: 1 } }
+        });
 
         if (obsStatus === 'RELOCATED') {
-          await StocktakeException.create([{
-            campaignId: id,
-            assetId: asset._id,
-            exceptionType: 'RELOCATED',
-            details: { observedRoomId, expectedRoomId: expected ? expected.expectedRoomId : null }
-          }], { session });
+          await tx.stocktakeException.create({
+            data: {
+              campaignId: id,
+              assetId: asset.id,
+              exceptionType: 'RELOCATED',
+              details: { observedRoomId, expectedRoomId: expected ? expected.expectedRoomId : null }
+            }
+          });
         }
       } else {
-        // Unregistered Asset Observation
-        await StocktakeException.create([{
-          campaignId: id,
-          exceptionType: 'UNREGISTERED',
-          details: { scannedTagNumber: tagNumber, scannedSerial: serialNumber }
-        }], { session });
+        await tx.stocktakeException.create({
+          data: {
+            campaignId: id,
+            exceptionType: 'UNREGISTERED',
+            details: { scannedTagNumber: tagNumber, scannedSerial: serialNumber }
+          }
+        });
 
-        await StocktakeCampaign.findByIdAndUpdate(id, {
-          $inc: { 'stats.totalUnregistered': 1 }
-        }, { session });
+        await tx.stocktakeCampaign.update({
+          where: { id },
+          data: { totalUnregistered: { increment: 1 } }
+        });
       }
 
       return observation;
@@ -178,31 +249,44 @@ export async function recordObservation(req, res, next) {
 export async function closeCampaign(req, res, next) {
   try {
     const { id } = req.params;
-    const campaign = await StocktakeCampaign.findById(id);
+    const campaign = await prisma.stocktakeCampaign.findUnique({ where: { id } });
 
     if (!campaign) return res.status(404).json({ success: false, message: 'Campaign not found' });
 
-    // Mark pending expected assets as MISSING
-    const unverified = await StocktakeExpectedAsset.find({ campaignId: id, status: 'PENDING' });
-    for (const exp of unverified) {
-      exp.status = 'MISSING';
-      await exp.save();
+    const unverified = await prisma.stocktakeExpectedAsset.findMany({
+      where: { campaignId: id, status: 'PENDING' }
+    });
 
-      await StocktakeException.create({
-        campaignId: id,
-        assetId: exp.assetId,
-        exceptionType: 'MISSING'
+    for (const exp of unverified) {
+      await prisma.stocktakeExpectedAsset.update({
+        where: { id: exp.id },
+        data: { status: 'MISSING' }
       });
 
-      // Update asset lifecycle status
-      await Asset.findByIdAndUpdate(exp.assetId, { lifecycleStatus: 'MISSING' });
+      await prisma.stocktakeException.create({
+        data: {
+          campaignId: id,
+          assetId: exp.assetId,
+          exceptionType: 'MISSING'
+        }
+      });
+
+      await prisma.asset.update({
+        where: { id: exp.assetId },
+        data: { lifecycleStatus: 'MISSING' }
+      });
     }
 
-    campaign.status = 'CLOSED';
-    campaign.stats.totalMissing = unverified.length;
-    await campaign.save();
+    const updatedCampaign = await prisma.stocktakeCampaign.update({
+      where: { id },
+      data: {
+        status: 'CLOSED',
+        totalMissing: unverified.length,
+        endDate: new Date()
+      }
+    });
 
-    res.json({ success: true, campaign });
+    res.json({ success: true, campaign: updatedCampaign });
   } catch (err) { next(err); }
 }
 
@@ -210,17 +294,21 @@ export async function resolveException(req, res, next) {
   try {
     const { id } = req.params;
     const { resolutionStatus = 'RESOLVED', resolutionNotes } = req.body;
+    const userId = req.user?.id || req.user?._id;
 
-    const exception = await StocktakeException.findById(id);
+    const exception = await prisma.stocktakeException.findUnique({ where: { id } });
     if (!exception) return res.status(404).json({ success: false, message: 'Exception not found' });
 
-    exception.resolutionStatus = resolutionStatus;
-    exception.resolutionNotes = resolutionNotes || 'Resolved by auditor';
-    exception.resolvedBy = req.user._id;
-    exception.resolvedAt = new Date();
-    await exception.save();
+    const updated = await prisma.stocktakeException.update({
+      where: { id },
+      data: {
+        resolutionStatus,
+        resolutionNotes: resolutionNotes || 'Resolved by auditor',
+        resolvedByUserId: userId,
+        resolvedAt: new Date()
+      }
+    });
 
-    res.json({ success: true, exception });
+    res.json({ success: true, exception: updated });
   } catch (err) { next(err); }
 }
-

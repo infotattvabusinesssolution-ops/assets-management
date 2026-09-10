@@ -1,6 +1,6 @@
 import jwt from 'jsonwebtoken';
 import { config } from '../config/index.js';
-import { User } from '../models/User.js';
+import prisma from '../config/prisma.js';
 
 export async function authenticateToken(req, res, next) {
   try {
@@ -12,9 +12,13 @@ export async function authenticateToken(req, res, next) {
     }
 
     const decoded = jwt.verify(token, config.jwt.secret);
-    const user = await User.findById(decoded.id)
-      .populate('roleId')
-      .populate('dataScopes');
+    const user = await prisma.user.findUnique({
+      where: { id: decoded.id },
+      include: {
+        role: true,
+        dataScopes: true
+      }
+    });
 
     if (!user || !user.active) {
       return res.status(401).json({ success: false, message: 'User account is inactive or not found' });

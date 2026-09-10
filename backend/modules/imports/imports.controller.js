@@ -1,30 +1,27 @@
-import { ImportJob } from '../../models/Integration.js';
-import { Asset } from '../../models/Asset.js';
-import { Company } from '../../models/Company.js';
-import { Site } from '../../models/Location.js';
-import { Category } from '../../models/Category.js';
-
+import prisma from '../../config/prisma.js';
 
 export async function processImport(req, res, next) {
   try {
     const { rows = [], entityType = 'ASSET' } = req.body;
+    const userId = req.user?.id || req.user?._id;
 
-    const job = await ImportJob.create({
-      fileName: `Import_${Date.now()}.csv`,
-      entityType,
-      totalRows: rows.length,
-      status: 'PROCESSING',
-      createdBy: req.user._id
+    const job = await prisma.importJob.create({
+      data: {
+        fileName: `Import_${Date.now()}.csv`,
+        entityType,
+        totalRows: rows.length,
+        status: 'PROCESSING',
+        createdByUserId: userId
+      }
     });
 
     let successCount = 0;
     let failedCount = 0;
     const errors = [];
 
-    // Find default company/site/category if missing in row
-    const defaultCompany = await Company.findOne({ active: true });
-    const defaultSite = await Site.findOne({ active: true });
-    const defaultCategory = await Category.findOne({ active: true });
+    const defaultCompany = await prisma.company.findFirst({ where: { active: true } });
+    const defaultSite = await prisma.site.findFirst({ where: { active: true } });
+    const defaultCategory = await prisma.category.findFirst({ where: { active: true } });
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -33,17 +30,19 @@ export async function processImport(req, res, next) {
           throw new Error('Description is required');
         }
 
-        await Asset.create({
-          assetId: row.assetId || 'AST-IMP-' + Date.now().toString(36) + i,
-          description: row.description,
-          serialNumber: row.serialNumber,
-          tagNumber: row.tagNumber,
-          acquisitionValue: row.acquisitionValue || 0,
-          companyId: defaultCompany ? defaultCompany._id : null,
-          siteId: defaultSite ? defaultSite._id : null,
-          categoryId: defaultCategory ? defaultCategory._id : null,
-          lifecycleStatus: 'IN_SERVICE',
-          createdBy: req.user._id
+        await prisma.asset.create({
+          data: {
+            assetId: row.assetId || 'AST-IMP-' + Date.now().toString(36) + i,
+            description: row.description,
+            serialNumber: row.serialNumber || null,
+            tagNumber: row.tagNumber || null,
+            acquisitionValue: row.acquisitionValue || 0,
+            companyId: defaultCompany ? defaultCompany.id : null,
+            siteId: defaultSite ? defaultSite.id : null,
+            categoryId: defaultCategory ? defaultCategory.id : null,
+            lifecycleStatus: 'IN_SERVICE',
+            createdByUserId: userId
+          }
         });
 
         successCount++;
@@ -53,13 +52,17 @@ export async function processImport(req, res, next) {
       }
     }
 
-    job.processedRows = rows.length;
-    job.successRows = successCount;
-    job.failedRows = failedCount;
-    job.errors = errors;
-    job.status = failedCount === 0 ? 'COMPLETED' : 'FAILED';
-    await job.save();
+    const updatedJob = await prisma.importJob.update({
+      where: { id: job.id },
+      data: {
+        processedRows: rows.length,
+        successRows: successCount,
+        failedRows: failedCount,
+        errors,
+        status: failedCount === 0 ? 'COMPLETED' : 'FAILED'
+      }
+    });
 
-    res.json({ success: true, job });
+    res.json({ success: true, job: updatedJob });
   } catch (err) { next(err); }
 }

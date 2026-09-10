@@ -1,5 +1,4 @@
-import { Asset } from '../../models/Asset.js';
-import { AIRecommendation } from '../../models/AIRecommendation.js';
+import prisma from '../../config/prisma.js';
 
 export async function extractDocument(req, res, next) {
   try {
@@ -14,11 +13,13 @@ export async function extractDocument(req, res, next) {
       confidence: 94.5
     };
 
-    const recommendation = await AIRecommendation.create({
-      type: 'DOCUMENT_OCR',
-      confidenceScore: 94.5,
-      recommendationPayload: mockExtracted,
-      explanation: `Extracted key metadata from document [${documentName}] with 94.5% confidence.`
+    const recommendation = await prisma.aIRecommendation.create({
+      data: {
+        type: 'DOCUMENT_OCR',
+        confidenceScore: 95,
+        recommendationPayload: mockExtracted,
+        explanation: `Extracted key metadata from document [${documentName}] with 94.5% confidence.`
+      }
     });
 
     res.json({ success: true, extracted: mockExtracted, recommendation });
@@ -27,7 +28,7 @@ export async function extractDocument(req, res, next) {
 
 export async function checkDuplicates(req, res, next) {
   try {
-    const assets = await Asset.find({ active: true });
+    const assets = await prisma.asset.findMany({ where: { active: true } });
     const serialMap = {};
     const duplicates = [];
 
@@ -53,11 +54,17 @@ export async function checkDuplicates(req, res, next) {
 export async function getHealthInsights(req, res, next) {
   try {
     const { assetId } = req.params;
-    const asset = await Asset.findById(assetId);
+    const asset = await prisma.asset.findFirst({
+      where: {
+        OR: [
+          { id: assetId },
+          { assetId }
+        ]
+      }
+    });
 
     if (!asset) return res.status(404).json({ success: false, message: 'Asset not found' });
 
-    // Calculate dynamic health score
     const ageMonths = (Date.now() - new Date(asset.createdAt).getTime()) / (1000 * 60 * 60 * 24 * 30);
     let score = 100 - Math.min(Math.floor(ageMonths * 1.5), 40);
 
@@ -73,7 +80,7 @@ export async function getHealthInsights(req, res, next) {
       { factor: 'Maintenance Frequency', impact: -5 }
     ];
 
-    res.json({ success: true, assetId, healthScore: score, factors });
+    res.json({ success: true, assetId: asset.id, healthScore: score, factors });
   } catch (err) { next(err); }
 }
 
@@ -83,26 +90,30 @@ export async function askAssistant(req, res, next) {
     if (!prompt) return res.status(400).json({ success: false, message: 'Prompt required' });
 
     const lower = prompt.toLowerCase();
-    let filter = { active: true };
-    let explanation = 'Converted prompt into Mongoose filter query.';
+    const where = { active: true };
+    let explanation = 'Converted prompt into Prisma filter query.';
 
     if (lower.includes('missing')) {
-      filter.lifecycleStatus = 'MISSING';
+      where.lifecycleStatus = 'MISSING';
       explanation = 'Filtered assets with lifecycleStatus = MISSING';
     } else if (lower.includes('service') || lower.includes('active')) {
-      filter.lifecycleStatus = 'IN_SERVICE';
+      where.lifecycleStatus = 'IN_SERVICE';
       explanation = 'Filtered assets with lifecycleStatus = IN_SERVICE';
     } else if (lower.includes('dell')) {
-      filter.description = new RegExp('Dell', 'i');
+      where.description = { contains: 'Dell', mode: 'insensitive' };
       explanation = 'Filtered assets matching description [Dell]';
     }
 
-    const records = await Asset.find(filter).populate('categoryId').populate('siteId').limit(20);
+    const records = await prisma.asset.findMany({
+      where,
+      include: { category: true, site: true },
+      take: 20
+    });
 
     res.json({
       success: true,
       prompt,
-      appliedFilter: filter,
+      appliedFilter: where,
       explanation,
       resultsCount: records.length,
       records

@@ -1,0 +1,1703 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+// ------------------------------------------------------
+// ENUMS
+// ------------------------------------------------------
+
+enum AssetLifecycleStatus {
+  REQUESTED
+  ORDERED
+  RECEIVED
+  TAGGED
+  IN_STORE
+  IN_SERVICE
+  ASSIGNED
+  IN_TRANSIT
+  UNDER_MAINTENANCE
+  MISSING
+  LOST_STOLEN
+  DAMAGED
+  RETIRED
+  DISPOSED
+}
+
+enum AssetCondition {
+  NEW
+  GOOD
+  FAIR
+  POOR
+  DAMAGED
+  UNSERVICEABLE
+}
+
+enum CriticalityLevel {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+}
+
+enum DepreciationMethod {
+  STRAIGHT_LINE
+  DECLINING_BALANCE
+  DOUBLE_DECLINING
+}
+
+enum BookType {
+  CORPORATE
+  TAX
+  MANAGEMENT
+}
+
+enum DepreciationRunStatus {
+  DRAFT
+  POSTED
+  CANCELLED
+}
+
+enum TransferType {
+  INTRA_SITE
+  INTER_SITE
+  INTER_COMPANY
+  INTER_DEPARTMENT
+}
+
+enum TransferStatus {
+  DRAFT
+  SUBMITTED
+  APPROVED
+  DISPATCHED
+  IN_TRANSIT
+  RECEIVED
+  REJECTED
+}
+
+enum WorkOrderType {
+  PREVENTIVE
+  CORRECTIVE
+  INSPECTION
+  CALIBRATION
+}
+
+enum WorkOrderStatus {
+  OPEN
+  ASSIGNED
+  IN_PROGRESS
+  ON_HOLD
+  COMPLETED
+  VERIFIED
+  CANCELLED
+}
+
+enum ContractType {
+  AMC
+  LEASE
+  INSURANCE
+  SOFTWARE_LICENSE
+  SERVICE_SLA
+}
+
+enum TagType {
+  BARCODE_128
+  QR_CODE
+  RFID_EPC
+  HYBRID
+}
+
+enum TagStatus {
+  UNASSIGNED
+  ACTIVE
+  DAMAGED
+  REPLACED
+  RETIRED
+}
+
+enum StocktakeMode {
+  FULL_CENSUS
+  CYCLE_COUNT
+  SAMPLE
+}
+
+enum StocktakeStatus {
+  DRAFT
+  ACTIVE
+  RECONCILIATION
+  CLOSED
+}
+
+enum StocktakeAssetStatus {
+  PENDING
+  VERIFIED_CORRECT
+  RELOCATED
+  WRONG_CUSTODIAN
+  MISSING
+  DAMAGED
+}
+
+enum ExceptionType {
+  RELOCATED
+  WRONG_CUSTODIAN
+  UNREGISTERED
+  MISSING
+  DAMAGED
+  DUPLICATE
+}
+
+enum ResolutionStatus {
+  OPEN
+  RESOLVED
+  IGNORED
+}
+
+enum FieldType {
+  TEXT
+  NUMBER
+  DATE
+  BOOLEAN
+  SELECT
+}
+
+enum WarrantyCoverageType {
+  FULL
+  PARTS_ONLY
+  LABOR_ONLY
+  EXTENDED
+}
+
+enum DiscoverySource {
+  SNMP
+  WMI
+  SSH
+  MDM
+  EDR
+  IP_SCANNER
+}
+
+enum MatchRule {
+  EXACT_SERIAL
+  MAC_ADDRESS
+  HOSTNAME
+  FUZZY_AI
+}
+
+enum MatchStatus {
+  MATCHED
+  SUGGESTED
+  UNKNOWN
+  CONFLICT
+  IGNORED
+}
+
+enum WorkflowTransactionType {
+  ASSET_REQUEST
+  CAPITALIZATION
+  TRANSFER
+  INTER_COMPANY_TRANSFER
+  DISPOSAL
+  WRITE_OFF
+}
+
+enum WorkflowInstanceStatus {
+  PENDING
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+enum ApprovalDecision {
+  APPROVE
+  REJECT
+  DELEGATE
+}
+
+enum AIRecommendationType {
+  DOCUMENT_OCR
+  DUPLICATE_DETECTION
+  PREDICTIVE_MAINTENANCE
+  HEALTH_SCORE
+  DISCOVERY_MATCH
+  EOL_FORECAST
+}
+
+enum AIRecommendationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+}
+
+enum NotificationType {
+  APPROVAL_REQUIRED
+  MAINTENANCE_DUE
+  WARRANTY_EXPIRING
+  DISCOVERY_ANOMALY
+  STOCKTAKE_ALERT
+  INFO
+}
+
+enum ImportJobStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+}
+
+// ------------------------------------------------------
+// ORGANIZATIONAL HIERARCHY
+// ------------------------------------------------------
+
+model Company {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  code          String   @unique
+  name          String
+  currency      String   @default("USD")
+  taxId         String?
+  address       String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  departments      Department[]
+  costCenters      CostCenter[]
+  sites            Site[]
+  employees        Employee[]
+  assets           Asset[]
+  users            User[]
+  fiscalPeriods    FiscalPeriod[]
+  depreciationRuns DepreciationRun[]
+  receipts         Receipt[]
+
+  @@map("companies")
+}
+
+model Department {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  companyId     String
+  code          String
+  name          String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees Employee[]
+  assets    Asset[]
+  users     User[]
+
+  @@unique([companyId, code])
+  @@map("departments")
+}
+
+model CostCenter {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  companyId     String
+  code          String
+  name          String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  employees Employee[]
+  assets    Asset[]
+  users     User[]
+
+  @@unique([companyId, code])
+  @@map("cost_centers")
+}
+
+model Site {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  companyId     String
+  code          String
+  name          String
+  city          String?
+  country       String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  buildings Building[]
+  assets    Asset[]
+  users     User[]
+  receipts  Receipt[]
+
+  @@unique([companyId, code])
+  @@map("sites")
+}
+
+model Building {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  siteId        String
+  code          String
+  name          String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  site   Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  floors Floor[]
+  assets Asset[]
+
+  @@map("buildings")
+}
+
+model Floor {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  buildingId    String
+  code          String
+  name          String
+  floorNumber   Int?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  building Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  rooms    Room[]
+  assets   Asset[]
+  floorMap FloorMap?
+
+  @@map("floors")
+}
+
+model Room {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  floorId       String
+  code          String
+  name          String
+  roomType      String   @default("General")
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  floor  Floor   @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  zones  Zone[]
+  assets Asset[]
+
+  @@map("rooms")
+}
+
+model Zone {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  roomId        String
+  code          String
+  name          String
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  room         Room               @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  assets       Asset[]
+  mapZones     FloorMapZone[]
+  mapPositions AssetMapPosition[]
+
+  @@map("zones")
+}
+
+model Employee {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  employeeCode  String   @unique
+  fullName      String
+  email         String
+  companyId     String
+  departmentId  String?
+  costCenterId  String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  company    Company     @relation(fields: [companyId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
+
+  custodyAssets  Asset[]                @relation("AssetCustodian")
+  custodyRecords CustodyAssignment[]
+  users          User[]
+  transfersFrom  AssetTransfer[]        @relation("TransferFromCustodian")
+  transfersTo    AssetTransfer[]        @relation("TransferToCustodian")
+  stocktakeObs   StocktakeObservation[]
+
+  @@map("employees")
+}
+
+// ------------------------------------------------------
+// CLASSIFICATIONS
+// ------------------------------------------------------
+
+model Category {
+  id                          String             @id @default(uuid())
+  legacyMongoId               String?            @unique
+  code                        String             @unique
+  name                        String
+  description                 String?
+  depreciationMethod          DepreciationMethod @default(STRAIGHT_LINE)
+  defaultUsefulLifeMonths     Int                @default(60)
+  defaultResidualValuePercent Decimal            @default(0) @db.Decimal(5, 2)
+  isSerialized                Boolean            @default(true)
+  active                      Boolean            @default(true)
+  createdAt                   DateTime           @default(now())
+  updatedAt                   DateTime           @updatedAt
+
+  assetClasses     AssetClass[]
+  models           AssetModel[]
+  assets           Asset[]
+  customFields     CustomFieldDefinition[]
+  receiptLineItems ReceiptLineItem[]
+
+  @@map("categories")
+}
+
+model AssetClass {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  code          String   @unique
+  name          String
+  categoryId    String
+  description   String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  category Category @relation(fields: [categoryId], references: [id])
+  assets   Asset[]
+
+  @@map("asset_classes")
+}
+
+model Manufacturer {
+  id             String   @id @default(uuid())
+  legacyMongoId  String?  @unique
+  name           String   @unique
+  supportContact String?
+  website        String?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  models AssetModel[]
+  assets Asset[]
+
+  @@map("manufacturers")
+}
+
+model AssetModel {
+  id             String   @id @default(uuid())
+  legacyMongoId  String?  @unique
+  modelNumber    String
+  name           String
+  manufacturerId String
+  categoryId     String
+  specifications Json?
+  active         Boolean  @default(true)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id])
+  category     Category     @relation(fields: [categoryId], references: [id])
+  assets       Asset[]
+
+  @@map("asset_models")
+}
+
+// ------------------------------------------------------
+// CORE ASSET
+// ------------------------------------------------------
+
+model Asset {
+  id            String  @id @default(uuid())
+  legacyMongoId String? @unique
+  assetId       String  @unique
+  legacyId      String?
+  tagNumber     String? @unique
+  barcode       String?
+  qrCode        String?
+  rfidEpc       String?
+  rfidTid       String?
+  serialNumber  String?
+  description   String
+
+  categoryId     String
+  assetClassId   String?
+  manufacturerId String?
+  modelId        String?
+  parentAssetId  String?
+
+  lifecycleStatus AssetLifecycleStatus @default(RECEIVED)
+  condition       AssetCondition       @default(NEW)
+  criticality     CriticalityLevel     @default(MEDIUM)
+
+  companyId    String
+  siteId       String
+  buildingId   String?
+  floorId      String?
+  roomId       String?
+  zoneId       String?
+  departmentId String?
+  costCenterId String?
+
+  custodianId  String?
+  assignedDate DateTime?
+
+  poNumber         String?
+  supplierName     String?
+  purchaseDate     DateTime?
+  inServiceDate    DateTime?
+  acquisitionValue Decimal   @default(0) @db.Decimal(18, 2)
+  currency         String    @default("USD")
+
+  hostname    String?
+  macAddress  String?
+  ipAddress   String?
+  discoveryId String?
+
+  healthScore Int @default(100)
+
+  createdByUserId String?
+  updatedByUserId String?
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  // Relations
+  category     Category      @relation(fields: [categoryId], references: [id])
+  assetClass   AssetClass?   @relation(fields: [assetClassId], references: [id])
+  manufacturer Manufacturer? @relation(fields: [manufacturerId], references: [id])
+  model        AssetModel?   @relation(fields: [modelId], references: [id])
+  parentAsset  Asset?        @relation("ChildAssets", fields: [parentAssetId], references: [id])
+  childAssets  Asset[]       @relation("ChildAssets")
+
+  company    Company     @relation(fields: [companyId], references: [id])
+  site       Site        @relation(fields: [siteId], references: [id])
+  building   Building?   @relation(fields: [buildingId], references: [id])
+  floor      Floor?      @relation(fields: [floorId], references: [id])
+  room       Room?       @relation(fields: [roomId], references: [id])
+  zone       Zone?       @relation(fields: [zoneId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
+  custodian  Employee?   @relation("AssetCustodian", fields: [custodianId], references: [id])
+
+  creator User? @relation("AssetCreator", fields: [createdByUserId], references: [id])
+  updater User? @relation("AssetUpdater", fields: [updatedByUserId], references: [id])
+
+  // Dependent Relational Lists
+  customFieldValues  AssetCustomFieldValue[]
+  bookValues         AssetBookValue[]
+  custodyAssignments CustodyAssignment[]
+  transfers          AssetTransfer[]
+  workOrders         MaintenanceWorkOrder[]
+  schedules          MaintenanceSchedule[]
+  contractLinks      ContractAsset[]
+  warranty           Warranty?
+  tags               Tag[]
+  tagHistories       TagHistory[]
+  mapPosition        AssetMapPosition?
+  discoveryMatches   DiscoveryMatch[]
+  aiRecommendations  AIRecommendation[]
+  transactions       AssetTransaction[]
+  rtlsLocation       RtlsAssetLocation?
+  rtlsMovements      RtlsMovement[]
+
+  @@index([companyId, siteId, categoryId, lifecycleStatus])
+  @@index([assetId, serialNumber, tagNumber, barcode, hostname])
+  @@map("assets")
+}
+
+model AssetCustomFieldValue {
+  id               String    @id @default(uuid())
+  assetId          String
+  customFieldDefId String
+  textValue        String?
+  numberValue      Decimal?  @db.Decimal(18, 4)
+  dateValue        DateTime?
+  booleanValue     Boolean?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  asset          Asset                 @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  customFieldDef CustomFieldDefinition @relation(fields: [customFieldDefId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, customFieldDefId])
+  @@map("asset_custom_field_values")
+}
+
+model CustomFieldDefinition {
+  id            String    @id @default(uuid())
+  legacyMongoId String?   @unique
+  name          String    @unique
+  label         String
+  fieldType     FieldType
+  required      Boolean   @default(false)
+  defaultValue  String?
+  options       String[]
+  categoryId    String?
+  active        Boolean   @default(true)
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  category Category?               @relation(fields: [categoryId], references: [id])
+  values   AssetCustomFieldValue[]
+
+  @@map("custom_field_definitions")
+}
+
+model AssetTransaction {
+  id                String   @id @default(uuid())
+  assetId           String
+  transactionType   String
+  fromStatus        String?
+  toStatus          String?
+  performedByUserId String
+  timestamp         DateTime @default(now())
+  notes             String?
+  payload           Json?
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+
+  asset       Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  performedBy User  @relation(fields: [performedByUserId], references: [id])
+
+  @@index([assetId, timestamp])
+  @@map("asset_transactions")
+}
+
+// ------------------------------------------------------
+// USER, SECURITY & AUTHORIZATION (RBAC + DATA SCOPE)
+// ------------------------------------------------------
+
+model User {
+  id            String    @id @default(uuid())
+  legacyMongoId String?   @unique
+  username      String    @unique
+  email         String    @unique
+  passwordHash  String
+  fullName      String
+  phone         String?
+  roleId        String
+  companyId     String?
+  siteId        String?
+  departmentId  String?
+  costCenterId  String?
+  employeeId    String?
+  active        Boolean   @default(true)
+  lastLogin     DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  role       Role        @relation(fields: [roleId], references: [id])
+  company    Company?    @relation(fields: [companyId], references: [id])
+  site       Site?       @relation(fields: [siteId], references: [id])
+  department Department? @relation(fields: [departmentId], references: [id])
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
+  employee   Employee?   @relation(fields: [employeeId], references: [id])
+
+  dataScopes          UserDataScope[]
+  createdAssets       Asset[]                @relation("AssetCreator")
+  updatedAssets       Asset[]                @relation("AssetUpdater")
+  issuedCustodies     CustodyAssignment[]    @relation("CustodyIssuer")
+  requestedTransfers  AssetTransfer[]        @relation("TransferRequester")
+  approvedTransfers   AssetTransfer[]        @relation("TransferApprover")
+  receivedTransfers   AssetTransfer[]        @relation("TransferReceiver")
+  workOrdersAssigned  MaintenanceWorkOrder[] @relation("TechnicianWorkOrders")
+  workOrdersCreated   MaintenanceWorkOrder[] @relation("CreatedWorkOrders")
+  auditEvents         AuditEvent[]
+  notifications       Notification[]
+  postedDepreciations DepreciationRun[]
+  importJobs          ImportJob[]
+  assetTransactions   AssetTransaction[]
+
+  @@map("users")
+}
+
+model Role {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  name          String   @unique
+  code          String   @unique
+  description   String?
+  permissions   String[]
+  isSystem      Boolean  @default(false)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  users User[]
+
+  @@map("roles")
+}
+
+model DataScope {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  name          String
+  companyIds    String[]
+  siteIds       String[]
+  departmentIds String[]
+  costCenterIds String[]
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  userAssignments UserDataScope[]
+
+  @@map("data_scopes")
+}
+
+model UserDataScope {
+  userId      String
+  dataScopeId String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  dataScope   DataScope @relation(fields: [dataScopeId], references: [id], onDelete: Cascade)
+
+  @@id([userId, dataScopeId])
+  @@map("user_data_scopes")
+}
+
+model AuditEvent {
+  id          String   @id @default(uuid())
+  userId      String?
+  action      String
+  entityType  String
+  entityId    String?
+  beforeState Json?
+  afterState  Json?
+  ipAddress   String?
+  userAgent   String?
+  timestamp   DateTime @default(now())
+  createdAt   DateTime @default(now())
+
+  user User? @relation(fields: [userId], references: [id])
+
+  @@index([userId, entityType, timestamp])
+  @@map("audit_events")
+}
+
+model Notification {
+  id        String           @id @default(uuid())
+  userId    String
+  title     String
+  message   String
+  type      NotificationType @default(INFO)
+  read      Boolean          @default(false)
+  link      String?
+  createdAt DateTime         @default(now())
+  updatedAt DateTime         @updatedAt
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notifications")
+}
+
+// ------------------------------------------------------
+// CUSTODY & TRANSFERS
+// ------------------------------------------------------
+
+model CustodyAssignment {
+  id                  String    @id @default(uuid())
+  legacyMongoId       String?   @unique
+  assetId             String
+  custodianId         String
+  issuedDate          DateTime  @default(now())
+  expectedReturnDate  DateTime?
+  actualReturnDate    DateTime?
+  conditionAtIssue    String?
+  conditionAtReturn   String?
+  issuedByUserId      String
+  acknowledged        Boolean   @default(false)
+  acknowledgementDate DateTime?
+  active              Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
+
+  asset     Asset    @relation(fields: [assetId], references: [id])
+  custodian Employee @relation(fields: [custodianId], references: [id])
+  issuedBy  User     @relation("CustodyIssuer", fields: [issuedByUserId], references: [id])
+
+  @@map("custody_assignments")
+}
+
+model AssetTransfer {
+  id             String       @id @default(uuid())
+  legacyMongoId  String?      @unique
+  transferNumber String       @unique
+  assetId        String
+  transferType   TransferType
+
+  fromCompanyId   String?
+  fromSiteId      String?
+  fromRoomId      String?
+  fromCustodianId String?
+
+  toCompanyId   String?
+  toSiteId      String?
+  toRoomId      String?
+  toCustodianId String?
+
+  status            TransferStatus @default(DRAFT)
+  reason            String?
+  requestedByUserId String
+  approvedByUserId  String?
+  receivedByUserId  String?
+  dispatchDate      DateTime?
+  receiveDate       DateTime?
+  createdAt         DateTime       @default(now())
+  updatedAt         DateTime       @updatedAt
+
+  asset         Asset     @relation(fields: [assetId], references: [id])
+  fromCustodian Employee? @relation("TransferFromCustodian", fields: [fromCustodianId], references: [id])
+  toCustodian   Employee? @relation("TransferToCustodian", fields: [toCustodianId], references: [id])
+  requestedBy   User      @relation("TransferRequester", fields: [requestedByUserId], references: [id])
+  approvedBy    User?     @relation("TransferApprover", fields: [approvedByUserId], references: [id])
+  receivedBy    User?     @relation("TransferReceiver", fields: [receivedByUserId], references: [id])
+
+  @@map("asset_transfers")
+}
+
+// ------------------------------------------------------
+// FINANCIAL & DEPRECIATION
+// ------------------------------------------------------
+
+model AssetBookValue {
+  id                      String             @id @default(uuid())
+  legacyMongoId           String?            @unique
+  assetId                 String
+  bookType                BookType           @default(CORPORATE)
+  capitalizationDate      DateTime?
+  capitalizationValue     Decimal            @db.Decimal(18, 2)
+  usefulLifeMonths        Int
+  depreciationMethod      DepreciationMethod @default(STRAIGHT_LINE)
+  residualValue           Decimal            @default(0) @db.Decimal(18, 2)
+  accumulatedDepreciation Decimal            @default(0) @db.Decimal(18, 2)
+  netBookValue            Decimal            @db.Decimal(18, 2)
+  isLocked                Boolean            @default(false)
+  createdAt               DateTime           @default(now())
+  updatedAt               DateTime           @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@unique([assetId, bookType])
+  @@map("asset_book_values")
+}
+
+model FiscalPeriod {
+  id             String    @id @default(uuid())
+  legacyMongoId  String?   @unique
+  companyId      String
+  year           Int
+  periodNumber   Int
+  periodName     String?
+  startDate      DateTime
+  endDate        DateTime
+  isClosed       Boolean   @default(false)
+  closedAt       DateTime?
+  closedByUserId String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  company             Company             @relation(fields: [companyId], references: [id])
+  depreciationRuns    DepreciationRun[]
+  depreciationEntries DepreciationEntry[]
+
+  @@unique([companyId, year, periodNumber])
+  @@map("fiscal_periods")
+}
+
+model DepreciationRun {
+  id                      String                @id @default(uuid())
+  legacyMongoId           String?               @unique
+  runNumber               String                @unique
+  companyId               String
+  fiscalPeriodId          String
+  bookType                BookType              @default(CORPORATE)
+  status                  DepreciationRunStatus @default(DRAFT)
+  totalAssetsProcessed    Int                   @default(0)
+  totalDepreciationAmount Decimal               @default(0) @db.Decimal(18, 2)
+  postedAt                DateTime?
+  postedByUserId          String?
+  createdAt               DateTime              @default(now())
+  updatedAt               DateTime              @updatedAt
+
+  company      Company             @relation(fields: [companyId], references: [id])
+  fiscalPeriod FiscalPeriod        @relation(fields: [fiscalPeriodId], references: [id])
+  postedBy     User?               @relation(fields: [postedByUserId], references: [id])
+  entries      DepreciationEntry[]
+
+  @@map("depreciation_runs")
+}
+
+model DepreciationEntry {
+  id                      String   @id @default(uuid())
+  legacyMongoId           String?  @unique
+  depreciationRunId       String
+  assetId                 String
+  fiscalPeriodId          String
+  openingNetBookValue     Decimal  @db.Decimal(18, 2)
+  depreciationAmount      Decimal  @db.Decimal(18, 2)
+  accumulatedDepreciation Decimal  @db.Decimal(18, 2)
+  closingNetBookValue     Decimal  @db.Decimal(18, 2)
+  isPosted                Boolean  @default(false)
+  createdAt               DateTime @default(now())
+  updatedAt               DateTime @updatedAt
+
+  depreciationRun DepreciationRun @relation(fields: [depreciationRunId], references: [id], onDelete: Cascade)
+  fiscalPeriod    FiscalPeriod    @relation(fields: [fiscalPeriodId], references: [id])
+
+  @@unique([depreciationRunId, assetId])
+  @@map("depreciation_entries")
+}
+
+// ------------------------------------------------------
+// MAINTENANCE & WORK ORDERS
+// ------------------------------------------------------
+
+model MaintenanceSchedule {
+  id                String    @id @default(uuid())
+  legacyMongoId     String?   @unique
+  title             String
+  assetId           String
+  frequencyMonths   Int       @default(6)
+  lastPerformedDate DateTime?
+  nextDueDate       DateTime
+  active            Boolean   @default(true)
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_schedules")
+}
+
+model MaintenanceWorkOrder {
+  id              String           @id @default(uuid())
+  legacyMongoId   String?          @unique
+  workOrderNumber String           @unique
+  assetId         String
+  workType        WorkOrderType    @default(CORRECTIVE)
+  priority        CriticalityLevel @default(MEDIUM)
+  status          WorkOrderStatus  @default(OPEN)
+
+  description String
+  failureCode String?
+  rootCause   String?
+
+  assignedTechnicianId String?
+  vendorId             String?
+  vendorName           String?
+
+  scheduledDate        DateTime?
+  startedDate          DateTime?
+  completedDate        DateTime?
+  completionTargetDate DateTime?
+
+  laborHours   Decimal @default(0) @db.Decimal(10, 2)
+  laborCost    Decimal @default(0) @db.Decimal(18, 2)
+  partsCost    Decimal @default(0) @db.Decimal(18, 2)
+  cost         Decimal @default(0) @db.Decimal(18, 2)
+  meterReading Int?
+
+  notes           String?
+  photoUrls       String[]
+  createdByUserId String
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  asset              Asset @relation(fields: [assetId], references: [id])
+  assignedTechnician User? @relation("TechnicianWorkOrders", fields: [assignedTechnicianId], references: [id])
+  createdBy          User  @relation("CreatedWorkOrders", fields: [createdByUserId], references: [id])
+
+  partsUsed WorkOrderPart[]
+  checklist WorkOrderChecklist[]
+
+  @@map("maintenance_work_orders")
+}
+
+model WorkOrderPart {
+  id          String  @id @default(uuid())
+  workOrderId String
+  partName    String
+  quantity    Int     @default(1)
+  unitCost    Decimal @default(0) @db.Decimal(18, 2)
+  totalCost   Decimal @default(0) @db.Decimal(18, 2)
+
+  workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@map("work_order_parts")
+}
+
+model WorkOrderChecklist {
+  id          String  @id @default(uuid())
+  workOrderId String
+  task        String
+  completed   Boolean @default(false)
+  notes       String?
+
+  workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+
+  @@map("work_order_checklists")
+}
+
+// ------------------------------------------------------
+// CONTRACTS, WARRANTIES & INTAKE RECEIPTS
+// ------------------------------------------------------
+
+model Contract {
+  id             String       @id @default(uuid())
+  legacyMongoId  String?      @unique
+  contractNumber String       @unique
+  title          String
+  contractType   ContractType
+  providerName   String
+  startDate      DateTime
+  endDate        DateTime
+  cost           Decimal      @default(0) @db.Decimal(18, 2)
+  slaDetails     String?
+  active         Boolean      @default(true)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  coveredAssets ContractAsset[]
+
+  @@map("contracts")
+}
+
+model ContractAsset {
+  contractId String
+  assetId    String
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@id([contractId, assetId])
+  @@map("contract_assets")
+}
+
+model Warranty {
+  id             String               @id @default(uuid())
+  legacyMongoId  String?              @unique
+  assetId        String               @unique
+  providerName   String?
+  warrantyNumber String?
+  startDate      DateTime
+  endDate        DateTime
+  terms          String?
+  coverageType   WarrantyCoverageType @default(FULL)
+  createdAt      DateTime             @default(now())
+  updatedAt      DateTime             @updatedAt
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("warranties")
+}
+
+model Receipt {
+  id               String   @id @default(uuid())
+  legacyMongoId    String?  @unique
+  receiptNumber    String   @unique
+  poNumber         String
+  vendorName       String
+  companyId        String
+  siteId           String
+  receivedDate     DateTime @default(now())
+  status           String   @default("STAGED")
+  receivedByUserId String
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  company   Company           @relation(fields: [companyId], references: [id])
+  site      Site              @relation(fields: [siteId], references: [id])
+  lineItems ReceiptLineItem[]
+
+  @@map("receipts")
+}
+
+model ReceiptLineItem {
+  id              String   @id @default(uuid())
+  receiptId       String
+  description     String?
+  quantity        Int?
+  unitPrice       Decimal? @db.Decimal(18, 2)
+  categoryId      String?
+  serialNumbers   String[]
+  createdAssetIds String[]
+
+  receipt  Receipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
+  category Category? @relation(fields: [categoryId], references: [id])
+
+  @@map("receipt_line_items")
+}
+
+// ------------------------------------------------------
+// STOCKTAKE CAMPAIGNS
+// ------------------------------------------------------
+
+model StocktakeCampaign {
+  id              String          @id @default(uuid())
+  legacyMongoId   String?         @unique
+  campaignNumber  String          @unique
+  title           String
+  companyId       String
+  siteId          String
+  buildingId      String?
+  floorId         String?
+  categoryId      String?
+  mode            StocktakeMode   @default(FULL_CENSUS)
+  status          StocktakeStatus @default(DRAFT)
+  startDate       DateTime?
+  endDate         DateTime?
+  createdByUserId String
+
+  totalExpected     Int @default(0)
+  totalVerified     Int @default(0)
+  totalRelocated    Int @default(0)
+  totalMissing      Int @default(0)
+  totalUnregistered Int @default(0)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  expectedAssets StocktakeExpectedAsset[]
+  observations   StocktakeObservation[]
+  exceptions     StocktakeException[]
+
+  @@map("stocktake_campaigns")
+}
+
+model StocktakeExpectedAsset {
+  id                  String               @id @default(uuid())
+  campaignId          String
+  assetId             String
+  expectedSiteId      String?
+  expectedRoomId      String?
+  expectedCustodianId String?
+  status              StocktakeAssetStatus @default(PENDING)
+  createdAt           DateTime             @default(now())
+  updatedAt           DateTime             @updatedAt
+
+  campaign StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@unique([campaignId, assetId])
+  @@map("stocktake_expected_assets")
+}
+
+model StocktakeObservation {
+  id                     String    @id @default(uuid())
+  campaignId             String
+  assetId                String?
+  scannedTagNumber       String?
+  scannedSerial          String?
+  scanType               String    @default("BARCODE")
+  observedRoomId         String?
+  observedCustodianId    String?
+  observedCondition      String?
+  observedByUserId       String
+  timestamp              DateTime  @default(now())
+  deviceTimestamp        DateTime?
+  offlineTransactionUUID String?
+  photoUrl               String?
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  campaign          StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  observedCustodian Employee?         @relation(fields: [observedCustodianId], references: [id])
+
+  @@map("stocktake_observations")
+}
+
+model StocktakeException {
+  id               String           @id @default(uuid())
+  campaignId       String
+  assetId          String?
+  exceptionType    ExceptionType
+  details          Json?
+  resolutionStatus ResolutionStatus @default(OPEN)
+  resolutionNotes  String?
+  resolvedByUserId String?
+  resolvedAt       DateTime?
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  campaign StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+
+  @@map("stocktake_exceptions")
+}
+
+// ------------------------------------------------------
+// TAGGING, DISCOVERY & SPATIAL MAPS
+// ------------------------------------------------------
+
+model Tag {
+  id            String    @id @default(uuid())
+  legacyMongoId String?   @unique
+  tagNumber     String    @unique
+  tagType       TagType   @default(BARCODE_128)
+  rfidEpc       String?   @unique
+  rfidTid       String?   @unique
+  assetId       String?
+  status        TagStatus @default(UNASSIGNED)
+  printedDate   DateTime?
+  createdAt     DateTime  @default(now())
+  updatedAt     DateTime  @updatedAt
+
+  asset Asset? @relation(fields: [assetId], references: [id])
+
+  @@map("tags")
+}
+
+model TagHistory {
+  id               String   @id @default(uuid())
+  assetId          String
+  oldTagNumber     String?
+  newTagNumber     String
+  reason           String
+  replacedByUserId String
+  timestamp        DateTime @default(now())
+  createdAt        DateTime @default(now())
+
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+
+  @@map("tag_histories")
+}
+
+model DiscoveryObservation {
+  id                  String          @id @default(uuid())
+  legacyMongoId       String?         @unique
+  discoverySource     DiscoverySource @default(IP_SCANNER)
+  ipAddress           String?
+  macAddress          String?
+  hostname            String?
+  serialNumber        String?
+  manufacturer        String?
+  modelName           String?
+  osFamily            String?
+  osVersion           String?
+  cpuInfo             String?
+  ramGb               Int?
+  storageGb           Int?
+  loggedOnUser        String?
+  firstSeen           DateTime        @default(now())
+  lastSeen            DateTime        @default(now())
+  rawCollectorPayload Json?
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
+
+  matches DiscoveryMatch[]
+
+  @@map("discovery_observations")
+}
+
+model DiscoveryMatch {
+  id               String      @id @default(uuid())
+  observationId    String
+  matchedAssetId   String?
+  confidenceScore  Int
+  matchRule        MatchRule
+  status           MatchStatus @default(SUGGESTED)
+  reviewedByUserId String?
+  reviewedAt       DateTime?
+  createdAt        DateTime    @default(now())
+  updatedAt        DateTime    @updatedAt
+
+  observation  DiscoveryObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
+  matchedAsset Asset?               @relation(fields: [matchedAssetId], references: [id])
+
+  @@map("discovery_matches")
+}
+
+model FloorMap {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  title         String
+  floorId       String   @unique
+  imageUrl      String
+  widthMeters   Decimal  @default(50) @db.Decimal(10, 2)
+  heightMeters  Decimal  @default(30) @db.Decimal(10, 2)
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  floor          Floor              @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  zones          FloorMapZone[]
+  assetPositions AssetMapPosition[]
+
+  @@map("floor_maps")
+}
+
+model FloorMapZone {
+  id         String  @id @default(uuid())
+  floorMapId String
+  zoneId     String?
+  name       String
+  color      String  @default("#3B82F6")
+  points     Json // Array of {x, y} coordinates
+
+  floorMap FloorMap @relation(fields: [floorMapId], references: [id], onDelete: Cascade)
+  zone     Zone?    @relation(fields: [zoneId], references: [id])
+
+  @@map("floor_map_zones")
+}
+
+model AssetMapPosition {
+  id              String   @id @default(uuid())
+  legacyMongoId   String?  @unique
+  assetId         String   @unique
+  floorMapId      String
+  xRatio          Decimal  @db.Decimal(6, 4)
+  yRatio          Decimal  @db.Decimal(6, 4)
+  zoneId          String?
+  updatedByUserId String
+  active          Boolean  @default(true)
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  floorMap FloorMap @relation(fields: [floorMapId], references: [id])
+  zone     Zone?    @relation(fields: [zoneId], references: [id])
+
+  @@map("asset_map_positions")
+}
+
+// ------------------------------------------------------
+// WORKFLOWS, AI INSIGHTS & ATTACHMENTS
+// ------------------------------------------------------
+
+model WorkflowDefinition {
+  id              String                  @id @default(uuid())
+  legacyMongoId   String?                 @unique
+  name            String
+  transactionType WorkflowTransactionType @unique
+  valueThreshold  Decimal                 @default(0) @db.Decimal(18, 2)
+  active          Boolean                 @default(true)
+  createdAt       DateTime                @default(now())
+  updatedAt       DateTime                @updatedAt
+
+  steps     WorkflowStep[]
+  instances WorkflowInstance[]
+
+  @@map("workflow_definitions")
+}
+
+model WorkflowStep {
+  id                   String  @id @default(uuid())
+  workflowDefinitionId String
+  stepNumber           Int
+  name                 String
+  approverRoleCode     String
+  isParallel           Boolean @default(false)
+  slaHours             Int     @default(48)
+
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+
+  @@map("workflow_steps")
+}
+
+model WorkflowInstance {
+  id                   String                 @id @default(uuid())
+  legacyMongoId        String?                @unique
+  workflowDefinitionId String
+  entityType           String
+  entityId             String
+  currentStepNumber    Int                    @default(1)
+  status               WorkflowInstanceStatus @default(PENDING)
+  requestedByUserId    String
+  createdAt            DateTime               @default(now())
+  updatedAt            DateTime               @updatedAt
+
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id])
+  approvalActions    ApprovalAction[]
+
+  @@map("workflow_instances")
+}
+
+model ApprovalAction {
+  id                 String           @id @default(uuid())
+  legacyMongoId      String?          @unique
+  workflowInstanceId String
+  stepNumber         Int
+  approverUserId     String
+  decision           ApprovalDecision
+  comments           String?
+  timestamp          DateTime         @default(now())
+  createdAt          DateTime         @default(now())
+
+  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+
+  @@map("approval_actions")
+}
+
+model AIRecommendation {
+  id                    String                 @id @default(uuid())
+  legacyMongoId         String?                @unique
+  type                  AIRecommendationType
+  assetId               String?
+  confidenceScore       Int
+  recommendationPayload Json?
+  explanation           String?
+  status                AIRecommendationStatus @default(PENDING)
+  reviewedByUserId      String?
+  reviewedAt            DateTime?
+  createdAt             DateTime               @default(now())
+  updatedAt             DateTime               @updatedAt
+
+  asset Asset? @relation(fields: [assetId], references: [id])
+
+  @@map("ai_recommendations")
+}
+
+model Attachment {
+  id               String   @id @default(uuid())
+  legacyMongoId    String?  @unique
+  entityType       String
+  entityId         String
+  fileName         String
+  fileType         String?
+  fileSize         Int?
+  storageKey       String
+  url              String
+  uploadedByUserId String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([entityType, entityId])
+  @@map("attachments")
+}
+
+// ------------------------------------------------------
+// INTEGRATIONS & SYSTEM JOBS
+// ------------------------------------------------------
+
+model WebhookSubscription {
+  id            String   @id @default(uuid())
+  legacyMongoId String?  @unique
+  targetUrl     String
+  events        String[]
+  secret        String?
+  active        Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  deliveries WebhookDelivery[]
+
+  @@map("webhook_subscriptions")
+}
+
+model WebhookDelivery {
+  id             String   @id @default(uuid())
+  subscriptionId String
+  event          String?
+  payload        Json?
+  responseStatus Int?
+  success        Boolean?
+  timestamp      DateTime @default(now())
+  createdAt      DateTime @default(now())
+
+  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+
+  @@map("webhook_deliveries")
+}
+
+model ImportJob {
+  id              String          @id @default(uuid())
+  legacyMongoId   String?         @unique
+  fileName        String
+  entityType      String
+  totalRows       Int             @default(0)
+  processedRows   Int             @default(0)
+  successRows     Int             @default(0)
+  failedRows      Int             @default(0)
+  errors          Json? // Array of {row, error}
+  status          ImportJobStatus @default(PENDING)
+  createdByUserId String
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+
+  createdBy User @relation(fields: [createdByUserId], references: [id])
+
+  @@map("import_jobs")
+}
+
+// ------------------------------------------------------
+// REAL-TIME LOCATION TRACKING (RTLS) & RFID READERS
+// ------------------------------------------------------
+
+enum RtlsReaderStatus {
+  ONLINE
+  OFFLINE
+  DEGRADED
+  MAINTENANCE
+}
+
+enum RtlsAlertSeverity {
+  CRITICAL
+  HIGH
+  MEDIUM
+  LOW
+  INFO
+}
+
+enum RtlsAlertType {
+  RESTRICTED_ZONE_ENTRY
+  UNEXPECTED_EXIT
+  MISSING_ASSET
+  READER_OFFLINE
+  UNKNOWN_EPC
+  EXCESSIVE_MOVEMENT
+}
+
+model RtlsReader {
+  id               String           @id @default(uuid())
+  readerIdentifier String           @unique
+  name             String
+  manufacturer     String           @default("Impinj")
+  modelName        String?          @default("Speedway R420")
+  ipAddress        String?
+  macAddress       String?
+  siteId           String
+  buildingId       String?
+  floorId          String?
+  zoneId           String?
+  status           RtlsReaderStatus @default(ONLINE)
+  lastHeartbeat    DateTime         @default(now())
+  firmwareVersion  String?          @default("v5.14.0")
+  enabled          Boolean          @default(true)
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+
+  antennas   RtlsAntenna[]
+  events     RfidEvent[]
+  locations  RtlsAssetLocation[]
+  movements  RtlsMovement[]
+  heartbeats RtlsReaderHeartbeat[]
+  alerts     RtlsAlert[]
+
+  @@map("rtls_readers")
+}
+
+model RtlsAntenna {
+  id            String   @id @default(uuid())
+  readerId      String
+  antennaNumber Int
+  name          String
+  zoneId        String?
+  direction     String?  @default("OMNIDIRECTIONAL")
+  enabled       Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  reader    RtlsReader          @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  events    RfidEvent[]
+  locations RtlsAssetLocation[]
+  movements RtlsMovement[]
+
+  @@unique([readerId, antennaNumber])
+  @@map("rtls_antennas")
+}
+
+model RfidEvent {
+  id               String   @id @default(uuid())
+  epc              String
+  tid              String?
+  readerId         String
+  antennaId        String?
+  rssi             Int?     @default(-55)
+  rawPayload       Json?
+  timestamp        DateTime @default(now())
+  processedAt      DateTime @default(now())
+  processingStatus String   @default("PROCESSED")
+
+  reader  RtlsReader   @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id])
+
+  @@index([epc, timestamp])
+  @@index([readerId, timestamp])
+  @@map("rfid_events")
+}
+
+model RtlsAssetLocation {
+  id         String   @id @default(uuid())
+  assetId    String   @unique
+  zoneId     String?
+  readerId   String?
+  antennaId  String?
+  confidence Int      @default(90)
+  firstSeen  DateTime @default(now())
+  lastSeen   DateTime @default(now())
+  source     String   @default("RFID_RTLS")
+  xRatio     Decimal? @db.Decimal(6, 4)
+  yRatio     Decimal? @db.Decimal(6, 4)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  asset   Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  reader  RtlsReader?  @relation(fields: [readerId], references: [id])
+  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id])
+
+  @@map("rtls_asset_locations")
+}
+
+model RtlsMovement {
+  id         String   @id @default(uuid())
+  assetId    String
+  fromZoneId String?
+  toZoneId   String?
+  readerId   String?
+  antennaId  String?
+  detectedAt DateTime @default(now())
+  direction  String?  @default("TRANSIT")
+  confidence Int      @default(90)
+  eventId    String?
+  createdAt  DateTime @default(now())
+
+  asset   Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  reader  RtlsReader?  @relation(fields: [readerId], references: [id])
+  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id])
+
+  @@index([assetId, detectedAt])
+  @@map("rtls_movements")
+}
+
+model RtlsReaderHeartbeat {
+  id        String   @id @default(uuid())
+  readerId  String
+  timestamp DateTime @default(now())
+  status    String   @default("ONLINE")
+  latencyMs Int      @default(12)
+  errorInfo String?
+  createdAt DateTime @default(now())
+
+  reader RtlsReader @relation(fields: [readerId], references: [id], onDelete: Cascade)
+
+  @@index([readerId, timestamp])
+  @@map("rtls_reader_heartbeats")
+}
+
+model RtlsAlert {
+  id               String            @id @default(uuid())
+  alertType        RtlsAlertType
+  severity         RtlsAlertSeverity @default(HIGH)
+  message          String
+  assetId          String?
+  readerId         String?
+  zoneId           String?
+  status           String            @default("OPEN")
+  createdAt        DateTime          @default(now())
+  resolvedAt       DateTime?
+  resolvedByUserId String?
+
+  reader RtlsReader? @relation(fields: [readerId], references: [id])
+
+  @@index([status, createdAt])
+  @@map("rtls_alerts")
+}

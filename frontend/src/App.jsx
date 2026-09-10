@@ -23,9 +23,12 @@ import { DisposalWorkbench } from './pages/DisposalWorkbench';
 import { ReportsCatalogue } from './pages/ReportsCatalogue';
 import { WorkflowDesigner } from './pages/WorkflowDesigner';
 import { AISuite } from './pages/AISuite';
+import { RtlsWorkbench } from './pages/RtlsWorkbench';
+import { RtlsFloorMapLive } from './pages/RtlsFloorMapLive';
 import { AdminMasterData } from './pages/AdminMasterData';
 import { AuditLogViewer } from './pages/AuditLogViewer';
 import { MobileScanWorkbench } from './pages/MobileScanWorkbench';
+import { UserManagementWorkbench } from './pages/UserManagementWorkbench';
 
 const queryClient = new QueryClient();
 
@@ -63,6 +66,8 @@ export function App() {
                 <Route path="maintenance" element={<MaintenanceManager />} />
                 <Route path="contracts" element={<ContractManager />} />
                 <Route path="discovery" element={<DiscoveryWorkbench />} />
+                <Route path="rtls" element={<RtlsWorkbench />} />
+                <Route path="rtls/map" element={<RtlsFloorMapLive />} />
                 <Route path="maps" element={<FloorMapEditor />} />
                 <Route path="disposals" element={<DisposalWorkbench />} />
                 <Route path="reports" element={<ReportsCatalogue />} />
@@ -70,6 +75,8 @@ export function App() {
                 <Route path="ai-insights" element={<AISuite />} />
                 <Route path="master-data" element={<AdminMasterData />} />
                 <Route path="admin/master-data" element={<Navigate to="/master-data" replace />} />
+                <Route path="admin/users" element={<UserManagementWorkbench />} />
+                <Route path="users" element={<Navigate to="/admin/users" replace />} />
                 <Route path="audit-trail" element={<AuditLogViewer />} />
                 <Route path="mobile-scan" element={<MobileScanWorkbench />} />
               </Route>
@@ -78,6 +85,7 @@ export function App() {
         </CommandPaletteProvider>
       </AuthProvider>
     </QueryClientProvider>
+
   );
 }
 

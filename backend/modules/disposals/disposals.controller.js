@@ -1,38 +1,42 @@
-import { Asset } from '../../models/Asset.js';
-import { AssetTransaction } from '../../models/AssetTransaction.js';
+import prisma from '../../config/prisma.js';
 
 export async function getDisposedAssets(req, res, next) {
   try {
-    const assets = await Asset.find({ lifecycleStatus: { $in: ['RETIRED', 'DISPOSED'] } })
-      .populate('categoryId')
-      .populate('companyId')
-      .populate('siteId')
-      .populate('buildingId')
-      .populate('roomId')
-      .sort({ updatedAt: -1 });
+    const assets = await prisma.asset.findMany({
+      where: { lifecycleStatus: { in: ['RETIRED', 'DISPOSED'] } },
+      include: {
+        category: true,
+        company: true,
+        site: true,
+        building: true,
+        room: true
+      },
+      orderBy: { updatedAt: 'desc' }
+    });
 
-    const assetIds = assets.map(a => a._id);
-    const transactions = await AssetTransaction.find({ 
-      assetId: { $in: assetIds }, 
-      transactionType: 'DISPOSE' 
-    })
-      .populate('performedBy', 'name email')
-      .sort({ createdAt: -1 });
+    const assetIds = assets.map(a => a.id);
+    const transactions = await prisma.assetTransaction.findMany({
+      where: {
+        assetId: { in: assetIds },
+        transactionType: 'DISPOSE'
+      },
+      include: {
+        performedBy: { select: { id: true, username: true, fullName: true, email: true } }
+      },
+      orderBy: { createdAt: 'desc' }
+    });
 
     const txMap = new Map();
     transactions.forEach(t => {
-      if (!txMap.has(t.assetId.toString())) {
-        txMap.set(t.assetId.toString(), t);
+      if (!txMap.has(t.assetId)) {
+        txMap.set(t.assetId, t);
       }
     });
 
-    const enrichedAssets = assets.map(a => {
-      const tx = txMap.get(a._id.toString());
-      return {
-        ...a.toObject(),
-        disposalTx: tx || null
-      };
-    });
+    const enrichedAssets = assets.map(a => ({
+      ...a,
+      disposalTx: txMap.get(a.id) || null
+    }));
 
     res.json({ success: true, assets: enrichedAssets });
   } catch (err) { next(err); }
@@ -41,8 +45,8 @@ export async function getDisposedAssets(req, res, next) {
 export async function getDisposalSummary(req, res, next) {
   try {
     const [allAssets, disposeTxs] = await Promise.all([
-      Asset.find(),
-      AssetTransaction.find({ transactionType: 'DISPOSE' })
+      prisma.asset.findMany({ select: { lifecycleStatus: true, active: true } }),
+      prisma.assetTransaction.findMany({ where: { transactionType: 'DISPOSE' }, select: { notes: true } })
     ]);
 
     let activeCandidatesCount = 0;
@@ -81,44 +85,54 @@ export async function getDisposalSummary(req, res, next) {
 export async function initiateDisposal(req, res, next) {
   try {
     const { assetId, method = 'SCRAP', estimatedProceeds = 0, reason } = req.body;
+    const userId = req.user?.id || req.user?._id;
 
-    const asset = await Asset.findById(assetId);
+    const asset = await prisma.asset.findUnique({ where: { id: assetId } });
     if (!asset) return res.status(404).json({ success: false, message: 'Asset not found' });
 
     if (asset.lifecycleStatus === 'DISPOSED' || asset.lifecycleStatus === 'RETIRED' || asset.active === false) {
-      return res.status(400).json({ 
-        success: false, 
-        message: `This asset (${asset.tagNumber || asset.assetId}) has already been disposed of or retired.` 
+      return res.status(400).json({
+        success: false,
+        message: `This asset (${asset.tagNumber || asset.assetId}) has already been disposed of or retired.`
       });
     }
 
-    const previousStatus = asset.lifecycleStatus || 'ACTIVE';
+    const previousStatus = asset.lifecycleStatus || 'IN_SERVICE';
 
-    asset.lifecycleStatus = 'DISPOSED';
-    asset.active = false;
-    asset.updatedBy = req.user._id;
-    await asset.save();
-
-    const tx = await AssetTransaction.create({
-      assetId: asset._id,
-      transactionType: 'DISPOSE',
-      fromStatus: previousStatus,
-      toStatus: 'DISPOSED',
-      performedBy: req.user._id,
-      notes: `Disposed via ${method}. Proceeds: $${estimatedProceeds}. Reason: ${reason}`
+    await prisma.asset.update({
+      where: { id: asset.id },
+      data: {
+        lifecycleStatus: 'DISPOSED',
+        active: false,
+        updatedByUserId: userId
+      }
     });
 
-    const populatedAsset = await Asset.findById(asset._id)
-      .populate('categoryId')
-      .populate('companyId')
-      .populate('siteId')
-      .populate('buildingId')
-      .populate('roomId');
+    const tx = await prisma.assetTransaction.create({
+      data: {
+        assetId: asset.id,
+        transactionType: 'DISPOSE',
+        fromStatus: previousStatus,
+        toStatus: 'DISPOSED',
+        performedByUserId: userId,
+        notes: `Disposed via ${method}. Proceeds: $${estimatedProceeds}. Reason: ${reason}`
+      }
+    });
 
-    res.json({ 
-      success: true, 
-      asset: { ...populatedAsset.toObject(), disposalTx: tx } 
+    const populatedAsset = await prisma.asset.findUnique({
+      where: { id: asset.id },
+      include: {
+        category: true,
+        company: true,
+        site: true,
+        building: true,
+        room: true
+      }
+    });
+
+    res.json({
+      success: true,
+      asset: { ...populatedAsset, disposalTx: tx }
     });
   } catch (err) { next(err); }
 }
-

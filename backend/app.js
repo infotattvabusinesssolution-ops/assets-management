@@ -22,6 +22,7 @@ import searchRoutes from './modules/search/search.routes.js';
 import aiRoutes from './modules/ai/ai.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import importRoutes from './modules/imports/imports.routes.js';
+import rtlsRoutes from './modules/rtls/rtls.routes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -66,6 +67,7 @@ app.use('/api/v1/search', searchRoutes);
 app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/imports', importRoutes);
+app.use('/api/v1/rtls', rtlsRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);
