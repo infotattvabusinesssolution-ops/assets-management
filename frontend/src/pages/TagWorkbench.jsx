@@ -21,7 +21,8 @@ import {
   Copy,
   Radio,
   Download,
-  X
+  X,
+  Trash2
 } from 'lucide-react';
 
 export function TagWorkbench() {
@@ -40,6 +41,7 @@ export function TagWorkbench() {
   const [submitting, setSubmitting] = useState(false);
   const [activeTab, setActiveTab] = useState('all-tags');
   const [toast, setToast] = useState(null);
+  const [deleteTagId, setDeleteTagId] = useState(null);
 
   // Form State for Association
   const [selectedAssetId, setSelectedAssetId] = useState('');
@@ -172,6 +174,22 @@ export function TagWorkbench() {
       alert(err?.message || 'Failed to generate batch tags');
     } finally {
       setSubmitting(false);
+    }
+  };
+
+  const handleDeleteTag = async (id) => {
+    try {
+      const res = await api.delete(`/tagging/${id}`);
+      if (res && res.success) {
+        setDeleteTagId(null);
+        showToastNotification('Tag record deleted successfully.');
+        loadWorkbenchData();
+      } else {
+        alert(res?.message || 'Failed to delete tag');
+      }
+    } catch (err) {
+      console.error('Delete tag error:', err);
+      alert(err?.message || 'Failed to delete tag');
     }
   };
 
@@ -744,15 +762,25 @@ export function TagWorkbench() {
                         {t.rfidEpc || '—'}
                       </td>
                       <td className="p-3 text-right">
-                        <button
-                          onClick={() => {
-                            setTagNumber(t.tagNumber);
-                            if (t.assetId) setSelectedAssetId(t.assetId);
-                          }}
-                          className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-semibold text-[11px]"
-                        >
-                          Select Label
-                        </button>
+                        <div className="flex items-center justify-end gap-1.5">
+                          <button
+                            onClick={() => {
+                              setTagNumber(t.tagNumber);
+                              if (t.assetId) setSelectedAssetId(t.assetId);
+                            }}
+                            className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-purple-700 rounded-lg font-semibold text-[11px]"
+                          >
+                            Select Label
+                          </button>
+
+                          <button
+                            onClick={() => setDeleteTagId(t.id || t.tagNumber)}
+                            className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                            title="Delete Tag Record"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -935,6 +963,39 @@ export function TagWorkbench() {
               </button>
             </div>
           </form>
+        </div>
+      )}
+
+      {/* Delete Confirmation Modal */}
+      {deleteTagId && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white border border-slate-200 w-full max-w-sm p-6 rounded-2xl shadow-2xl space-y-4 text-center animate-fade-in">
+            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
+              <Trash2 className="w-6 h-6" />
+            </div>
+
+            <div>
+              <h3 className="text-sm font-bold text-slate-900">Delete Tag Record?</h3>
+              <p className="text-xs text-slate-500 mt-1">
+                Are you sure you want to delete tag <strong className="text-slate-800 font-mono">{deleteTagId}</strong>? If bound to an active asset, it will unbind the physical tag number.
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-2.5 pt-2">
+              <button 
+                onClick={() => setDeleteTagId(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium"
+              >
+                Cancel
+              </button>
+              <button 
+                onClick={() => handleDeleteTag(deleteTagId)}
+                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs"
+              >
+                Confirm Delete
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

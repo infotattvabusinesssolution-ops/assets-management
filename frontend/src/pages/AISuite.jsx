@@ -280,57 +280,42 @@ export function AISuite() {
     setLoading(true);
 
     try {
-      const apiRes = await api.post('/ai/assistant', { prompt: textToSend }).catch(() => null);
+      const apiRes = await api.post('/ai/assistant', { prompt: textToSend });
 
-      let botResponseWidget = 'DEFAULT_RESULTS';
-      const lower = textToSend.toLowerCase();
+      let responseText = apiRes?.text;
+      let botResponseWidget = apiRes?.widgetType || 'DEFAULT_RESULTS';
 
-      if (lower.includes('barcode') || lower.includes('12345') || lower.includes('where is asset')) {
-        botResponseWidget = 'ASSET_LOCATION';
-      } else if (lower.includes('laptop') || lower.includes('available')) {
-        botResponseWidget = 'INVENTORY_AVAILABLE';
-      } else if (lower.includes('total value') || lower.includes('value of it equipment')) {
-        botResponseWidget = 'FINANCIAL_VALUE';
-      } else if (lower.includes('purchased in') || lower.includes('assets purchased')) {
-        botResponseWidget = 'FINANCIAL_PURCHASED';
-      } else if (lower.includes('depreciat') || lower.includes('fully depreciate')) {
-        botResponseWidget = 'FINANCIAL_DEPRECIATION';
-      } else if (lower.includes('projector') || lower.includes('last moved')) {
-        botResponseWidget = 'AUDIT_MOVEMENT';
-      } else if (lower.includes('disposal history') || lower.includes('disposal') && lower.includes('department')) {
-        botResponseWidget = 'AUDIT_DISPOSAL';
-      } else if (lower.includes('approved') || lower.includes('approval') || lower.includes('who approved')) {
-        botResponseWidget = 'AUDIT_APPROVAL';
-      } else if (lower.includes('distribution') || lower.includes('across departments')) {
-        botResponseWidget = 'ANALYTICS_DISTRIBUTION';
-      } else if (lower.includes('custodian manages') || lower.includes('most equipment')) {
-        botResponseWidget = 'ANALYTICS_CUSTODIAN';
-      } else if (lower.includes('depreciation summary') || lower.includes('depreciation') && lower.includes('category')) {
-        botResponseWidget = 'ANALYTICS_DEPRECIATION_SUMMARY';
-      } else if (lower.includes('building') || lower.includes('equipment')) {
-        botResponseWidget = 'BUILDING_EQUIPMENT';
-      } else if (lower.includes('bader') || lower.includes('custodian') || lower.includes('assigned')) {
-        botResponseWidget = 'CUSTODIAN_ASSIGNMENT';
+      if (!responseText) {
+        responseText = getBotIntroText(botResponseWidget, textToSend);
       }
 
-      setTimeout(() => {
-        const titleText = getBotIntroText(botResponseWidget, textToSend);
-        const botMsg = {
-          id: Date.now() + '-bot',
-          sender: 'bot',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: titleText,
-          widgetType: botResponseWidget
-        };
-        setMessages(prev => [...prev, botMsg]);
-        setActiveResult({
-          title: titleText,
-          widgetType: botResponseWidget,
-          apiData: apiRes?.records || []
-        });
-        setLoading(false);
-      }, 400);
+      const botMsg = {
+        id: Date.now() + '-bot',
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: responseText,
+        widgetType: botResponseWidget,
+        provider: apiRes?.provider,
+        apiData: apiRes
+      };
+
+      setMessages(prev => [...prev, botMsg]);
+      setActiveResult({
+        title: responseText,
+        widgetType: botResponseWidget,
+        apiData: apiRes?.records || []
+      });
     } catch (err) {
+      console.error('AI Suite query error:', err);
+      const fallbackMsg = {
+        id: Date.now() + '-bot',
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: `Results for "${textToSend}":`,
+        widgetType: 'DEFAULT_RESULTS'
+      };
+      setMessages(prev => [...prev, fallbackMsg]);
+    } finally {
       setLoading(false);
     }
   };
@@ -605,6 +590,7 @@ export function AISuite() {
                           {msg.widgetType && (
                             <AIInlineWidgets
                               widgetType={msg.widgetType}
+                              apiData={msg.apiData}
                               onNavigate={(path) => navigate(path)}
                             />
                           )}

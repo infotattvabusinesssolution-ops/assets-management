@@ -12,7 +12,7 @@ export async function getCampaigns(req, res, next) {
 
 export async function createCampaign(req, res, next) {
   try {
-    const { title, scope = {}, mode = 'FULL_CENSUS' } = req.body;
+    const { title, scope = {}, mode = 'FULL_CENSUS', startDate, endDate } = req.body;
     const campaignNumber = 'STK-' + Date.now().toString(36).toUpperCase();
     const userId = req.user?.id || req.user?._id;
 
@@ -24,15 +24,15 @@ export async function createCampaign(req, res, next) {
       companyId = defaultCompany?.id;
     }
 
-    if (!siteId) {
+    if (!siteId && !scope.allowAllSites) {
       const defaultSite = await prisma.site.findFirst({ where: { active: true } });
       siteId = defaultSite?.id;
     }
 
-    if (!companyId || !siteId) {
+    if (!companyId) {
       return res.status(400).json({
         success: false,
-        message: 'A valid Company and Site are required to launch a stocktake campaign. Please ensure at least one active Company and Site exist.'
+        message: 'A valid Company entity is required to launch a stocktake campaign.'
       });
     }
 
@@ -42,12 +42,13 @@ export async function createCampaign(req, res, next) {
           campaignNumber,
           title,
           companyId,
-          siteId,
+          siteId: siteId || (await tx.site.findFirst({ where: { active: true } }))?.id || '',
           buildingId: scope.buildingId || null,
           categoryId: scope.categoryId || null,
-          mode,
+          mode: mode || 'FULL_CENSUS',
           status: 'ACTIVE',
-          startDate: new Date(),
+          startDate: startDate ? new Date(startDate) : new Date(),
+          endDate: endDate ? new Date(endDate) : null,
           createdByUserId: userId
         }
       });

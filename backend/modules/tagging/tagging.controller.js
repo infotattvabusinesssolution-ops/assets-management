@@ -164,3 +164,33 @@ export async function getTagHistory(req, res, next) {
     res.json({ success: true, history });
   } catch (err) { next(err); }
 }
+
+export async function deleteTag(req, res, next) {
+  try {
+    const { id } = req.params;
+    const tag = await prisma.tag.findFirst({
+      where: { OR: [{ id }, { tagNumber: id }] },
+      include: { asset: true }
+    });
+
+    if (!tag) {
+      return res.status(404).json({ success: false, message: 'Tag record not found' });
+    }
+
+    await prisma.$transaction(async (tx) => {
+      // If tag is attached to an asset, clear asset tag number
+      if (tag.assetId) {
+        await tx.asset.update({
+          where: { id: tag.assetId },
+          data: { tagNumber: null }
+        });
+      }
+
+      await tx.tag.delete({
+        where: { id: tag.id }
+      });
+    });
+
+    res.json({ success: true, message: 'Tag record deleted successfully' });
+  } catch (err) { next(err); }
+}

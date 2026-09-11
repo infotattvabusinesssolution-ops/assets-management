@@ -69,15 +69,24 @@ export function StocktakeManager() {
   const [resolutionNotes, setResolutionNotes] = useState('');
   const [actionLoading, setActionLoading] = useState(false);
 
-  // Launch Campaign Form
-  const [launchForm, setLaunchForm] = useState({
+  // Launch Campaign Form State
+  const initialLaunchForm = {
     title: '',
     companyId: '',
     siteId: '',
     buildingId: '',
     categoryId: '',
-    mode: 'FULL_CENSUS'
-  });
+    mode: 'FULL_CENSUS',
+    startDate: new Date().toISOString().split('T')[0],
+    endDate: '',
+    verificationMethods: {
+      barcode: true,
+      rfid: true,
+      photo: false
+    }
+  };
+
+  const [launchForm, setLaunchForm] = useState(initialLaunchForm);
 
   // Embedded Scanner State
   const [scanType, setScanType] = useState('BARCODE');
@@ -193,24 +202,32 @@ export function StocktakeManager() {
       const payload = {
         title: launchForm.title,
         mode: launchForm.mode,
+        startDate: launchForm.startDate,
+        endDate: launchForm.endDate || undefined,
         scope: {
           companyId: selectedCompanyId,
           siteId: selectedSiteId,
           buildingId: launchForm.buildingId || undefined,
-          categoryId: launchForm.categoryId || undefined
+          categoryId: launchForm.categoryId || undefined,
+          allowAllSites: !launchForm.siteId
         }
       };
 
       const res = await api.post('/stocktakes/campaigns', payload);
-      if (res.success) {
+      if (res && res.success) {
         showToast('success', `Campaign ${res.campaign?.campaignNumber || ''} launched successfully!`);
         setShowLaunchModal(false);
-        setLaunchForm({ title: '', companyId: '', siteId: '', buildingId: '', categoryId: '', mode: 'FULL_CENSUS' });
+        setLaunchForm(initialLaunchForm);
         fetchCampaigns();
-        openCampaignDetail(res.campaign.id || res.campaign._id);
+        if (res.campaign?.id || res.campaign?._id) {
+          openCampaignDetail(res.campaign.id || res.campaign._id);
+        }
+      } else {
+        alert(res?.message || 'Failed to launch stocktake campaign');
       }
     } catch (err) {
-      alert(err.message || 'Failed to launch campaign');
+      console.error('Launch campaign error:', err);
+      alert(err?.message || 'Failed to launch stocktake campaign');
     } finally {
       setActionLoading(false);
     }
@@ -948,75 +965,199 @@ export function StocktakeManager() {
       )}
 
       {/* ========================================================================= */}
-      {/* MODAL 1: LAUNCH CAMPAIGN */}
+      {/* MODAL 1: LAUNCH CAMPAIGN (Enhanced Enterprise Spec) */}
       {/* ========================================================================= */}
       {showLaunchModal && (
-        <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Plus className="w-5 h-5 text-brand-600" /> Launch Stocktake Campaign
-              </h2>
-              <button onClick={() => setShowLaunchModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4 sm:p-6 overflow-hidden">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-xl w-full max-h-[85vh] sm:max-h-[90vh] flex flex-col shadow-2xl overflow-hidden animate-in fade-in zoom-in duration-150">
+            
+            {/* Fixed Header */}
+            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white flex-shrink-0">
+              <div>
+                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
+                  <ClipboardCheck className="w-5 h-5 text-brand-600" /> Launch Stocktake & Census Campaign
+                </h2>
+                <p className="text-xs text-slate-500">
+                  Establish a physical inventory baseline, assign audit scopes, and launch field verification protocols.
+                </p>
+              </div>
+              <button 
+                onClick={() => setShowLaunchModal(false)} 
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <form onSubmit={handleLaunchCampaign} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Campaign Title *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="E.g. Q3 Corporate IT Hardware Census"
-                  value={launchForm.title}
-                  onChange={(e) => setLaunchForm({ ...launchForm, title: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:border-brand-500"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
+            {/* Scrollable Form Body */}
+            <form onSubmit={handleLaunchCampaign} className="flex flex-col flex-1 overflow-hidden">
+              <div className="p-6 space-y-4 text-xs overflow-y-auto flex-1">
                 <div>
-                  <label className="block text-slate-600 mb-1">Scope Site</label>
-                  <select
-                    value={launchForm.siteId}
-                    onChange={(e) => setLaunchForm({ ...launchForm, siteId: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 focus:border-brand-500"
-                  >
-                    <option value="">-- All Subnet Sites --</option>
-                    {sites.map(s => <option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>)}
-                  </select>
+                  <label className="block text-slate-700 font-semibold mb-1">
+                    Campaign Title <span className="text-red-500 font-bold ml-0.5">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="E.g. Q3 Corporate IT Hardware Census"
+                    value={launchForm.title}
+                    onChange={(e) => setLaunchForm({ ...launchForm, title: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-brand-500 font-semibold"
+                  />
                 </div>
 
-                <div>
-                  <label className="block text-slate-600 mb-1">Scope Category</label>
-                  <select
-                    value={launchForm.categoryId}
-                    onChange={(e) => setLaunchForm({ ...launchForm, categoryId: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 focus:border-brand-500"
-                  >
-                    <option value="">-- All Asset Categories --</option>
-                    {categories.map(c => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
-                  </select>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      Audit Execution Mode <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <select
+                      value={launchForm.mode}
+                      onChange={(e) => setLaunchForm({ ...launchForm, mode: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-brand-700 font-bold focus:outline-none focus:border-brand-500"
+                    >
+                      <option value="FULL_CENSUS">FULL_CENSUS (100% Comprehensive Baseline Audit)</option>
+                      <option value="CYCLE_COUNT">CYCLE_COUNT (Targeted Category / Site Sampling)</option>
+                      <option value="BLIND_AUDIT">BLIND_AUDIT (Compliance Blind Baseline)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 font-semibold mb-1">Target Company Entity Scope</label>
+                    <select
+                      value={launchForm.companyId}
+                      onChange={(e) => setLaunchForm({ ...launchForm, companyId: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-brand-500"
+                    >
+                      <option value="">-- All Corporate Companies --</option>
+                      {companies.map(c => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl space-y-3">
+                  <h4 className="font-bold text-xs text-brand-700 uppercase tracking-wider">Spatial & Functional Audit Scopes</h4>
+                  
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-slate-600 font-semibold mb-1">Scope Site</label>
+                      <select
+                        value={launchForm.siteId}
+                        onChange={(e) => setLaunchForm({ ...launchForm, siteId: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-brand-500"
+                      >
+                        <option value="">-- All Subnet Sites --</option>
+                        {sites.map(s => <option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 font-semibold mb-1">Scope Building</label>
+                      <select
+                        value={launchForm.buildingId}
+                        onChange={(e) => setLaunchForm({ ...launchForm, buildingId: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-brand-500"
+                      >
+                        <option value="">-- All Buildings --</option>
+                        {buildings.map(b => <option key={b.id || b._id} value={b.id || b._id}>{b.name}</option>)}
+                      </select>
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-600 font-semibold mb-1">Scope Category</label>
+                      <select
+                        value={launchForm.categoryId}
+                        onChange={(e) => setLaunchForm({ ...launchForm, categoryId: e.target.value })}
+                        className="w-full bg-white border border-slate-200 rounded-xl p-2 text-xs text-slate-800 focus:outline-none focus:border-brand-500"
+                      >
+                        <option value="">-- All Asset Categories --</option>
+                        {categories.map(c => <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>)}
+                      </select>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      Campaign Start Date <span className="text-red-500 font-bold ml-0.5">*</span>
+                    </label>
+                    <input
+                      type="date"
+                      required
+                      value={launchForm.startDate}
+                      onChange={(e) => setLaunchForm({ ...launchForm, startDate: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-brand-500 font-semibold"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-700 font-semibold mb-1">
+                      Target Completion Due Date (Optional)
+                    </label>
+                    <input
+                      type="date"
+                      value={launchForm.endDate}
+                      onChange={(e) => setLaunchForm({ ...launchForm, endDate: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-xs text-slate-800 focus:outline-none focus:border-brand-500"
+                    />
+                  </div>
+                </div>
+
+                {/* Audit Verification Methods */}
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+                  <label className="block text-slate-700 font-bold text-[11px] uppercase tracking-wider">
+                    Required Verification Protocols
+                  </label>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                    {[
+                      { key: 'barcode', label: 'Camera / Barcode Scanner' },
+                      { key: 'rfid', label: 'UHF RFID Handheld Reader' },
+                      { key: 'photo', label: 'Photo Verification Required' }
+                    ].map(v => (
+                      <label key={v.key} className="flex items-center gap-2 cursor-pointer bg-white p-2 rounded-lg border border-slate-200 hover:border-brand-300 transition-colors">
+                        <input
+                          type="checkbox"
+                          checked={Boolean(launchForm.verificationMethods?.[v.key])}
+                          onChange={(e) => setLaunchForm({
+                            ...launchForm,
+                            verificationMethods: {
+                              ...launchForm.verificationMethods,
+                              [v.key]: e.target.checked
+                            }
+                          })}
+                          className="rounded text-brand-600 focus:ring-brand-500"
+                        />
+                        <span className="text-[11px] text-slate-700 font-medium select-none">{v.label}</span>
+                      </label>
+                    ))}
+                  </div>
                 </div>
               </div>
 
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setShowLaunchModal(false)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 text-xs font-bold rounded-lg flex items-center gap-2 shadow-xs transition-colors"
-                >
-                  {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ClipboardCheck className="w-4 h-4" />}
-                  Launch Campaign
-                </button>
+              {/* Fixed Footer */}
+              <div className="flex items-center justify-between p-4 px-6 border-t border-slate-100 bg-slate-50/80 flex-shrink-0">
+                <div className="text-xs text-slate-500">
+                  Fields marked with <span className="text-red-500 font-bold text-sm">*</span> are required.
+                </div>
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setShowLaunchModal(false)}
+                    className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    disabled={actionLoading}
+                    className="bg-brand-600 hover:bg-brand-700 text-white font-bold px-5 py-2 rounded-xl text-xs flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50"
+                  >
+                    {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ClipboardCheck className="w-4 h-4" />}
+                    Launch Campaign
+                  </button>
+                </div>
               </div>
             </form>
           </div>

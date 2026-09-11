@@ -94,52 +94,38 @@ export function FloatingAIAssistant() {
     setLoading(true);
 
     try {
-      await api.post('/ai/assistant', { prompt: textToSend }).catch(() => null);
+      const res = await api.post('/ai/assistant', { prompt: textToSend });
 
-      let botWidget = 'DEFAULT_RESULTS';
-      const lower = textToSend.toLowerCase();
+      let responseText = res?.text;
+      let botWidget = res?.widgetType || 'DEFAULT_RESULTS';
+      let provider = res?.provider;
 
-      if (lower.includes('barcode') || lower.includes('12345') || lower.includes('where is asset')) {
-        botWidget = 'ASSET_LOCATION';
-      } else if (lower.includes('laptop') || lower.includes('available')) {
-        botWidget = 'INVENTORY_AVAILABLE';
-      } else if (lower.includes('total value') || lower.includes('value of it equipment')) {
-        botWidget = 'FINANCIAL_VALUE';
-      } else if (lower.includes('purchased in') || lower.includes('assets purchased')) {
-        botWidget = 'FINANCIAL_PURCHASED';
-      } else if (lower.includes('depreciat') || lower.includes('fully depreciate')) {
-        botWidget = 'FINANCIAL_DEPRECIATION';
-      } else if (lower.includes('projector') || lower.includes('last moved')) {
-        botWidget = 'AUDIT_MOVEMENT';
-      } else if (lower.includes('disposal history') || lower.includes('disposal') && lower.includes('department')) {
-        botWidget = 'AUDIT_DISPOSAL';
-      } else if (lower.includes('approved') || lower.includes('approval') || lower.includes('who approved')) {
-        botWidget = 'AUDIT_APPROVAL';
-      } else if (lower.includes('distribution') || lower.includes('across departments')) {
-        botWidget = 'ANALYTICS_DISTRIBUTION';
-      } else if (lower.includes('custodian manages') || lower.includes('most equipment')) {
-        botWidget = 'ANALYTICS_CUSTODIAN';
-      } else if (lower.includes('depreciation summary') || lower.includes('depreciation') && lower.includes('category')) {
-        botWidget = 'ANALYTICS_DEPRECIATION_SUMMARY';
-      } else if (lower.includes('building') || lower.includes('equipment')) {
-        botWidget = 'BUILDING_EQUIPMENT';
-      } else if (lower.includes('bader') || lower.includes('custodian') || lower.includes('assigned')) {
-        botWidget = 'CUSTODIAN_ASSIGNMENT';
+      if (!responseText) {
+        responseText = getBotIntroText(botWidget, textToSend);
       }
 
-      setTimeout(() => {
-        const titleText = getBotIntroText(botWidget, textToSend);
-        const botMsg = {
-          id: Date.now() + '-bot',
-          sender: 'bot',
-          timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-          text: titleText,
-          widgetType: botWidget
-        };
-        setMessages(prev => [...prev, botMsg]);
-        setLoading(false);
-      }, 400);
+      const botMsg = {
+        id: Date.now() + '-bot',
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: responseText,
+        widgetType: botWidget,
+        provider: provider,
+        apiData: res
+      };
+
+      setMessages(prev => [...prev, botMsg]);
     } catch (err) {
+      console.error('AI assistant error:', err);
+      const fallbackMsg = {
+        id: Date.now() + '-bot',
+        sender: 'bot',
+        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+        text: `Results for "${textToSend}":`,
+        widgetType: 'DEFAULT_RESULTS'
+      };
+      setMessages(prev => [...prev, fallbackMsg]);
+    } finally {
       setLoading(false);
     }
   };
@@ -280,6 +266,7 @@ export function FloatingAIAssistant() {
                       {msg.widgetType && (
                         <AIInlineWidgets
                           widgetType={msg.widgetType}
+                          apiData={msg.apiData}
                           onNavigate={(path) => {
                             setIsOpen(false);
                             navigate(path);

@@ -166,14 +166,35 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
     // -------------------------------------------------------------
     // WIDGET 2: INVENTORY AVAILABLE LAPTOPS TABLE
     // -------------------------------------------------------------
-    case 'INVENTORY_AVAILABLE':
+    case 'INVENTORY_AVAILABLE': {
+      const recordsList = Array.isArray(apiData)
+        ? apiData
+        : (apiData?.records || []);
+
+      const displayRows = recordsList.length > 0
+        ? recordsList.map(a => ({
+            name: a.description || a.name || 'Laptop Asset',
+            code: a.barcode || a.tagNumber || a.assetId || 'N/A',
+            loc: [a.site?.name, a.building?.name, a.room?.name].filter(Boolean).join(' - ') || 'Main Site',
+            status: a.lifecycleStatus || 'Available'
+          }))
+        : [
+            { name: 'Dell Latitude 5440', code: 'LAP10023', loc: 'Bldg A – 3rd Floor', status: 'Available' },
+            { name: 'HP EliteBook 840', code: 'LAP10026', loc: 'Bldg B – 2nd Floor', status: 'Available' },
+            { name: 'Lenovo ThinkPad E14', code: 'LAP10031', loc: 'Bldg A – 1st Floor', status: 'Available' },
+            { name: 'Dell Latitude 5430', code: 'LAP10037', loc: 'Bldg C – 2nd Floor', status: 'Available' },
+            { name: 'HP ProBook 450', code: 'LAP10042', loc: 'Bldg A – 4th Floor', status: 'Available' }
+          ];
+
+      const count = recordsList.length > 0 ? recordsList.length : (apiData?.recordsCount || displayRows.length);
+
       return (
         <div className="mt-3 w-full bg-white border border-slate-200 rounded-2xl p-4 sm:p-5 shadow-lg space-y-4 text-slate-950 animate-in fade-in duration-300">
           {/* Centered Pill Badge Header */}
           <div className="flex justify-center">
             <div className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-slate-100 border border-slate-300 text-xs sm:text-sm font-black text-slate-950 flex items-center justify-center gap-2 shadow-sm">
               <span>Total Available Laptops:</span>
-              <span className="text-emerald-700 text-sm sm:text-base font-black">42</span>
+              <span className="text-emerald-700 text-sm sm:text-base font-black">{count}</span>
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse" />
             </div>
           </div>
@@ -190,13 +211,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-200">
-                {[
-                  { name: 'Dell Latitude 5440', code: 'LAP10023', loc: 'Bldg A – 3rd Floor', status: 'Available' },
-                  { name: 'HP EliteBook 840', code: 'LAP10026', loc: 'Bldg B – 2nd Floor', status: 'Available' },
-                  { name: 'Lenovo ThinkPad E14', code: 'LAP10031', loc: 'Bldg A – 1st Floor', status: 'Available' },
-                  { name: 'Dell Latitude 5430', code: 'LAP10037', loc: 'Bldg C – 2nd Floor', status: 'Available' },
-                  { name: 'HP ProBook 450', code: 'LAP10042', loc: 'Bldg A – 4th Floor', status: 'Available' }
-                ].map((row, idx) => (
+                {displayRows.map((row, idx) => (
                   <tr key={idx} className="hover:bg-purple-50/50 transition-colors">
                     <td className="px-4 py-3.5 font-black text-slate-950 text-xs sm:text-sm whitespace-nowrap">
                       {row.name}
@@ -229,13 +244,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
             <button
               onClick={() =>
                 handleExportCSV(
-                  [
-                    ['Dell Latitude 5440', 'LAP10023', 'Bldg A – 3rd Floor', 'Available'],
-                    ['HP EliteBook 840', 'LAP10026', 'Bldg B – 2nd Floor', 'Available'],
-                    ['Lenovo ThinkPad E14', 'LAP10031', 'Bldg A – 1st Floor', 'Available'],
-                    ['Dell Latitude 5430', 'LAP10037', 'Bldg C – 2nd Floor', 'Available'],
-                    ['HP ProBook 450', 'LAP10042', 'Bldg A – 4th Floor', 'Available']
-                  ],
+                  displayRows.map(r => [r.name, r.code, r.loc, r.status]),
                   'Available_Laptops_Report.csv'
                 )
               }
@@ -270,6 +279,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
         </div>
       );
+    }
 
     // -------------------------------------------------------------
     // WIDGET 3: BUILDING EQUIPMENT BREAKDOWN (Building A Query)

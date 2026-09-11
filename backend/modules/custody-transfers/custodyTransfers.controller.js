@@ -25,16 +25,55 @@ export async function getCustodyAssignments(req, res, next) {
   } catch (err) { next(err); }
 }
 
+export async function getCustodyStats(req, res, next) {
+  try {
+    const totalAssignments = await prisma.custodyAssignment.count();
+    const activeAssignments = await prisma.custodyAssignment.count({ where: { active: true } });
+    const totalTransfers = await prisma.assetTransfer.count();
+    
+    const now = new Date();
+    const overdueAssignments = await prisma.custodyAssignment.count({
+      where: {
+        active: true,
+        expectedReturnDate: { lt: now }
+      }
+    });
+
+    res.json({
+      success: true,
+      stats: {
+        totalAssignments,
+        activeAssignments,
+        totalTransfers,
+        overdueAssignments
+      }
+    });
+  } catch (err) { next(err); }
+}
+
 export async function assignCustody(req, res, next) {
   try {
-    const { assetId, custodianId, expectedReturnDate, notes } = req.body;
+    const { 
+      assetId, 
+      custodianId, 
+      issuedDate,
+      expectedReturnDate, 
+      conditionAtIssue, 
+      acknowledged, 
+      custodyType, 
+      gatePassNumber,
+      accessories,
+      notes 
+    } = req.body;
     const userId = req.user?.id || req.user?._id;
 
     const result = await prisma.$transaction(async (tx) => {
-      const asset = await tx.asset.findUnique({ where: { id: assetId } });
+      const asset = await tx.asset.findFirst({
+        where: { OR: [{ id: assetId }, { assetId: assetId }] }
+      });
       if (!asset) throw new Error('Asset not found');
 
-      // Deactivate active assignments
+      // Deactivate existing active assignments for this asset
       await tx.custodyAssignment.updateMany({
         where: { assetId: asset.id, active: true },
         data: { active: false }
@@ -44,8 +83,11 @@ export async function assignCustody(req, res, next) {
         data: {
           assetId: asset.id,
           custodianId,
-          issuedDate: new Date(),
+          issuedDate: issuedDate ? new Date(issuedDate) : new Date(),
           expectedReturnDate: expectedReturnDate ? new Date(expectedReturnDate) : null,
+          conditionAtIssue: conditionAtIssue || 'GOOD',
+          acknowledged: acknowledged !== undefined ? Boolean(acknowledged) : true,
+          acknowledgementDate: acknowledged ? new Date() : null,
           issuedByUserId: userId,
           active: true
         }
@@ -55,10 +97,27 @@ export async function assignCustody(req, res, next) {
         where: { id: asset.id },
         data: {
           custodianId,
-          assignedDate: new Date(),
+          assignedDate: issuedDate ? new Date(issuedDate) : new Date(),
+          condition: conditionAtIssue || asset.condition,
           lifecycleStatus: 'ASSIGNED'
         }
       });
+
+      // Build structured accessories summary
+      let accSummary = '';
+      if (accessories && typeof accessories === 'object') {
+        const activeAcc = Object.entries(accessories)
+          .filter(([_, enabled]) => Boolean(enabled))
+          .map(([key]) => key.replace(/([A-Z])/g, ' $1').toLowerCase());
+        if (activeAcc.length > 0) accSummary = `Accessories: [${activeAcc.join(', ')}]`;
+      }
+
+      const noteParts = [
+        `[Type: ${custodyType || 'PERMANENT'}]`,
+        gatePassNumber ? `Gate Pass #${gatePassNumber}` : null,
+        accSummary || null,
+        notes || null
+      ].filter(Boolean);
 
       await tx.assetTransaction.create({
         data: {
@@ -67,7 +126,7 @@ export async function assignCustody(req, res, next) {
           fromStatus: asset.lifecycleStatus,
           toStatus: 'ASSIGNED',
           performedByUserId: userId,
-          notes: notes || 'Assigned custodian'
+          notes: noteParts.join(' | ')
         }
       });
 
@@ -87,7 +146,6 @@ export async function returnCustody(req, res, next) {
     const result = await prisma.$transaction(async (tx) => {
       const assignment = await tx.custodyAssignment.findUnique({ where: { id } });
       if (!assignment) throw new Error('Custody assignment not found');
-      if (!assignment.active) throw new Error('Custody assignment is already inactive');
 
       const updatedAssignment = await tx.custodyAssignment.update({
         where: { id },
@@ -156,49 +214,140 @@ export async function createTransfer(req, res, next) {
     const transferNumber = 'TRF-' + Date.now().toString(36).toUpperCase();
     const userId = req.user?.id || req.user?._id;
 
-    const { assetId, transferType = 'INTER_SITE', fromSiteId, toSiteId, fromRoomId, toRoomId, fromCustodianId, toCustodianId, reason } = req.body;
+    const { 
+      assetId, 
+      transferType = 'INTER_SITE', 
+      customTransferType,
+      fromSiteId, 
+      toSiteId, 
+      fromRoomId, 
+      toRoomId, 
+      fromCustodianId, 
+      toCustodianId, 
+      reason 
+    } = req.body;
+
+    const asset = await prisma.asset.findFirst({
+      where: { OR: [{ id: assetId }, { assetId: assetId }] }
+    });
+
+    if (!asset) {
+      return res.status(404).json({ success: false, message: 'Asset not found' });
+    }
+
+    const validEnumTypes = ['INTRA_SITE', 'INTER_SITE', 'INTER_COMPANY', 'INTER_DEPARTMENT'];
+    const rawType = (transferType || '').toUpperCase();
+    const dbTransferType = validEnumTypes.includes(rawType) ? rawType : 'INTER_SITE';
+    
+    const displayType = (rawType === 'CUSTOM' || !validEnumTypes.includes(rawType))
+      ? (customTransferType || transferType)
+      : rawType;
+
+    const combinedReason = (rawType === 'CUSTOM' || !validEnumTypes.includes(rawType))
+      ? `[Custom Type: ${displayType}] ${reason || ''}`
+      : reason;
 
     const transfer = await prisma.assetTransfer.create({
       data: {
         transferNumber,
-        assetId,
-        transferType,
-        fromSiteId,
-        toSiteId,
-        fromRoomId,
-        toRoomId,
-        fromCustodianId,
-        toCustodianId,
-        reason,
+        assetId: asset.id,
+        transferType: dbTransferType,
+        fromSiteId: fromSiteId || asset.siteId,
+        toSiteId: toSiteId || asset.siteId,
+        fromRoomId: fromRoomId || asset.roomId,
+        toRoomId: toRoomId || asset.roomId,
+        fromCustodianId: fromCustodianId || asset.custodianId,
+        toCustodianId: toCustodianId || asset.custodianId,
+        reason: combinedReason,
         requestedByUserId: userId,
         status: 'APPROVED'
       }
     });
 
-    const asset = await prisma.asset.findUnique({ where: { id: assetId } });
-    if (asset) {
-      await prisma.asset.update({
-        where: { id: asset.id },
-        data: {
-          siteId: toSiteId || asset.siteId,
-          roomId: toRoomId || asset.roomId,
-          custodianId: toCustodianId || asset.custodianId,
-          lifecycleStatus: 'IN_SERVICE'
-        }
-      });
+    await prisma.asset.update({
+      where: { id: asset.id },
+      data: {
+        siteId: toSiteId || asset.siteId,
+        roomId: toRoomId || asset.roomId,
+        custodianId: toCustodianId || asset.custodianId,
+        lifecycleStatus: 'IN_SERVICE'
+      }
+    });
 
-      await prisma.assetTransaction.create({
-        data: {
-          assetId: asset.id,
-          transactionType: 'TRANSFER_LOCATION',
-          fromStatus: asset.lifecycleStatus,
-          toStatus: 'IN_SERVICE',
-          performedByUserId: userId,
-          notes: `Transfer completed: ${transferNumber}`
-        }
-      });
-    }
+    await prisma.assetTransaction.create({
+      data: {
+        assetId: asset.id,
+        transactionType: 'TRANSFER_LOCATION',
+        fromStatus: asset.lifecycleStatus,
+        toStatus: 'IN_SERVICE',
+        performedByUserId: userId,
+        notes: `Transfer completed: ${transferNumber}`
+      }
+    });
 
     res.status(201).json({ success: true, transfer });
+  } catch (err) { next(err); }
+}
+
+export async function deleteTransfer(req, res, next) {
+  try {
+    const { id } = req.params;
+    const transfer = await prisma.assetTransfer.findUnique({ where: { id } });
+    if (!transfer) {
+      return res.status(404).json({ success: false, message: 'Transfer record not found' });
+    }
+
+    await prisma.assetTransfer.delete({ where: { id } });
+    res.json({ success: true, message: 'Transfer record deleted successfully' });
+  } catch (err) { next(err); }
+}
+
+export async function updateTransfer(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { 
+      transferType, 
+      customTransferType, 
+      toSiteId, 
+      toRoomId, 
+      reason 
+    } = req.body;
+
+    const existing = await prisma.assetTransfer.findUnique({ where: { id } });
+    if (!existing) {
+      return res.status(404).json({ success: false, message: 'Transfer record not found' });
+    }
+
+    const validEnumTypes = ['INTRA_SITE', 'INTER_SITE', 'INTER_COMPANY', 'INTER_DEPARTMENT'];
+    const rawType = (transferType || existing.transferType || '').toUpperCase();
+    const dbTransferType = validEnumTypes.includes(rawType) ? rawType : 'INTER_SITE';
+
+    const displayType = (rawType === 'CUSTOM' || !validEnumTypes.includes(rawType))
+      ? (customTransferType || transferType)
+      : rawType;
+
+    let cleanReason = reason !== undefined ? reason : (existing.reason || '');
+    cleanReason = cleanReason.replace(/\[Custom Type:\s*[^\]]+\]/gi, '').trim();
+
+    const combinedReason = (rawType === 'CUSTOM' || !validEnumTypes.includes(rawType))
+      ? `[Custom Type: ${displayType}] ${cleanReason}`
+      : cleanReason;
+
+    const updated = await prisma.assetTransfer.update({
+      where: { id },
+      data: {
+        transferType: dbTransferType,
+        toSiteId: toSiteId || existing.toSiteId,
+        toRoomId: toRoomId || existing.toRoomId,
+        reason: combinedReason
+      },
+      include: {
+        asset: true,
+        fromCustodian: true,
+        toCustodian: true
+      }
+    });
+
+    res.json({ success: true, transfer: updated });
   } catch (err) { next(err); }
 }
