@@ -8,7 +8,7 @@ export async function ensureDefaultSeed() {
       return;
     }
 
-    console.log('🌱 No users found in PostgreSQL database. Auto-seeding initial data via Prisma...');
+    console.log('🌱 No users found in Microsoft SQL Server database. Auto-seeding initial data via Prisma...');
 
     // 1. Roles
     const roleData = [
@@ -204,7 +204,7 @@ export async function ensureDefaultSeed() {
       }
     });
 
-    console.log('✅ Auto-seeding completed successfully in PostgreSQL! Login with admin / Admin@123');
+    console.log('✅ Auto-seeding completed successfully in Microsoft SQL Server 2025! Login with admin / Admin@123');
   } catch (err) {
     console.error('❌ Auto-seeding failed:', err.message);
   }

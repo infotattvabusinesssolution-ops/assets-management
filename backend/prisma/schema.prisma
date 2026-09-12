@@ -1,5 +1,5 @@
 datasource db {
-  provider = "postgresql"
+  provider = "sqlserver"
   url      = env("DATABASE_URL")
 }
 
@@ -11,242 +11,7 @@ generator client {
 // ENUMS
 // ------------------------------------------------------
 
-enum AssetLifecycleStatus {
-  REQUESTED
-  ORDERED
-  RECEIVED
-  TAGGED
-  IN_STORE
-  IN_SERVICE
-  ASSIGNED
-  IN_TRANSIT
-  UNDER_MAINTENANCE
-  MISSING
-  LOST_STOLEN
-  DAMAGED
-  RETIRED
-  DISPOSED
-}
-
-enum AssetCondition {
-  NEW
-  GOOD
-  FAIR
-  POOR
-  DAMAGED
-  UNSERVICEABLE
-}
-
-enum CriticalityLevel {
-  CRITICAL
-  HIGH
-  MEDIUM
-  LOW
-}
-
-enum DepreciationMethod {
-  STRAIGHT_LINE
-  DECLINING_BALANCE
-  DOUBLE_DECLINING
-}
-
-enum BookType {
-  CORPORATE
-  TAX
-  MANAGEMENT
-}
-
-enum DepreciationRunStatus {
-  DRAFT
-  POSTED
-  CANCELLED
-}
-
-enum TransferType {
-  INTRA_SITE
-  INTER_SITE
-  INTER_COMPANY
-  INTER_DEPARTMENT
-}
-
-enum TransferStatus {
-  DRAFT
-  SUBMITTED
-  APPROVED
-  DISPATCHED
-  IN_TRANSIT
-  RECEIVED
-  REJECTED
-}
-
-enum WorkOrderType {
-  PREVENTIVE
-  CORRECTIVE
-  INSPECTION
-  CALIBRATION
-}
-
-enum WorkOrderStatus {
-  OPEN
-  ASSIGNED
-  IN_PROGRESS
-  ON_HOLD
-  COMPLETED
-  VERIFIED
-  CANCELLED
-}
-
-enum ContractType {
-  AMC
-  LEASE
-  INSURANCE
-  SOFTWARE_LICENSE
-  SERVICE_SLA
-}
-
-enum TagType {
-  BARCODE_128
-  QR_CODE
-  RFID_EPC
-  HYBRID
-}
-
-enum TagStatus {
-  UNASSIGNED
-  ACTIVE
-  DAMAGED
-  REPLACED
-  RETIRED
-}
-
-enum StocktakeMode {
-  FULL_CENSUS
-  CYCLE_COUNT
-  SAMPLE
-}
-
-enum StocktakeStatus {
-  DRAFT
-  ACTIVE
-  RECONCILIATION
-  CLOSED
-}
-
-enum StocktakeAssetStatus {
-  PENDING
-  VERIFIED_CORRECT
-  RELOCATED
-  WRONG_CUSTODIAN
-  MISSING
-  DAMAGED
-}
-
-enum ExceptionType {
-  RELOCATED
-  WRONG_CUSTODIAN
-  UNREGISTERED
-  MISSING
-  DAMAGED
-  DUPLICATE
-}
-
-enum ResolutionStatus {
-  OPEN
-  RESOLVED
-  IGNORED
-}
-
-enum FieldType {
-  TEXT
-  NUMBER
-  DATE
-  BOOLEAN
-  SELECT
-}
-
-enum WarrantyCoverageType {
-  FULL
-  PARTS_ONLY
-  LABOR_ONLY
-  EXTENDED
-}
-
-enum DiscoverySource {
-  SNMP
-  WMI
-  SSH
-  MDM
-  EDR
-  IP_SCANNER
-}
-
-enum MatchRule {
-  EXACT_SERIAL
-  MAC_ADDRESS
-  HOSTNAME
-  FUZZY_AI
-}
-
-enum MatchStatus {
-  MATCHED
-  SUGGESTED
-  UNKNOWN
-  CONFLICT
-  IGNORED
-}
-
-enum WorkflowTransactionType {
-  ASSET_REQUEST
-  CAPITALIZATION
-  TRANSFER
-  INTER_COMPANY_TRANSFER
-  DISPOSAL
-  WRITE_OFF
-}
-
-enum WorkflowInstanceStatus {
-  PENDING
-  APPROVED
-  REJECTED
-  CANCELLED
-}
-
-enum ApprovalDecision {
-  APPROVE
-  REJECT
-  DELEGATE
-}
-
-enum AIRecommendationType {
-  DOCUMENT_OCR
-  DUPLICATE_DETECTION
-  PREDICTIVE_MAINTENANCE
-  HEALTH_SCORE
-  DISCOVERY_MATCH
-  EOL_FORECAST
-}
-
-enum AIRecommendationStatus {
-  PENDING
-  ACCEPTED
-  REJECTED
-}
-
-enum NotificationType {
-  APPROVAL_REQUIRED
-  MAINTENANCE_DUE
-  WARRANTY_EXPIRING
-  DISCOVERY_ANOMALY
-  STOCKTAKE_ALERT
-  INFO
-}
-
-enum ImportJobStatus {
-  PENDING
-  PROCESSING
-  COMPLETED
-  FAILED
-}
+// Enums mapped to String types for MS SQL Server compatibility
 
 // ------------------------------------------------------
 // ORGANIZATIONAL HIERARCHY
@@ -254,7 +19,7 @@ enum ImportJobStatus {
 
 model Company {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   code          String   @unique
   name          String
   currency      String   @default("USD")
@@ -279,7 +44,7 @@ model Company {
 
 model Department {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   companyId     String
   code          String
   name          String
@@ -287,7 +52,7 @@ model Department {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   employees Employee[]
   assets    Asset[]
   users     User[]
@@ -298,7 +63,7 @@ model Department {
 
 model CostCenter {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   companyId     String
   code          String
   name          String
@@ -306,7 +71,7 @@ model CostCenter {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   employees Employee[]
   assets    Asset[]
   users     User[]
@@ -317,7 +82,7 @@ model CostCenter {
 
 model Site {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   companyId     String
   code          String
   name          String
@@ -327,7 +92,7 @@ model Site {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: Cascade)
+  company   Company    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   buildings Building[]
   assets    Asset[]
   users     User[]
@@ -339,7 +104,7 @@ model Site {
 
 model Building {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   siteId        String
   code          String
   name          String
@@ -347,7 +112,7 @@ model Building {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  site   Site    @relation(fields: [siteId], references: [id], onDelete: Cascade)
+  site   Site    @relation(fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   floors Floor[]
   assets Asset[]
 
@@ -356,7 +121,7 @@ model Building {
 
 model Floor {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   buildingId    String
   code          String
   name          String
@@ -365,7 +130,7 @@ model Floor {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  building Building  @relation(fields: [buildingId], references: [id], onDelete: Cascade)
+  building Building  @relation(fields: [buildingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   rooms    Room[]
   assets   Asset[]
   floorMap FloorMap?
@@ -375,7 +140,7 @@ model Floor {
 
 model Room {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   floorId       String
   code          String
   name          String
@@ -384,7 +149,7 @@ model Room {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  floor  Floor   @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  floor  Floor   @relation(fields: [floorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   zones  Zone[]
   assets Asset[]
 
@@ -393,7 +158,7 @@ model Room {
 
 model Zone {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   roomId        String
   code          String
   name          String
@@ -401,7 +166,7 @@ model Zone {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  room         Room               @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  room         Room               @relation(fields: [roomId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   assets       Asset[]
   mapZones     FloorMapZone[]
   mapPositions AssetMapPosition[]
@@ -411,7 +176,7 @@ model Zone {
 
 model Employee {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   employeeCode  String   @unique
   fullName      String
   email         String
@@ -442,11 +207,11 @@ model Employee {
 
 model Category {
   id                          String             @id @default(uuid())
-  legacyMongoId               String?            @unique
+  legacyMongoId               String?
   code                        String             @unique
   name                        String
   description                 String?
-  depreciationMethod          DepreciationMethod @default(STRAIGHT_LINE)
+  depreciationMethod          String             @default("STRAIGHT_LINE")
   defaultUsefulLifeMonths     Int                @default(60)
   defaultResidualValuePercent Decimal            @default(0) @db.Decimal(5, 2)
   isSerialized                Boolean            @default(true)
@@ -465,7 +230,7 @@ model Category {
 
 model AssetClass {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   code          String   @unique
   name          String
   categoryId    String
@@ -482,7 +247,7 @@ model AssetClass {
 
 model Manufacturer {
   id             String   @id @default(uuid())
-  legacyMongoId  String?  @unique
+  legacyMongoId  String?
   name           String   @unique
   supportContact String?
   website        String?
@@ -498,12 +263,12 @@ model Manufacturer {
 
 model AssetModel {
   id             String   @id @default(uuid())
-  legacyMongoId  String?  @unique
+  legacyMongoId  String?
   modelNumber    String
   name           String
   manufacturerId String
   categoryId     String
-  specifications Json?
+  specifications String?
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -521,7 +286,7 @@ model AssetModel {
 
 model Asset {
   id            String  @id @default(uuid())
-  legacyMongoId String? @unique
+  legacyMongoId String?
   assetId       String  @unique
   legacyId      String?
   tagNumber     String? @unique
@@ -538,9 +303,9 @@ model Asset {
   modelId        String?
   parentAssetId  String?
 
-  lifecycleStatus AssetLifecycleStatus @default(RECEIVED)
-  condition       AssetCondition       @default(NEW)
-  criticality     CriticalityLevel     @default(MEDIUM)
+  lifecycleStatus String @default("RECEIVED")
+  condition       String @default("NEW")
+  criticality     String @default("MEDIUM")
 
   companyId    String
   siteId       String
@@ -575,25 +340,25 @@ model Asset {
   updatedAt       DateTime @updatedAt
 
   // Relations
-  category     Category      @relation(fields: [categoryId], references: [id])
-  assetClass   AssetClass?   @relation(fields: [assetClassId], references: [id])
-  manufacturer Manufacturer? @relation(fields: [manufacturerId], references: [id])
-  model        AssetModel?   @relation(fields: [modelId], references: [id])
-  parentAsset  Asset?        @relation("ChildAssets", fields: [parentAssetId], references: [id])
+  category     Category      @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assetClass   AssetClass?   @relation(fields: [assetClassId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  manufacturer Manufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  model        AssetModel?   @relation(fields: [modelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  parentAsset  Asset?        @relation("ChildAssets", fields: [parentAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   childAssets  Asset[]       @relation("ChildAssets")
 
-  company    Company     @relation(fields: [companyId], references: [id])
-  site       Site        @relation(fields: [siteId], references: [id])
-  building   Building?   @relation(fields: [buildingId], references: [id])
-  floor      Floor?      @relation(fields: [floorId], references: [id])
-  room       Room?       @relation(fields: [roomId], references: [id])
-  zone       Zone?       @relation(fields: [zoneId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
-  custodian  Employee?   @relation("AssetCustodian", fields: [custodianId], references: [id])
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  site       Site        @relation(fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  building   Building?   @relation(fields: [buildingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  floor      Floor?      @relation(fields: [floorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  room       Room?       @relation(fields: [roomId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zone       Zone?       @relation(fields: [zoneId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  custodian  Employee?   @relation("AssetCustodian", fields: [custodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
-  creator User? @relation("AssetCreator", fields: [createdByUserId], references: [id])
-  updater User? @relation("AssetUpdater", fields: [updatedByUserId], references: [id])
+  creator User? @relation("AssetCreator", fields: [createdByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  updater User? @relation("AssetUpdater", fields: [updatedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   // Dependent Relational Lists
   customFieldValues  AssetCustomFieldValue[]
@@ -629,8 +394,8 @@ model AssetCustomFieldValue {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  asset          Asset                 @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  customFieldDef CustomFieldDefinition @relation(fields: [customFieldDefId], references: [id], onDelete: Cascade)
+  asset          Asset                 @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  customFieldDef CustomFieldDefinition @relation(fields: [customFieldDefId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([assetId, customFieldDefId])
   @@map("asset_custom_field_values")
@@ -638,13 +403,13 @@ model AssetCustomFieldValue {
 
 model CustomFieldDefinition {
   id            String    @id @default(uuid())
-  legacyMongoId String?   @unique
+  legacyMongoId String?
   name          String    @unique
   label         String
-  fieldType     FieldType
+  fieldType     String
   required      Boolean   @default(false)
   defaultValue  String?
-  options       String[]
+  options       String?
   categoryId    String?
   active        Boolean   @default(true)
   createdAt     DateTime  @default(now())
@@ -665,12 +430,12 @@ model AssetTransaction {
   performedByUserId String
   timestamp         DateTime @default(now())
   notes             String?
-  payload           Json?
+  payload           String?
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
-  asset       Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  performedBy User  @relation(fields: [performedByUserId], references: [id])
+  asset       Asset @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  performedBy User  @relation(fields: [performedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([assetId, timestamp])
   @@map("asset_transactions")
@@ -682,7 +447,7 @@ model AssetTransaction {
 
 model User {
   id            String    @id @default(uuid())
-  legacyMongoId String?   @unique
+  legacyMongoId String?
   username      String    @unique
   email         String    @unique
   passwordHash  String
@@ -699,12 +464,12 @@ model User {
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  role       Role        @relation(fields: [roleId], references: [id])
-  company    Company?    @relation(fields: [companyId], references: [id])
-  site       Site?       @relation(fields: [siteId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
-  employee   Employee?   @relation(fields: [employeeId], references: [id])
+  role       Role        @relation(fields: [roleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  company    Company?    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  site       Site?       @relation(fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  employee   Employee?   @relation(fields: [employeeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   dataScopes          UserDataScope[]
   createdAssets       Asset[]                @relation("AssetCreator")
@@ -726,11 +491,11 @@ model User {
 
 model Role {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   name          String   @unique
   code          String   @unique
   description   String?
-  permissions   String[]
+  permissions   String?
   isSystem      Boolean  @default(false)
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -743,12 +508,12 @@ model Role {
 
 model DataScope {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   name          String
-  companyIds    String[]
-  siteIds       String[]
-  departmentIds String[]
-  costCenterIds String[]
+  companyIds    String?
+  siteIds       String?
+  departmentIds String?
+  costCenterIds String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
@@ -773,8 +538,8 @@ model AuditEvent {
   action      String
   entityType  String
   entityId    String?
-  beforeState Json?
-  afterState  Json?
+  beforeState String?
+  afterState  String?
   ipAddress   String?
   userAgent   String?
   timestamp   DateTime @default(now())
@@ -791,7 +556,7 @@ model Notification {
   userId    String
   title     String
   message   String
-  type      NotificationType @default(INFO)
+  type      String           @default("INFO")
   read      Boolean          @default(false)
   link      String?
   createdAt DateTime         @default(now())
@@ -808,7 +573,7 @@ model Notification {
 
 model CustodyAssignment {
   id                  String    @id @default(uuid())
-  legacyMongoId       String?   @unique
+  legacyMongoId       String?
   assetId             String
   custodianId         String
   issuedDate          DateTime  @default(now())
@@ -823,19 +588,19 @@ model CustodyAssignment {
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
 
-  asset     Asset    @relation(fields: [assetId], references: [id])
-  custodian Employee @relation(fields: [custodianId], references: [id])
-  issuedBy  User     @relation("CustodyIssuer", fields: [issuedByUserId], references: [id])
+  asset     Asset    @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  custodian Employee @relation(fields: [custodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  issuedBy  User     @relation("CustodyIssuer", fields: [issuedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("custody_assignments")
 }
 
 model AssetTransfer {
   id             String       @id @default(uuid())
-  legacyMongoId  String?      @unique
+  legacyMongoId  String?
   transferNumber String       @unique
   assetId        String
-  transferType   TransferType
+  transferType   String
 
   fromCompanyId   String?
   fromSiteId      String?
@@ -847,7 +612,7 @@ model AssetTransfer {
   toRoomId      String?
   toCustodianId String?
 
-  status            TransferStatus @default(DRAFT)
+  status            String @default("DRAFT")
   reason            String?
   requestedByUserId String
   approvedByUserId  String?
@@ -857,12 +622,12 @@ model AssetTransfer {
   createdAt         DateTime       @default(now())
   updatedAt         DateTime       @updatedAt
 
-  asset         Asset     @relation(fields: [assetId], references: [id])
-  fromCustodian Employee? @relation("TransferFromCustodian", fields: [fromCustodianId], references: [id])
-  toCustodian   Employee? @relation("TransferToCustodian", fields: [toCustodianId], references: [id])
-  requestedBy   User      @relation("TransferRequester", fields: [requestedByUserId], references: [id])
-  approvedBy    User?     @relation("TransferApprover", fields: [approvedByUserId], references: [id])
-  receivedBy    User?     @relation("TransferReceiver", fields: [receivedByUserId], references: [id])
+  asset         Asset     @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fromCustodian Employee? @relation("TransferFromCustodian", fields: [fromCustodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  toCustodian   Employee? @relation("TransferToCustodian", fields: [toCustodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  requestedBy   User      @relation("TransferRequester", fields: [requestedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  approvedBy    User?     @relation("TransferApprover", fields: [approvedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  receivedBy    User?     @relation("TransferReceiver", fields: [receivedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("asset_transfers")
 }
@@ -873,13 +638,13 @@ model AssetTransfer {
 
 model AssetBookValue {
   id                      String             @id @default(uuid())
-  legacyMongoId           String?            @unique
+  legacyMongoId           String?
   assetId                 String
-  bookType                BookType           @default(CORPORATE)
+  bookType                String             @default("CORPORATE")
   capitalizationDate      DateTime?
   capitalizationValue     Decimal            @db.Decimal(18, 2)
   usefulLifeMonths        Int
-  depreciationMethod      DepreciationMethod @default(STRAIGHT_LINE)
+  depreciationMethod      String             @default("STRAIGHT_LINE")
   residualValue           Decimal            @default(0) @db.Decimal(18, 2)
   accumulatedDepreciation Decimal            @default(0) @db.Decimal(18, 2)
   netBookValue            Decimal            @db.Decimal(18, 2)
@@ -887,7 +652,7 @@ model AssetBookValue {
   createdAt               DateTime           @default(now())
   updatedAt               DateTime           @updatedAt
 
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([assetId, bookType])
   @@map("asset_book_values")
@@ -895,7 +660,7 @@ model AssetBookValue {
 
 model FiscalPeriod {
   id             String    @id @default(uuid())
-  legacyMongoId  String?   @unique
+  legacyMongoId  String?
   companyId      String
   year           Int
   periodNumber   Int
@@ -918,12 +683,12 @@ model FiscalPeriod {
 
 model DepreciationRun {
   id                      String                @id @default(uuid())
-  legacyMongoId           String?               @unique
+  legacyMongoId           String?
   runNumber               String                @unique
   companyId               String
   fiscalPeriodId          String
-  bookType                BookType              @default(CORPORATE)
-  status                  DepreciationRunStatus @default(DRAFT)
+  bookType                String                @default("CORPORATE")
+  status                  String                @default("DRAFT")
   totalAssetsProcessed    Int                   @default(0)
   totalDepreciationAmount Decimal               @default(0) @db.Decimal(18, 2)
   postedAt                DateTime?
@@ -931,9 +696,9 @@ model DepreciationRun {
   createdAt               DateTime              @default(now())
   updatedAt               DateTime              @updatedAt
 
-  company      Company             @relation(fields: [companyId], references: [id])
-  fiscalPeriod FiscalPeriod        @relation(fields: [fiscalPeriodId], references: [id])
-  postedBy     User?               @relation(fields: [postedByUserId], references: [id])
+  company      Company             @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fiscalPeriod FiscalPeriod        @relation(fields: [fiscalPeriodId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  postedBy     User?               @relation(fields: [postedByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   entries      DepreciationEntry[]
 
   @@map("depreciation_runs")
@@ -941,7 +706,7 @@ model DepreciationRun {
 
 model DepreciationEntry {
   id                      String   @id @default(uuid())
-  legacyMongoId           String?  @unique
+  legacyMongoId           String?
   depreciationRunId       String
   assetId                 String
   fiscalPeriodId          String
@@ -953,8 +718,8 @@ model DepreciationEntry {
   createdAt               DateTime @default(now())
   updatedAt               DateTime @updatedAt
 
-  depreciationRun DepreciationRun @relation(fields: [depreciationRunId], references: [id], onDelete: Cascade)
-  fiscalPeriod    FiscalPeriod    @relation(fields: [fiscalPeriodId], references: [id])
+  depreciationRun DepreciationRun @relation(fields: [depreciationRunId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  fiscalPeriod    FiscalPeriod    @relation(fields: [fiscalPeriodId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([depreciationRunId, assetId])
   @@map("depreciation_entries")
@@ -966,7 +731,7 @@ model DepreciationEntry {
 
 model MaintenanceSchedule {
   id                String    @id @default(uuid())
-  legacyMongoId     String?   @unique
+  legacyMongoId     String?
   title             String
   assetId           String
   frequencyMonths   Int       @default(6)
@@ -976,19 +741,19 @@ model MaintenanceSchedule {
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("maintenance_schedules")
 }
 
 model MaintenanceWorkOrder {
   id              String           @id @default(uuid())
-  legacyMongoId   String?          @unique
+  legacyMongoId   String?
   workOrderNumber String           @unique
   assetId         String
-  workType        WorkOrderType    @default(CORRECTIVE)
-  priority        CriticalityLevel @default(MEDIUM)
-  status          WorkOrderStatus  @default(OPEN)
+  workType        String           @default("CORRECTIVE")
+  priority        String           @default("MEDIUM")
+  status          String           @default("OPEN")
 
   description String
   failureCode String?
@@ -1010,14 +775,14 @@ model MaintenanceWorkOrder {
   meterReading Int?
 
   notes           String?
-  photoUrls       String[]
+  photoUrls       String?
   createdByUserId String
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  asset              Asset @relation(fields: [assetId], references: [id])
-  assignedTechnician User? @relation("TechnicianWorkOrders", fields: [assignedTechnicianId], references: [id])
-  createdBy          User  @relation("CreatedWorkOrders", fields: [createdByUserId], references: [id])
+  asset              Asset @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  assignedTechnician User? @relation("TechnicianWorkOrders", fields: [assignedTechnicianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  createdBy          User  @relation("CreatedWorkOrders", fields: [createdByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   partsUsed WorkOrderPart[]
   checklist WorkOrderChecklist[]
@@ -1033,7 +798,7 @@ model WorkOrderPart {
   unitCost    Decimal @default(0) @db.Decimal(18, 2)
   totalCost   Decimal @default(0) @db.Decimal(18, 2)
 
-  workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("work_order_parts")
 }
@@ -1045,7 +810,7 @@ model WorkOrderChecklist {
   completed   Boolean @default(false)
   notes       String?
 
-  workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: Cascade)
+  workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("work_order_checklists")
 }
@@ -1056,10 +821,10 @@ model WorkOrderChecklist {
 
 model Contract {
   id             String       @id @default(uuid())
-  legacyMongoId  String?      @unique
+  legacyMongoId  String?
   contractNumber String       @unique
   title          String
-  contractType   ContractType
+  contractType   String
   providerName   String
   startDate      DateTime
   endDate        DateTime
@@ -1077,8 +842,8 @@ model Contract {
 model ContractAsset {
   contractId String
   assetId    String
-  contract   Contract @relation(fields: [contractId], references: [id], onDelete: Cascade)
-  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  contract   Contract @relation(fields: [contractId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  asset      Asset    @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@id([contractId, assetId])
   @@map("contract_assets")
@@ -1086,25 +851,25 @@ model ContractAsset {
 
 model Warranty {
   id             String               @id @default(uuid())
-  legacyMongoId  String?              @unique
+  legacyMongoId  String?
   assetId        String               @unique
   providerName   String?
   warrantyNumber String?
   startDate      DateTime
   endDate        DateTime
   terms          String?
-  coverageType   WarrantyCoverageType @default(FULL)
+  coverageType   String               @default("FULL")
   createdAt      DateTime             @default(now())
   updatedAt      DateTime             @updatedAt
 
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("warranties")
 }
 
 model Receipt {
   id               String   @id @default(uuid())
-  legacyMongoId    String?  @unique
+  legacyMongoId    String?
   receiptNumber    String   @unique
   poNumber         String
   vendorName       String
@@ -1116,8 +881,8 @@ model Receipt {
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
 
-  company   Company           @relation(fields: [companyId], references: [id])
-  site      Site              @relation(fields: [siteId], references: [id])
+  company   Company           @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  site      Site              @relation(fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   lineItems ReceiptLineItem[]
 
   @@map("receipts")
@@ -1130,11 +895,11 @@ model ReceiptLineItem {
   quantity        Int?
   unitPrice       Decimal? @db.Decimal(18, 2)
   categoryId      String?
-  serialNumbers   String[]
-  createdAssetIds String[]
+  serialNumbers   String?
+  createdAssetIds String?
 
-  receipt  Receipt   @relation(fields: [receiptId], references: [id], onDelete: Cascade)
-  category Category? @relation(fields: [categoryId], references: [id])
+  receipt  Receipt   @relation(fields: [receiptId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  category Category? @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("receipt_line_items")
 }
@@ -1145,7 +910,7 @@ model ReceiptLineItem {
 
 model StocktakeCampaign {
   id              String          @id @default(uuid())
-  legacyMongoId   String?         @unique
+  legacyMongoId   String?
   campaignNumber  String          @unique
   title           String
   companyId       String
@@ -1153,8 +918,8 @@ model StocktakeCampaign {
   buildingId      String?
   floorId         String?
   categoryId      String?
-  mode            StocktakeMode   @default(FULL_CENSUS)
-  status          StocktakeStatus @default(DRAFT)
+  mode            String          @default("FULL_CENSUS")
+  status          String          @default("DRAFT")
   startDate       DateTime?
   endDate         DateTime?
   createdByUserId String
@@ -1182,11 +947,11 @@ model StocktakeExpectedAsset {
   expectedSiteId      String?
   expectedRoomId      String?
   expectedCustodianId String?
-  status              StocktakeAssetStatus @default(PENDING)
+  status              String               @default("PENDING")
   createdAt           DateTime             @default(now())
   updatedAt           DateTime             @updatedAt
 
-  campaign StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@unique([campaignId, assetId])
   @@map("stocktake_expected_assets")
@@ -1210,7 +975,7 @@ model StocktakeObservation {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  campaign          StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign          StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   observedCustodian Employee?         @relation(fields: [observedCustodianId], references: [id])
 
   @@map("stocktake_observations")
@@ -1220,16 +985,16 @@ model StocktakeException {
   id               String           @id @default(uuid())
   campaignId       String
   assetId          String?
-  exceptionType    ExceptionType
-  details          Json?
-  resolutionStatus ResolutionStatus @default(OPEN)
+  exceptionType    String
+  details          String?
+  resolutionStatus String           @default("OPEN")
   resolutionNotes  String?
   resolvedByUserId String?
   resolvedAt       DateTime?
   createdAt        DateTime         @default(now())
   updatedAt        DateTime         @updatedAt
 
-  campaign StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: Cascade)
+  campaign StocktakeCampaign @relation(fields: [campaignId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("stocktake_exceptions")
 }
@@ -1240,18 +1005,18 @@ model StocktakeException {
 
 model Tag {
   id            String    @id @default(uuid())
-  legacyMongoId String?   @unique
+  legacyMongoId String?
   tagNumber     String    @unique
-  tagType       TagType   @default(BARCODE_128)
+  tagType       String    @default("BARCODE_128")
   rfidEpc       String?   @unique
   rfidTid       String?   @unique
   assetId       String?
-  status        TagStatus @default(UNASSIGNED)
+  status        String    @default("UNASSIGNED")
   printedDate   DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
-  asset Asset? @relation(fields: [assetId], references: [id])
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("tags")
 }
@@ -1266,15 +1031,15 @@ model TagHistory {
   timestamp        DateTime @default(now())
   createdAt        DateTime @default(now())
 
-  asset Asset @relation(fields: [assetId], references: [id], onDelete: Cascade)
+  asset Asset @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("tag_histories")
 }
 
 model DiscoveryObservation {
   id                  String          @id @default(uuid())
-  legacyMongoId       String?         @unique
-  discoverySource     DiscoverySource @default(IP_SCANNER)
+  legacyMongoId       String?
+  discoverySource     String          @default("IP_SCANNER")
   ipAddress           String?
   macAddress          String?
   hostname            String?
@@ -1289,7 +1054,7 @@ model DiscoveryObservation {
   loggedOnUser        String?
   firstSeen           DateTime        @default(now())
   lastSeen            DateTime        @default(now())
-  rawCollectorPayload Json?
+  rawCollectorPayload String?
   createdAt           DateTime        @default(now())
   updatedAt           DateTime        @updatedAt
 
@@ -1303,22 +1068,22 @@ model DiscoveryMatch {
   observationId    String
   matchedAssetId   String?
   confidenceScore  Int
-  matchRule        MatchRule
-  status           MatchStatus @default(SUGGESTED)
+  matchRule        String
+  status           String      @default("SUGGESTED")
   reviewedByUserId String?
   reviewedAt       DateTime?
   createdAt        DateTime    @default(now())
   updatedAt        DateTime    @updatedAt
 
-  observation  DiscoveryObservation @relation(fields: [observationId], references: [id], onDelete: Cascade)
-  matchedAsset Asset?               @relation(fields: [matchedAssetId], references: [id])
+  observation  DiscoveryObservation @relation(fields: [observationId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  matchedAsset Asset?               @relation(fields: [matchedAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("discovery_matches")
 }
 
 model FloorMap {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   title         String
   floorId       String   @unique
   imageUrl      String
@@ -1328,7 +1093,7 @@ model FloorMap {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  floor          Floor              @relation(fields: [floorId], references: [id], onDelete: Cascade)
+  floor          Floor              @relation(fields: [floorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   zones          FloorMapZone[]
   assetPositions AssetMapPosition[]
 
@@ -1341,17 +1106,17 @@ model FloorMapZone {
   zoneId     String?
   name       String
   color      String  @default("#3B82F6")
-  points     Json // Array of {x, y} coordinates
+  points     String // JSON String array of {x, y} coordinates
 
-  floorMap FloorMap @relation(fields: [floorMapId], references: [id], onDelete: Cascade)
-  zone     Zone?    @relation(fields: [zoneId], references: [id])
+  floorMap FloorMap @relation(fields: [floorMapId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zone     Zone?    @relation(fields: [zoneId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("floor_map_zones")
 }
 
 model AssetMapPosition {
   id              String   @id @default(uuid())
-  legacyMongoId   String?  @unique
+  legacyMongoId   String?
   assetId         String   @unique
   floorMapId      String
   xRatio          Decimal  @db.Decimal(6, 4)
@@ -1362,9 +1127,9 @@ model AssetMapPosition {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
 
-  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  floorMap FloorMap @relation(fields: [floorMapId], references: [id])
-  zone     Zone?    @relation(fields: [zoneId], references: [id])
+  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  floorMap FloorMap @relation(fields: [floorMapId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  zone     Zone?    @relation(fields: [zoneId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("asset_map_positions")
 }
@@ -1375,9 +1140,9 @@ model AssetMapPosition {
 
 model WorkflowDefinition {
   id              String                  @id @default(uuid())
-  legacyMongoId   String?                 @unique
+  legacyMongoId   String?
   name            String
-  transactionType WorkflowTransactionType @unique
+  transactionType String                  @unique
   valueThreshold  Decimal                 @default(0) @db.Decimal(18, 2)
   active          Boolean                 @default(true)
   createdAt       DateTime                @default(now())
@@ -1398,19 +1163,19 @@ model WorkflowStep {
   isParallel           Boolean @default(false)
   slaHours             Int     @default(48)
 
-  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: Cascade)
+  workflowDefinition WorkflowDefinition @relation(fields: [workflowDefinitionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("workflow_steps")
 }
 
 model WorkflowInstance {
   id                   String                 @id @default(uuid())
-  legacyMongoId        String?                @unique
+  legacyMongoId        String?
   workflowDefinitionId String
   entityType           String
   entityId             String
   currentStepNumber    Int                    @default(1)
-  status               WorkflowInstanceStatus @default(PENDING)
+  status               String                 @default("PENDING")
   requestedByUserId    String
   createdAt            DateTime               @default(now())
   updatedAt            DateTime               @updatedAt
@@ -1423,42 +1188,42 @@ model WorkflowInstance {
 
 model ApprovalAction {
   id                 String           @id @default(uuid())
-  legacyMongoId      String?          @unique
+  legacyMongoId      String?
   workflowInstanceId String
   stepNumber         Int
   approverUserId     String
-  decision           ApprovalDecision
+  decision           String
   comments           String?
   timestamp          DateTime         @default(now())
   createdAt          DateTime         @default(now())
 
-  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: Cascade)
+  workflowInstance WorkflowInstance @relation(fields: [workflowInstanceId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("approval_actions")
 }
 
 model AIRecommendation {
   id                    String                 @id @default(uuid())
-  legacyMongoId         String?                @unique
-  type                  AIRecommendationType
+  legacyMongoId         String?
+  type                  String
   assetId               String?
   confidenceScore       Int
-  recommendationPayload Json?
+  recommendationPayload String?
   explanation           String?
-  status                AIRecommendationStatus @default(PENDING)
+  status                String                 @default("PENDING")
   reviewedByUserId      String?
   reviewedAt            DateTime?
   createdAt             DateTime               @default(now())
   updatedAt             DateTime               @updatedAt
 
-  asset Asset? @relation(fields: [assetId], references: [id])
+  asset Asset? @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("ai_recommendations")
 }
 
 model Attachment {
   id               String   @id @default(uuid())
-  legacyMongoId    String?  @unique
+  legacyMongoId    String?
   entityType       String
   entityId         String
   fileName         String
@@ -1480,9 +1245,9 @@ model Attachment {
 
 model WebhookSubscription {
   id            String   @id @default(uuid())
-  legacyMongoId String?  @unique
+  legacyMongoId String?
   targetUrl     String
-  events        String[]
+  events        String?
   secret        String?
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
@@ -1497,28 +1262,28 @@ model WebhookDelivery {
   id             String   @id @default(uuid())
   subscriptionId String
   event          String?
-  payload        Json?
+  payload        String?
   responseStatus Int?
   success        Boolean?
   timestamp      DateTime @default(now())
   createdAt      DateTime @default(now())
 
-  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: Cascade)
+  subscription WebhookSubscription @relation(fields: [subscriptionId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("webhook_deliveries")
 }
 
 model ImportJob {
   id              String          @id @default(uuid())
-  legacyMongoId   String?         @unique
+  legacyMongoId   String?
   fileName        String
   entityType      String
   totalRows       Int             @default(0)
   processedRows   Int             @default(0)
   successRows     Int             @default(0)
   failedRows      Int             @default(0)
-  errors          Json? // Array of {row, error}
-  status          ImportJobStatus @default(PENDING)
+  errors          String? // JSON String array of {row, error}
+  status          String          @default("PENDING")
   createdByUserId String
   createdAt       DateTime        @default(now())
   updatedAt       DateTime        @updatedAt
@@ -1532,29 +1297,7 @@ model ImportJob {
 // REAL-TIME LOCATION TRACKING (RTLS) & RFID READERS
 // ------------------------------------------------------
 
-enum RtlsReaderStatus {
-  ONLINE
-  OFFLINE
-  DEGRADED
-  MAINTENANCE
-}
-
-enum RtlsAlertSeverity {
-  CRITICAL
-  HIGH
-  MEDIUM
-  LOW
-  INFO
-}
-
-enum RtlsAlertType {
-  RESTRICTED_ZONE_ENTRY
-  UNEXPECTED_EXIT
-  MISSING_ASSET
-  READER_OFFLINE
-  UNKNOWN_EPC
-  EXCESSIVE_MOVEMENT
-}
+// RTLS Enums mapped to String types for MS SQL Server compatibility
 
 model RtlsReader {
   id               String           @id @default(uuid())
@@ -1568,7 +1311,7 @@ model RtlsReader {
   buildingId       String?
   floorId          String?
   zoneId           String?
-  status           RtlsReaderStatus @default(ONLINE)
+  status           String           @default("ONLINE")
   lastHeartbeat    DateTime         @default(now())
   firmwareVersion  String?          @default("v5.14.0")
   enabled          Boolean          @default(true)
@@ -1596,7 +1339,7 @@ model RtlsAntenna {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  reader    RtlsReader          @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  reader    RtlsReader          @relation(fields: [readerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   events    RfidEvent[]
   locations RtlsAssetLocation[]
   movements RtlsMovement[]
@@ -1612,13 +1355,13 @@ model RfidEvent {
   readerId         String
   antennaId        String?
   rssi             Int?     @default(-55)
-  rawPayload       Json?
+  rawPayload       String?
   timestamp        DateTime @default(now())
   processedAt      DateTime @default(now())
   processingStatus String   @default("PROCESSED")
 
-  reader  RtlsReader   @relation(fields: [readerId], references: [id], onDelete: Cascade)
-  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id])
+  reader  RtlsReader   @relation(fields: [readerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([epc, timestamp])
   @@index([readerId, timestamp])
@@ -1640,9 +1383,9 @@ model RtlsAssetLocation {
   createdAt  DateTime @default(now())
   updatedAt  DateTime @updatedAt
 
-  asset   Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  reader  RtlsReader?  @relation(fields: [readerId], references: [id])
-  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id])
+  asset   Asset        @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reader  RtlsReader?  @relation(fields: [readerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("rtls_asset_locations")
 }
@@ -1660,9 +1403,9 @@ model RtlsMovement {
   eventId    String?
   createdAt  DateTime @default(now())
 
-  asset   Asset        @relation(fields: [assetId], references: [id], onDelete: Cascade)
-  reader  RtlsReader?  @relation(fields: [readerId], references: [id])
-  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id])
+  asset   Asset        @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  reader  RtlsReader?  @relation(fields: [readerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  antenna RtlsAntenna? @relation(fields: [antennaId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([assetId, detectedAt])
   @@map("rtls_movements")
@@ -1677,7 +1420,7 @@ model RtlsReaderHeartbeat {
   errorInfo String?
   createdAt DateTime @default(now())
 
-  reader RtlsReader @relation(fields: [readerId], references: [id], onDelete: Cascade)
+  reader RtlsReader @relation(fields: [readerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@index([readerId, timestamp])
   @@map("rtls_reader_heartbeats")
@@ -1685,8 +1428,8 @@ model RtlsReaderHeartbeat {
 
 model RtlsAlert {
   id               String            @id @default(uuid())
-  alertType        RtlsAlertType
-  severity         RtlsAlertSeverity @default(HIGH)
+  alertType        String
+  severity         String            @default("HIGH")
   message          String
   assetId          String?
   readerId         String?

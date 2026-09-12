@@ -1,15 +1,15 @@
 import prisma from './prisma.js';
 
-export let isPostgresConnected = false;
+export let isSqlServerConnected = false;
 
 export async function connectDB() {
   try {
     await prisma.$connect();
-    console.log('✅ Connected to PostgreSQL Database via Prisma ORM');
-    isPostgresConnected = true;
-  } catch (pgErr) {
-    console.error('❌ PostgreSQL connection failed:', pgErr.message);
-    throw pgErr;
+    console.log('✅ Connected to Microsoft SQL Server 2025 Database via Prisma ORM');
+    isSqlServerConnected = true;
+  } catch (sqlErr) {
+    console.error('❌ Microsoft SQL Server connection failed:', sqlErr.message);
+    throw sqlErr;
   }
 }
 
