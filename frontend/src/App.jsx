@@ -35,6 +35,9 @@ import CreateAudit from './pages/CreateAudit';
 import { AuditReport } from './pages/AuditReport';
 import { FinancialWorkbench } from './pages/FinancialWorkbench';
 import { MaintenanceManager } from './pages/MaintenanceManager';
+import { CreateWorkOrder } from './pages/CreateWorkOrder';
+import { MaintenancePlans } from './pages/MaintenancePlans';
+import { PreventiveMaintenance } from './pages/PreventiveMaintenance';
 import { ContractManager } from './pages/ContractManager';
 import { DiscoveryWorkbench } from './pages/DiscoveryWorkbench';
 import { DiscoverySettings } from './pages/DiscoverySettings';
@@ -47,19 +50,15 @@ import { WorkflowDesigner } from './pages/WorkflowDesigner';
 import { AISuite } from './pages/AISuite';
 import { RtlsWorkbench } from './pages/RtlsWorkbench';
 import { RtlsFloorMapLive } from './pages/RtlsFloorMapLive';
+import { AssetTracking } from './pages/AssetTracking';
+import { LocationMap } from './pages/LocationMap';
+import { Geofencing } from './pages/Geofencing';
+import { LocationHistory } from './pages/LocationHistory';
+import { ProximitySearch } from './pages/ProximitySearch';
 import { AdminMasterData } from './pages/AdminMasterData';
 import { AuditLogViewer } from './pages/AuditLogViewer';
 import { MobileScanWorkbench } from './pages/MobileScanWorkbench';
 import { UserManagementWorkbench } from './pages/UserManagementWorkbench';
-import UserManagement from './pages/admin/UserManagement';
-import RolesPermissions from './pages/admin/RolesPermissions';
-import CompanyOrganization from './pages/admin/CompanyOrganization';
-import SystemConfiguration from './pages/admin/SystemConfiguration';
-import MasterDataSetup from './pages/admin/MasterDataSetup';
-import IntegrationsConsole from './pages/admin/IntegrationsConsole';
-import AuditLogsConsole from './pages/admin/AuditLogsConsole';
-import EmailNotifications from './pages/admin/EmailNotifications';
-import BackupScheduler from './pages/admin/BackupScheduler';
 
 const queryClient = new QueryClient();
 
@@ -134,13 +133,22 @@ export function App() {
                 <Route path="verification" element={<AssetVerification />} />
                 <Route path="finance" element={<FinancialWorkbench />} />
                 <Route path="maintenance" element={<MaintenanceManager />} />
+                <Route path="maintenance/plans" element={<MaintenancePlans />} />
+                <Route path="maintenance-plans" element={<MaintenancePlans />} />
+                <Route path="maintenance/preventive" element={<PreventiveMaintenance />} />
+                <Route path="preventive-maintenance" element={<PreventiveMaintenance />} />
+                <Route path="maintenance/create" element={<CreateWorkOrder />} />
+                <Route path="maintenance/new" element={<CreateWorkOrder />} />
+                <Route path="maintenance/work-orders/new" element={<CreateWorkOrder />} />
+                <Route path="maintenance/providers" element={<ServiceProviderAction />} />
+                <Route path="maintenance/providers/add" element={<ServiceProviderAction />} />
+                <Route path="maintenance/providers/create" element={<ServiceProviderAction />} />
+                <Route path="maintenance/providers/:id/edit" element={<ServiceProviderAction />} />
+                <Route path="service-providers" element={<ServiceProviderAction />} />
+                <Route path="maintenance/spare-parts" element={<SpareParts />} />
+                <Route path="spare-parts" element={<SpareParts />} />
                 <Route path="contracts" element={<ContractManager />} />
                 <Route path="discovery" element={<DiscoveryWorkbench />} />
-                <Route path="discovery/jobs" element={<DiscoveryWorkbench defaultTab="jobs" />} />
-                <Route path="discovery/devices" element={<DiscoveryWorkbench defaultTab="devices" />} />
-                <Route path="discovery/network" element={<DiscoveryWorkbench defaultTab="network" />} />
-                <Route path="discovery/import" element={<ImportToAsset360 />} />
-                <Route path="discovery/settings" element={<DiscoverySettings />} />
                 <Route path="rtls" element={<RtlsWorkbench />} />
                 <Route path="rtls/map" element={<RtlsFloorMapLive />} />
                 <Route path="maps" element={<FloorMapEditor />} />

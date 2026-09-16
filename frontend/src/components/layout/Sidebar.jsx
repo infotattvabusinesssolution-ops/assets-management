@@ -72,7 +72,14 @@ const NAV_STRUCTURE = [
     name: 'Tracking & Location',
     path: '/rtls',
     icon: MapPin,
-    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'IT_MANAGER', 'FACILITIES', 'MANAGEMENT']
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'IT_MANAGER', 'FACILITIES', 'MANAGEMENT'],
+    subItems: [
+      { name: 'Asset Tracking', path: '/rtls' },
+      { name: 'Location Map', path: '/rtls/map' },
+      { name: 'Geofencing', path: '/geofencing' },
+      { name: 'Location History', path: '/location-history' },
+      { name: 'Proximity Search', path: '/proximity-search' }
+    ]
   },
   {
     id: 'discovery',
@@ -126,7 +133,15 @@ const NAV_STRUCTURE = [
     name: 'Maintenance',
     path: '/maintenance',
     icon: Wrench,
-    roles: ['SYS_ADMIN', 'FACILITIES', 'TECHNICIAN']
+    roles: ['SYS_ADMIN', 'FACILITIES', 'TECHNICIAN'],
+    subItems: [
+      { name: 'Work Orders', path: '/maintenance' },
+      { name: 'Maintenance Plans', path: '/maintenance/plans' },
+      { name: 'Preventive Maintenance', path: '/maintenance/preventive' },
+      { name: 'Asset Maintenance', path: '/maintenance' },
+      { name: 'Service Providers', path: '/maintenance/providers' },
+      { name: 'Spare Parts', path: '/maintenance/spare-parts' }
+    ]
   },
   {
     id: 'finance',

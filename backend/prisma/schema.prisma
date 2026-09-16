@@ -786,6 +786,8 @@ model MaintenanceWorkOrder {
 
   partsUsed WorkOrderPart[]
   checklist WorkOrderChecklist[]
+  timeLogs  WorkOrderTimeLog[]
+  statusHistory WorkOrderStatusHistory[]
 
   @@map("maintenance_work_orders")
 }
@@ -794,6 +796,7 @@ model WorkOrderPart {
   id          String  @id @default(uuid())
   workOrderId String
   partName    String
+  partNumber  String?
   quantity    Int     @default(1)
   unitCost    Decimal @default(0) @db.Decimal(18, 2)
   totalCost   Decimal @default(0) @db.Decimal(18, 2)
@@ -813,6 +816,37 @@ model WorkOrderChecklist {
   workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("work_order_checklists")
+}
+
+model WorkOrderTimeLog {
+  id          String    @id @default(uuid())
+  workOrderId String
+  technician  String
+  workDate    DateTime  @default(now())
+  startTime   String?
+  endTime     String?
+  hoursWorked Decimal   @default(0) @db.Decimal(10, 2)
+  activity    String
+  remarks     String?
+  createdAt   DateTime  @default(now())
+
+  workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("work_order_time_logs")
+}
+
+model WorkOrderStatusHistory {
+  id          String   @id @default(uuid())
+  workOrderId String
+  fromStatus  String?
+  toStatus    String
+  changedBy   String
+  comments    String?
+  createdAt   DateTime @default(now())
+
+  workOrder MaintenanceWorkOrder @relation(fields: [workOrderId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+
+  @@map("work_order_status_histories")
 }
 
 // ------------------------------------------------------
