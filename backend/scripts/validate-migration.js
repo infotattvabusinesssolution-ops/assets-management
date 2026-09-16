@@ -2,30 +2,34 @@ import prisma from '../config/prisma.js';
 import { connectDB } from '../config/db.js';
 
 export async function validateMigration() {
-  console.log('🔍 Running PostgreSQL Database Data Parity & Integrity Check...');
+  console.log('🔍 Running Microsoft SQL Server 2025 Database Parity & Integrity Check...');
   await connectDB();
 
   try {
-    const pgUserCount = await prisma.user.count();
-    const pgRoleCount = await prisma.role.count();
-    const pgCompanyCount = await prisma.company.count();
-    const pgDeptCount = await prisma.department.count();
-    const pgSiteCount = await prisma.site.count();
-    const pgCategoryCount = await prisma.category.count();
-    const pgAssetCount = await prisma.asset.count();
+    const sqlUserCount = await prisma.user.count();
+    const sqlRoleCount = await prisma.role.count();
+    const sqlCompanyCount = await prisma.company.count();
+    const sqlDeptCount = await prisma.department.count();
+    const sqlSiteCount = await prisma.site.count();
+    const sqlCategoryCount = await prisma.category.count();
+    const sqlAssetCount = await prisma.asset.count();
+    const sqlRtlsReaderCount = await prisma.rtlsReader.count();
+    const sqlWorkOrderCount = await prisma.maintenanceWorkOrder.count();
 
     console.log('----------------------------------------------------');
-    console.log(`Users       -> PostgreSQL: ${pgUserCount}`);
-    console.log(`Roles       -> PostgreSQL: ${pgRoleCount}`);
-    console.log(`Companies   -> PostgreSQL: ${pgCompanyCount}`);
-    console.log(`Departments -> PostgreSQL: ${pgDeptCount}`);
-    console.log(`Sites       -> PostgreSQL: ${pgSiteCount}`);
-    console.log(`Categories  -> PostgreSQL: ${pgCategoryCount}`);
-    console.log(`Assets      -> PostgreSQL: ${pgAssetCount}`);
+    console.log(`Users             -> SQL Server: ${sqlUserCount}`);
+    console.log(`Roles             -> SQL Server: ${sqlRoleCount}`);
+    console.log(`Companies         -> SQL Server: ${sqlCompanyCount}`);
+    console.log(`Departments       -> SQL Server: ${sqlDeptCount}`);
+    console.log(`Sites             -> SQL Server: ${sqlSiteCount}`);
+    console.log(`Categories        -> SQL Server: ${sqlCategoryCount}`);
+    console.log(`Assets            -> SQL Server: ${sqlAssetCount}`);
+    console.log(`RTLS Readers      -> SQL Server: ${sqlRtlsReaderCount}`);
+    console.log(`Work Orders       -> SQL Server: ${sqlWorkOrderCount}`);
     console.log('----------------------------------------------------');
 
-    if (pgUserCount > 0 && pgRoleCount > 0) {
-      console.log('🎉 VALIDATION PASSED: PostgreSQL database tables populated and verified!');
+    if (sqlUserCount > 0 && sqlRoleCount > 0) {
+      console.log('🎉 VALIDATION PASSED: Microsoft SQL Server 2025 database tables populated and verified!');
     } else {
       console.warn('⚠️ VALIDATION WARNING: Database contains empty tables. Run seed or migration script.');
     }

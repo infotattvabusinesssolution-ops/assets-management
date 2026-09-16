@@ -5,7 +5,8 @@ import {
   toggleDefinitionStatus,
   getPendingApprovals,
   getWorkflowHistory,
-  approveStep
+  approveStep,
+  createApprovalRequest
 } from './workflows.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
@@ -18,5 +19,7 @@ router.patch('/definitions/:id/toggle', toggleDefinitionStatus);
 router.get('/pending', getPendingApprovals);
 router.get('/history', getWorkflowHistory);
 router.post('/approve/:instanceId', approveStep);
+router.post('/create', createApprovalRequest);
 
 export default router;
+

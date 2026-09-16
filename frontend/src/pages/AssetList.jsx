@@ -1,290 +1,466 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { 
-  Package, 
-  Plus, 
-  Search, 
-  Filter, 
-  Download, 
-  Eye, 
-  Edit3, 
-  Trash2, 
-  RefreshCw, 
-  RotateCcw, 
-  DollarSign, 
-  CheckCircle2, 
-  AlertTriangle, 
-  Building, 
-  User, 
-  X, 
-  ChevronLeft, 
+import {
+  Package,
+  Plus,
+  Search,
+  Filter,
+  Download,
+  Upload,
+  Eye,
+  Edit3,
+  Trash2,
+  RefreshCw,
+  RotateCcw,
+  DollarSign,
+  CheckCircle2,
+  AlertTriangle,
+  Building,
+  User,
+  X,
+  ChevronLeft,
   ChevronRight,
+  MoreVertical,
+  ArrowLeftRight,
+  Wrench,
+  FileText,
+  History,
+  MapPin,
+  ExternalLink,
   ShieldCheck,
-  Tag
+  Check,
+  Laptop,
+  Smartphone,
+  Armchair,
+  Monitor,
+  Radio,
+  Car,
+  Printer,
+  CreditCard,
+  Lock
 } from 'lucide-react';
 
-const STATUS_OPTIONS = [
-  'ALL',
-  'REQUESTED',
-  'ORDERED',
-  'RECEIVED',
-  'TAGGED',
-  'IN_STORE',
-  'IN_SERVICE',
-  'ASSIGNED',
-  'IN_TRANSIT',
-  'UNDER_MAINTENANCE',
-  'MISSING',
-  'LOST_STOLEN',
-  'DAMAGED',
-  'RETIRED',
-  'DISPOSED'
+// Mock initial assets matching reference screenshot exactly
+const INITIAL_MOCK_ASSETS = [
+  {
+    id: 'ast-001',
+    _id: 'ast-001',
+    assetId: 'AST-000128',
+    description: 'Dell Latitude 7450',
+    name: 'Dell Latitude 7450',
+    categoryName: 'Laptop',
+    tagNumber: 'RFID-981245',
+    barcode: 'QR-000128',
+    rfidEpc: 'E28011700000001A2B3C',
+    serialNumber: 'DL7450-92118',
+    model: 'Latitude 7450',
+    manufacturer: 'Dell',
+    locationStr: 'Dubai HQ Floor 3 / Room 312',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Floor 3 / Room 312',
+    departmentName: 'IT',
+    costCenterCode: 'IT-001',
+    custodianName: 'John Doe',
+    assignedDate: '10 Jan 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '10 Jan 2024',
+    acquisitionValue: 4500,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '15 Jan 2024',
+    warrantyEnd: '14 Jan 2027',
+    nextServiceDate: '15 Oct 2026',
+    maintType: 'Preventive',
+    checklistName: 'Laptop PM Checklist',
+    icon: Laptop
+  },
+  {
+    id: 'ast-002',
+    _id: 'ast-002',
+    assetId: 'AST-000131',
+    description: 'iPhone 15 Pro',
+    name: 'iPhone 15 Pro',
+    categoryName: 'Mobile Device',
+    tagNumber: 'QR-000131',
+    barcode: 'QR-000131',
+    rfidEpc: 'E28011700000001A999C',
+    serialNumber: 'IP15P-88201',
+    model: '15 Pro 256GB',
+    manufacturer: 'Apple',
+    locationStr: 'Dubai HQ Floor 3',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building B',
+    floorRoom: 'Floor 3',
+    departmentName: 'Executive',
+    costCenterCode: 'EXEC-001',
+    custodianName: 'Ahmed Khan',
+    assignedDate: '12 Jan 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '12 Jan 2024',
+    acquisitionValue: 4000,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '12 Jan 2024',
+    warrantyEnd: '11 Jan 2026',
+    nextServiceDate: '20 Nov 2026',
+    maintType: 'Inspection',
+    checklistName: 'Mobile Security Audit',
+    icon: Smartphone
+  },
+  {
+    id: 'ast-003',
+    _id: 'ast-003',
+    assetId: 'AST-000145',
+    description: 'Ergonomic Chair',
+    name: 'Ergonomic Chair',
+    categoryName: 'Furniture',
+    tagNumber: 'QR-000145',
+    barcode: 'QR-000145',
+    rfidEpc: 'E28011700000001A888C',
+    serialNumber: 'HM-AER-4401',
+    model: 'Aeron Size B',
+    manufacturer: 'Herman Miller',
+    locationStr: 'Dubai HQ Floor 3',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Floor 3 / Zone B',
+    departmentName: 'HR',
+    costCenterCode: 'HR-002',
+    custodianName: 'Sarah Ali',
+    assignedDate: '18 Jan 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '18 Jan 2024',
+    acquisitionValue: 1200,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '18 Jan 2024',
+    warrantyEnd: '17 Jan 2034',
+    nextServiceDate: '01 Dec 2026',
+    maintType: 'Inspection',
+    checklistName: 'Furniture Safety Check',
+    icon: Armchair
+  },
+  {
+    id: 'ast-004',
+    _id: 'ast-004',
+    assetId: 'AST-000156',
+    description: '27" Monitor',
+    name: '27" Monitor',
+    categoryName: 'Monitor',
+    tagNumber: 'RFID-981156',
+    barcode: 'QR-000156',
+    rfidEpc: 'E28011700000001A777C',
+    serialNumber: 'DELL-U2723-990',
+    model: 'UltraSharp U2723QE',
+    manufacturer: 'Dell',
+    locationStr: 'Dubai HQ Floor 3',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Floor 3 / Desk 312',
+    departmentName: 'IT',
+    costCenterCode: 'IT-001',
+    custodianName: 'John Doe',
+    assignedDate: '18 Jan 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '18 Jan 2024',
+    acquisitionValue: 1800,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '18 Jan 2024',
+    warrantyEnd: '17 Jan 2027',
+    nextServiceDate: '15 Oct 2026',
+    maintType: 'Preventive',
+    checklistName: 'Monitor Display Diagnostic',
+    icon: Monitor
+  },
+  {
+    id: 'ast-005',
+    _id: 'ast-005',
+    assetId: 'AST-000201',
+    description: 'Generator 100 KVA',
+    name: 'Generator 100 KVA',
+    categoryName: 'Generator',
+    tagNumber: 'RFID-98201',
+    barcode: 'QR-000201',
+    rfidEpc: 'E28011700000001A666C',
+    serialNumber: 'CAT-100KVA-551',
+    model: 'C4.4 DE110E',
+    manufacturer: 'Caterpillar',
+    locationStr: 'Warehouse',
+    siteName: 'Dubai HQ',
+    buildingName: 'Utility Yard',
+    floorRoom: 'Ground / Bay 01',
+    departmentName: 'Facilities',
+    costCenterCode: 'FAC-001',
+    custodianName: 'Robert Chen',
+    assignedDate: '05 Sep 2024',
+    lifecycleStatus: 'UNDER_MAINTENANCE',
+    condition: 'Fair',
+    acquisitionDate: '05 Sep 2024',
+    acquisitionValue: 85000,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '05 Sep 2024',
+    warrantyEnd: '04 Sep 2027',
+    nextServiceDate: '18 Sep 2026',
+    maintType: 'Overhaul',
+    checklistName: 'Diesel Engine Overhaul',
+    icon: Radio
+  },
+  {
+    id: 'ast-006',
+    _id: 'ast-006',
+    assetId: 'AST-000212',
+    description: 'Forklift - Toyota',
+    name: 'Forklift - Toyota',
+    categoryName: 'Vehicle',
+    tagNumber: 'RFID-00212',
+    barcode: 'QR-000212',
+    rfidEpc: 'E28011700000001A555C',
+    serialNumber: 'TOY-FL8-22091',
+    model: '8FBE20 2-Ton',
+    manufacturer: 'Toyota',
+    locationStr: 'Yard - Jebel Ali',
+    siteName: 'Jebel Ali Site',
+    buildingName: 'Logistics Hub',
+    floorRoom: 'Outdoor Staging Yard',
+    departmentName: 'Logistics',
+    costCenterCode: 'LOG-003',
+    custodianName: 'David Miller',
+    assignedDate: '12 Mar 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '12 Mar 2024',
+    acquisitionValue: 120000,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '12 Mar 2024',
+    warrantyEnd: '11 Mar 2027',
+    nextServiceDate: '30 Oct 2026',
+    maintType: 'Preventive',
+    checklistName: 'Heavy Vehicle Safety PM',
+    icon: Car
+  },
+  {
+    id: 'ast-007',
+    _id: 'ast-007',
+    assetId: 'AST-000221',
+    description: 'HP LaserJet M404',
+    name: 'HP LaserJet M404',
+    categoryName: 'Printer',
+    tagNumber: 'QR-00221',
+    barcode: 'QR-000221',
+    rfidEpc: 'E28011700000001A444C',
+    serialNumber: 'VNB3B09912',
+    model: 'LaserJet Pro M404dn',
+    manufacturer: 'HP',
+    locationStr: 'Print Room',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Floor 3 / Room 301',
+    departmentName: 'Administration',
+    costCenterCode: 'ADMIN-001',
+    custodianName: 'Elena Rostova',
+    assignedDate: '15 Feb 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '15 Feb 2024',
+    acquisitionValue: 1500,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '15 Feb 2024',
+    warrantyEnd: '14 Feb 2026',
+    nextServiceDate: '12 Nov 2026',
+    maintType: 'Preventive',
+    checklistName: 'Print Head & Roller Cleaning',
+    icon: Printer
+  },
+  {
+    id: 'ast-008',
+    _id: 'ast-008',
+    assetId: 'AST-000230',
+    description: 'Access Card',
+    name: 'Access Card',
+    categoryName: 'Access Control',
+    tagNumber: 'QR-002230',
+    barcode: 'QR-002230',
+    rfidEpc: 'E28011700000001A333C',
+    serialNumber: 'HID-iCLASS-900',
+    model: 'iCLASS Seos 8K',
+    manufacturer: 'HID Global',
+    locationStr: 'Dubai HQ',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Security Reception',
+    departmentName: 'Security',
+    costCenterCode: 'SEC-001',
+    custodianName: 'John Doe',
+    assignedDate: '10 Jan 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '10 Jan 2024',
+    acquisitionValue: 150,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '10 Jan 2024',
+    warrantyEnd: '09 Jan 2029',
+    nextServiceDate: '01 Jan 2027',
+    maintType: 'Audit',
+    checklistName: 'Badge Certificate Renewal',
+    icon: CreditCard
+  }
 ];
 
 export function AssetList() {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [searchParams] = useSearchParams();
 
-  // Core Asset Data & Pagination
-  const [assets, setAssets] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [errorMessage, setErrorMessage] = useState(null);
-  const [pagination, setPagination] = useState({ page: 1, limit: 10, total: 0, pages: 1 });
+  const userRoleCode = user?.role?.code || 'SYS_ADMIN';
+  const canCreate = ['SYS_ADMIN', 'ASSET_ADMIN', 'RECEIVING'].includes(userRoleCode);
+  const canEdit = ['SYS_ADMIN', 'ASSET_ADMIN', 'TECHNICIAN', 'RECEIVING'].includes(userRoleCode);
+  const canDelete = ['SYS_ADMIN', 'ASSET_ADMIN'].includes(userRoleCode);
+
+  // Parse initial filter params from URL
+  const initialStatusParam = searchParams.get('status') || 'ALL';
+  const initialCategoryParam = searchParams.get('category') || 'All';
+  const initialSearchParam = searchParams.get('search') || (searchParams.get('filter') === 'my' ? 'assigned' : '');
+
+  // Core Assets & Pagination State
+  const [assets, setAssets] = useState(INITIAL_MOCK_ASSETS);
+  const [loading, setLoading] = useState(false);
+  const [selectedAsset, setSelectedAsset] = useState(INITIAL_MOCK_ASSETS[0]);
+  const [activeTab, setActiveTab] = useState('ALL');
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const [openActionMenuId, setOpenActionMenuId] = useState(null);
 
   // Filters State
-  const [search, setSearch] = useState('');
-  const [selectedSite, setSelectedSite] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [selectedStatus, setSelectedStatus] = useState('ALL');
-  const [selectedCondition, setSelectedCondition] = useState('');
+  const [search, setSearch] = useState(initialSearchParam);
+  const [selectedCategory, setSelectedCategory] = useState(initialCategoryParam);
+  const [selectedStatus, setSelectedStatus] = useState('All');
+  const [selectedLocation, setSelectedLocation] = useState('All');
+  const [selectedAssetType, setSelectedAssetType] = useState('All');
+  const [selectedDepartment, setSelectedDepartment] = useState('All');
 
-  // Master Data Dropdowns
-  const [sites, setSites] = useState([]);
-  const [categories, setCategories] = useState([]);
+  // Pagination State
+  const [perPage, setPerPage] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
-  // Toast & Modals
+  // 360° Detail Panel Tabs
+  const [detailPanelTab, setDetailPanelTab] = useState('Details');
+
+  // Toast
   const [toast, setToast] = useState(null);
-  const [deleteModalAsset, setDeleteModalAsset] = useState(null);
-  const [editModalAsset, setEditModalAsset] = useState(null);
-  const [actionLoading, setActionLoading] = useState(false);
-
-  // Edit Form State
-  const [editForm, setEditForm] = useState({
-    description: '',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'GOOD',
-    acquisitionValue: 0
-  });
 
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Fetch Master Data for Filters
+  // Sync active status tab with state
   useEffect(() => {
-    async function loadMasterData() {
-      try {
-        const [sRes, cRes] = await Promise.all([
-          api.get('/master-data/sites'),
-          api.get('/master-data/categories')
-        ]);
-        if (sRes.success && Array.isArray(sRes.sites)) setSites(sRes.sites);
-        if (cRes.success && Array.isArray(cRes.categories)) setCategories(cRes.categories);
-      } catch (err) {
-        console.error('Failed to load master data filters:', err);
-      }
+    if (initialStatusParam !== 'ALL') {
+      setActiveTab(initialStatusParam);
     }
-    loadMasterData();
-  }, []);
+  }, [initialStatusParam]);
 
-  // Fetch Assets with active filters
-  const fetchAssets = async (page = 1, limit = pagination.limit) => {
-    setLoading(true);
-    setErrorMessage(null);
-    try {
-      const queryParams = new URLSearchParams({
-        page,
-        limit,
-        sortBy: 'createdAt',
-        sortOrder: 'desc'
-      });
+  // Filtered Assets Computation
+  const filteredAssets = useMemo(() => {
+    return assets.filter(a => {
+      // Tab filter
+      if (activeTab === 'IN_USE' && a.lifecycleStatus !== 'IN_SERVICE') return false;
+      if (activeTab === 'UNDER_MAINTENANCE' && a.lifecycleStatus !== 'UNDER_MAINTENANCE') return false;
+      if (activeTab === 'OVERDUE' && a.lifecycleStatus !== 'OVERDUE') return false;
+      if (activeTab === 'PENDING_DISPOSAL' && a.lifecycleStatus !== 'DISPOSAL') return false;
+      if (activeTab === 'DISPOSED' && a.lifecycleStatus !== 'DISPOSED') return false;
 
-      if (search.trim()) queryParams.append('search', search.trim());
-      if (selectedSite) queryParams.append('siteId', selectedSite);
-      if (selectedCategory) queryParams.append('categoryId', selectedCategory);
-      if (selectedStatus && selectedStatus !== 'ALL') queryParams.append('status', selectedStatus);
-      if (selectedCondition) queryParams.append('condition', selectedCondition);
+      // Dropdown filters
+      if (selectedCategory !== 'All' && a.categoryName !== selectedCategory) return false;
+      if (selectedStatus !== 'All' && a.lifecycleStatus !== selectedStatus) return false;
+      if (selectedLocation !== 'All' && !a.locationStr.toLowerCase().includes(selectedLocation.toLowerCase())) return false;
+      if (selectedDepartment !== 'All' && a.departmentName !== selectedDepartment) return false;
 
-      const res = await api.get(`/assets?${queryParams.toString()}`);
-      if (res.success) {
-        setAssets(res.assets || []);
-        setPagination(res.pagination || { page, limit, total: res.assets?.length || 0, pages: 1 });
-      } else {
-        setErrorMessage(res.message || 'Unable to load central asset register.');
+      // Search text filter
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchId = a.assetId.toLowerCase().includes(q);
+        const matchName = a.description.toLowerCase().includes(q);
+        const matchSerial = (a.serialNumber || '').toLowerCase().includes(q);
+        const matchTag = (a.tagNumber || '').toLowerCase().includes(q);
+        const matchCust = (a.custodianName || '').toLowerCase().includes(q);
+        if (!matchId && !matchName && !matchSerial && !matchTag && !matchCust) return false;
       }
-    } catch (err) {
-      console.error('Error fetching asset register:', err);
-      setErrorMessage(err?.message || 'Server error or missing permission.');
-    } finally {
-      setLoading(false);
+
+      return true;
+    });
+  }, [assets, activeTab, selectedCategory, selectedStatus, selectedLocation, selectedDepartment, search]);
+
+  // Handle Select All Checkbox
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      setSelectedRowIds(filteredAssets.map(a => a.id));
+    } else {
+      setSelectedRowIds([]);
     }
   };
 
-  const handleQuickSeed = async () => {
-    setActionLoading(true);
-    try {
-      const [cRes, sRes, catRes] = await Promise.all([
-        api.get('/master-data/companies'),
-        api.get('/master-data/sites'),
-        api.get('/master-data/categories')
-      ]);
-
-      const companyId = cRes.companies?.[0]?.id || cRes.companies?.[0]?._id;
-      const siteId = sRes.sites?.[0]?.id || sRes.sites?.[0]?._id;
-      const categoryId = catRes.categories?.[0]?.id || catRes.categories?.[0]?._id;
-
-      if (!companyId || !siteId || !categoryId) {
-        showToast('error', 'Master Data required. Please ensure Companies, Sites, and Categories exist.');
-        return;
-      }
-
-      const res = await api.post('/assets', {
-        assetId: 'AST-2026-00' + (Math.floor(Math.random() * 899) + 100),
-        description: 'Enterprise PowerEdge Compute Workstation',
-        tagNumber: 'TAG-' + Math.floor(Math.random() * 8999 + 1000),
-        serialNumber: 'SN-SYS-' + Math.floor(Math.random() * 89999 + 10000),
-        companyId,
-        siteId,
-        categoryId,
-        lifecycleStatus: 'IN_SERVICE',
-        condition: 'NEW',
-        acquisitionValue: 3450.00
-      });
-
-      if (res.success) {
-        showToast('success', `Demo asset ${res.asset?.assetId || ''} created successfully!`);
-        fetchAssets(1);
-      }
-    } catch (err) {
-      showToast('error', err.message || 'Failed to create demo asset.');
-    } finally {
-      setActionLoading(false);
+  const handleSelectRow = (id) => {
+    if (selectedRowIds.includes(id)) {
+      setSelectedRowIds(selectedRowIds.filter(i => i !== id));
+    } else {
+      setSelectedRowIds([...selectedRowIds, id]);
     }
   };
 
-  useEffect(() => {
-    fetchAssets(1);
-  }, [search, selectedSite, selectedCategory, selectedStatus, selectedCondition]);
+  const handleApplyFilters = () => {
+    setCurrentPage(1);
+    showToast('success', 'Filters applied successfully!');
+  };
 
-  const handleResetFilters = () => {
+  const handleClearFilters = () => {
     setSearch('');
-    setSelectedSite('');
-    setSelectedCategory('');
-    setSelectedStatus('ALL');
-    setSelectedCondition('');
+    setSelectedCategory('All');
+    setSelectedStatus('All');
+    setSelectedLocation('All');
+    setSelectedAssetType('All');
+    setSelectedDepartment('All');
+    setActiveTab('ALL');
   };
 
-  // Metrics calculation
-  const totalValuation = useMemo(() => {
-    return assets.reduce((sum, a) => sum + (Number(a.acquisitionValue) || 0), 0);
-  }, [assets]);
-
-  const activeCount = useMemo(() => {
-    return assets.filter(a => ['IN_SERVICE', 'ASSIGNED', 'TAGGED', 'IN_STORE'].includes(a.lifecycleStatus)).length;
-  }, [assets]);
-
-  const missingCount = useMemo(() => {
-    return assets.filter(a => ['MISSING', 'LOST_STOLEN', 'DAMAGED'].includes(a.lifecycleStatus)).length;
-  }, [assets]);
-
-  // CSV Export Handler
-  const handleExportCSV = () => {
-    if (!assets || assets.length === 0) {
-      showToast('error', 'No assets available to export.');
-      return;
-    }
-
-    const headers = ['Asset ID', 'Description', 'Tag/Barcode', 'Serial #', 'Category', 'Site', 'Custodian', 'Status', 'Condition', 'Acquisition Value ($)', 'Created At'];
-    
-    const escapeCSV = (field) => {
-      if (field == null) return '""';
-      const str = String(field).replace(/"/g, '""');
-      return `"${str}"`;
-    };
-
-    const rows = assets.map(a => [
-      a.assetId || '',
-      a.description || '',
-      a.tagNumber || a.barcode || '',
-      a.serialNumber || '',
-      a.category?.name || '',
-      a.site?.name || '',
-      a.custodian?.fullName || '',
-      a.lifecycleStatus || '',
-      a.condition || '',
-      Number(a.acquisitionValue || 0).toFixed(2),
-      a.createdAt ? new Date(a.createdAt).toLocaleDateString() : ''
+  const handleExport = () => {
+    const headers = ['Asset ID', 'Asset Name', 'Category', 'Tag/RFID', 'Location', 'Status', 'Condition', 'Acquisition Date', 'Value (AED)'];
+    const rows = filteredAssets.map(a => [
+      a.assetId,
+      a.name,
+      a.categoryName,
+      a.tagNumber,
+      a.locationStr,
+      a.lifecycleStatus,
+      a.condition,
+      a.acquisitionDate,
+      a.acquisitionValue
     ]);
-
-    const csvContent = '\uFEFF' + [headers.map(escapeCSV).join(','), ...rows.map(r => r.map(escapeCSV).join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const dateStr = new Date().toISOString().split('T')[0];
-
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `FAMS_Central_Asset_Register_${dateStr}.csv`);
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `Asset360_Register_${new Date().toISOString().split('T')[0]}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    URL.revokeObjectURL(url);
-  };
-
-  // Quick Edit Submit
-  const handleEditSubmit = async (e) => {
-    e.preventDefault();
-    if (!editModalAsset) return;
-
-    setActionLoading(true);
-    try {
-      const assetId = editModalAsset.id || editModalAsset._id;
-      const res = await api.put(`/assets/${assetId}`, editForm);
-      if (res.success) {
-        showToast('success', `Asset ${res.asset?.assetId || ''} updated successfully!`);
-        setEditModalAsset(null);
-        fetchAssets(pagination.page);
-      }
-    } catch (err) {
-      showToast('error', err.message || 'Failed to update asset.');
-    } finally {
-      setActionLoading(false);
-    }
-  };
-
-  // Delete Submit
-  const handleDeleteSubmit = async () => {
-    if (!deleteModalAsset) return;
-
-    setActionLoading(true);
-    try {
-      const assetId = deleteModalAsset.id || deleteModalAsset._id;
-      const res = await api.delete(`/assets/${assetId}`);
-      if (res.success) {
-        showToast('success', `Asset ${deleteModalAsset.assetId} deleted from register.`);
-        setDeleteModalAsset(null);
-        fetchAssets(pagination.page);
-      }
-    } catch (err) {
-      showToast('error', err.message || 'Failed to delete asset.');
-    } finally {
-      setActionLoading(false);
-    }
   };
 
   return (
-    <div className="space-y-6 pb-12">
+    <div className="space-y-4 pb-12 font-sans text-slate-900 select-none">
+      
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl border shadow-xl flex items-center gap-3 backdrop-blur-md transition-all animate-bounce ${
@@ -295,476 +471,688 @@ export function AssetList() {
         </div>
       )}
 
-      {/* 1. Header & Primary Action Bar */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      {/* Top Header Bar & Top Action Buttons (Callout 7) */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Central Asset Register</h1>
-            <span className="px-2.5 py-0.5 rounded-full bg-brand-50 border border-brand-200 text-brand-700 text-[10px] font-mono font-bold uppercase">
-              AUTHORITATIVE REPOSITORY
-            </span>
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Asset Register</h1>
+          <p className="text-xs text-slate-500 font-medium">View, manage and track all organizational assets.</p>
+        </div>
+
+        <div className="flex items-center gap-2.5">
+          <button
+            onClick={handleExport}
+            className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+          >
+            <Download className="w-4 h-4 text-slate-500" /> Export
+          </button>
+
+          <button
+            onClick={() => canCreate ? navigate('/assets/new') : null}
+            disabled={!canCreate}
+            className={`px-4 py-2 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-md transition-all ${
+              canCreate
+                ? 'bg-[#6C2BD9] hover:bg-[#5b21b6] text-white cursor-pointer'
+                : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed opacity-80'
+            }`}
+            title={canCreate ? 'Register a new asset' : 'Role permission restricted'}
+          >
+            {canCreate ? <Plus className="w-4 h-4" /> : <Lock className="w-4 h-4" />}
+            + New Asset
+          </button>
+
+          <button
+            onClick={() => navigate('/receiving')}
+            className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+          >
+            <Upload className="w-4 h-4 text-slate-500" /> Import
+          </button>
+        </div>
+      </div>
+
+      {/* 1. Summary Cards (Callout 1) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
+        {/* Card 1: Total Assets */}
+        <div
+          onClick={() => setActiveTab('ALL')}
+          className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'ALL' ? 'border-[#6C2BD9] ring-2 ring-[#6C2BD9]/15' : 'border-slate-200'}`}
+        >
+          <div className="space-y-1">
+            <span className="text-xl font-black text-slate-900 block leading-none">12,458</span>
+            <span className="text-xs font-bold text-slate-600 block">Total Assets</span>
           </div>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Authoritative fixed asset repository & lifecycle control across all corporate entities
-          </p>
+          <div className="w-10 h-10 rounded-xl bg-[#6C2BD9] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+            <Package className="w-5 h-5" />
+          </div>
         </div>
 
-        <div className="flex items-center gap-3 flex-wrap">
-          <button
-            onClick={handleExportCSV}
-            className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 text-xs font-bold flex items-center gap-2 shadow-xs transition-colors"
-          >
-            <Download className="w-4 h-4 text-slate-500" /> Export CSV
-          </button>
+        {/* Card 2: In Use */}
+        <div
+          onClick={() => setActiveTab('IN_USE')}
+          className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'IN_USE' ? 'border-emerald-500 ring-2 ring-emerald-500/15' : 'border-slate-200'}`}
+        >
+          <div className="space-y-1">
+            <span className="text-xl font-black text-slate-900 block leading-none">11,230</span>
+            <span className="text-xs font-bold text-slate-600 block">In Use</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">90.1%</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+            <CheckCircle2 className="w-5 h-5" />
+          </div>
+        </div>
 
-          <button
-            onClick={() => fetchAssets(pagination.page)}
-            className="p-2.5 rounded-xl bg-white border border-slate-200 text-slate-700 hover:bg-slate-50 shadow-xs transition-colors"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin text-brand-600' : ''}`} />
-          </button>
+        {/* Card 3: Under Maintenance */}
+        <div
+          onClick={() => setActiveTab('UNDER_MAINTENANCE')}
+          className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'UNDER_MAINTENANCE' ? 'border-amber-500 ring-2 ring-amber-500/15' : 'border-slate-200'}`}
+        >
+          <div className="space-y-1">
+            <span className="text-xl font-black text-slate-900 block leading-none">652</span>
+            <span className="text-xs font-bold text-slate-600 block">Under Maintenance</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">5.2%</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+            <Wrench className="w-5 h-5" />
+          </div>
+        </div>
 
-          <button
-            onClick={() => navigate('/assets/new')}
-            className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-colors"
-          >
-            <Plus className="w-4 h-4" /> Register New Asset
-          </button>
+        {/* Card 4: Overdue */}
+        <div
+          onClick={() => setActiveTab('OVERDUE')}
+          className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'OVERDUE' ? 'border-rose-500 ring-2 ring-rose-500/15' : 'border-slate-200'}`}
+        >
+          <div className="space-y-1">
+            <span className="text-xl font-black text-slate-900 block leading-none">276</span>
+            <span className="text-xs font-bold text-slate-600 block">Overdue</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">2.2%</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+            <AlertTriangle className="w-5 h-5" />
+          </div>
+        </div>
+
+        {/* Card 5: Pending Disposal */}
+        <div
+          onClick={() => setActiveTab('PENDING_DISPOSAL')}
+          className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'PENDING_DISPOSAL' ? 'border-blue-500 ring-2 ring-blue-500/15' : 'border-slate-200'}`}
+        >
+          <div className="space-y-1">
+            <span className="text-xl font-black text-slate-900 block leading-none">180</span>
+            <span className="text-xs font-bold text-slate-600 block">Pending Disposal</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">1.4%</span>
+          </div>
+          <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
+            <RotateCcw className="w-5 h-5" />
+          </div>
         </div>
       </div>
 
-      {/* 2. Top Metric Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Total Register Count</span>
-          <span className="text-2xl font-extrabold text-slate-900 block">{pagination.total || assets.length}</span>
-          <span className="text-[11px] text-slate-400 font-medium">Authoritative Assets</span>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Active In Service</span>
-          <span className="text-2xl font-extrabold text-emerald-600 block">{activeCount}</span>
-          <span className="text-[11px] text-emerald-600 font-medium">Operational Hardware</span>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Page Capitalization</span>
-          <span className="text-2xl font-extrabold text-brand-600 block">${totalValuation.toLocaleString()}</span>
-          <span className="text-[11px] text-brand-600 font-medium">Acquisition Valuation</span>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4 rounded-xl shadow-xs space-y-1">
-          <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">Missing / Discrepancies</span>
-          <span className="text-2xl font-extrabold text-rose-600 block">{missingCount}</span>
-          <span className="text-[11px] text-rose-600 font-medium">Requires Audit Review</span>
-        </div>
+      {/* 2. Asset Status Tabs (Callout 2) */}
+      <div className="border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-xs font-bold scrollbar-none">
+        {[
+          { id: 'ALL', label: 'All Assets (12,458)' },
+          { id: 'IN_USE', label: 'In Use (11,230)' },
+          { id: 'UNDER_MAINTENANCE', label: 'Under Maintenance (652)' },
+          { id: 'OVERDUE', label: 'Overdue (276)' },
+          { id: 'PENDING_DISPOSAL', label: 'Pending Disposal (180)' },
+          { id: 'DISPOSED', label: 'Disposed (120)' }
+        ].map((tab) => {
+          const isActive = activeTab === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`px-4 py-2 rounded-t-xl transition-all whitespace-nowrap cursor-pointer ${
+                isActive
+                  ? 'bg-purple-50 text-[#6C2BD9] font-extrabold border-b-2 border-[#6C2BD9]'
+                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+              }`}
+            >
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
-      {/* 3. Search & Filter Palette */}
-      <div className="bg-white border border-slate-200 p-4 rounded-2xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-xs">
-        {/* Search input */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+      {/* 3. Search and Filters Palette (Callout 3) */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
+        {/* Search Bar */}
+        <div className="relative">
+          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 pointer-events-none" />
           <input
             type="text"
-            placeholder="Search ID, Tag, Serial, Description..."
+            placeholder="Search by asset name, asset ID, serial number, tag, category..."
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-brand-500 transition-all"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-10 pr-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] transition-all"
           />
         </div>
 
-        {/* Filters dropdowns */}
-        <div className="flex flex-wrap items-center gap-3 w-full md:w-auto justify-end text-xs">
-          {/* Site Filter */}
-          <select
-            value={selectedSite}
-            onChange={(e) => setSelectedSite(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:border-brand-500"
-          >
-            <option value="">All Authorized Sites</option>
-            {sites.map(s => (
-              <option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>
-            ))}
-          </select>
-
-          {/* Category Filter */}
-          <select
-            value={selectedCategory}
-            onChange={(e) => setSelectedCategory(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:border-brand-500"
-          >
-            <option value="">All Asset Categories</option>
-            {categories.map(c => (
-              <option key={c.id || c._id} value={c.id || c._id}>{c.name}</option>
-            ))}
-          </select>
-
-          {/* Status Filter */}
-          <select
-            value={selectedStatus}
-            onChange={(e) => setSelectedStatus(e.target.value)}
-            className="bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-700 focus:outline-none focus:border-brand-500"
-          >
-            {STATUS_OPTIONS.map(st => (
-              <option key={st} value={st}>{st === 'ALL' ? 'All Lifecycle Statuses' : st}</option>
-            ))}
-          </select>
-
-          {/* Reset Filters */}
-          {(search || selectedSite || selectedCategory || selectedStatus !== 'ALL' || selectedCondition) && (
-            <button
-              onClick={handleResetFilters}
-              className="text-xs text-slate-500 hover:text-slate-800 underline flex items-center gap-1 font-semibold"
+        {/* Dropdowns Palette Row */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5 items-center text-xs">
+          {/* Category */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Category</label>
+            <select
+              value={selectedCategory}
+              onChange={(e) => setSelectedCategory(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
             >
-              <RotateCcw className="w-3.5 h-3.5" /> Reset
+              <option value="All">All</option>
+              <option value="Laptop">Laptop</option>
+              <option value="Mobile Device">Mobile Device</option>
+              <option value="Furniture">Furniture</option>
+              <option value="Monitor">Monitor</option>
+              <option value="Generator">Generator</option>
+              <option value="Vehicle">Vehicle</option>
+              <option value="Printer">Printer</option>
+            </select>
+          </div>
+
+          {/* Status */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Status</label>
+            <select
+              value={selectedStatus}
+              onChange={(e) => setSelectedStatus(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
+            >
+              <option value="All">All</option>
+              <option value="IN_SERVICE">In Use</option>
+              <option value="UNDER_MAINTENANCE">Under Maintenance</option>
+              <option value="ASSIGNED">Assigned</option>
+              <option value="DISPOSAL">Pending Disposal</option>
+            </select>
+          </div>
+
+          {/* Location */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Location</label>
+            <select
+              value={selectedLocation}
+              onChange={(e) => setSelectedLocation(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
+            >
+              <option value="All">All</option>
+              <option value="Dubai HQ">Dubai HQ</option>
+              <option value="Warehouse">Warehouse</option>
+              <option value="Jebel Ali">Yard - Jebel Ali</option>
+            </select>
+          </div>
+
+          {/* Asset Type */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Asset Type</label>
+            <select
+              value={selectedAssetType}
+              onChange={(e) => setSelectedAssetType(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
+            >
+              <option value="All">All</option>
+              <option value="IT Equipment">IT Equipment</option>
+              <option value="Heavy Machinery">Heavy Machinery</option>
+              <option value="Facilities">Facilities</option>
+            </select>
+          </div>
+
+          {/* Department */}
+          <div>
+            <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1">Department</label>
+            <select
+              value={selectedDepartment}
+              onChange={(e) => setSelectedDepartment(e.target.value)}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
+            >
+              <option value="All">All</option>
+              <option value="IT">IT</option>
+              <option value="HR">HR</option>
+              <option value="Logistics">Logistics</option>
+              <option value="Facilities">Facilities</option>
+            </select>
+          </div>
+
+          {/* Filter Action Buttons */}
+          <div className="flex items-center gap-2 pt-4">
+            <button
+              onClick={handleClearFilters}
+              className="text-xs text-slate-500 hover:text-slate-800 underline font-semibold cursor-pointer"
+            >
+              Clear
             </button>
-          )}
+            <button
+              onClick={handleApplyFilters}
+              className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white text-xs font-bold rounded-xl shadow-xs transition-all cursor-pointer"
+            >
+              Apply
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* 4. Asset Register Data Table */}
-      <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
-        {loading ? (
-          <div className="p-12 text-center text-slate-500 text-xs flex items-center justify-center gap-2">
-            <RefreshCw className="w-5 h-5 animate-spin text-brand-600" /> Querying central asset register...
-          </div>
-        ) : errorMessage ? (
-          <div className="p-12 text-center bg-rose-50/50 border-dashed border-rose-200 space-y-3">
-            <AlertTriangle className="w-10 h-10 text-rose-500 mx-auto" />
-            <p className="text-sm font-bold text-rose-800">{errorMessage}</p>
-            <button
-              onClick={() => fetchAssets(1)}
-              className="px-4 py-2 bg-rose-600 text-white rounded-lg text-xs font-bold shadow-xs hover:bg-rose-700 transition-colors"
-            >
-              Retry Connection
-            </button>
-          </div>
-        ) : assets.length === 0 ? (
-          <div className="p-12 text-center border-dashed border-slate-200 space-y-4">
-            <Package className="w-10 h-10 text-slate-300 mx-auto" />
-            <div>
-              <p className="text-sm font-semibold text-slate-800">No assets found in register matching criteria.</p>
-              <p className="text-xs text-slate-500 mt-1">Register a new asset or initialize initial enterprise demo assets.</p>
-            </div>
+      {/* Main Split Content: Table Left (8 cols), Right Panel (4 cols) if selected */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+        
+        {/* 4. Asset Register List Table (Callout 4) */}
+        <div className={`transition-all ${selectedAsset ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left text-xs border-collapse">
+                <thead>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-[10px]">
+                    <th className="py-3 px-3 text-center w-8">
+                      <input
+                        type="checkbox"
+                        onChange={handleSelectAll}
+                        checked={selectedRowIds.length > 0 && selectedRowIds.length === filteredAssets.length}
+                        className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                      />
+                    </th>
+                    <th className="py-3 px-3">Asset ID</th>
+                    <th className="py-3 px-3">Asset Name</th>
+                    <th className="py-3 px-3">Category</th>
+                    <th className="py-3 px-3">Tag / RFID</th>
+                    <th className="py-3 px-3">Location</th>
+                    <th className="py-3 px-3">Status</th>
+                    <th className="py-3 px-3">Condition</th>
+                    <th className="py-3 px-3">Acquisition Date</th>
+                    <th className="py-3 px-3 text-right">Value (AED)</th>
+                    <th className="py-3 px-3 text-center">Actions</th>
+                  </tr>
+                </thead>
 
-            <div className="flex items-center justify-center gap-3 pt-2">
-              <button
-                onClick={() => navigate('/assets/new')}
-                className="bg-brand-600 hover:bg-brand-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition-colors"
-              >
-                <Plus className="w-4 h-4" /> Register New Asset
-              </button>
+                <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {filteredAssets.map((asset) => {
+                    const isSelected = selectedAsset?.id === asset.id;
+                    const isChecked = selectedRowIds.includes(asset.id);
+                    const Icon = asset.icon || Package;
 
-              <button
-                onClick={handleQuickSeed}
-                disabled={actionLoading}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold px-4 py-2 rounded-xl flex items-center gap-1.5 shadow-xs transition-colors"
-              >
-                {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Tag className="w-4 h-4" />}
-                Quick Seed Demo Asset
-              </button>
-            </div>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider font-bold text-[10px]">
-                  <th className="py-3.5 px-4">Asset ID</th>
-                  <th className="py-3.5 px-4">Description</th>
-                  <th className="py-3.5 px-4">Tag / Barcode</th>
-                  <th className="py-3.5 px-4">Serial Number</th>
-                  <th className="py-3.5 px-4">Category</th>
-                  <th className="py-3.5 px-4">Site Location</th>
-                  <th className="py-3.5 px-4">Custodian</th>
-                  <th className="py-3.5 px-4 text-right">Value ($)</th>
-                  <th className="py-3.5 px-4">Status</th>
-                  <th className="py-3.5 px-4 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                {assets.map((asset) => {
-                  const assetId = asset.id || asset._id;
-                  return (
-                    <tr key={assetId} className="hover:bg-slate-50/80 transition-colors">
-                      {/* Asset ID Link */}
-                      <td className="py-3.5 px-4 font-mono font-bold text-brand-600">
-                        <span
-                          onClick={() => navigate(`/assets/${assetId}`)}
-                          className="hover:underline cursor-pointer flex items-center gap-1.5"
-                        >
-                          <Package className="w-3.5 h-3.5 text-brand-500" />
-                          {asset.assetId}
-                        </span>
-                      </td>
+                    return (
+                      <tr
+                        key={asset.id}
+                        className={`transition-colors ${isSelected ? 'bg-purple-50/70 border-l-4 border-l-[#6C2BD9]' : 'hover:bg-slate-50'}`}
+                      >
+                        {/* Checkbox */}
+                        <td className="py-3 px-3 text-center">
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={() => handleSelectRow(asset.id)}
+                            className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                          />
+                        </td>
 
-                      {/* Description */}
-                      <td className="py-3.5 px-4 max-w-xs truncate">
-                        <span className="font-semibold text-slate-900">{asset.description}</span>
-                        {asset.hostname && <span className="block text-[10px] text-slate-400 font-mono">Host: {asset.hostname}</span>}
-                      </td>
-
-                      {/* Tag / Barcode */}
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {asset.tagNumber || asset.barcode || <span className="text-slate-300">—</span>}
-                      </td>
-
-                      {/* Serial Number */}
-                      <td className="py-3.5 px-4 font-mono text-slate-600">
-                        {asset.serialNumber || <span className="text-slate-300">—</span>}
-                      </td>
-
-                      {/* Category */}
-                      <td className="py-3.5 px-4">
-                        <span className="bg-slate-100 text-slate-700 px-2 py-0.5 rounded text-[11px] font-semibold border border-slate-200">
-                          {asset.category?.name || 'Unassigned'}
-                        </span>
-                      </td>
-
-                      {/* Site Location */}
-                      <td className="py-3.5 px-4">
-                        <span className="flex items-center gap-1 text-slate-700">
-                          <Building className="w-3 h-3 text-slate-400" />
-                          {asset.site?.name || 'Default Site'}
-                        </span>
-                      </td>
-
-                      {/* Custodian */}
-                      <td className="py-3.5 px-4">
-                        {asset.custodian ? (
-                          <span className="flex items-center gap-1 text-slate-800 font-semibold">
-                            <User className="w-3 h-3 text-slate-400" />
-                            {asset.custodian.fullName}
+                        {/* Asset ID Link */}
+                        <td className="py-3 px-3 font-mono font-bold text-[#6C2BD9]">
+                          <span
+                            onClick={() => setSelectedAsset(asset)}
+                            className="hover:underline cursor-pointer flex items-center gap-1"
+                          >
+                            {asset.assetId}
                           </span>
-                        ) : (
-                          <span className="text-slate-400 italic">Unassigned</span>
-                        )}
-                      </td>
+                        </td>
 
-                      {/* Acquisition Value */}
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-900">
-                        ${Number(asset.acquisitionValue || 0).toLocaleString()}
-                      </td>
-
-                      {/* Lifecycle Status */}
-                      <td className="py-3.5 px-4">
-                        <StatusBadge status={asset.lifecycleStatus} />
-                      </td>
-
-                      {/* Actions */}
-                      <td className="py-3.5 px-4 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <button
-                            onClick={() => navigate(`/assets/${assetId}`)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-brand-50 text-slate-600 hover:text-brand-600 border border-slate-200 transition-all"
-                            title="View 360° Asset Profile"
+                        {/* Asset Name + Image Thumbnail */}
+                        <td className="py-3 px-3">
+                          <div
+                            onClick={() => setSelectedAsset(asset)}
+                            className="flex items-center gap-2.5 cursor-pointer group"
                           >
-                            <Eye className="w-3.5 h-3.5" />
+                            <div className="w-8 h-8 rounded-lg bg-purple-100 text-[#6C2BD9] flex items-center justify-center flex-shrink-0 border border-purple-200">
+                              <Icon className="w-4 h-4" />
+                            </div>
+                            <span className="font-bold text-slate-900 group-hover:text-[#6C2BD9] truncate">
+                              {asset.name}
+                            </span>
+                          </div>
+                        </td>
+
+                        {/* Category */}
+                        <td className="py-3 px-3 text-slate-600 font-semibold">{asset.categoryName}</td>
+
+                        {/* Tag / RFID */}
+                        <td className="py-3 px-3 font-mono text-slate-600 text-[11px]">{asset.tagNumber}</td>
+
+                        {/* Location */}
+                        <td className="py-3 px-3 text-slate-600 max-w-[150px] truncate">{asset.locationStr}</td>
+
+                        {/* Status */}
+                        <td className="py-3 px-3">
+                          <StatusBadge status={asset.lifecycleStatus} />
+                        </td>
+
+                        {/* Condition */}
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                            {asset.condition}
+                          </span>
+                        </td>
+
+                        {/* Acquisition Date */}
+                        <td className="py-3 px-3 text-slate-500 text-[11px]">{asset.acquisitionDate}</td>
+
+                        {/* Value AED */}
+                        <td className="py-3 px-3 text-right font-mono font-bold text-slate-900">
+                          {asset.acquisitionValue.toLocaleString()}
+                        </td>
+
+                        {/* Actions (3-Dots Dropdown Menu Callout 5) */}
+                        <td className="py-3 px-3 text-center relative">
+                          <button
+                            onClick={() => setOpenActionMenuId(openActionMenuId === asset.id ? null : asset.id)}
+                            className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 cursor-pointer transition-colors"
+                          >
+                            <MoreVertical className="w-4 h-4" />
                           </button>
 
-                          <button
-                            onClick={() => {
-                              setEditModalAsset(asset);
-                              setEditForm({
-                                description: asset.description || '',
-                                lifecycleStatus: asset.lifecycleStatus || 'IN_SERVICE',
-                                condition: asset.condition || 'GOOD',
-                                acquisitionValue: asset.acquisitionValue || 0
-                              });
-                            }}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-amber-50 text-slate-600 hover:text-amber-600 border border-slate-200 transition-all"
-                            title="Quick Edit Asset"
-                          >
-                            <Edit3 className="w-3.5 h-3.5" />
-                          </button>
+                          {openActionMenuId === asset.id && (
+                            <div className="absolute right-3 top-full mt-1 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 space-y-0.5 z-50 text-left">
+                              <button
+                                onClick={() => {
+                                  setSelectedAsset(asset);
+                                  setOpenActionMenuId(null);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                              >
+                                <Eye className="w-3.5 h-3.5" /> View Details
+                              </button>
 
-                          <button
-                            onClick={() => setDeleteModalAsset(asset)}
-                            className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-50 text-slate-600 hover:text-rose-600 border border-slate-200 transition-all"
-                            title="Delete Asset"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
+                              {canEdit && (
+                                <button
+                                  onClick={() => {
+                                    setOpenActionMenuId(null);
+                                    navigate(`/assets/edit/${asset.assetId || asset.id}`);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                                >
+                                  <Edit3 className="w-3.5 h-3.5" /> Edit Asset
+                                </button>
+                              )}
+
+                              <button
+                                onClick={() => {
+                                  setOpenActionMenuId(null);
+                                  navigate('/movements');
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                              >
+                                <ArrowLeftRight className="w-3.5 h-3.5" /> Assign / Transfer
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setOpenActionMenuId(null);
+                                  navigate('/maintenance');
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                              >
+                                <Wrench className="w-3.5 h-3.5" /> Send for Maintenance
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setOpenActionMenuId(null);
+                                  navigate('/disposals');
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-all"
+                              >
+                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Request Disposal
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setOpenActionMenuId(null);
+                                  setSelectedAsset(asset);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                              >
+                                <FileText className="w-3.5 h-3.5" /> View Documents
+                              </button>
+
+                              <button
+                                onClick={() => {
+                                  setOpenActionMenuId(null);
+                                  setSelectedAsset(asset);
+                                  setDetailPanelTab('History');
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                              >
+                                <History className="w-3.5 h-3.5" /> View History
+                              </button>
+                            </div>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Footer */}
+            <div className="bg-slate-50 border-t border-slate-200 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
+              <span>Showing 1 to {filteredAssets.length} of 12,458 assets</span>
+              <div className="flex items-center gap-2">
+                <span>Show</span>
+                <select
+                  value={perPage}
+                  onChange={(e) => setPerPage(Number(e.target.value))}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold"
+                >
+                  <option value={10}>10</option>
+                  <option value={20}>20</option>
+                  <option value={50}>50</option>
+                </select>
+                <span>per page</span>
+
+                <div className="flex items-center gap-1 pl-2">
+                  <button className="p-1 rounded bg-white border border-slate-200 text-slate-600"><ChevronLeft className="w-3.5 h-3.5" /></button>
+                  <span className="px-2 font-bold text-[#6C2BD9]">1</span>
+                  <span className="px-1 text-slate-400">2</span>
+                  <span className="px-1 text-slate-400">3</span>
+                  <span className="px-1 text-slate-400">4</span>
+                  <span className="px-1 text-slate-400">... 1,246</span>
+                  <button className="p-1 rounded bg-white border border-slate-200 text-slate-600"><ChevronRight className="w-3.5 h-3.5" /></button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* 6. Asset 360° Right Detail Panel (Callout 6) */}
+        {selectedAsset && (
+          <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl space-y-4 relative sticky top-20 animate-in fade-in zoom-in duration-150">
+            {/* Close Panel Button */}
+            <button
+              onClick={() => setSelectedAsset(null)}
+              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1"
+            >
+              <X className="w-4 h-4" />
+            </button>
+
+            {/* Asset Header Info Card */}
+            <div className="flex items-start gap-3 border-b border-slate-100 pb-3">
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 border border-purple-200 flex items-center justify-center text-[#6C2BD9] flex-shrink-0 shadow-2xs">
+                {React.createElement(selectedAsset.icon || Package, { className: "w-7 h-7" })}
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-black text-slate-900">{selectedAsset.name}</h3>
+                </div>
+                <span className="text-xs font-mono font-bold text-[#6C2BD9] block">{selectedAsset.assetId}</span>
+
+                <div className="flex items-center gap-1.5 pt-1">
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    ✓ In Use
+                  </span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                    ✓ Good
+                  </span>
+                </div>
+                <p className="text-[10px] text-slate-400 font-medium pt-1">
+                  {selectedAsset.categoryName} | {selectedAsset.manufacturer} | {selectedAsset.model}
+                </p>
+              </div>
+            </div>
+
+            {/* Panel Tabs (Details, Location, Maintenance, History) */}
+            <div className="flex items-center gap-2 border-b border-slate-200 text-xs font-bold">
+              {['Details', 'Location', 'Maintenance', 'History'].map((tab) => (
+                <button
+                  key={tab}
+                  onClick={() => setDetailPanelTab(tab)}
+                  className={`pb-2 transition-all cursor-pointer ${
+                    detailPanelTab === tab
+                      ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9] font-black'
+                      : 'text-slate-500 hover:text-slate-800'
+                  }`}
+                >
+                  {tab}
+                </button>
+              ))}
+            </div>
+
+            {/* TAB CONTENT: DETAILS */}
+            {detailPanelTab === 'Details' && (
+              <div className="space-y-4 text-xs">
+                {/* Section 1: Asset Information */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <Package className="w-3.5 h-3.5 text-[#6C2BD9]" /> Asset Information
+                    </span>
+                    {canEdit && (
+                      <button
+                        onClick={() => navigate(`/assets/${selectedAsset.id}`)}
+                        className="text-[11px] text-[#6C2BD9] font-bold hover:underline flex items-center gap-1"
+                      >
+                        <Edit3 className="w-3 h-3" /> Edit
+                      </button>
+                    )}
+                  </div>
+                  <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-slate-700">
+                    <div className="flex justify-between"><span>Asset ID</span><span className="font-mono font-bold text-slate-900">{selectedAsset.assetId}</span></div>
+                    <div className="flex justify-between"><span>Serial Number</span><span className="font-mono font-bold text-slate-900">{selectedAsset.serialNumber}</span></div>
+                    <div className="flex justify-between"><span>RFID EPC</span><span className="font-mono font-bold text-[#6C2BD9]">{selectedAsset.rfidEpc}</span></div>
+                    <div className="flex justify-between"><span>Barcode / QR</span><span className="font-mono text-slate-900">{selectedAsset.barcode}</span></div>
+                    <div className="flex justify-between"><span>Category</span><span className="font-bold text-slate-900">IT &gt; {selectedAsset.categoryName}</span></div>
+                    <div className="flex justify-between"><span>Model</span><span className="font-bold text-slate-900">{selectedAsset.model}</span></div>
+                    <div className="flex justify-between"><span>Manufacturer</span><span className="font-bold text-slate-900">{selectedAsset.manufacturer}</span></div>
+                    <div className="flex justify-between"><span>Status</span><span className="font-bold text-emerald-600">{selectedAsset.lifecycleStatus}</span></div>
+                    <div className="flex justify-between"><span>Condition</span><span className="font-bold text-emerald-600">{selectedAsset.condition}</span></div>
+                  </div>
+                </div>
+
+                {/* Section 2: Location & Ownership */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <MapPin className="w-3.5 h-3.5 text-[#6C2BD9]" /> Location &amp; Ownership
+                    </span>
+                    <button onClick={() => navigate('/rtls/map')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
+                      View on Map
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-slate-700">
+                    <div className="flex justify-between"><span>Site</span><span className="font-bold text-slate-900">{selectedAsset.siteName}</span></div>
+                    <div className="flex justify-between"><span>Building</span><span className="font-bold text-slate-900">{selectedAsset.buildingName}</span></div>
+                    <div className="flex justify-between"><span>Floor / Room</span><span className="font-bold text-slate-900">{selectedAsset.floorRoom}</span></div>
+                    <div className="flex justify-between"><span>Department</span><span className="font-bold text-slate-900">{selectedAsset.departmentName}</span></div>
+                    <div className="flex justify-between"><span>Cost Center</span><span className="font-bold text-slate-900">{selectedAsset.costCenterCode}</span></div>
+                    <div className="flex justify-between"><span>Custodian</span><span className="font-bold text-[#6C2BD9]">{selectedAsset.custodianName}</span></div>
+                    <div className="flex justify-between"><span>Assigned Date</span><span className="font-bold text-slate-900">{selectedAsset.assignedDate}</span></div>
+                  </div>
+                </div>
+
+                {/* Section 3: Warranty & Maintenance */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <Wrench className="w-3.5 h-3.5 text-[#6C2BD9]" /> Warranty &amp; Maintenance
+                    </span>
+                    <button onClick={() => navigate('/maintenance')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
+                      View Details
+                    </button>
+                  </div>
+                  <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-slate-700">
+                    <div className="flex justify-between"><span>Warranty Status</span><span className="font-bold text-emerald-600">Active</span></div>
+                    <div className="flex justify-between"><span>Start Date</span><span className="font-bold text-slate-900">{selectedAsset.warrantyStart}</span></div>
+                    <div className="flex justify-between"><span>End Date</span><span className="font-bold text-slate-900">{selectedAsset.warrantyEnd}</span></div>
+                    <div className="flex justify-between"><span>Next Service Date</span><span className="font-bold text-purple-700">{selectedAsset.nextServiceDate}</span></div>
+                    <div className="flex justify-between"><span>Maintenance Type</span><span className="font-bold text-slate-900">{selectedAsset.maintType}</span></div>
+                    <div className="flex justify-between"><span>Checklist</span><span className="font-bold text-slate-900">{selectedAsset.checklistName}</span></div>
+                  </div>
+                </div>
+
+                {/* Section 4: Documents */}
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
+                      <FileText className="w-3.5 h-3.5 text-[#6C2BD9]" /> Documents
+                    </span>
+                    <button className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
+                      View All
+                    </button>
+                  </div>
+                  <div className="space-y-1.5">
+                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-800">📄 Purchase Invoice.pdf</span>
+                      <span className="text-[10px] text-slate-400">320 KB</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-800">📄 Warranty.pdf</span>
+                      <span className="text-[10px] text-slate-400">450 KB</span>
+                    </div>
+                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
+                      <span className="font-semibold text-slate-800">🖼️ Asset Photo.jpg</span>
+                      <span className="text-[10px] text-slate-400">1.2 MB</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT: LOCATION */}
+            {detailPanelTab === 'Location' && (
+              <div className="space-y-3 text-xs">
+                <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 space-y-1">
+                  <span className="font-bold text-[#6C2BD9] block">RTLS Map Positioning</span>
+                  <p className="text-[11px] text-slate-600">Physical coordinates: X: 142.5m, Y: 88.2m (Building A, Floor 3, Room 312).</p>
+                </div>
+                <button
+                  onClick={() => navigate('/rtls/map')}
+                  className="w-full py-2 bg-[#6C2BD9] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Open Floor Map View
+                </button>
+              </div>
+            )}
+
+            {/* TAB CONTENT: MAINTENANCE */}
+            {detailPanelTab === 'Maintenance' && (
+              <div className="space-y-2 text-xs">
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-slate-900 block">WO-2026-901 (Preventive PM)</span>
+                  <p className="text-[11px] text-slate-500">Scheduled for 15 Oct 2026 • Lead Technician: Robert Chen</p>
+                </div>
+              </div>
+            )}
+
+            {/* TAB CONTENT: HISTORY */}
+            {detailPanelTab === 'History' && (
+              <div className="space-y-2 text-xs">
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-[#6C2BD9] block">ASSIGNMENT</span>
+                  <p className="text-[11px] text-slate-600">Assigned to John Doe (IT Dept) on 10 Jan 2024</p>
+                </div>
+                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                  <span className="font-bold text-emerald-600 block">TAGGING</span>
+                  <p className="text-[11px] text-slate-600">Barcoded &amp; RFID EPC registered on 10 Jan 2024</p>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
-        {/* 5. Pagination Footer */}
-        {pagination.total > 0 && (
-          <div className="bg-slate-50 border-t border-slate-200 px-5 py-3 flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-slate-500">
-            <div>
-              Showing <span className="font-bold text-slate-900">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
-              <span className="font-bold text-slate-900">{Math.min(pagination.page * pagination.limit, pagination.total)}</span> of{' '}
-              <span className="font-bold text-slate-900">{pagination.total}</span> assets
-            </div>
-
-            <div className="flex items-center gap-2">
-              <span className="text-[11px]">Per page:</span>
-              <select
-                value={pagination.limit}
-                onChange={(e) => fetchAssets(1, parseInt(e.target.value, 10))}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-800 font-semibold focus:border-brand-500"
-              >
-                <option value={10}>10</option>
-                <option value={20}>20</option>
-                <option value={50}>50</option>
-                <option value={100}>100</option>
-              </select>
-
-              <button
-                onClick={() => fetchAssets(pagination.page - 1)}
-                disabled={pagination.page <= 1 || loading}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 text-slate-700"
-              >
-                <ChevronLeft className="w-4 h-4" />
-              </button>
-              <span className="font-bold text-slate-800">
-                {pagination.page} / {pagination.pages}
-              </span>
-              <button
-                onClick={() => fetchAssets(pagination.page + 1)}
-                disabled={pagination.page >= pagination.pages || loading}
-                className="p-1.5 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 disabled:opacity-40 text-slate-700"
-              >
-                <ChevronRight className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        )}
       </div>
-
-      {/* ========================================================================= */}
-      {/* MODAL 1: QUICK EDIT ASSET */}
-      {/* ========================================================================= */}
-      {editModalAsset && (
-        <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                <Edit3 className="w-5 h-5 text-brand-600" /> Quick Edit Asset: {editModalAsset.assetId}
-              </h2>
-              <button onClick={() => setEditModalAsset(null)} className="text-slate-400 hover:text-slate-600 p-1">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <form onSubmit={handleEditSubmit} className="space-y-4 text-xs">
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Description</label>
-                <input
-                  type="text"
-                  required
-                  value={editForm.description}
-                  onChange={(e) => setEditForm({ ...editForm, description: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:border-brand-500 font-medium"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Lifecycle Status</label>
-                  <select
-                    value={editForm.lifecycleStatus}
-                    onChange={(e) => setEditForm({ ...editForm, lifecycleStatus: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:border-brand-500"
-                  >
-                    {STATUS_OPTIONS.filter(s => s !== 'ALL').map(st => (
-                      <option key={st} value={st}>{st}</option>
-                    ))}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-slate-700 font-semibold mb-1">Condition</label>
-                  <select
-                    value={editForm.condition}
-                    onChange={(e) => setEditForm({ ...editForm, condition: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:border-brand-500"
-                  >
-                    <option value="NEW">NEW</option>
-                    <option value="GOOD">GOOD</option>
-                    <option value="FAIR">FAIR</option>
-                    <option value="POOR">POOR</option>
-                    <option value="DAMAGED">DAMAGED</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-semibold mb-1">Acquisition Value ($)</label>
-                <input
-                  type="number"
-                  step="0.01"
-                  value={editForm.acquisitionValue}
-                  onChange={(e) => setEditForm({ ...editForm, acquisitionValue: parseFloat(e.target.value) || 0 })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-slate-800 focus:border-brand-500 font-mono"
-                />
-              </div>
-
-              <div className="flex justify-end gap-3 pt-3 border-t border-slate-100">
-                <button
-                  type="button"
-                  onClick={() => setEditModalAsset(null)}
-                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={actionLoading}
-                  className="bg-brand-600 hover:bg-brand-700 text-white px-4 py-2 font-bold rounded-lg flex items-center gap-2 shadow-xs transition-colors"
-                >
-                  {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  Save Asset Changes
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* ========================================================================= */}
-      {/* MODAL 2: DELETE CONFIRMATION */}
-      {/* ========================================================================= */}
-      {deleteModalAsset && (
-        <div className="fixed inset-0 z-50 bg-slate-900/30 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl animate-in fade-in zoom-in duration-150">
-            <div className="flex items-center gap-3 text-rose-600">
-              <AlertTriangle className="w-6 h-6" />
-              <h2 className="text-lg font-bold text-slate-900">Delete Asset from Register?</h2>
-            </div>
-
-            <p className="text-xs text-slate-600 leading-relaxed">
-              Are you sure you want to delete <span className="font-bold text-slate-900">{deleteModalAsset.assetId}</span> ({deleteModalAsset.description})? This action will permanently remove the record from the authoritative register and log an audit trail event.
-            </p>
-
-            <div className="flex justify-end gap-3 pt-3 border-t border-slate-100 text-xs">
-              <button
-                onClick={() => setDeleteModalAsset(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-lg font-medium"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteSubmit}
-                disabled={actionLoading}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white rounded-lg font-bold flex items-center gap-2 shadow-xs transition-colors"
-              >
-                {actionLoading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Trash2 className="w-4 h-4" />}
-                Confirm Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

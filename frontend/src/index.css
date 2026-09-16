@@ -99,3 +99,49 @@
 ::-webkit-scrollbar-thumb:hover {
   background: #94a3b8;
 }
+
+/* Asset360 Custom UI Animations & Micro-Interactions */
+@keyframes rfidPulse {
+  0% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+  50% {
+    transform: scale(1.1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(0.95);
+    opacity: 0.8;
+  }
+}
+
+@keyframes floatSlow {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-rfid-pulse {
+  animation: rfidPulse 2.5s infinite ease-in-out;
+}
+
+.animate-float-slow {
+  animation: floatSlow 4s infinite ease-in-out;
+}
+
+.purple-gradient-text {
+  background: linear-gradient(135deg, #6c2bd9 0%, #8b5cf6 50%, #d946ef 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.asset360-glass-card {
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(226, 232, 240, 0.8);
+  box-shadow: 0 20px 40px -15px rgba(108, 43, 217, 0.12);
+}

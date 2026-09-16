@@ -6,7 +6,7 @@ import { connectDB } from '../config/db.js';
 import { seedRtlsData } from './seedRtls.js';
 
 async function seed() {
-  console.log('🌱 Starting Enterprise FAMS Database Seeding (PostgreSQL via Prisma)...');
+  console.log('🌱 Starting Enterprise FAMS Database Seeding (Microsoft SQL Server 2025 via Prisma)...');
   await connectDB();
 
   // Clear existing records in reverse dependency order
@@ -35,16 +35,16 @@ async function seed() {
 
   // 1. Roles
   const rolesData = [
-    { name: 'System Administrator', code: 'SYS_ADMIN', permissions: ['*'], isSystem: true },
-    { name: 'Asset Administrator', code: 'ASSET_ADMIN', permissions: ['ASSETS_VIEW', 'ASSETS_CREATE', 'ASSETS_EDIT', 'ASSETS_TRANSITION'] },
-    { name: 'Finance Asset Controller', code: 'FINANCE', permissions: ['ASSETS_VIEW', 'FINANCE_VIEW', 'FINANCE_RUN'] },
-    { name: 'IT Asset Manager', code: 'IT_MANAGER', permissions: ['ASSETS_VIEW', 'DISCOVERY_VIEW', 'DISCOVERY_MATCH'] },
-    { name: 'Facilities Manager', code: 'FACILITIES', permissions: ['ASSETS_VIEW', 'MAPS_VIEW', 'MAPS_EDIT'] },
-    { name: 'Store Receiving', code: 'RECEIVING', permissions: ['RECEIVING_VIEW', 'RECEIVING_CREATE'] },
-    { name: 'Custodian', code: 'CUSTODIAN', permissions: ['MY_ASSETS_VIEW'] },
-    { name: 'Maintenance Technician', code: 'TECHNICIAN', permissions: ['WORK_ORDERS_VIEW', 'WORK_ORDERS_EDIT'] },
-    { name: 'Auditor', code: 'AUDITOR', permissions: ['ASSETS_VIEW', 'AUDIT_VIEW'] },
-    { name: 'Management', code: 'MANAGEMENT', permissions: ['REPORTS_VIEW', 'DASHBOARD_VIEW'] }
+    { name: 'System Administrator', code: 'SYS_ADMIN', permissions: JSON.stringify(['*']), isSystem: true },
+    { name: 'Asset Administrator', code: 'ASSET_ADMIN', permissions: JSON.stringify(['ASSETS_VIEW', 'ASSETS_CREATE', 'ASSETS_EDIT', 'ASSETS_TRANSITION']) },
+    { name: 'Finance Asset Controller', code: 'FINANCE', permissions: JSON.stringify(['ASSETS_VIEW', 'FINANCE_VIEW', 'FINANCE_RUN']) },
+    { name: 'IT Asset Manager', code: 'IT_MANAGER', permissions: JSON.stringify(['ASSETS_VIEW', 'DISCOVERY_VIEW', 'DISCOVERY_MATCH']) },
+    { name: 'Facilities Manager', code: 'FACILITIES', permissions: JSON.stringify(['ASSETS_VIEW', 'MAPS_VIEW', 'MAPS_EDIT']) },
+    { name: 'Store Receiving', code: 'RECEIVING', permissions: JSON.stringify(['RECEIVING_VIEW', 'RECEIVING_CREATE']) },
+    { name: 'Custodian', code: 'CUSTODIAN', permissions: JSON.stringify(['MY_ASSETS_VIEW']) },
+    { name: 'Maintenance Technician', code: 'TECHNICIAN', permissions: JSON.stringify(['WORK_ORDERS_VIEW', 'WORK_ORDERS_EDIT']) },
+    { name: 'Auditor', code: 'AUDITOR', permissions: JSON.stringify(['ASSETS_VIEW', 'AUDIT_VIEW']) },
+    { name: 'Management', code: 'MANAGEMENT', permissions: JSON.stringify(['REPORTS_VIEW', 'DASHBOARD_VIEW']) }
   ];
 
   const roles = [];
@@ -268,7 +268,7 @@ async function seed() {
 
   await seedRtlsData();
 
-  console.log('✅ Enterprise PostgreSQL Seed completed successfully!');
+  console.log('✅ Enterprise Microsoft SQL Server 2025 Seed completed successfully!');
   console.log('🔑 Login Credentials: Username: admin | Password: Admin@123');
   process.exit(0);
 }
