@@ -14,7 +14,7 @@ import {
   Maximize2,
   Sparkles
 } from 'lucide-react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { AIInlineWidgets } from './AIInlineWidgets';
 
 const WIDGET_PROMPTS = [
@@ -41,6 +41,7 @@ const WIDGET_PROMPTS = [
 ];
 
 export function FloatingAIAssistant() {
+  const location = useLocation();
   const [isOpen, setIsOpen] = useState(false);
   const [inputText, setInputText] = useState('');
   const [isListening, setIsListening] = useState(false);
@@ -162,6 +163,8 @@ export function FloatingAIAssistant() {
         return `Results for "${prompt}":`;
     }
   };
+
+  if (location.pathname.includes('/audit-logs')) return null;
 
   return (
     <>

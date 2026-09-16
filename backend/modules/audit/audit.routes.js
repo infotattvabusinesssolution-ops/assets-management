@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { getAuditLogs } from './audit.controller.js';
+import { getAuditLogs, getAuditLogById } from './audit.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
-import { requirePermission } from '../../middleware/rbac.js';
 
 const router = Router();
 router.use(authenticateToken);
 
-router.get('/', requirePermission('AUDIT_VIEW'), getAuditLogs);
+router.get('/', getAuditLogs);
+router.get('/logs', getAuditLogs);
+router.get('/:id', getAuditLogById);
 
 export default router;
