@@ -6,11 +6,19 @@ import {
   LayoutDashboard,
   Package,
   Boxes,
-  Wrench,
-  CalendarCheck,
-  MapPin,
+  Inbox,
+  ArrowLeftRight,
   ClipboardCheck,
+  DollarSign,
+  Wrench,
+  FileCheck,
+  MapPin,
+  Cpu,
+  Map,
+  Trash2,
   BarChart3,
+  Database,
+  ShieldCheck,
   Settings,
   ChevronLeft,
   ChevronRight,
@@ -58,21 +66,10 @@ const NAV_STRUCTURE = [
     ]
   },
   {
-    id: 'maintenance',
-    name: 'Maintenance',
-    path: '/maintenance',
-    icon: Wrench,
-    roles: ['*'],
-    subItems: [
-      { name: 'Work Orders', path: '/maintenance' },
-      { name: 'Preventive Schedules', path: '/maintenance/schedules' }
-    ]
-  },
-  {
     id: 'receiving',
     name: 'Receiving & Tagging',
     path: '/receiving',
-    icon: CalendarCheck,
+    icon: Inbox,
     roles: ['*'],
     subItems: [
       { name: 'Receive with PO', path: '/receiving' },
@@ -90,9 +87,48 @@ const NAV_STRUCTURE = [
     icon: MapPin,
     roles: ['*'],
     subItems: [
-      { name: 'Floor Maps & RTLS', path: '/rtls' },
+      { name: 'Asset Tracking', path: '/rtls' },
+      { name: 'Location Map', path: '/rtls/map' },
+      { name: 'Geofencing', path: '/geofencing' },
+      { name: 'Location History', path: '/location-history' },
+      { name: 'Proximity Search', path: '/proximity-search' },
+      { name: 'Floor Maps & RTLS', path: '/maps' },
       { name: 'Location Hierarchy', path: '/rtls/locations' },
       { name: 'Zone Monitoring', path: '/rtls/zones' }
+    ]
+  },
+  {
+    id: 'discovery',
+    name: 'Auto Discovery',
+    path: '/discovery',
+    icon: Cpu,
+    roles: ['*'],
+    subItems: [
+      { name: 'Network Discovery', path: '/discovery' },
+      { name: 'Discovery Jobs', path: '/discovery/jobs' },
+      { name: 'Discovered Devices', path: '/discovery/devices' },
+      { name: 'Import to Asset360', path: '/discovery/import' },
+      { name: 'Discovery Settings', path: '/discovery/settings' }
+    ]
+  },
+  {
+    id: 'rtls-map',
+    name: 'RTLS, Map & Location',
+    path: '/rtls/map',
+    icon: Map,
+    roles: ['*']
+  },
+  {
+    id: 'movements',
+    name: 'Assignment & Movement',
+    path: '/movements',
+    icon: ArrowLeftRight,
+    roles: ['*'],
+    subItems: [
+      { name: 'Assign Asset', path: '/movements/assign' },
+      { name: 'Transfer / Movement', path: '/movements' },
+      { name: 'Movement Approvals', path: '/movements/approvals' },
+      { name: 'Movement History', path: '/movements/history' }
     ]
   },
   {
@@ -109,6 +145,41 @@ const NAV_STRUCTURE = [
     ]
   },
   {
+    id: 'maintenance',
+    name: 'Maintenance',
+    path: '/maintenance',
+    icon: Wrench,
+    roles: ['*'],
+    subItems: [
+      { name: 'Work Orders', path: '/maintenance' },
+      { name: 'Maintenance Plans', path: '/maintenance/plans' },
+      { name: 'Preventive Maintenance', path: '/maintenance/preventive' },
+      { name: 'Service Providers', path: '/maintenance/providers' },
+      { name: 'Spare Parts', path: '/maintenance/spare-parts' }
+    ]
+  },
+  {
+    id: 'finance',
+    name: 'Finance',
+    path: '/finance',
+    icon: DollarSign,
+    roles: ['*']
+  },
+  {
+    id: 'contracts',
+    name: 'Contracts & Compliance',
+    path: '/contracts',
+    icon: FileCheck,
+    roles: ['*']
+  },
+  {
+    id: 'disposals',
+    name: 'Disposal',
+    path: '/disposals',
+    icon: Trash2,
+    roles: ['*']
+  },
+  {
     id: 'reports',
     name: 'Reports & Analytics',
     path: '/reports',
@@ -117,8 +188,20 @@ const NAV_STRUCTURE = [
     subItems: [
       { name: 'Dashboard Reports', path: '/reports' },
       { name: 'Asset Reports', path: '/reports?category=assets' },
-      { name: 'Financial Reports', path: '/reports?category=financial' }
+      { name: 'Inventory Reports', path: '/reports?category=inventory' },
+      { name: 'Maintenance Reports', path: '/reports?category=maintenance' },
+      { name: 'Financial Reports', path: '/reports?category=financial' },
+      { name: 'Compliance Reports', path: '/reports?category=compliance' },
+      { name: 'Custom Reports', path: '/reports?category=custom' },
+      { name: 'Scheduled Reports', path: '/reports?category=scheduled' }
     ]
+  },
+  {
+    id: 'master-data',
+    name: 'Master Data',
+    path: '/admin/master-data',
+    icon: Database,
+    roles: ['*']
   },
   {
     id: 'administration',
@@ -137,6 +220,13 @@ const NAV_STRUCTURE = [
       { name: 'Email Notifications', path: '/admin/notifications' },
       { name: 'Backup & Scheduler', path: '/admin/backup-scheduler' }
     ]
+  },
+  {
+    id: 'audit-log',
+    name: 'Audit Log',
+    path: '/admin/audit-logs',
+    icon: ShieldCheck,
+    roles: ['*']
   }
 ];
 
@@ -147,10 +237,13 @@ export function Sidebar({ collapsed, setCollapsed }) {
 
   const [openMenus, setOpenMenus] = useState({
     assets: location.pathname.startsWith('/assets'),
+    inventory: location.pathname.startsWith('/inventory'),
     receiving: location.pathname.startsWith('/receiving') || location.pathname.startsWith('/tagging') || location.pathname === '/receiving',
+    tracking: location.pathname.startsWith('/rtls') || location.pathname.startsWith('/geofencing') || location.pathname.startsWith('/location-history') || location.pathname.startsWith('/proximity-search') || location.pathname.startsWith('/maps'),
     discovery: location.pathname.startsWith('/discovery'),
     movements: location.pathname.startsWith('/movements') || location.pathname.startsWith('/movement-approvals'),
     stocktakes: location.pathname.startsWith('/stocktakes') || location.pathname.startsWith('/verification'),
+    maintenance: location.pathname.startsWith('/maintenance') || location.pathname.startsWith('/service-providers') || location.pathname.startsWith('/spare-parts') || location.pathname.startsWith('/preventive-maintenance'),
     reports: location.pathname.startsWith('/reports'),
     administration: location.pathname.startsWith('/admin') || location.pathname.startsWith('/master-data') || location.pathname.startsWith('/audit-trail') || location.pathname.startsWith('/notifications') || location.pathname.startsWith('/backup-scheduler') || location.pathname.startsWith('/integrations')
   });
@@ -250,9 +343,19 @@ export function Sidebar({ collapsed, setCollapsed }) {
                             (sub.path === '/assets' && location.pathname === '/assets' && !location.search) ||
                             (sub.path === '/tagging' && (location.pathname === '/tagging' || location.pathname === '/receiving/tag-assets')) ||
                             (sub.path === '/receiving/without-po' && (location.pathname === '/receiving/without-po' || location.pathname === '/receive-without-po')) ||
+                            (sub.path === '/discovery' && (location.pathname === '/discovery' || location.pathname === '/discovery/devices')) ||
+                            (sub.path === '/movements/assign' && location.pathname === '/movements/assign') ||
+                            (sub.path === '/movements' && location.pathname === '/movements' && (!location.search || location.search.includes('transfer') || location.search.includes('assignment'))) ||
+                            (sub.path === '/movements/approvals' && (location.pathname === '/movements/approvals' || location.pathname === '/movement-approvals' || location.search.includes('approvals'))) ||
+                            (sub.path === '/movements/history' && (location.pathname === '/movements/history' || location.search.includes('history'))) ||
                             (sub.path === '/stocktakes/verify' && (location.pathname === '/stocktakes/verify' || location.pathname === '/stocktakes' || location.pathname.startsWith('/verification'))) ||
                             (sub.path === '/stocktakes/management' && location.pathname === '/stocktakes/management') ||
-                            (sub.path === '/stocktakes/execution' && location.pathname === '/stocktakes/execution');
+                            (sub.path === '/stocktakes/execution' && location.pathname === '/stocktakes/execution') ||
+                            (sub.path === '/maintenance' && location.pathname === '/maintenance') ||
+                            (sub.path === '/maintenance/plans' && (location.pathname === '/maintenance/plans' || location.pathname === '/maintenance-plans')) ||
+                            (sub.path === '/maintenance/preventive' && (location.pathname === '/maintenance/preventive' || location.pathname === '/preventive-maintenance')) ||
+                            (sub.path === '/maintenance/providers' && (location.pathname === '/maintenance/providers' || location.pathname === '/service-providers')) ||
+                            (sub.path === '/maintenance/spare-parts' && (location.pathname === '/maintenance/spare-parts' || location.pathname === '/spare-parts'));
                           return (
                             <NavLink
                               key={sub.name}
@@ -308,7 +411,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
       </div>
 
       {/* Sidebar Footer matching reference screenshot */}
-      <div className={clsx('p-3 border-t border-slate-200 shrink-0 bg-white', collapsed && 'flex flex-col items-center p-2')}>
+      <div className={clsx('p-3 border-t border-slate-200 shrink-0 bg-white space-y-2', collapsed && 'flex flex-col items-center p-2')}>
         <NavLink
           to="/admin/system-config"
           className={({ isActive }) =>
@@ -324,6 +427,19 @@ export function Sidebar({ collapsed, setCollapsed }) {
           <Settings className="w-4 h-4 text-purple-700 flex-shrink-0 group-hover:text-purple-900" />
           {!collapsed && <span>Settings</span>}
         </NavLink>
+
+        <button
+          onClick={logout}
+          className={clsx(
+            'w-full flex items-center justify-center gap-2 rounded-xl font-semibold text-xs transition-all cursor-pointer shadow-xs',
+            'bg-rose-50 hover:bg-rose-100 text-rose-600 hover:text-rose-700 border border-rose-200 active:scale-[0.98]',
+            collapsed ? 'p-2' : 'px-3 py-1.5'
+          )}
+          title="Logout"
+        >
+          <LogOut className="w-4 h-4 flex-shrink-0" />
+          {!collapsed && <span>Logout</span>}
+        </button>
       </div>
     </aside>
   );

@@ -21,7 +21,7 @@ import {
   Check
 } from 'lucide-react';
 
-export default function RolesPermissions() {
+export function RolesPermissions() {
   const [roles, setRoles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -743,3 +743,6 @@ export default function RolesPermissions() {
     </div>
   );
 }
+
+export default RolesPermissions;
+
