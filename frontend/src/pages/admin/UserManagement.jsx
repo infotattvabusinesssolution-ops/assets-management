@@ -29,7 +29,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 
-export default function UserManagement() {
+export function UserManagement() {
   // State
   const [users, setUsers] = useState([]);
   const [totalUsers, setTotalUsers] = useState(0);
@@ -1169,3 +1169,6 @@ export default function UserManagement() {
     </div>
   );
 }
+
+export default UserManagement;
+

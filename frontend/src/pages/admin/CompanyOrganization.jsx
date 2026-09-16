@@ -22,7 +22,7 @@ import {
   Briefcase
 } from 'lucide-react';
 
-export default function CompanyOrganization() {
+export function CompanyOrganization() {
   const [activeTab, setActiveTab] = useState('companies'); // companies, businessUnits, departments, locations, costCenters
 
   // Data States
@@ -889,3 +889,6 @@ export default function CompanyOrganization() {
     </div>
   );
 }
+
+export default CompanyOrganization;
+

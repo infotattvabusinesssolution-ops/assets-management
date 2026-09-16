@@ -59,6 +59,17 @@ import { AdminMasterData } from './pages/AdminMasterData';
 import { AuditLogViewer } from './pages/AuditLogViewer';
 import { MobileScanWorkbench } from './pages/MobileScanWorkbench';
 import { UserManagementWorkbench } from './pages/UserManagementWorkbench';
+import { ServiceProviderAction } from './pages/ServiceProviderAction';
+import { SpareParts } from './pages/SpareParts';
+import { MasterDataSetup } from './pages/admin/MasterDataSetup';
+import { IntegrationsConsole } from './pages/admin/IntegrationsConsole';
+import { AuditLogsConsole } from './pages/admin/AuditLogsConsole';
+import { EmailNotifications } from './pages/admin/EmailNotifications';
+import { BackupScheduler } from './pages/admin/BackupScheduler';
+import { UserManagement } from './pages/admin/UserManagement';
+import { RolesPermissions } from './pages/admin/RolesPermissions';
+import { CompanyOrganization } from './pages/admin/CompanyOrganization';
+import { SystemConfiguration } from './pages/admin/SystemConfiguration';
 
 const queryClient = new QueryClient();
 
@@ -149,6 +160,15 @@ export function App() {
                 <Route path="spare-parts" element={<SpareParts />} />
                 <Route path="contracts" element={<ContractManager />} />
                 <Route path="discovery" element={<DiscoveryWorkbench />} />
+                <Route path="discovery/jobs" element={<DiscoveryWorkbench defaultTab="jobs" />} />
+                <Route path="discovery/devices" element={<DiscoveredDevicesWorkbench />} />
+                <Route path="discovery/import" element={<ImportToAsset360 />} />
+                <Route path="discovery/settings" element={<DiscoverySettings />} />
+                <Route path="asset-tracking" element={<AssetTracking />} />
+                <Route path="location-map" element={<LocationMap />} />
+                <Route path="geofencing" element={<Geofencing />} />
+                <Route path="location-history" element={<LocationHistory />} />
+                <Route path="proximity-search" element={<ProximitySearch />} />
                 <Route path="rtls" element={<RtlsWorkbench />} />
                 <Route path="rtls/map" element={<RtlsFloorMapLive />} />
                 <Route path="maps" element={<FloorMapEditor />} />
