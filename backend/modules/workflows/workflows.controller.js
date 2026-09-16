@@ -171,6 +171,8 @@ export async function approveStep(req, res, next) {
 
     if (decision === 'REJECT') {
       newStatus = 'REJECTED';
+    } else if (decision === 'RETURN' || decision === 'RETURN_FOR_CORRECTION') {
+      newStatus = 'RETURNED';
     } else {
       const maxSteps = instance.workflowDefinition?.steps?.length || 1;
       if (instance.currentStepNumber >= maxSteps) {
@@ -191,3 +193,40 @@ export async function approveStep(req, res, next) {
     res.json({ success: true, instance: updatedInstance, action });
   } catch (err) { next(err); }
 }
+
+export async function createApprovalRequest(req, res, next) {
+  try {
+    const { transactionType, entityId, assetId, assetName, remarks, payload } = req.body;
+    const userId = req.user?.id || req.user?._id;
+
+    let definition = await prisma.workflowDefinition.findFirst({
+      where: { transactionType, active: true }
+    });
+
+    if (!definition) {
+      definition = await prisma.workflowDefinition.create({
+        data: {
+          name: `${transactionType} Approval Workflow`,
+          transactionType,
+          valueThreshold: 0,
+          active: true
+        }
+      });
+    }
+
+    const instance = await prisma.workflowInstance.create({
+      data: {
+        workflowDefinitionId: definition.id,
+        entityType: 'Asset',
+        entityId: entityId || assetId || `TEMP-${Date.now()}`,
+        requestedByUserId: userId,
+        status: 'PENDING',
+        currentStepNumber: 1,
+        payload: payload || { assetId, assetName, remarks }
+      }
+    });
+
+    res.status(201).json({ success: true, instance, message: 'Workflow approval request created successfully.' });
+  } catch (err) { next(err); }
+}
+

@@ -10,6 +10,11 @@ import { ExecutiveDashboard } from './pages/ExecutiveDashboard';
 import { AssetList } from './pages/AssetList';
 import { Asset360Detail } from './pages/Asset360Detail';
 import { AssetForm } from './pages/AssetForm';
+import { AssetEdit } from './pages/AssetEdit';
+import { MyAssets } from './pages/MyAssets';
+import { BulkUpload } from './pages/BulkUpload';
+import { AssetHierarchy } from './pages/AssetHierarchy';
+import { AssetApproval } from './pages/AssetApproval';
 import { ReceivingWorkbench } from './pages/ReceivingWorkbench';
 import { TagWorkbench } from './pages/TagWorkbench';
 import { CustodyTransferWorkbench } from './pages/CustodyTransferWorkbench';
@@ -57,6 +62,17 @@ export function App() {
                 <Route index element={<ExecutiveDashboard />} />
                 <Route path="assets" element={<AssetList />} />
                 <Route path="assets/new" element={<AssetForm />} />
+                <Route path="assets/edit" element={<AssetEdit />} />
+                <Route path="assets/edit/:id" element={<AssetEdit />} />
+                <Route path="assets/:id/edit" element={<AssetEdit />} />
+                <Route path="assets/my-assets" element={<MyAssets />} />
+                <Route path="my-assets" element={<MyAssets />} />
+                <Route path="assets/bulk-upload" element={<BulkUpload />} />
+                <Route path="bulk-upload" element={<BulkUpload />} />
+                <Route path="assets/hierarchy" element={<AssetHierarchy />} />
+                <Route path="hierarchy" element={<AssetHierarchy />} />
+                <Route path="assets/approvals" element={<AssetApproval />} />
+                <Route path="approvals" element={<AssetApproval />} />
                 <Route path="assets/:id" element={<Asset360Detail />} />
                 <Route path="receiving" element={<ReceivingWorkbench />} />
                 <Route path="tagging" element={<TagWorkbench />} />
@@ -72,6 +88,7 @@ export function App() {
                 <Route path="disposals" element={<DisposalWorkbench />} />
                 <Route path="reports" element={<ReportsCatalogue />} />
                 <Route path="workflows" element={<WorkflowDesigner />} />
+                <Route path="admin/workflow-configuration" element={<WorkflowDesigner />} />
                 <Route path="ai-insights" element={<AISuite />} />
                 <Route path="master-data" element={<AdminMasterData />} />
                 <Route path="admin/master-data" element={<Navigate to="/master-data" replace />} />
@@ -90,3 +107,4 @@ export function App() {
 }
 
 export default App;
+
