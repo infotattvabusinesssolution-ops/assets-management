@@ -23,6 +23,10 @@ import aiRoutes from './modules/ai/ai.routes.js';
 import auditRoutes from './modules/audit/audit.routes.js';
 import importRoutes from './modules/imports/imports.routes.js';
 import rtlsRoutes from './modules/rtls/rtls.routes.js';
+import movementApprovalRoutes from './modules/movement-approvals/movementApprovals.routes.js';
+import adminOrgRoutes from './modules/admin/adminOrg.routes.js';
+import adminConfigRoutes from './modules/admin/adminConfig.routes.js';
+import adminGovernanceRoutes from './modules/admin/adminGovernance.routes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -54,7 +58,9 @@ app.use('/api/v1/assets', assetRoutes);
 app.use('/api/v1/receiving', receivingRoutes);
 app.use('/api/v1/tagging', taggingRoutes);
 app.use('/api/v1/custody-transfers', custodyRoutes);
+app.use('/api/v1/movements', custodyRoutes);
 app.use('/api/v1/stocktakes', stocktakeRoutes);
+app.use('/api/v1/audit', stocktakeRoutes);
 app.use('/api/v1/finance', financeRoutes);
 app.use('/api/v1/maintenance', maintenanceRoutes);
 app.use('/api/v1/contracts', contractsRoutes);
@@ -68,6 +74,11 @@ app.use('/api/v1/ai', aiRoutes);
 app.use('/api/v1/audit', auditRoutes);
 app.use('/api/v1/imports', importRoutes);
 app.use('/api/v1/rtls', rtlsRoutes);
+app.use('/api/v1/movement-approvals', movementApprovalRoutes);
+app.use('/api/v1/admin/config', adminConfigRoutes);
+app.use('/api/v1/admin', adminOrgRoutes);
+app.use('/api/v1/admin', adminGovernanceRoutes);
+app.use('/api/v1/audit-logs', adminGovernanceRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

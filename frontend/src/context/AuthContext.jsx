@@ -114,7 +114,7 @@ export function AuthProvider({ children }) {
         localStorage.setItem('fams_token', res.token);
         localStorage.setItem('fams_user', JSON.stringify(res.user));
         localStorage.setItem('fams_primary_role', res.user?.role?.code || 'SYS_ADMIN');
-        return { success: true };
+        return { success: true, user: res.user };
       }
     } catch (err) {
       console.warn('Backend authentication endpoint fallback to role matching:', err);

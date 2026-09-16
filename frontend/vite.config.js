@@ -9,6 +9,9 @@ export default defineConfig(({ mode }) => {
     plugins: [react()],
     server: {
       port: 3000,
+      watch: {
+        ignored: ['**/*.docx', '**/*.xlsx', '**/*.pdf', '**/*.tmp', '**/node_modules/**']
+      },
       proxy: {
         '/api': {
           target: target,

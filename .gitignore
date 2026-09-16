@@ -29,6 +29,8 @@ uploads/
 tmp/
 temp/
 .cache/
+*.docx
+*.xlsx
 
 # OS & IDE files
 .DS_Store

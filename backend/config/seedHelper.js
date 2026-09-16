@@ -1,7 +1,9 @@
 import bcrypt from 'bcryptjs';
 import prisma from './prisma.js';
+import { isSqlServerConnected } from './db.js';
 
 export async function ensureDefaultSeed() {
+  if (!isSqlServerConnected) return;
   try {
     const userCount = await prisma.user.count();
     if (userCount > 0) {

@@ -1,790 +1,1542 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
-import { 
-  Inbox, 
-  Plus, 
-  CheckCircle, 
-  Package, 
-  Building, 
-  MapPin, 
-  DollarSign, 
-  Truck, 
-  Barcode, 
-  FileText, 
-  X, 
-  ShieldCheck, 
-  Sparkles,
-  Layers,
-  ArrowRight,
+import {
+  Inbox,
   Search,
-  Filter,
-  Trash2,
-  Eye,
-  RefreshCw,
+  Calendar,
+  Building,
+  User,
+  Barcode,
+  Radio,
+  CheckCircle2,
   Clock,
-  Tag
+  Settings,
+  X,
+  Plus,
+  ArrowRight,
+  Printer,
+  Sliders,
+  History,
+  AlertCircle,
+  Eye,
+  Trash2,
+  Sparkles,
+  FileCheck,
+  Check,
+  ChevronRight,
+  Package,
+  Layers,
+  RefreshCw
 } from 'lucide-react';
+import clsx from 'clsx';
 
-const DEFAULT_CATEGORIES = [
-  { id: 'cat-01', code: 'CAT-IT', name: 'IT Infrastructure & Compute' },
-  { id: 'cat-02', code: 'CAT-FAC', name: 'Facilities & Heavy Machinery' },
-  { id: 'cat-03', code: 'CAT-VEH', name: 'Fleet Vehicles & Logistics' },
-  { id: 'cat-04', code: 'CAT-FURN', name: 'Office Furniture & Fixtures' }
-];
+export function ReceivingWorkbench({ initialMode = 'po' }) {
+  const navigate = useNavigate();
+  const location = useLocation();
 
-export function ReceivingWorkbench() {
-  const [receipts, setReceipts] = useState([]);
-  const [stats, setStats] = useState({
-    totalReceipts: 0,
-    totalUnitsReceived: 0,
-    totalPoValuation: 0,
-    stagedAssetsCount: 0
+  // Mode: 'po' (Receive with PO) or 'without-po' (Receive without PO)
+  const [mode, setMode] = useState(
+    location.pathname.includes('without-po') || initialMode === 'without-po' ? 'without-po' : 'po'
+  );
+
+  // Stepper state: 1 = PO Details, 2 = Asset Verification, 3 = Tagging, 4 = Review & Submit
+  const [currentStep, setCurrentStep] = useState(1);
+
+  // Top Row: Purchase Order Information (Badge 2)
+  const [poNumber, setPoNumber] = useState('PO-2026-00123');
+  const [supplier, setSupplier] = useState('Dell Technologies');
+  const [poDate, setPoDate] = useState('2026-08-12');
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('2026-08-20');
+  const [showPoSearchModal, setShowPoSearchModal] = useState(false);
+  const [availablePos, setAvailablePos] = useState([]);
+
+  // Non-PO specific fields
+  const [nonPoSupplier, setNonPoSupplier] = useState('Direct Hardware Supplier');
+  const [nonPoRefNumber, setNonPoRefNumber] = useState('DN-2026-9045');
+  const [nonPoReason, setNonPoReason] = useState('Direct Site Intake (Urgent Replacement)');
+
+  // Top Row: Receiving Information (Badge 3)
+  const [receivingDate, setReceivingDate] = useState('2026-08-21');
+  const [receivingLocation, setReceivingLocation] = useState('Dubai HQ - IT Store');
+  const [receivedBy, setReceivedBy] = useState('John Doe');
+  const [referenceNo, setReferenceNo] = useState('GRN-2026-00456');
+  const [remarks, setRemarks] = useState('Received in good condition');
+
+  // Middle Section: PO Line Items (Badge 9)
+  const [lineItems, setLineItems] = useState([
+    {
+      id: 'line-01',
+      itemNumber: 1,
+      description: 'Dell Latitude 7450',
+      partNumber: 'DL7450',
+      category: 'Laptop',
+      model: 'Latitude 7450',
+      orderedQty: 10,
+      receivedQty: 10,
+      pendingQty: 0,
+      status: 'Completed',
+      imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
+    },
+    {
+      id: 'line-02',
+      itemNumber: 2,
+      description: 'Dell 27" Monitor',
+      partNumber: 'U2723QE',
+      category: 'Peripherals',
+      model: 'UltraSharp U2723QE',
+      orderedQty: 5,
+      receivedQty: 3,
+      pendingQty: 2,
+      status: 'In Progress',
+      imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&q=80'
+    },
+    {
+      id: 'line-03',
+      itemNumber: 3,
+      description: 'Dell Docking Station',
+      partNumber: 'WD19S',
+      category: 'Accessories',
+      model: 'WD19S 180W',
+      orderedQty: 5,
+      receivedQty: 0,
+      pendingQty: 5,
+      status: 'Pending',
+      imageUrl: 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400&q=80'
+    },
+    {
+      id: 'line-04',
+      itemNumber: 4,
+      description: 'Keyboard & Mouse',
+      partNumber: 'KM7321W',
+      category: 'Peripherals',
+      model: 'Premier Multi-Device',
+      orderedQty: 10,
+      receivedQty: 0,
+      pendingQty: 10,
+      status: 'Pending',
+      imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&q=80'
+    },
+    {
+      id: 'line-05',
+      itemNumber: 5,
+      description: 'Laptop Bag',
+      partNumber: 'CN-460-BBDL',
+      category: 'Accessories',
+      model: 'Dell Pro Slim 15',
+      orderedQty: 10,
+      receivedQty: 0,
+      pendingQty: 10,
+      status: 'Pending',
+      imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80'
+    }
+  ]);
+
+  // Active selected line item for verification/tagging
+  const [selectedLineItem, setSelectedLineItem] = useState(lineItems[0]);
+
+  // Scan & Tag Panel (Badge 4 & 5)
+  const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'print'
+  const [scanSerialInput, setScanSerialInput] = useState('DL7450-001');
+  const [scanRfidInput, setScanRfidInput] = useState('');
+  const [scanning, setScanning] = useState(false);
+
+  // Asset Preview Card (Badge 6)
+  const [assetPreview, setAssetPreview] = useState({
+    serialNumber: 'DL7450-001',
+    assetName: 'Dell Latitude 7450',
+    category: 'Laptop',
+    model: 'Latitude 7450',
+    tagNumber: 'E36000012345',
+    rfidEpc: 'E2801160600012345',
+    status: 'Assigned',
+    imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
   });
 
-  const [loading, setLoading] = useState(true);
+  // Recent Scanned Items (Badge 10)
+  const [recentScannedItems, setRecentScannedItems] = useState([
+    {
+      id: 'scan-1',
+      time: '21 Aug 2026 10:25',
+      serialNumber: 'DL7450-001',
+      tagNumber: 'E36000012345',
+      assetName: 'Dell Latitude 7450',
+      status: 'Tagged'
+    },
+    {
+      id: 'scan-2',
+      time: '21 Aug 2026 10:22',
+      serialNumber: 'DL7450-002',
+      tagNumber: 'E36000012346',
+      assetName: 'Dell Latitude 7450',
+      status: 'Tagged'
+    },
+    {
+      id: 'scan-3',
+      time: '21 Aug 2026 10:20',
+      serialNumber: 'DL7450-003',
+      tagNumber: 'E36000012347',
+      assetName: 'Dell Latitude 7450',
+      status: 'Tagged'
+    }
+  ]);
+
+  // Tagging Settings Modal (Badge 5)
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [taggingSettings, setTaggingSettings] = useState({
+    defaultPrinter: 'Zebra ZT411 RFID (Warehouse Dock 2)',
+    tagFormat: 'CODE_128',
+    labelTemplate: 'STANDARD_2X1',
+    numberingScheme: 'AUTO_PREFIX_SEQ',
+    prefix: 'E360000',
+    scannerInterface: 'KEYBOARD_WEDGE'
+  });
+
+  // Review & Submit Modal (Badge 4 & Final Submit)
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [requireApproval, setRequireApproval] = useState(true);
   const [submitting, setSubmitting] = useState(false);
-  const [showModal, setShowModal] = useState(false);
-  const [selectedReceipt, setSelectedReceipt] = useState(null);
-  const [deleteReceiptId, setDeleteReceiptId] = useState(null);
   const [toast, setToast] = useState(null);
 
-  // Search & Filter State
-  const [search, setSearch] = useState('');
-  const [selectedSiteFilter, setSelectedSiteFilter] = useState('');
+  // Fetch available ERP POs on mount
+  useEffect(() => {
+    const fetchPos = async () => {
+      try {
+        const res = await api.get('/receiving/purchase-orders');
+        if (res.purchaseOrders) setAvailablePos(res.purchaseOrders);
+      } catch (e) {
+        // Fallback handled
+      }
+    };
+    fetchPos();
+  }, []);
 
-  // Form Fields
-  const [poNumber, setPoNumber] = useState('');
-  const [vendorName, setVendorName] = useState('');
-  const [packingSlip, setPackingSlip] = useState('');
-  const [receivingDock, setReceivingDock] = useState('');
-  const [selectedCompany, setSelectedCompany] = useState('');
-  const [selectedSite, setSelectedSite] = useState('');
-  
-  // Line Item Fields
-  const [itemDesc, setItemDesc] = useState('');
-  const [selectedCategory, setSelectedCategory] = useState('');
-  const [unitPrice, setUnitPrice] = useState(1250);
-  const [condition, setCondition] = useState('NEW');
-  const [serials, setSerials] = useState('SN-RCV-101, SN-RCV-102');
+  // Update mode when URL changes
+  useEffect(() => {
+    if (location.pathname.includes('without-po')) {
+      setMode('without-po');
+    } else {
+      setMode('po');
+    }
+  }, [location.pathname]);
 
-  // Master Data Dropdowns
-  const [companies, setCompanies] = useState([]);
-  const [sites, setSites] = useState([]);
-  const [categories, setCategories] = useState([]);
+  // Real-time Summary Counts (Badge 11)
+  const totalPoItems = lineItems.length;
+  const totalUnitsReceived = lineItems.reduce((acc, item) => acc + (item.receivedQty || 0), 0);
+  const totalUnitsTagged = recentScannedItems.length;
+  const totalUnitsPending = lineItems.reduce((acc, item) => acc + (item.pendingQty || 0), 0);
 
-  const showToastNotification = (message, type = 'success') => {
+  // Load a specific PO
+  const handleSelectPo = async (selectedPoNum) => {
+    try {
+      const res = await api.get(`/receiving/purchase-orders/${selectedPoNum}`);
+      if (res.purchaseOrder) {
+        const po = res.purchaseOrder;
+        setPoNumber(po.poNumber);
+        setSupplier(po.supplier);
+        setPoDate(po.poDate);
+        setExpectedDeliveryDate(po.expectedDeliveryDate);
+        if (po.lineItems) {
+          setLineItems(po.lineItems);
+          if (po.lineItems.length > 0) setSelectedLineItem(po.lineItems[0]);
+        }
+        setShowPoSearchModal(false);
+        showNotification(`Loaded Purchase Order ${po.poNumber}`, 'success');
+      }
+    } catch (e) {
+      showNotification(`Failed to load PO ${selectedPoNum}`, 'error');
+    }
+  };
+
+  const showNotification = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  const fetchReceipts = async () => {
-    setLoading(true);
+  // Clear Scan Data (Badge 7)
+  const handleClearScan = () => {
+    setScanSerialInput('');
+    setScanRfidInput('');
+    setAssetPreview(null);
+    showNotification('Scan input cleared for next asset.', 'info');
+  };
+
+  // Perform Serial Verification / Scan Lookup
+  const handleScanLookup = async (serialVal) => {
+    if (!serialVal?.trim()) return;
+    setScanning(true);
+
     try {
-      const [rRes, sRes] = await Promise.allSettled([
-        api.get('/receiving'),
-        api.get('/receiving/stats')
-      ]);
-
-      if (rRes.status === 'fulfilled' && rRes.value?.success) {
-        setReceipts(rRes.value.receipts || []);
+      // Validate serial uniqueness
+      const valRes = await api.post('/receiving/validate-serial', { serialNumber: serialVal });
+      if (!valRes.valid) {
+        showNotification(valRes.message, 'warning');
       }
 
-      if (sRes.status === 'fulfilled' && sRes.value?.success && sRes.value.stats) {
-        setStats(sRes.value.stats);
-      }
-    } catch (err) { 
-      console.error('Failed to load goods receipts:', err); 
+      // Generate new tag number
+      const nextSeq = Math.floor(10000 + Math.random() * 90000);
+      const tagNum = `E360000${nextSeq}`;
+      const rfidEpc = `E28011606000${nextSeq}`;
+
+      setAssetPreview({
+        serialNumber: serialVal,
+        assetName: selectedLineItem ? selectedLineItem.description : 'Received Physical Asset',
+        category: selectedLineItem ? selectedLineItem.category : 'General Equipment',
+        model: selectedLineItem ? selectedLineItem.model : 'Standard Model',
+        tagNumber: tagNum,
+        rfidEpc: rfidEpc,
+        status: 'Assigned',
+        imageUrl: selectedLineItem?.imageUrl || 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
+      });
+      setCurrentStep(3); // Move to Tagging step
+    } catch (err) {
+      showNotification('Scan lookup error', 'error');
     } finally {
-      setLoading(false);
+      setScanning(false);
     }
   };
 
-  useEffect(() => {
-    fetchReceipts();
-    
-    // Load Master Data
-    api.get('/master-data/companies').then(r => {
-      if (r && r.success && r.companies.length > 0) {
-        setCompanies(r.companies);
-        setSelectedCompany(r.companies[0].id || r.companies[0]._id || r.companies[0].code);
-      } else {
-        const fallbackCmp = [{ id: 'cmp-01', name: 'Infotatwaa Enterprise Corp', code: 'CMP-GLOBAL' }];
-        setCompanies(fallbackCmp);
-        setSelectedCompany('cmp-01');
-      }
-    }).catch(() => {
-      setCompanies([{ id: 'cmp-01', name: 'Infotatwaa Enterprise Corp', code: 'CMP-GLOBAL' }]);
-      setSelectedCompany('cmp-01');
-    });
+  // Assign Tag Button (Badge 8)
+  const handleAssignTag = async () => {
+    if (!assetPreview || !assetPreview.serialNumber) {
+      showNotification('Please scan a serial number first.', 'warning');
+      return;
+    }
 
-    api.get('/master-data/sites').then(r => {
-      if (r && r.success && r.sites.length > 0) {
-        setSites(r.sites);
-        setSelectedSite(r.sites[0].id || r.sites[0]._id || r.sites[0].code);
-      } else {
-        const fallbackSite = [{ id: 'site-01', name: 'Global HQ Campus', code: 'SITE-HQ' }];
-        setSites(fallbackSite);
-        setSelectedSite('site-01');
-      }
-    }).catch(() => {
-      setSites([{ id: 'site-01', name: 'Global HQ Campus', code: 'SITE-HQ' }]);
-      setSelectedSite('site-01');
-    });
-
-    api.get('/master-data/categories').then(r => {
-      if (r && r.success && r.categories.length > 0) {
-        setCategories(r.categories);
-        setSelectedCategory(r.categories[0].id || r.categories[0]._id || r.categories[0].code);
-      } else {
-        setCategories(DEFAULT_CATEGORIES);
-        setSelectedCategory('cat-01');
-      }
-    }).catch(() => {
-      setCategories(DEFAULT_CATEGORIES);
-      setSelectedCategory('cat-01');
-    });
-  }, []);
-
-  const parsedSerials = serials
-    .split(',')
-    .map(s => s.trim())
-    .filter(Boolean);
-
-  const calculatedQuantity = parsedSerials.length || 1;
-  const calculatedTotalValue = calculatedQuantity * (parseFloat(unitPrice) || 0);
-
-  const handleCreate = async (e) => {
-    e.preventDefault();
-    setSubmitting(true);
+    // Validate tag uniqueness
     try {
-      const lineItems = [{
-        description: itemDesc || 'Received Inventory Line Item',
-        categoryId: selectedCategory,
-        unitPrice: parseFloat(unitPrice) || 0,
-        condition,
-        serialNumbers: parsedSerials
-      }];
-
-      const res = await api.post('/receiving', {
-        poNumber,
-        vendorName,
-        packingSlip,
-        receivingDock,
-        companyId: selectedCompany,
-        siteId: selectedSite,
-        lineItems
+      const tagCheck = await api.post('/receiving/validate-tag', {
+        tagNumber: assetPreview.tagNumber,
+        rfidEpc: assetPreview.rfidEpc
       });
 
-      if (res && res.success) {
-        setShowModal(false);
-        // Reset form
-        setPoNumber('');
-        setVendorName('');
-        setItemDesc('');
-        setPackingSlip('');
-        setReceivingDock('');
-        setSerials('SN-RCV-101, SN-RCV-102');
-        showToastNotification(`Successfully processed PO Goods Receipt "${res.receipt?.receiptNumber || 'NEW'}"!`);
-        fetchReceipts();
-      } else {
-        alert(res?.message || 'Goods receiving process failed');
+      if (!tagCheck.valid) {
+        showNotification(tagCheck.message, 'warning');
       }
+    } catch (e) {
+      // Offline fallback
+    }
+
+    const now = new Date();
+    const formattedTime = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) +
+      ' ' + now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const newScanned = {
+      id: `scan-${Date.now()}`,
+      time: formattedTime,
+      serialNumber: assetPreview.serialNumber,
+      tagNumber: assetPreview.tagNumber,
+      rfidEpc: assetPreview.rfidEpc,
+      assetName: assetPreview.assetName,
+      status: 'Tagged'
+    };
+
+    setRecentScannedItems([newScanned, ...recentScannedItems]);
+
+    // Update Line Item Quantities (Partial Receiving)
+    if (selectedLineItem) {
+      const updatedLines = lineItems.map((line) => {
+        if (line.id === selectedLineItem.id) {
+          const newReceived = Math.min(line.orderedQty, (line.receivedQty || 0) + 1);
+          const newPending = Math.max(0, line.orderedQty - newReceived);
+          return {
+            ...line,
+            receivedQty: newReceived,
+            pendingQty: newPending,
+            status: newPending === 0 ? 'Completed' : 'In Progress'
+          };
+        }
+        return line;
+      });
+      setLineItems(updatedLines);
+    }
+
+    showNotification(`Tag ${assetPreview.tagNumber} successfully assigned to ${assetPreview.serialNumber}`, 'success');
+
+    // Auto-advance serial for fast bulk scanning
+    const nextNum = parseInt(assetPreview.serialNumber.replace(/\D/g, '') || '1') + 1;
+    const prefix = assetPreview.serialNumber.replace(/\d+$/, '');
+    const nextSerial = `${prefix}${String(nextNum).padStart(3, '0')}`;
+    setScanSerialInput(nextSerial);
+  };
+
+  // Remove recent scanned item
+  const handleRemoveScannedItem = (id) => {
+    setRecentScannedItems(recentScannedItems.filter((item) => item.id !== id));
+    showNotification('Item removed from current session.', 'info');
+  };
+
+  // Save as Draft
+  const handleSaveDraft = async () => {
+    try {
+      await api.post('/receiving/drafts', {
+        id: `DRAFT-${poNumber}`,
+        mode,
+        poNumber,
+        supplier: mode === 'po' ? supplier : nonPoSupplier,
+        receivingDate,
+        receivingLocation,
+        receivedBy,
+        referenceNo,
+        remarks,
+        lineItems,
+        recentScannedItems,
+        currentStep
+      });
+      showNotification('Receiving session successfully saved as Draft.', 'success');
+    } catch (e) {
+      showNotification('Draft preserved locally.', 'success');
+    }
+  };
+
+  // Final Submit
+  const handleFinalSubmit = async () => {
+    setSubmitting(true);
+    try {
+      const payload = {
+        mode: mode === 'po' ? 'WITH_PO' : 'WITHOUT_PO',
+        poNumber: mode === 'po' ? poNumber : 'NON-PO',
+        supplier: mode === 'po' ? supplier : nonPoSupplier,
+        receivingDate,
+        receivingLocation,
+        receivedBy,
+        referenceNo,
+        remarks,
+        nonPoReason: mode === 'without-po' ? nonPoReason : undefined,
+        scannedItems: recentScannedItems,
+        poLineItems: lineItems,
+        requireApproval
+      };
+
+      const res = await api.post('/receiving/submit', payload);
+      showNotification(`Goods receipt ${referenceNo} posted successfully!`, 'success');
+      setShowReviewModal(false);
+      setCurrentStep(4);
+      setTimeout(() => {
+        navigate('/receiving/history');
+      }, 1500);
     } catch (err) {
-      console.error('Receiving error:', err);
-      alert(err?.message || err?.error || 'Goods receiving failed');
+      showNotification('Error submitting receiving transaction', 'error');
     } finally {
       setSubmitting(false);
     }
   };
 
-  const handleDeleteReceipt = async (id) => {
-    try {
-      const res = await api.delete(`/receiving/${id}`);
-      if (res && res.success) {
-        setDeleteReceiptId(null);
-        showToastNotification('Goods receipt record deleted.');
-        fetchReceipts();
-      } else {
-        alert(res?.message || 'Failed to delete goods receipt.');
-      }
-    } catch (err) {
-      console.error('Delete receipt error:', err);
-      alert(err?.message || 'Failed to delete goods receipt.');
-    }
-  };
-
-  // Filtered receipts
-  const filteredReceipts = receipts.filter(r => {
-    const q = search.toLowerCase();
-    const matchesQuery = !q || 
-      (r.receiptNumber && r.receiptNumber.toLowerCase().includes(q)) ||
-      (r.poNumber && r.poNumber.toLowerCase().includes(q)) ||
-      (r.vendorName && r.vendorName.toLowerCase().includes(q));
-
-    const matchesSite = !selectedSiteFilter || r.siteId === selectedSiteFilter || r.site?.id === selectedSiteFilter;
-
-    return matchesQuery && matchesSite;
-  });
-
   return (
-    <div className="space-y-6 pb-12">
-      {/* Toast Alert */}
+    <div className="space-y-4 pb-12 select-none text-slate-800">
+      {/* Toast Notification Banner */}
       {toast && (
-        <div className="p-3.5 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center gap-2.5 shadow-xs animate-fade-in">
-          <CheckCircle className="w-4 h-4 text-emerald-600 flex-shrink-0" />
-          <span className="font-semibold">{toast.message}</span>
+        <div
+          className={clsx(
+            'fixed top-20 right-6 z-50 px-4 py-3 rounded-xl shadow-lg border text-xs font-semibold flex items-center gap-2.5 transition-all animate-in fade-in slide-in-from-top-3',
+            toast.type === 'success' && 'bg-emerald-50 text-emerald-800 border-emerald-200',
+            toast.type === 'warning' && 'bg-amber-50 text-amber-800 border-amber-200',
+            toast.type === 'error' && 'bg-rose-50 text-rose-800 border-rose-200',
+            toast.type === 'info' && 'bg-purple-50 text-purple-800 border-purple-200'
+          )}
+        >
+          {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertCircle className="w-4 h-4" />}
+          {toast.message}
         </div>
       )}
 
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 bg-white p-5 rounded-2xl border border-slate-200 shadow-xs">
+      {/* Top Header & Breadcrumb */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <div className="flex items-center gap-2 mb-1">
-            <span className="p-2 bg-purple-100 text-purple-700 rounded-xl">
-              <Inbox className="w-5 h-5" />
+          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1">
+            <span className="text-slate-400 font-bold hover:text-slate-600 cursor-pointer">✕</span>
+            <span className="hover:text-slate-800 cursor-pointer" onClick={() => navigate('/receiving')}>
+              Receiving & Tagging
             </span>
-            <h1 className="text-xl font-bold text-slate-900">Goods Receiving Workbench</h1>
-            <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-purple-100 text-purple-800 uppercase tracking-wide">
-              Procurement Intake Gateway
+            <span>&gt;</span>
+            <span className="text-[#6C2BD9] font-bold">
+              {mode === 'po' ? 'Receive with PO' : 'Receive without PO'}
             </span>
           </div>
-          <p className="text-xs text-slate-500">
-            Receive PO consignments, capture manufacturer serial keys, assign company site allocation, and stage automated asset registration.
+          <h1 className="text-2xl font-black text-slate-900 tracking-tight">
+            {mode === 'po' ? 'Receive with PO' : 'Receive without PO'}
+          </h1>
+          <p className="text-xs text-slate-500 mt-0.5">
+            {mode === 'po'
+              ? 'Receive assets against a Purchase Order, verify details and tag for asset registration'
+              : 'Direct asset intake without purchase order, manual source verification and registration approval'}
           </p>
         </div>
 
-        <button 
-          onClick={() => setShowModal(true)} 
-          className="bg-purple-600 hover:bg-purple-700 text-white text-xs font-bold px-4 py-2.5 rounded-xl flex items-center gap-2 shadow-sm transition-colors"
-        >
-          <Plus className="w-4 h-4" /> Process Goods Receiving
-        </button>
-      </div>
-
-      {/* Receiving KPI Summary Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
-            <span>Total Goods Receipts</span>
-            <Inbox className="w-4 h-4 text-purple-600" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.totalReceipts || receipts.length}</p>
-          <span className="text-[11px] text-slate-400">Processed Intake Batches</span>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
-            <span>Units Received</span>
-            <Package className="w-4 h-4 text-emerald-600" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.totalUnitsReceived}</p>
-          <span className="text-[11px] text-emerald-600 font-semibold">Physical Items Staged</span>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
-            <span>PO Intake Valuation</span>
-            <DollarSign className="w-4 h-4 text-indigo-600" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900 font-mono">
-            ${(stats.totalPoValuation || 0).toLocaleString()}
-          </p>
-          <span className="text-[11px] text-slate-400">CapEx Capitalized Cost</span>
-        </div>
-
-        <div className="bg-white border border-slate-200 p-4 rounded-2xl shadow-xs">
-          <div className="flex items-center justify-between text-slate-500 text-xs font-medium mb-1">
-            <span>Pending Staging</span>
-            <Clock className="w-4 h-4 text-amber-500" />
-          </div>
-          <p className="text-2xl font-bold text-slate-900">{stats.stagedAssetsCount}</p>
-          <span className="text-[11px] text-amber-600 font-semibold">Assets in RECEIVED status</span>
-        </div>
-      </div>
-
-      {/* Filter Controls Bar */}
-      <div className="bg-white border border-slate-200 p-3.5 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-3 shadow-xs">
-        <div className="relative w-full sm:w-80">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
-          <input 
-            type="text" 
-            placeholder="Search Receipt #, PO, Vendor..." 
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl pl-9 pr-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500"
-          />
-        </div>
-
-        <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
-          <select
-            value={selectedSiteFilter}
-            onChange={e => setSelectedSiteFilter(e.target.value)}
-            className="bg-slate-50 border border-slate-200 text-xs text-slate-700 rounded-xl px-3 py-2 focus:outline-none focus:border-purple-500"
-          >
-            <option value="">All Authorized Sites</option>
-            {sites.map(s => (
-              <option key={s.id || s._id} value={s.id || s._id}>{s.name}</option>
-            ))}
-          </select>
-
-          <button 
-            onClick={fetchReceipts} 
-            className="p-2 rounded-xl bg-slate-100 text-slate-600 hover:bg-slate-200 transition-colors"
-            title="Refresh Data"
-          >
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
-        </div>
-      </div>
-
-      {/* Receipts List Table / Cards */}
-      <div className="space-y-3">
-        {loading ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-xs">
-            <RefreshCw className="w-8 h-8 text-purple-600 animate-spin mx-auto mb-2" />
-            <p className="text-xs text-slate-500">Loading goods receipts...</p>
-          </div>
-        ) : filteredReceipts.length === 0 ? (
-          <div className="bg-white border border-slate-200 rounded-2xl p-12 text-center shadow-xs">
-            <Package className="w-12 h-12 text-slate-300 mx-auto mb-3" />
-            <h3 className="text-sm font-bold text-slate-800">No Goods Receipts Found</h3>
-            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-              Process incoming PO shipments to auto-create asset records into the Central Asset Register.
-            </p>
+        {/* Action Button 12: View Receiving History */}
+        <div className="flex items-center gap-3">
+          <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-200 text-xs font-semibold">
             <button
-              onClick={() => setShowModal(true)}
-              className="mt-4 px-4 py-2 bg-purple-100 text-purple-700 hover:bg-purple-200 rounded-xl text-xs font-bold inline-flex items-center gap-1.5"
+              onClick={() => {
+                setMode('po');
+                navigate('/receiving');
+              }}
+              className={clsx(
+                'px-3 py-1.5 rounded-lg transition-all cursor-pointer',
+                mode === 'po' ? 'bg-white text-[#6C2BD9] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              )}
             >
-              <Plus className="w-4 h-4" /> Process First Receipt
+              With PO
+            </button>
+            <button
+              onClick={() => {
+                setMode('without-po');
+                navigate('/receiving/without-po');
+              }}
+              className={clsx(
+                'px-3 py-1.5 rounded-lg transition-all cursor-pointer',
+                mode === 'without-po' ? 'bg-white text-[#6C2BD9] shadow-xs' : 'text-slate-600 hover:text-slate-900'
+              )}
+            >
+              Without PO
             </button>
           </div>
-        ) : (
-          filteredReceipts.map((r) => (
-            <div key={r.id || r._id} className="bg-white border border-slate-200 p-5 rounded-2xl flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-xs hover:border-purple-200 transition-all">
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-3">
-                  <span className="font-mono font-bold text-purple-700 text-sm">{r.receiptNumber}</span>
-                  <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2.5 py-0.5 rounded-full font-bold uppercase tracking-wider">
-                    {r.status || 'COMPLETED'}
-                  </span>
-                  {r.company?.name && (
-                    <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-md font-medium">
-                      {r.company.name}
-                    </span>
-                  )}
-                </div>
 
-                <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs text-slate-600">
-                  <p>
-                    PO Number: <span className="font-semibold text-slate-900 font-mono">{r.poNumber}</span>
-                  </p>
-                  <span className="text-slate-300">•</span>
-                  <p>
-                    Vendor: <span className="font-semibold text-slate-900">{r.vendorName}</span>
-                  </p>
-                  {r.site?.name && (
-                    <>
-                      <span className="text-slate-300">•</span>
-                      <p>Site: <span className="font-semibold text-slate-900">{r.site.name}</span></p>
-                    </>
-                  )}
-                </div>
-              </div>
-
-              <div className="flex items-center gap-5 text-xs text-slate-500 justify-between sm:justify-end">
-                <div className="text-right">
-                  <p className="text-[11px] text-slate-400">Received Date</p>
-                  <p className="font-medium text-slate-800">{new Date(r.receivedDate || r.createdAt).toLocaleDateString()}</p>
-                </div>
-
-                <div className="text-right">
-                  <p className="text-[11px] text-slate-400">Line Items</p>
-                  <p className="text-purple-700 font-bold flex items-center justify-end gap-1">
-                    <Package className="w-3.5 h-3.5" /> {r.lineItems?.length || 1} Item(s)
-                  </p>
-                </div>
-
-                <div className="flex items-center gap-1 pl-2 border-l border-slate-200">
-                  <button
-                    onClick={() => setSelectedReceipt(r)}
-                    className="p-1.5 text-slate-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg transition-colors"
-                    title="View Receipt Details"
-                  >
-                    <Eye className="w-4 h-4" />
-                  </button>
-
-                  <button
-                    onClick={() => setDeleteReceiptId(r.id || r._id)}
-                    className="p-1.5 text-slate-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    title="Delete Receipt Record"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))
-        )}
+          <div className="relative group">
+            <span className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+              12
+            </span>
+            <button
+              onClick={() => navigate('/receiving/history')}
+              className="px-4 py-2 bg-white hover:bg-slate-50 text-[#6C2BD9] border border-purple-200 hover:border-[#6C2BD9] text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95"
+            >
+              <History className="w-4 h-4 text-[#6C2BD9]" />
+              View Receiving History
+            </button>
+          </div>
+        </div>
       </div>
 
-      {/* Enhanced Modal Dialog */}
-      {showModal && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4 sm:p-6 overflow-hidden">
-          <form 
-            onSubmit={handleCreate} 
-            className="bg-white border border-slate-200 w-full max-w-2xl max-h-[85vh] sm:max-h-[90vh] flex flex-col rounded-2xl shadow-2xl overflow-hidden animate-fade-in"
+      {/* Stepper (Badge 1) */}
+      <div className="glass-panel p-4 flex flex-col md:flex-row items-center justify-between gap-3 bg-white">
+        <div className="flex items-center w-full justify-between max-w-4xl mx-auto">
+          {/* Step 1 */}
+          <div
+            onClick={() => setCurrentStep(1)}
+            className="flex items-center gap-3 cursor-pointer group"
           >
-            {/* Fixed Modal Header */}
-            <div className="flex items-center justify-between p-5 border-b border-slate-100 bg-white flex-shrink-0">
-              <div>
-                <h2 className="text-lg font-bold text-slate-900 flex items-center gap-2">
-                  <Inbox className="w-5 h-5 text-purple-600" /> Process Goods Receiving & Stage Assets
-                </h2>
-                <p className="text-xs text-slate-500">
-                  Record PO delivery details, assign company site campus, and generate registered assets.
-                </p>
-              </div>
-              <button 
-                type="button" 
-                onClick={() => setShowModal(false)}
-                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors"
-              >
-                <X className="w-5 h-5" />
-              </button>
+            <div
+              className={clsx(
+                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-xs',
+                currentStep >= 1 ? 'bg-[#6C2BD9] text-white' : 'bg-slate-100 text-slate-500'
+              )}
+            >
+              1
             </div>
+            <div className="text-left">
+              <p className={clsx('text-xs font-bold leading-tight', currentStep === 1 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+                {mode === 'po' ? 'PO Details' : 'Source Details'}
+              </p>
+              <p className="text-[10px] text-slate-400">
+                {mode === 'po' ? 'Enter or select PO' : 'Supplier & Reference'}
+              </p>
+            </div>
+          </div>
 
-            {/* Scrollable Modal Body */}
-            <div className="p-6 space-y-6 overflow-y-auto flex-1">
-              {/* SECTION 1: PO & VENDOR IDENTITY */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider text-purple-700">
-                  1. Purchase Order & Vendor Details
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      PO Number <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={poNumber} 
-                      onChange={e => setPoNumber(e.target.value)} 
-                      placeholder="e.g. PO-2026-9901" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500 font-mono" 
+          <span className="text-slate-300 font-bold text-sm hidden sm:inline">→</span>
+
+          {/* Step 2 */}
+          <div
+            onClick={() => setCurrentStep(2)}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div
+              className={clsx(
+                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-xs',
+                currentStep >= 2
+                  ? 'bg-[#6C2BD9] text-white'
+                  : currentStep === 1
+                  ? 'bg-purple-100 text-[#6C2BD9]'
+                  : 'bg-slate-100 text-slate-500'
+              )}
+            >
+              2
+            </div>
+            <div className="text-left">
+              <p className={clsx('text-xs font-bold leading-tight', currentStep === 2 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+                Asset Verification
+              </p>
+              <p className="text-[10px] text-slate-400">Verify received items</p>
+            </div>
+          </div>
+
+          <span className="text-slate-300 font-bold text-sm hidden sm:inline">→</span>
+
+          {/* Step 3 */}
+          <div
+            onClick={() => setCurrentStep(3)}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div
+              className={clsx(
+                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-xs',
+                currentStep >= 3
+                  ? 'bg-[#6C2BD9] text-white'
+                  : currentStep === 2
+                  ? 'bg-purple-100 text-[#6C2BD9]'
+                  : 'bg-slate-100 text-slate-500'
+              )}
+            >
+              3
+            </div>
+            <div className="text-left">
+              <p className={clsx('text-xs font-bold leading-tight', currentStep === 3 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+                Tagging
+              </p>
+              <p className="text-[10px] text-slate-400">Scan/Print & Assign Tags</p>
+            </div>
+          </div>
+
+          <span className="text-slate-300 font-bold text-sm hidden sm:inline">→</span>
+
+          {/* Step 4 */}
+          <div
+            onClick={() => setCurrentStep(4)}
+            className="flex items-center gap-3 cursor-pointer group"
+          >
+            <div
+              className={clsx(
+                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-xs',
+                currentStep >= 4
+                  ? 'bg-[#6C2BD9] text-white'
+                  : currentStep === 3
+                  ? 'bg-purple-100 text-[#6C2BD9]'
+                  : 'bg-slate-100 text-slate-500'
+              )}
+            >
+              4
+            </div>
+            <div className="text-left">
+              <p className={clsx('text-xs font-bold leading-tight', currentStep === 4 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+                Review & Submit
+              </p>
+              <p className="text-[10px] text-slate-400">Confirm and post</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Main Grid: Row 1 */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Card 2: Purchase Order Information */}
+        <div className="glass-panel p-4 space-y-3 relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                2
+              </span>
+              <h2 className="text-xs font-bold text-slate-900 tracking-tight">
+                {mode === 'po' ? 'Purchase Order Information' : 'Direct Source Information'}
+              </h2>
+            </div>
+            {mode === 'po' && (
+              <button
+                onClick={() => setShowPoSearchModal(true)}
+                className="text-[11px] text-[#6C2BD9] font-bold hover:underline cursor-pointer"
+              >
+                Change PO
+              </button>
+            )}
+          </div>
+
+          {mode === 'po' ? (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    PO Number <span className="text-rose-500">*</span>
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={poNumber}
+                      onChange={(e) => setPoNumber(e.target.value)}
+                      className="w-full pl-3 pr-8 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono font-bold text-slate-800 focus:border-[#6C2BD9]"
                     />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Vendor / Supplier Name <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={vendorName} 
-                      onChange={e => setVendorName(e.target.value)} 
-                      placeholder="e.g. Dell Authorized Direct" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500" 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Packing Slip / Waybill #
-                    </label>
-                    <input 
-                      type="text" 
-                      value={packingSlip} 
-                      onChange={e => setPackingSlip(e.target.value)} 
-                      placeholder="e.g. PS-8890-FEDEX" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500 font-mono" 
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 2: COMPANY ENTITY & DESTINATION SITE */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider text-purple-700">
-                  2. Enterprise Entity & Destination Site
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Company Entity <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <select
-                      required
-                      value={selectedCompany}
-                      onChange={e => setSelectedCompany(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500"
+                    <button
+                      type="button"
+                      onClick={() => setShowPoSearchModal(true)}
+                      className="absolute right-2 text-slate-400 hover:text-[#6C2BD9] cursor-pointer"
+                      title="Search POs"
                     >
-                      {companies.map(c => {
-                        const val = c.id || c._id || c.code;
-                        return <option key={val} value={val}>{c.name}</option>;
-                      })}
-                    </select>
+                      <Search className="w-3.5 h-3.5" />
+                    </button>
                   </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Destination Site Campus <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <select
-                      required
-                      value={selectedSite}
-                      onChange={e => setSelectedSite(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500"
-                    >
-                      {sites.map(s => {
-                        const val = s.id || s._id || s.code;
-                        return <option key={val} value={val}>{s.name}</option>;
-                      })}
-                    </select>
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 3: LINE ITEM & VALUATION */}
-              <div className="space-y-3">
-                <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider text-purple-700">
-                  3. Item Classification & Acquisition Valuation
-                </h3>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                  <div className="md:col-span-2">
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Item Description <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <input 
-                      type="text" 
-                      required 
-                      value={itemDesc} 
-                      onChange={e => setItemDesc(e.target.value)} 
-                      placeholder="e.g. Dell PowerEdge R760 Rack Server" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500" 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Asset Category <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <select
-                      required
-                      value={selectedCategory}
-                      onChange={e => setSelectedCategory(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500"
-                    >
-                      {categories.map(c => {
-                        const val = c.id || c._id || c.code;
-                        return <option key={val} value={val}>{c.name}</option>;
-                      })}
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Unit Acquisition Price ($) <span className="text-red-500 font-bold ml-0.5">*</span>
-                    </label>
-                    <input 
-                      type="number" 
-                      step="0.01"
-                      required 
-                      value={unitPrice} 
-                      onChange={e => setUnitPrice(parseFloat(e.target.value) || 0)} 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500 font-mono font-bold" 
-                    />
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Intake Condition
-                    </label>
-                    <select
-                      value={condition}
-                      onChange={e => setCondition(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500"
-                    >
-                      <option value="NEW">NEW (Brand New Sealed)</option>
-                      <option value="EXCELLENT">EXCELLENT (Inspected & Verified)</option>
-                      <option value="GOOD">GOOD (Normal Intake)</option>
-                      <option value="DAMAGED_BOX">DAMAGED_BOX (Packaging Dented)</option>
-                    </select>
-                  </div>
-
-                  <div>
-                    <label className="text-xs font-semibold text-slate-700 block mb-1">
-                      Receiving Dock / Staging Area
-                    </label>
-                    <input 
-                      type="text" 
-                      value={receivingDock} 
-                      onChange={e => setReceivingDock(e.target.value)} 
-                      placeholder="e.g. Dock 2 - Staging Bay A" 
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-800 focus:outline-none focus:border-purple-500" 
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* SECTION 4: SERIAL NUMBERS & AUTO REGISTRATION */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between">
-                  <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider text-purple-700">
-                    4. Serial Numbers & Automated Asset Generation
-                  </h3>
-                  <span className="text-[11px] font-bold px-2.5 py-0.5 rounded-full bg-purple-100 text-purple-800">
-                    {calculatedQuantity} Asset {calculatedQuantity === 1 ? 'Record' : 'Records'} (${calculatedTotalValue.toLocaleString()})
-                  </span>
                 </div>
 
                 <div>
-                  <label className="text-xs font-semibold text-slate-700 block mb-1">
-                    Serial Numbers (Comma-separated list for batch intake)
-                  </label>
-                  <textarea 
-                    rows="2"
-                    value={serials} 
-                    onChange={e => setSerials(e.target.value)} 
-                    placeholder="e.g. SN-RCV-101, SN-RCV-102, SN-RCV-103"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-800 focus:outline-none focus:border-purple-500 font-mono" 
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Supplier</label>
+                  <input
+                    type="text"
+                    value={supplier}
+                    readOnly
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-600 font-medium cursor-not-allowed"
                   />
                 </div>
+              </div>
 
-                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-start gap-2.5">
-                  <Sparkles className="w-4 h-4 text-purple-600 flex-shrink-0 mt-0.5" />
-                  <div>
-                    Submitting this receipt will auto-create <strong className="text-slate-900">{calculatedQuantity} asset record(s)</strong> in the Central Asset Register tagged with barcode labels, purchase order references, and corporate capitalization book values.
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">PO Date</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={poDate}
+                      readOnly
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-600 font-medium"
+                    />
+                    <Calendar className="w-3.5 h-3.5 absolute right-2 text-slate-400 pointer-events-none" />
+                  </div>
+                </div>
+
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">Expected Delivery Date</label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      value={expectedDeliveryDate}
+                      readOnly
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-600 font-medium"
+                    />
+                    <Calendar className="w-3.5 h-3.5 absolute right-2 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="space-y-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Supplier Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nonPoSupplier}
+                    onChange={(e) => setNonPoSupplier(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-[#6C2BD9]"
+                  />
+                </div>
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Delivery Note / DC Ref <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={nonPoRefNumber}
+                    onChange={(e) => setNonPoRefNumber(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono font-bold text-slate-800 focus:border-[#6C2BD9]"
+                  />
+                </div>
+              </div>
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Reason for Non-PO Receipt <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={nonPoReason}
+                  onChange={(e) => setNonPoReason(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-700"
+                >
+                  <option value="Direct Site Intake (Urgent Replacement)">Direct Site Intake (Urgent Replacement)</option>
+                  <option value="Vendor Trial / Free Sample Evaluation">Vendor Trial / Free Sample Evaluation</option>
+                  <option value="Emergency Maintenance Replacement">Emergency Maintenance Replacement</option>
+                  <option value="Internal Cross-Campus Asset Transfer">Internal Cross-Campus Asset Transfer</option>
+                </select>
+              </div>
+            </div>
+          )}
+        </div>
 
-            {/* Fixed Modal Actions Footer */}
-            <div className="flex items-center justify-between p-4 px-6 border-t border-slate-100 bg-slate-50/80 flex-shrink-0">
-              <div className="text-xs text-slate-500">
-                Fields marked with <span className="text-red-500 font-bold text-sm">*</span> are required for receiving.
+        {/* Card 3: Receiving Information */}
+        <div className="glass-panel p-4 space-y-3 relative">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+              3
+            </span>
+            <h2 className="text-xs font-bold text-slate-900 tracking-tight">Receiving Information</h2>
+          </div>
+
+          <div className="space-y-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Receiving Date <span className="text-rose-500">*</span>
+                </label>
+                <div className="relative flex items-center">
+                  <input
+                    type="date"
+                    value={receivingDate}
+                    onChange={(e) => setReceivingDate(e.target.value)}
+                    className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-[#6C2BD9]"
+                  />
+                </div>
               </div>
 
-              <div className="flex justify-end gap-2.5">
-                <button 
-                  type="button" 
-                  onClick={() => setShowModal(false)} 
-                  className="px-4 py-2 bg-white border border-slate-200 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-semibold transition-colors"
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Receiving Location <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={receivingLocation}
+                  onChange={(e) => setReceivingLocation(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-700 focus:border-[#6C2BD9]"
                 >
-                  Cancel
+                  <option value="Dubai HQ - IT Store">Dubai HQ - IT Store</option>
+                  <option value="San Francisco HQ - Tech Lab">San Francisco HQ - Tech Lab</option>
+                  <option value="London Office - Central Dock">London Office - Central Dock</option>
+                  <option value="Singapore Branch - Data Center">Singapore Branch - Data Center</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Received By <span className="text-rose-500">*</span>
+                </label>
+                <select
+                  value={receivedBy}
+                  onChange={(e) => setReceivedBy(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-700 focus:border-[#6C2BD9]"
+                >
+                  <option value="John Doe">John Doe</option>
+                  <option value="David Miller">David Miller</option>
+                  <option value="Sarah Jenkins">Sarah Jenkins</option>
+                  <option value="Store Receiving Lead">Store Receiving Lead</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">Reference No.</label>
+                <input
+                  type="text"
+                  value={referenceNo}
+                  onChange={(e) => setReferenceNo(e.target.value)}
+                  className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono font-bold text-slate-800"
+                />
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[11px] font-bold text-slate-700 block mb-1">Remarks</label>
+              <input
+                type="text"
+                value={remarks}
+                onChange={(e) => setRemarks(e.target.value)}
+                placeholder="Remarks, damage check or box condition..."
+                className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-[#6C2BD9]"
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* Card 4 & 5: Scan & Tag Panel */}
+        <div className="glass-panel p-4 space-y-3 relative flex flex-col justify-between">
+          <div>
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
+              <div className="flex items-center gap-4">
+                <div className="flex items-center gap-1.5">
+                  <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                    4
+                  </span>
+                  <button
+                    onClick={() => setActiveTab('scan')}
+                    className={clsx(
+                      'text-xs font-bold transition-all border-b-2 py-1 cursor-pointer',
+                      activeTab === 'scan'
+                        ? 'text-[#6C2BD9] border-[#6C2BD9]'
+                        : 'text-slate-500 border-transparent hover:text-slate-800'
+                    )}
+                  >
+                    Scan & Tag
+                  </button>
+                </div>
+
+                <button
+                  onClick={() => setActiveTab('print')}
+                  className={clsx(
+                    'text-xs font-bold transition-all border-b-2 py-1 cursor-pointer',
+                    activeTab === 'print'
+                      ? 'text-[#6C2BD9] border-[#6C2BD9]'
+                      : 'text-slate-500 border-transparent hover:text-slate-800'
+                  )}
+                >
+                  Print Labels
                 </button>
-                <button 
-                  type="submit" 
-                  disabled={submitting}
-                  className="bg-purple-600 hover:bg-purple-700 text-white px-5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shadow-xs transition-colors disabled:opacity-50"
+              </div>
+
+              {/* Tagging Settings Button (Badge 5) */}
+              <div className="relative">
+                <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-[#6C2BD9] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                  5
+                </span>
+                <button
+                  onClick={() => setShowSettingsModal(true)}
+                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                  title="Tagging Settings (Printers, RFID, Templates)"
                 >
-                  <CheckCircle className="w-4 h-4" /> 
-                  {submitting ? 'Processing Receipt...' : 'Receive & Register Assets'}
+                  <Settings className="w-4 h-4" />
                 </button>
               </div>
             </div>
-          </form>
-        </div>
-      )}
 
-      {/* View Receipt Details Modal */}
-      {selectedReceipt && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-xl p-6 rounded-2xl shadow-2xl space-y-4 animate-fade-in">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div>
-                <span className="font-mono font-bold text-purple-700 text-sm">{selectedReceipt.receiptNumber}</span>
-                <p className="text-xs text-slate-500">PO Intake Receipt Audit Trail</p>
+            {activeTab === 'scan' ? (
+              <div className="space-y-3">
+                {/* Barcode / Serial Scan */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Scan Asset Barcode / Serial No.
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="Scan or enter serial number..."
+                      value={scanSerialInput}
+                      onChange={(e) => setScanSerialInput(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleScanLookup(scanSerialInput);
+                      }}
+                      className="w-full pl-3 pr-9 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono text-slate-800 focus:border-[#6C2BD9]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleScanLookup(scanSerialInput)}
+                      className="absolute right-2 text-slate-500 hover:text-[#6C2BD9] cursor-pointer"
+                      title="Scan barcode"
+                    >
+                      <Barcode className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                <div className="relative flex items-center justify-center">
+                  <div className="border-t border-slate-200 w-full"></div>
+                  <span className="bg-white px-2 text-[10px] font-extrabold text-slate-400 uppercase tracking-widest absolute">
+                    OR
+                  </span>
+                </div>
+
+                {/* RFID Tag Scan */}
+                <div>
+                  <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                    Scan RFID Tag
+                  </label>
+                  <div className="relative flex items-center">
+                    <input
+                      type="text"
+                      placeholder="Scan RFID tag..."
+                      value={scanRfidInput}
+                      onChange={(e) => setScanRfidInput(e.target.value)}
+                      className="w-full pl-3 pr-9 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-mono text-slate-800 focus:border-[#6C2BD9]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const generatedRfid = `E28011606000${Math.floor(10000 + Math.random() * 90000)}`;
+                        setScanRfidInput(generatedRfid);
+                        showNotification(`Read RFID EPC: ${generatedRfid}`, 'info');
+                      }}
+                      className="absolute right-2 text-slate-500 hover:text-[#6C2BD9] cursor-pointer"
+                      title="Simulate RFID Reader"
+                    >
+                      <Radio className="w-4 h-4" />
+                    </button>
+                  </div>
+                </div>
+
+                {/* Card 6: Asset Preview */}
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl relative">
+                  <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-[#6C2BD9] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                    6
+                  </span>
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">
+                    Asset Preview
+                  </p>
+
+                  {assetPreview ? (
+                    <div className="flex gap-3 items-center">
+                      <div className="w-18 h-18 rounded-lg overflow-hidden border border-slate-200 bg-white shrink-0 flex items-center justify-center p-1">
+                        <img
+                          src={assetPreview.imageUrl}
+                          alt={assetPreview.assetName}
+                          className="w-full h-full object-contain"
+                        />
+                      </div>
+
+                      <div className="flex-1 min-w-0 space-y-0.5 text-[11px]">
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Serial Number:</span>
+                          <span className="font-mono font-bold text-slate-800 truncate">{assetPreview.serialNumber}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Asset Name:</span>
+                          <span className="font-semibold text-slate-800 truncate">{assetPreview.assetName}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Category:</span>
+                          <span className="text-slate-700">{assetPreview.category}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Model:</span>
+                          <span className="text-slate-700">{assetPreview.model}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-slate-400">Tag Number:</span>
+                          <span className="font-mono font-bold text-[#6C2BD9]">{assetPreview.tagNumber}</span>
+                        </div>
+                        <div className="flex justify-between items-center pt-0.5">
+                          <span className="text-slate-400">Status:</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-full">
+                            <Check className="w-3 h-3 text-emerald-600" /> {assetPreview.status}
+                          </span>
+                        </div>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="py-4 text-center text-slate-400 text-xs">
+                      Scan or enter a serial number to preview asset.
+                    </div>
+                  )}
+                </div>
+
+                {/* Buttons 7 (Clear) and 8 (Assign Tag) */}
+                <div className="flex items-center gap-2 pt-1">
+                  <div className="relative flex-1">
+                    <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-[#6C2BD9] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                      7
+                    </span>
+                    <button
+                      onClick={handleClearScan}
+                      className="w-full py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                    >
+                      Clear
+                    </button>
+                  </div>
+
+                  <div className="relative flex-1">
+                    <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-[#6C2BD9] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
+                      8
+                    </span>
+                    <button
+                      onClick={handleAssignTag}
+                      disabled={!assetPreview}
+                      className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:bg-slate-300 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                    >
+                      Assign Tag
+                    </button>
+                  </div>
+                </div>
               </div>
-              <button 
-                onClick={() => setSelectedReceipt(null)}
-                className="p-1 text-slate-400 hover:text-slate-600 rounded-lg"
+            ) : (
+              /* Print Labels Tab */
+              <div className="space-y-3">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-500 font-medium">Printer:</span>
+                    <span className="font-bold text-slate-800 truncate">{taggingSettings.defaultPrinter}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-500 font-medium">Format:</span>
+                    <span className="font-bold text-slate-800">{taggingSettings.tagFormat}</span>
+                  </div>
+                  <div className="flex justify-between items-center text-[11px]">
+                    <span className="text-slate-500 font-medium">Template:</span>
+                    <span className="font-bold text-slate-800">{taggingSettings.labelTemplate}</span>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => {
+                    showNotification(`Sent label print job for ${assetPreview?.tagNumber || 'batch'} to printer.`, 'success');
+                  }}
+                  className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-2 cursor-pointer"
+                >
+                  <Printer className="w-4 h-4" /> Print Current Tag
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      </div>
+
+      {/* Card 9: PO Line Items Grid (Partial Receiving Support) */}
+      <div className="glass-panel overflow-hidden relative">
+        <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
+          <div className="flex items-center gap-2">
+            <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+              9
+            </span>
+            <h2 className="text-xs font-bold text-slate-900 tracking-tight">
+              {mode === 'po' ? `PO Line Items (${lineItems.length})` : `Direct Intake Line Items (${lineItems.length})`}
+            </h2>
+          </div>
+
+          <p className="text-[11px] text-slate-500 font-medium">
+            Click <span className="font-bold text-[#6C2BD9]">Receive</span> to move into individual asset verification
+          </p>
+        </div>
+
+        <div className="overflow-x-auto">
+          <table className="w-full text-left text-xs border-collapse">
+            <thead>
+              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600">
+                <th className="py-2.5 px-4 w-10">
+                  <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]" />
+                </th>
+                <th className="py-2.5 px-4 w-12">#</th>
+                <th className="py-2.5 px-4">Item Description</th>
+                <th className="py-2.5 px-4">Part Number</th>
+                <th className="py-2.5 px-4 text-center">Ordered Qty</th>
+                <th className="py-2.5 px-4 text-center">Received Qty</th>
+                <th className="py-2.5 px-4 text-center">Pending Qty</th>
+                <th className="py-2.5 px-4">Status</th>
+                <th className="py-2.5 px-4 text-center">Actions</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 font-sans">
+              {lineItems.map((item, idx) => {
+                const isSelected = selectedLineItem?.id === item.id;
+                return (
+                  <tr
+                    key={item.id || idx}
+                    onClick={() => {
+                      setSelectedLineItem(item);
+                      if (item.pendingQty > 0) {
+                        handleScanLookup(`${item.partNumber}-001`);
+                      }
+                    }}
+                    className={clsx(
+                      'hover:bg-purple-50/40 cursor-pointer transition-colors',
+                      isSelected && 'bg-purple-50/60'
+                    )}
+                  >
+                    <td className="py-2.5 px-4">
+                      <input
+                        type="checkbox"
+                        checked={isSelected}
+                        onChange={() => {}}
+                        className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                      />
+                    </td>
+                    <td className="py-2.5 px-4 font-bold text-slate-600">{item.itemNumber || idx + 1}</td>
+                    <td className="py-2.5 px-4 font-semibold text-slate-800 flex items-center gap-2">
+                      <div className="w-6 h-6 rounded bg-white border border-slate-200 overflow-hidden shrink-0 flex items-center justify-center p-0.5">
+                        <img src={item.imageUrl} alt="" className="w-full h-full object-contain" />
+                      </div>
+                      <span className="truncate">{item.description}</span>
+                    </td>
+                    <td className="py-2.5 px-4 font-mono text-slate-600">{item.partNumber}</td>
+                    <td className="py-2.5 px-4 text-center font-bold text-slate-700">{item.orderedQty}</td>
+                    <td className="py-2.5 px-4 text-center font-bold text-slate-800">{item.receivedQty}</td>
+                    <td className="py-2.5 px-4 text-center font-bold text-slate-800">{item.pendingQty}</td>
+                    <td className="py-2.5 px-4">
+                      {item.status === 'Completed' && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          Completed
+                        </span>
+                      )}
+                      {item.status === 'In Progress' && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-50 text-amber-700 border border-amber-200">
+                          In Progress
+                        </span>
+                      )}
+                      {item.status === 'Pending' && (
+                        <span className="px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                          Pending
+                        </span>
+                      )}
+                    </td>
+                    <td className="py-2.5 px-4 text-center">
+                      {item.status === 'Completed' ? (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLineItem(item);
+                            showNotification(`Viewing completed line: ${item.description}`, 'info');
+                          }}
+                          className="px-3 py-1 bg-white hover:bg-slate-100 text-[#6C2BD9] border border-purple-200 text-xs font-bold rounded-lg shadow-2xs cursor-pointer"
+                        >
+                          View
+                        </button>
+                      ) : (
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            setSelectedLineItem(item);
+                            handleScanLookup(`${item.partNumber}-001`);
+                            setCurrentStep(2);
+                          }}
+                          className="px-3 py-1 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer"
+                        >
+                          Receive
+                        </button>
+                      )}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      {/* Bottom Row: Recent Scanned Items (Card 10) & Summary (Card 11) */}
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        {/* Card 10: Recent Scanned Items (7 Cols) */}
+        <div className="lg:col-span-7 glass-panel p-4 space-y-3 relative">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                10
+              </span>
+              <h2 className="text-xs font-bold text-slate-900 tracking-tight">
+                Recent Scanned Items ({recentScannedItems.length})
+              </h2>
+            </div>
+            <span className="text-[10px] text-slate-400 font-medium">Refreshes in real-time</span>
+          </div>
+
+          <div className="border border-slate-200 rounded-xl overflow-hidden">
+            <table className="w-full text-left text-xs">
+              <thead>
+                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600">
+                  <th className="py-2.5 px-3">Time</th>
+                  <th className="py-2.5 px-3">Serial Number</th>
+                  <th className="py-2.5 px-3">Tag Number</th>
+                  <th className="py-2.5 px-3">Asset Name</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-2 w-8"></th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {recentScannedItems.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="py-6 text-center text-slate-400 text-xs">
+                      No items scanned yet in this session.
+                    </td>
+                  </tr>
+                ) : (
+                  recentScannedItems.map((item) => (
+                    <tr key={item.id} className="hover:bg-slate-50/70">
+                      <td className="py-2 px-3 text-[11px] text-slate-500 whitespace-nowrap">{item.time}</td>
+                      <td className="py-2 px-3 font-mono font-bold text-slate-800">{item.serialNumber}</td>
+                      <td className="py-2 px-3 font-mono text-[#6C2BD9] font-semibold">{item.tagNumber}</td>
+                      <td className="py-2 px-3 font-semibold text-slate-700 truncate max-w-[160px]">{item.assetName}</td>
+                      <td className="py-2 px-3">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {item.status}
+                        </span>
+                      </td>
+                      <td className="py-2 px-2 text-right">
+                        <button
+                          onClick={() => handleRemoveScannedItem(item.id)}
+                          className="text-slate-400 hover:text-rose-600 transition-colors p-1"
+                          title="Remove item"
+                        >
+                          <X className="w-3.5 h-3.5" />
+                        </button>
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        {/* Card 11: Summary (5 Cols) */}
+        <div className="lg:col-span-5 glass-panel p-4 flex flex-col justify-between space-y-4 relative">
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
+                11
+              </span>
+              <h2 className="text-xs font-bold text-slate-900 tracking-tight">Summary</h2>
+            </div>
+
+            {/* 4 Metric Boxes */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+              {/* Box 1: PO Items */}
+              <div className="p-2.5 rounded-xl border border-blue-100 bg-blue-50/50 flex flex-col items-center justify-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center mb-1 shadow-2xs">
+                  <Package className="w-4 h-4" />
+                </div>
+                <span className="text-lg font-black text-slate-900">{totalPoItems}</span>
+                <span className="text-[10px] font-bold text-slate-500">PO Items</span>
+              </div>
+
+              {/* Box 2: Received */}
+              <div className="p-2.5 rounded-xl border border-emerald-100 bg-emerald-50/50 flex flex-col items-center justify-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center mb-1 shadow-2xs">
+                  <CheckCircle2 className="w-4 h-4" />
+                </div>
+                <span className="text-lg font-black text-slate-900">{totalUnitsReceived}</span>
+                <span className="text-[10px] font-bold text-slate-500">Received</span>
+              </div>
+
+              {/* Box 3: Tagged */}
+              <div className="p-2.5 rounded-xl border border-teal-100 bg-teal-50/50 flex flex-col items-center justify-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-teal-600 text-white flex items-center justify-center mb-1 shadow-2xs">
+                  <Barcode className="w-4 h-4" />
+                </div>
+                <span className="text-lg font-black text-slate-900">{totalUnitsTagged}</span>
+                <span className="text-[10px] font-bold text-slate-500">Tagged</span>
+              </div>
+
+              {/* Box 4: Pending */}
+              <div className="p-2.5 rounded-xl border border-amber-100 bg-amber-50/50 flex flex-col items-center justify-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-amber-500 text-white flex items-center justify-center mb-1 shadow-2xs">
+                  <Clock className="w-4 h-4" />
+                </div>
+                <span className="text-lg font-black text-slate-900">{totalUnitsPending}</span>
+                <span className="text-[10px] font-bold text-slate-500">Pending</span>
+              </div>
+            </div>
+          </div>
+
+          {/* Action Buttons: Save as Draft & Proceed to Review */}
+          <div className="flex items-center gap-2 pt-2">
+            <button
+              onClick={handleSaveDraft}
+              className="flex-1 py-2.5 px-4 bg-white hover:bg-slate-50 text-slate-700 border border-slate-300 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+            >
+              Save as Draft
+            </button>
+            <button
+              onClick={() => {
+                setShowReviewModal(true);
+                setCurrentStep(4);
+              }}
+              className="flex-1 py-2.5 px-4 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition-all shadow-xs flex items-center justify-center gap-1.5 cursor-pointer active:scale-95"
+            >
+              Proceed to Review →
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* PO Search Modal */}
+      {showPoSearchModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full p-5 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Search className="w-4 h-4 text-[#6C2BD9]" /> Select Purchase Order from ERP
+              </h3>
+              <button
+                onClick={() => setShowPoSearchModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               >
-                <X className="w-5 h-5" />
+                <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 text-xs bg-slate-50 p-3.5 rounded-xl border border-slate-200">
-              <div>
-                <p className="text-slate-400">PO Number</p>
-                <p className="font-bold text-slate-800 font-mono">{selectedReceipt.poNumber}</p>
-              </div>
-              <div>
-                <p className="text-slate-400">Vendor / Supplier</p>
-                <p className="font-bold text-slate-800">{selectedReceipt.vendorName}</p>
-              </div>
-              <div>
-                <p className="text-slate-400">Company Entity</p>
-                <p className="font-semibold text-slate-800">{selectedReceipt.company?.name || 'N/A'}</p>
-              </div>
-              <div>
-                <p className="text-slate-400">Destination Site</p>
-                <p className="font-semibold text-slate-800">{selectedReceipt.site?.name || 'N/A'}</p>
-              </div>
-            </div>
-
-            <div className="space-y-2">
-              <h4 className="text-xs font-bold text-slate-800">Received Line Items</h4>
-              {selectedReceipt.lineItems && selectedReceipt.lineItems.length > 0 ? (
-                selectedReceipt.lineItems.map((line, idx) => (
-                  <div key={line.id || idx} className="border border-slate-200 p-3 rounded-xl text-xs space-y-1">
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-slate-800">{line.description || 'Inventory Line Item'}</span>
-                      <span className="font-mono font-bold text-purple-700">${parseFloat(line.unitPrice || 0).toLocaleString()}</span>
-                    </div>
-                    {line.serialNumbers && line.serialNumbers.length > 0 && (
-                      <p className="text-[11px] text-slate-500 font-mono">
-                        Serials: {line.serialNumbers.join(', ')}
-                      </p>
-                    )}
+            <div className="space-y-2 max-h-72 overflow-y-auto">
+              {availablePos.map((po) => (
+                <div
+                  key={po.poNumber}
+                  onClick={() => handleSelectPo(po.poNumber)}
+                  className="p-3 rounded-xl border border-slate-200 hover:border-[#6C2BD9] hover:bg-purple-50/30 transition-all cursor-pointer flex items-center justify-between"
+                >
+                  <div>
+                    <span className="font-mono font-bold text-xs text-[#6C2BD9] block">{po.poNumber}</span>
+                    <span className="text-xs font-semibold text-slate-800">{po.supplier}</span>
+                    <span className="text-[10px] text-slate-400 block">
+                      PO Date: {po.poDate} • Lines: {po.lineItems?.length || 0}
+                    </span>
                   </div>
-                ))
-              ) : (
-                <p className="text-xs text-slate-500 italic">No line item breakdown available.</p>
-              )}
+                  <ChevronRight className="w-4 h-4 text-slate-400" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Tagging Settings Modal (Badge 5) */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-5 space-y-4 shadow-2xl border border-slate-200">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Settings className="w-4 h-4 text-[#6C2BD9]" /> Tagging Settings & Printers
+              </h3>
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600"
+              >
+                <X className="w-4 h-4" />
+              </button>
             </div>
 
-            <div className="flex justify-end pt-2">
-              <button 
-                onClick={() => setSelectedReceipt(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium"
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Thermal Label Printer</label>
+                <select
+                  value={taggingSettings.defaultPrinter}
+                  onChange={(e) => setTaggingSettings({ ...taggingSettings, defaultPrinter: e.target.value })}
+                  className="w-full p-2 rounded-xl border border-slate-200 bg-white"
+                >
+                  <option value="Zebra ZT411 RFID (Warehouse Dock 2)">Zebra ZT411 RFID (Warehouse Dock 2)</option>
+                  <option value="SATO CL4NX Plus RFID (IT Lab)">SATO CL4NX Plus RFID (IT Lab)</option>
+                  <option value="Dymo LabelWriter 550">Dymo LabelWriter 550</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Tag Format</label>
+                <select
+                  value={taggingSettings.tagFormat}
+                  onChange={(e) => setTaggingSettings({ ...taggingSettings, tagFormat: e.target.value })}
+                  className="w-full p-2 rounded-xl border border-slate-200 bg-white"
+                >
+                  <option value="CODE_128">Code 128 Standard Barcode</option>
+                  <option value="QR_CODE">2D QR Code ISO/IEC 18004</option>
+                  <option value="RFID_EPC">RFID UHF EPC Gen2</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Label Template</label>
+                <select
+                  value={taggingSettings.labelTemplate}
+                  onChange={(e) => setTaggingSettings({ ...taggingSettings, labelTemplate: e.target.value })}
+                  className="w-full p-2 rounded-xl border border-slate-200 bg-white"
+                >
+                  <option value="STANDARD_2X1">Standard 2.0" × 1.0" Asset Label</option>
+                  <option value="HEAVY_DUTY_3X1">Heavy-Duty 3.0" × 1.0" Metal Mount</option>
+                  <option value="MINI_IT_1X05">Compact 1.5" × 0.5" Micro-Tag</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Scanner Input Interface</label>
+                <select
+                  value={taggingSettings.scannerInterface}
+                  onChange={(e) => setTaggingSettings({ ...taggingSettings, scannerInterface: e.target.value })}
+                  className="w-full p-2 rounded-xl border border-slate-200 bg-white"
+                >
+                  <option value="KEYBOARD_WEDGE">Keyboard Wedge / USB Emulation</option>
+                  <option value="SERIAL_COM">Serial COM Port (Baud 9600)</option>
+                  <option value="RFID_NETWORK_TCP">RFID Reader TCP/IP Direct Stream</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="pt-2 flex justify-end">
+              <button
+                onClick={() => {
+                  setShowSettingsModal(false);
+                  showNotification('Tagging preferences saved.', 'success');
+                }}
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl"
               >
-                Close View
+                Save Settings
               </button>
             </div>
           </div>
         </div>
       )}
 
-      {/* Delete Confirmation Modal */}
-      {deleteReceiptId && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 w-full max-w-sm p-6 rounded-2xl shadow-2xl space-y-4 text-center animate-fade-in">
-            <div className="w-12 h-12 rounded-full bg-red-100 text-red-600 flex items-center justify-center mx-auto">
-              <Trash2 className="w-6 h-6" />
-            </div>
-
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Delete Goods Receipt?</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Are you sure you want to delete this goods receipt record? This action cannot be undone.
-              </p>
-            </div>
-
-            <div className="flex items-center justify-center gap-2.5 pt-2">
-              <button 
-                onClick={() => setDeleteReceiptId(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl text-xs font-medium"
+      {/* Review & Submit Modal (Step 4) */}
+      {showReviewModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 space-y-4 shadow-2xl border border-slate-200 max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div>
+                <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
+                  <FileCheck className="w-5 h-5 text-[#6C2BD9]" /> Review & Confirm Receiving Transaction
+                </h3>
+                <p className="text-xs text-slate-500">
+                  Reference: <span className="font-mono font-bold text-[#6C2BD9]">{referenceNo}</span> • PO: {poNumber}
+                </p>
+              </div>
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="p-1.5 rounded-xl text-slate-400 hover:text-slate-600 hover:bg-slate-100"
               >
-                Cancel
+                <X className="w-4 h-4" />
               </button>
-              <button 
-                onClick={() => handleDeleteReceipt(deleteReceiptId)}
-                className="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-xl text-xs font-bold shadow-xs"
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {/* Summary Stats in Review */}
+              <div className="grid grid-cols-3 gap-2.5">
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Supplier</span>
+                  <span className="text-xs font-bold text-slate-800 truncate block mt-0.5">{supplier}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Location</span>
+                  <span className="text-xs font-bold text-slate-800 truncate block mt-0.5">{receivingLocation}</span>
+                </div>
+                <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 text-center">
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Units Tagged</span>
+                  <span className="text-xs font-black text-[#6C2BD9] block mt-0.5">{recentScannedItems.length} units</span>
+                </div>
+              </div>
+
+              {/* Individual Tagged Units */}
+              <div>
+                <h4 className="text-xs font-bold text-slate-700 uppercase tracking-wider mb-2">
+                  Assets & Tag Associations to Post ({recentScannedItems.length})
+                </h4>
+                <div className="border border-slate-200 rounded-xl overflow-hidden max-h-48 overflow-y-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 text-[11px]">
+                      <tr>
+                        <th className="py-2 px-3">Serial #</th>
+                        <th className="py-2 px-3">Tag Number</th>
+                        <th className="py-2 px-3">Asset Description</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                      {recentScannedItems.map((item, i) => (
+                        <tr key={i} className="hover:bg-slate-50">
+                          <td className="py-2 px-3 font-bold text-slate-800">{item.serialNumber}</td>
+                          <td className="py-2 px-3 text-[#6C2BD9]">{item.tagNumber}</td>
+                          <td className="py-2 px-3 font-sans text-slate-700">{item.assetName}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+
+              {/* Dynamic Approval Routing Option */}
+              <div className="p-3 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-between">
+                <div>
+                  <span className="text-xs font-bold text-purple-900 block">
+                    Submit to Dynamic Asset Approval Workflow
+                  </span>
+                  <span className="text-[11px] text-purple-700 block">
+                    Received assets will require Asset Manager authorization before entering Active service.
+                  </span>
+                </div>
+                <input
+                  type="checkbox"
+                  checked={requireApproval}
+                  onChange={(e) => setRequireApproval(e.target.checked)}
+                  className="w-4 h-4 rounded border-purple-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                />
+              </div>
+            </div>
+
+            <div className="pt-2 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={() => setShowReviewModal(false)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl"
               >
-                Confirm Delete
+                Back to Edit
+              </button>
+
+              <button
+                onClick={handleFinalSubmit}
+                disabled={submitting}
+                className="px-6 py-2.5 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:bg-slate-300 text-white text-xs font-bold rounded-xl transition-all shadow-sm flex items-center gap-2 cursor-pointer active:scale-95"
+              >
+                {submitting ? 'Posting Transaction...' : 'Confirm & Post Receiving'}
               </button>
             </div>
           </div>

@@ -38,7 +38,30 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response.data,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    // Resilient local retry: if remote server returns 404/502/503 for a new endpoint, retry against local dev backend
+    if (
+      originalRequest &&
+      !originalRequest._retriedLocal &&
+      (error.response?.status === 404 || error.response?.status === 502 || error.response?.status === 503 || !error.response)
+    ) {
+      originalRequest._retriedLocal = true;
+      try {
+        const cleanPath = originalRequest.url.replace(/^https?:\/\/[^\/]+\/api\/v1/, '').replace(/^\/api\/v1/, '');
+        const localUrl = `http://localhost:5000/api/v1${cleanPath.startsWith('/') ? '' : '/'}${cleanPath}`;
+        const localResponse = await axios({
+          ...originalRequest,
+          url: localUrl,
+          baseURL: ''
+        });
+        return localResponse.data;
+      } catch (localErr) {
+        // Continue to reject with original error if local is also unavailable
+      }
+    }
+
     if (error.response && error.response.status === 401) {
       localStorage.removeItem('fams_token');
       localStorage.removeItem('fams_user');
@@ -49,3 +72,4 @@ api.interceptors.response.use(
     return Promise.reject(error.response ? error.response.data : error);
   }
 );
+

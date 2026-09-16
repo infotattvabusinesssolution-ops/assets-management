@@ -1,4 +1,5 @@
 import prisma from '../../config/prisma.js';
+import { CustodyTransfersService } from './custodyTransfers.service.js';
 
 export async function getCustodyAssignments(req, res, next) {
   try {
@@ -351,3 +352,89 @@ export async function updateTransfer(req, res, next) {
     res.json({ success: true, transfer: updated });
   } catch (err) { next(err); }
 }
+
+// -------------------------------------------------------------------
+// Assignment & Movement Module Extended Controllers
+// -------------------------------------------------------------------
+
+export async function getMovementKpis(req, res, next) {
+  try {
+    const kpis = await CustodyTransfersService.getKpis();
+    res.json({ success: true, ...kpis });
+  } catch (err) { next(err); }
+}
+
+export async function getMovementsAssets(req, res, next) {
+  try {
+    const result = await CustodyTransfersService.getAssets(req.query);
+    res.json({ success: true, ...result });
+  } catch (err) { next(err); }
+}
+
+export async function getMovementsAssetDetails(req, res, next) {
+  try {
+    const asset = await CustodyTransfersService.getAssetById(req.params.id);
+    if (!asset) return res.status(404).json({ success: false, message: 'Asset not found' });
+    res.json({ success: true, asset });
+  } catch (err) { next(err); }
+}
+
+export async function submitAssignmentWorkflow(req, res, next) {
+  try {
+    const result = await CustodyTransfersService.submitAssignment(req.body, req.user);
+    res.status(201).json(result);
+  } catch (err) { next(err); }
+}
+
+export async function submitTransferWorkflow(req, res, next) {
+  try {
+    const result = await CustodyTransfersService.submitTransfer(req.body, req.user);
+    res.status(201).json(result);
+  } catch (err) { next(err); }
+}
+
+export async function confirmTransferReceipt(req, res, next) {
+  try {
+    const result = await CustodyTransfersService.confirmReceipt(req.params.id, req.body, req.user);
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function getPendingApprovals(req, res, next) {
+  try {
+    const approvals = await CustodyTransfersService.getPendingApprovals();
+    res.json({ success: true, approvals });
+  } catch (err) { next(err); }
+}
+
+export async function processApproval(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { action, remarks } = req.body;
+    const result = await CustodyTransfersService.processApproval(id, action, remarks, req.user);
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function getRecentMovements(req, res, next) {
+  try {
+    const recent = await CustodyTransfersService.getRecentMovements();
+    res.json({ success: true, recent });
+  } catch (err) { next(err); }
+}
+
+export async function getMovementHistory(req, res, next) {
+  try {
+    const result = await CustodyTransfersService.getMovementHistory(req.query);
+    res.json({ success: true, ...result });
+  } catch (err) { next(err); }
+}
+
+export async function getMovementDetailsById(req, res, next) {
+  try {
+    const movement = await CustodyTransfersService.getMovementById(req.params.id);
+    if (!movement) return res.status(404).json({ success: false, message: 'Movement record not found' });
+    res.json({ success: true, movement });
+  } catch (err) { next(err); }
+}
+
