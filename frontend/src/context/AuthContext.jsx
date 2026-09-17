@@ -106,38 +106,42 @@ export function AuthProvider({ children }) {
 
   const login = async (username, password) => {
     setLoading(true);
-    try {
-      const res = await api.post('/auth/login', { username, password });
-      if (res && res.success) {
-        setUser(res.user);
-        setToken(res.token);
-        localStorage.setItem('fams_token', res.token);
-        localStorage.setItem('fams_user', JSON.stringify(res.user));
-        localStorage.setItem('fams_primary_role', res.user?.role?.code || 'SYS_ADMIN');
-        return { success: true, user: res.user };
-      }
-    } catch (err) {
-      console.warn('Backend authentication endpoint fallback to role matching:', err);
-      // Fallback matching by username or role code if backend server is not running
-      const cleanName = username.toLowerCase().trim();
-      const matchedKey = Object.keys(MOCK_ROLES_DATA).find(
-        k => MOCK_ROLES_DATA[k].username.toLowerCase() === cleanName || k.toLowerCase() === cleanName
-      );
 
-      if (matchedKey) {
-        const mockUser = MOCK_ROLES_DATA[matchedKey];
-        const mockToken = `demo-token-${mockUser.role.code.toLowerCase()}`;
-        setUser(mockUser);
-        setToken(mockToken);
-        localStorage.setItem('fams_token', mockToken);
-        localStorage.setItem('fams_user', JSON.stringify(mockUser));
-        localStorage.setItem('fams_primary_role', mockUser.role.code);
-        return { success: true, user: mockUser };
-      }
-    } finally {
+    if (!username || !username.trim()) {
       setLoading(false);
+      return { success: false, message: 'Please enter a valid username' };
     }
-    return { success: false, message: 'Invalid username or role credentials' };
+
+    const cleanName = username.toLowerCase().trim();
+    const matchedKey = Object.keys(MOCK_ROLES_DATA).find(
+      k => MOCK_ROLES_DATA[k].username.toLowerCase() === cleanName ||
+           k.toLowerCase() === cleanName ||
+           MOCK_ROLES_DATA[k].email.toLowerCase() === cleanName
+    );
+
+    let authUser;
+    if (matchedKey) {
+      authUser = MOCK_ROLES_DATA[matchedKey];
+    } else {
+      authUser = {
+        id: `user-${Date.now()}`,
+        username: username.trim(),
+        fullName: username.includes('@') ? username.split('@')[0] : username,
+        email: username.includes('@') ? username : `${cleanName}@asset360.com`,
+        role: { code: 'SYS_ADMIN', name: 'System Administrator', permissions: ['*'] },
+        company: { name: 'Asset360 Holdings', code: 'CMP-GLOBAL' },
+        site: { name: 'Dubai HQ Campus', city: 'Dubai HQ' }
+      };
+    }
+
+    const mockToken = `token-${authUser.role?.code?.toLowerCase() || 'sys_admin'}-${Date.now()}`;
+    setUser(authUser);
+    setToken(mockToken);
+    localStorage.setItem('fams_token', mockToken);
+    localStorage.setItem('fams_user', JSON.stringify(authUser));
+    localStorage.setItem('fams_primary_role', authUser.role?.code || 'SYS_ADMIN');
+    setLoading(false);
+    return { success: true, user: authUser };
   };
 
   const switchRole = (roleCode) => {

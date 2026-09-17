@@ -204,7 +204,7 @@ export function App() {
               </Route>
             </Routes>
           </BrowserRouter>
-        </CommandPaletteProvider>
+        </CommandPaletteProvider> 
       </AuthProvider>
     </QueryClientProvider>
 

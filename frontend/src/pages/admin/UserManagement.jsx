@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { API_BASE_URL } from '../../services/api';
 import {
   Users,
   Search,
@@ -348,7 +349,7 @@ export function UserManagement() {
         mfaEnabled: advancedFilters.mfaEnabled
       });
 
-      const res = await fetch(`http://localhost:5000/api/v1/admin/users?${params.toString()}`);
+      const res = await fetch(`${API_BASE_URL}/admin/users?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
         if (data.success && Array.isArray(data.users) && data.users.length > 0) {

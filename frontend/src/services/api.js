@@ -9,15 +9,15 @@ const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
-  if (import.meta.env.DEV) {
-    return '/api/v1';
+  if (typeof window !== 'undefined' && window.location && window.location.origin) {
+    return `${window.location.origin}/api/v1`;
   }
-  return 'https://apiasset.milkmen.online/api/v1';
+  return '/api/v1';
 };
 
 export const API_BASE_URL = getApiBaseUrl();
 export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ||
-  (import.meta.env.DEV ? 'http://localhost:5000' : 'https://apiasset.milkmen.online');
+  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
