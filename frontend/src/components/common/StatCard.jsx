@@ -53,23 +53,23 @@ export function StatCard({ title, value, icon: Icon, trend, color = 'emerald', s
     <div className={clsx('glass-card flex flex-col justify-between relative overflow-hidden transition-all duration-200 hover:scale-[1.01]', theme.topBorder)}>
       <div>
         <div className="flex items-center justify-between">
-          <span className="text-xs font-bold text-slate-500 uppercase tracking-wider">{title}</span>
+          <span className="text-xs font-bold text-black uppercase tracking-wider">{title}</span>
           {Icon && (
-            <div className={clsx('p-2.5 rounded-full flex items-center justify-center shadow-xs', theme.iconBg)}>
-              <Icon className="w-4 h-4" />
+            <div className={clsx('p-2.5 rounded-full flex items-center justify-center shadow-2xs', theme.iconBg)}>
+              <Icon className="w-4 h-4 text-[#6C2BD9]" />
             </div>
           )}
         </div>
 
         <div className="mt-3 flex items-baseline justify-between gap-2">
-          <div className="text-2xl font-black text-slate-900 tracking-tight">{value}</div>
+          <div className="text-2xl font-black text-black tracking-tight">{value}</div>
           {trend && (
-            <span className={clsx('text-[11px] font-bold px-2 py-0.5 rounded-full border border-current/20', theme.trendClass)}>
+            <span className={clsx('text-[11px] font-bold px-2 py-0.5 rounded-full border border-current/20 text-black', theme.trendClass)}>
               {trend}
             </span>
           )}
         </div>
-        {subtext && <p className="text-xs text-slate-500 font-medium mt-1">{subtext}</p>}
+        {subtext && <p className="text-xs text-black font-medium mt-1">{subtext}</p>}
       </div>
 
       {/* Decorative Wave Sparkline */}

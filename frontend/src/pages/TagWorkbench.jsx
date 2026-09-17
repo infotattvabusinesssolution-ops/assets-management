@@ -41,12 +41,161 @@ export function TagWorkbench() {
   const [currentStep, setCurrentStep] = useState(1);
 
   // -------------------------------------------------------------
-  // Data State
+  // Data State Initialized with Exact Reference Dummy Data
   // -------------------------------------------------------------
-  const [assets, setAssets] = useState([]);
-  const [recentTagged, setRecentTagged] = useState([]);
+  const [assets, setAssets] = useState([
+    {
+      id: 'ast-tag-001',
+      assetNumber: 'AS-2026-00121',
+      assetName: 'Dell OptiPlex 7020',
+      category: 'Desktop',
+      location: 'IT Store',
+      department: 'IT Store',
+      serialNumber: '7CD1234',
+      currentTag: '-',
+      status: 'Not Tagged',
+      custodian: 'Alex Murphy',
+      assetStatus: 'Active',
+      imageUrl: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=500&q=80'
+    },
+    {
+      id: 'ast-tag-002',
+      assetNumber: 'AS-2026-00122',
+      assetName: 'HP LaserJet Pro',
+      category: 'Printer',
+      location: 'Admin Block',
+      department: 'Admin Block',
+      serialNumber: 'CNB89001',
+      currentTag: '-',
+      status: 'Not Tagged',
+      custodian: 'Sarah Connor',
+      assetStatus: 'Active',
+      imageUrl: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=500&q=80'
+    },
+    {
+      id: 'ast-tag-003',
+      assetNumber: 'AS-2026-00123',
+      assetName: 'Samsung Monitor 27"',
+      category: 'Monitor',
+      location: 'Finance Dept',
+      department: 'Finance Dept',
+      serialNumber: 'SM27-3310',
+      currentTag: 'E36000009876',
+      status: 'Tagged',
+      custodian: 'Michael Scott',
+      assetStatus: 'Active',
+      imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&q=80'
+    },
+    {
+      id: 'ast-tag-004',
+      assetNumber: 'AS-2026-00124',
+      assetName: 'Lenovo ThinkPad',
+      category: 'Laptop',
+      location: 'Dubai HQ',
+      department: 'Dubai HQ',
+      serialNumber: 'PF9A2211',
+      currentTag: '-',
+      status: 'Not Tagged',
+      custodian: 'John Doe',
+      assetStatus: 'Active',
+      imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500&q=80'
+    },
+    {
+      id: 'ast-tag-005',
+      assetNumber: 'AS-2026-00125',
+      assetName: 'iPad Air',
+      category: 'Tablet',
+      location: 'HR Dept',
+      department: 'HR Dept',
+      serialNumber: 'IPD-7782',
+      currentTag: '-',
+      status: 'Not Tagged',
+      custodian: 'Elena Vance',
+      assetStatus: 'Active',
+      imageUrl: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500&q=80'
+    },
+    {
+      id: 'ast-tag-006',
+      assetNumber: 'AS-2026-00126',
+      assetName: 'Access Point',
+      category: 'Network',
+      location: 'Warehouse',
+      department: 'Warehouse',
+      serialNumber: 'AP-9981',
+      currentTag: '-',
+      status: 'Not Tagged',
+      custodian: 'David Miller',
+      assetStatus: 'Active',
+      imageUrl: 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=500&q=80'
+    }
+  ]);
+
+  const [recentTagged, setRecentTagged] = useState([
+    {
+      id: 'rec-01',
+      time: '21 Aug 2026 11:20',
+      assetNumber: 'AS-2026-00120',
+      assetName: 'Dell Docking Station',
+      serialNumber: 'WD19S-2210',
+      tagNumber: 'E36000012341',
+      taggedBy: 'John Doe',
+      status: 'Tagged'
+    },
+    {
+      id: 'rec-02',
+      time: '21 Aug 2026 11:18',
+      assetNumber: 'AS-2026-00119',
+      assetName: 'Keyboard & Mouse',
+      serialNumber: 'KM7321W',
+      tagNumber: 'E36000012340',
+      taggedBy: 'John Doe',
+      status: 'Tagged'
+    },
+    {
+      id: 'rec-03',
+      time: '21 Aug 2026 11:15',
+      assetNumber: 'AS-2026-00118',
+      assetName: 'Office Chair',
+      serialNumber: 'CH-5567',
+      tagNumber: 'E36000012339',
+      taggedBy: 'John Doe',
+      status: 'Tagged'
+    },
+    {
+      id: 'rec-04',
+      time: '21 Aug 2026 11:12',
+      assetNumber: 'AS-2026-00117',
+      assetName: 'Meeting Room TV',
+      serialNumber: 'LG-7744',
+      tagNumber: 'E36000012338',
+      taggedBy: 'John Doe',
+      status: 'Tagged'
+    },
+    {
+      id: 'rec-05',
+      time: '21 Aug 2026 11:10',
+      assetNumber: 'AS-2026-00116',
+      assetName: 'Access Point',
+      serialNumber: 'AP-9881',
+      tagNumber: 'E36000012337',
+      taggedBy: 'John Doe',
+      status: 'Tagged'
+    }
+  ]);
+
   const [selectedAssetIds, setSelectedAssetIds] = useState(['ast-tag-002']); // Default row 2 checked like screenshot
-  const [activeAsset, setActiveAsset] = useState(null);
+  const [activeAsset, setActiveAsset] = useState({
+    id: 'ast-tag-preview',
+    assetNumber: 'AS-2026-00125',
+    assetName: 'Dell Latitude 7450',
+    category: 'Laptop',
+    location: 'Dubai HQ',
+    serialNumber: 'DL7450-001',
+    currentTag: '-',
+    status: 'Not Tagged',
+    imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
+  });
+
   const [summary, setSummary] = useState({
     selected: 6,
     tagged: 1,
@@ -592,147 +741,105 @@ export function TagWorkbench() {
           </div>
         </div>
 
-        {/* 4-Step Stepper Component matching exact design */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+        {/* 4-Step Stepper Component */}
+        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
+          <div className="flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4 w-full max-w-6xl mx-auto px-2">
             {/* Step 1 */}
             <div
               onClick={() => setCurrentStep(1)}
-              className={clsx(
-                'flex items-center gap-3.5 p-2 rounded-xl transition-all cursor-pointer',
-                currentStep === 1
-                  ? 'bg-purple-50/60'
-                  : 'hover:bg-slate-50'
-              )}
+              className="flex items-center gap-3 cursor-pointer group shrink-0"
             >
               <div
                 className={clsx(
-                  'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 shadow-xs transition-all',
-                  currentStep === 1
-                    ? 'bg-[#1E1B4B] text-white ring-4 ring-indigo-100'
-                    : currentStep > 1
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-indigo-50 text-[#6C2BD9] border border-indigo-200'
+                  'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+                  currentStep >= 1 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
                 )}
               >
-                {currentStep > 1 ? <Check className="w-5 h-5" /> : '1'}
+                1
               </div>
-              <div className="truncate">
-                <p
-                  className={clsx(
-                    'text-xs font-bold leading-tight truncate',
-                    currentStep === 1 ? 'text-slate-900' : 'text-slate-700'
-                  )}
-                >
+              <div>
+                <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 1 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                   Select Assets
-                </p>
-                <p className="text-[11px] text-slate-500 truncate">Search and select assets</p>
+                </div>
+                <div className="text-[11px] text-purple-600 font-medium">Search and select assets</div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 ml-auto hidden lg:block" />
+            </div>
+
+            {/* Arrow 1 */}
+            <div className="hidden md:block text-purple-400 shrink-0">
+              <ArrowRight className="w-4 h-4" />
             </div>
 
             {/* Step 2 */}
             <div
               onClick={() => setCurrentStep(2)}
-              className={clsx(
-                'flex items-center gap-3.5 p-2 rounded-xl transition-all cursor-pointer',
-                currentStep === 2
-                  ? 'bg-purple-50/60'
-                  : 'hover:bg-slate-50'
-              )}
+              className="flex items-center gap-3 cursor-pointer group shrink-0"
             >
               <div
                 className={clsx(
-                  'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 shadow-xs transition-all',
-                  currentStep === 2
-                    ? 'bg-[#1E1B4B] text-white ring-4 ring-indigo-100'
-                    : currentStep > 2
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-indigo-50 text-[#6C2BD9] border border-indigo-200'
+                  'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+                  currentStep >= 2 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
                 )}
               >
-                {currentStep > 2 ? <Check className="w-5 h-5" /> : '2'}
+                2
               </div>
-              <div className="truncate">
-                <p
-                  className={clsx(
-                    'text-xs font-bold leading-tight truncate',
-                    currentStep === 2 ? 'text-slate-900' : 'text-slate-700'
-                  )}
-                >
+              <div>
+                <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 2 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                   Tagging
-                </p>
-                <p className="text-[11px] text-slate-500 truncate">Scan / Print & Assign Tags</p>
+                </div>
+                <div className="text-[11px] text-purple-600 font-medium">Scan / Print &amp; Assign Tags</div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 ml-auto hidden lg:block" />
+            </div>
+
+            {/* Arrow 2 */}
+            <div className="hidden md:block text-purple-400 shrink-0">
+              <ArrowRight className="w-4 h-4" />
             </div>
 
             {/* Step 3 */}
             <div
               onClick={() => setCurrentStep(3)}
-              className={clsx(
-                'flex items-center gap-3.5 p-2 rounded-xl transition-all cursor-pointer',
-                currentStep === 3
-                  ? 'bg-purple-50/60'
-                  : 'hover:bg-slate-50'
-              )}
+              className="flex items-center gap-3 cursor-pointer group shrink-0"
             >
               <div
                 className={clsx(
-                  'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 shadow-xs transition-all',
-                  currentStep === 3
-                    ? 'bg-[#1E1B4B] text-white ring-4 ring-indigo-100'
-                    : currentStep > 3
-                    ? 'bg-emerald-500 text-white'
-                    : 'bg-indigo-50 text-[#6C2BD9] border border-indigo-200'
+                  'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+                  currentStep >= 3 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
                 )}
               >
-                {currentStep > 3 ? <Check className="w-5 h-5" /> : '3'}
+                3
               </div>
-              <div className="truncate">
-                <p
-                  className={clsx(
-                    'text-xs font-bold leading-tight truncate',
-                    currentStep === 3 ? 'text-slate-900' : 'text-slate-700'
-                  )}
-                >
-                  Verify & Update
-                </p>
-                <p className="text-[11px] text-slate-500 truncate">Confirm asset details</p>
+              <div>
+                <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 3 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+                  Verify &amp; Update
+                </div>
+                <div className="text-[11px] text-purple-600 font-medium">Confirm asset details</div>
               </div>
-              <ChevronRight className="w-4 h-4 text-slate-300 ml-auto hidden lg:block" />
+            </div>
+
+            {/* Arrow 3 */}
+            <div className="hidden md:block text-purple-400 shrink-0">
+              <ArrowRight className="w-4 h-4" />
             </div>
 
             {/* Step 4 */}
             <div
               onClick={() => setCurrentStep(4)}
-              className={clsx(
-                'flex items-center gap-3.5 p-2 rounded-xl transition-all cursor-pointer',
-                currentStep === 4
-                  ? 'bg-purple-50/60'
-                  : 'hover:bg-slate-50'
-              )}
+              className="flex items-center gap-3 cursor-pointer group shrink-0"
             >
               <div
                 className={clsx(
-                  'w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm shrink-0 shadow-xs transition-all',
-                  currentStep === 4
-                    ? 'bg-[#1E1B4B] text-white ring-4 ring-indigo-100'
-                    : 'bg-indigo-50 text-[#6C2BD9] border border-indigo-200'
+                  'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+                  currentStep >= 4 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
                 )}
               >
                 4
               </div>
-              <div className="truncate">
-                <p
-                  className={clsx(
-                    'text-xs font-bold leading-tight truncate',
-                    currentStep === 4 ? 'text-slate-900' : 'text-slate-700'
-                  )}
-                >
+              <div>
+                <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 4 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                   Complete
-                </p>
-                <p className="text-[11px] text-slate-500 truncate">Save and finish</p>
+                </div>
+                <div className="text-[11px] text-purple-600 font-medium">Save and finish</div>
               </div>
             </div>
           </div>
@@ -910,7 +1017,7 @@ export function TagWorkbench() {
               </button>
               <button
                 type="submit"
-                className="px-6 py-2 rounded-xl bg-[#1E1B4B] hover:bg-[#1E1B4B]/90 text-white text-xs font-semibold flex items-center gap-2 shadow-md shadow-indigo-950/20 transition-all cursor-pointer active:scale-[0.98]"
+                className="px-6 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-2 shadow-xs transition-all cursor-pointer active:scale-95"
               >
                 <Search className="w-3.5 h-3.5" />
                 <span>Search</span>
@@ -957,8 +1064,8 @@ export function TagWorkbench() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
-                    <th className="p-3 w-10 text-center">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
+                    <th className="py-2.5 px-3 w-10 text-center whitespace-nowrap">
                       <input
                         type="checkbox"
                         checked={assets.length > 0 && selectedAssetIds.length === assets.length}
@@ -966,18 +1073,18 @@ export function TagWorkbench() {
                         className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                       />
                     </th>
-                    <th className="p-3 w-8 text-slate-500 font-semibold">#</th>
-                    <th className="p-3 font-semibold">Asset Number</th>
-                    <th className="p-3 font-semibold">Asset Name</th>
-                    <th className="p-3 font-semibold">Category</th>
-                    <th className="p-3 font-semibold">Location</th>
-                    <th className="p-3 font-semibold">Serial Number</th>
-                    <th className="p-3 font-semibold">Current Tag</th>
-                    <th className="p-3 font-semibold">Status</th>
-                    <th className="p-3 font-semibold text-center">Actions</th>
+                    <th className="py-2.5 px-3 w-8 text-slate-500 font-bold whitespace-nowrap">#</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Number</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Name</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Category</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Location</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Serial Number</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Current Tag</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Status</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap text-center">Actions</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 font-sans">
                   {assets.length === 0 ? (
                     <tr>
                       <td colSpan="10" className="p-8 text-center text-slate-400">
@@ -1004,7 +1111,7 @@ export function TagWorkbench() {
                           )}
                         >
                           <td
-                            className="p-3 text-center"
+                            className="py-2.5 px-3 text-center whitespace-nowrap"
                             onClick={(e) => {
                               e.stopPropagation();
                               handleCheckboxToggle(item.id);
@@ -1017,35 +1124,35 @@ export function TagWorkbench() {
                               className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                             />
                           </td>
-                          <td className="p-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                          <td className="p-3 font-semibold text-slate-800 font-mono text-xs">
+                          <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px] whitespace-nowrap">{idx + 1}</td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9] text-xs whitespace-nowrap">
                             {item.assetNumber}
                           </td>
-                          <td className="p-3 font-medium text-slate-800">{item.assetName}</td>
-                          <td className="p-3 text-slate-600">{item.category}</td>
-                          <td className="p-3 text-slate-600">{item.location}</td>
-                          <td className="p-3 text-slate-600 font-mono text-[11px]">
+                          <td className="py-2.5 px-3 font-semibold text-slate-800 whitespace-nowrap">{item.assetName}</td>
+                          <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.category}</td>
+                          <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">{item.location}</td>
+                          <td className="py-2.5 px-3 text-slate-600 font-mono text-[11px] whitespace-nowrap">
                             {item.serialNumber}
                           </td>
-                          <td className="p-3 font-mono text-slate-600 text-[11px]">
+                          <td className="py-2.5 px-3 font-mono text-slate-600 text-[11px] whitespace-nowrap">
                             {item.currentTag || '-'}
                           </td>
-                          <td className="p-3">
+                          <td className="py-2.5 px-3 whitespace-nowrap">
                             {isTagged ? (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/80 text-emerald-800 border border-emerald-200">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/80 text-emerald-800 border border-emerald-200 whitespace-nowrap">
                                 Tagged
                               </span>
                             ) : (
-                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/80 text-amber-800 border border-amber-200">
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/80 text-amber-800 border border-amber-200 whitespace-nowrap">
                                 Not Tagged
                               </span>
                             )}
                           </td>
-                          <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                             {isTagged ? (
                               <button
                                 onClick={() => handleSelectAssetRow(item)}
-                                className="inline-flex items-center gap-1 text-[#6C2BD9] hover:text-[#5B21B6] font-semibold text-xs px-2 py-1 rounded-lg hover:bg-purple-50 transition-all cursor-pointer"
+                                className="inline-flex items-center gap-1 text-[#6C2BD9] hover:text-[#5B21B6] font-semibold text-xs px-2 py-1 rounded-lg hover:bg-purple-50 transition-all cursor-pointer whitespace-nowrap"
                               >
                                 <Eye className="w-3.5 h-3.5" />
                                 <span>View</span>
@@ -1053,7 +1160,7 @@ export function TagWorkbench() {
                             ) : (
                               <button
                                 onClick={() => handleSelectAssetRow(item)}
-                                className="inline-flex items-center gap-1 text-[#6C2BD9] hover:text-[#5B21B6] font-semibold text-xs px-2.5 py-1 rounded-lg hover:bg-purple-50 transition-all cursor-pointer"
+                                className="inline-flex items-center gap-1 text-[#6C2BD9] hover:text-[#5B21B6] font-semibold text-xs px-2.5 py-1 rounded-lg hover:bg-purple-50 transition-all cursor-pointer whitespace-nowrap"
                               >
                                 <Tag className="w-3.5 h-3.5" />
                                 <span>Tag</span>
@@ -1086,35 +1193,35 @@ export function TagWorkbench() {
             <div className="overflow-x-auto">
               <table className="w-full text-left text-xs border-collapse">
                 <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
-                    <th className="p-3 font-semibold">Time</th>
-                    <th className="p-3 font-semibold">Asset Number</th>
-                    <th className="p-3 font-semibold">Asset Name</th>
-                    <th className="p-3 font-semibold">Serial Number</th>
-                    <th className="p-3 font-semibold">Tag Number</th>
-                    <th className="p-3 font-semibold">Tagged By</th>
-                    <th className="p-3 font-semibold">Status</th>
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Time</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Number</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Name</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Serial Number</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Tag Number</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Tagged By</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Status</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-slate-100">
+                <tbody className="divide-y divide-slate-100 font-sans">
                   {recentTagged.slice(0, 5).map((entry) => (
                     <tr key={entry.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="p-3 text-slate-500 text-[11px] whitespace-nowrap">
+                      <td className="py-2.5 px-3 text-slate-500 text-[11px] whitespace-nowrap">
                         {entry.time}
                       </td>
-                      <td className="p-3 font-mono font-semibold text-slate-800 text-xs">
+                      <td className="py-2.5 px-3 font-mono font-semibold text-slate-800 text-xs whitespace-nowrap">
                         {entry.assetNumber}
                       </td>
-                      <td className="p-3 font-medium text-slate-800">{entry.assetName}</td>
-                      <td className="p-3 font-mono text-slate-600 text-[11px]">
+                      <td className="py-2.5 px-3 font-medium text-slate-800 whitespace-nowrap">{entry.assetName}</td>
+                      <td className="py-2.5 px-3 font-mono text-slate-600 text-[11px] whitespace-nowrap">
                         {entry.serialNumber}
                       </td>
-                      <td className="p-3 font-mono font-bold text-[#6C2BD9] text-xs">
+                      <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9] text-xs whitespace-nowrap">
                         {entry.tagNumber}
                       </td>
-                      <td className="p-3 text-slate-700">{entry.taggedBy}</td>
-                      <td className="p-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/80 text-emerald-800 border border-emerald-200">
+                      <td className="py-2.5 px-3 text-slate-700 whitespace-nowrap">{entry.taggedBy}</td>
+                      <td className="py-2.5 px-3 whitespace-nowrap">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/80 text-emerald-800 border border-emerald-200 whitespace-nowrap">
                           Tagged
                         </span>
                       </td>
@@ -1231,22 +1338,22 @@ export function TagWorkbench() {
                 </div>
 
                 {/* Action Buttons Row */}
-                <div className="grid grid-cols-2 gap-2.5 pt-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
                   <button
                     type="button"
                     onClick={handleGenerateTag}
-                    className="px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 text-[#6C2BD9] text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
+                    className="px-3 py-2 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-[#6C2BD9] text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
                   >
-                    <Plus className="w-3.5 h-3.5" />
+                    <Plus className="w-3.5 h-3.5 shrink-0" />
                     <span>Generate Tag Number</span>
                   </button>
 
                   <button
                     type="button"
                     onClick={handleReadFromRfidReader}
-                    className="px-3 py-2 rounded-xl border border-indigo-200 bg-indigo-50/50 hover:bg-indigo-50 text-[#6C2BD9] text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer active:scale-[0.98]"
+                    className="px-3 py-2 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-[#6C2BD9] text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
                   >
-                    <Radio className="w-3.5 h-3.5" />
+                    <Radio className="w-3.5 h-3.5 shrink-0" />
                     <span>Read from RFID Reader</span>
                   </button>
                 </div>
@@ -1350,81 +1457,92 @@ export function TagWorkbench() {
             )}
           </div>
 
-          {/* Card 2: Asset Preview Component matching exact design */}
+          {/* Card 2: Asset Preview Component matching exact reference screenshots */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs">
-            <h3 className="text-sm font-bold text-slate-900 mb-4 pb-2 border-b border-slate-100">
+            <h3 className="text-base font-extrabold text-[#5B21B6] mb-4 pb-2 border-b border-slate-100">
               Asset Preview
             </h3>
 
             {activeAsset ? (
               <div className="space-y-4">
                 {/* Visual Image & Details Row */}
-                <div className="flex flex-col sm:flex-row items-center gap-4">
+                <div className="flex flex-col sm:flex-row items-start gap-3.5">
                   {/* Hardware Preview Graphic */}
-                  <div className="w-32 h-24 sm:w-28 sm:h-24 rounded-xl border border-slate-200 bg-slate-900 overflow-hidden flex items-center justify-center shrink-0 shadow-inner relative group">
+                  <div className="w-28 h-28 sm:w-28 sm:h-28 rounded-xl border border-slate-200/80 bg-white overflow-hidden flex items-center justify-center shrink-0 shadow-2xs relative group mt-0.5">
                     <img
                       src={
                         activeAsset.imageUrl ||
-                        'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&q=80'
+                        'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
                       }
                       alt={activeAsset.assetName}
                       className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
                     />
-                    <div className="absolute inset-0 bg-gradient-to-t from-slate-950/60 to-transparent"></div>
-                    <span className="absolute bottom-1 left-2 text-[9px] font-mono text-white/80">
+                    <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-[#1E293B]/80 backdrop-blur-xs text-[10px] font-bold text-white shadow-xs">
                       {activeAsset.category}
                     </span>
                   </div>
 
                   {/* Key-Value Details */}
-                  <div className="flex-1 space-y-1 text-xs w-full">
-                    <div className="flex justify-between py-0.5 border-b border-slate-100/60">
-                      <span className="text-slate-500 font-medium">Asset Number</span>
-                      <span className="font-bold text-slate-900 font-mono">
+                  <div className="flex-1 space-y-1.5 text-xs w-full min-w-0">
+                    <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
+                      <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">Asset Number</span>
+                      <span className="font-bold text-[#1E1B4B] font-mono text-xs whitespace-nowrap">
                         {activeAsset.assetNumber}
                       </span>
                     </div>
-                    <div className="flex justify-between py-0.5 border-b border-slate-100/60">
-                      <span className="text-slate-500 font-medium">Asset Name</span>
-                      <span className="font-semibold text-slate-800">{activeAsset.assetName}</span>
+
+                    <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
+                      <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">Asset Name</span>
+                      <span className="font-bold text-[#1E1B4B] text-xs truncate max-w-[140px] text-right">
+                        {activeAsset.assetName}
+                      </span>
                     </div>
-                    <div className="flex justify-between py-0.5 border-b border-slate-100/60">
-                      <span className="text-slate-500 font-medium">Category</span>
-                      <span className="text-slate-700">{activeAsset.category}</span>
+
+                    <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
+                      <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">Category</span>
+                      <span className="text-slate-700 font-medium text-xs whitespace-nowrap">{activeAsset.category}</span>
                     </div>
-                    <div className="flex justify-between py-0.5 border-b border-slate-100/60">
-                      <span className="text-slate-500 font-medium">Location</span>
-                      <span className="text-slate-700">{activeAsset.location}</span>
+
+                    <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
+                      <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">Location</span>
+                      <span className="text-slate-700 font-medium text-xs whitespace-nowrap">{activeAsset.location}</span>
                     </div>
-                    <div className="flex justify-between py-0.5 border-b border-slate-100/60">
-                      <span className="text-slate-500 font-medium">Serial Number</span>
-                      <span className="font-mono text-slate-700">{activeAsset.serialNumber}</span>
+
+                    <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
+                      <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">Serial Number</span>
+                      <span className="font-mono text-slate-700 font-medium text-xs whitespace-nowrap">{activeAsset.serialNumber}</span>
                     </div>
-                    <div className="flex justify-between py-0.5 border-b border-slate-100/60">
-                      <span className="text-slate-500 font-medium">Current Tag</span>
-                      <span className="font-mono text-slate-600">
+
+                    <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
+                      <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">Current Tag</span>
+                      <span className="font-mono text-slate-500 text-xs whitespace-nowrap">
                         {activeAsset.currentTag || '-'}
                       </span>
                     </div>
-                    <div className="flex justify-between py-0.5 border-b border-slate-100/60">
-                      <span className="text-slate-500 font-medium">New Tag</span>
-                      <span className="font-mono font-bold text-emerald-600 text-xs">
+
+                    <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
+                      <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">New Tag</span>
+                      <span className="font-mono font-bold text-[#059669] text-xs whitespace-nowrap">
                         {scannedTagInput || '-'}
                       </span>
                     </div>
-                    <div className="flex justify-between items-center py-1">
-                      <span className="text-slate-500 font-medium">Status</span>
-                      <div className="flex items-center gap-1.5">
+
+                    <div className="flex items-start justify-between py-1">
+                      <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap mt-0.5">Status</span>
+                      <div className="flex flex-col items-end gap-1">
                         {tagValidation.valid ? (
                           <>
-                            <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
-                            <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                            <div className="flex items-center gap-1.5 text-[#059669] font-bold text-xs">
+                              <CheckCircle2 className="w-4 h-4 fill-[#059669] text-white shrink-0" />
+                              <span>Valid Tag</span>
+                            </div>
+                            <span className="inline-block px-3 py-1 rounded-lg text-xs font-semibold bg-[#D1FAE5] text-[#047857] shadow-2xs whitespace-nowrap mt-0.5">
                               Ready to Assign
                             </span>
                           </>
                         ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-100 text-rose-800 border border-rose-200">
-                            {tagValidation.status}
+                          <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-[#FFE4E6] text-[#E11D48] border border-rose-200 whitespace-nowrap">
+                            {tagValidation.status || 'Validation Error'}
                           </span>
                         )}
                       </div>
@@ -1433,11 +1551,11 @@ export function TagWorkbench() {
                 </div>
 
                 {/* Card Action Buttons */}
-                <div className="flex items-center gap-3 pt-2">
+                <div className="flex items-center gap-3 pt-3">
                   <button
                     type="button"
                     onClick={handleClearContext}
-                    className="flex-1 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-bold transition-all cursor-pointer active:scale-[0.98]"
+                    className="flex-1 py-2.5 rounded-xl border border-[#6C2BD9] bg-white hover:bg-purple-50 text-[#6C2BD9] text-xs font-bold transition-all cursor-pointer active:scale-[0.98] shadow-2xs"
                   >
                     Clear
                   </button>
@@ -1446,10 +1564,10 @@ export function TagWorkbench() {
                     disabled={submitting || !tagValidation.valid}
                     onClick={handleAssignTag}
                     className={clsx(
-                      'flex-2 py-2.5 rounded-xl text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-[0.98]',
+                      'flex-1 py-2.5 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95',
                       tagValidation.valid
-                        ? 'bg-[#1E1B4B] hover:bg-[#1E1B4B]/90 shadow-indigo-950/20 cursor-pointer'
-                        : 'bg-slate-300 cursor-not-allowed shadow-none'
+                        ? 'bg-[#5B21B6] hover:bg-[#4C1D95] text-white cursor-pointer'
+                        : 'bg-[#E2E8F0] text-[#94A3B8] border border-slate-200 cursor-not-allowed shadow-none'
                     )}
                   >
                     <Tag className="w-4 h-4" />
@@ -1475,7 +1593,7 @@ export function TagWorkbench() {
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {/* Card 1: Assets Selected */}
               <div className="p-3 rounded-xl bg-slate-50 border border-slate-200/80 flex flex-col items-center justify-center text-center">
-                <div className="w-8 h-8 rounded-full bg-[#1E1B4B] text-white flex items-center justify-center mb-1 shadow-2xs">
+                <div className="w-8 h-8 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center mb-1 shadow-2xs">
                   <Layers className="w-4 h-4" />
                 </div>
                 <p className="text-lg font-black text-slate-900 leading-tight">
@@ -1538,7 +1656,7 @@ export function TagWorkbench() {
               <button
                 type="button"
                 onClick={handleCompleteTagging}
-                className="flex-1 py-2.5 rounded-xl bg-[#1E1B4B] hover:bg-[#1E1B4B]/90 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-md shadow-indigo-950/20 transition-all cursor-pointer active:scale-[0.98]"
+                className="flex-1 py-2.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-xs transition-all cursor-pointer active:scale-95"
               >
                 <span>Complete Tagging</span>
                 <ArrowRight className="w-3.5 h-3.5" />

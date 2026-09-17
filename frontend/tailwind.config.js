@@ -38,9 +38,9 @@ export default {
           700: '#be123c'
         },
         surface: {
-          950: '#f8fafc',
+          950: '#ffffff',
           900: '#ffffff',
-          850: '#f1f5f9',
+          850: '#f8fafc',
           800: '#e2e8f0',
           750: '#cbd5e1'
         }

@@ -37,6 +37,245 @@ import { TransferAssetModal } from '../components/modals/TransferAssetModal';
 import { BulkTransferModal } from '../components/modals/BulkTransferModal';
 import { ReturnAssetModal } from '../components/modals/ReturnAssetModal';
 
+const DEFAULT_ASSETS = [
+  {
+    assetNumber: 'AS-000123',
+    assetName: 'Laptop - Dell Latitude 5440',
+    assetType: 'IT Equipment',
+    currentLocation: 'Dubai HQ > Block A > GF',
+    fullLocation: 'Dubai HQ > Block A > Ground Floor > Reception',
+    assignedTo: 'Ahmed Khan',
+    department: 'IT Department',
+    status: 'Assigned',
+    lastMoved: '10 Sep 2026',
+    lastMovedDate: '10 Sep 2026 10:24',
+    serialNumber: '7F3K2D4',
+    tagEpc: 'E28011606000002053A1B4C0',
+    category: 'Computers',
+    model: 'Latitude 5440',
+    manufacturer: 'Dell',
+    assignedDate: '15 Aug 2026',
+    warrantyExpiry: '15 Aug 2029',
+    remarks: 'Company issued laptop',
+    site: 'Dubai HQ',
+    building: 'Block A'
+  },
+  {
+    assetNumber: 'AS-000124',
+    assetName: 'Monitor - Samsung',
+    assetType: 'IT Equipment',
+    currentLocation: 'Dubai HQ > Block A > GF',
+    fullLocation: 'Dubai HQ > Block A > Ground Floor > Office 102',
+    assignedTo: 'Sara Ali',
+    department: 'IT Department',
+    status: 'Assigned',
+    lastMoved: '09 Sep 2026',
+    lastMovedDate: '09 Sep 2026 14:15',
+    serialNumber: 'SAMS8787',
+    tagEpc: 'E28011606000002053A1B4C1',
+    category: 'Monitors',
+    model: 'Odyssey G7',
+    manufacturer: 'Samsung',
+    assignedDate: '10 Aug 2026',
+    warrantyExpiry: '10 Aug 2028',
+    remarks: 'Dual monitor setup',
+    site: 'Dubai HQ',
+    building: 'Block A'
+  },
+  {
+    assetNumber: 'AS-000125',
+    assetName: 'Printer - HP',
+    assetType: 'IT Equipment',
+    currentLocation: 'Dubai HQ > Block B > 1F',
+    fullLocation: 'Dubai HQ > Block B > 1st Floor > Print Room',
+    assignedTo: 'Unassigned',
+    department: 'Operations',
+    status: 'Unassigned',
+    lastMoved: '-',
+    lastMovedDate: '-',
+    serialNumber: 'CNB47892',
+    tagEpc: 'E28011606000002053A1B4C2',
+    category: 'Printers',
+    model: 'LaserJet Pro M404n',
+    manufacturer: 'HP',
+    assignedDate: '-',
+    warrantyExpiry: '20 Dec 2027',
+    remarks: 'Shared network printer',
+    site: 'Dubai HQ',
+    building: 'Block B'
+  },
+  {
+    assetNumber: 'AS-000126',
+    assetName: 'Access Point - Cisco',
+    assetType: 'Network Device',
+    currentLocation: 'Dubai HQ > Block B > 1F',
+    fullLocation: 'Dubai HQ > Block B > 1st Floor > Hallway West',
+    assignedTo: 'IT Team',
+    department: 'IT Department',
+    status: 'Assigned',
+    lastMoved: '08 Sep 2026',
+    lastMovedDate: '08 Sep 2026 14:05',
+    serialNumber: 'FCH9384',
+    tagEpc: 'E28011606000002053A1B4C3',
+    category: 'Networking',
+    model: 'Catalyst 9120',
+    manufacturer: 'Cisco',
+    assignedDate: '01 Jun 2026',
+    warrantyExpiry: '01 Jun 2029',
+    remarks: 'Ceiling mounted AP',
+    site: 'Dubai HQ',
+    building: 'Block B'
+  },
+  {
+    assetNumber: 'AS-000127',
+    assetName: 'Chair - Office',
+    assetType: 'Furniture',
+    currentLocation: 'Dubai HQ > Block A > 2F',
+    fullLocation: 'Dubai HQ > Block A > 2nd Floor > Design Studio',
+    assignedTo: 'Fatima Noor',
+    department: 'Human Resources',
+    status: 'Assigned',
+    lastMoved: '07 Sep 2026',
+    lastMovedDate: '07 Sep 2026 09:15',
+    serialNumber: 'HM-9982',
+    tagEpc: '-',
+    category: 'Furniture',
+    model: 'Ergonomic Mesh Chair',
+    manufacturer: 'Herman Miller',
+    assignedDate: '07 Sep 2026',
+    warrantyExpiry: '07 Sep 2031',
+    remarks: 'Ergonomic task chair',
+    site: 'Dubai HQ',
+    building: 'Block A'
+  },
+  {
+    assetNumber: 'AS-000128',
+    assetName: 'Meeting Table',
+    assetType: 'Furniture',
+    currentLocation: 'Dubai HQ > Block A > 2F',
+    fullLocation: 'Dubai HQ > Block A > 2nd Floor > Conf Room B',
+    assignedTo: 'Unassigned',
+    department: 'Facilities',
+    status: 'Unassigned',
+    lastMoved: '-',
+    lastMovedDate: '-',
+    serialNumber: 'IK-7782',
+    tagEpc: '-',
+    category: 'Furniture',
+    model: 'Conference Table 10P',
+    manufacturer: 'IKEA',
+    assignedDate: '-',
+    warrantyExpiry: '15 Mar 2028',
+    remarks: '10 seater conference table',
+    site: 'Dubai HQ',
+    building: 'Block A'
+  },
+  {
+    assetNumber: 'AS-000129',
+    assetName: 'iPad - Admin',
+    assetType: 'Mobile Device',
+    currentLocation: 'Dubai HQ > Block C > GF',
+    fullLocation: 'Dubai HQ > Block C > Ground Floor > Admin Office',
+    assignedTo: 'Rashid Mohammed',
+    department: 'Finance',
+    status: 'Assigned',
+    lastMoved: '10 Sep 2026',
+    lastMovedDate: '10 Sep 2026 11:30',
+    serialNumber: 'DMPX9823',
+    tagEpc: 'E28011606000002053A1B4C4',
+    category: 'Tablets',
+    model: 'iPad Air 5',
+    manufacturer: 'Apple',
+    assignedDate: '05 Jan 2026',
+    warrantyExpiry: '05 Jan 2028',
+    remarks: 'Executive tablet',
+    site: 'Dubai HQ',
+    building: 'Block C'
+  },
+  {
+    assetNumber: 'AS-000130',
+    assetName: 'Projector - Epson',
+    assetType: 'IT Equipment',
+    currentLocation: 'Dubai HQ > Block C > 1F',
+    fullLocation: 'Dubai HQ > Block C > 1st Floor > Auditorium',
+    assignedTo: 'Conference Room',
+    department: 'Facilities',
+    status: 'Assigned',
+    lastMoved: '06 Sep 2026',
+    lastMovedDate: '06 Sep 2026 11:20',
+    serialNumber: 'EPS84920',
+    tagEpc: 'E28011606000002053A1B4C5',
+    category: 'AV Equipment',
+    model: 'EB-2250U',
+    manufacturer: 'Epson',
+    assignedDate: '12 Feb 2026',
+    warrantyExpiry: '12 Feb 2029',
+    remarks: '4K ceiling projector',
+    site: 'Dubai HQ',
+    building: 'Block C'
+  },
+  {
+    assetNumber: 'AS-000131',
+    assetName: 'Fire Extinguisher',
+    assetType: 'Safety Equipment',
+    currentLocation: 'Dubai HQ > Block A > GF',
+    fullLocation: 'Dubai HQ > Block A > Ground Floor > Safety Station 1',
+    assignedTo: 'Facilities Team',
+    department: 'Health & Safety',
+    status: 'Assigned',
+    lastMoved: '05 Sep 2026',
+    lastMovedDate: '05 Sep 2026 08:00',
+    serialNumber: 'FE-99823',
+    tagEpc: 'E28011606000002053A1B4C6',
+    category: 'Safety Equipment',
+    model: 'CO2 5kg',
+    manufacturer: 'Kidde',
+    assignedDate: '01 Jan 2026',
+    warrantyExpiry: '01 Jan 2030',
+    remarks: 'Inspected monthly',
+    site: 'Dubai HQ',
+    building: 'Block A'
+  },
+  {
+    assetNumber: 'AS-000132',
+    assetName: 'Switch - Cisco',
+    assetType: 'Network Device',
+    currentLocation: 'Dubai HQ > Block B > Server Room',
+    fullLocation: 'Dubai HQ > Block B > Basement > Server Room Rack 4',
+    assignedTo: 'IT Team',
+    department: 'IT Department',
+    status: 'Assigned',
+    lastMoved: '04 Sep 2026',
+    lastMovedDate: '04 Sep 2026 17:10',
+    serialNumber: 'FCH9385',
+    tagEpc: 'E28011606000002053A1B4C7',
+    category: 'Networking',
+    model: 'Catalyst 9300',
+    manufacturer: 'Cisco',
+    assignedDate: '10 Nov 2025',
+    warrantyExpiry: '10 Nov 2028',
+    remarks: 'Core switch rack 4',
+    site: 'Dubai HQ',
+    building: 'Block B'
+  }
+];
+
+const DEFAULT_RECENT_MOVEMENTS = [
+  { id: 'M-101', dateTime: '10 Sep 2026 10:24', assetNo: 'AS-000123', assetName: 'Laptop - Dell Latitude 5440', action: 'Assigned', from: '-', to: '-', by: 'Ahmed Khan', status: 'Completed' },
+  { id: 'M-102', dateTime: '10 Sep 2026 09:15', assetNo: 'AS-000127', assetName: 'Chair - Office', action: 'Transferred', from: 'Block A > GF', to: 'Block A > 2F', by: 'Fatima Noor', status: 'Completed' },
+  { id: 'M-103', dateTime: '09 Sep 2026 16:40', assetNo: 'AS-000125', assetName: 'Printer - HP', action: 'Assigned', from: '-', to: '-', by: 'Omar Saleh', status: 'Completed' },
+  { id: 'M-104', dateTime: '09 Sep 2026 11:20', assetNo: 'AS-000130', assetName: 'Projector - Epson', action: 'Transferred', from: 'Block C > 1F', to: 'Conference Room', by: 'Layla Hassan', status: 'Completed' },
+  { id: 'M-105', dateTime: '08 Sep 2026 14:05', assetNo: 'AS-000126', assetName: 'Access Point - Cisco', action: 'Assigned', from: '-', to: '-', by: 'IT Team', status: 'Completed' }
+];
+
+const DEFAULT_PENDING_APPROVALS = [
+  { requestId: 'REQ-00045', assetNo: 'AS-000128', assetName: 'Meeting Table', requestType: 'Transfer', requestedBy: 'Sara Ali', date: '10 Sep 2026', status: 'Pending', fromLocation: 'Block A > GF', toLocation: 'Block A > 2F', newCustodian: 'Sara Ali' },
+  { requestId: 'REQ-00044', assetNo: 'AS-000132', assetName: 'Switch - Cisco', requestType: 'Transfer', requestedBy: 'Omar Saleh', date: '09 Sep 2026', status: 'Pending', fromLocation: 'Block B > 1F', toLocation: 'Server Room', newCustodian: 'IT Team' },
+  { requestId: 'REQ-00043', assetNo: 'AS-000125', assetName: 'Printer - HP', requestType: 'Assignment', requestedBy: 'IT Team', date: '09 Sep 2026', status: 'Pending', fromLocation: 'Warehouse', toLocation: 'Block B > 1F', newCustodian: 'IT Team' },
+  { requestId: 'REQ-00042', assetNo: 'AS-000129', assetName: 'iPad - Admin', requestType: 'Transfer', requestedBy: 'Rashid Mohammed', date: '08 Sep 2026', status: 'Pending', fromLocation: 'Block C > 1F', toLocation: 'Block C > GF', newCustodian: 'Rashid Mohammed' },
+  { requestId: 'REQ-00041', assetNo: 'AS-000127', assetName: 'Chair - Office', requestType: 'Transfer', requestedBy: 'Fatima Noor', date: '08 Sep 2026', status: 'Pending', fromLocation: 'Block A > GF', toLocation: 'Block A > 2F', newCustodian: 'Fatima Noor' }
+];
+
 export function AssignmentMovementWorkbench({ defaultTab }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -66,8 +305,8 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
   });
 
   // Assets Data State
-  const [assets, setAssets] = useState([]);
-  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [assets, setAssets] = useState(DEFAULT_ASSETS);
+  const [selectedAsset, setSelectedAsset] = useState(DEFAULT_ASSETS[0]);
   const [selectedIds, setSelectedIds] = useState(['AS-000123']);
   const [assetDetailTab, setAssetDetailTab] = useState('details'); // details | assignment | history | related
 
@@ -87,8 +326,8 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
   const itemsPerPage = 10;
 
   // Recent Movements & Pending Approvals
-  const [recentMovements, setRecentMovements] = useState([]);
-  const [pendingApprovals, setPendingApprovals] = useState([]);
+  const [recentMovements, setRecentMovements] = useState(DEFAULT_RECENT_MOVEMENTS);
+  const [pendingApprovals, setPendingApprovals] = useState(DEFAULT_PENDING_APPROVALS);
 
   useEffect(() => {
     if (defaultTab) {
@@ -235,7 +474,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
               <input
                 type="text"
                 placeholder="Search assets, people, locations..."
-                className="pl-8 pr-3 py-1.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 w-60 focus:outline-hidden focus:border-blue-500"
+                className="pl-8 pr-3 py-1.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 w-60 focus:outline-hidden focus:border-[#6C2BD9]"
               />
             </div>
           </div>
@@ -252,9 +491,9 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
             {/* 1. Total Assets */}
             <div
               onClick={() => handleQuickFilter('ALL')}
-              className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 flex items-center gap-3 cursor-pointer hover:border-blue-300 transition-colors"
+              className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3.5 flex items-center gap-3 cursor-pointer hover:border-purple-300 transition-colors"
             >
-              <div className="w-10 h-10 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <div className="w-10 h-10 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center shrink-0">
                 <Package className="w-5 h-5" />
               </div>
               <div>
@@ -329,7 +568,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
             <button
               type="button"
               onClick={() => setIsActionDropdownOpen(!isActionDropdownOpen)}
-              className="px-4 py-2.5 bg-blue-600 hover:bg-blue-700 text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-2 transition-colors"
+              className="px-4 py-2.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white text-xs font-semibold rounded-xl shadow-xs flex items-center gap-2 transition-colors cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>+ New Assignment / Transfer</span>
@@ -344,9 +583,9 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                     setIsActionDropdownOpen(false);
                     navigate('/movements/assign');
                   }}
-                  className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 font-medium"
+                  className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 font-medium cursor-pointer"
                 >
-                  <UserCheck className="w-4 h-4 text-blue-600" />
+                  <UserCheck className="w-4 h-4 text-[#6C2BD9]" />
                   Assign Asset
                 </button>
                 <button
@@ -398,9 +637,9 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
               setActiveTab('assignment');
               setSearchParams({ tab: 'assignment' });
             }}
-            className={`pb-3 transition-colors relative ${
+            className={`pb-3 transition-colors relative cursor-pointer ${
               activeTab === 'assignment'
-                ? 'text-blue-600 font-bold border-b-2 border-blue-600'
+                ? 'text-[#6C2BD9] font-bold border-b-2 border-[#6C2BD9]'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -412,9 +651,9 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
               setActiveTab('transfer');
               setSearchParams({ tab: 'transfer' });
             }}
-            className={`pb-3 transition-colors relative ${
+            className={`pb-3 transition-colors relative cursor-pointer ${
               activeTab === 'transfer'
-                ? 'text-blue-600 font-bold border-b-2 border-blue-600'
+                ? 'text-[#6C2BD9] font-bold border-b-2 border-[#6C2BD9]'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -423,12 +662,11 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
           <button
             type="button"
             onClick={() => {
-              setActiveTab('approvals');
-              setSearchParams({ tab: 'approvals' });
+              navigate('/movements/approvals');
             }}
-            className={`pb-3 transition-colors relative flex items-center gap-1.5 ${
+            className={`pb-3 transition-colors relative flex items-center gap-1.5 cursor-pointer ${
               activeTab === 'approvals'
-                ? 'text-blue-600 font-bold border-b-2 border-blue-600'
+                ? 'text-[#6C2BD9] font-bold border-b-2 border-[#6C2BD9]'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -443,9 +681,9 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
               setActiveTab('history');
               setSearchParams({ tab: 'history' });
             }}
-            className={`pb-3 transition-colors relative ${
+            className={`pb-3 transition-colors relative cursor-pointer ${
               activeTab === 'history'
-                ? 'text-blue-600 font-bold border-b-2 border-blue-600'
+                ? 'text-[#6C2BD9] font-bold border-b-2 border-[#6C2BD9]'
                 : 'text-slate-500 hover:text-slate-900'
             }`}
           >
@@ -463,16 +701,16 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                 <button
                   type="button"
                   onClick={() => setIsFiltersOpen(!isFiltersOpen)}
-                  className="font-bold text-slate-800 flex items-center gap-1.5 hover:text-blue-600 transition-colors"
+                  className="font-bold text-slate-800 flex items-center gap-1.5 hover:text-[#6C2BD9] transition-colors cursor-pointer"
                 >
-                  <Filter className="w-3.5 h-3.5 text-blue-600" />
+                  <Filter className="w-3.5 h-3.5 text-[#6C2BD9]" />
                   <span>Filters</span>
                   <ChevronDown className={`w-3.5 h-3.5 transition-transform ${isFiltersOpen ? 'rotate-180' : ''}`} />
                 </button>
                 <button
                   type="button"
                   onClick={handleResetFilters}
-                  className="text-slate-400 hover:text-blue-600 font-semibold"
+                  className="text-slate-400 hover:text-[#6C2BD9] font-semibold cursor-pointer"
                 >
                   Reset
                 </button>
@@ -601,7 +839,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                       <button
                         type="button"
                         onClick={() => setCurrentPage(1)}
-                        className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition-colors shrink-0"
+                        className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-semibold rounded-xl shadow-xs transition-colors shrink-0 cursor-pointer"
                       >
                         Apply Filters
                       </button>
@@ -621,10 +859,10 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                 <div className="p-3.5 border-b border-slate-100 flex items-center justify-between text-xs bg-slate-50/50">
                   <div className="flex items-center gap-2">
                     <span className="font-bold text-slate-900">
-                      Assets <span className="text-blue-600 font-semibold">({filteredAssets.length.toLocaleString()})</span>
+                      Assets <span className="text-[#6C2BD9] font-semibold">({filteredAssets.length.toLocaleString()})</span>
                     </span>
                     {selectedIds.length > 0 && (
-                      <span className="bg-blue-100 text-blue-800 text-[10px] font-semibold px-2 py-0.5 rounded-full">
+                      <span className="bg-purple-100 text-[#6C2BD9] text-[10px] font-semibold px-2 py-0.5 rounded-full">
                         {selectedIds.length} selected
                       </span>
                     )}
@@ -682,7 +920,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                             key={asset.assetNumber}
                             onClick={() => setSelectedAsset(asset)}
                             className={`cursor-pointer transition-colors ${
-                              isSelectedRow ? 'bg-blue-50/70' : 'hover:bg-slate-50/70'
+                              isSelectedRow ? 'bg-purple-50/70' : 'hover:bg-slate-50/70'
                             }`}
                           >
                             <td className="py-2.5 px-3 text-center" onClick={e => e.stopPropagation()}>
@@ -690,10 +928,10 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                                 type="checkbox"
                                 checked={isChecked}
                                 onChange={() => handleToggleSelect(asset.assetNumber)}
-                                className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                                className="w-3.5 h-3.5 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                               />
                             </td>
-                            <td className="py-2.5 px-3 font-semibold text-blue-600 hover:underline font-mono">
+                            <td className="py-2.5 px-3 font-semibold text-[#6C2BD9] hover:underline font-mono">
                               {asset.assetNumber}
                             </td>
                             <td className="py-2.5 px-3 font-semibold text-slate-900">{asset.assetName}</td>
@@ -753,8 +991,8 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                         key={p}
                         type="button"
                         onClick={() => setCurrentPage(p)}
-                        className={`w-6 h-6 rounded-lg text-xs font-bold transition-colors ${
-                          currentPage === p ? 'bg-blue-600 text-white' : 'bg-white border border-slate-200 text-slate-700'
+                        className={`w-6 h-6 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
+                          currentPage === p ? 'bg-[#6C2BD9] text-white' : 'bg-white border border-slate-200 text-slate-700'
                         }`}
                       >
                         {p}
@@ -816,28 +1054,28 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                       <button
                         type="button"
                         onClick={() => setAssetDetailTab('details')}
-                        className={`pb-1 ${assetDetailTab === 'details' ? 'text-blue-600 font-bold border-b-2 border-blue-600' : 'hover:text-slate-800'}`}
+                        className={`pb-1 cursor-pointer ${assetDetailTab === 'details' ? 'text-[#6C2BD9] font-bold border-b-2 border-[#6C2BD9]' : 'hover:text-slate-800'}`}
                       >
                         Details
                       </button>
                       <button
                         type="button"
                         onClick={() => setAssetDetailTab('assignment')}
-                        className={`pb-1 ${assetDetailTab === 'assignment' ? 'text-blue-600 font-bold border-b-2 border-blue-600' : 'hover:text-slate-800'}`}
+                        className={`pb-1 cursor-pointer ${assetDetailTab === 'assignment' ? 'text-[#6C2BD9] font-bold border-b-2 border-[#6C2BD9]' : 'hover:text-slate-800'}`}
                       >
                         Assignment
                       </button>
                       <button
                         type="button"
                         onClick={() => setAssetDetailTab('history')}
-                        className={`pb-1 ${assetDetailTab === 'history' ? 'text-blue-600 font-bold border-b-2 border-blue-600' : 'hover:text-slate-800'}`}
+                        className={`pb-1 cursor-pointer ${assetDetailTab === 'history' ? 'text-[#6C2BD9] font-bold border-b-2 border-[#6C2BD9]' : 'hover:text-slate-800'}`}
                       >
                         Movement History
                       </button>
                       <button
                         type="button"
                         onClick={() => setAssetDetailTab('related')}
-                        className={`pb-1 ${assetDetailTab === 'related' ? 'text-blue-600 font-bold border-b-2 border-blue-600' : 'hover:text-slate-800'}`}
+                        className={`pb-1 cursor-pointer ${assetDetailTab === 'related' ? 'text-[#6C2BD9] font-bold border-b-2 border-[#6C2BD9]' : 'hover:text-slate-800'}`}
                       >
                         Related
                       </button>
@@ -877,7 +1115,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                       <div className="pt-2 border-t border-slate-100">
                         <span className="text-slate-500 font-medium block mb-1">Current Location</span>
                         <div className="flex items-start gap-1.5 text-slate-800 font-semibold text-[11px]">
-                          <MapPin className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                          <MapPin className="w-3.5 h-3.5 text-[#6C2BD9] shrink-0 mt-0.5" />
                           <span>{selectedAsset.fullLocation || selectedAsset.currentLocation}</span>
                         </div>
                       </div>
@@ -885,7 +1123,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                       <div className="pt-2 border-t border-slate-100">
                         <span className="text-slate-500 font-medium block mb-1">Assigned To</span>
                         <div className="flex items-start gap-1.5 text-slate-800 font-semibold text-[11px]">
-                          <User className="w-3.5 h-3.5 text-blue-600 shrink-0 mt-0.5" />
+                          <User className="w-3.5 h-3.5 text-[#6C2BD9] shrink-0 mt-0.5" />
                           <div>
                             <div>{selectedAsset.assignedTo}</div>
                             <div className="text-[10px] text-slate-400 font-normal">{selectedAsset.department}</div>
@@ -928,7 +1166,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                         setModalAsset(selectedAsset);
                         setIsTransferModalOpen(true);
                       }}
-                      className="flex-1 px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs flex items-center justify-center gap-1 transition-colors"
+                      className="flex-1 px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-semibold rounded-xl shadow-xs flex items-center justify-center gap-1 transition-colors cursor-pointer"
                     >
                       <ArrowRight className="w-3.5 h-3.5" />
                       Transfer
@@ -959,7 +1197,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                   <button
                     type="button"
                     onClick={() => setActiveTab('history')}
-                    className="text-blue-600 font-semibold hover:underline"
+                    className="text-[#6C2BD9] font-semibold hover:underline cursor-pointer"
                   >
                     View All
                   </button>
@@ -983,12 +1221,12 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                       {recentMovements.slice(0, 5).map((rec) => (
                         <tr key={rec.id} className="hover:bg-slate-50/60">
                           <td className="py-2 px-3 font-mono text-slate-500 text-[11px]">{rec.dateTime}</td>
-                          <td className="py-2 px-3 font-mono font-semibold text-blue-600">{rec.assetNo}</td>
+                          <td className="py-2 px-3 font-mono font-semibold text-[#6C2BD9]">{rec.assetNo}</td>
                           <td className="py-2 px-3 font-medium text-slate-800 truncate max-w-[120px]">{rec.assetName}</td>
                           <td className="py-2 px-3">
                             <span
                               className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
-                                rec.action === 'Assigned' ? 'bg-emerald-100 text-emerald-800' : 'bg-blue-100 text-blue-800'
+                                rec.action === 'Assigned' ? 'bg-emerald-100 text-emerald-800' : 'bg-purple-100 text-[#6C2BD9]'
                               }`}
                             >
                               {rec.action}
@@ -1016,7 +1254,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                   <button
                     type="button"
                     onClick={() => setActiveTab('approvals')}
-                    className="text-blue-600 font-semibold hover:underline"
+                    className="text-[#6C2BD9] font-semibold hover:underline cursor-pointer"
                   >
                     View All
                   </button>
@@ -1038,7 +1276,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                       {pendingApprovals.slice(0, 5).map((req) => (
                         <tr key={req.requestId} className="hover:bg-slate-50/60">
                           <td className="py-2 px-3 font-mono font-bold text-slate-800">{req.requestId}</td>
-                          <td className="py-2 px-3 font-mono text-blue-600 font-semibold">{req.assetNo}</td>
+                          <td className="py-2 px-3 font-mono text-[#6C2BD9] font-semibold">{req.assetNo}</td>
                           <td className="py-2 px-3 text-slate-700">{req.requestType}</td>
                           <td className="py-2 px-3 text-slate-800">{req.requestedBy}</td>
                           <td className="py-2 px-3 text-slate-500 font-mono text-[11px]">{req.date}</td>
@@ -1073,7 +1311,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                   setModalAsset(selectedAsset || assets[0]);
                   setIsTransferModalOpen(true);
                 }}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
                 Initiate New Transfer
@@ -1128,7 +1366,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                   <tr key={req.requestId} className="hover:bg-slate-50/70">
                     <td className="py-3 px-4 font-mono font-bold text-slate-900">{req.requestId}</td>
                     <td className="py-3 px-4">
-                      <div className="font-bold text-blue-600 font-mono">{req.assetNo}</div>
+                      <div className="font-bold text-[#6C2BD9] font-mono">{req.assetNo}</div>
                       <div className="text-slate-600 text-[11px]">{req.assetName}</div>
                     </td>
                     <td className="py-3 px-4 font-semibold text-slate-700">{req.requestType}</td>
@@ -1205,11 +1443,11 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                     <td className="py-2.5 px-4 font-mono font-bold text-slate-800">{m.id}</td>
                     <td className="py-2.5 px-4 font-mono text-[11px] text-slate-500">{m.dateTime}</td>
                     <td className="py-2.5 px-4">
-                      <div className="font-semibold text-blue-600 font-mono">{m.assetNo}</div>
+                      <div className="font-semibold text-[#6C2BD9] font-mono">{m.assetNo}</div>
                       <div className="text-slate-600 text-[11px]">{m.assetName}</div>
                     </td>
                     <td className="py-2.5 px-4">
-                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-blue-50 text-blue-700">
+                      <span className="px-2 py-0.5 rounded-full text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
                         {m.action}
                       </span>
                     </td>

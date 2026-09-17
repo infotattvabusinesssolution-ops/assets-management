@@ -431,7 +431,7 @@ export function AssignAsset() {
         <div className="flex items-center gap-2 text-xs text-slate-500">
           <button
             onClick={() => navigate('/movements')}
-            className="flex items-center gap-1.5 hover:text-blue-600 transition-colors font-medium cursor-pointer"
+            className="flex items-center gap-1.5 hover:text-[#6C2BD9] transition-colors font-medium cursor-pointer"
           >
             <ArrowLeft className="w-3.5 h-3.5" />
             <span>Assignment & Movement</span>
@@ -452,9 +452,9 @@ export function AssignAsset() {
                 className={clsx(
                   'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all',
                   currentStep === 1
-                    ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-sm'
+                    ? 'bg-[#6C2BD9] text-white ring-4 ring-purple-100 shadow-xs'
                     : currentStep > 1
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#6C2BD9] text-white'
                     : 'bg-slate-200 text-slate-600'
                 )}
               >
@@ -481,9 +481,9 @@ export function AssignAsset() {
                 className={clsx(
                   'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all',
                   currentStep === 2
-                    ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-sm'
+                    ? 'bg-[#6C2BD9] text-white ring-4 ring-purple-100 shadow-xs'
                     : currentStep > 2
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#6C2BD9] text-white'
                     : 'bg-slate-200 text-slate-600'
                 )}
               >
@@ -510,9 +510,9 @@ export function AssignAsset() {
                 className={clsx(
                   'w-7 h-7 rounded-full flex items-center justify-center text-xs font-bold transition-all',
                   currentStep === 3
-                    ? 'bg-blue-600 text-white ring-4 ring-blue-100 shadow-sm'
+                    ? 'bg-[#6C2BD9] text-white ring-4 ring-purple-100 shadow-xs'
                     : currentStep > 3
-                    ? 'bg-blue-600 text-white'
+                    ? 'bg-[#6C2BD9] text-white'
                     : 'bg-slate-200 text-slate-600'
                 )}
               >
@@ -571,7 +571,7 @@ export function AssignAsset() {
             <div className="bg-slate-50 rounded-xl border border-slate-200 p-5 text-left max-w-lg mx-auto space-y-3 text-xs">
               <div className="flex justify-between py-1 border-b border-slate-200/60">
                 <span className="text-slate-500">Transaction Ref:</span>
-                <span className="font-mono font-bold text-blue-600">{completionResult.assignmentId}</span>
+                <span className="font-mono font-bold text-[#6C2BD9]">{completionResult.assignmentId}</span>
               </div>
               <div className="flex justify-between py-1 border-b border-slate-200/60">
                 <span className="text-slate-500">Asset:</span>
@@ -608,13 +608,13 @@ export function AssignAsset() {
                   setCurrentStep(1);
                   setCompletionResult(null);
                 }}
-                className="px-4 py-2 text-xs font-semibold text-blue-600 bg-blue-50 hover:bg-blue-100 rounded-lg cursor-pointer"
+                className="px-4 py-2 text-xs font-semibold text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 rounded-lg cursor-pointer"
               >
                 Assign Another Asset
               </button>
               <button
                 onClick={() => navigate('/movements')}
-                className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm cursor-pointer"
+                className="px-5 py-2 text-xs font-semibold text-white bg-[#6C2BD9] hover:bg-[#5b21b6] rounded-lg shadow-xs cursor-pointer"
               >
                 Back to Workbench
               </button>
@@ -640,19 +640,19 @@ export function AssignAsset() {
                         value={assetSearch}
                         onChange={(e) => setAssetSearch(e.target.value)}
                         placeholder="Search by Asset No, Name, Serial No, Tag/EPC..."
-                        className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 placeholder:text-slate-400"
+                        className="w-full pl-9 pr-4 py-2 text-xs bg-white border border-slate-200 rounded-lg focus:outline-hidden focus:ring-2 focus:ring-purple-500/20 focus:border-[#6C2BD9] placeholder:text-slate-400"
                       />
                     </div>
                     <button
                       onClick={() => {}}
-                      className="px-4 py-2 text-xs font-semibold bg-blue-600 hover:bg-blue-700 text-white rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
+                      className="px-4 py-2 text-xs font-semibold bg-[#6C2BD9] hover:bg-[#5b21b6] text-white rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer shadow-xs"
                     >
                       <Search className="w-3.5 h-3.5" />
                       <span>Search</span>
                     </button>
                     <button
                       onClick={() => setIsScanModalOpen(true)}
-                      className="px-4 py-2 text-xs font-semibold border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
+                      className="px-4 py-2 text-xs font-semibold border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg flex items-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Scan className="w-3.5 h-3.5" />
                       <span>Scan</span>
@@ -684,7 +684,7 @@ export function AssignAsset() {
                             onClick={() => setSelectedAssetId(asset.id)}
                             className={clsx(
                               'cursor-pointer transition-colors hover:bg-slate-50/70',
-                              isSelected ? 'bg-blue-50/40 font-medium' : ''
+                              isSelected ? 'bg-purple-50/40 font-medium' : ''
                             )}
                           >
                             <td className="py-3 px-3 text-center">
@@ -693,7 +693,7 @@ export function AssignAsset() {
                                 name="selectedAssetRadio"
                                 checked={isSelected}
                                 onChange={() => setSelectedAssetId(asset.id)}
-                                className="w-3.5 h-3.5 text-blue-600 focus:ring-blue-500 cursor-pointer"
+                                className="w-3.5 h-3.5 text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                               />
                             </td>
                             <td className="py-3 px-3 font-semibold text-slate-900">
@@ -738,7 +738,7 @@ export function AssignAsset() {
                     >
                       <ChevronLeft className="w-3.5 h-3.5" />
                     </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded bg-blue-600 text-white font-semibold text-xs shadow-xs">
+                    <button className="w-7 h-7 flex items-center justify-center rounded bg-[#6C2BD9] text-white font-semibold text-xs shadow-xs">
                       1
                     </button>
                     <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs">
@@ -1086,7 +1086,7 @@ export function AssignAsset() {
                   <div className="flex items-start justify-between py-2 gap-2">
                     <span className="text-slate-500 shrink-0">Current Location</span>
                     <span className="text-slate-800 font-medium flex items-center gap-1 text-right">
-                      <MapPin className="w-3 h-3 text-blue-600 flex-shrink-0" />
+                      <MapPin className="w-3 h-3 text-[#6C2BD9] flex-shrink-0" />
                       <span>{selectedAsset.currentLocation}</span>
                     </span>
                   </div>
@@ -1115,8 +1115,8 @@ export function AssignAsset() {
                     type="button"
                     onClick={() => setRequireAcknowledgement(!requireAcknowledgement)}
                     className={clsx(
-                      'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none',
-                      requireAcknowledgement ? 'bg-blue-600' : 'bg-slate-300'
+                      'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-hidden',
+                      requireAcknowledgement ? 'bg-[#6C2BD9]' : 'bg-slate-300'
                     )}
                   >
                     <span
@@ -1171,7 +1171,7 @@ export function AssignAsset() {
                               className={clsx(
                                 'pb-1 text-xs font-semibold transition-colors cursor-pointer',
                                 sigMode === 'draw'
-                                  ? 'text-blue-600 border-b-2 border-blue-600'
+                                  ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9]'
                                   : 'text-slate-500 hover:text-slate-800'
                               )}
                             >
@@ -1183,7 +1183,7 @@ export function AssignAsset() {
                               className={clsx(
                                 'pb-1 text-xs font-semibold transition-colors cursor-pointer',
                                 sigMode === 'type'
-                                  ? 'text-blue-600 border-b-2 border-blue-600'
+                                  ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9]'
                                   : 'text-slate-500 hover:text-slate-800'
                               )}
                             >
@@ -1193,7 +1193,7 @@ export function AssignAsset() {
                           <button
                             type="button"
                             onClick={clearCanvas}
-                            className="text-xs text-blue-600 hover:text-blue-800 font-semibold cursor-pointer"
+                            className="text-xs text-[#6C2BD9] hover:text-[#5b21b6] font-semibold cursor-pointer"
                           >
                             Clear
                           </button>
@@ -1317,7 +1317,7 @@ export function AssignAsset() {
               <button
                 onClick={handleSubmitAssignment}
                 disabled={isSubmitting}
-                className="px-6 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-lg shadow-sm transition-colors cursor-pointer flex items-center gap-1.5"
+                className="px-6 py-2 text-xs font-semibold text-white bg-[#6C2BD9] hover:bg-[#5b21b6] rounded-lg shadow-xs transition-colors cursor-pointer flex items-center gap-1.5"
               >
                 {isSubmitting ? (
                   <>

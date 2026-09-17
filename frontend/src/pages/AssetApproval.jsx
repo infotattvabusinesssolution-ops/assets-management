@@ -854,79 +854,7 @@ export function AssetApproval() {
 
       </div>
 
-      {/* Navigation Flow Banner (Matching Exact Doc Sequence: Asset Approvals -> Pending Approvals -> Search/Select -> Review Details -> Compare -> Review Progress -> Approve/Reject/Return -> Route/Final Approval -> Execute -> Notify -> Audit History) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4 mt-6">
-        <h3 className="font-extrabold text-slate-900 text-sm tracking-tight flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#6C2BD9]" /> Navigation Flow – Asset Approval
-        </h3>
 
-        <div className="flex items-center justify-between gap-1 pt-2 overflow-x-auto">
-          
-          <div className="flex flex-col items-center text-center space-y-1.5 flex-1 min-w-[100px]">
-            <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs">
-              <Search className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-800 leading-tight">1. Submit Transaction<br/><span className="font-normal text-slate-400">User submits transaction</span></span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-          <div className="flex flex-col items-center text-center space-y-1.5 flex-1 min-w-[100px]">
-            <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-xs">
-              <FileText className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-800 leading-tight">2. Determine Workflow<br/><span className="font-normal text-slate-400">System applies rules</span></span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-          <div className="flex flex-col items-center text-center space-y-1.5 flex-1 min-w-[100px]">
-            <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-xs">
-              <User className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-800 leading-tight">3. Route to Approver(s)<br/><span className="font-normal text-slate-400">Sent to approvers</span></span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-          <div className="flex flex-col items-center text-center space-y-1.5 flex-1 min-w-[100px]">
-            <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-xs">
-              <Eye className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-800 leading-tight">4. Review &amp; Approve<br/><span className="font-normal text-slate-400">Approver reviews &amp; acts</span></span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-          <div className="flex flex-col items-center text-center space-y-1.5 flex-1 min-w-[100px]">
-            <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs">
-              <User className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-800 leading-tight">5. Next Level (if required)<br/><span className="font-normal text-slate-400">Route to next level</span></span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-          <div className="flex flex-col items-center text-center space-y-1.5 flex-1 min-w-[100px]">
-            <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-xs">
-              <FileCheck className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-800 leading-tight">6. Final Approval<br/><span className="font-normal text-slate-400">Executes transaction</span></span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-          <div className="flex flex-col items-center text-center space-y-1.5 flex-1 min-w-[100px]">
-            <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-xs">
-              <Bell className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-800 leading-tight">7. Notification<br/><span className="font-normal text-slate-400">Stakeholders notified</span></span>
-          </div>
-          <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-          <div className="flex flex-col items-center text-center space-y-1.5 flex-1 min-w-[100px]">
-            <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-xs">
-              <FileText className="w-4 h-4" />
-            </div>
-            <span className="text-[10px] font-extrabold text-slate-800 leading-tight">8. Audit &amp; History<br/><span className="font-normal text-slate-400">Trail recorded</span></span>
-          </div>
-
-        </div>
-      </div>
 
       {/* ================= MODALS ================= */}
 

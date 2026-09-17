@@ -567,7 +567,7 @@ export function ServiceProviderAction() {
                 handleResetForm();
                 setViewMode('FORM');
               }}
-              className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
             >
               <Plus className="w-4 h-4 text-white" /> Add Service Provider
             </button>
@@ -722,8 +722,8 @@ export function ServiceProviderAction() {
                   onClick={() => setActiveTab(t.id)}
                   className={`px-4 py-2.5 rounded-lg border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
                     activeTab === t.id
-                      ? 'bg-blue-50/70 border-blue-600 text-blue-600 font-bold'
-                      : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                      ? 'bg-purple-100 border-[#6C2BD9] text-black font-extrabold'
+                      : 'border-transparent text-black font-semibold hover:text-black hover:bg-purple-50'
                   }`}
                 >
                   {t.name}

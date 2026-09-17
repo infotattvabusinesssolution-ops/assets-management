@@ -71,7 +71,7 @@ const MOCK_ASSETS = [
     lastSeen: '10 Sep 2026 11:40 AM',
     assignedTo: 'Finance Dept',
     icon: 'printer',
-    coords: { x: 55, y: 52 },
+    coords: { x: 71, y: 44 },
     building: 'Main Building',
     floor: 'Ground Floor'
   },
@@ -90,7 +90,7 @@ const MOCK_ASSETS = [
     lastSeen: '10 Sep 2026 11:35 AM',
     assignedTo: 'Executive Mgmt',
     icon: 'tablet',
-    coords: { x: 32, y: 74 },
+    coords: { x: 28, y: 74 },
     building: 'Main Building',
     floor: 'Ground Floor'
   },
@@ -109,7 +109,7 @@ const MOCK_ASSETS = [
     lastSeen: '10 Sep 2026 11:15 AM',
     assignedTo: 'HSE & Safety',
     icon: 'fire',
-    coords: { x: 47, y: 76 },
+    coords: { x: 48, y: 74 },
     building: 'Main Building',
     floor: 'Ground Floor'
   },
@@ -128,26 +128,83 @@ const MOCK_ASSETS = [
     lastSeen: '09 Sep 2026 04:12 PM',
     assignedTo: 'IT Department',
     icon: 'laptop',
-    coords: { x: 64, y: 74 },
+    coords: { x: 74, y: 74 },
     building: 'Main Building',
     floor: 'Ground Floor'
   },
   {
-    id: 'AS-2026-00185',
-    assetNumber: 'AS-2026-00185',
-    name: 'Cisco Core Switch 9300',
-    category: 'Network',
-    serialNumber: 'CSW-9300-X1',
-    tagNumber: 'E36000012410',
-    currentLocation: 'Server Room - Ground Floor',
-    detectedZone: 'Server Room - GF',
-    zoneKey: 'Server Room',
+    id: 'AS-2026-00190',
+    assetNumber: 'AS-2026-00190',
+    name: 'Dell UltraSharp 27 Monitor',
+    category: 'IT Equipment',
+    serialNumber: 'DEL-US-9912',
+    tagNumber: 'E36000012420',
+    currentLocation: 'Admin - Ground Floor',
+    detectedZone: 'Admin - GF',
+    zoneKey: 'Admin',
+    status: 'In Location',
+    trackingStatus: 'In Location',
+    lastSeen: '10 Sep 2026 11:44 AM',
+    assignedTo: 'Admin Dept',
+    icon: 'desktop',
+    coords: { x: 48, y: 22 },
+    building: 'Main Building',
+    floor: 'Ground Floor'
+  },
+  {
+    id: 'AS-2026-00195',
+    assetNumber: 'AS-2026-00195',
+    name: 'Polycom Conference Hub',
+    category: 'AV Equipment',
+    serialNumber: 'POL-CH-771',
+    tagNumber: 'E36000012430',
+    currentLocation: 'Meeting Room 1 - Ground Floor',
+    detectedZone: 'Meeting Room 1 - GF',
+    zoneKey: 'Meeting Room 1',
+    status: 'In Location',
+    trackingStatus: 'In Location',
+    lastSeen: '10 Sep 2026 11:30 AM',
+    assignedTo: 'Operations',
+    icon: 'desktop',
+    coords: { x: 74, y: 22 },
+    building: 'Main Building',
+    floor: 'Ground Floor'
+  },
+  {
+    id: 'AS-2026-00201',
+    assetNumber: 'AS-2026-00201',
+    name: 'Visitor Kiosk Tablet',
+    category: 'Tablet',
+    serialNumber: 'TAB-KSK-001',
+    tagNumber: 'E36000012440',
+    currentLocation: 'Reception - Ground Floor',
+    detectedZone: 'Reception - GF',
+    zoneKey: 'Reception',
     status: 'In Location',
     trackingStatus: 'In Location',
     lastSeen: '10 Sep 2026 11:45 AM',
-    assignedTo: 'IT Infrastructure',
-    icon: 'server',
-    coords: { x: 47, y: 84 },
+    assignedTo: 'Security',
+    icon: 'tablet',
+    coords: { x: 28, y: 50 },
+    building: 'Main Building',
+    floor: 'Ground Floor'
+  },
+  {
+    id: 'AS-2026-00208',
+    assetNumber: 'AS-2026-00208',
+    name: 'HP Z4 Workstation',
+    category: 'IT Equipment',
+    serialNumber: 'HP-Z4-1188',
+    tagNumber: 'E36000012450',
+    currentLocation: 'HR - Ground Floor',
+    detectedZone: 'HR - GF',
+    zoneKey: 'HR',
+    status: 'In Location',
+    trackingStatus: 'In Location',
+    lastSeen: '10 Sep 2026 11:40 AM',
+    assignedTo: 'HR Dept',
+    icon: 'desktop',
+    coords: { x: 58, y: 52 },
     building: 'Main Building',
     floor: 'Ground Floor'
   }
@@ -771,151 +828,162 @@ export function LocationMap() {
           </div>
 
           {/* Right Panel: (10) Assets/Zones List & (11) Asset Details Card & (12) Actions (3 Cols) */}
-          <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs flex flex-col h-[660px]">
+          <div className="lg:col-span-3 bg-white rounded-2xl border border-slate-200 p-3 shadow-xs flex flex-col h-[660px] justify-between overflow-hidden">
             
-            {/* Header Tabs: Assets (24) vs Zones (8) */}
-            <div className="flex items-center justify-between border-b border-slate-200 pb-2.5 shrink-0">
-              <div className="flex items-center gap-4 text-xs font-bold">
+            <div className="flex flex-col min-h-0 flex-1">
+              {/* Header Tabs: Assets (24) vs Zones (8) */}
+              <div className="flex items-center justify-between border-b border-slate-200 pb-2 shrink-0">
+                <div className="flex items-center gap-3 text-xs font-bold">
+                  <button
+                    onClick={() => setRightPanelTab('Assets')}
+                    className={`pb-1 transition-all cursor-pointer ${
+                      rightPanelTab === 'Assets'
+                        ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9] font-extrabold'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                  >
+                    Assets ({filteredAssets.length})
+                  </button>
+                  <button
+                    onClick={() => setRightPanelTab('Zones')}
+                    className={`pb-1 transition-all cursor-pointer ${
+                      rightPanelTab === 'Zones'
+                        ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9] font-extrabold'
+                        : 'text-slate-400 hover:text-slate-700'
+                    }`}
+                  >
+                    Zones ({MOCK_ZONES.length})
+                  </button>
+                </div>
+
                 <button
-                  onClick={() => setRightPanelTab('Assets')}
-                  className={`pb-1 transition-all cursor-pointer ${
-                    rightPanelTab === 'Assets'
-                      ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9] font-extrabold'
-                      : 'text-slate-400 hover:text-slate-700'
-                  }`}
+                  onClick={() => setShowFiltersModal(true)}
+                  className="p-1 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
+                  title="Filter list"
                 >
-                  Assets ({filteredAssets.length})
-                </button>
-                <button
-                  onClick={() => setRightPanelTab('Zones')}
-                  className={`pb-1 transition-all cursor-pointer ${
-                    rightPanelTab === 'Zones'
-                      ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9] font-extrabold'
-                      : 'text-slate-400 hover:text-slate-700'
-                  }`}
-                >
-                  Zones ({MOCK_ZONES.length})
+                  <SlidersHorizontal className="w-3.5 h-3.5" />
                 </button>
               </div>
 
-              <button
-                onClick={() => setShowFiltersModal(true)}
-                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {/* Search Input inside List */}
-            <div className="my-2.5 relative shrink-0">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder={rightPanelTab === 'Assets' ? "Search asset, tag or serial number..." : "Search room zones..."}
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
-              />
-            </div>
-
-            {/* (10) Scrollable Assets List or Zones List Panel */}
-            <div className="flex-1 overflow-y-auto space-y-2 pr-1 scrollbar-thin min-h-[200px]">
-              {rightPanelTab === 'Assets' ? (
-                filteredAssets.map((a) => {
-                  const isSelected = a.id === selectedAssetId;
-                  return (
-                    <div
-                      key={a.id}
-                      onClick={() => handleMarkerClick(a)}
-                      className={`p-2.5 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-2 ${
-                        isSelected
-                          ? 'bg-purple-50/70 border-[#6C2BD9] shadow-xs'
-                          : 'bg-white border-slate-100 hover:border-slate-300 hover:bg-slate-50/80'
-                      }`}
-                    >
-                      <div className="flex items-center gap-2.5 overflow-hidden">
-                        <div className="w-9 h-9 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-                          {renderAssetIcon(a.icon)}
-                        </div>
-                        <div className="truncate">
-                          <span className="font-extrabold text-xs text-blue-700 block truncate">{a.id}</span>
-                          <p className="text-xs font-bold text-slate-800 truncate">{a.name}</p>
-                          <p className="text-[10px] text-slate-400 font-medium truncate mt-0.5">{a.detectedZone}</p>
-                        </div>
-                      </div>
-
-                      <div className="shrink-0">
-                        {getStatusBadge(a.trackingStatus)}
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                /* Zones List Tab */
-                MOCK_ZONES.map((z) => (
-                  <div
-                    key={z.code}
-                    onClick={() => showToast(`Zone ${z.name} selected. Highlighted ${z.assetCount} assets.`)}
-                    className="p-2.5 bg-slate-50 border border-slate-200 rounded-xl hover:bg-purple-50 hover:border-purple-200 transition-all cursor-pointer space-y-1"
+              {/* Search Input inside List */}
+              <div className="my-2 relative shrink-0">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder={rightPanelTab === 'Assets' ? "Search asset, tag or serial number..." : "Search room zones..."}
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="w-full pl-8 pr-7 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[11px] font-medium text-slate-700 focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery('')}
+                    className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                   >
-                    <div className="flex items-center justify-between">
-                      <span className="font-bold text-xs text-slate-900">{z.name}</span>
-                      <span className="text-[10px] font-mono font-bold text-[#6C2BD9] bg-purple-100 px-2 py-0.5 rounded">
-                        {z.code}
-                      </span>
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
+              </div>
+
+              {/* (10) Scrollable Assets List or Zones List Panel */}
+              <div className="flex-1 max-h-[195px] overflow-y-auto space-y-1.5 pr-1.5 scrollbar-thin shrink-0">
+                {rightPanelTab === 'Assets' ? (
+                  filteredAssets.map((a) => {
+                    const isSelected = a.id === selectedAssetId;
+                    return (
+                      <div
+                        key={a.id}
+                        onClick={() => handleMarkerClick(a)}
+                        className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
+                          isSelected
+                            ? 'bg-purple-50/80 border-[#6C2BD9] shadow-2xs ring-1 ring-purple-300'
+                            : 'bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/80'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
+                          <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                            {renderAssetIcon(a.icon)}
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <span className="font-extrabold text-[11px] text-blue-700 block truncate leading-tight">{a.id}</span>
+                            <p className="text-[11px] font-bold text-slate-800 truncate leading-tight">{a.name}</p>
+                            <p className="text-[9.5px] text-slate-400 font-medium truncate mt-0.5">{a.detectedZone}</p>
+                          </div>
+                        </div>
+
+                        <div className="shrink-0">
+                          {getStatusBadge(a.trackingStatus)}
+                        </div>
+                      </div>
+                    );
+                  })
+                ) : (
+                  /* Zones List Tab */
+                  MOCK_ZONES.map((z) => (
+                    <div
+                      key={z.code}
+                      onClick={() => showToast(`Zone ${z.name} selected. Highlighted ${z.assetCount} assets.`)}
+                      className="p-2 bg-slate-50 border border-slate-200 rounded-xl hover:bg-purple-50 hover:border-purple-200 transition-all cursor-pointer space-y-0.5"
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="font-bold text-[11px] text-slate-900">{z.name}</span>
+                        <span className="text-[9.5px] font-mono font-bold text-[#6C2BD9] bg-purple-100 px-1.5 py-0.5 rounded">
+                          {z.code}
+                        </span>
+                      </div>
+                      <div className="flex justify-between text-[10px] text-slate-500 font-medium">
+                        <span>{z.type} • {z.area}</span>
+                        <span className="font-bold text-slate-800">{z.assetCount} / {z.capacity} Assets</span>
+                      </div>
                     </div>
-                    <div className="flex justify-between text-[11px] text-slate-500 font-medium">
-                      <span>{z.type} • {z.area}</span>
-                      <span className="font-bold text-slate-800">{z.assetCount} / {z.capacity} Assets</span>
-                    </div>
-                  </div>
-                ))
-              )}
+                  ))
+                )}
+              </div>
             </div>
 
             {/* (11) Selected Asset Details Card matching Screenshot #16 */}
-            <div className="mt-3 pt-3 border-t border-slate-200 shrink-0 space-y-2">
+            <div className="pt-2 border-t border-slate-200 shrink-0 space-y-1.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-900">Asset Details</h3>
                 {getStatusBadge(selectedAsset.trackingStatus)}
               </div>
 
               {/* Asset Header preview */}
-              <div className="flex items-center gap-3 p-2 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+              <div className="flex items-center gap-2.5 p-1.5 bg-slate-50 rounded-xl border border-slate-200">
+                <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
                   {renderAssetIcon(selectedAsset.icon)}
                 </div>
-                <div className="truncate">
-                  <span className="font-extrabold text-xs text-blue-700 block">{selectedAsset.id}</span>
-                  <span className="font-bold text-xs text-slate-800 truncate block">{selectedAsset.name}</span>
+                <div className="min-w-0 flex-1">
+                  <span className="font-extrabold text-[11px] text-blue-700 block leading-tight">{selectedAsset.id}</span>
+                  <span className="font-bold text-[11px] text-slate-800 truncate block leading-tight">{selectedAsset.name}</span>
                 </div>
               </div>
 
               {/* Metadata Table matching Screenshot #16 */}
-              <div className="space-y-1 text-[11px] font-medium text-slate-600 bg-white p-1 rounded-lg">
-                <div className="flex justify-between py-0.5">
+              <div className="space-y-1 text-[10.5px] font-medium text-slate-600 bg-white p-2 rounded-xl border border-slate-100 shadow-2xs">
+                <div className="flex justify-between py-0.5 border-b border-slate-50">
                   <span className="text-slate-400">Asset Number</span>
                   <span className="font-bold text-slate-800">{selectedAsset.assetNumber}</span>
                 </div>
-                <div className="flex justify-between py-0.5">
+                <div className="flex justify-between py-0.5 border-b border-slate-50">
                   <span className="text-slate-400">Asset Name</span>
-                  <span className="font-bold text-slate-800">{selectedAsset.name}</span>
+                  <span className="font-bold text-slate-800 truncate max-w-[140px] text-right">{selectedAsset.name}</span>
                 </div>
-                <div className="flex justify-between py-0.5">
+                <div className="flex justify-between py-0.5 border-b border-slate-50">
                   <span className="text-slate-400">Serial Number</span>
                   <span className="font-bold text-slate-800">{selectedAsset.serialNumber}</span>
                 </div>
-                <div className="flex justify-between py-0.5">
+                <div className="flex justify-between py-0.5 border-b border-slate-50">
                   <span className="text-slate-400">Tag Number (EPC)</span>
                   <span className="font-mono font-bold text-[#6C2BD9]">{selectedAsset.tagNumber}</span>
                 </div>
-                <div className="flex justify-between py-0.5">
+                <div className="flex justify-between py-0.5 border-b border-slate-50">
                   <span className="text-slate-400">Category</span>
                   <span className="font-bold text-slate-800">{selectedAsset.category}</span>
                 </div>
-                <div className="flex justify-between py-0.5">
+                <div className="flex justify-between py-0.5 border-b border-slate-50">
                   <span className="text-slate-400">Current Location</span>
-                  <span className="font-bold text-slate-800 text-right">{selectedAsset.currentLocation}</span>
+                  <span className="font-bold text-slate-800 text-right truncate max-w-[130px]">{selectedAsset.currentLocation}</span>
                 </div>
                 <div className="flex justify-between py-0.5">
                   <span className="text-slate-400">Last Seen</span>
@@ -924,26 +992,26 @@ export function LocationMap() {
               </div>
 
               {/* (12) Bottom Action Buttons matching Screenshot #16 */}
-              <div className="pt-2 flex items-center justify-between gap-1.5">
+              <div className="pt-1 flex items-center justify-between gap-1.5">
                 <button
                   onClick={() => handleLocateAsset(selectedAsset)}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-[11px] font-bold transition-all cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
                 >
-                  <Crosshair className="w-3 h-3" />
+                  <Crosshair className="w-3 h-3 shrink-0" />
                   <span>Locate</span>
                 </button>
 
                 <button
                   onClick={() => setShowHistoryModal(true)}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-[11px] font-bold transition-all cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
                 >
-                  <Clock className="w-3 h-3" />
+                  <Clock className="w-3 h-3 shrink-0" />
                   <span>View History</span>
                 </button>
 
                 <button
                   onClick={() => showToast(`More Actions dropdown opened for ${selectedAsset.id}`)}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[11px] font-bold transition-all cursor-pointer"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
                 >
                   <span>••• More Actions &gt;</span>
                 </button>

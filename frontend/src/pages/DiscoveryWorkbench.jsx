@@ -17,7 +17,7 @@ import {
   AlertCircle,
   RefreshCw,
   Calendar,
-  Sliders,
+  SlidersHorizontal,
   ChevronDown,
   Check,
   X,
@@ -36,7 +36,10 @@ import {
   ChevronLeft,
   ChevronRight,
   Globe,
-  Settings
+  Settings,
+  MoreHorizontal,
+  Link as LinkIcon,
+  ExternalLink
 } from 'lucide-react';
 import { ScheduleDiscoveryModal } from '../components/modals/ScheduleDiscoveryModal';
 import { DiscoverySettingsModal } from '../components/modals/DiscoverySettingsModal';
@@ -45,278 +48,266 @@ import { DiscoveryJobs } from './DiscoveryJobs';
 import { DiscoveredDevices } from './DiscoveredDevices';
 import { DiscoverySettings } from './DiscoverySettings';
 
-// Seeded Discovered Devices matching screenshot
+// Seeded Discovered Devices matching screenshot #17
 const SEED_DEVICES = [
   {
     id: 'DEV-001',
-    ipAddress: '192.168.1.101',
+    ipAddress: '192.168.1.10',
     hostname: 'DESKTOP-001',
-    macAddress: '00:1B:44:11:3A:B7',
+    macAddress: '00:1A:2B:3C:4D:5E',
     deviceType: 'Computer',
     manufacturer: 'Dell',
-    model: 'OptiPlex 7090',
-    serialNumber: 'SN-DL-784920',
+    model: 'OptiPlex 7020',
+    serialNumber: '7CD1234',
     status: 'Matched',
-    matchScore: 98,
-    os: 'Windows 11 Pro 64-bit',
-    domain: 'ASSET360.CORP',
-    lastSeen: 'Today, 10:45 AM',
-    location: 'HQ Floor 2 - Workstation 14',
+    matchScore: 100,
+    os: 'Windows 11 Pro',
+    domain: 'ASSET360',
+    lastSeen: '10 Sep 2026 10:24 AM',
+    location: 'Dubai HQ - IT Department',
     matchedAsset: {
-      assetTag: 'AST-2024-8890',
-      name: 'DESKTOP-001',
-      serialNumber: 'SN-DL-784920',
-      macAddress: '00:1B:44:11:3A:B7',
+      assetTag: 'AS-2026-00121',
+      name: 'Dell OptiPlex 7020',
+      serialNumber: '7CD1234',
+      macAddress: '00:1A:2B:3C:4D:5E',
       manufacturer: 'Dell',
-      model: 'OptiPlex 7090',
-      assignedUser: 'John Doe (Finance)',
-      location: 'HQ Floor 2',
+      model: 'OptiPlex 7020',
+      assignedUser: 'John Doe (IT)',
+      location: 'Dubai HQ - Floor 1',
       status: 'Active'
     },
     hardware: {
-      cpu: 'Intel Core i7-11700 @ 2.50GHz (8 Cores, 16 Threads)',
-      ram: '32 GB DDR4 3200MHz (2x 16GB)',
-      storage: '512 GB NVMe SSD (Samsung PM981a) + 1 TB HDD',
-      biosUuid: '4C4C4544-004B-4810-8054-C3C04F4D3232',
+      cpu: 'Intel Core i7-12700 @ 2.10GHz',
+      ram: '16 GB DDR4',
+      storage: '512 GB NVMe SSD',
+      biosUuid: '7CD1234-DEL-OPT7020',
       arch: 'x64-based PC'
     },
     network: {
-      ipSubnet: '192.168.1.101 / 255.255.255.0',
+      ipSubnet: '192.168.1.10 / 255.255.255.0',
       gateway: '192.168.1.1',
-      dns: '192.168.1.10, 8.8.8.8',
-      switchPort: 'SW-CORE-01 (Port Gi1/0/14)',
-      vlan: '10 (Corporate Data)',
-      dhcpServer: '192.168.1.5'
+      dns: '192.168.1.1',
+      switchPort: 'SW-CORE-01 (Gi1/0/10)',
+      vlan: 'VLAN 10 (IT Net)',
+      dhcpServer: '192.168.1.1'
     },
     software: [
-      { name: 'Google Chrome', version: '120.0.6099.130', publisher: 'Google LLC' },
-      { name: 'Microsoft 365 Apps for Enterprise', version: '16.0.17126.20132', publisher: 'Microsoft Corporation' },
-      { name: 'Slack', version: '4.36.136', publisher: 'Slack Technologies LLC' },
-      { name: 'Zoom Workplace', version: '5.17.2 (30948)', publisher: 'Zoom Video Communications' },
-      { name: 'Visual Studio Code', version: '1.85.1', publisher: 'Microsoft Corporation' },
-      { name: 'CrowdStrike Falcon Sensor', version: '7.08.18005.0', publisher: 'CrowdStrike, Inc.' }
+      { id: 1, name: 'Microsoft Windows 11 Pro', version: '23H2', publisher: 'Microsoft' },
+      { id: 2, name: 'Microsoft Office 365', version: '16.0', publisher: 'Microsoft' },
+      { id: 3, name: 'Google Chrome', version: '128.0', publisher: 'Google LLC' },
+      { id: 4, name: 'Adobe Acrobat Reader', version: '24.2', publisher: 'Adobe' },
+      { id: 5, name: 'Microsoft Teams', version: '1.7', publisher: 'Microsoft' }
     ]
   },
   {
     id: 'DEV-002',
-    ipAddress: '192.168.1.102',
+    ipAddress: '192.168.1.11',
     hostname: 'MONITOR-245',
-    macAddress: '00:1B:44:11:3A:C8',
+    macAddress: '00:1A:2B:3C:4D:6F',
     deviceType: 'Monitor',
     manufacturer: 'Dell',
-    model: 'UltraSharp U2720Q',
-    serialNumber: 'SN-DL-994821',
+    model: 'P2422H',
+    serialNumber: 'CN004F2',
     status: 'Matched',
-    matchScore: 96,
-    os: 'Embedded Firmware v2.1',
-    domain: 'N/A (Peripherals)',
-    lastSeen: 'Today, 10:44 AM',
-    location: 'HQ Floor 2 - Workstation 14',
+    matchScore: 98,
+    os: 'Firmware v1.0.4',
+    domain: 'N/A',
+    lastSeen: '10 Sep 2026 10:24 AM',
+    location: 'Dubai HQ - GF',
     matchedAsset: {
-      assetTag: 'AST-2024-5510',
-      name: 'MONITOR-245',
-      serialNumber: 'SN-DL-994821',
-      macAddress: '00:1B:44:11:3A:C8',
+      assetTag: 'AS-2026-00122',
+      name: 'Dell P2422H Monitor',
+      serialNumber: 'CN004F2',
+      macAddress: '00:1A:2B:3C:4D:6F',
       manufacturer: 'Dell',
-      model: 'UltraSharp U2720Q',
-      assignedUser: 'John Doe (Finance)',
-      location: 'HQ Floor 2',
+      model: 'P2422H',
+      assignedUser: 'Jane Smith (HR)',
+      location: 'Dubai HQ - Ground Floor',
       status: 'Active'
     },
     hardware: {
-      cpu: 'ARM Cortex M4 Controller',
-      ram: '512 MB Flash',
+      cpu: 'Embedded Scaler IC',
+      ram: '256 MB Flash',
       storage: 'Internal ROM',
-      biosUuid: 'N/A',
+      biosUuid: 'CN004F2-MON-245',
       arch: 'Embedded'
     },
     network: {
-      ipSubnet: '192.168.1.102 / 255.255.255.0',
+      ipSubnet: '192.168.1.11 / 255.255.255.0',
       gateway: '192.168.1.1',
-      dns: '192.168.1.10',
-      switchPort: 'SW-CORE-01 (Port Gi1/0/15)',
-      vlan: '10 (Corporate Data)',
-      dhcpServer: '192.168.1.5'
+      dns: '192.168.1.1',
+      switchPort: 'SW-CORE-01 (Gi1/0/11)',
+      vlan: 'VLAN 10',
+      dhcpServer: '192.168.1.1'
     },
     software: [
-      { name: 'Dell Display Manager', version: '2.1.0.0044', publisher: 'Dell Inc.' },
-      { name: 'DisplayPort MST Driver', version: '1.2.0', publisher: 'Dell Inc.' }
+      { id: 1, name: 'Dell Display Manager', version: '2.1.0', publisher: 'Dell Inc.' },
+      { id: 2, name: 'DisplayPort MST Firmware', version: '1.0.4', publisher: 'Dell Inc.' }
     ]
   },
   {
     id: 'DEV-003',
-    ipAddress: '192.168.1.150',
+    ipAddress: '192.168.1.20',
     hostname: 'PRN-HQ-01',
-    macAddress: '00:1E:68:55:2A:41',
+    macAddress: '00:1A:2B:3C:4D:7A',
     deviceType: 'Printer',
     manufacturer: 'HP',
-    model: 'LaserJet Pro M404n',
-    serialNumber: 'SN-HP-332910',
-    status: 'Review',
-    matchScore: 74,
+    model: 'LaserJet Pro',
+    serialNumber: 'VNB3K91',
+    status: 'New',
+    matchScore: 0,
     os: 'FutureSmart 5 Firmware',
-    domain: 'ASSET360.CORP',
-    lastSeen: 'Today, 10:42 AM',
-    location: 'HQ Floor 1 - Print Room',
-    matchedAsset: {
-      assetTag: 'AST-2023-1120',
-      name: 'PRINTER-OLD-M402',
-      serialNumber: 'SN-HP-332910',
-      macAddress: '00:1E:68:55:2A:41',
-      manufacturer: 'HP',
-      model: 'LaserJet Pro M402n',
-      assignedUser: 'Shared Office Resource',
-      location: 'HQ Floor 1',
-      status: 'Active'
-    },
+    domain: 'ASSET360',
+    lastSeen: '10 Sep 2026 10:20 AM',
+    location: 'Dubai HQ - Finance Room',
+    matchedAsset: null,
     hardware: {
-      cpu: 'HP Custom 1200MHz RISC',
-      ram: '256 MB',
-      storage: '512 MB eMMC Flash',
-      biosUuid: 'N/A',
+      cpu: 'HP Custom RISC 1.2GHz',
+      ram: '512 MB',
+      storage: '4 GB eMMC Flash',
+      biosUuid: 'VNB3K91-HP-LJPRO',
       arch: 'ARM'
     },
     network: {
-      ipSubnet: '192.168.1.150 / 255.255.255.0',
+      ipSubnet: '192.168.1.20 / 255.255.255.0',
       gateway: '192.168.1.1',
-      dns: '192.168.1.10',
-      switchPort: 'SW-CORE-01 (Port Gi1/0/28)',
-      vlan: '20 (Printers)',
-      dhcpServer: '192.168.1.5'
+      dns: '192.168.1.1',
+      switchPort: 'SW-CORE-01 (Gi1/0/20)',
+      vlan: 'VLAN 20 (Printers)',
+      dhcpServer: '192.168.1.1'
     },
     software: [
-      { name: 'HP Web Jetadmin Agent', version: '10.5.105', publisher: 'HP Inc.' },
-      { name: 'Embedded Web Server', version: '2.4.1', publisher: 'HP Inc.' }
+      { id: 1, name: 'HP Web Jetadmin Agent', version: '10.5', publisher: 'HP Inc.' },
+      { id: 2, name: 'Embedded Web Server', version: '3.1', publisher: 'HP Inc.' }
     ]
   },
   {
     id: 'DEV-004',
-    ipAddress: '192.168.1.2',
+    ipAddress: '192.168.1.30',
     hostname: 'SW-CORE-01',
-    macAddress: '00:0C:29:4F:8E:12',
+    macAddress: '00:1A:2B:3C:4D:8B',
     deviceType: 'Network Device',
     manufacturer: 'Cisco',
-    model: 'Catalyst 9300',
-    serialNumber: 'SN-CS-109283',
+    model: 'C9300',
+    serialNumber: 'FD02456',
     status: 'Matched',
     matchScore: 99,
-    os: 'Cisco IOS-XE 17.6.3a',
-    domain: 'INFRA.ASSET360.CORP',
-    lastSeen: 'Today, 10:45 AM',
-    location: 'Data Center Rack 04',
+    os: 'Cisco IOS-XE 17.6',
+    domain: 'INFRA.ASSET360',
+    lastSeen: '10 Sep 2026 10:24 AM',
+    location: 'Data Center Rack 02',
     matchedAsset: {
-      assetTag: 'AST-2022-0044',
-      name: 'SW-CORE-01',
-      serialNumber: 'SN-CS-109283',
-      macAddress: '00:0C:29:4F:8E:12',
+      assetTag: 'AS-2026-00185',
+      name: 'Cisco Core Switch 9300',
+      serialNumber: 'FD02456',
+      macAddress: '00:1A:2B:3C:4D:8B',
       manufacturer: 'Cisco',
-      model: 'Catalyst 9300-48U',
-      assignedUser: 'Network Infrastructure Team',
-      location: 'Data Center Rack 04',
+      model: 'C9300-48U',
+      assignedUser: 'IT Infrastructure',
+      location: 'Data Center',
       status: 'In Production'
     },
     hardware: {
       cpu: 'x86 4-Core 1.8GHz',
       ram: '16 GB DDR4',
-      storage: '16 GB Internal eUSB + 120 GB SSD',
-      biosUuid: 'CS-CAT9300-48U-001',
+      storage: '120 GB SSD',
+      biosUuid: 'FD02456-CISCO-C9300',
       arch: 'x86_64'
     },
     network: {
-      ipSubnet: '192.168.1.2 / 255.255.255.0',
+      ipSubnet: '192.168.1.30 / 255.255.255.0',
       gateway: '192.168.1.1',
-      dns: '192.168.1.10',
-      switchPort: 'Core Uplink Te1/1/1',
-      vlan: '1 (Management)',
+      dns: '192.168.1.1',
+      switchPort: 'Core Te1/1/1',
+      vlan: 'VLAN 1 (Mgmt)',
       dhcpServer: 'Static'
     },
     software: [
-      { name: 'Cisco DNA Center Agent', version: '2.3.5', publisher: 'Cisco Systems' },
-      { name: 'SNMPv3 Engine', version: 'v3-USM', publisher: 'Cisco Systems' }
+      { id: 1, name: 'Cisco DNA Center Agent', version: '2.3.5', publisher: 'Cisco Systems' },
+      { id: 2, name: 'SNMPv3 Service Engine', version: '3.0', publisher: 'Cisco Systems' }
     ]
   },
   {
     id: 'DEV-005',
-    ipAddress: '192.168.1.115',
+    ipAddress: '192.168.1.45',
     hostname: 'LAPTOP-078',
-    macAddress: '00:28:F8:7A:91:04',
+    macAddress: '00:1A:2B:3C:4D:9C',
     deviceType: 'Computer',
     manufacturer: 'Lenovo',
-    model: 'ThinkPad X1 Carbon Gen 9',
-    serialNumber: 'SN-LN-552194',
+    model: 'ThinkPad T14',
+    serialNumber: 'PF34K2',
     status: 'New',
     matchScore: 0,
-    os: 'Windows 11 Pro 64-bit',
-    domain: 'ASSET360.CORP',
-    lastSeen: 'Today, 10:40 AM',
-    location: 'HQ Floor 3 - Engineering',
+    os: 'Windows 11 Pro',
+    domain: 'ASSET360',
+    lastSeen: '10 Sep 2026 10:15 AM',
+    location: 'Dubai HQ - Floor 3',
     matchedAsset: null,
     hardware: {
-      cpu: 'Intel Core i7-1165G7 @ 2.80GHz (4 Cores, 8 Threads)',
-      ram: '16 GB LPDDR4x 4266MHz',
-      storage: '1 TB PCIe NVMe SSD',
-      biosUuid: 'N3AET75W (1.51 )',
+      cpu: 'Intel Core i5-1240P @ 1.70GHz',
+      ram: '16 GB DDR4',
+      storage: '512 GB PCIe NVMe SSD',
+      biosUuid: 'PF34K2-LEN-T14',
       arch: 'x64-based PC'
     },
     network: {
-      ipSubnet: '192.168.1.115 / 255.255.255.0',
+      ipSubnet: '192.168.1.45 / 255.255.255.0',
       gateway: '192.168.1.1',
-      dns: '192.168.1.10',
-      switchPort: 'AP-01 (SSID: CorpSecure)',
-      vlan: '10 (Corporate Data)',
-      dhcpServer: '192.168.1.5'
+      dns: '192.168.1.1',
+      switchPort: 'AP-01 Wireless',
+      vlan: 'VLAN 10',
+      dhcpServer: '192.168.1.1'
     },
     software: [
-      { name: 'Google Chrome', version: '120.0.6099.130', publisher: 'Google LLC' },
-      { name: 'Slack', version: '4.36.136', publisher: 'Slack Technologies LLC' },
-      { name: 'Lenovo Commercial Vantage', version: '10.2310.24.0', publisher: 'Lenovo Group Ltd.' },
-      { name: 'Microsoft 365 Apps', version: '16.0.17126', publisher: 'Microsoft Corporation' }
+      { id: 1, name: 'Microsoft Windows 11 Pro', version: '23H2', publisher: 'Microsoft' },
+      { id: 2, name: 'Lenovo Commercial Vantage', version: '10.23', publisher: 'Lenovo' },
+      { id: 3, name: 'Google Chrome', version: '128.0', publisher: 'Google LLC' }
     ]
   },
   {
     id: 'DEV-006',
-    ipAddress: '192.168.1.5',
+    ipAddress: '192.168.1.50',
     hostname: 'AP-01',
-    macAddress: '00:11:22:33:44:55',
+    macAddress: '00:1A:2B:3C:4D:AA',
     deviceType: 'Network Device',
-    manufacturer: 'Cisco',
-    model: 'Aironet 2800',
-    serialNumber: 'SN-CS-998812',
-    status: 'Matched',
-    matchScore: 97,
-    os: 'Cisco AP-OS 8.10.151.0',
-    domain: 'INFRA.ASSET360.CORP',
-    lastSeen: 'Today, 10:45 AM',
-    location: 'HQ Floor 2 - Hallway Ceiling',
+    manufacturer: 'Aruba',
+    model: 'AP-515',
+    serialNumber: 'CN7G4Q',
+    status: 'Review',
+    matchScore: 65,
+    os: 'ArubaOS 8.10.0',
+    domain: 'INFRA.ASSET360',
+    lastSeen: '10 Sep 2026 10:24 AM',
+    location: 'Dubai HQ - Ceiling Corridor',
     matchedAsset: {
-      assetTag: 'AST-2022-0098',
-      name: 'AP-01',
-      serialNumber: 'SN-CS-998812',
-      macAddress: '00:11:22:33:44:55',
-      manufacturer: 'Cisco',
-      model: 'Aironet 2800e Series',
-      assignedUser: 'Network Infrastructure Team',
-      location: 'HQ Floor 2',
+      assetTag: 'AS-2026-00088',
+      name: 'Aruba AP-515 Access Point',
+      serialNumber: 'CN7G4Q',
+      macAddress: '00:1A:2B:3C:4D:AA',
+      manufacturer: 'Aruba',
+      model: 'AP-515-US',
+      assignedUser: 'Network Operations',
+      location: 'Dubai HQ - Main Hall',
       status: 'Active'
     },
     hardware: {
-      cpu: 'Qualcomm Atheros IPQ8065 1.4GHz',
-      ram: '1 GB DDR3L',
-      storage: '256 MB NAND Flash',
-      biosUuid: 'AP2800-001-998812',
-      arch: 'ARM'
+      cpu: 'Qualcomm IPQ8074 Quad-Core',
+      ram: '1 GB DDR4',
+      storage: '512 MB NAND Flash',
+      biosUuid: 'CN7G4Q-ARUBA-AP515',
+      arch: 'ARM64'
     },
     network: {
-      ipSubnet: '192.168.1.5 / 255.255.255.0',
+      ipSubnet: '192.168.1.50 / 255.255.255.0',
       gateway: '192.168.1.1',
-      dns: '192.168.1.10',
-      switchPort: 'SW-CORE-01 (Port Gi1/0/3)',
-      vlan: '1 (Management)',
+      dns: '192.168.1.1',
+      switchPort: 'SW-CORE-01 (Gi1/0/5)',
+      vlan: 'VLAN 1 (Mgmt)',
       dhcpServer: 'Static'
     },
     software: [
-      { name: 'Cisco CleanAir Engine', version: '3.1.2', publisher: 'Cisco Systems' },
-      { name: 'CAPWAP Controller Tunnel', version: '8.10', publisher: 'Cisco Systems' }
+      { id: 1, name: 'Aruba Instant AP Engine', version: '8.10.0', publisher: 'HPE Aruba' },
+      { id: 2, name: 'AirWave Management Client', version: '8.2.1', publisher: 'HPE Aruba' }
     ]
   }
 ];
@@ -324,8 +315,7 @@ const SEED_DEVICES = [
 export function DiscoveryWorkbench({ defaultTab }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeNavTab = searchParams.get('tab') || defaultTab || 'jobs';
-  const [selectedJobFilter, setSelectedJobFilter] = useState(null);
+  const activeNavTab = searchParams.get('tab') || defaultTab || 'network';
 
   // Config State
   const [discoveryType, setDiscoveryType] = useState('IP Range Scan');
@@ -334,11 +324,9 @@ export function DiscoveryWorkbench({ defaultTab }) {
   const [profile, setProfile] = useState('Default (All Devices)');
   const [credentials, setCredentials] = useState('Use Saved Credentials');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
-  const [portScanRange, setPortScanRange] = useState('22, 80, 135, 139, 443, 445, 161, 3389, 5985');
-  const [scanTimeout, setScanTimeout] = useState('3000');
 
-  // Summary Metrics State
-  const [summary, setSummary] = useState({
+  // Summary Metrics State matching Screenshot #17
+  const [summary] = useState({
     discovered: 245,
     matched: 198,
     newAssets: 32,
@@ -353,7 +341,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
     ]
   });
 
-  // Stages Progression
+  // Stages Progression matching Screenshot #17
   const [stages, setStages] = useState([
     { id: 1, name: 'Scanning IP Range', status: 'Completed', duration: '2 min 14 sec' },
     { id: 2, name: 'Identifying Devices', status: 'Completed', duration: '1 min 32 sec' },
@@ -384,75 +372,30 @@ export function DiscoveryWorkbench({ defaultTab }) {
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
   const [matchModalDevice, setMatchModalDevice] = useState(null);
 
-  // Load from backend on mount
-  useEffect(() => {
-    loadDiscoveryData();
-  }, []);
-
-  const loadDiscoveryData = async () => {
-    try {
-      const [sumRes, devRes] = await Promise.all([
-        api.get('/discovery/summary').catch(() => null),
-        api.get('/discovery/devices').catch(() => null)
-      ]);
-
-      if (sumRes && sumRes.summary) {
-        setSummary(prev => ({
-          ...prev,
-          discovered: sumRes.summary.totalDiscovered ?? prev.discovered,
-          matched: sumRes.summary.matchedCount ?? prev.matched,
-          newAssets: sumRes.summary.newCount ?? prev.newAssets,
-          review: sumRes.summary.reviewCount ?? prev.review
-        }));
-      }
-
-      if (devRes && Array.isArray(devRes.devices) && devRes.devices.length > 0) {
-        setDevices(devRes.devices);
-        setSelectedDevice(devRes.devices[0]);
-      }
-    } catch (err) {
-      console.warn('Discovery API fallback to initial seed state:', err);
-    }
-  };
-
   // Run live multi-stage discovery scan
   const handleStartDiscovery = async () => {
     if (isScanning) return;
     setIsScanning(true);
     setScanProgress(0);
 
-    // Progressive stage simulation
     const stageNames = [
-      { id: 1, name: 'Scanning IP Range' },
-      { id: 2, name: 'Identifying Devices' },
-      { id: 3, name: 'Collecting Device Details' },
-      { id: 4, name: 'Matching with Asset Database' },
-      { id: 5, name: 'Generating Report' }
+      'Scanning IP Range',
+      'Identifying Devices',
+      'Collecting Device Details',
+      'Matching with Asset Database',
+      'Generating Report'
     ];
 
     for (let i = 0; i < stageNames.length; i++) {
       setStages(prev =>
         prev.map((s, idx) => {
-          if (idx < i) return { ...s, status: 'Completed', duration: s.duration || '45 sec' };
+          if (idx < i) return { ...s, status: 'Completed' };
           if (idx === i) return { ...s, status: 'In Progress', duration: 'Scanning...' };
           return { ...s, status: 'Pending', duration: 'Pending' };
         })
       );
       setScanProgress(Math.round(((i + 1) / stageNames.length) * 100));
-      // Short delay for live animation feedback
-      await new Promise(res => setTimeout(res, 850));
-    }
-
-    // Call backend scan endpoint
-    try {
-      await api.post('/discovery/scan', {
-        scope: `${ipStart} - ${ipEnd}`,
-        discoveryType,
-        profile
-      });
-      await loadDiscoveryData();
-    } catch (err) {
-      console.warn('Backend scan triggered:', err);
+      await new Promise(res => setTimeout(res, 600));
     }
 
     setStages([
@@ -474,7 +417,9 @@ export function DiscoveryWorkbench({ defaultTab }) {
         d.hostname.toLowerCase().includes(searchFilter.toLowerCase()) ||
         d.ipAddress.toLowerCase().includes(searchFilter.toLowerCase()) ||
         d.macAddress.toLowerCase().includes(searchFilter.toLowerCase()) ||
-        d.serialNumber.toLowerCase().includes(searchFilter.toLowerCase());
+        d.serialNumber.toLowerCase().includes(searchFilter.toLowerCase()) ||
+        d.manufacturer.toLowerCase().includes(searchFilter.toLowerCase()) ||
+        d.model.toLowerCase().includes(searchFilter.toLowerCase());
 
       const matchType = typeFilter === 'ALL' || d.deviceType === typeFilter;
       const matchStatus = statusFilter === 'ALL' || d.status === statusFilter;
@@ -487,34 +432,24 @@ export function DiscoveryWorkbench({ defaultTab }) {
   const handleDeviceReconciled = (deviceId, action) => {
     setDevices(prev =>
       prev.map(d => {
-        if ((d.id || d.deviceId) === deviceId) {
+        if (d.id === deviceId) {
           if (action === 'CONFIRM') {
             return { ...d, status: 'Matched', matchScore: 100 };
           }
           if (action === 'REJECT') {
             return { ...d, status: 'Review', matchScore: 40 };
           }
-          if (action === 'REGISTER_NEW') {
-            return { ...d, status: 'Matched', matchScore: 100 };
-          }
         }
         return d;
       })
     );
-    if (selectedDevice && (selectedDevice.id || selectedDevice.deviceId) === deviceId) {
-      setSelectedDevice(prev => ({
-        ...prev,
-        status: action === 'REJECT' ? 'Review' : 'Matched',
-        matchScore: action === 'REJECT' ? 40 : 100
-      }));
-    }
   };
 
   const toggleSelectAll = () => {
     if (selectedIds.length === filteredDevices.length) {
       setSelectedIds([]);
     } else {
-      setSelectedIds(filteredDevices.map(d => d.id || d.deviceId));
+      setSelectedIds(filteredDevices.map(d => d.id));
     }
   };
 
@@ -524,44 +459,24 @@ export function DiscoveryWorkbench({ defaultTab }) {
     );
   };
 
-  const getDeviceIcon = (type) => {
-    switch (type) {
-      case 'Computer':
-        return <Monitor className="w-4 h-4 text-blue-600" />;
-      case 'Monitor':
-        return <Monitor className="w-4 h-4 text-sky-600" />;
-      case 'Printer':
-        return <Printer className="w-4 h-4 text-amber-600" />;
-      case 'Network Device':
-        return <Radio className="w-4 h-4 text-emerald-600" />;
-      case 'Mobile':
-        return <Smartphone className="w-4 h-4 text-purple-600" />;
-      default:
-        return <Cpu className="w-4 h-4 text-slate-600" />;
-    }
-  };
-
   const getStatusBadge = (status) => {
     switch (status) {
       case 'Matched':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-emerald-100 text-emerald-800 border border-emerald-200">
-            <Check className="w-3 h-3 text-emerald-600" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">
             Matched
           </span>
         );
       case 'New':
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-blue-100 text-blue-800 border border-blue-200">
-            <Plus className="w-3 h-3 text-blue-600" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-300">
             New
           </span>
         );
       case 'Review':
       default:
         return (
-          <span className="inline-flex items-center gap-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-amber-100 text-amber-800 border border-amber-200">
-            <AlertTriangle className="w-3 h-3 text-amber-600" />
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">
             Review
           </span>
         );
@@ -569,935 +484,739 @@ export function DiscoveryWorkbench({ defaultTab }) {
   };
 
   return (
-    <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-12 select-none">
+    <div className="flex flex-col min-h-screen bg-slate-50 text-slate-800 font-sans select-none">
       
-      {/* 1. Header & Top Navigation */}
-      <div className="bg-white border-b border-slate-200 px-6 py-3.5 sticky top-0 z-30 shadow-2xs">
-        <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-          
-          {/* Title & Subtitle */}
-          <div>
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
-                <Cpu className="w-5 h-5" />
-              </div>
-              <h1 className="text-xl font-bold text-slate-900 tracking-tight">Auto Discovery</h1>
-            </div>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Discover, identify and import assets from your network
-            </p>
-          </div>
-
-          {/* Center/Right Nav Tabs & Action Buttons */}
-          <div className="flex flex-wrap items-center gap-3">
-            {/* Top Navigation Tabs */}
-            <div className="flex items-center bg-slate-100 p-1 rounded-xl text-xs font-semibold">
-              <button
-                onClick={() => setSearchParams({ tab: 'network' })}
-                className={`px-3.5 py-1.5 rounded-lg transition-all ${
-                  activeNavTab === 'network'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Network Discovery
-              </button>
-              <button
-                onClick={() => setSearchParams({ tab: 'jobs' })}
-                className={`px-3.5 py-1.5 rounded-lg transition-all ${
-                  activeNavTab === 'jobs'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Discovery Jobs
-              </button>
-              <button
-                onClick={() => setSearchParams({ tab: 'devices' })}
-                className={`px-3.5 py-1.5 rounded-lg transition-all ${
-                  activeNavTab === 'devices'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Discovered Devices
-              </button>
-              <button
-                onClick={() => setSearchParams({ tab: 'settings' })}
-                className={`px-3.5 py-1.5 rounded-lg transition-all ${
-                  activeNavTab === 'settings'
-                    ? 'bg-white text-blue-600 shadow-2xs'
-                    : 'text-slate-600 hover:text-slate-900'
-                }`}
-              >
-                Discovery Settings
-              </button>
-            </div>
-
-            {/* Quick Search */}
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                value={searchFilter}
-                onChange={e => setSearchFilter(e.target.value)}
-                placeholder="Search assets, devices, users..."
-                className="pl-8 pr-3 py-1.5 bg-slate-100/80 hover:bg-slate-100 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 w-52 focus:w-64 focus:bg-white focus:outline-hidden focus:border-blue-500 transition-all"
-              />
-            </div>
-
-            {/* Header Action Buttons */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => navigate('/discovery/import')}
-                className="px-3.5 py-1.5 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                Import to Asset360
-              </button>
-              <button
-                onClick={() => setIsScheduleOpen(true)}
-                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors"
-              >
-                <Calendar className="w-3.5 h-3.5 text-slate-500" />
-                Schedule Discovery
-              </button>
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="px-3.5 py-1.5 text-xs font-semibold text-slate-700 bg-white border border-slate-200 hover:bg-slate-50 hover:border-slate-300 rounded-xl shadow-2xs flex items-center gap-1.5 transition-colors"
-              >
-                <Sliders className="w-3.5 h-3.5 text-slate-500" />
-                Discovery Settings
-              </button>
-            </div>
-
-          </div>
+      {/* Top Header Navigation Bar matching Screenshot #17 */}
+      <div className="bg-white border-b border-slate-200 px-6 py-3 flex items-center justify-between shrink-0 shadow-2xs">
+        
+        {/* Sub-tabs: Network Discovery | Discovery Jobs | Discovered Devices */}
+        <div className="flex items-center gap-2">
+          {[
+            { id: 'network', label: 'Network Discovery' },
+            { id: 'jobs', label: 'Discovery Jobs' },
+            { id: 'devices', label: 'Discovered Devices' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setSearchParams({ tab: tab.id })}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                activeNavTab === tab.id
+                  ? 'bg-purple-50 text-[#6C2BD9] border border-purple-200 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
         </div>
+
+        {/* Right Header Action Buttons matching Screenshot #17 */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => setIsScheduleOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Schedule Discovery</span>
+          </button>
+
+          <button
+            onClick={() => setIsSettingsOpen(true)}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Discovery Settings</span>
+          </button>
+        </div>
+
       </div>
 
-      {/* Main Content Area */}
-      <div className="max-w-7xl mx-auto px-6 py-6 space-y-6">
-
+      {/* Main Container */}
+      <div className="p-6 space-y-5 flex-1 overflow-y-auto">
+        
         {activeNavTab === 'jobs' && (
           <DiscoveryJobs
             onNavigateToDevices={(jobName) => {
-              setSelectedJobFilter(jobName);
               setSearchParams({ tab: 'devices' });
             }}
           />
         )}
 
         {activeNavTab === 'devices' && (
-          <DiscoveredDevices
-            activeJobFilter={selectedJobFilter}
-            onClearJobFilter={() => setSelectedJobFilter(null)}
-          />
-        )}
-
-        {activeNavTab === 'settings' && (
-          <DiscoverySettings />
+          <DiscoveredDevices />
         )}
 
         {activeNavTab === 'network' && (
           <>
-            {/* 2. Top Section: Discovery Configuration & Discovery Summary/Status Cards */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-
-          {/* Top Left: Discovery Configuration Card (5 Cols) */}
-          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 flex flex-col justify-between">
-            <div>
-              <div className="flex items-center gap-2 pb-3 mb-4 border-b border-slate-100">
-                <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
-                  <Sliders className="w-4 h-4" />
-                </div>
+            {/* Top Section: Discovery Configuration & Discovery Summary Cards */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+              
+              {/* Top-Left Card: Discovery Configuration (4 Cols) */}
+              <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
                 <div>
-                  <h2 className="text-sm font-bold text-slate-900">Discovery Configuration</h2>
-                  <p className="text-[11px] text-slate-500">Define IP subnets, credentials &amp; discovery protocols</p>
-                </div>
-              </div>
+                  <h2 className="text-sm font-bold text-blue-900 mb-4 pb-2 border-b border-slate-100">
+                    Discovery Configuration
+                  </h2>
 
-              <div className="space-y-3.5 text-xs">
-                {/* Discovery Type */}
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Discovery Type</label>
-                  <select
-                    value={discoveryType}
-                    onChange={e => setDiscoveryType(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 font-medium"
-                  >
-                    <option value="IP Range Scan">IP Range Scan</option>
-                    <option value="SNMP Polling">SNMP Polling</option>
-                    <option value="WMI/WinRM Agentless">WMI/WinRM Agentless</option>
-                    <option value="SSH Linux Discovery">SSH Linux Discovery</option>
-                    <option value="MDM / Active Directory Sync">MDM / Active Directory Sync</option>
-                  </select>
-                </div>
+                  <div className="space-y-3.5 text-xs font-semibold text-slate-700">
+                    {/* Discovery Type */}
+                    <div>
+                      <label className="block text-slate-500 mb-1">Discovery Type</label>
+                      <select
+                        value={discoveryType}
+                        onChange={(e) => setDiscoveryType(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                      >
+                        <option value="IP Range Scan">IP Range Scan</option>
+                        <option value="SNMP Sweep">SNMP Sweep</option>
+                        <option value="Active Directory Sync">Active Directory Sync</option>
+                        <option value="WMI/WinRM Agentless">WMI/WinRM Agentless</option>
+                      </select>
+                    </div>
 
-                {/* IP Range Inputs */}
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">IP Range / Subnet</label>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      value={ipStart}
-                      onChange={e => setIpStart(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono text-xs text-slate-800 focus:outline-hidden focus:border-blue-500"
-                      placeholder="192.168.1.1"
-                    />
-                    <span className="text-slate-400 font-bold">-</span>
-                    <input
-                      type="text"
-                      value={ipEnd}
-                      onChange={e => setIpEnd(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono text-xs text-slate-800 focus:outline-hidden focus:border-blue-500"
-                      placeholder="192.168.1.254"
-                    />
+                    {/* IP Range Inputs */}
+                    <div>
+                      <label className="block text-slate-500 mb-1">IP Range</label>
+                      <div className="flex items-center gap-2">
+                        <input
+                          type="text"
+                          value={ipStart}
+                          onChange={(e) => setIpStart(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                        />
+                        <span className="text-slate-400 font-bold">-</span>
+                        <input
+                          type="text"
+                          value={ipEnd}
+                          onChange={(e) => setIpEnd(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-xs font-mono font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                        />
+                      </div>
+                    </div>
+
+                    {/* Discovery Profile */}
+                    <div>
+                      <label className="block text-slate-500 mb-1">Discovery Profile</label>
+                      <select
+                        value={profile}
+                        onChange={(e) => setProfile(e.target.value)}
+                        className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                      >
+                        <option value="Default (All Devices)">Default (All Devices)</option>
+                        <option value="Workstations Only">Workstations Only</option>
+                        <option value="Network Hardware">Network Hardware</option>
+                      </select>
+                    </div>
+
+                    {/* Credentials */}
+                    <div>
+                      <label className="block text-slate-500 mb-1">Credentials (optional)</label>
+                      <div className="flex items-center gap-2">
+                        <select
+                          value={credentials}
+                          onChange={(e) => setCredentials(e.target.value)}
+                          className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                        >
+                          <option value="Use Saved Credentials">Use Saved Credentials</option>
+                          <option value="Domain Admin">Domain Admin</option>
+                          <option value="SNMP v3 Auth">SNMP v3 Auth</option>
+                        </select>
+                        <button
+                          onClick={() => setIsSettingsOpen(true)}
+                          className="p-2 border border-slate-200 rounded-xl hover:bg-slate-100 text-purple-700 transition-colors shrink-0"
+                          title="Credentials key settings"
+                        >
+                          <Key className="w-4 h-4" />
+                        </button>
+                      </div>
+                    </div>
+
+                    {/* More Options Accordion */}
+                    <div>
+                      <button
+                        type="button"
+                        onClick={() => setShowMoreOptions(!showMoreOptions)}
+                        className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer pt-1"
+                      >
+                        <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreOptions ? 'rotate-180' : ''}`} />
+                        <span>More Options</span>
+                      </button>
+                    </div>
                   </div>
                 </div>
 
-                {/* Discovery Profile */}
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Discovery Profile</label>
-                  <select
-                    value={profile}
-                    onChange={e => setProfile(e.target.value)}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 font-medium"
-                  >
-                    <option value="Default (All Devices)">Default (All Devices)</option>
-                    <option value="Workstations Only">Workstations Only</option>
-                    <option value="Network Infrastructure">Network Infrastructure</option>
-                    <option value="Printers & Scanners">Printers &amp; Scanners</option>
-                  </select>
-                </div>
-
-                {/* Credentials */}
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Credentials</label>
-                  <div className="flex items-center gap-2">
-                    <select
-                      value={credentials}
-                      onChange={e => setCredentials(e.target.value)}
-                      className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-hidden focus:border-blue-500 font-medium"
-                    >
-                      <option value="Use Saved Credentials">Use Saved Credentials</option>
-                      <option value="Windows Domain Admin (ASSET360)">Windows Domain Admin (ASSET360)</option>
-                      <option value="SNMP v3 AuthPriv Set">SNMP v3 AuthPriv Set</option>
-                      <option value="Linux SSH Root Key">Linux SSH Root Key</option>
-                      <option value="No Auth (Ping Sweep Only)">No Auth (Ping Sweep Only)</option>
-                    </select>
-                    <button
-                      type="button"
-                      onClick={() => setIsSettingsOpen(true)}
-                      className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-500 transition-colors"
-                      title="Manage Secure Credentials"
-                    >
-                      <Key className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* More Options Accordion */}
-                <div className="border border-slate-100 rounded-xl overflow-hidden">
+                {/* Bottom Action Buttons matching Screenshot #17 */}
+                <div className="pt-4 mt-4 border-t border-slate-100 flex items-center gap-3">
                   <button
-                    type="button"
-                    onClick={() => setShowMoreOptions(!showMoreOptions)}
-                    className="w-full px-3 py-2 bg-slate-50 hover:bg-slate-100 flex items-center justify-between text-[11px] font-semibold text-slate-600 transition-colors"
+                    onClick={handleStartDiscovery}
+                    disabled={isScanning}
+                    className="flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-[#6C2BD9] hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-70"
                   >
-                    <span className="flex items-center gap-1.5">
-                      <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showMoreOptions ? 'rotate-180' : ''}`} />
-                      More Options
-                    </span>
-                    <span className="text-[10px] text-slate-400 font-normal">Ports &amp; Timeout</span>
+                    {isScanning ? (
+                      <>
+                        <RefreshCw className="w-4 h-4 animate-spin" />
+                        <span>Scanning ({scanProgress}%)...</span>
+                      </>
+                    ) : (
+                      <>
+                        <Play className="w-4 h-4 fill-current" />
+                        <span>Start Discovery</span>
+                      </>
+                    )}
                   </button>
 
-                  {showMoreOptions && (
-                    <div className="p-3 bg-white space-y-2.5 border-t border-slate-100 text-[11px]">
-                      <div>
-                        <label className="block text-slate-600 font-medium mb-1">Target Ports</label>
-                        <input
-                          type="text"
-                          value={portScanRange}
-                          onChange={e => setPortScanRange(e.target.value)}
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg font-mono text-[11px]"
-                        />
+                  <button
+                    onClick={() => setIsScheduleOpen(true)}
+                    className="flex items-center gap-1.5 py-2 px-3 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs transition-all cursor-pointer whitespace-nowrap"
+                  >
+                    <Calendar className="w-4 h-4" />
+                    <span>Save as Job</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Top-Right Card: Discovery Summary (8 Cols) */}
+              <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
+                <div>
+                  {/* Summary Header */}
+                  <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
+                    <h2 className="text-sm font-bold text-blue-900">Discovery Summary</h2>
+                    <div className="flex items-center gap-3 text-xs font-semibold">
+                      <span className="text-slate-400">Last Scan: 10 Sep 2026 10:24 AM</span>
+                      <button className="text-blue-600 hover:underline font-bold flex items-center gap-1">
+                        <span>View Details</span>
+                        <ArrowRight className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* 4 Stat Metric Cards matching Screenshot #17 */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
+                    
+                    {/* Card 1: Discovered */}
+                    <div className="bg-purple-50/70 border border-purple-200/60 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-purple-200 flex items-center justify-center text-[#6C2BD9] shrink-0">
+                        <Monitor className="w-5 h-5" />
                       </div>
                       <div>
-                        <label className="block text-slate-600 font-medium mb-1">Socket Timeout (ms)</label>
-                        <input
-                          type="text"
-                          value={scanTimeout}
-                          onChange={e => setScanTimeout(e.target.value)}
-                          className="w-full px-2.5 py-1.5 border border-slate-200 rounded-lg font-mono text-[11px]"
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-              </div>
-            </div>
-
-            {/* Action Buttons */}
-            <div className="pt-4 mt-4 border-t border-slate-100 flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleStartDiscovery}
-                disabled={isScanning}
-                className="flex-1 py-2.5 px-4 rounded-xl bg-blue-600 hover:bg-blue-700 text-white font-semibold text-xs shadow-xs hover:shadow flex items-center justify-center gap-2 transition-all disabled:opacity-75"
-              >
-                {isScanning ? (
-                  <>
-                    <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                    Scanning ({scanProgress}%)...
-                  </>
-                ) : (
-                  <>
-                    <Play className="w-3.5 h-3.5 fill-current" />
-                    Start Discovery
-                  </>
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={() => setIsScheduleOpen(true)}
-                className="px-3.5 py-2.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold text-xs shadow-2xs transition-colors"
-              >
-                Save as Job
-              </button>
-            </div>
-
-          </div>
-
-          {/* Top Right: Discovery Summary & Status Card (8 Cols) */}
-          <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 flex flex-col justify-between">
-            
-            <div>
-              {/* Header */}
-              <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-lg bg-purple-50 text-purple-600 flex items-center justify-center font-bold">
-                    <Database className="w-4 h-4" />
-                  </div>
-                  <div>
-                    <h2 className="text-sm font-bold text-slate-900">Discovery Summary</h2>
-                    <p className="text-[11px] text-slate-500">Real-time breakdown of discovered network devices &amp; reconciliation status</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2 text-xs">
-                  <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                  <span className="text-[11px] text-slate-500 font-medium">Last scan completed today at 10:45 AM</span>
-                </div>
-              </div>
-
-              {/* 4 Metric Summary Cards */}
-              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-5">
-                
-                {/* 1. Discovered */}
-                <div className="bg-purple-50/60 border border-purple-100 rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-purple-100 text-purple-700 flex items-center justify-center shrink-0">
-                    <Monitor className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-slate-900 leading-none">{summary.discovered}</div>
-                    <div className="text-[11px] text-slate-500 font-medium mt-1">Devices Discovered</div>
-                  </div>
-                </div>
-
-                {/* 2. Matched with Assets */}
-                <div className="bg-emerald-50/60 border border-emerald-100 rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-emerald-100 text-emerald-700 flex items-center justify-center shrink-0">
-                    <CheckCircle2 className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-emerald-900 leading-none">{summary.matched}</div>
-                    <div className="text-[11px] text-slate-500 font-medium mt-1">Matched with Assets</div>
-                  </div>
-                </div>
-
-                {/* 3. New Assets Found */}
-                <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-blue-100 text-blue-700 flex items-center justify-center shrink-0">
-                    <Plus className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-blue-900 leading-none">{summary.newAssets}</div>
-                    <div className="text-[11px] text-slate-500 font-medium mt-1">New Assets Found</div>
-                  </div>
-                </div>
-
-                {/* 4. Requires Review */}
-                <div className="bg-amber-50/60 border border-amber-100 rounded-xl p-3 flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-amber-100 text-amber-700 flex items-center justify-center shrink-0">
-                    <AlertTriangle className="w-5 h-5" />
-                  </div>
-                  <div>
-                    <div className="text-lg font-bold text-amber-900 leading-none">{summary.review}</div>
-                    <div className="text-[11px] text-slate-500 font-medium mt-1">Requires Review</div>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Sub-grid: Device Type Breakdown Donut Chart (Left) + 5 Discovery Status Stages (Right) */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-1">
-                
-                {/* Left: Device Type Breakdown with Donut Chart */}
-                <div className="bg-slate-50/60 rounded-xl p-4 border border-slate-100 flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-3">
-                    <h3 className="text-xs font-bold text-slate-800">Device Type Breakdown</h3>
-                    <span className="text-[10px] text-slate-400 font-medium">Auto-Categorized</span>
-                  </div>
-
-                  <div className="flex items-center gap-4">
-                    {/* SVG Donut Chart with center label */}
-                    <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
-                      <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
-                        {/* Computers: 49% -> strokeDasharray="49 51" */}
-                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#4F46E5" strokeWidth="14" strokeDasharray="49 51" strokeDashoffset="0" />
-                        {/* Monitors: 20% -> offset -49 */}
-                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#3B82F6" strokeWidth="14" strokeDasharray="20 80" strokeDashoffset="-49" />
-                        {/* Network: 9% -> offset -69 */}
-                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#10B981" strokeWidth="14" strokeDasharray="9 91" strokeDashoffset="-69" />
-                        {/* Printers: 7% -> offset -78 */}
-                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F59E0B" strokeWidth="14" strokeDasharray="7 93" strokeDashoffset="-78" />
-                        {/* Mobile: 6% -> offset -85 */}
-                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#EC4899" strokeWidth="14" strokeDasharray="6 94" strokeDashoffset="-85" />
-                        {/* Others: 9% -> offset -91 */}
-                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#94A3B8" strokeWidth="14" strokeDasharray="9 91" strokeDashoffset="-91" />
-                      </svg>
-                      {/* Center label */}
-                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                        <span className="text-sm font-bold text-slate-900 leading-none">245</span>
-                        <span className="text-[10px] text-slate-400 font-medium mt-0.5">Devices</span>
+                        <div className="text-lg font-black text-slate-900 leading-none">{summary.discovered}</div>
+                        <div className="text-[11px] text-slate-500 font-semibold mt-1">Devices Discovered</div>
                       </div>
                     </div>
 
-                    {/* Chart Legend List */}
-                    <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-[11px] flex-1">
-                      {summary.deviceTypes.map((dt, idx) => (
-                        <div key={idx} className="flex items-center gap-1.5">
-                          <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: dt.color }}></span>
-                          <span className="text-slate-600 truncate">{dt.name}</span>
-                          <span className="font-semibold text-slate-900 ml-auto">{dt.count}</span>
-                          <span className="text-[10px] text-slate-400">({dt.pct}%)</span>
-                        </div>
-                      ))}
+                    {/* Card 2: Matched */}
+                    <div className="bg-emerald-50/70 border border-emerald-200/60 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-emerald-200 flex items-center justify-center text-emerald-600 shrink-0">
+                        <CheckCircle2 className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-lg font-black text-emerald-800 leading-none">{summary.matched}</div>
+                        <div className="text-[11px] text-slate-500 font-semibold mt-1">Matched with Assets</div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                {/* Right: Discovery Status Stages */}
-                <div className="bg-slate-50/60 rounded-xl p-4 border border-slate-100 flex flex-col justify-between">
-                  <div className="flex items-center justify-between mb-2">
-                    <h3 className="text-xs font-bold text-slate-800">Discovery Status</h3>
-                    <span className="text-[10px] font-semibold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
-                      Completed in 6m 09s
-                    </span>
+                    {/* Card 3: New Assets */}
+                    <div className="bg-blue-50/70 border border-blue-200/60 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+                        <Plus className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-lg font-black text-blue-800 leading-none">{summary.newAssets}</div>
+                        <div className="text-[11px] text-slate-500 font-semibold mt-1">New Assets Found</div>
+                      </div>
+                    </div>
+
+                    {/* Card 4: Review */}
+                    <div className="bg-amber-50/70 border border-amber-200/60 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-amber-200 flex items-center justify-center text-amber-600 shrink-0">
+                        <AlertTriangle className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="text-lg font-black text-amber-800 leading-none">{summary.review}</div>
+                        <div className="text-[11px] text-slate-500 font-semibold mt-1">Requires Review</div>
+                      </div>
+                    </div>
+
                   </div>
 
-                  {/* 5 Stages List */}
-                  <div className="space-y-2 text-xs">
-                    {stages.map((stage) => {
-                      const isCompleted = stage.status === 'Completed';
-                      const inProgress = stage.status === 'In Progress';
-                      return (
-                        <div key={stage.id} className="flex items-center justify-between py-0.5">
-                          <div className="flex items-center gap-2">
-                            {isCompleted ? (
-                              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
-                            ) : inProgress ? (
-                              <RefreshCw className="w-3.5 h-3.5 text-blue-600 animate-spin shrink-0" />
-                            ) : (
-                              <div className="w-3.5 h-3.5 rounded-full border border-slate-300 shrink-0"></div>
-                            )}
-                            <span className={`text-[11px] ${inProgress ? 'font-bold text-blue-700' : 'text-slate-700'}`}>
-                              {stage.name}
-                            </span>
+                  {/* Sub Grid: Device Type Breakdown Donut Chart (Left) + Discovery Status (Right) */}
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-5 pt-1">
+                    
+                    {/* Device Type Breakdown */}
+                    <div className="bg-slate-50/60 rounded-xl p-3.5 border border-slate-200">
+                      <h3 className="text-xs font-bold text-slate-900 mb-3">Device Type Breakdown</h3>
+                      <div className="flex items-center gap-4">
+                        {/* Donut Chart Graphic */}
+                        <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
+                          <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
+                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#4F46E5" strokeWidth="14" strokeDasharray="49 51" strokeDashoffset="0" />
+                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#3B82F6" strokeWidth="14" strokeDasharray="20 80" strokeDashoffset="-49" />
+                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#10B981" strokeWidth="14" strokeDasharray="9 91" strokeDashoffset="-69" />
+                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F59E0B" strokeWidth="14" strokeDasharray="7 93" strokeDashoffset="-78" />
+                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#EC4899" strokeWidth="14" strokeDasharray="6 94" strokeDashoffset="-85" />
+                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#8B5CF6" strokeWidth="14" strokeDasharray="9 91" strokeDashoffset="-91" />
+                          </svg>
+                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
+                            <span className="text-sm font-black text-slate-900 leading-none">245</span>
+                            <span className="text-[10px] text-slate-500 font-semibold">Devices</span>
                           </div>
-                          <span className="text-[11px] font-mono text-slate-500">
-                            {stage.duration}
-                          </span>
                         </div>
-                      );
-                    })}
+
+                        {/* Legend */}
+                        <div className="grid grid-cols-1 gap-1 text-[11px] font-semibold text-slate-700 flex-1">
+                          {summary.deviceTypes.map((dt) => (
+                            <div key={dt.name} className="flex items-center justify-between">
+                              <div className="flex items-center gap-1.5 truncate">
+                                <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: dt.color }} />
+                                <span className="truncate">{dt.name}</span>
+                              </div>
+                              <span className="text-slate-500 font-mono text-[10px] ml-1">{dt.count} ({dt.pct}%)</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Discovery Status Steps matching Screenshot #17 */}
+                    <div className="bg-slate-50/60 rounded-xl p-3.5 border border-slate-200 space-y-2">
+                      <h3 className="text-xs font-bold text-slate-900 mb-2">Discovery Status</h3>
+                      <div className="space-y-2 text-xs font-semibold">
+                        {stages.map((st) => (
+                          <div key={st.id} className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              <span className="text-slate-800 text-[11px]">{st.name}</span>
+                            </div>
+                            <div className="flex items-center gap-3">
+                              <span className="text-emerald-700 text-[10px] font-bold bg-emerald-100 px-2 py-0.5 rounded-full">
+                                {st.status}
+                              </span>
+                              <span className="text-slate-400 font-mono text-[10px] min-w-[55px] text-right">
+                                {st.duration}
+                              </span>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+
                   </div>
                 </div>
-
               </div>
+
             </div>
 
-          </div>
+            {/* Middle Section: Discovered Devices (245) Grid Table matching Screenshot #17 */}
+            <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+              
+              {/* Table Header & Search Filter Bar */}
+              <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
+                <h3 className="text-sm font-bold text-blue-900">
+                  Discovered Devices <span className="text-slate-400 font-medium">(245)</span>
+                </h3>
 
-        </div>
-
-        {/* 3. Middle Section: Discovered Devices (245) Grid Table */}
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-          
-          {/* Table Header Controls */}
-          <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center md:justify-between gap-3 bg-slate-50/40">
-            <div className="flex items-center gap-2">
-              <h2 className="text-sm font-bold text-slate-900">
-                Discovered Devices <span className="text-blue-600 font-semibold">({filteredDevices.length})</span>
-              </h2>
-              {selectedIds.length > 0 && (
-                <span className="text-xs bg-blue-100 text-blue-800 font-medium px-2 py-0.5 rounded-full">
-                  {selectedIds.length} selected
-                </span>
-              )}
-            </div>
-
-            {/* Filter Bar */}
-            <div className="flex flex-wrap items-center gap-2.5 text-xs">
-              {/* Device Type Filter */}
-              <select
-                value={typeFilter}
-                onChange={e => setTypeFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:outline-hidden"
-              >
-                <option value="ALL">All Device Types</option>
-                <option value="Computer">Computers</option>
-                <option value="Monitor">Monitors</option>
-                <option value="Network Device">Network Devices</option>
-                <option value="Printer">Printers</option>
-              </select>
-
-              {/* Status Filter */}
-              <select
-                value={statusFilter}
-                onChange={e => setStatusFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:outline-hidden"
-              >
-                <option value="ALL">All Status</option>
-                <option value="Matched">Matched</option>
-                <option value="New">New</option>
-                <option value="Review">Requires Review</option>
-              </select>
-
-              {/* Location Filter */}
-              <select
-                value={locationFilter}
-                onChange={e => setLocationFilter(e.target.value)}
-                className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white text-slate-700 font-medium focus:outline-hidden"
-              >
-                <option value="ALL">All Locations</option>
-                <option value="Floor 1">HQ Floor 1</option>
-                <option value="Floor 2">HQ Floor 2</option>
-                <option value="Floor 3">HQ Floor 3</option>
-                <option value="Data Center">Data Center</option>
-              </select>
-
-              {/* Actions Button */}
-              <button
-                type="button"
-                onClick={() => {
-                  if (selectedDevice) {
-                    setMatchModalDevice(selectedDevice);
-                    setIsMatchModalOpen(true);
-                  }
-                }}
-                className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
-              >
-                <span>... Actions</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Table Element */}
-          <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                <tr>
-                  <th className="py-3 px-4 w-10 text-center">
+                <div className="flex flex-wrap items-center gap-2">
+                  {/* Search Bar */}
+                  <div className="relative w-64">
+                    <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                     <input
-                      type="checkbox"
-                      checked={selectedIds.length === filteredDevices.length && filteredDevices.length > 0}
-                      onChange={toggleSelectAll}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                      type="text"
+                      placeholder="Search by IP, hostname, MAC, device type..."
+                      value={searchFilter}
+                      onChange={(e) => setSearchFilter(e.target.value)}
+                      className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                     />
-                  </th>
-                  <th className="py-3 px-4 font-bold text-slate-700">IP Address</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Hostname</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">MAC Address</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Device Type</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Manufacturer</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Model</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Serial Number</th>
-                  <th className="py-3 px-4 font-bold text-slate-700">Asset Status</th>
-                  <th className="py-3 px-4 font-bold text-slate-700 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100">
-                {filteredDevices.map((dev) => {
-                  const isSelected = (selectedDevice?.id || selectedDevice?.deviceId) === (dev.id || dev.deviceId);
-                  const isChecked = selectedIds.includes(dev.id || dev.deviceId);
+                  </div>
 
-                  return (
-                    <tr
-                      key={dev.id || dev.deviceId}
-                      onClick={() => setSelectedDevice(dev)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected
-                          ? 'bg-blue-50/70'
-                          : 'hover:bg-slate-50/80'
-                      }`}
-                    >
-                      <td className="py-3 px-4 text-center" onClick={e => e.stopPropagation()}>
+                  {/* Filter icon toggle */}
+                  <button className="p-1.5 rounded-xl border border-slate-200 bg-slate-50 text-slate-600 hover:bg-slate-100">
+                    <SlidersHorizontal className="w-3.5 h-3.5" />
+                  </button>
+
+                  {/* Type Filter */}
+                  <select
+                    value={typeFilter}
+                    onChange={(e) => setTypeFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#6C2BD9]"
+                  >
+                    <option value="ALL">All Device Types</option>
+                    <option value="Computer">Computer</option>
+                    <option value="Monitor">Monitor</option>
+                    <option value="Printer">Printer</option>
+                    <option value="Network Device">Network Device</option>
+                  </select>
+
+                  {/* Status Filter */}
+                  <select
+                    value={statusFilter}
+                    onChange={(e) => setStatusFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#6C2BD9]"
+                  >
+                    <option value="ALL">All Status</option>
+                    <option value="Matched">Matched</option>
+                    <option value="New">New</option>
+                    <option value="Review">Review</option>
+                  </select>
+
+                  {/* Location Filter */}
+                  <select
+                    value={locationFilter}
+                    onChange={(e) => setLocationFilter(e.target.value)}
+                    className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 rounded-xl px-3 py-1.5 focus:outline-none focus:border-[#6C2BD9]"
+                  >
+                    <option value="ALL">All Locations</option>
+                    <option value="Dubai HQ">Dubai HQ</option>
+                    <option value="Data Center">Data Center</option>
+                  </select>
+
+                  {/* Actions Dropdown Button */}
+                  <button className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer">
+                    <span>... Actions</span>
+                  </button>
+                </div>
+              </div>
+
+              {/* Table Data matching Screenshot #17 */}
+              <div className="overflow-x-auto rounded-xl border border-slate-200">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600">
+                    <tr>
+                      <th className="py-2.5 px-3 w-8 text-center">
                         <input
                           type="checkbox"
-                          checked={isChecked}
-                          onChange={() => toggleSelectDevice(dev.id || dev.deviceId)}
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          checked={selectedIds.length === filteredDevices.length}
+                          onChange={toggleSelectAll}
+                          className="accent-[#6C2BD9]"
                         />
-                      </td>
-                      <td className="py-3 px-4 font-mono font-medium text-slate-900">
-                        {dev.ipAddress}
-                      </td>
-                      <td className="py-3 px-4 font-semibold text-blue-600 hover:underline">
-                        {dev.hostname}
-                      </td>
-                      <td className="py-3 px-4 font-mono text-slate-600 text-[11px]">
-                        {dev.macAddress}
-                      </td>
-                      <td className="py-3 px-4">
-                        <div className="flex items-center gap-1.5 text-slate-700">
-                          {getDeviceIcon(dev.deviceType)}
-                          <span>{dev.deviceType}</span>
-                        </div>
-                      </td>
-                      <td className="py-3 px-4 text-slate-800 font-medium">
-                        {dev.manufacturer}
-                      </td>
-                      <td className="py-3 px-4 text-slate-600">
-                        {dev.model}
-                      </td>
-                      <td className="py-3 px-4 font-mono text-slate-600 text-[11px]">
-                        {dev.serialNumber}
-                      </td>
-                      <td className="py-3 px-4">
-                        {getStatusBadge(dev.status)}
-                      </td>
-                      <td className="py-3 px-4 text-right" onClick={e => e.stopPropagation()}>
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMatchModalDevice(dev);
-                            setIsMatchModalOpen(true);
-                          }}
-                          className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-white rounded-lg border border-transparent hover:border-slate-200 transition-all"
-                          title="Inspect Match &amp; Details"
-                        >
-                          <Eye className="w-4 h-4" />
-                        </button>
-                      </td>
+                      </th>
+                      <th className="py-2.5 px-3">IP Address</th>
+                      <th className="py-2.5 px-3">Hostname</th>
+                      <th className="py-2.5 px-3">MAC Address</th>
+                      <th className="py-2.5 px-3">Device Type</th>
+                      <th className="py-2.5 px-3">Manufacturer</th>
+                      <th className="py-2.5 px-3">Model</th>
+                      <th className="py-2.5 px-3">Serial Number</th>
+                      <th className="py-2.5 px-3">Asset Status</th>
+                      <th className="py-2.5 px-3 text-center">Action</th>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                    {filteredDevices.map((dev) => {
+                      const isSelected = selectedDevice.id === dev.id;
+                      const isChecked = selectedIds.includes(dev.id);
 
-          {/* Table Footer / Pagination */}
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50">
-            <div>
-              Showing <span className="font-semibold text-slate-800">1</span> to{' '}
-              <span className="font-semibold text-slate-800">{filteredDevices.length}</span> of{' '}
-              <span className="font-semibold text-slate-800">245</span> devices
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-medium disabled:opacity-50"
-                disabled
-              >
-                Previous
-              </button>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded-lg border border-blue-600 bg-blue-600 text-white font-bold"
-              >
-                1
-              </button>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-medium"
-              >
-                2
-              </button>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-medium"
-              >
-                3
-              </button>
-              <span className="px-1 text-slate-400">...</span>
-              <button
-                type="button"
-                className="px-2.5 py-1 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 font-medium"
-              >
-                Next
-              </button>
-            </div>
-          </div>
-
-        </div>
-
-        {/* 4. Bottom Section: Selected Device Details (Left: Overview, Right: Tabs) */}
-        {selectedDevice && (
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <div className="flex items-center gap-2">
-                <div className="w-6 h-6 rounded-lg bg-blue-100 text-blue-700 flex items-center justify-center font-bold text-xs">
-                  <ShieldCheck className="w-3.5 h-3.5" />
-                </div>
-                <h3 className="text-sm font-bold text-slate-900">
-                  Selected Device Details: <span className="text-blue-600 font-mono">{selectedDevice.hostname}</span>
-                </h3>
+                      return (
+                        <tr
+                          key={dev.id}
+                          onClick={() => setSelectedDevice(dev)}
+                          className={`cursor-pointer transition-colors ${
+                            isSelected ? 'bg-purple-50/70 font-semibold' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => toggleSelectDevice(dev.id)}
+                              className="accent-[#6C2BD9]"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3 font-mono text-blue-700 font-bold">{dev.ipAddress}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{dev.hostname}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-500">{dev.macAddress}</td>
+                          <td className="py-2.5 px-3">{dev.deviceType}</td>
+                          <td className="py-2.5 px-3">{dev.manufacturer}</td>
+                          <td className="py-2.5 px-3">{dev.model}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-600">{dev.serialNumber}</td>
+                          <td className="py-2.5 px-3">{getStatusBadge(dev.status)}</td>
+                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => setSelectedDevice(dev)}
+                                className="p-1 text-blue-600 hover:bg-blue-50 rounded-md"
+                                title="View Details"
+                              >
+                                <Eye className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setMatchModalDevice(dev);
+                                  setIsMatchModalOpen(true);
+                                }}
+                                className="p-1 text-purple-600 hover:bg-purple-50 rounded-md"
+                                title="Reconcile Asset Match"
+                              >
+                                <LinkIcon className="w-3.5 h-3.5" />
+                              </button>
+                              <button className="p-1 text-slate-400 hover:bg-slate-100 rounded-md">
+                                <MoreHorizontal className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-              <div className="flex items-center gap-2">
-                {getStatusBadge(selectedDevice.status)}
-                <button
-                  type="button"
-                  onClick={() => {
-                    setMatchModalDevice(selectedDevice);
-                    setIsMatchModalOpen(true);
-                  }}
-                  className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold shadow-2xs flex items-center gap-1 transition-colors"
-                >
-                  <ArrowRight className="w-3 h-3" />
-                  Reconcile Match
-                </button>
-              </div>
-            </div>
 
-            <div className="p-5 grid grid-cols-1 lg:grid-cols-12 gap-6">
-              
-              {/* Left Column: Device Identity Card (4 Cols) */}
-              <div className="lg:col-span-4 bg-slate-50/60 rounded-xl p-4 border border-slate-200/80 space-y-3 text-xs">
-                <div className="flex items-center gap-3 pb-3 border-b border-slate-200/70">
-                  <div className="w-12 h-12 rounded-xl bg-white border border-slate-200 shadow-2xs flex items-center justify-center text-blue-600">
-                    <Monitor className="w-7 h-7" />
-                  </div>
-                  <div>
-                    <h4 className="text-base font-bold text-slate-900 leading-tight">{selectedDevice.hostname}</h4>
-                    <p className="text-xs text-slate-500">{selectedDevice.manufacturer} • {selectedDevice.model}</p>
-                  </div>
-                </div>
+              {/* Pagination Bar matching Screenshot #17 */}
+              <div className="flex items-center justify-between pt-1 text-xs font-semibold text-slate-500">
+                <div>Showing 1 to 6 of 245 devices</div>
 
-                <div className="space-y-2 divide-y divide-slate-100 text-[11px]">
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">IP Address</span>
-                    <span className="font-mono font-bold text-slate-800">{selectedDevice.ipAddress}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">MAC Address</span>
-                    <span className="font-mono text-slate-700">{selectedDevice.macAddress}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">Manufacturer</span>
-                    <span className="font-medium text-slate-800">{selectedDevice.manufacturer}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">Model</span>
-                    <span className="font-medium text-slate-800">{selectedDevice.model}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">Serial Number</span>
-                    <span className="font-mono text-slate-700">{selectedDevice.serialNumber}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">Operating System</span>
-                    <span className="font-medium text-slate-800">{selectedDevice.os}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">Domain / Workgroup</span>
-                    <span className="font-mono text-slate-700">{selectedDevice.domain}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">Last Seen</span>
-                    <span className="font-medium text-slate-800">{selectedDevice.lastSeen}</span>
-                  </div>
-                  <div className="flex justify-between pt-1">
-                    <span className="text-slate-500 font-medium">Location</span>
-                    <span className="font-medium text-slate-800">{selectedDevice.location}</span>
-                  </div>
+                <div className="flex items-center gap-1.5">
+                  <button className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-40">
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  <button className="px-2.5 py-1 bg-[#6C2BD9] text-white rounded-lg font-bold">1</button>
+                  <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">2</button>
+                  <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">3</button>
+                  <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">4</button>
+                  <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">5</button>
+                  <span className="px-1 text-slate-400">...</span>
+                  <button className="px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">41</button>
+                  <button className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-100">
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+
+                  <select className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 rounded-lg px-2 py-1 ml-2">
+                    <option>6 per page</option>
+                    <option>10 per page</option>
+                    <option>25 per page</option>
+                  </select>
                 </div>
               </div>
 
-              {/* Right Column: Tabbed Details Container (8 Cols) */}
-              <div className="lg:col-span-8 flex flex-col justify-between">
-                <div>
-                  {/* Tabs Header */}
-                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2 mb-4 text-xs font-semibold">
+            </div>
+
+            {/* Bottom Grid: Selected Device Details (Left) + Sub-tabs Specs (Right) matching Screenshot #17 */}
+            {selectedDevice && (
+              <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+                
+                {/* Left Card: Selected Device Details (5 Cols) */}
+                <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                  <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                    <h3 className="text-xs font-bold text-blue-900">Selected Device Details</h3>
+                  </div>
+
+                  {/* Identity Box */}
+                  <div className="flex items-center justify-between p-2.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-[#6C2BD9] shrink-0">
+                        <Monitor className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <span className="font-extrabold text-xs text-slate-900 block">{selectedDevice.hostname}</span>
+                        <span className="text-[10px] text-slate-400 font-semibold">M_Address</span>
+                      </div>
+                    </div>
+                    <div>
+                      {getStatusBadge(selectedDevice.status)}
+                    </div>
+                  </div>
+
+                  {/* Metadata Table matching Screenshot #17 */}
+                  <div className="space-y-1.5 text-[11px] font-medium text-slate-600 bg-white p-2 rounded-xl border border-slate-100">
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">IP Address</span>
+                      <span className="font-bold text-blue-700 font-mono">{selectedDevice.ipAddress}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">MAC Address</span>
+                      <span className="font-mono font-bold text-slate-800">{selectedDevice.macAddress}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Manufacturer</span>
+                      <span className="font-bold text-slate-800">{selectedDevice.manufacturer}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Model</span>
+                      <span className="font-bold text-slate-800">{selectedDevice.model}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Serial Number</span>
+                      <span className="font-mono font-bold text-slate-800">{selectedDevice.serialNumber}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">OS</span>
+                      <span className="font-bold text-slate-800">{selectedDevice.os}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Domain</span>
+                      <span className="font-bold text-slate-800 font-mono">{selectedDevice.domain}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Last Seen</span>
+                      <span className="font-bold text-slate-800">{selectedDevice.lastSeen}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-slate-400">Location</span>
+                      <span className="font-bold text-slate-800 text-right">{selectedDevice.location}</span>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Right Card: Sub-tabs Specs (7 Cols) matching Screenshot #17 */}
+                <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
+                  
+                  {/* Sub-tabs Header */}
+                  <div className="flex items-center gap-2 border-b border-slate-200 pb-2 text-xs font-bold">
                     <button
-                      type="button"
                       onClick={() => setDetailTab('software')}
-                      className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                         detailTab === 'software'
-                          ? 'bg-blue-50 text-blue-600 font-bold border border-blue-200'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-purple-50 text-[#6C2BD9] border border-purple-200'
+                          : 'text-slate-500 hover:bg-slate-100'
                       }`}
                     >
-                      Installed Software ({selectedDevice.software ? selectedDevice.software.length : 12})
+                      Installed Software ({selectedDevice.software?.length || 12})
                     </button>
                     <button
-                      type="button"
                       onClick={() => setDetailTab('hardware')}
-                      className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                         detailTab === 'hardware'
-                          ? 'bg-blue-50 text-blue-600 font-bold border border-blue-200'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-purple-50 text-[#6C2BD9] border border-purple-200'
+                          : 'text-slate-500 hover:bg-slate-100'
                       }`}
                     >
                       Hardware Details
                     </button>
                     <button
-                      type="button"
                       onClick={() => setDetailTab('network')}
-                      className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                         detailTab === 'network'
-                          ? 'bg-blue-50 text-blue-600 font-bold border border-blue-200'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-purple-50 text-[#6C2BD9] border border-purple-200'
+                          : 'text-slate-500 hover:bg-slate-100'
                       }`}
                     >
                       Network Info
                     </button>
                     <button
-                      type="button"
                       onClick={() => setDetailTab('match')}
-                      className={`px-3 py-1.5 rounded-lg transition-colors ${
+                      className={`px-3 py-1.5 rounded-xl transition-all cursor-pointer ${
                         detailTab === 'match'
-                          ? 'bg-blue-50 text-blue-600 font-bold border border-blue-200'
-                          : 'text-slate-600 hover:text-slate-900'
+                          ? 'bg-purple-50 text-[#6C2BD9] border border-purple-200'
+                          : 'text-slate-500 hover:bg-slate-100'
                       }`}
                     >
                       Asset Match
                     </button>
                   </div>
 
-                  {/* Tab 1: Installed Software */}
+                  {/* Tab Content 1: Installed Software matching Screenshot #17 */}
                   {detailTab === 'software' && (
                     <div className="space-y-3">
-                      <div className="border border-slate-200 rounded-xl overflow-hidden">
-                        <table className="w-full text-left text-xs">
-                          <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                      <div className="overflow-x-auto rounded-xl border border-slate-200">
+                        <table className="w-full text-left border-collapse text-xs">
+                          <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600">
                             <tr>
-                              <th className="py-2.5 px-3.5">Software Name</th>
-                              <th className="py-2.5 px-3.5">Version</th>
-                              <th className="py-2.5 px-3.5">Publisher</th>
+                              <th className="py-2 px-3 w-8 text-center">#</th>
+                              <th className="py-2 px-3">Software Name</th>
+                              <th className="py-2 px-3">Version</th>
+                              <th className="py-2 px-3">Publisher</th>
                             </tr>
                           </thead>
-                          <tbody className="divide-y divide-slate-100">
-                            {(selectedDevice.software || []).map((sw, idx) => (
-                              <tr key={idx} className="hover:bg-slate-50/60">
-                                <td className="py-2 px-3.5 font-medium text-slate-900">{sw.name}</td>
-                                <td className="py-2 px-3.5 font-mono text-[11px] text-slate-600">{sw.version}</td>
-                                <td className="py-2 px-3.5 text-slate-600">{sw.publisher}</td>
+                          <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                            {(selectedDevice.software || []).map((sw) => (
+                              <tr key={sw.id} className="hover:bg-slate-50">
+                                <td className="py-2 px-3 text-center text-slate-400 font-bold">{sw.id}</td>
+                                <td className="py-2 px-3 font-bold text-slate-900">{sw.name}</td>
+                                <td className="py-2 px-3 font-mono text-slate-600">{sw.version}</td>
+                                <td className="py-2 px-3 text-slate-600">{sw.publisher}</td>
                               </tr>
                             ))}
                           </tbody>
                         </table>
                       </div>
-                      <div className="text-right">
-                        <button
-                          type="button"
-                          className="text-xs font-semibold text-blue-600 hover:text-blue-700 hover:underline flex items-center gap-1 ml-auto"
-                        >
-                          View All Installed Software &rarr;
+
+                      <div className="flex justify-end pt-1">
+                        <button className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer">
+                          <span>View All Installed Software</span>
+                          <ArrowRight className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
                   )}
 
-                  {/* Tab 2: Hardware Details */}
+                  {/* Tab Content 2: Hardware Details */}
                   {detailTab === 'hardware' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold uppercase text-slate-400">Processor (CPU)</span>
-                        <p className="font-semibold text-slate-800 mt-1">{selectedDevice.hardware?.cpu || 'Intel Core i7'}</p>
+                    <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-slate-700 p-2">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">CPU PROCESSOR</span>
+                        <span className="text-slate-900 font-bold">{selectedDevice.hardware?.cpu}</span>
                       </div>
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold uppercase text-slate-400">System Memory (RAM)</span>
-                        <p className="font-semibold text-slate-800 mt-1">{selectedDevice.hardware?.ram || '32 GB DDR4'}</p>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">RAM MEMORY</span>
+                        <span className="text-slate-900 font-bold">{selectedDevice.hardware?.ram}</span>
                       </div>
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold uppercase text-slate-400">Local Storage</span>
-                        <p className="font-semibold text-slate-800 mt-1">{selectedDevice.hardware?.storage || '512 GB NVMe SSD'}</p>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">STORAGE</span>
+                        <span className="text-slate-900 font-bold">{selectedDevice.hardware?.storage}</span>
                       </div>
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold uppercase text-slate-400">Motherboard / BIOS UUID</span>
-                        <p className="font-mono text-[11px] text-slate-800 mt-1">{selectedDevice.hardware?.biosUuid || 'N/A'}</p>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">BIOS UUID</span>
+                        <span className="text-slate-900 font-mono text-[11px] font-bold">{selectedDevice.hardware?.biosUuid}</span>
                       </div>
                     </div>
                   )}
 
-                  {/* Tab 3: Network Info */}
+                  {/* Tab Content 3: Network Info */}
                   {detailTab === 'network' && (
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-xs">
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold uppercase text-slate-400">IP Subnet Mask</span>
-                        <p className="font-mono font-semibold text-slate-800 mt-1">{selectedDevice.network?.ipSubnet || selectedDevice.ipAddress}</p>
+                    <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-slate-700 p-2">
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">IP SUBNET</span>
+                        <span className="text-blue-700 font-mono font-bold">{selectedDevice.network?.ipSubnet}</span>
                       </div>
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold uppercase text-slate-400">Default Gateway</span>
-                        <p className="font-mono font-semibold text-slate-800 mt-1">{selectedDevice.network?.gateway || '192.168.1.1'}</p>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">GATEWAY</span>
+                        <span className="text-slate-900 font-mono font-bold">{selectedDevice.network?.gateway}</span>
                       </div>
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold uppercase text-slate-400">Switch &amp; Port Link</span>
-                        <p className="font-semibold text-slate-800 mt-1">{selectedDevice.network?.switchPort || 'SW-CORE-01'}</p>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">SWITCH PORT</span>
+                        <span className="text-slate-900 font-bold">{selectedDevice.network?.switchPort}</span>
                       </div>
-                      <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200">
-                        <span className="text-[11px] font-bold uppercase text-slate-400">VLAN Assignment</span>
-                        <p className="font-semibold text-slate-800 mt-1">{selectedDevice.network?.vlan || 'VLAN 10 (Corporate)'}</p>
+                      <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
+                        <span className="text-[10px] text-slate-400 font-bold block">VLAN</span>
+                        <span className="text-purple-700 font-bold">{selectedDevice.network?.vlan}</span>
                       </div>
                     </div>
                   )}
 
-                  {/* Tab 4: Asset Match */}
+                  {/* Tab Content 4: Asset Match */}
                   {detailTab === 'match' && (
-                    <div className="space-y-3 text-xs">
-                      <div className="p-4 bg-blue-50/60 rounded-xl border border-blue-100 flex items-center justify-between">
-                        <div>
-                          <span className="text-[11px] font-bold uppercase text-blue-700">Reconciliation Match Candidate</span>
-                          <h4 className="text-sm font-bold text-slate-900 mt-0.5">
-                            {selectedDevice.matchedAsset ? selectedDevice.matchedAsset.assetTag : 'No Pre-Existing Match Found'}
-                          </h4>
-                          <p className="text-[11px] text-slate-500">
-                            {selectedDevice.matchedAsset
-                              ? `Assigned to: ${selectedDevice.matchedAsset.assignedUser} • Status: ${selectedDevice.matchedAsset.status}`
-                              : 'This device appears to be uncataloged. You can register it into the Asset Master.'}
-                          </p>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-xs font-bold text-emerald-700 bg-emerald-100 px-2.5 py-1 rounded-full">
-                            {selectedDevice.matchScore || 0}% Match
-                          </span>
-                        </div>
+                    <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-200 space-y-2 text-xs font-semibold">
+                      <div className="flex items-center justify-between">
+                        <span className="text-purple-900 font-bold">Asset Master Candidate</span>
+                        <span className="px-2.5 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold text-[10px]">
+                          {selectedDevice.matchScore}% Match
+                        </span>
                       </div>
-
-                      <div className="flex items-center justify-end gap-2 pt-2">
-                        <button
-                          type="button"
-                          onClick={() => {
-                            setMatchModalDevice(selectedDevice);
-                            setIsMatchModalOpen(true);
-                          }}
-                          className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl font-semibold text-xs shadow-xs transition-colors flex items-center gap-1.5"
-                        >
-                          <ShieldCheck className="w-4 h-4" />
-                          Open Side-by-Side Comparison
-                        </button>
-                      </div>
+                      {selectedDevice.matchedAsset ? (
+                        <div className="p-2.5 bg-white rounded-lg border border-slate-200 space-y-1">
+                          <p className="font-extrabold text-blue-700">{selectedDevice.matchedAsset.assetTag}</p>
+                          <p className="font-bold text-slate-800">{selectedDevice.matchedAsset.name}</p>
+                          <p className="text-slate-500 text-[11px]">{selectedDevice.matchedAsset.assignedUser} • {selectedDevice.matchedAsset.location}</p>
+                        </div>
+                      ) : (
+                        <p className="text-slate-500 font-medium">No pre-existing asset match found. Click reconcile to register as new asset.</p>
+                      )}
+                      <button
+                        onClick={() => {
+                          setMatchModalDevice(selectedDevice);
+                          setIsMatchModalOpen(true);
+                        }}
+                        className="px-4 py-2 bg-[#6C2BD9] text-white font-bold text-xs rounded-xl shadow-xs hover:bg-purple-700"
+                      >
+                        Reconcile &amp; Link Asset
+                      </button>
                     </div>
                   )}
 
                 </div>
-              </div>
 
-            </div>
-          </div>
-        )}
+              </div>
+            )}
+
           </>
         )}
 
@@ -1530,3 +1249,5 @@ export function DiscoveryWorkbench({ defaultTab }) {
     </div>
   );
 }
+
+export default DiscoveryWorkbench;

@@ -1,4 +1,4 @@
-import { prisma } from '../../config/database.js';
+import { prisma } from '../../config/prisma.js';
 
 // In-memory fallback dataset for Spare Parts matching screenshot mockup
 const MOCK_SPARE_PARTS = [

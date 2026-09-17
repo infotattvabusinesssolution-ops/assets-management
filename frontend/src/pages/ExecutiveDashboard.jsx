@@ -167,13 +167,13 @@ export function ExecutiveDashboard() {
   };
 
   return (
-    <div className="space-y-5 pb-8 font-sans text-slate-900 select-none">
+    <div className="space-y-5 pb-8 font-sans text-black select-none">
       
       {/* 1. Dashboard Header & Date Range Filter */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-black text-slate-900 tracking-tight">Dashboard</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
+          <h1 className="text-2xl font-black text-black tracking-tight">Dashboard</h1>
+          <p className="text-xs text-black font-semibold mt-0.5">
             Welcome back, {userName}! Here's an overview of your asset portfolio.
           </p>
         </div>
@@ -182,11 +182,11 @@ export function ExecutiveDashboard() {
         <div className="relative">
           <button
             onClick={() => setIsDateOpen(!isDateOpen)}
-            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:border-purple-300 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs transition-all cursor-pointer"
+            className="flex items-center gap-2 px-3.5 py-2 bg-white border border-[#6C2BD9] hover:bg-purple-50 rounded-xl text-xs font-bold text-black shadow-2xs transition-all cursor-pointer"
           >
-            <Calendar className="w-4 h-4 text-purple-600" />
-            <span>{dateRange}</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <Calendar className="w-4 h-4 text-[#6C2BD9]" />
+            <span className="text-black font-bold">{dateRange}</span>
+            <ChevronDown className="w-3.5 h-3.5 text-[#6C2BD9]" />
           </button>
 
           {isDateOpen && (
@@ -198,7 +198,7 @@ export function ExecutiveDashboard() {
                     setDateRange(range);
                     setIsDateOpen(false);
                   }}
-                  className="w-full text-left px-3 py-2 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-purple-700 rounded-xl transition-all"
+                  className="w-full text-left px-3 py-2 text-xs font-bold text-black hover:bg-purple-100 rounded-xl transition-all"
                 >
                   {range}
                 </button>
@@ -218,8 +218,8 @@ export function ExecutiveDashboard() {
               onClick={() => setActiveTab(tab)}
               className={`pb-2.5 transition-all whitespace-nowrap cursor-pointer relative ${
                 isActive
-                  ? 'text-[#6C2BD9] font-extrabold border-b-2 border-[#6C2BD9]'
-                  : 'text-slate-500 hover:text-slate-800'
+                  ? 'text-black font-extrabold border-b-2 border-[#6C2BD9] bg-purple-100 px-3 py-1 rounded-t-lg'
+                  : 'text-black font-semibold hover:text-black hover:bg-purple-50 px-3 py-1'
               }`}
             >
               {tab}
@@ -234,12 +234,12 @@ export function ExecutiveDashboard() {
         {/* Card 1: Total Assets */}
         <div
           onClick={() => handleKpiClick('ALL')}
-          className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-purple-300 transition-all cursor-pointer flex items-center justify-between group"
+          className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-[#6C2BD9] transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-slate-900 block leading-none">12,458</span>
-            <span className="text-xs font-bold text-slate-600 block">Total Assets</span>
-            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 text-[10px] font-bold border border-emerald-200">
+            <span className="text-2xl font-black text-black block leading-none">12,458</span>
+            <span className="text-xs font-extrabold text-black block">Total Assets</span>
+            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-black text-[10px] font-extrabold border border-emerald-200">
               ↑ +3.2%
             </span>
           </div>
@@ -254,9 +254,9 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-slate-900 block leading-none">11,230</span>
-            <span className="text-xs font-bold text-slate-600 block">In Use</span>
-            <span className="text-[11px] font-semibold text-slate-500 block">90.1%</span>
+            <span className="text-2xl font-black text-black block leading-none">11,230</span>
+            <span className="text-xs font-extrabold text-black block">In Use</span>
+            <span className="text-[11px] font-bold text-black block">90.1%</span>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
             <CheckCircle2 className="w-5 h-5" />
@@ -269,9 +269,9 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-slate-900 block leading-none">652</span>
-            <span className="text-xs font-bold text-slate-600 block">Under Maintenance</span>
-            <span className="text-[11px] font-semibold text-slate-500 block">5.2%</span>
+            <span className="text-2xl font-black text-black block leading-none">652</span>
+            <span className="text-xs font-extrabold text-black block">Under Maintenance</span>
+            <span className="text-[11px] font-bold text-black block">5.2%</span>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
             <Wrench className="w-5 h-5" />
@@ -284,9 +284,9 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-rose-300 transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-slate-900 block leading-none">276</span>
-            <span className="text-xs font-bold text-slate-600 block">Overdue</span>
-            <span className="text-[11px] font-semibold text-slate-500 block">2.2%</span>
+            <span className="text-2xl font-black text-black block leading-none">276</span>
+            <span className="text-xs font-extrabold text-black block">Overdue</span>
+            <span className="text-[11px] font-bold text-black block">2.2%</span>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
             <AlertTriangle className="w-5 h-5" />
@@ -299,9 +299,9 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-slate-900 block leading-none">180</span>
-            <span className="text-xs font-bold text-slate-600 block">Pending Disposal</span>
-            <span className="text-[11px] font-semibold text-slate-500 block">1.4%</span>
+            <span className="text-2xl font-black text-black block leading-none">180</span>
+            <span className="text-xs font-extrabold text-black block">Pending Disposal</span>
+            <span className="text-[11px] font-bold text-black block">1.4%</span>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
             <RotateCcw className="w-5 h-5" />
@@ -325,7 +325,7 @@ export function ExecutiveDashboard() {
                 {/* Widget 1: Assets by Category (Donut) */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 className="text-xs font-bold text-slate-900">Assets by Category</h3>
+                    <h3 className="text-xs font-bold text-black">Assets by Category</h3>
                     <button onClick={() => navigate('/assets')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                       View Details
                     </button>
@@ -371,7 +371,7 @@ export function ExecutiveDashboard() {
                 {/* Widget 2: Assets by Location (Bar) */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 className="text-xs font-bold text-slate-900">Assets by Location</h3>
+                    <h3 className="text-xs font-bold text-black">Assets by Location</h3>
                     <button onClick={() => navigate('/assets')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                       View Details
                     </button>
@@ -397,7 +397,7 @@ export function ExecutiveDashboard() {
                 {/* Widget 3: Maintenance Status (Donut) */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 className="text-xs font-bold text-slate-900">Maintenance Status</h3>
+                    <h3 className="text-xs font-bold text-black">Maintenance Status</h3>
                     <button onClick={() => navigate('/maintenance')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                       View Details
                     </button>
@@ -443,7 +443,7 @@ export function ExecutiveDashboard() {
                 {/* Widget 4: Asset Movement Trend (Line) */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 className="text-xs font-bold text-slate-900">Asset Movement Trend</h3>
+                    <h3 className="text-xs font-bold text-black">Asset Movement Trend</h3>
                     <button onClick={() => navigate('/movements')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                       View Details
                     </button>
@@ -471,7 +471,7 @@ export function ExecutiveDashboard() {
                 {/* Widget 5: Top 5 Asset Types */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 className="text-xs font-bold text-slate-900">Top 5 Asset Types</h3>
+                    <h3 className="text-xs font-bold text-black">Top 5 Asset Types</h3>
                     <button onClick={() => navigate('/assets')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                       View Details
                     </button>
@@ -503,7 +503,7 @@ export function ExecutiveDashboard() {
                 {/* Widget 6: Warranty Expiry (Next 6 Months) */}
                 <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
                   <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <h3 className="text-xs font-bold text-slate-900">Warranty Expiry (Next 6 Months)</h3>
+                    <h3 className="text-xs font-bold text-black">Warranty Expiry (Next 6 Months)</h3>
                     <button onClick={() => navigate('/contracts')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                       View Details
                     </button>
@@ -530,7 +530,7 @@ export function ExecutiveDashboard() {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <h3 className="text-xs font-bold text-slate-900">Asset Condition Breakdown</h3>
+                  <h3 className="text-xs font-bold text-black">Asset Condition Breakdown</h3>
                   <button onClick={() => navigate('/assets')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">View All</button>
                 </div>
                 <div className="flex items-center gap-3 pt-3">
@@ -558,7 +558,7 @@ export function ExecutiveDashboard() {
 
               <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs flex flex-col justify-between">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                  <h3 className="text-xs font-bold text-slate-900">Maintenance SLA Resolution</h3>
+                  <h3 className="text-xs font-bold text-black">Maintenance SLA Resolution</h3>
                   <span className="text-xs text-emerald-600 font-bold">94.2% SLA Compliance</span>
                 </div>
                 <div className="space-y-3 pt-2">
@@ -687,7 +687,7 @@ export function ExecutiveDashboard() {
           {/* Widget 1: Recent Activities */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-bold text-slate-900">Recent Activities</h3>
+              <h3 className="text-xs font-bold text-black">Recent Activities</h3>
               <button onClick={() => navigate('/audit-trail')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                 View All
               </button>
@@ -718,7 +718,7 @@ export function ExecutiveDashboard() {
           {/* Widget 2: Upcoming Maintenance */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-bold text-slate-900">Upcoming Maintenance</h3>
+              <h3 className="text-xs font-bold text-black">Upcoming Maintenance</h3>
               <button onClick={() => navigate('/maintenance')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                 View All
               </button>
@@ -743,7 +743,7 @@ export function ExecutiveDashboard() {
           {/* Widget 3: Alerts & Notifications */}
           <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-xs font-bold text-slate-900">Alerts & Notifications</h3>
+              <h3 className="text-xs font-bold text-black">Alerts & Notifications</h3>
               <button onClick={() => navigate('/reports')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
                 View All
               </button>

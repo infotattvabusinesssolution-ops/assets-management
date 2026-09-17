@@ -536,7 +536,7 @@ export function MovementHistory() {
             <div className="flex items-center gap-2 text-xs text-slate-500">
               <button
                 onClick={() => navigate('/movements')}
-                className="flex items-center gap-1.5 hover:text-blue-600 transition-colors font-medium cursor-pointer"
+                className="flex items-center gap-1.5 hover:text-[#6C2BD9] transition-colors font-medium cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 <span>Assignment &amp; Movement</span>
@@ -567,11 +567,11 @@ export function MovementHistory() {
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
           <div
             onClick={() => setFilterStatus('All')}
-            className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-blue-400 transition-all"
+            className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-[#6C2BD9] transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">Total Movements</span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-[#6C2BD9] border border-purple-200">
                 100%
               </span>
             </div>
@@ -595,15 +595,15 @@ export function MovementHistory() {
 
           <div
             onClick={() => setFilterStatus('In Transit')}
-            className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-blue-400 transition-all"
+            className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-[#6C2BD9] transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">In Transit</span>
-              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-200">
+              <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-[#6C2BD9] border border-purple-200">
                 8%
               </span>
             </div>
-            <p className="text-2xl font-bold text-blue-700 mt-2">{kpis.inTransit}</p>
+            <p className="text-2xl font-bold text-[#6C2BD9] mt-2">{kpis.inTransit}</p>
             <p className="text-[11px] text-slate-400 mt-0.5">Dispatched &amp; en-route</p>
           </div>
 
@@ -873,7 +873,7 @@ export function MovementHistory() {
                         onClick={() => setSelectedMovementId(row.movementId)}
                         className={clsx(
                           'cursor-pointer transition-colors hover:bg-slate-50/70',
-                          isSelected ? 'bg-blue-50/40 font-medium' : ''
+                          isSelected ? 'bg-purple-50/60 font-medium border-l-2 border-l-[#6C2BD9]' : ''
                         )}
                       >
                         <td className="py-3 px-3 text-slate-400 text-center text-[11px]">
@@ -913,7 +913,7 @@ export function MovementHistory() {
                               row.status === 'Completed'
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : row.status === 'In Transit'
-                                ? 'bg-blue-50 text-blue-700 border-blue-200'
+                                ? 'bg-purple-50 text-[#6C2BD9] border-purple-200'
                                 : row.status === 'Pending Receipt'
                                 ? 'bg-amber-50 text-amber-700 border-amber-200'
                                 : 'bg-rose-50 text-rose-700 border-rose-200'
@@ -928,7 +928,7 @@ export function MovementHistory() {
                               e.stopPropagation();
                               setSelectedMovementId(row.movementId);
                             }}
-                            className="p-1 rounded text-purple-600 hover:bg-purple-50 transition-colors cursor-pointer"
+                            className="p-1 rounded text-[#6C2BD9] hover:bg-purple-50 transition-colors cursor-pointer"
                             title="View Movement Details"
                           >
                             <Eye className="w-3.5 h-3.5" />
@@ -958,7 +958,7 @@ export function MovementHistory() {
                   onClick={() => setCurrentPage(1)}
                   className={clsx(
                     'w-7 h-7 flex items-center justify-center rounded text-xs font-semibold',
-                    currentPage === 1 ? 'bg-blue-600 text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    currentPage === 1 ? 'bg-[#6C2BD9] text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                   )}
                 >
                   1
@@ -967,7 +967,7 @@ export function MovementHistory() {
                   onClick={() => setCurrentPage(2)}
                   className={clsx(
                     'w-7 h-7 flex items-center justify-center rounded text-xs font-semibold',
-                    currentPage === 2 ? 'bg-blue-600 text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    currentPage === 2 ? 'bg-[#6C2BD9] text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                   )}
                 >
                   2
@@ -976,7 +976,7 @@ export function MovementHistory() {
                   onClick={() => setCurrentPage(3)}
                   className={clsx(
                     'w-7 h-7 flex items-center justify-center rounded text-xs font-semibold',
-                    currentPage === 3 ? 'bg-blue-600 text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
+                    currentPage === 3 ? 'bg-[#6C2BD9] text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
                   )}
                 >
                   3
@@ -1013,7 +1013,7 @@ export function MovementHistory() {
                 className={clsx(
                   'flex-1 py-1.5 rounded-lg text-center transition-colors cursor-pointer',
                   drawerTab === 'overview'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-[#6C2BD9] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 )}
               >
@@ -1024,7 +1024,7 @@ export function MovementHistory() {
                 className={clsx(
                   'flex-1 py-1.5 rounded-lg text-center transition-colors cursor-pointer',
                   drawerTab === 'details'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-[#6C2BD9] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 )}
               >
@@ -1035,7 +1035,7 @@ export function MovementHistory() {
                 className={clsx(
                   'flex-1 py-1.5 rounded-lg text-center transition-colors cursor-pointer',
                   drawerTab === 'workflow'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-[#6C2BD9] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 )}
               >
@@ -1046,7 +1046,7 @@ export function MovementHistory() {
                 className={clsx(
                   'flex-1 py-1.5 rounded-lg text-center transition-colors cursor-pointer',
                   drawerTab === 'documents'
-                    ? 'bg-blue-600 text-white shadow-xs'
+                    ? 'bg-[#6C2BD9] text-white shadow-xs'
                     : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
                 )}
               >
@@ -1133,12 +1133,12 @@ export function MovementHistory() {
                       <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
                       <div className="flex items-baseline justify-between text-xs mb-1">
                         <span className="text-[11px] text-slate-400 font-medium">10 Sep 2026 10:24</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
                           Location Transfer
                         </span>
                       </div>
                       <p className="text-xs text-slate-700 font-medium">
-                        Block A &gt; GF &gt; IT-101 <span className="text-blue-600">➔</span> Block B &gt; 1F &gt; IT-201
+                        Block A &gt; GF &gt; IT-101 <span className="text-[#6C2BD9]">➔</span> Block B &gt; 1F &gt; IT-201
                       </p>
                       <p className="text-[11px] text-slate-400 mt-0.5">By: Sara Ali</p>
                     </div>
@@ -1148,12 +1148,12 @@ export function MovementHistory() {
                       <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
                       <div className="flex items-baseline justify-between text-xs mb-1">
                         <span className="text-[11px] text-slate-400 font-medium">15 Aug 2026 14:10</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
                           Custodian Transfer
                         </span>
                       </div>
                       <p className="text-xs text-slate-700 font-medium">
-                        Sara Ali <span className="text-blue-600">➔</span> Omar Saleh
+                        Sara Ali <span className="text-[#6C2BD9]">➔</span> Omar Saleh
                       </p>
                     </div>
 
@@ -1162,12 +1162,12 @@ export function MovementHistory() {
                       <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
                       <div className="flex items-baseline justify-between text-xs mb-1">
                         <span className="text-[11px] text-slate-400 font-medium">01 Jul 2026 09:30</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
                           Location Transfer
                         </span>
                       </div>
                       <p className="text-xs text-slate-700 font-medium">
-                        Block C &gt; 2F &gt; IT-301 <span className="text-blue-600">➔</span> Block A &gt; GF &gt; IT-101
+                        Block C &gt; 2F &gt; IT-301 <span className="text-[#6C2BD9]">➔</span> Block A &gt; GF &gt; IT-101
                       </p>
                     </div>
 
@@ -1176,7 +1176,7 @@ export function MovementHistory() {
                       <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
                       <div className="flex items-baseline justify-between text-xs mb-1">
                         <span className="text-[11px] text-slate-400 font-medium">15 Jun 2026 11:15</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
                           Assignment
                         </span>
                       </div>
@@ -1190,12 +1190,12 @@ export function MovementHistory() {
                       <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
                       <div className="flex items-baseline justify-between text-xs mb-1">
                         <span className="text-[11px] text-slate-400 font-medium">12 May 2026 16:40</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700">
+                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
                           Location Transfer
                         </span>
                       </div>
                       <p className="text-xs text-slate-700 font-medium">
-                        Store - Main <span className="text-blue-600">➔</span> Block C &gt; 2F &gt; IT-301
+                        Store - Main <span className="text-[#6C2BD9]">➔</span> Block C &gt; 2F &gt; IT-301
                       </p>
                     </div>
                   </div>
@@ -1203,7 +1203,7 @@ export function MovementHistory() {
                   <div className="pt-2 border-t border-slate-100 text-right">
                     <button
                       onClick={() => setIsFullTimelineModalOpen(true)}
-                      className="text-xs text-blue-600 hover:text-blue-800 font-semibold cursor-pointer inline-flex items-center gap-1"
+                      className="text-xs text-[#6C2BD9] hover:text-[#5b21b6] font-semibold cursor-pointer inline-flex items-center gap-1"
                     >
                       <span>View Full History</span>
                       <ArrowRight className="w-3.5 h-3.5" />
@@ -1233,7 +1233,7 @@ export function MovementHistory() {
                           </div>
                           <button
                             onClick={() => window.open('#', '_blank')}
-                            className="p-1.5 rounded-lg text-slate-400 hover:text-blue-600 hover:bg-blue-50 transition-colors cursor-pointer"
+                            className="p-1.5 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 transition-colors cursor-pointer"
                             title="Download Document"
                           >
                             <Download className="w-4 h-4" />
@@ -1255,7 +1255,7 @@ export function MovementHistory() {
                 <div className="divide-y divide-slate-100">
                   <div className="flex justify-between py-2">
                     <span className="text-slate-500">Movement ID</span>
-                    <span className="font-mono font-bold text-blue-600">{selectedMovement.movementId}</span>
+                    <span className="font-mono font-bold text-[#6C2BD9]">{selectedMovement.movementId}</span>
                   </div>
                   <div className="flex justify-between py-2">
                     <span className="text-slate-500">Transaction Type</span>
@@ -1353,7 +1353,7 @@ export function MovementHistory() {
                       </div>
                       <button
                         onClick={() => window.open('#', '_blank')}
-                        className="px-3 py-1.5 bg-blue-50 text-blue-600 hover:bg-blue-100 rounded-lg font-semibold flex items-center gap-1 cursor-pointer"
+                        className="px-3 py-1.5 bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 rounded-lg font-semibold flex items-center gap-1 cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
                         <span>Download</span>
@@ -1368,7 +1368,7 @@ export function MovementHistory() {
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between gap-2">
               <button
                 onClick={() => navigate(`/assets/${selectedMovement.assetNumber}`)}
-                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-blue-50 hover:bg-blue-100 text-blue-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer"
+                className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] rounded-lg text-xs font-semibold transition-colors cursor-pointer"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>View Asset 360°</span>
@@ -1410,7 +1410,7 @@ export function MovementHistory() {
                   <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
                   <div className="flex items-baseline justify-between text-xs mb-1">
                     <span className="text-[11px] text-slate-400 font-semibold">{ev.movementDate} {ev.movementTime}</span>
-                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-blue-50 text-blue-700">
+                    <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
                       {ev.movementType}
                     </span>
                   </div>

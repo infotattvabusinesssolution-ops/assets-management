@@ -462,174 +462,219 @@ export function BulkUpload() {
 
       </div>
 
-      {/* Preview & Validation Results Table Section (Matching Screenshot 1-to-1) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-4">
+      {/* Preview & Validation Results Table Section (Matching Screenshot 1-to-1 with Enterprise UI Tabulation) */}
+      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
         
         {/* Header Bar & Summary Stat Badges */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
           <div>
-            <h3 className="font-extrabold text-slate-900 text-base">Preview &amp; Validation Results</h3>
-            <p className="text-xs text-slate-500 font-medium">Review the file data and resolve any errors before submission.</p>
+            <h3 className="font-black text-black text-base tracking-tight">Preview &amp; Validation Results</h3>
+            <p className="text-xs text-slate-500 font-medium">Review the uploaded asset data, filter status, and resolve errors before submission.</p>
           </div>
 
-          {/* 4 Summary Cards matching screenshot */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 text-xs font-bold">
-            {/* Total Records */}
-            <div className="px-3.5 py-2 bg-blue-50/70 border border-blue-200 rounded-xl flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-blue-100 text-blue-700 font-black flex items-center justify-center text-xs shrink-0">
-                <FileText className="w-4 h-4 text-blue-600" />
-              </div>
-              <div>
-                <span className="text-[10px] text-slate-500 font-bold block">Total Records</span>
-                <span className="text-sm font-black text-slate-900">{stats.total}</span>
-              </div>
-            </div>
+          {/* Interactive Filter Cards / Summary Badges */}
+          <div className="flex flex-wrap items-center gap-2 text-xs font-bold">
+            <button
+              type="button"
+              onClick={() => { setStatusFilter('All'); setCurrentPage(1); }}
+              className={`px-3.5 py-2 rounded-xl flex items-center gap-2 border transition-all cursor-pointer ${
+                statusFilter === 'All' ? 'bg-purple-100 border-[#6C2BD9] text-black font-black shadow-2xs' : 'bg-slate-50 border-slate-200 text-slate-700 hover:bg-slate-100'
+              }`}
+            >
+              <FileText className="w-4 h-4 text-[#6C2BD9]" />
+              <span>All ({stats.total})</span>
+            </button>
 
-            {/* Valid Records */}
-            <div className="px-3.5 py-2 bg-emerald-50/70 border border-emerald-200 rounded-xl flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-emerald-500 text-white font-black flex items-center justify-center text-xs shrink-0">
-                <CheckCircle2 className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-[10px] text-emerald-800 font-bold block">Valid Records</span>
-                <span className="text-sm font-black text-emerald-900">{stats.valid}</span>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter('Valid'); setCurrentPage(1); }}
+              className={`px-3.5 py-2 rounded-xl flex items-center gap-2 border transition-all cursor-pointer ${
+                statusFilter === 'Valid' ? 'bg-emerald-100 border-emerald-500 text-black font-black shadow-2xs' : 'bg-emerald-50/70 border-emerald-200 text-emerald-800 hover:bg-emerald-100'
+              }`}
+            >
+              <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+              <span>Valid ({stats.valid})</span>
+            </button>
 
-            {/* Warning Records */}
-            <div className="px-3.5 py-2 bg-amber-50/70 border border-amber-200 rounded-xl flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-amber-500 text-white font-black flex items-center justify-center text-xs shrink-0">
-                <AlertTriangle className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-[10px] text-amber-800 font-bold block">Warning Records</span>
-                <span className="text-sm font-black text-amber-900">{stats.warning}</span>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter('Warning'); setCurrentPage(1); }}
+              className={`px-3.5 py-2 rounded-xl flex items-center gap-2 border transition-all cursor-pointer ${
+                statusFilter === 'Warning' ? 'bg-amber-100 border-amber-500 text-black font-black shadow-2xs' : 'bg-amber-50/70 border-amber-200 text-amber-800 hover:bg-amber-100'
+              }`}
+            >
+              <AlertTriangle className="w-4 h-4 text-amber-600" />
+              <span>Warnings ({stats.warning})</span>
+            </button>
 
-            {/* Error Records */}
-            <div className="px-3.5 py-2 bg-rose-50/70 border border-rose-200 rounded-xl flex items-center gap-2.5">
-              <div className="w-8 h-8 rounded-lg bg-rose-500 text-white font-black flex items-center justify-center text-xs shrink-0">
-                <XCircle className="w-4 h-4" />
-              </div>
-              <div>
-                <span className="text-[10px] text-rose-800 font-bold block">Error Records</span>
-                <span className="text-sm font-black text-rose-900">{stats.error}</span>
-              </div>
-            </div>
+            <button
+              type="button"
+              onClick={() => { setStatusFilter('Error'); setCurrentPage(1); }}
+              className={`px-3.5 py-2 rounded-xl flex items-center gap-2 border transition-all cursor-pointer ${
+                statusFilter === 'Error' ? 'bg-rose-100 border-rose-500 text-black font-black shadow-2xs' : 'bg-rose-50/70 border-rose-200 text-rose-800 hover:bg-rose-100'
+              }`}
+            >
+              <XCircle className="w-4 h-4 text-rose-600" />
+              <span>Errors ({stats.error})</span>
+            </button>
           </div>
         </div>
 
-        {/* Validation Results Data Table */}
-        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+        {/* Action Toolbar above table */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
+          <div className="flex items-center gap-2 text-black font-bold">
+            <ListFilter className="w-4 h-4 text-[#6C2BD9]" />
+            <span>Showing <strong className="text-black">{filteredRecords.length}</strong> records ({statusFilter} Filter)</span>
+          </div>
+
+          {(stats.error > 0 || stats.warning > 0) && (
+            <button
+              type="button"
+              onClick={handleDownloadErrorReport}
+              className="px-3 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-800 font-extrabold rounded-lg border border-rose-200 flex items-center gap-1.5 text-xs transition-all cursor-pointer"
+            >
+              <Download className="w-3.5 h-3.5 text-rose-600" /> Export Unresolved Error Report (.CSV)
+            </button>
+          )}
+        </div>
+
+        {/* Validation Results Standard Enterprise Data Table */}
+        <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
           <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse text-xs">
+            <table className="w-full text-left border-collapse text-xs text-black">
               <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
-                  <th className="p-3 w-8">
-                    <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9]" />
+                <tr className="bg-slate-50 border-b border-slate-200 text-black font-black uppercase text-[11px] tracking-wider select-none">
+                  <th className="px-4 py-3.5 w-10 text-black">
+                    <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] accent-[#6C2BD9] cursor-pointer" />
                   </th>
-                  <th className="p-3">Row</th>
-                  <th className="p-3">Status</th>
-                  <th className="p-3">Asset ID</th>
-                  <th className="p-3">Asset Name</th>
-                  <th className="p-3">Category</th>
-                  <th className="p-3">Serial Number</th>
-                  <th className="p-3">Location</th>
-                  <th className="p-3">Custodian</th>
-                  <th className="p-3">Remarks</th>
+                  <th className="px-4 py-3.5 text-black">Row</th>
+                  <th className="px-4 py-3.5 text-black">Status</th>
+                  <th className="px-4 py-3.5 text-black">Asset ID</th>
+                  <th className="px-4 py-3.5 text-black">Asset Name</th>
+                  <th className="px-4 py-3.5 text-black">Category</th>
+                  <th className="px-4 py-3.5 text-black">Serial Number</th>
+                  <th className="px-4 py-3.5 text-black">Location</th>
+                  <th className="px-4 py-3.5 text-black">Custodian</th>
+                  <th className="px-4 py-3.5 text-black">Remarks</th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
-                {paginatedRecords.map((r) => {
-                  return (
-                    <tr key={r.row} className="hover:bg-purple-50/30 transition-colors">
-                      <td className="p-3">
-                        <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9]" />
-                      </td>
+              <tbody className="divide-y divide-slate-200 bg-white font-medium text-black">
+                {paginatedRecords.length > 0 ? (
+                  paginatedRecords.map((r) => {
+                    return (
+                      <tr key={r.row} className="hover:bg-purple-50/40 transition-colors">
+                        <td className="px-4 py-3.5">
+                          <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] accent-[#6C2BD9] cursor-pointer" />
+                        </td>
 
-                      <td className="p-3 text-slate-500 font-mono font-bold">{r.row}</td>
+                        <td className="px-4 py-3.5 text-black font-mono font-bold">{r.row}</td>
 
-                      {/* Status Badge */}
-                      <td className="p-3 whitespace-nowrap">
-                        <span className={`px-2.5 py-1 rounded-full text-[10px] font-extrabold inline-flex items-center gap-1 ${
-                          r.status === 'Valid' ? 'bg-emerald-100 text-emerald-800' :
-                          r.status === 'Warning' ? 'bg-amber-100 text-amber-800' :
-                          'bg-rose-100 text-rose-800'
-                        }`}>
-                          {r.status === 'Valid' && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
-                          {r.status === 'Warning' && <AlertTriangle className="w-3 h-3 text-amber-600" />}
-                          {r.status === 'Error' && <XCircle className="w-3 h-3 text-rose-600" />}
-                          {r.status}
-                        </span>
-                      </td>
+                        {/* Status Badge */}
+                        <td className="px-4 py-3.5 whitespace-nowrap">
+                          <span className={`px-2.5 py-1 rounded-full text-[11px] font-extrabold inline-flex items-center gap-1.5 border ${
+                            r.status === 'Valid' ? 'bg-emerald-100 text-emerald-950 border-emerald-300' :
+                            r.status === 'Warning' ? 'bg-amber-100 text-amber-950 border-amber-300' :
+                            'bg-rose-100 text-rose-950 border-rose-300'
+                          }`}>
+                            {r.status === 'Valid' && <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />}
+                            {r.status === 'Warning' && <AlertTriangle className="w-3.5 h-3.5 text-amber-600" />}
+                            {r.status === 'Error' && <XCircle className="w-3.5 h-3.5 text-rose-600" />}
+                            {r.status}
+                          </span>
+                        </td>
 
-                      <td className="p-3 font-mono font-bold text-slate-700 whitespace-nowrap">{r.assetId}</td>
-                      <td className="p-3 font-bold text-slate-900">{r.name}</td>
-                      <td className="p-3 text-slate-600">{r.category}</td>
-                      <td className="p-3 font-mono text-slate-500">{r.serialNumber}</td>
-                      <td className="p-3 text-slate-600">{r.location}</td>
-                      <td className="p-3 text-slate-600">{r.custodian}</td>
+                        <td className="px-4 py-3.5 font-mono font-extrabold text-black whitespace-nowrap">{r.assetId}</td>
+                        <td className="px-4 py-3.5 font-black text-black">{r.name}</td>
+                        <td className="px-4 py-3.5 text-black font-semibold">{r.category}</td>
+                        <td className="px-4 py-3.5 font-mono text-black font-semibold">
+                          {r.serialNumber === '-' ? <span className="text-slate-400 font-medium">-</span> : r.serialNumber}
+                        </td>
+                        <td className="px-4 py-3.5 text-black font-semibold">
+                          {r.location === '-' ? <span className="text-slate-400 font-medium">-</span> : r.location}
+                        </td>
+                        <td className="px-4 py-3.5 text-black font-semibold">
+                          {r.custodian === '-' ? <span className="text-slate-400 font-medium">-</span> : r.custodian}
+                        </td>
 
-                      {/* Remarks */}
-                      <td className="p-3 text-slate-600">
-                        {r.status === 'Error' ? (
-                          <span className="text-rose-600 font-semibold">{r.remarks}</span>
-                        ) : r.status === 'Warning' ? (
-                          <span className="text-rose-600 font-semibold">{r.remarks}</span>
-                        ) : (
-                          <span className="text-slate-400 font-medium">{r.remarks}</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
+                        {/* Remarks */}
+                        <td className="px-4 py-3.5">
+                          {r.status === 'Error' ? (
+                            <span className="text-rose-600 font-bold text-xs">{r.remarks}</span>
+                          ) : r.status === 'Warning' ? (
+                            <span className="text-rose-700 font-bold text-xs">{r.remarks}</span>
+                          ) : (
+                            <span className="text-slate-400 font-medium">{r.remarks}</span>
+                          )}
+                        </td>
+                      </tr>
+                    );
+                  })
+                ) : (
+                  <tr>
+                    <td colSpan={10} className="px-4 py-8 text-center text-slate-500 font-medium">
+                      No records match the selected status filter.
+                    </td>
+                  </tr>
+                )}
               </tbody>
             </table>
           </div>
 
-          {/* Table Pagination Footer */}
-          <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-semibold">
-            <span>Showing {((currentPage - 1) * perPage) + 1} to {Math.min(currentPage * perPage, filteredRecords.length)} of {filteredRecords.length} records</span>
+          {/* Table Standard Pagination Footer */}
+          <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-black font-semibold gap-3">
+            <div>
+              Showing <span className="font-extrabold text-black">{filteredRecords.length > 0 ? ((currentPage - 1) * perPage) + 1 : 0}</span> to{' '}
+              <span className="font-extrabold text-black">
+                {Math.min(currentPage * perPage, filteredRecords.length)}
+              </span>{' '}
+              of <span className="font-extrabold text-black">{filteredRecords.length}</span> records
+            </div>
             
-            <div className="flex items-center gap-2">
-              <span>Show</span>
-              <select
-                value={perPage}
-                onChange={(e) => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 font-bold text-slate-800"
-              >
-                <option value="10">10</option>
-                <option value="25">25</option>
-              </select>
-              <span>per page</span>
+            <div className="flex items-center gap-3">
+              <div className="flex items-center gap-1.5">
+                <span className="text-black font-semibold">Show</span>
+                <select
+                  value={perPage}
+                  onChange={(e) => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
+                  className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 font-extrabold text-black shadow-2xs focus:border-[#6C2BD9] outline-none"
+                >
+                  <option value="10">10</option>
+                  <option value="25">25</option>
+                  <option value="50">50</option>
+                </select>
+                <span className="text-black font-semibold">per page</span>
+              </div>
 
-              <div className="flex items-center gap-1 ml-2">
+              <div className="flex items-center gap-1">
                 <button
                   disabled={currentPage === 1}
                   onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 disabled:opacity-40 cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-black font-bold hover:bg-purple-50 hover:text-[#6C2BD9] disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black transition-all shadow-2xs cursor-pointer flex items-center gap-1"
                 >
-                  &lt;
+                  &lt; Prev
                 </button>
+                
                 {Array.from({ length: totalPages }).map((_, i) => (
                   <button
                     key={i + 1}
                     onClick={() => setCurrentPage(i + 1)}
-                    className={`w-6 h-6 rounded-lg flex items-center justify-center font-bold text-xs cursor-pointer ${
-                      currentPage === i + 1 ? 'bg-[#6C2BD9] text-white' : 'bg-white border border-slate-200 text-slate-700'
+                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-extrabold text-xs transition-all cursor-pointer ${
+                      currentPage === i + 1
+                        ? 'bg-[#6C2BD9] text-white shadow-2xs'
+                        : 'bg-white border border-slate-300 text-black hover:bg-purple-50 hover:text-[#6C2BD9]'
                     }`}
                   >
                     {i + 1}
                   </button>
                 ))}
+
                 <button
-                  disabled={currentPage === totalPages}
+                  disabled={currentPage === totalPages || totalPages === 0}
                   onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 disabled:opacity-40 cursor-pointer"
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-black font-bold hover:bg-purple-50 hover:text-[#6C2BD9] disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black transition-all shadow-2xs cursor-pointer flex items-center gap-1"
                 >
-                  &gt;
+                  Next &gt;
                 </button>
               </div>
             </div>
@@ -638,131 +683,7 @@ export function BulkUpload() {
 
       </div>
 
-      {/* Key Features & Navigation Flow Sections (Matching Screenshot 1-to-1) */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 mt-6">
-        
-        {/* Left: Key Features */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-          <h3 className="font-extrabold text-slate-900 text-sm">Key Features</h3>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-xs">
-            
-            <div className="p-2.5 border border-slate-200 rounded-xl space-y-1 bg-white">
-              <div className="w-7 h-7 rounded-lg bg-emerald-600 text-white font-black flex items-center justify-center text-xs mb-1">
-                X
-              </div>
-              <span className="font-extrabold text-slate-900 block leading-tight text-[11px]">Template Based Upload</span>
-              <p className="text-[10px] text-slate-500 leading-tight">Predefined Excel/CSV template with field definitions</p>
-            </div>
-
-            <div className="p-2.5 border border-slate-200 rounded-xl space-y-1 bg-white">
-              <div className="w-7 h-7 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center text-xs mb-1">
-                <Settings className="w-4 h-4" />
-              </div>
-              <span className="font-extrabold text-slate-900 block leading-tight text-[11px]">Data Validation</span>
-              <p className="text-[10px] text-slate-500 leading-tight">Validates master data, duplicates and mandatory fields</p>
-            </div>
-
-            <div className="p-2.5 border border-slate-200 rounded-xl space-y-1 bg-white">
-              <div className="w-7 h-7 rounded-lg bg-[#6C2BD9] text-white font-bold flex items-center justify-center text-xs mb-1">
-                <Eye className="w-4 h-4" />
-              </div>
-              <span className="font-extrabold text-slate-900 block leading-tight text-[11px]">Preview &amp; Error Report</span>
-              <p className="text-[10px] text-slate-500 leading-tight">View valid, warning and error records before submission</p>
-            </div>
-
-            <div className="p-2.5 border border-slate-200 rounded-xl space-y-1 bg-white">
-              <div className="w-7 h-7 rounded-lg bg-orange-500 text-white font-bold flex items-center justify-center text-xs mb-1">
-                <Database className="w-4 h-4" />
-              </div>
-              <span className="font-extrabold text-slate-900 block leading-tight text-[11px]">Create or Update</span>
-              <p className="text-[10px] text-slate-500 leading-tight">Supports new asset creation or existing asset update</p>
-            </div>
-
-            <div className="p-2.5 border border-slate-200 rounded-xl space-y-1 bg-white">
-              <div className="w-7 h-7 rounded-lg bg-rose-600 text-white font-bold flex items-center justify-center text-xs mb-1">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <span className="font-extrabold text-slate-900 block leading-tight text-[11px]">Approval Workflow</span>
-              <p className="text-[10px] text-slate-500 leading-tight">Integrates with asset approval process</p>
-            </div>
-
-            <div className="p-2.5 border border-slate-200 rounded-xl space-y-1 bg-white">
-              <div className="w-7 h-7 rounded-lg bg-teal-600 text-white font-bold flex items-center justify-center text-xs mb-1">
-                <FileText className="w-4 h-4" />
-              </div>
-              <span className="font-extrabold text-slate-900 block leading-tight text-[11px]">Audit Trail</span>
-              <p className="text-[10px] text-slate-500 leading-tight">Complete upload history and transaction log</p>
-            </div>
-
-          </div>
-        </div>
-
-        {/* Right: Navigation Flow */}
-        <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-sm space-y-3">
-          <h3 className="font-extrabold text-slate-900 text-sm">Navigation Flow</h3>
-
-          <div className="flex items-center justify-between gap-1 pt-2">
-            
-            <div className="flex flex-col items-center text-center space-y-1.5 flex-1">
-              <div className="w-9 h-9 rounded-full bg-emerald-600 text-white flex items-center justify-center shadow-xs">
-                <Download className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold text-slate-800 leading-tight">1. Download<br/>Template</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-            <div className="flex flex-col items-center text-center space-y-1.5 flex-1">
-              <div className="w-9 h-9 rounded-full bg-blue-600 text-white flex items-center justify-center shadow-xs">
-                <FileText className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold text-slate-800 leading-tight">2. Prepare<br/>Data</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-            <div className="flex flex-col items-center text-center space-y-1.5 flex-1">
-              <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-xs">
-                <Upload className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold text-slate-800 leading-tight">3. Upload<br/>File</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-            <div className="flex flex-col items-center text-center space-y-1.5 flex-1">
-              <div className="w-9 h-9 rounded-full bg-amber-500 text-white flex items-center justify-center shadow-xs">
-                <Search className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold text-slate-800 leading-tight">4. Validate<br/>Data</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-            <div className="flex flex-col items-center text-center space-y-1.5 flex-1">
-              <div className="w-9 h-9 rounded-full bg-blue-900 text-white flex items-center justify-center shadow-xs">
-                <ListFilter className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold text-slate-800 leading-tight">5. Preview &amp;<br/>Confirm</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-            <div className="flex flex-col items-center text-center space-y-1.5 flex-1">
-              <div className="w-9 h-9 rounded-full bg-emerald-500 text-white flex items-center justify-center shadow-xs">
-                <Check className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold text-slate-800 leading-tight">6. Submit</span>
-            </div>
-            <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 mb-4" />
-
-            <div className="flex flex-col items-center text-center space-y-1.5 flex-1">
-              <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-xs">
-                <FileText className="w-4 h-4" />
-              </div>
-              <span className="text-[10px] font-extrabold text-slate-800 leading-tight">7. View Results<br/>&amp; History</span>
-            </div>
-
-          </div>
-        </div>
-
-      </div>
 
       {/* ================= MODALS ================= */}
 

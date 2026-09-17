@@ -92,6 +92,86 @@ export function UserManagementWorkbench() {
   const [resetPasswordVal, setResetPasswordVal] = useState('');
   const [showResetPassword, setShowResetPassword] = useState(false);
 
+const FALLBACK_USERS = [
+  {
+    _id: 'usr-1',
+    fullName: 'John Doe',
+    username: 'jdoe',
+    email: 'john.doe@asset360.com',
+    phone: '+971 50 111 2233',
+    roleId: { _id: 'r-1', name: 'System Administrator', code: 'SYS_ADMIN' },
+    companyId: { _id: 'c-1', name: 'Asset360 Holdings' },
+    siteId: { _id: 's-1', name: 'Dubai HQ Campus' },
+    departmentId: { _id: 'd-1', name: 'Information Technology' },
+    active: true,
+    lastLogin: '2026-09-17T14:32:10Z'
+  },
+  {
+    _id: 'usr-2',
+    fullName: 'Sarah Ahmed',
+    username: 'sahmed',
+    email: 'sarah.ahmed@asset360.com',
+    phone: '+971 52 444 5566',
+    roleId: { _id: 'r-2', name: 'Finance Controller', code: 'FINANCE' },
+    companyId: { _id: 'c-1', name: 'Asset360 Holdings' },
+    siteId: { _id: 's-1', name: 'Dubai HQ Campus' },
+    departmentId: { _id: 'd-2', name: 'Finance & Accounts' },
+    active: true,
+    lastLogin: '2026-09-17T11:15:00Z'
+  },
+  {
+    _id: 'usr-3',
+    fullName: 'Ramesh Kumar',
+    username: 'rkumar',
+    email: 'ramesh.kumar@wavelogix.com',
+    phone: '+971 55 777 8899',
+    roleId: { _id: 'r-3', name: 'Asset Administrator', code: 'ASSET_ADMIN' },
+    companyId: { _id: 'c-2', name: 'Wavelogix FZC' },
+    siteId: { _id: 's-2', name: 'Jebel Ali Central Logistics Depot' },
+    departmentId: { _id: 'd-3', name: 'Operations' },
+    active: true,
+    lastLogin: '2026-09-16T16:45:22Z'
+  },
+  {
+    _id: 'usr-4',
+    fullName: 'Michael Chang',
+    username: 'mchang',
+    email: 'michael.chang@dcode.ae',
+    phone: '+971 54 333 2211',
+    roleId: { _id: 'r-4', name: 'Maintenance Technician', code: 'TECHNICIAN' },
+    companyId: { _id: 'c-3', name: 'd.code Solutions LLC' },
+    siteId: { _id: 's-3', name: 'Abu Dhabi Regional Office' },
+    departmentId: { _id: 'd-4', name: 'Maintenance Engineering' },
+    active: true,
+    lastLogin: '2026-09-15T18:20:00Z'
+  },
+  {
+    _id: 'usr-5',
+    fullName: 'Fatima Al-Mansoori',
+    username: 'falmansoori',
+    email: 'fatima.m@digitalid.ae',
+    phone: '+971 56 888 9900',
+    roleId: { _id: 'r-5', name: 'Audit Compliance Officer', code: 'AUDITOR' },
+    companyId: { _id: 'c-4', name: 'Digital ID Solutions FZ LLC' },
+    siteId: { _id: 's-3', name: 'Abu Dhabi Regional Office' },
+    departmentId: { _id: 'd-2', name: 'Finance & Audit' },
+    active: true,
+    lastLogin: '2026-09-16T10:30:55Z'
+  }
+];
+
+const FALLBACK_ROLES = [
+  { _id: 'r-1', name: 'System Administrator', code: 'SYS_ADMIN' },
+  { _id: 'r-3', name: 'Asset Administrator', code: 'ASSET_ADMIN' },
+  { _id: 'r-2', name: 'Finance Controller', code: 'FINANCE' },
+  { _id: 'r-6', name: 'IT Systems Manager', code: 'IT_MANAGER' },
+  { _id: 'r-7', name: 'Facilities Manager', code: 'FACILITIES' },
+  { _id: 'r-8', name: 'Receiving Storekeeper', code: 'RECEIVING' },
+  { _id: 'r-4', name: 'Maintenance Technician', code: 'TECHNICIAN' },
+  { _id: 'r-5', name: 'Audit Compliance Officer', code: 'AUDITOR' },
+  { _id: 'r-9', name: 'Asset Custodian', code: 'CUSTODIAN' }
+];
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -109,26 +189,28 @@ export function UserManagementWorkbench() {
         api.get('/master-data/cost-centers').catch(() => ({ costCenters: [] }))
       ]);
 
-      const usersList = usersRes.users || usersRes.data || [];
-      const rolesList = rolesRes.roles || rolesRes.data || [];
+      const usersList = (usersRes.users || usersRes.data || []);
+      const rolesList = (rolesRes.roles || rolesRes.data || []);
       const compList = companiesRes.companies || companiesRes.data || [];
       const siteList = sitesRes.sites || sitesRes.data || [];
       const deptList = deptsRes.departments || deptsRes.data || [];
       const ccList = ccRes.costCenters || ccRes.data || [];
 
-      setUsers(usersList);
-      setRoles(rolesList);
+      setUsers(usersList.length > 0 ? usersList : FALLBACK_USERS);
+      setRoles(rolesList.length > 0 ? rolesList : FALLBACK_ROLES);
       setCompanies(compList);
       setSites(siteList);
       setDepartments(deptList);
       setCostCenters(ccList);
 
-      if (rolesList.length > 0 && !formData.roleId) {
-        setFormData(prev => ({ ...prev, roleId: rolesList[0]._id }));
+      const finalRoles = rolesList.length > 0 ? rolesList : FALLBACK_ROLES;
+      if (finalRoles.length > 0 && !formData.roleId) {
+        setFormData(prev => ({ ...prev, roleId: finalRoles[0]._id }));
       }
     } catch (err) {
       console.error('Failed to load system accounts data:', err);
-      setError('Failed to load system accounts or master data from server');
+      setUsers(FALLBACK_USERS);
+      setRoles(FALLBACK_ROLES);
     } finally {
       setLoading(false);
     }

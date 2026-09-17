@@ -33,30 +33,23 @@ import { AuditExecution } from './pages/AuditExecution';
 import AuditManagement from './pages/AuditManagement';
 import CreateAudit from './pages/CreateAudit';
 import { AuditReport } from './pages/AuditReport';
-import { FinancialWorkbench } from './pages/FinancialWorkbench';
 import { MaintenanceManager } from './pages/MaintenanceManager';
 import { CreateWorkOrder } from './pages/CreateWorkOrder';
 import { MaintenancePlans } from './pages/MaintenancePlans';
 import { PreventiveMaintenance } from './pages/PreventiveMaintenance';
-import { ContractManager } from './pages/ContractManager';
 import { DiscoveryWorkbench } from './pages/DiscoveryWorkbench';
 import { DiscoverySettings } from './pages/DiscoverySettings';
 import { ImportToAsset360 } from './pages/ImportToAsset360';
 import { DiscoveredDevicesWorkbench } from './pages/DiscoveredDevicesWorkbench';
-import { FloorMapEditor } from './pages/FloorMapEditor';
-import { DisposalWorkbench } from './pages/DisposalWorkbench';
 import { ReportsCatalogue } from './pages/ReportsCatalogue';
 import { WorkflowDesigner } from './pages/WorkflowDesigner';
 import { AISuite } from './pages/AISuite';
-import { RtlsWorkbench } from './pages/RtlsWorkbench';
-import { RtlsFloorMapLive } from './pages/RtlsFloorMapLive';
 import { AssetTracking } from './pages/AssetTracking';
 import { LocationMap } from './pages/LocationMap';
 import { Geofencing } from './pages/Geofencing';
 import { LocationHistory } from './pages/LocationHistory';
 import { ProximitySearch } from './pages/ProximitySearch';
 import { AdminMasterData } from './pages/AdminMasterData';
-import { AuditLogViewer } from './pages/AuditLogViewer';
 import { MobileScanWorkbench } from './pages/MobileScanWorkbench';
 import { UserManagementWorkbench } from './pages/UserManagementWorkbench';
 import { ServiceProviderAction } from './pages/ServiceProviderAction';
@@ -83,7 +76,7 @@ export function App() {
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <CommandPaletteProvider>
-          <BrowserRouter>
+          <BrowserRouter future={{ v7_startTransition: true, v7_relativeSplatPath: true }}>
             <Routes>
               <Route path="/login" element={<Login />} />
 
@@ -110,6 +103,9 @@ export function App() {
                 <Route path="assets/approvals" element={<AssetApproval />} />
                 <Route path="approvals" element={<AssetApproval />} />
                 <Route path="assets/:id" element={<Asset360Detail />} />
+                <Route path="inventory" element={<SpareParts />} />
+                <Route path="inventory/levels" element={<SpareParts />} />
+                <Route path="inventory/ledger" element={<SpareParts />} />
                 <Route path="receiving" element={<ReceivingWorkbench />} />
                 <Route path="receiving/with-po" element={<ReceivingWorkbench />} />
                 <Route path="receiving/without-po" element={<ReceiveWithoutPO />} />
@@ -121,12 +117,13 @@ export function App() {
                 <Route path="receiving/history/:id" element={<ReceivingHistory />} />
                 <Route path="tagging" element={<TagWorkbench />} />
                 <Route path="movements" element={<AssignmentMovementWorkbench />} />
-                <Route path="movements/transfer" element={<AssignmentMovementWorkbench defaultTab="transfer" />} />
+                <Route path="movements/transfer" element={<TransferMovement />} />
                 <Route path="movements/assign" element={<AssignAsset />} />
-                <Route path="movements/approvals" element={<AssignmentMovementWorkbench defaultTab="approvals" />} />
+                <Route path="movements/approvals" element={<MovementApprovals />} />
                 <Route path="movements/transit" element={<AssignmentMovementWorkbench defaultTab="transfer" />} />
                 <Route path="movements/history" element={<MovementHistory />} />
-                <Route path="movement-approvals" element={<AssignmentMovementWorkbench defaultTab="approvals" />} />
+                <Route path="movement-history" element={<MovementHistory />} />
+                <Route path="movement-approvals" element={<MovementApprovals />} />
                 <Route path="stocktakes" element={<AssetVerification />} />
                 <Route path="stocktakes/verify" element={<AssetVerification />} />
                 <Route path="stocktakes/execution" element={<AuditExecution />} />
@@ -135,6 +132,8 @@ export function App() {
                 <Route path="audit/execution/:id" element={<AuditExecution />} />
                 <Route path="audit-execution" element={<AuditExecution />} />
                 <Route path="stocktakes/management" element={<AuditManagement />} />
+                <Route path="audit-management" element={<AuditManagement />} />
+                <Route path="audit/management" element={<AuditManagement />} />
                 <Route path="stocktakes/create" element={<CreateAudit />} />
                 <Route path="stocktakes/audits/create" element={<CreateAudit />} />
                 <Route path="stocktakes/reports" element={<AuditReport />} />
@@ -142,7 +141,6 @@ export function App() {
                 <Route path="reports/audit" element={<AuditReport />} />
                 <Route path="audit-reports" element={<AuditReport />} />
                 <Route path="verification" element={<AssetVerification />} />
-                <Route path="finance" element={<FinancialWorkbench />} />
                 <Route path="maintenance" element={<MaintenanceManager />} />
                 <Route path="maintenance/plans" element={<MaintenancePlans />} />
                 <Route path="maintenance-plans" element={<MaintenancePlans />} />
@@ -158,8 +156,7 @@ export function App() {
                 <Route path="service-providers" element={<ServiceProviderAction />} />
                 <Route path="maintenance/spare-parts" element={<SpareParts />} />
                 <Route path="spare-parts" element={<SpareParts />} />
-                <Route path="contracts" element={<ContractManager />} />
-                <Route path="discovery" element={<DiscoveryWorkbench />} />
+                <Route path="discovery" element={<DiscoveryWorkbench defaultTab="network" />} />
                 <Route path="discovery/jobs" element={<DiscoveryWorkbench defaultTab="jobs" />} />
                 <Route path="discovery/devices" element={<DiscoveredDevicesWorkbench />} />
                 <Route path="discovery/import" element={<ImportToAsset360 />} />
@@ -169,21 +166,22 @@ export function App() {
                 <Route path="geofencing" element={<Geofencing />} />
                 <Route path="location-history" element={<LocationHistory />} />
                 <Route path="proximity-search" element={<ProximitySearch />} />
-                <Route path="rtls" element={<RtlsWorkbench />} />
-                <Route path="rtls/map" element={<RtlsFloorMapLive />} />
-                <Route path="maps" element={<FloorMapEditor />} />
-                <Route path="disposals" element={<DisposalWorkbench />} />
+                <Route path="rtls" element={<AssetTracking />} />
+                <Route path="rtls/map" element={<LocationMap />} />
                 <Route path="reports" element={<ReportsCatalogue />} />
                 <Route path="workflows" element={<WorkflowDesigner />} />
                 <Route path="admin/workflow-configuration" element={<WorkflowDesigner />} />
                 <Route path="ai-insights" element={<AISuite />} />
+                <Route path="ai-assistant" element={<AISuite />} />
                 <Route path="master-data" element={<MasterDataSetup />} />
                 <Route path="admin/master-data" element={<MasterDataSetup />} />
+                <Route path="asset-groups" element={<MasterDataSetup />} />
+                <Route path="admin/asset-groups" element={<MasterDataSetup />} />
+                <Route path="classes" element={<MasterDataSetup />} />
+                <Route path="admin/classes" element={<MasterDataSetup />} />
                 <Route path="admin/integrations" element={<IntegrationsConsole />} />
                 <Route path="integrations" element={<IntegrationsConsole />} />
                 <Route path="admin/audit-logs" element={<AuditLogsConsole />} />
-                <Route path="audit-logs" element={<AuditLogsConsole />} />
-                <Route path="audit-trail" element={<AuditLogsConsole />} />
                 <Route path="admin/notifications" element={<EmailNotifications />} />
                 <Route path="notifications" element={<EmailNotifications />} />
                 <Route path="admin/backup-scheduler" element={<BackupScheduler />} />
@@ -200,6 +198,7 @@ export function App() {
                 <Route path="admin/settings" element={<SystemConfiguration />} />
                 <Route path="admin/configuration" element={<SystemConfiguration />} />
                 <Route path="admin/workflows" element={<WorkflowDesigner />} />
+                <Route path="admin/workflow-configuration" element={<WorkflowDesigner />} />
                 <Route path="users" element={<Navigate to="/admin/users" replace />} />
                 <Route path="mobile-scan" element={<MobileScanWorkbench />} />
               </Route>

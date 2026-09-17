@@ -1022,22 +1022,49 @@ export function AssetList() {
                     {canEdit && (
                       <button
                         onClick={() => navigate(`/assets/${selectedAsset.id}`)}
-                        className="text-[11px] text-[#6C2BD9] font-bold hover:underline flex items-center gap-1"
+                        className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
                       >
-                        <Edit3 className="w-3 h-3" /> Edit
+                        <Edit3 className="w-3 h-3 text-[#6C2BD9]" /> Edit
                       </button>
                     )}
                   </div>
-                  <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-slate-700">
-                    <div className="flex justify-between"><span>Asset ID</span><span className="font-mono font-bold text-slate-900">{selectedAsset.assetId}</span></div>
-                    <div className="flex justify-between"><span>Serial Number</span><span className="font-mono font-bold text-slate-900">{selectedAsset.serialNumber}</span></div>
-                    <div className="flex justify-between"><span>RFID EPC</span><span className="font-mono font-bold text-[#6C2BD9]">{selectedAsset.rfidEpc}</span></div>
-                    <div className="flex justify-between"><span>Barcode / QR</span><span className="font-mono text-slate-900">{selectedAsset.barcode}</span></div>
-                    <div className="flex justify-between"><span>Category</span><span className="font-bold text-slate-900">IT &gt; {selectedAsset.categoryName}</span></div>
-                    <div className="flex justify-between"><span>Model</span><span className="font-bold text-slate-900">{selectedAsset.model}</span></div>
-                    <div className="flex justify-between"><span>Manufacturer</span><span className="font-bold text-slate-900">{selectedAsset.manufacturer}</span></div>
-                    <div className="flex justify-between"><span>Status</span><span className="font-bold text-emerald-600">{selectedAsset.lifecycleStatus}</span></div>
-                    <div className="flex justify-between"><span>Condition</span><span className="font-bold text-emerald-600">{selectedAsset.condition}</span></div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-slate-700 divide-y divide-slate-200/60">
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Asset ID</span>
+                      <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.assetId}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Serial Number</span>
+                      <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.serialNumber}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">RFID EPC</span>
+                      <span className="font-mono font-bold text-[#6C2BD9] text-left truncate">{selectedAsset.rfidEpc}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Barcode / QR</span>
+                      <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.barcode}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Category</span>
+                      <span className="font-bold text-slate-900 text-left">IT &gt; {selectedAsset.categoryName}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Model</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.model}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Manufacturer</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.manufacturer}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Status</span>
+                      <span className="font-bold text-emerald-600 text-left">{selectedAsset.lifecycleStatus}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Condition</span>
+                      <span className="font-bold text-emerald-600 text-left">{selectedAsset.condition}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1047,18 +1074,42 @@ export function AssetList() {
                     <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                       <MapPin className="w-3.5 h-3.5 text-[#6C2BD9]" /> Location &amp; Ownership
                     </span>
-                    <button onClick={() => navigate('/rtls/map')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
+                    <button
+                      onClick={() => navigate('/rtls/map')}
+                      className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+                    >
                       View on Map
                     </button>
                   </div>
-                  <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-slate-700">
-                    <div className="flex justify-between"><span>Site</span><span className="font-bold text-slate-900">{selectedAsset.siteName}</span></div>
-                    <div className="flex justify-between"><span>Building</span><span className="font-bold text-slate-900">{selectedAsset.buildingName}</span></div>
-                    <div className="flex justify-between"><span>Floor / Room</span><span className="font-bold text-slate-900">{selectedAsset.floorRoom}</span></div>
-                    <div className="flex justify-between"><span>Department</span><span className="font-bold text-slate-900">{selectedAsset.departmentName}</span></div>
-                    <div className="flex justify-between"><span>Cost Center</span><span className="font-bold text-slate-900">{selectedAsset.costCenterCode}</span></div>
-                    <div className="flex justify-between"><span>Custodian</span><span className="font-bold text-[#6C2BD9]">{selectedAsset.custodianName}</span></div>
-                    <div className="flex justify-between"><span>Assigned Date</span><span className="font-bold text-slate-900">{selectedAsset.assignedDate}</span></div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-slate-700 divide-y divide-slate-200/60">
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Site</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.siteName}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Building</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.buildingName}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Floor / Room</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.floorRoom}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Department</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.departmentName}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Cost Center</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.costCenterCode}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Custodian</span>
+                      <span className="font-bold text-[#6C2BD9] text-left">{selectedAsset.custodianName}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Assigned Date</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.assignedDate}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1068,17 +1119,38 @@ export function AssetList() {
                     <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                       <Wrench className="w-3.5 h-3.5 text-[#6C2BD9]" /> Warranty &amp; Maintenance
                     </span>
-                    <button onClick={() => navigate('/maintenance')} className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
+                    <button
+                      onClick={() => navigate('/maintenance')}
+                      className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+                    >
                       View Details
                     </button>
                   </div>
-                  <div className="space-y-1.5 bg-slate-50 p-2.5 rounded-xl border border-slate-200/80 text-slate-700">
-                    <div className="flex justify-between"><span>Warranty Status</span><span className="font-bold text-emerald-600">Active</span></div>
-                    <div className="flex justify-between"><span>Start Date</span><span className="font-bold text-slate-900">{selectedAsset.warrantyStart}</span></div>
-                    <div className="flex justify-between"><span>End Date</span><span className="font-bold text-slate-900">{selectedAsset.warrantyEnd}</span></div>
-                    <div className="flex justify-between"><span>Next Service Date</span><span className="font-bold text-purple-700">{selectedAsset.nextServiceDate}</span></div>
-                    <div className="flex justify-between"><span>Maintenance Type</span><span className="font-bold text-slate-900">{selectedAsset.maintType}</span></div>
-                    <div className="flex justify-between"><span>Checklist</span><span className="font-bold text-slate-900">{selectedAsset.checklistName}</span></div>
+                  <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-slate-700 divide-y divide-slate-200/60">
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Warranty Status</span>
+                      <span className="font-bold text-emerald-600 text-left">Active</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Start Date</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.warrantyStart}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">End Date</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.warrantyEnd}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Next Service Date</span>
+                      <span className="font-bold text-purple-700 text-left">{selectedAsset.nextServiceDate}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Maintenance Type</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.maintType}</span>
+                    </div>
+                    <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                      <span className="text-slate-500 font-medium">Checklist</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.checklistName}</span>
+                    </div>
                   </div>
                 </div>
 
@@ -1088,22 +1160,31 @@ export function AssetList() {
                     <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px] flex items-center gap-1.5">
                       <FileText className="w-3.5 h-3.5 text-[#6C2BD9]" /> Documents
                     </span>
-                    <button className="text-[11px] text-[#6C2BD9] font-bold hover:underline">
+                    <button className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer">
                       View All
                     </button>
                   </div>
                   <div className="space-y-1.5">
-                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-800">📄 Purchase Invoice.pdf</span>
-                      <span className="text-[10px] text-slate-400">320 KB</span>
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:bg-purple-50/50 transition-all cursor-pointer">
+                      <div className="flex items-center gap-2 font-semibold text-slate-800">
+                        <FileText className="w-4 h-4 text-rose-500" />
+                        <span>Purchase Invoice.pdf</span>
+                      </div>
+                      <span className="text-xs font-bold text-purple-600 font-mono">320 KB</span>
                     </div>
-                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-800">📄 Warranty.pdf</span>
-                      <span className="text-[10px] text-slate-400">450 KB</span>
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:bg-purple-50/50 transition-all cursor-pointer">
+                      <div className="flex items-center gap-2 font-semibold text-slate-800">
+                        <FileText className="w-4 h-4 text-rose-500" />
+                        <span>Warranty.pdf</span>
+                      </div>
+                      <span className="text-xs font-bold text-purple-600 font-mono">450 KB</span>
                     </div>
-                    <div className="p-2 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs">
-                      <span className="font-semibold text-slate-800">🖼️ Asset Photo.jpg</span>
-                      <span className="text-[10px] text-slate-400">1.2 MB</span>
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:bg-purple-50/50 transition-all cursor-pointer">
+                      <div className="flex items-center gap-2 font-semibold text-slate-800">
+                        <FileText className="w-4 h-4 text-amber-500" />
+                        <span>Asset Photo.jpg</span>
+                      </div>
+                      <span className="text-xs font-bold text-purple-600 font-mono">1.2 MB</span>
                     </div>
                   </div>
                 </div>

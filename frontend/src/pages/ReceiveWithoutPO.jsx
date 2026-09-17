@@ -29,6 +29,7 @@ import { ManualAssetModal } from '../components/modals/ManualAssetModal';
 import { FileImportModal } from '../components/modals/FileImportModal';
 import { EditAssetModal } from '../components/modals/EditAssetModal';
 import { ReviewSubmitModal } from '../components/modals/ReviewSubmitModal';
+import clsx from 'clsx';
 
 export function ReceiveWithoutPO() {
   const navigate = useNavigate();
@@ -513,7 +514,7 @@ export function ReceiveWithoutPO() {
               × Receiving & Tagging
             </span>
             <span>&gt;</span>
-            <span className="text-blue-600 font-semibold">Receive without PO</span>
+            <span className="text-[#6C2BD9] font-bold">Receive without PO</span>
           </div>
           <h1 className="text-2xl font-black text-slate-900 tracking-tight">Receive without PO</h1>
           <p className="text-xs text-slate-500 mt-0.5">Receive assets not linked to a Purchase Order and tag for asset registration</p>
@@ -521,80 +522,104 @@ export function ReceiveWithoutPO() {
 
         <button
           onClick={() => navigate('/receiving/history')}
-          className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer"
+          className="flex items-center gap-2 px-4 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-xl text-xs font-semibold shadow-2xs transition-all cursor-pointer"
         >
-          <Clock className="w-4 h-4 text-blue-600" />
+          <Clock className="w-4 h-4 text-[#6C2BD9]" />
           <span>View Receiving History</span>
         </button>
       </div>
 
       {/* 4-Step Stepper */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 items-center">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4 w-full max-w-6xl mx-auto px-2">
           {/* Step 1 */}
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shrink-0 ${
-              currentStep === 1 ? 'bg-blue-600 text-white shadow-xs' : 'bg-blue-50 text-blue-600'
-            }`}>
+          <div
+            onClick={() => setCurrentStep(1)}
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
+          >
+            <div className={clsx(
+              'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+              currentStep >= 1 ? 'bg-[#1E20E9] text-white' : 'bg-blue-50 text-[#1E20E9]'
+            )}>
               1
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-900">Asset Details</div>
-              <div className="text-[11px] text-slate-500">Enter receiving details</div>
+              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 1 ? 'text-[#1E20E9]' : 'text-slate-800')}>
+                Asset Details
+              </div>
+              <div className="text-[11px] text-blue-500 font-medium">Enter receiving details</div>
             </div>
           </div>
 
-          {/* Arrow */}
-          <div className="hidden lg:flex justify-center text-slate-300">
+          {/* Arrow 1 */}
+          <div className="hidden md:block text-blue-500 shrink-0">
             <ArrowRight className="w-4 h-4" />
           </div>
 
           {/* Step 2 */}
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 ${
-              currentStep === 2 ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-300 text-slate-400'
-            }`}>
+          <div
+            onClick={() => setCurrentStep(2)}
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
+          >
+            <div className={clsx(
+              'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+              currentStep >= 2 ? 'bg-[#1E20E9] text-white' : 'bg-blue-50 text-[#1E20E9]'
+            )}>
               2
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-700">Asset Verification</div>
-              <div className="text-[11px] text-slate-400">Capture asset information</div>
+              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 2 ? 'text-[#1E20E9]' : 'text-slate-800')}>
+                Asset Verification
+              </div>
+              <div className="text-[11px] text-blue-500 font-medium">Capture asset information</div>
             </div>
           </div>
 
-          {/* Arrow */}
-          <div className="hidden lg:flex justify-center text-slate-300">
+          {/* Arrow 2 */}
+          <div className="hidden md:block text-blue-500 shrink-0">
             <ArrowRight className="w-4 h-4" />
           </div>
 
           {/* Step 3 */}
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 ${
-              currentStep === 3 ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-300 text-slate-400'
-            }`}>
+          <div
+            onClick={() => setCurrentStep(3)}
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
+          >
+            <div className={clsx(
+              'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+              currentStep >= 3 ? 'bg-[#1E20E9] text-white' : 'bg-blue-50 text-[#1E20E9]'
+            )}>
               3
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-700">Tagging</div>
-              <div className="text-[11px] text-slate-400">Scan/Print &amp; Assign Tags</div>
+              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 3 ? 'text-[#1E20E9]' : 'text-slate-800')}>
+                Tagging
+              </div>
+              <div className="text-[11px] text-blue-500 font-medium">Scan/Print &amp; Assign Tags</div>
             </div>
           </div>
 
-          {/* Arrow */}
-          <div className="hidden lg:flex justify-center text-slate-300">
+          {/* Arrow 3 */}
+          <div className="hidden md:block text-blue-500 shrink-0">
             <ArrowRight className="w-4 h-4" />
           </div>
 
           {/* Step 4 */}
-          <div className="flex items-center gap-3">
-            <div className={`w-8 h-8 rounded-full border flex items-center justify-center font-bold text-xs shrink-0 ${
-              currentStep === 4 ? 'border-blue-600 bg-blue-50 text-blue-600' : 'border-slate-300 text-slate-400'
-            }`}>
+          <div
+            onClick={() => setCurrentStep(4)}
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
+          >
+            <div className={clsx(
+              'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+              currentStep >= 4 ? 'bg-[#1E20E9] text-white' : 'bg-blue-50 text-[#1E20E9]'
+            )}>
               4
             </div>
             <div>
-              <div className="text-xs font-bold text-slate-700">Review &amp; Submit</div>
-              <div className="text-[11px] text-slate-400">Confirm and post</div>
+              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 4 ? 'text-[#1E20E9]' : 'text-slate-800')}>
+                Review &amp; Submit
+              </div>
+              <div className="text-[11px] text-blue-500 font-medium">Confirm and post</div>
             </div>
           </div>
         </div>
@@ -1137,14 +1162,14 @@ export function ReceiveWithoutPO() {
                 <button
                   type="button"
                   onClick={handleSaveDraft}
-                  className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-blue-600 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                  className="px-4 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
                 >
                   Save as Draft
                 </button>
                 <button
                   type="button"
                   onClick={handleProceedToReview}
-                  className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
                   <span>Proceed to Review</span>
                   <ArrowRight className="w-3.5 h-3.5" />
@@ -1329,7 +1354,7 @@ export function ReceiveWithoutPO() {
                   <button
                     type="button"
                     onClick={handleAssignTag}
-                    className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
+                    className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors cursor-pointer"
                   >
                     Assign Tag
                   </button>
@@ -1436,7 +1461,7 @@ export function ReceiveWithoutPO() {
                 type="button"
                 onClick={handlePrintLabels}
                 disabled={isPrinting}
-                className="w-full py-2.5 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
+                className="w-full py-2.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
                 <span>{isPrinting ? 'Printing Labels...' : `Print ${printConfig.quantity} Label(s)`}</span>
@@ -1476,7 +1501,7 @@ export function ReceiveWithoutPO() {
                 </select>
               </div>
               <div className="flex items-center gap-2 pt-2">
-                <input type="checkbox" id="autoAssign" defaultChecked className="rounded-sm text-blue-600" />
+                <input type="checkbox" id="autoAssign" defaultChecked className="rounded-sm text-[#6C2BD9]" />
                 <label htmlFor="autoAssign" className="text-slate-700">Auto-assign tag immediately after RFID scan</label>
               </div>
             </div>
@@ -1484,7 +1509,7 @@ export function ReceiveWithoutPO() {
               <button
                 type="button"
                 onClick={() => setShowSettingsModal(false)}
-                className="px-4 py-2 bg-blue-600 text-white rounded-xl font-semibold shadow-xs"
+                className="px-4 py-2 bg-[#6C2BD9] text-white rounded-xl font-semibold shadow-xs"
               >
                 Save Settings
               </button>

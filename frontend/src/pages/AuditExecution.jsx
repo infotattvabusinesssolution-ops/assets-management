@@ -1398,7 +1398,7 @@ export function AuditExecution() {
                                   className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                                 />
                               </td>
-                              <td className="py-3 px-3 font-semibold text-blue-600 hover:underline">
+                              <td className="py-3 px-3 font-semibold text-[#6C2BD9] hover:underline">
                                 {asset.assetNo}
                               </td>
                               <td className="py-3 px-3 text-slate-900 font-medium whitespace-nowrap">
@@ -1803,7 +1803,7 @@ export function AuditExecution() {
 
                     <button
                       onClick={() => handleExecuteScan()}
-                      className="px-4 py-1.5 rounded-lg bg-[#2563EB] hover:bg-blue-700 text-white font-semibold text-xs transition-colors cursor-pointer"
+                      className="px-4 py-1.5 rounded-lg bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-semibold text-xs transition-colors cursor-pointer"
                     >
                       Scan
                     </button>
@@ -1826,7 +1826,7 @@ export function AuditExecution() {
                   </div>
                   <button
                     onClick={() => handleExecuteScan(manualInput.assetNo)}
-                    className="w-full py-1.5 rounded-lg bg-[#2563EB] text-white font-semibold text-xs mt-1"
+                    className="w-full py-1.5 rounded-lg bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-semibold text-xs mt-1 transition-colors cursor-pointer"
                   >
                     Lookup Asset
                   </button>

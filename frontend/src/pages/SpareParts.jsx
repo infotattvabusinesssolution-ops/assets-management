@@ -208,25 +208,25 @@ export function SpareParts() {
             {activeTab === 'TRANSACTIONS' && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-blue-600 font-semibold">Stock Transactions</span>
+                <span className="text-[#6C2BD9] font-bold">Stock Transactions</span>
               </>
             )}
             {activeTab === 'REORDER' && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-blue-600 font-semibold">Reorder Planning</span>
+                <span className="text-[#6C2BD9] font-bold">Reorder Planning</span>
               </>
             )}
             {activeTab === 'SUPPLIERS' && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-blue-600 font-semibold">Suppliers</span>
+                <span className="text-[#6C2BD9] font-bold">Suppliers</span>
               </>
             )}
           </div>
 
           <h1 className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-2">
-            <Package className="w-5 h-5 text-blue-600" />
+            <Package className="w-5 h-5 text-[#6C2BD9]" />
             {activeTab === 'TRANSACTIONS'
               ? 'Stock Transactions'
               : activeTab === 'REORDER'
@@ -252,21 +252,21 @@ export function SpareParts() {
             <>
               <button
                 onClick={() => showToastMsg('Importing supplier catalog...')}
-                className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold transition-colors shadow-2xs"
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold transition-colors shadow-2xs"
               >
                 Import
               </button>
 
               <button
                 onClick={() => showToastMsg('Exporting suppliers directory...')}
-                className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <Download className="w-4 h-4 text-slate-600" /> Export
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export
               </button>
 
               <button
                 onClick={() => showToastMsg('Adding new supplier...')}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
               >
                 <Plus className="w-4 h-4 text-white" /> Add Supplier
               </button>
@@ -275,21 +275,21 @@ export function SpareParts() {
             <>
               <button
                 onClick={() => showToastMsg('Generating Purchase Request...')}
-                className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <FileText className="w-4 h-4 text-blue-600" /> Generate Purchase Request
+                <FileText className="w-4 h-4 text-[#6C2BD9]" /> Generate Purchase Request
               </button>
 
               <button
                 onClick={() => showToastMsg('Exporting reorder plan...')}
-                className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <Download className="w-4 h-4 text-slate-600" /> Export
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export
               </button>
 
               <button
                 onClick={() => showToastMsg('Running AI Reorder Analysis...')}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
               >
                 <RefreshCw className="w-4 h-4 text-white" /> Run Reorder Analysis
               </button>
@@ -298,21 +298,21 @@ export function SpareParts() {
             <>
               <button
                 onClick={() => showToastMsg('Bulk spare parts import initiated...')}
-                className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <Upload className="w-4 h-4 text-slate-600" /> Import
+                <Upload className="w-4 h-4 text-[#6C2BD9]" /> Import
               </button>
 
               <button
                 onClick={() => showToastMsg('Exporting spare parts inventory...')}
-                className="px-3.5 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <Download className="w-4 h-4 text-slate-600" /> Export
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export
               </button>
 
               <button
                 onClick={() => setShowAddModal(true)}
-                className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
               >
                 <Plus className="w-4 h-4 text-white" /> Add Spare Part
               </button>
@@ -327,10 +327,10 @@ export function SpareParts() {
           {/* Card 1: Total Suppliers */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-              <Users className="w-5 h-5" />
+              <Users className="w-5 h-5 text-[#6C2BD9]" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Total Suppliers</p>
+              <p className="text-[11px] font-semibold text-black">Total Suppliers</p>
               <p className="text-xl font-bold text-slate-900">{suppliersKpiSummary.totalSuppliers}</p>
             </div>
           </div>
@@ -341,7 +341,7 @@ export function SpareParts() {
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Active Suppliers</p>
+              <p className="text-[11px] font-semibold text-black">Active Suppliers</p>
               <p className="text-xl font-bold text-slate-900">{suppliersKpiSummary.activeSuppliers}</p>
             </div>
           </div>
@@ -352,7 +352,7 @@ export function SpareParts() {
               <Ban className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Inactive Suppliers</p>
+              <p className="text-[11px] font-semibold text-black">Inactive Suppliers</p>
               <p className="text-xl font-bold text-slate-900">{suppliersKpiSummary.inactiveSuppliers}</p>
             </div>
           </div>
@@ -360,10 +360,10 @@ export function SpareParts() {
           {/* Card 4: Preferred Suppliers */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-              <Package className="w-5 h-5" />
+              <Package className="w-5 h-5 text-[#6C2BD9]" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Preferred Suppliers</p>
+              <p className="text-[11px] font-semibold text-black">Preferred Suppliers</p>
               <p className="text-xl font-bold text-slate-900">{suppliersKpiSummary.preferredSuppliers}</p>
             </div>
           </div>
@@ -376,7 +376,7 @@ export function SpareParts() {
               <ShoppingCart className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Parts to Reorder</p>
+              <p className="text-[11px] font-semibold text-black">Parts to Reorder</p>
               <p className="text-xl font-bold text-slate-900">{reorderKpiSummary.partsToReorder}</p>
             </div>
           </div>
@@ -387,7 +387,7 @@ export function SpareParts() {
               <Clock className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Pending PRs</p>
+              <p className="text-[11px] font-semibold text-black">Pending PRs</p>
               <p className="text-xl font-bold text-slate-900">{reorderKpiSummary.pendingPRs}</p>
             </div>
           </div>
@@ -398,18 +398,18 @@ export function SpareParts() {
               <Truck className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">On Order</p>
+              <p className="text-[11px] font-semibold text-black">On Order</p>
               <p className="text-xl font-bold text-slate-900">{reorderKpiSummary.onOrder}</p>
             </div>
           </div>
 
           {/* Card 4: Expected in 30 Days */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 text-[#6C2BD9] flex items-center justify-center shrink-0">
               <Calendar className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Expected in 30 Days</p>
+              <p className="text-[11px] font-semibold text-black">Expected in 30 Days</p>
               <p className="text-xl font-bold text-slate-900">{reorderKpiSummary.expected30Days}</p>
             </div>
           </div>
@@ -417,10 +417,10 @@ export function SpareParts() {
           {/* Card 5: Estimated Value (AED) */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-              <Coins className="w-5 h-5" />
+              <Coins className="w-5 h-5 text-[#6C2BD9]" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Estimated Value (AED)</p>
+              <p className="text-[11px] font-semibold text-black">Estimated Value (AED)</p>
               <p className="text-xl font-extrabold text-slate-900 font-mono">
                 {reorderKpiSummary.estimatedValueAED}
               </p>
@@ -431,11 +431,11 @@ export function SpareParts() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Card 1: Total Transactions */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 text-[#6C2BD9] flex items-center justify-center shrink-0">
               <ArrowUpDown className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Total Transactions</p>
+              <p className="text-[11px] font-semibold text-black">Total Transactions</p>
               <p className="text-xl font-bold text-slate-900">{txnKpiSummary.totalTxns}</p>
             </div>
           </div>
@@ -446,7 +446,7 @@ export function SpareParts() {
               <ArrowDownLeft className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Stock In</p>
+              <p className="text-[11px] font-semibold text-black">Stock In</p>
               <p className="text-xl font-bold text-slate-900">{txnKpiSummary.stockIn}</p>
             </div>
           </div>
@@ -457,7 +457,7 @@ export function SpareParts() {
               <ArrowUpRight className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Stock Out</p>
+              <p className="text-[11px] font-semibold text-black">Stock Out</p>
               <p className="text-xl font-bold text-slate-900">{txnKpiSummary.stockOut}</p>
             </div>
           </div>
@@ -468,7 +468,7 @@ export function SpareParts() {
               <ArrowLeftRight className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Transfers</p>
+              <p className="text-[11px] font-semibold text-black">Transfers</p>
               <p className="text-xl font-bold text-slate-900">{txnKpiSummary.transfers}</p>
             </div>
           </div>
@@ -476,10 +476,10 @@ export function SpareParts() {
           {/* Card 5: Adjustments */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 text-purple-600 flex items-center justify-center shrink-0">
-              <ArrowUpDown className="w-5 h-5" />
+              <ArrowUpDown className="w-5 h-5 text-[#6C2BD9]" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Adjustments</p>
+              <p className="text-[11px] font-semibold text-black">Adjustments</p>
               <p className="text-xl font-bold text-slate-900">{txnKpiSummary.adjustments}</p>
             </div>
           </div>
@@ -488,11 +488,11 @@ export function SpareParts() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3">
           {/* Card 1: Total Spare Parts */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 text-[#6C2BD9] flex items-center justify-center shrink-0">
               <Package className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Total Spare Parts</p>
+              <p className="text-[11px] font-semibold text-black">Total Spare Parts</p>
               <p className="text-xl font-bold text-slate-900">{kpiSummary.totalItems.toLocaleString()}</p>
             </div>
           </div>
@@ -503,7 +503,7 @@ export function SpareParts() {
               <CheckCircle2 className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">In Stock</p>
+              <p className="text-[11px] font-semibold text-black">In Stock</p>
               <p className="text-xl font-bold text-slate-900">{kpiSummary.inStock.toLocaleString()}</p>
             </div>
           </div>
@@ -514,7 +514,7 @@ export function SpareParts() {
               <AlertTriangle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Low Stock</p>
+              <p className="text-[11px] font-semibold text-black">Low Stock</p>
               <p className="text-xl font-bold text-slate-900">{kpiSummary.lowStock.toLocaleString()}</p>
             </div>
           </div>
@@ -525,19 +525,19 @@ export function SpareParts() {
               <AlertCircle className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Out of Stock</p>
+              <p className="text-[11px] font-semibold text-black">Out of Stock</p>
               <p className="text-xl font-bold text-slate-900">{kpiSummary.outOfStock.toLocaleString()}</p>
             </div>
           </div>
 
           {/* Card 5: Total Value (AED) */}
           <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs flex items-center gap-3">
-            <div className="w-10 h-10 rounded-xl bg-blue-50 border border-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-100 text-[#6C2BD9] flex items-center justify-center shrink-0">
               <Coins className="w-5 h-5" />
             </div>
             <div>
-              <p className="text-[11px] font-semibold text-slate-500">Total Value (AED)</p>
-              <p className="text-xl font-extrabold text-blue-600 font-mono">
+              <p className="text-[11px] font-semibold text-black">Total Value (AED)</p>
+              <p className="text-xl font-extrabold text-[#6C2BD9] font-mono">
                 {kpiSummary.totalValueAED.toLocaleString('en-US', { minimumFractionDigits: 2 })}
               </p>
             </div>
@@ -562,8 +562,8 @@ export function SpareParts() {
               onClick={() => setActiveTab(t.id)}
               className={`px-4 py-2.5 rounded-lg border-b-2 transition-all flex items-center gap-1.5 whitespace-nowrap ${
                 activeTab === t.id
-                  ? 'bg-blue-50/70 border-blue-600 text-blue-600 font-bold'
-                  : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-50'
+                  ? 'bg-purple-100 border-[#6C2BD9] text-black font-extrabold'
+                  : 'border-transparent text-black font-semibold hover:text-black hover:bg-purple-50'
               }`}
             >
               {t.name}
@@ -770,7 +770,7 @@ export function SpareParts() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-xs"
+                  className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold shadow-xs"
                 >
                   Save Spare Part
                 </button>

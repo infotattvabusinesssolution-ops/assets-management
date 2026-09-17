@@ -492,125 +492,117 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
             </button>
           </div>
 
-          <div className="relative group">
-            <span className="absolute -top-2 -left-2 w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-              12
-            </span>
-            <button
-              onClick={() => navigate('/receiving/history')}
-              className="px-4 py-2 bg-white hover:bg-slate-50 text-[#6C2BD9] border border-purple-200 hover:border-[#6C2BD9] text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95"
-            >
-              <History className="w-4 h-4 text-[#6C2BD9]" />
-              View Receiving History
-            </button>
-          </div>
+          <button
+            onClick={() => navigate('/receiving/history')}
+            className="px-4 py-2 bg-white hover:bg-slate-50 text-[#6C2BD9] border border-purple-200 hover:border-[#6C2BD9] text-xs font-bold rounded-xl transition-all shadow-xs flex items-center gap-2 cursor-pointer active:scale-95"
+          >
+            <History className="w-4 h-4 text-[#6C2BD9]" />
+            View Receiving History
+          </button>
         </div>
       </div>
 
-      {/* Stepper (Badge 1) */}
-      <div className="glass-panel p-4 flex flex-col md:flex-row items-center justify-between gap-3 bg-white">
-        <div className="flex items-center w-full justify-between max-w-4xl mx-auto">
+      {/* Stepper */}
+      <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
+        <div className="flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4 w-full max-w-6xl mx-auto px-2">
           {/* Step 1 */}
           <div
             onClick={() => setCurrentStep(1)}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
           >
             <div
               className={clsx(
-                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-xs',
-                currentStep >= 1 ? 'bg-[#6C2BD9] text-white' : 'bg-slate-100 text-slate-500'
+                'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+                currentStep >= 1 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
               )}
             >
               1
             </div>
             <div className="text-left">
-              <p className={clsx('text-xs font-bold leading-tight', currentStep === 1 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+              <p className={clsx('text-xs font-extrabold leading-tight', currentStep === 1 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                 {mode === 'po' ? 'PO Details' : 'Source Details'}
               </p>
-              <p className="text-[10px] text-slate-400">
+              <p className="text-[11px] text-purple-600 font-medium">
                 {mode === 'po' ? 'Enter or select PO' : 'Supplier & Reference'}
               </p>
             </div>
           </div>
 
-          <span className="text-slate-300 font-bold text-sm hidden sm:inline">→</span>
+          {/* Arrow 1 */}
+          <div className="hidden md:block text-purple-400 shrink-0">
+            <ArrowRight className="w-4 h-4" />
+          </div>
 
           {/* Step 2 */}
           <div
             onClick={() => setCurrentStep(2)}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
           >
             <div
               className={clsx(
-                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-xs',
-                currentStep >= 2
-                  ? 'bg-[#6C2BD9] text-white'
-                  : currentStep === 1
-                  ? 'bg-purple-100 text-[#6C2BD9]'
-                  : 'bg-slate-100 text-slate-500'
+                'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+                currentStep >= 2 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
               )}
             >
               2
             </div>
             <div className="text-left">
-              <p className={clsx('text-xs font-bold leading-tight', currentStep === 2 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+              <p className={clsx('text-xs font-extrabold leading-tight', currentStep === 2 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                 Asset Verification
               </p>
-              <p className="text-[10px] text-slate-400">Verify received items</p>
+              <p className="text-[11px] text-purple-600 font-medium">Verify received items</p>
             </div>
           </div>
 
-          <span className="text-slate-300 font-bold text-sm hidden sm:inline">→</span>
+          {/* Arrow 2 */}
+          <div className="hidden md:block text-purple-400 shrink-0">
+            <ArrowRight className="w-4 h-4" />
+          </div>
 
           {/* Step 3 */}
           <div
             onClick={() => setCurrentStep(3)}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
           >
             <div
               className={clsx(
-                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-xs',
-                currentStep >= 3
-                  ? 'bg-[#6C2BD9] text-white'
-                  : currentStep === 2
-                  ? 'bg-purple-100 text-[#6C2BD9]'
-                  : 'bg-slate-100 text-slate-500'
+                'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+                currentStep >= 3 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
               )}
             >
               3
             </div>
             <div className="text-left">
-              <p className={clsx('text-xs font-bold leading-tight', currentStep === 3 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+              <p className={clsx('text-xs font-extrabold leading-tight', currentStep === 3 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                 Tagging
               </p>
-              <p className="text-[10px] text-slate-400">Scan/Print & Assign Tags</p>
+              <p className="text-[11px] text-purple-600 font-medium">Scan/Print &amp; Assign Tags</p>
             </div>
           </div>
 
-          <span className="text-slate-300 font-bold text-sm hidden sm:inline">→</span>
+          {/* Arrow 3 */}
+          <div className="hidden md:block text-purple-400 shrink-0">
+            <ArrowRight className="w-4 h-4" />
+          </div>
 
           {/* Step 4 */}
           <div
             onClick={() => setCurrentStep(4)}
-            className="flex items-center gap-3 cursor-pointer group"
+            className="flex items-center gap-3 cursor-pointer group shrink-0"
           >
             <div
               className={clsx(
-                'w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all shadow-xs',
-                currentStep >= 4
-                  ? 'bg-[#6C2BD9] text-white'
-                  : currentStep === 3
-                  ? 'bg-purple-100 text-[#6C2BD9]'
-                  : 'bg-slate-100 text-slate-500'
+                'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
+                currentStep >= 4 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
               )}
             >
               4
             </div>
             <div className="text-left">
-              <p className={clsx('text-xs font-bold leading-tight', currentStep === 4 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
-                Review & Submit
+              <p className={clsx('text-xs font-extrabold leading-tight', currentStep === 4 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
+                Review &amp; Submit
               </p>
-              <p className="text-[10px] text-slate-400">Confirm and post</p>
+              <p className="text-[11px] text-purple-600 font-medium">Confirm and post</p>
             </div>
           </div>
         </div>
@@ -621,14 +613,9 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
         {/* Card 2: Purchase Order Information */}
         <div className="glass-panel p-4 space-y-3 relative">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-                2
-              </span>
-              <h2 className="text-xs font-bold text-slate-900 tracking-tight">
-                {mode === 'po' ? 'Purchase Order Information' : 'Direct Source Information'}
-              </h2>
-            </div>
+            <h2 className="text-xs font-bold text-slate-900 tracking-tight">
+              {mode === 'po' ? 'Purchase Order Information' : 'Direct Source Information'}
+            </h2>
             {mode === 'po' && (
               <button
                 onClick={() => setShowPoSearchModal(true)}
@@ -680,12 +667,11 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">PO Date</label>
                   <div className="relative flex items-center">
                     <input
-                      type="text"
+                      type="date"
                       value={poDate}
-                      readOnly
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-600 font-medium"
+                      onChange={(e) => setPoDate(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-[#6C2BD9] cursor-pointer"
                     />
-                    <Calendar className="w-3.5 h-3.5 absolute right-2 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
 
@@ -693,12 +679,11 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                   <label className="text-[11px] font-bold text-slate-700 block mb-1">Expected Delivery Date</label>
                   <div className="relative flex items-center">
                     <input
-                      type="text"
+                      type="date"
                       value={expectedDeliveryDate}
-                      readOnly
-                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-slate-50 text-slate-600 font-medium"
+                      onChange={(e) => setExpectedDeliveryDate(e.target.value)}
+                      className="w-full px-3 py-1.5 text-xs rounded-lg border border-slate-200 bg-white font-medium text-slate-800 focus:border-[#6C2BD9] cursor-pointer"
                     />
-                    <Calendar className="w-3.5 h-3.5 absolute right-2 text-slate-400 pointer-events-none" />
                   </div>
                 </div>
               </div>
@@ -750,12 +735,7 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
 
         {/* Card 3: Receiving Information */}
         <div className="glass-panel p-4 space-y-3 relative">
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-              3
-            </span>
-            <h2 className="text-xs font-bold text-slate-900 tracking-tight">Receiving Information</h2>
-          </div>
+          <h2 className="text-xs font-bold text-slate-900 tracking-tight">Receiving Information</h2>
 
           <div className="space-y-3">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -836,22 +816,17 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
               <div className="flex items-center gap-4">
-                <div className="flex items-center gap-1.5">
-                  <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-                    4
-                  </span>
-                  <button
-                    onClick={() => setActiveTab('scan')}
-                    className={clsx(
-                      'text-xs font-bold transition-all border-b-2 py-1 cursor-pointer',
-                      activeTab === 'scan'
-                        ? 'text-[#6C2BD9] border-[#6C2BD9]'
-                        : 'text-slate-500 border-transparent hover:text-slate-800'
-                    )}
-                  >
-                    Scan & Tag
-                  </button>
-                </div>
+                <button
+                  onClick={() => setActiveTab('scan')}
+                  className={clsx(
+                    'text-xs font-bold transition-all border-b-2 py-1 cursor-pointer',
+                    activeTab === 'scan'
+                      ? 'text-[#6C2BD9] border-[#6C2BD9]'
+                      : 'text-slate-500 border-transparent hover:text-slate-800'
+                  )}
+                >
+                  Scan & Tag
+                </button>
 
                 <button
                   onClick={() => setActiveTab('print')}
@@ -866,19 +841,14 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                 </button>
               </div>
 
-              {/* Tagging Settings Button (Badge 5) */}
-              <div className="relative">
-                <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-[#6C2BD9] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
-                  5
-                </span>
-                <button
-                  onClick={() => setShowSettingsModal(true)}
-                  className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
-                  title="Tagging Settings (Printers, RFID, Templates)"
-                >
-                  <Settings className="w-4 h-4" />
-                </button>
-              </div>
+              {/* Tagging Settings Button */}
+              <button
+                onClick={() => setShowSettingsModal(true)}
+                className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
+                title="Tagging Settings (Printers, RFID, Templates)"
+              >
+                <Settings className="w-4 h-4" />
+              </button>
             </div>
 
             {activeTab === 'scan' ? (
@@ -945,18 +915,15 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                   </div>
                 </div>
 
-                {/* Card 6: Asset Preview */}
+                {/* Asset Preview */}
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl relative">
-                  <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-[#6C2BD9] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
-                    6
-                  </span>
-                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-2">
-                    Asset Preview
+                  <p className="text-[10px] font-extrabold uppercase tracking-wider text-slate-500 mb-2 flex items-center gap-1.5">
+                    <Sliders className="w-3.5 h-3.5 text-[#6C2BD9]" /> Asset Preview
                   </p>
 
                   {assetPreview ? (
                     <div className="flex gap-3 items-center">
-                      <div className="w-18 h-18 rounded-lg overflow-hidden border border-slate-200 bg-white shrink-0 flex items-center justify-center p-1">
+                      <div className="w-20 h-20 rounded-lg overflow-hidden border border-slate-200 bg-white shrink-0 flex items-center justify-center p-1">
                         <img
                           src={assetPreview.imageUrl}
                           alt={assetPreview.assetName}
@@ -964,30 +931,30 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                         />
                       </div>
 
-                      <div className="flex-1 min-w-0 space-y-0.5 text-[11px]">
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Serial Number:</span>
+                      <div className="flex-1 min-w-0 space-y-1 text-[11px]">
+                        <div className="grid grid-cols-[100px_1fr] items-center">
+                          <span className="text-slate-400 font-medium">Serial Number:</span>
                           <span className="font-mono font-bold text-slate-800 truncate">{assetPreview.serialNumber}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Asset Name:</span>
+                        <div className="grid grid-cols-[100px_1fr] items-center">
+                          <span className="text-slate-400 font-medium">Asset Name:</span>
                           <span className="font-semibold text-slate-800 truncate">{assetPreview.assetName}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Category:</span>
+                        <div className="grid grid-cols-[100px_1fr] items-center">
+                          <span className="text-slate-400 font-medium">Category:</span>
                           <span className="text-slate-700">{assetPreview.category}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Model:</span>
+                        <div className="grid grid-cols-[100px_1fr] items-center">
+                          <span className="text-slate-400 font-medium">Model:</span>
                           <span className="text-slate-700">{assetPreview.model}</span>
                         </div>
-                        <div className="flex justify-between">
-                          <span className="text-slate-400">Tag Number:</span>
+                        <div className="grid grid-cols-[100px_1fr] items-center">
+                          <span className="text-slate-400 font-medium">Tag Number:</span>
                           <span className="font-mono font-bold text-[#6C2BD9]">{assetPreview.tagNumber}</span>
                         </div>
-                        <div className="flex justify-between items-center pt-0.5">
-                          <span className="text-slate-400">Status:</span>
-                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-full">
+                        <div className="grid grid-cols-[100px_1fr] items-center pt-0.5">
+                          <span className="text-slate-400 font-medium">Status:</span>
+                          <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100/70 px-2 py-0.5 rounded-full w-fit">
                             <Check className="w-3 h-3 text-emerald-600" /> {assetPreview.status}
                           </span>
                         </div>
@@ -1000,32 +967,22 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                   )}
                 </div>
 
-                {/* Buttons 7 (Clear) and 8 (Assign Tag) */}
+                {/* Buttons (Clear) and (Assign Tag) */}
                 <div className="flex items-center gap-2 pt-1">
-                  <div className="relative flex-1">
-                    <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-[#6C2BD9] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
-                      7
-                    </span>
-                    <button
-                      onClick={handleClearScan}
-                      className="w-full py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
-                    >
-                      Clear
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleClearScan}
+                    className="flex-1 py-2 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer"
+                  >
+                    Clear
+                  </button>
 
-                  <div className="relative flex-1">
-                    <span className="absolute -top-2 -left-2 w-4 h-4 rounded-full bg-[#6C2BD9] text-white text-[9px] font-black flex items-center justify-center shadow-xs">
-                      8
-                    </span>
-                    <button
-                      onClick={handleAssignTag}
-                      disabled={!assetPreview}
-                      className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:bg-slate-300 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
-                    >
-                      Assign Tag
-                    </button>
-                  </div>
+                  <button
+                    onClick={handleAssignTag}
+                    disabled={!assetPreview}
+                    className="flex-1 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:bg-slate-300 text-white text-xs font-bold rounded-xl transition-all shadow-xs cursor-pointer flex items-center justify-center gap-1.5"
+                  >
+                    Assign Tag
+                  </button>
                 </div>
               </div>
             ) : (
@@ -1060,17 +1017,12 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
         </div>
       </div>
 
-      {/* Card 9: PO Line Items Grid (Partial Receiving Support) */}
+      {/* PO Line Items Grid (Partial Receiving Support) */}
       <div className="glass-panel overflow-hidden relative">
         <div className="p-4 border-b border-slate-200 flex items-center justify-between bg-white">
-          <div className="flex items-center gap-2">
-            <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-              9
-            </span>
-            <h2 className="text-xs font-bold text-slate-900 tracking-tight">
-              {mode === 'po' ? `PO Line Items (${lineItems.length})` : `Direct Intake Line Items (${lineItems.length})`}
-            </h2>
-          </div>
+          <h2 className="text-xs font-bold text-slate-900 tracking-tight">
+            {mode === 'po' ? `PO Line Items (${lineItems.length})` : `Direct Intake Line Items (${lineItems.length})`}
+          </h2>
 
           <p className="text-[11px] text-slate-500 font-medium">
             Click <span className="font-bold text-[#6C2BD9]">Receive</span> to move into individual asset verification
@@ -1183,17 +1135,12 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
 
       {/* Bottom Row: Recent Scanned Items (Card 10) & Summary (Card 11) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-        {/* Card 10: Recent Scanned Items (7 Cols) */}
+        {/* Recent Scanned Items (7 Cols) */}
         <div className="lg:col-span-7 glass-panel p-4 space-y-3 relative">
           <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-                10
-              </span>
-              <h2 className="text-xs font-bold text-slate-900 tracking-tight">
-                Recent Scanned Items ({recentScannedItems.length})
-              </h2>
-            </div>
+            <h2 className="text-xs font-bold text-slate-900 tracking-tight">
+              Recent Scanned Items ({recentScannedItems.length})
+            </h2>
             <span className="text-[10px] text-slate-400 font-medium">Refreshes in real-time</span>
           </div>
 
@@ -1245,15 +1192,10 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
           </div>
         </div>
 
-        {/* Card 11: Summary (5 Cols) */}
+        {/* Summary (5 Cols) */}
         <div className="lg:col-span-5 glass-panel p-4 flex flex-col justify-between space-y-4 relative">
           <div>
-            <div className="flex items-center gap-2 mb-3">
-              <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center shadow-xs">
-                11
-              </span>
-              <h2 className="text-xs font-bold text-slate-900 tracking-tight">Summary</h2>
-            </div>
+            <h2 className="text-xs font-bold text-slate-900 tracking-tight mb-3">Summary</h2>
 
             {/* 4 Metric Boxes */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">

@@ -35,36 +35,36 @@ export function Topbar() {
   };
 
   return (
-    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-20 shadow-xs">
+    <header className="h-16 bg-white border-b border-slate-200 px-6 flex items-center justify-between sticky top-0 z-20 shadow-2xs">
       {/* Search Bar matching screenshot */}
       <div className="flex items-center gap-4 flex-1 max-w-xl">
         <button
           onClick={openPalette}
-          className="flex items-center gap-2.5 bg-slate-50 hover:bg-slate-100/80 border border-slate-200 text-slate-500 px-3.5 py-2 rounded-xl text-xs w-full sm:w-80 md:w-96 transition-all shadow-2xs select-none cursor-pointer"
+          className="flex items-center gap-2.5 bg-white hover:bg-purple-50/50 border border-slate-300 text-black px-3.5 py-2 rounded-xl text-xs w-full sm:w-80 md:w-96 transition-all shadow-2xs select-none cursor-pointer focus:border-[#6C2BD9]"
         >
           <Search className="w-4 h-4 text-[#6C2BD9] shrink-0" />
-          <span className="truncate text-slate-400 font-normal text-xs whitespace-nowrap">
+          <span className="truncate text-black font-semibold text-xs whitespace-nowrap">
             Search assets, locations, users, logs...
           </span>
         </button>
       </div>
 
       {/* Right Controls matching screenshot */}
-      <div className="flex items-center gap-3 md:gap-3.5">
+      <div className="flex items-center gap-3 md:gap-3.5 text-black">
         {/* Dubai HQ Selector matching screenshot */}
-        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 bg-white text-xs font-semibold text-slate-700 shadow-2xs cursor-pointer hover:bg-slate-50">
-          <span>Dubai HQ</span>
+        <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-black shadow-2xs cursor-pointer hover:bg-purple-50">
+          <span className="text-black">Dubai HQ</span>
           <ChevronDown className="w-3.5 h-3.5 text-[#6C2BD9]" />
         </div>
 
         {/* Notification Bell with Badge '3' */}
         <button
           onClick={() => {}}
-          className="relative p-2 rounded-xl text-slate-500 hover:text-slate-800 hover:bg-slate-100 transition-all cursor-pointer"
+          className="relative p-2 rounded-xl text-black hover:bg-purple-50 transition-all cursor-pointer border border-transparent hover:border-slate-200"
           title="Notifications"
         >
-          <Bell className="w-4 h-4" />
-          <span className="absolute top-1 right-1 w-4 h-4 bg-rose-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
+          <Bell className="w-4 h-4 text-black" />
+          <span className="absolute top-1 right-1 w-4 h-4 bg-rose-600 text-white text-[9px] font-bold rounded-full flex items-center justify-center ring-2 ring-white">
             3
           </span>
         </button>
@@ -72,7 +72,7 @@ export function Topbar() {
         {/* Help Circle Icon */}
         <button
           onClick={() => {}}
-          className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 hover:text-slate-800 hover:border-slate-400 flex items-center justify-center text-xs font-bold transition-all cursor-pointer"
+          className="w-7 h-7 rounded-full border border-slate-300 text-black hover:bg-purple-50 hover:border-[#6C2BD9] flex items-center justify-center text-xs font-bold transition-all cursor-pointer"
           title="Help & Documentation"
         >
           ?
@@ -82,22 +82,22 @@ export function Topbar() {
         <div className="relative">
           <button
             onClick={() => canSwitchRole && setShowRoleDropdown(!showRoleDropdown)}
-            className="flex items-center gap-2.5 pl-2 py-1 pr-1.5 rounded-xl hover:bg-slate-50 border border-transparent hover:border-slate-200 transition-all cursor-pointer"
+            className="flex items-center gap-2.5 pl-2 py-1 pr-1.5 rounded-xl hover:bg-purple-50 border border-transparent hover:border-slate-200 transition-all cursor-pointer text-black"
           >
-            <div className="w-8 h-8 rounded-full bg-[#3B1F8C] text-white font-extrabold text-xs shadow-xs flex items-center justify-center shrink-0">
+            <div className="w-8 h-8 rounded-full bg-[#6C2BD9] text-white font-extrabold text-xs shadow-2xs flex items-center justify-center shrink-0">
               JD
             </div>
             <div className="text-left hidden sm:block">
-              <p className="text-xs font-bold text-slate-900 leading-tight">John Doe</p>
-              <p className="text-[10px] text-slate-500 font-medium leading-tight">System Administrator</p>
+              <p className="text-xs font-extrabold text-black leading-tight">John Doe</p>
+              <p className="text-[10px] text-black font-bold leading-tight">System Administrator</p>
             </div>
             <ChevronDown className="w-3.5 h-3.5 text-[#6C2BD9] shrink-0" />
           </button>
 
           {/* Role Dropdown Menu */}
           {canSwitchRole && showRoleDropdown && (
-            <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-200 shadow-xl rounded-xl p-2 z-50 space-y-1">
-              <div className="px-3 py-1.5 text-[10px] uppercase font-mono text-slate-400 border-b border-slate-100 font-bold">
+            <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-300 shadow-xl rounded-xl p-2 z-50 space-y-1">
+              <div className="px-3 py-1.5 text-[10px] uppercase font-mono text-black border-b border-slate-200 font-bold">
                 Switch Role Perspective
               </div>
               <div className="max-h-64 overflow-y-auto space-y-1 pt-1">
@@ -107,13 +107,13 @@ export function Topbar() {
                     <button
                       key={r.code}
                       onClick={() => handleRoleChange(r.code)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-medium flex items-center justify-between transition-all ${
+                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-all ${
                         isCurrent
-                          ? 'bg-purple-50 text-[#6C2BD9] font-bold border border-purple-200'
-                          : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
+                          ? 'bg-purple-100 text-black font-extrabold border border-[#6C2BD9]'
+                          : 'text-black hover:bg-purple-50'
                       }`}
                     >
-                      <span>{r.name}</span>
+                      <span className="text-black">{r.name}</span>
                       {isCurrent && <Check className="w-3.5 h-3.5 text-[#6C2BD9]" />}
                     </button>
                   );

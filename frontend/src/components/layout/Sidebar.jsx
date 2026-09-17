@@ -25,7 +25,8 @@ import {
   ChevronDown,
   ChevronUp,
   Circle,
-  LogOut
+  LogOut,
+  Sparkles
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -91,10 +92,7 @@ const NAV_STRUCTURE = [
       { name: 'Location Map', path: '/rtls/map' },
       { name: 'Geofencing', path: '/geofencing' },
       { name: 'Location History', path: '/location-history' },
-      { name: 'Proximity Search', path: '/proximity-search' },
-      { name: 'Floor Maps & RTLS', path: '/maps' },
-      { name: 'Location Hierarchy', path: '/rtls/locations' },
-      { name: 'Zone Monitoring', path: '/rtls/zones' }
+      { name: 'Proximity Search', path: '/proximity-search' }
     ]
   },
   {
@@ -126,7 +124,7 @@ const NAV_STRUCTURE = [
     roles: ['*'],
     subItems: [
       { name: 'Assign Asset', path: '/movements/assign' },
-      { name: 'Transfer / Movement', path: '/movements' },
+      { name: 'Transfer / Movement', path: '/movements/transfer' },
       { name: 'Movement Approvals', path: '/movements/approvals' },
       { name: 'Movement History', path: '/movements/history' }
     ]
@@ -159,27 +157,6 @@ const NAV_STRUCTURE = [
     ]
   },
   {
-    id: 'finance',
-    name: 'Finance',
-    path: '/finance',
-    icon: DollarSign,
-    roles: ['*']
-  },
-  {
-    id: 'contracts',
-    name: 'Contracts & Compliance',
-    path: '/contracts',
-    icon: FileCheck,
-    roles: ['*']
-  },
-  {
-    id: 'disposals',
-    name: 'Disposal',
-    path: '/disposals',
-    icon: Trash2,
-    roles: ['*']
-  },
-  {
     id: 'reports',
     name: 'Reports & Analytics',
     path: '/reports',
@@ -197,11 +174,31 @@ const NAV_STRUCTURE = [
     ]
   },
   {
+    id: 'ai-assistant',
+    name: 'AI Assistant & Insights',
+    path: '/ai-insights',
+    icon: Sparkles,
+    roles: ['*']
+  },
+  {
     id: 'master-data',
     name: 'Master Data',
     path: '/admin/master-data',
     icon: Database,
-    roles: ['*']
+    roles: ['*'],
+    subItems: [
+      { name: 'Asset Groups', path: '/admin/master-data' },
+      { name: 'Asset Classes', path: '/admin/master-data?tab=classes' },
+      { name: 'Categories', path: '/admin/master-data?tab=categories' },
+      { name: 'Sub Categories', path: '/admin/master-data?tab=subcategories' },
+      { name: 'Locations', path: '/admin/master-data?tab=locations' },
+      { name: 'Departments', path: '/admin/master-data?tab=departments' },
+      { name: 'Cost Centers', path: '/admin/master-data?tab=cost-centers' },
+      { name: 'Suppliers', path: '/admin/master-data?tab=suppliers' },
+      { name: 'Manufacturers', path: '/admin/master-data?tab=manufacturers' },
+      { name: 'UOM', path: '/admin/master-data?tab=uom' },
+      { name: 'Status Codes', path: '/admin/master-data?tab=status-codes' }
+    ]
   },
   {
     id: 'administration',
@@ -210,25 +207,76 @@ const NAV_STRUCTURE = [
     icon: Settings,
     roles: ['*'],
     subItems: [
+      { name: 'Workflow Configuration', path: '/admin/workflows' },
       { name: 'User Management', path: '/admin/users' },
       { name: 'Roles & Permissions', path: '/admin/roles' },
       { name: 'Company & Organization', path: '/admin/organization' },
+      { name: 'Companies', path: '/admin/companies' },
+      { name: 'Business Units', path: '/admin/organization?tab=businessUnits' },
+      { name: 'Departments', path: '/admin/departments' },
+      { name: 'Locations', path: '/admin/locations' },
+      { name: 'Cost Centers', path: '/admin/cost-centers' },
       { name: 'System Configuration', path: '/admin/system-config' },
       { name: 'Master Data Setup', path: '/admin/master-data' },
       { name: 'Integrations', path: '/admin/integrations' },
       { name: 'Audit Logs', path: '/admin/audit-logs' },
       { name: 'Email Notifications', path: '/admin/notifications' },
-      { name: 'Backup & Scheduler', path: '/admin/backup-scheduler' }
+      { name: 'Notification Templates', path: '/admin/notifications' },
+      { name: 'Backup & Scheduler', path: '/admin/backup-scheduler' },
+      { name: 'Data Import / Export', path: '/admin/master-data' }
     ]
-  },
-  {
-    id: 'audit-log',
-    name: 'Audit Log',
-    path: '/admin/audit-logs',
-    icon: ShieldCheck,
-    roles: ['*']
   }
 ];
+
+const getBestActiveSubPath = (subItems, pathname, search) => {
+  if (!subItems || subItems.length === 0) return null;
+  const fullUrl = pathname + search;
+
+  // 1. Exact match on full URL (pathname + search)
+  const exactFullMatch = subItems.find(sub => sub.path === fullUrl);
+  if (exactFullMatch) return exactFullMatch.path;
+
+  // 2. If search has query parameters (e.g. ?tab=businessUnits or ?category=assets)
+  if (search && search.includes('=')) {
+    const searchParam = search.slice(1); // e.g. "tab=businessUnits"
+    const queryMatch = subItems.find(sub => sub.path.includes('?') && sub.path.includes(searchParam));
+    if (queryMatch) return queryMatch.path;
+  }
+
+  // 3. Match sub-item without query param if search is empty or no query match
+  const exactPathMatch = subItems.find(sub => {
+    if (sub.path.includes('?')) return false;
+    return sub.path === pathname ||
+      (sub.path === '/admin/organization' && pathname === '/admin/organization' && !search.includes('tab=')) ||
+      (sub.path === '/admin/master-data' && (pathname === '/admin/master-data' || pathname === '/master-data') && !search.includes('tab=')) ||
+      (sub.path === '/admin/integrations' && (pathname === '/admin/integrations' || pathname === '/integrations')) ||
+      (sub.path === '/admin/audit-logs' && (pathname === '/admin/audit-logs' || pathname === '/audit-logs' || pathname === '/audit-trail')) ||
+      (sub.path === '/admin/notifications' && (pathname === '/admin/notifications' || pathname === '/notifications')) ||
+      (sub.path === '/admin/backup-scheduler' && (pathname === '/admin/backup-scheduler' || pathname === '/backup-scheduler')) ||
+      (sub.path === '/assets' && pathname === '/assets' && !search) ||
+      (sub.path === '/tagging' && (pathname === '/tagging' || pathname === '/receiving/tag-assets')) ||
+      (sub.path === '/receiving/without-po' && (pathname === '/receiving/without-po' || pathname === '/receive-without-po')) ||
+      (sub.path === '/discovery' && (pathname === '/discovery' || pathname === '/discovery/devices')) ||
+      (sub.path === '/movements/assign' && pathname === '/movements/assign') ||
+      (sub.path === '/movements/transfer' && (pathname === '/movements/transfer' || (pathname === '/movements' && search.includes('transfer')))) ||
+      (sub.path === '/movements/approvals' && (pathname === '/movements/approvals' || pathname === '/movement-approvals')) ||
+      (sub.path === '/movements/history' && pathname === '/movements/history') ||
+      (sub.path === '/stocktakes/verify' && (pathname === '/stocktakes/verify' || pathname === '/stocktakes' || pathname.startsWith('/verification'))) ||
+      (sub.path === '/stocktakes/management' && pathname === '/stocktakes/management') ||
+      (sub.path === '/stocktakes/execution' && pathname === '/stocktakes/execution') ||
+      (sub.path === '/maintenance' && pathname === '/maintenance') ||
+      (sub.path === '/maintenance/plans' && (pathname === '/maintenance/plans' || pathname === '/maintenance-plans')) ||
+      (sub.path === '/maintenance/preventive' && (pathname === '/maintenance/preventive' || pathname === '/preventive-maintenance')) ||
+      (sub.path === '/maintenance/providers' && (pathname === '/maintenance/providers' || pathname === '/service-providers')) ||
+      (sub.path === '/maintenance/spare-parts' && (pathname === '/maintenance/spare-parts' || pathname === '/spare-parts'));
+  });
+
+  if (exactPathMatch) return exactPathMatch.path;
+
+  // 4. Fallback: first prefix match if no exact match
+  const prefixMatch = subItems.find(sub => !sub.path.includes('?') && pathname.startsWith(sub.path) && sub.path !== '/');
+  return prefixMatch ? prefixMatch.path : null;
+};
 
 export function Sidebar({ collapsed, setCollapsed }) {
   const { user, logout } = useAuth();
@@ -292,9 +340,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
           {visibleNavItems.map((item) => {
             const hasSubmenu = Boolean(item.subItems && item.subItems.length > 0);
             const isSubOpen = Boolean(openMenus[item.id]);
-            const isParentActive = (location.pathname.startsWith(item.path) && item.path !== '/') ||
-              (item.id === 'stocktakes' && location.pathname.startsWith('/verification')) ||
-              (item.id === 'administration' && (location.pathname.startsWith('/admin') || location.pathname.startsWith('/master-data') || location.pathname.startsWith('/audit-trail') || location.pathname.startsWith('/notifications') || location.pathname.startsWith('/backup-scheduler') || location.pathname.startsWith('/integrations')));
+            const activeSubPath = hasSubmenu ? getBestActiveSubPath(item.subItems, location.pathname, location.search) : null;
             const isExactActive = location.pathname === item.path;
 
             return (
@@ -305,27 +351,19 @@ export function Sidebar({ collapsed, setCollapsed }) {
                       onClick={() => toggleSubmenu(item.id)}
                       className={clsx(
                         'w-full flex items-center justify-between py-2 px-3 rounded-xl text-xs font-semibold transition-all group cursor-pointer',
-                        item.id === 'administration' && isSubOpen
-                          ? 'bg-purple-50/50 text-slate-900'
-                          : isParentActive
-                          ? 'bg-[#6C2BD9] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                        isSubOpen
+                          ? 'text-slate-900 bg-slate-100/70 font-bold'
+                          : 'text-slate-700 hover:text-slate-900 hover:bg-purple-50/60'
                       )}
                     >
                       <div className="flex items-center gap-2.5 truncate">
-                        {item.id === 'administration' && isSubOpen ? (
-                          <div className="w-6 h-6 rounded-lg bg-[#6C2BD9] flex items-center justify-center shrink-0 shadow-xs">
-                            <Settings className="w-3.5 h-3.5 text-white" />
-                          </div>
-                        ) : (
-                          <item.icon className={clsx('w-4 h-4 flex-shrink-0', isParentActive && item.id !== 'administration' ? 'text-white' : 'text-slate-500 group-hover:text-slate-800')} />
-                        )}
-                        <span className="truncate">{item.name}</span>
+                        <item.icon className="w-4 h-4 flex-shrink-0 text-[#6C2BD9]" />
+                        <span className="truncate text-slate-900 font-bold">{item.name}</span>
                       </div>
                       {isSubOpen ? (
-                        <ChevronUp className={clsx('w-3.5 h-3.5 transition-transform', item.id === 'administration' ? 'text-[#6C2BD9]' : isParentActive ? 'text-white' : 'text-slate-400')} />
+                        <ChevronUp className="w-3.5 h-3.5 transition-transform text-[#6C2BD9]" />
                       ) : (
-                        <ChevronDown className={clsx('w-3.5 h-3.5 transition-transform', isParentActive ? 'text-white' : 'text-slate-400')} />
+                        <ChevronDown className="w-3.5 h-3.5 transition-transform text-slate-400" />
                       )}
                     </button>
 
@@ -333,43 +371,21 @@ export function Sidebar({ collapsed, setCollapsed }) {
                     {isSubOpen && (
                       <div className="pl-3 pt-1 pb-1 space-y-0.5">
                         {item.subItems.map((sub) => {
-                          const isSubActive = location.pathname + location.search === sub.path || 
-                            location.pathname === sub.path ||
-                            (sub.path === '/admin/master-data' && (location.pathname === '/admin/master-data' || location.pathname === '/master-data')) ||
-                            (sub.path === '/admin/integrations' && (location.pathname === '/admin/integrations' || location.pathname === '/integrations')) ||
-                            (sub.path === '/admin/audit-logs' && (location.pathname === '/admin/audit-logs' || location.pathname === '/audit-logs' || location.pathname === '/audit-trail')) ||
-                            (sub.path === '/admin/notifications' && (location.pathname === '/admin/notifications' || location.pathname === '/notifications')) ||
-                            (sub.path === '/admin/backup-scheduler' && (location.pathname === '/admin/backup-scheduler' || location.pathname === '/backup-scheduler')) ||
-                            (sub.path === '/assets' && location.pathname === '/assets' && !location.search) ||
-                            (sub.path === '/tagging' && (location.pathname === '/tagging' || location.pathname === '/receiving/tag-assets')) ||
-                            (sub.path === '/receiving/without-po' && (location.pathname === '/receiving/without-po' || location.pathname === '/receive-without-po')) ||
-                            (sub.path === '/discovery' && (location.pathname === '/discovery' || location.pathname === '/discovery/devices')) ||
-                            (sub.path === '/movements/assign' && location.pathname === '/movements/assign') ||
-                            (sub.path === '/movements' && location.pathname === '/movements' && (!location.search || location.search.includes('transfer') || location.search.includes('assignment'))) ||
-                            (sub.path === '/movements/approvals' && (location.pathname === '/movements/approvals' || location.pathname === '/movement-approvals' || location.search.includes('approvals'))) ||
-                            (sub.path === '/movements/history' && (location.pathname === '/movements/history' || location.search.includes('history'))) ||
-                            (sub.path === '/stocktakes/verify' && (location.pathname === '/stocktakes/verify' || location.pathname === '/stocktakes' || location.pathname.startsWith('/verification'))) ||
-                            (sub.path === '/stocktakes/management' && location.pathname === '/stocktakes/management') ||
-                            (sub.path === '/stocktakes/execution' && location.pathname === '/stocktakes/execution') ||
-                            (sub.path === '/maintenance' && location.pathname === '/maintenance') ||
-                            (sub.path === '/maintenance/plans' && (location.pathname === '/maintenance/plans' || location.pathname === '/maintenance-plans')) ||
-                            (sub.path === '/maintenance/preventive' && (location.pathname === '/maintenance/preventive' || location.pathname === '/preventive-maintenance')) ||
-                            (sub.path === '/maintenance/providers' && (location.pathname === '/maintenance/providers' || location.pathname === '/service-providers')) ||
-                            (sub.path === '/maintenance/spare-parts' && (location.pathname === '/maintenance/spare-parts' || location.pathname === '/spare-parts'));
+                          const isSubActive = sub.path === activeSubPath;
                           return (
                             <NavLink
                               key={sub.name}
                               to={sub.path}
-                              className={({ isActive }) =>
+                              className={() =>
                                 clsx(
-                                  'flex items-center gap-2.5 py-1.5 px-3 rounded-lg text-[11px] font-semibold transition-all',
-                                  isActive || isSubActive
-                                    ? 'text-[#6C2BD9] bg-purple-50 font-bold'
-                                    : 'text-slate-500 hover:text-slate-900 hover:bg-slate-100/70'
+                                  'flex items-center gap-2.5 py-1.5 px-3 rounded-lg text-xs transition-all',
+                                  isSubActive
+                                    ? 'text-[#6C2BD9] bg-[#F5F3FF] font-extrabold border-l-4 border-[#6C2BD9] shadow-xs'
+                                    : 'text-slate-700 font-medium hover:text-slate-900 hover:bg-purple-50/40'
                                 )
                               }
                             >
-                              <Circle className={clsx('w-1.5 h-1.5 flex-shrink-0', isSubActive ? 'fill-[#6C2BD9] text-[#6C2BD9]' : 'fill-slate-300 text-slate-300')} />
+                              <Circle className={clsx('w-1.5 h-1.5 flex-shrink-0', isSubActive ? 'fill-[#6C2BD9] text-[#6C2BD9]' : 'fill-slate-400 text-slate-400')} />
                               <span className="truncate">{sub.name}</span>
                             </NavLink>
                           );
@@ -385,8 +401,8 @@ export function Sidebar({ collapsed, setCollapsed }) {
                         'flex items-center py-2 rounded-xl text-xs font-semibold transition-all group relative',
                         collapsed ? 'justify-center px-0' : 'justify-between px-3',
                         (isActive && item.path === '/') || (isExactActive && !hasSubmenu)
-                          ? 'bg-[#6C2BD9] text-white shadow-xs'
-                          : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                          ? 'bg-[#F5F3FF] text-[#6C2BD9] font-extrabold border-l-4 border-[#6C2BD9]'
+                          : 'text-slate-700 hover:text-slate-900 hover:bg-purple-50/60'
                       )
                     }
                     title={collapsed ? item.name : undefined}
@@ -394,11 +410,11 @@ export function Sidebar({ collapsed, setCollapsed }) {
                     {({ isActive }) => (
                       <>
                         <div className="flex items-center gap-2.5 truncate">
-                          <item.icon className={clsx('w-4 h-4 flex-shrink-0', (isActive && item.path === '/') || isExactActive ? 'text-white' : 'text-slate-500 group-hover:text-slate-800')} />
-                          {!collapsed && <span className="truncate">{item.name}</span>}
+                          <item.icon className="w-4 h-4 flex-shrink-0 text-[#6C2BD9]" />
+                          {!collapsed && <span className={clsx('truncate', (isActive && item.path === '/') || isExactActive ? 'font-extrabold text-[#6C2BD9]' : 'font-semibold text-slate-800')}>{item.name}</span>}
                         </div>
                         {!collapsed && ((isActive && item.path === '/') || isExactActive) && (
-                          <ChevronRight className="w-3.5 h-3.5 text-white/80 flex-shrink-0" />
+                          <ChevronRight className="w-3.5 h-3.5 text-[#6C2BD9] flex-shrink-0" />
                         )}
                       </>
                     )}
@@ -418,14 +434,14 @@ export function Sidebar({ collapsed, setCollapsed }) {
             clsx(
               'flex items-center gap-2.5 py-2 px-3 rounded-xl text-xs font-semibold transition-all group cursor-pointer',
               isActive
-                ? 'bg-purple-50 text-[#6C2BD9] font-bold'
-                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+                ? 'bg-purple-100 text-black font-extrabold border-l-2 border-[#6C2BD9]'
+                : 'text-black hover:text-black hover:bg-purple-50'
             )
           }
           title="Settings"
         >
-          <Settings className="w-4 h-4 text-purple-700 flex-shrink-0 group-hover:text-purple-900" />
-          {!collapsed && <span>Settings</span>}
+          <Settings className="w-4 h-4 text-[#6C2BD9] flex-shrink-0 group-hover:text-black" />
+          {!collapsed && <span className="text-black">Settings</span>}
         </NavLink>
 
         <button

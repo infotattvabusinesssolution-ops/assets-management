@@ -22,7 +22,9 @@ import {
   Wrench,
   FileText,
   Building,
+  Building2,
   User,
+  UserCheck,
   ShieldCheck,
   Radio,
   Barcode,
@@ -36,7 +38,11 @@ import {
   Check,
   X,
   FileCheck,
-  Plus
+  Plus,
+  Camera,
+  SlidersHorizontal,
+  RefreshCw,
+  Zap
 } from 'lucide-react';
 
 const INITIAL_EDIT_ASSET = {
@@ -947,123 +953,150 @@ export function AssetEdit() {
           
           {/* Card 1: Asset Image Preview */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3">
-            <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">Asset Preview</h3>
-            <div className="h-44 bg-slate-50 border border-slate-200 rounded-xl p-2 flex items-center justify-center relative overflow-hidden">
-              <img src={formData.image} alt={formData.assetName} className="h-full object-contain" />
+            <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center gap-2">
+              <SlidersHorizontal className="w-4 h-4 text-[#6C2BD9]" /> Asset Preview
+            </h3>
+            <div className="flex items-center gap-4">
+              <div className="w-36 h-28 bg-slate-50 border border-slate-200 rounded-xl p-2 flex items-center justify-center shrink-0">
+                <img src={formData.image} alt={formData.assetName} className="max-h-full max-w-full object-contain" />
+              </div>
+              <div className="space-y-1.5 flex-1">
+                <button
+                  type="button"
+                  onClick={() => showToast('success', 'Image change uploaded successfully')}
+                  className="px-3 py-1.5 bg-white border border-purple-200 hover:bg-purple-50 text-[#6C2BD9] font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <Camera className="w-3.5 h-3.5 text-[#6C2BD9]" /> Change Image
+                </button>
+                <span className="text-[10px] text-slate-400 font-medium block">JPG, PNG (Max 5MB)</span>
+              </div>
             </div>
-            <button
-              type="button"
-              onClick={() => showToast('success', 'Image change uploaded successfully')}
-              className="w-full py-2 bg-slate-100 hover:bg-slate-200 text-slate-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-            >
-              📷 Change Image <span className="text-[10px] text-slate-400 font-normal">(JPG, PNG Max 5MB)</span>
-            </button>
           </div>
 
           {/* Card 2: Current Assignment */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 text-xs">
-            <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center gap-2">
-              <User className="w-4 h-4 text-[#6C2BD9]" /> Current Assignment
+            <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center gap-2">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                <UserCheck className="w-4 h-4 text-[#6C2BD9]" />
+              </div>
+              <span>Current Assignment</span>
             </h3>
-            <div className="space-y-2 text-[11px]">
-              <div className="flex justify-between"><span className="text-slate-400">Custodian</span> <span className="font-bold text-[#6C2BD9]">{formData.custodian}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Department</span> <span className="font-bold text-slate-800">{formData.department}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Assigned Date</span> <span className="font-bold text-slate-800">{formData.assignedDate}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400">Location</span> <span className="font-bold text-slate-800 text-right">{formData.site}, {formData.floor} / {formData.room}</span></div>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <User className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="w-24 text-slate-500 font-medium">Custodian</span>
+                <span className="flex-1 font-bold text-[#6C2BD9] text-left">{formData.custodian}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <Building2 className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="w-24 text-slate-500 font-medium">Department</span>
+                <span className="flex-1 font-bold text-slate-900 text-left">{formData.department}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <Clock className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="w-24 text-slate-500 font-medium">Assigned Date</span>
+                <span className="flex-1 font-bold text-slate-900 text-left">{formData.assignedDate}</span>
+              </div>
+              <div className="flex items-start gap-2 text-xs">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
+                  <MapPin className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="w-24 text-slate-500 font-medium">Location</span>
+                <span className="flex-1 font-bold text-slate-900 text-left">{formData.site}, {formData.floor} / {formData.room}</span>
+              </div>
             </div>
           </div>
 
           {/* Card 3: Asset Identifications */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 text-xs">
-            <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center gap-2">
-              <Barcode className="w-4 h-4 text-[#6C2BD9]" /> Asset Identifications
+            <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center gap-2">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                <QrCode className="w-4 h-4 text-[#6C2BD9]" />
+              </div>
+              <span>Asset Identifications</span>
             </h3>
-            <div className="space-y-2 text-[11px] font-mono">
-              <div className="flex justify-between"><span className="text-slate-400 font-sans">Barcode</span> <span className="font-bold text-slate-800">{formData.barcode}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400 font-sans">QR Code</span> <span className="font-bold text-slate-800">{formData.qrCode}</span></div>
-              <div className="flex justify-between"><span className="text-slate-400 font-sans">RFID EPC</span> <span className="font-bold text-[#6C2BD9] truncate max-w-[170px]">{formData.rfidEpc}</span></div>
+            <div className="space-y-2.5">
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <Barcode className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="w-24 text-slate-500 font-medium">Barcode</span>
+                <span className="flex-1 font-mono font-bold text-[#6C2BD9] text-left">{formData.barcode}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <QrCode className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="w-24 text-slate-500 font-medium">QR Code</span>
+                <span className="flex-1 font-mono font-bold text-[#6C2BD9] text-left">{formData.qrCode}</span>
+              </div>
+              <div className="flex items-center gap-2 text-xs">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <Radio className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="w-24 text-slate-500 font-medium">RFID EPC</span>
+                <span className="flex-1 font-mono font-bold text-[#6C2BD9] text-left truncate">{formData.rfidEpc}</span>
+              </div>
             </div>
           </div>
 
           {/* Card 4: Quick Actions */}
           <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-2 text-xs">
-            <h3 className="font-extrabold text-slate-900 text-sm border-b border-slate-100 pb-2">Quick Actions</h3>
+            <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-2 mb-1 flex items-center gap-2">
+              <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                <Zap className="w-4 h-4 text-[#6C2BD9]" />
+              </div>
+              <span>Quick Actions</span>
+            </h3>
             
-            <button onClick={() => showToast('info', 'Opening Assignment History...')} className="w-full p-2 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] rounded-xl font-bold text-left flex items-center gap-2 transition-colors">
-              <Clock className="w-4 h-4 text-purple-600" /> View Assignment History
-            </button>
+            <div className="space-y-1">
+              <button onClick={() => showToast('info', 'Opening Assignment History...')} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <RefreshCw className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="truncate text-xs font-bold leading-none">View Assignment History</span>
+              </button>
 
-            <button onClick={() => showToast('info', 'Opening Maintenance Schedule...')} className="w-full p-2 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] rounded-xl font-bold text-left flex items-center gap-2 transition-colors">
-              <Wrench className="w-4 h-4 text-amber-600" /> View Maintenance
-            </button>
+              <button onClick={() => showToast('info', 'Opening Maintenance Schedule...')} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <Wrench className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="truncate text-xs font-bold leading-none">View Maintenance</span>
+              </button>
 
-            <button onClick={() => showToast('info', 'Opening Documents Repository...')} className="w-full p-2 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] rounded-xl font-bold text-left flex items-center gap-2 transition-colors">
-              <FileText className="w-4 h-4 text-blue-600" /> View Documents
-            </button>
+              <button onClick={() => showToast('info', 'Opening Documents Repository...')} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <FileText className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="truncate text-xs font-bold leading-none">View Documents</span>
+              </button>
 
-            <button onClick={() => showToast('info', `Locating ${formData.assetId} on Map...`)} className="w-full p-2 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] rounded-xl font-bold text-left flex items-center gap-2 transition-colors">
-              <MapPin className="w-4 h-4 text-emerald-600" /> Locate on Map
-            </button>
+              <button onClick={() => showToast('info', `Locating ${formData.assetId} on Map...`)} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <MapPin className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="truncate text-xs font-bold leading-none">Locate on Map</span>
+              </button>
 
-            <button onClick={() => showToast('success', `Sent print job for ${formData.assetId} label!`)} className="w-full p-2 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] rounded-xl font-bold text-left flex items-center gap-2 transition-colors">
-              <Printer className="w-4 h-4 text-purple-700" /> Print Asset Label
-            </button>
-          </div>
-
-        </div>
-      </div>
-
-      {/* Bottom Navigation Flow Banner (Exact Screenshot 1-to-1 Match) */}
-      <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4 mt-6">
-        <h3 className="font-black text-slate-900 text-sm tracking-tight flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#6C2BD9]" /> Navigation Flow – Asset Edit / Update
-        </h3>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-8 gap-3 text-xs items-stretch">
-          
-          {/* Step 1 */}
-          <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-xl space-y-1">
-            <span className="font-extrabold text-[#6C2BD9] block text-xs">1. Search / Select Asset</span>
-            <p className="text-[11px] text-slate-500 leading-tight">Search and select asset from register</p>
-          </div>
-
-          <div className="hidden md:flex items-center justify-center text-slate-300 font-bold">&rarr;</div>
-
-          {/* Step 2 */}
-          <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-xl space-y-1">
-            <span className="font-extrabold text-[#6C2BD9] block text-xs">2. View Asset Details</span>
-            <p className="text-[11px] text-slate-500 leading-tight">Load current asset information</p>
-          </div>
-
-          <div className="hidden md:flex items-center justify-center text-slate-300 font-bold">&rarr;</div>
-
-          {/* Step 3 */}
-          <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-xl space-y-1">
-            <span className="font-extrabold text-[#6C2BD9] block text-xs">3. Update Information</span>
-            <p className="text-[11px] text-slate-500 leading-tight">Modify permitted fields across sections</p>
-          </div>
-
-          <div className="hidden md:flex items-center justify-center text-slate-300 font-bold">&rarr;</div>
-
-          {/* Step 4 */}
-          <div className="p-3 bg-purple-50/60 border border-purple-100 rounded-xl space-y-1">
-            <span className="font-extrabold text-[#6C2BD9] block text-xs">4. Validate &amp; Submit</span>
-            <p className="text-[11px] text-slate-500 leading-tight">System validates changes and checks approval rules</p>
-          </div>
-
-          <div className="hidden md:flex items-center justify-center text-slate-300 font-bold">&rarr;</div>
-
-          {/* Result Box */}
-          <div className="md:col-span-8 p-3.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-emerald-900 mt-2">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-              <span className="font-extrabold text-xs">Result: Asset information updated successfully with complete audit trail.</span>
+              <button onClick={() => showToast('success', `Sent print job for ${formData.assetId} label!`)} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
+                <div className="w-5 h-5 flex items-center justify-center shrink-0">
+                  <Printer className="w-4 h-4 text-[#6C2BD9]" />
+                </div>
+                <span className="truncate text-xs font-bold leading-none">Print Asset Label</span>
+              </button>
             </div>
-            <span className="text-[11px] text-emerald-700 font-medium">Audit Record Logged</span>
           </div>
 
         </div>
       </div>
+
+
 
     </div>
   );

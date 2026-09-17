@@ -1,13 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { api } from '../services/api';
-import { useAuth } from '../context/AuthContext';
-import { AIInlineWidgets } from '../components/common/AIInlineWidgets';
 import {
   Bot,
   Send,
-  Mic,
-  MicOff,
   Sparkles,
   Search,
   Laptop,
@@ -18,759 +13,948 @@ import {
   ShieldCheck,
   FileText,
   Settings,
-  Home,
-  ThumbsUp,
-  ThumbsDown,
   Plus,
   MapPin,
   ChevronRight,
-  FileSpreadsheet,
-  Zap,
   TrendingUp,
-  Lock,
   Database,
-  UserCheck,
-  Store,
   Box,
   AlertTriangle,
   RefreshCw,
-  Info,
   CheckCircle2,
-  Target,
   Clock,
   Layers,
-  MessageSquare,
-  Activity
+  ArrowRight,
+  Camera,
+  Paperclip,
+  Trash2,
+  ExternalLink,
+  ChevronDown,
+  Info,
+  Wrench,
+  Package,
+  Cpu,
+  Zap,
+  Check,
+  X,
+  FileSpreadsheet,
+  HelpCircle,
+  Sliders,
+  Award,
+  AlertCircle
 } from 'lucide-react';
+import { api } from '../services/api';
+import clsx from 'clsx';
 
-const SUGGESTED_PROMPTS = [
-  // Asset Queries
+// Pre-seeded AI Assistant Initial Chat Feed matching Screenshot 32
+const INITIAL_CHAT_MESSAGES = [
   {
-    id: 'barcode_12345',
-    tab: 'queries',
-    text: 'Where is asset with barcode 12345?',
-    icon: Search
+    id: 'msg-1',
+    sender: 'bot',
+    text: "Hello! I'm Asset360 AI Assistant. I can help you with asset information, maintenance planning, spare parts, reports and more. How can I assist you today?",
+    timestamp: '10:25 AM'
   },
   {
-    id: 'laptops',
-    tab: 'queries',
-    text: 'List all available laptops',
-    icon: Laptop
+    id: 'msg-2',
+    sender: 'user',
+    text: 'Show me the top 5 assets with highest maintenance cost in the last 6 months',
+    timestamp: '10:25 AM'
   },
   {
-    id: 'building_a',
-    tab: 'queries',
-    text: 'Show me equipment in Building A',
-    icon: Building2
-  },
-  {
-    id: 'asset_status',
-    tab: 'queries',
-    text: 'How many assets are currently in use?',
-    icon: Activity
-  },
-
-  // Assignment & Location
-  {
-    id: 'custodian_bader',
-    tab: 'assignment',
-    text: 'What assets are assigned to Bader Al Kaabi?',
-    icon: User
-  },
-  {
-    id: 'unassigned',
-    tab: 'assignment',
-    text: 'Show all unassigned assets',
-    icon: UserCheck
-  },
-  {
-    id: 'floor_map',
-    tab: 'assignment',
-    text: 'Show assets on 2nd floor Building A',
-    icon: MapPin
-  },
-  {
-    id: 'transfer_history',
-    tab: 'assignment',
-    text: 'Recent custody transfers this week',
-    icon: RefreshCw
-  },
-
-  // Financial & Depreciation
-  {
-    id: 'total_value',
-    tab: 'financial',
-    text: "What's the total value of IT equipment?",
-    icon: DollarSign
-  },
-  {
-    id: 'purchased_2024',
-    tab: 'financial',
-    text: 'Show assets purchased in 2024',
-    icon: TrendingUp
-  },
-  {
-    id: 'depreciation',
-    tab: 'financial',
-    text: 'Which assets will fully depreciate this year?',
-    icon: BarChart3
-  },
-
-  // Audit & History
-  {
-    id: 'projector_moved',
-    tab: 'audit',
-    text: 'When was this projector last moved?',
-    icon: Clock
-  },
-  {
-    id: 'disposal_history',
-    tab: 'audit',
-    text: 'Show disposal history for Department 5',
-    icon: ShieldCheck
-  },
-  {
-    id: 'disposal_approval',
-    tab: 'audit',
-    text: 'Who approved this asset disposal?',
-    icon: AlertTriangle
-  },
-
-  // Analytics
-  {
-    id: 'distribution',
-    tab: 'analytics',
-    text: 'Compare asset distribution across departments',
-    icon: BarChart3
-  },
-  {
-    id: 'top_custodian',
-    tab: 'analytics',
-    text: 'Which custodian manages the most equipment?',
-    icon: User
-  },
-  {
-    id: 'depreciation_summary',
-    tab: 'analytics',
-    text: 'Show depreciation summary by category',
-    icon: TrendingUp
-  },
-
-  // Reports
-  {
-    id: 'generate_report',
-    tab: 'reports',
-    text: 'Generate monthly asset summary report',
-    icon: FileText
-  },
-  {
-    id: 'export_inventory',
-    tab: 'reports',
-    text: 'Export full inventory to Excel',
-    icon: FileSpreadsheet
-  },
-  {
-    id: 'compliance_report',
-    tab: 'reports',
-    text: 'Create compliance audit report',
-    icon: ShieldCheck
-  },
-
-  // Settings
-  {
-    id: 'ai_preferences',
-    tab: 'settings',
-    text: 'Show my AI assistant preferences',
-    icon: Settings
-  },
-  {
-    id: 'notification_config',
-    tab: 'settings',
-    text: 'Configure asset alert notifications',
-    icon: AlertTriangle
+    id: 'msg-3',
+    sender: 'bot',
+    text: 'Here are the top 5 assets with the highest maintenance cost in the last 6 months:',
+    timestamp: '10:26 AM',
+    tableData: [
+      { id: 1, assetCode: 'AHU-001', assetName: 'Air Handling Unit - B1', category: 'HVAC', cost: '48,750' },
+      { id: 2, assetCode: 'CH-002', assetName: 'Chiller - Plant Room', category: 'HVAC', cost: '42,300' },
+      { id: 3, assetCode: 'GEN-001', assetName: 'Diesel Generator', category: 'Generators', cost: '36,120' },
+      { id: 4, assetCode: 'LIFT-003', assetName: 'Passenger Lift - Tower A', category: 'Lifts', cost: '28,450' },
+      { id: 5, assetCode: 'PUMP-007', assetName: 'Water Pump - STP', category: 'Pumps', cost: '24,800' }
+    ],
+    followUpText: 'Would you like me to show the detailed work orders or create a maintenance plan recommendation for these assets?'
   }
 ];
 
-const CATEGORY_TABS = [
-  { id: 'home', label: 'Home', icon: Home },
-  { id: 'queries', label: 'Asset Queries', icon: Search },
-  { id: 'assignment', label: 'Assignment & Location', icon: Target },
-  { id: 'financial', label: 'Financial & Depreciation', icon: DollarSign },
-  { id: 'audit', label: 'Audit & History', icon: ShieldCheck },
-  { id: 'analytics', label: 'Analytics', icon: BarChart3 },
-  { id: 'reports', label: 'Reports', icon: FileText },
-  { id: 'settings', label: 'Settings', icon: Settings }
-];
-
 export function AISuite() {
-  const { user } = useAuth();
   const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('queries');
+
+  // Chat Feed State
+  const [messages, setMessages] = useState(INITIAL_CHAT_MESSAGES);
   const [inputText, setInputText] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const [loading, setLoading] = useState(false);
-
-  // Chat Conversation History
-  const [messages, setMessages] = useState([
-    {
-      id: 'demo-msg-1',
-      sender: 'user',
-      text: 'Where is asset with barcode 12345?',
-      timestamp: '10:30 AM'
-    },
-    {
-      id: 'demo-msg-2',
-      sender: 'bot',
-      text: 'Asset with barcode 12345 is currently located at:',
-      timestamp: '10:30 AM',
-      widgetType: 'ASSET_LOCATION'
-    }
-  ]);
-
-  // Active Query Results State (Initial default to Location Barcode 12345)
-  const [activeResult, setActiveResult] = useState({
-    title: 'Asset with barcode 12345 is currently located at:',
-    widgetType: 'ASSET_LOCATION',
-    apiData: []
-  });
-
-  const chatContainerRef = useRef(null);
+  const [isProcessing, setIsProcessing] = useState(false);
   const chatEndRef = useRef(null);
+  const fileInputRef = useRef(null);
+
+  // Modals
+  const [showSettingsModal, setShowSettingsModal] = useState(false);
+  const [showOcrModal, setShowOcrModal] = useState(false);
+  const [showDuplicatesModal, setShowDuplicatesModal] = useState(false);
+  const [showPredictiveModal, setShowPredictiveModal] = useState(false);
+  const [ocrImageName, setOcrImageName] = useState('');
+
+  // AI Configuration Settings
+  const [confidenceThreshold, setConfidenceThreshold] = useState(85);
+  const [enableOcr, setEnableOcr] = useState(true);
+  const [enablePredictive, setEnablePredictive] = useState(true);
+  const [enableDuplicateDetection, setEnableDuplicateDetection] = useState(true);
+  const [aiModel, setAiModel] = useState('Asset360-Enterprise-v4.2');
 
   const scrollToBottom = () => {
     setTimeout(() => {
-      if (chatContainerRef.current) {
-        chatContainerRef.current.scrollTop = chatContainerRef.current.scrollHeight;
-      }
-      chatEndRef.current?.scrollIntoView({ behavior: 'smooth', block: 'end' });
-    }, 150);
+      chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, 100);
   };
 
   useEffect(() => {
     scrollToBottom();
-  }, [messages, loading]);
+  }, [messages, isProcessing]);
 
-  const toggleSpeechRecognition = () => {
-    if (isListening) {
-      setIsListening(false);
-    } else {
-      setIsListening(true);
-      setTimeout(() => {
-        setInputText('Where is asset with barcode 12345?');
-        setIsListening(false);
-      }, 2000);
-    }
-  };
-
-  const handleSendPrompt = async (promptQuery) => {
-    const textToSend = promptQuery || inputText;
-    if (!textToSend.trim()) return;
+  // Handle User Input Submission
+  const handleSendMessage = (customQuery = null) => {
+    const query = (customQuery || inputText).trim();
+    if (!query) return;
 
     const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-
     const userMsg = {
-      id: Date.now() + '-user',
+      id: `user-${Date.now()}`,
       sender: 'user',
-      text: textToSend,
+      text: query,
       timestamp: timeStr
     };
 
     setMessages(prev => [...prev, userMsg]);
     setInputText('');
-    setLoading(true);
+    setIsProcessing(true);
 
-    try {
-      const apiRes = await api.post('/ai/assistant', { prompt: textToSend });
+    // Simulate AI reasoning and intent recognition
+    setTimeout(() => {
+      let botResponse = generateAiResponse(query, timeStr);
+      setMessages(prev => [...prev, botResponse]);
+      setIsProcessing(false);
+    }, 800);
+  };
 
-      let responseText = apiRes?.text;
-      let botResponseWidget = apiRes?.widgetType || 'DEFAULT_RESULTS';
+  // Conversational Intent Engine
+  const generateAiResponse = (query, timestamp) => {
+    const q = query.toLowerCase();
 
-      if (!responseText) {
-        responseText = getBotIntroText(botResponseWidget, textToSend);
-      }
-
-      const botMsg = {
-        id: Date.now() + '-bot',
+    // 1. Natural Language Asset Search
+    if (q.includes('laptops') || q.includes('finance') || q.includes('four years') || q.includes('4 years')) {
+      return {
+        id: `bot-${Date.now()}`,
         sender: 'bot',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: responseText,
-        widgetType: botResponseWidget,
-        provider: apiRes?.provider,
-        apiData: apiRes
+        timestamp,
+        text: 'Found 4 laptops assigned to Finance at Dubai HQ older than 4 years (Confidence: 96%):',
+        tableData: [
+          { id: 1, assetCode: 'AS-000102', assetName: 'Laptop - Dell Latitude 5410', category: 'Laptops', cost: 'AED 5,400', custodian: 'Sara Ali', age: '4.5 Yrs' },
+          { id: 2, assetCode: 'AS-000108', assetName: 'Laptop - Lenovo ThinkPad T14', category: 'Laptops', cost: 'AED 6,100', custodian: 'Bader Al Kaabi', age: '4.2 Yrs' },
+          { id: 3, assetCode: 'AS-000115', assetName: 'Laptop - HP EliteBook 840', category: 'Laptops', cost: 'AED 5,800', custodian: 'Fatima Noor', age: '4.8 Yrs' },
+          { id: 4, assetCode: 'AS-000122', assetName: 'Laptop - Dell Latitude 5400', category: 'Laptops', cost: 'AED 4,900', custodian: 'Ahmed Khan', age: '4.9 Yrs' }
+        ],
+        followUpText: 'Confidence score 96%. All 4 laptops are candidate for refresh under Q4 IT Hardware Capital Plan.',
+        actionLink: { text: 'View in Asset Register', path: '/assets?category=Laptops&department=Finance' }
       };
+    }
 
-      setMessages(prev => [...prev, botMsg]);
-      setActiveResult({
-        title: responseText,
-        widgetType: botResponseWidget,
-        apiData: apiRes?.records || []
-      });
-    } catch (err) {
-      console.error('AI Suite query error:', err);
-      const fallbackMsg = {
-        id: Date.now() + '-bot',
+    // 2. Maintenance & Repeated Failure Analysis
+    if (q.includes('hvac') || q.includes('maintenance') || q.includes('chiller') || q.includes('fail')) {
+      return {
+        id: `bot-${Date.now()}`,
         sender: 'bot',
-        timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-        text: `Results for "${textToSend}":`,
-        widgetType: 'DEFAULT_RESULTS'
+        timestamp,
+        text: 'HVAC Assets analysis & preventive maintenance schedule due this month:',
+        tableData: [
+          { id: 1, assetCode: 'CH-002', assetName: 'Chiller - Plant Room', category: 'HVAC', cost: '42,300', status: 'High Failure Risk (84%)' },
+          { id: 2, assetCode: 'AHU-001', assetName: 'Air Handling Unit - B1', category: 'HVAC', cost: '48,750', status: 'PM Due Sep 18' },
+          { id: 3, assetCode: 'FCU-104', assetName: 'Fan Coil Unit - 2F', category: 'HVAC', cost: '12,400', status: 'Vibration Alert' }
+        ],
+        followUpText: 'Chiller CH-002 has 4 breakdown work orders in 90 days. Recommended action: Perform bearing replacement & oil analysis.',
+        actionLink: { text: 'Schedule Work Order', path: '/maintenance/create?assetId=CH-002' }
       };
-      setMessages(prev => [...prev, fallbackMsg]);
-    } finally {
-      setLoading(false);
     }
-  };
 
-  const getBotIntroText = (widgetType, prompt) => {
-    switch (widgetType) {
-      case 'ASSET_LOCATION':
-        return 'Asset with barcode 12345 is currently located at:';
-      case 'INVENTORY_AVAILABLE':
-        return 'Here are the available laptops:';
-      case 'BUILDING_EQUIPMENT':
-        return 'Here is the equipment in Building A:';
-      case 'CUSTODIAN_ASSIGNMENT':
-        return 'Here are the assets assigned to Bader Al Kaabi:';
-      case 'FINANCIAL_VALUE':
-        return 'The total value of IT equipment is:';
-      case 'FINANCIAL_PURCHASED':
-        return 'Here are the assets purchased in 2024:';
-      case 'FINANCIAL_DEPRECIATION':
-        return 'The following assets will fully depreciate in 2025:';
-      case 'AUDIT_MOVEMENT':
-        return 'Here is the movement history for the projector:';
-      case 'AUDIT_DISPOSAL':
-        return 'Here is the disposal history for Department 5:';
-      case 'AUDIT_APPROVAL':
-        return 'Here are the approval details for this asset disposal:';
-      case 'ANALYTICS_DISTRIBUTION':
-        return 'Here is the comparison of asset distribution across departments:';
-      case 'ANALYTICS_CUSTODIAN':
-        return 'Here is the custodian wise equipment summary:';
-      case 'ANALYTICS_DEPRECIATION_SUMMARY':
-        return 'Here is the depreciation summary by category:';
-      default:
-        return `Results for "${prompt}":`;
+    // 3. Spare Parts & Low Stock Intelligence
+    if (q.includes('spare') || q.includes('stock') || q.includes('filter') || q.includes('inventory')) {
+      return {
+        id: `bot-${Date.now()}`,
+        sender: 'bot',
+        timestamp,
+        text: 'Critical spare parts below reorder threshold for upcoming HVAC PM cycle:',
+        tableData: [
+          { id: 1, assetCode: 'SP-HVAC-001', assetName: 'Air Filters 24x24x2', category: 'Filters', cost: '5 Remaining (Min: 15)' },
+          { id: 2, assetCode: 'SP-PUMP-004', assetName: 'Mechanical Shaft Seal 2"', category: 'Seals', cost: '2 Remaining (Min: 8)' },
+          { id: 3, assetCode: 'SP-ELEC-012', assetName: 'Contactor 40A 3-Phase', category: 'Electrical', cost: '1 Remaining (Min: 5)' }
+        ],
+        followUpText: 'Recommended action: Create Reorder PO for 25 units of SP-HVAC-001 to prevent HVAC maintenance delay.',
+        actionLink: { text: 'Open Reorder Planning', path: '/inventory/levels' }
+      };
     }
+
+    // 4. Verification Audit Exception Summary
+    if (q.includes('dubai hq') || q.includes('audit') || q.includes('exception') || q.includes('missing')) {
+      return {
+        id: `bot-${Date.now()}`,
+        sender: 'bot',
+        timestamp,
+        text: 'Summary of Dubai HQ physical verification audit exceptions (AUD-2026-0008):',
+        tableData: [
+          { id: 1, assetCode: 'Not Found', assetName: '12 Missing Assets', category: 'Laptops, Chairs', cost: 'Dubai HQ Block B' },
+          { id: 2, assetCode: 'Wrong Location', assetName: '10 Relocated Assets', category: 'Monitors, Tables', cost: 'Block B -> Block C' },
+          { id: 3, assetCode: 'Damaged', assetName: '1 Fire Extinguisher', category: 'Safety', cost: 'Block A Lobby' }
+        ],
+        followUpText: 'Management conclusion: 92% audit completion rate. 12 assets flagged as missing require security access audit.',
+        actionLink: { text: 'View Audit Execution', path: '/stocktakes/execution/AUD-2026-0008' }
+      };
+    }
+
+    // Fallback Generic Intelligence Response
+    return {
+      id: `bot-${Date.now()}`,
+      sender: 'bot',
+      timestamp,
+      text: `Asset360 AI Assistant analyzed query: "${query}". Here is the real-time record synthesis:`,
+      tableData: [
+        { id: 1, assetCode: 'AST-000123', assetName: 'Laptop - Dell Latitude 5440', category: 'IT Equipment', cost: 'Active' },
+        { id: 2, assetCode: 'WO-2026-8841', assetName: 'Preventive Service - CH-002', category: 'Maintenance', cost: 'Scheduled' }
+      ],
+      followUpText: 'I can generate detailed reports, analyze failure probability, or check spare parts availability for this request.',
+      actionLink: { text: 'Explore Reports Catalogue', path: '/reports' }
+    };
   };
 
-  const handleNewConversation = () => {
-    setMessages([]);
+  const handleClearChat = () => {
+    setMessages([INITIAL_CHAT_MESSAGES[0]]);
   };
 
-  const handleExportExcel = (dataList, filename = 'Asset_360_Report.csv') => {
-    const headers = ['Asset Name', 'Barcode', 'Category', 'Location', 'Status', 'Assigned On'];
-    const sampleRows = dataList && dataList.length > 0 ? dataList : [
-      ['Dell Latitude 5420', 'LAP10023', 'Laptop', 'Building A – 2nd Floor', 'In Use', '12 May 2025'],
-      ['HP LaserJet Pro M404', 'PRN10012', 'Printer', 'Building A – 2nd Floor', 'In Use', '10 May 2025'],
-      ['Samsung 55" TV', 'DISP10003', 'Display', 'Building C – Room 201', 'In Use', '08 May 2025'],
-      ['Logitech MeetUp', 'CAM10007', 'Camera', 'Building C – Room 202', 'In Use', '05 May 2025'],
-      ['APC Back-UPS 1100', 'POW10022', 'Power', 'Building A – Server Room', 'In Use', '02 May 2025']
-    ];
-
-    const rows = Array.isArray(sampleRows[0])
-      ? sampleRows
-      : sampleRows.map(item => [
-          item.name || item.description,
-          item.barcode || item.tagNumber,
-          item.category || 'Equipment',
-          item.location || 'Building A',
-          item.status || 'In Use',
-          item.assignedOn || '12 May 2025'
-        ]);
-
-    const csvContent = '\uFEFF' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', filename);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+  // OCR Label Photo Upload Simulation
+  const handlePhotoUpload = (e) => {
+    if (e.target.files && e.target.files[0]) {
+      const file = e.target.files[0];
+      setOcrImageName(file.name);
+      setShowOcrModal(true);
+    }
   };
 
   return (
-    <div className="space-y-6 pb-12 select-none w-full">
-      {/* 1. TOP FULL-WIDTH PROMO HERO BANNER */}
-      <div className="w-full bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xs space-y-6">
-        <div className="absolute top-0 right-0 w-96 h-96 bg-brand-500/10 rounded-full blur-3xl -z-0 pointer-events-none" />
+    <div className="min-h-screen bg-[#F8FAFC] pb-16">
+      <div className="max-w-[1700px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-5">
 
-        <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-6 relative z-10">
-          <div className="space-y-3">
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-brand-600 flex items-center justify-center text-white font-black text-2xl shadow-md shadow-brand-500/25">
-                A
-              </div>
-              <div>
-                <span className="font-extrabold text-slate-900 text-lg tracking-tight block leading-tight">Asset 360°</span>
-                <span className="text-[10px] uppercase tracking-widest text-brand-600 font-bold">ASSET MANAGEMENT SOFTWARE</span>
-              </div>
-            </div>
-
-            <div>
-              <h1 className="text-3xl sm:text-4xl font-black tracking-tight text-slate-900 leading-tight">
-                Asset 360° <span className="text-brand-600">AI Assistant</span>
-              </h1>
-              <p className="text-sm font-bold text-slate-600 mt-1">
-                Your Intelligent Partner for Smarter Asset Management
-              </p>
-            </div>
+        {/* Top Header matching Screenshot 32 */}
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div className="space-y-1">
+            <h1 className="text-xl sm:text-2xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
+              <span>AI Assistant</span>
+              <span className="px-2 py-0.5 rounded-md bg-purple-100 text-[#6C2BD9] text-xs font-mono font-bold">
+                Enterprise v4.2
+              </span>
+            </h1>
+            <p className="text-xs text-slate-500">
+              Your intelligent assistant for asset management, maintenance and inventory
+            </p>
           </div>
 
-          <p className="text-xs text-slate-500 max-w-xl leading-relaxed">
-            Ask questions. Get answers. Take action. Asset 360° AI Assistant helps you find information, analyze data, and make smarter decisions <span className="text-brand-600 font-semibold">— instantly.</span>
-          </p>
-        </div>
-
-        {/* 6 Feature Badges Bar */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 pt-2 relative z-10">
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full border border-brand-500/40 bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
-              <Search className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-900">Natural Queries</h4>
-              <p className="text-[9px] text-slate-500">Ask in simple words</p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full border border-brand-500/40 bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
-              <Zap className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-900">Instant Answers</h4>
-              <p className="text-[9px] text-slate-500">Accurate results fast</p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full border border-brand-500/40 bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
-              <BarChart3 className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-900">Smart Analytics</h4>
-              <p className="text-[9px] text-slate-500">Visual decision data</p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full border border-brand-500/40 bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
-              <Lock className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-900">Secure & Reliable</h4>
-              <p className="text-[9px] text-slate-500">Enterprise security</p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full border border-brand-500/40 bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
-              <Database className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-900">Connected Data</h4>
-              <p className="text-[9px] text-slate-500">Real-time system data</p>
-            </div>
-          </div>
-
-          <div className="p-3 rounded-2xl bg-slate-50 border border-slate-200 flex items-center gap-2.5">
-            <div className="w-7 h-7 rounded-full border border-brand-500/40 bg-brand-50 text-brand-600 flex items-center justify-center shrink-0">
-              <CheckCircle2 className="w-3.5 h-3.5" />
-            </div>
-            <div>
-              <h4 className="text-xs font-bold text-slate-900">Actionable Insights</h4>
-              <p className="text-[9px] text-slate-500">From data to decisions</p>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* 2. FULL-WIDTH WORKBENCH & CATEGORY NAVIGATOR */}
-      <div className="w-full bg-white border border-slate-200 rounded-3xl overflow-hidden shadow-xs flex flex-col">
-        
-        {/* Top Header of Chat Container */}
-        <div className="px-4 sm:px-6 py-3 sm:py-4 bg-slate-50 border-b border-slate-200 flex items-center justify-between">
-          <div className="flex items-center gap-2.5 sm:gap-3">
-            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-brand-600 flex items-center justify-center text-white font-black text-lg sm:text-xl shadow-xs">
-              A
-            </div>
-            <div>
-              <h2 className="text-xs sm:text-sm font-extrabold text-slate-900 flex items-center gap-1.5 leading-tight">
-                AMS <span className="text-brand-600">AI Assistant</span>
-              </h2>
-              <p className="text-[10px] sm:text-[11px] text-slate-500">Your Asset Management Assistant</p>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2 sm:gap-3">
+          <div className="flex items-center gap-3">
             <button
-              onClick={handleNewConversation}
-              className="px-2.5 sm:px-3.5 py-1.5 rounded-xl bg-white hover:bg-slate-100 border border-slate-200 text-slate-700 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              onClick={() => setShowSettingsModal(true)}
+              className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-[#6C2BD9] bg-white border border-purple-200 rounded-lg hover:bg-purple-50 transition-colors cursor-pointer shadow-xs"
             >
-              <span className="hidden sm:inline">New Conversation</span>
-              <span className="sm:hidden">New</span>
-              <Plus className="w-3.5 h-3.5 text-brand-600" />
+              <Settings className="w-4 h-4 text-[#6C2BD9]" />
+              <span>AI Settings</span>
             </button>
-            <div className="w-7 h-7 sm:w-8 sm:h-8 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-slate-600">
-              <User className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
+          </div>
+        </div>
+
+        {/* 4 Insight Stat Cards Row matching Screenshot 32 */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+          {/* Card 1: 12 AI Insights */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center gap-4 hover:border-purple-300 transition-all cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center shrink-0">
+              <Sparkles className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-extrabold text-slate-900">12</span>
+                <span className="text-xs font-bold text-slate-800">AI Insights</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">New insights this week</p>
+            </div>
+          </div>
+
+          {/* Card 2: 8 Recommended Actions */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center gap-4 hover:border-amber-300 transition-all cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-extrabold text-slate-900">8</span>
+                <span className="text-xs font-bold text-slate-800">Recommended Actions</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">Require attention</p>
+            </div>
+          </div>
+
+          {/* Card 3: 23% Potential Cost Savings */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center gap-4 hover:border-blue-300 transition-all cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-extrabold text-slate-900">23%</span>
+                <span className="text-xs font-bold text-slate-800">Potential Cost Savings</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">Based on AI analysis</p>
+            </div>
+          </div>
+
+          {/* Card 4: 15 hrs Estimated Time Saved */}
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center gap-4 hover:border-emerald-300 transition-all cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+              <Clock className="w-6 h-6" />
+            </div>
+            <div>
+              <div className="flex items-baseline gap-1.5">
+                <span className="text-2xl font-extrabold text-slate-900">15 hrs</span>
+                <span className="text-xs font-bold text-slate-800">Estimated Time Saved</span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">This month</p>
             </div>
           </div>
         </div>
 
-        {/* Workbench Body (Responsive Horizontal Tabs on Mobile, Sub-Sidebar on Desktop) */}
-        <div className="flex-1 flex flex-col md:flex-row min-h-0">
-          
-          {/* Sub-Sidebar Navigation */}
-          <div className="w-full md:w-48 lg:w-56 p-2 md:p-3 bg-slate-50 border-b md:border-b-0 md:border-r border-slate-200 flex flex-row md:flex-col overflow-x-auto md:overflow-y-auto shrink-0 gap-1.5 md:gap-1 scrollbar-none md:scrollbar-thin">
-            {CATEGORY_TABS.map((tab) => {
-              const TabIcon = tab.icon;
-              const isActive = activeTab === tab.id;
-              return (
-                <button
-                  key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
-                  className={`px-3.5 py-2.5 rounded-xl text-xs flex items-center gap-2 transition-all cursor-pointer whitespace-nowrap shrink-0 md:w-full ${
-                    isActive
-                      ? 'bg-brand-600 text-white font-extrabold shadow-sm'
-                      : 'text-slate-800 font-extrabold hover:text-slate-950 hover:bg-slate-200/70 border border-slate-200 bg-white'
-                  }`}
-                >
-                  <TabIcon className={`w-4 h-4 shrink-0 ${isActive ? 'text-white' : 'text-brand-600'}`} />
-                  <span className="leading-tight">{tab.label}</span>
-                </button>
-              );
-            })}
-          </div>
+        {/* Main Workspace Split: Left Chat Window (~68% width) + Right Side Panels (~32% width) */}
+        <div className="grid grid-cols-12 gap-6 items-start">
 
-          {/* Right Content View (Expanded Width) */}
-          <div className="flex-1 flex flex-col justify-between bg-slate-50/50 p-3 sm:p-5 space-y-4 sm:space-y-5 min-w-0">
-            
-            {/* Chat Stream & Widget Area */}
-            <div ref={chatContainerRef} className="h-[480px] sm:h-[540px] max-h-[68vh] overflow-y-auto space-y-4 sm:space-y-5 pr-1.5 sm:pr-2 scrollbar-thin flex-1">
-              
-              {/* 1. GREETING SPEECH BUBBLE WITH ROBOT AVATAR */}
-              <div className="flex items-start gap-2.5 sm:gap-4">
-                <div className="w-10 h-10 sm:w-14 sm:h-14 rounded-full bg-brand-600 text-white flex items-center justify-center font-black shrink-0 shadow-md border-2 border-white">
-                  <Bot className="w-6 h-6 sm:w-8 sm:h-8 text-white" />
+          {/* Left Chat Window (~68% width - 8 Cols) matching Screenshot 32 */}
+          <div className="col-span-12 lg:col-span-8 bg-white rounded-xl border border-slate-200 shadow-xs flex flex-col min-h-[620px]">
+
+            {/* Chat Window Header */}
+            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shrink-0 shadow-xs">
+                  <Bot className="w-5 h-5" />
                 </div>
-
-                <div className="flex-1 bg-white border border-brand-200 rounded-2xl p-3 sm:p-4.5 shadow-xs relative">
-                  <h3 className="font-extrabold text-slate-900 text-xs sm:text-sm mb-1">
-                    Hello! I'm your Asset 360° AI Assistant.
-                  </h3>
-                  <p className="text-[11px] sm:text-xs text-slate-600 font-medium leading-relaxed">
-                    Ask me anything about your assets, locations, assignments, value, depreciation, audits and more.
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Asset360 AI Assistant</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Ask questions, get insights and take action across your assets, maintenance and inventory.
                   </p>
                 </div>
               </div>
 
-              {/* 2. CONVERSATION LOG WITH INLINE RESULT CARDS */}
-              {messages.map((msg, idx) => {
-                return (
-                  <div key={msg.id} className="space-y-2 pt-1">
-                    {msg.sender === 'user' ? (
-                      <div className="flex justify-end">
-                        <div className="bg-brand-600 text-white font-bold px-4 py-2.5 rounded-2xl rounded-tr-none text-xs shadow-xs max-w-xl space-y-1">
-                          <div>{msg.text}</div>
-                          <div className="text-[9px] text-brand-100 font-semibold text-right">{msg.timestamp} ✓✓</div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 rounded-xl bg-brand-600 text-white flex items-center justify-center font-bold shrink-0 shadow-xs">
-                          <Bot className="w-4 h-4 text-white" />
-                        </div>
-                        <div className="flex-1 space-y-2 min-w-0">
-                          <div className="text-xs text-slate-900 leading-relaxed font-semibold bg-white border border-slate-200 p-3 rounded-2xl rounded-tl-none shadow-xs">
-                            {msg.text}
-                          </div>
+              <button
+                onClick={handleClearChat}
+                className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold text-slate-600 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-slate-400" />
+                <span>Clear Chat</span>
+              </button>
+            </div>
 
-                          {/* Render Rich Custom Data Card Inline in Chat Feed */}
-                          {msg.widgetType && (
-                            <AIInlineWidgets
-                              widgetType={msg.widgetType}
-                              apiData={msg.apiData}
-                              onNavigate={(path) => navigate(path)}
-                            />
+            {/* Chat Conversation Messages Stream */}
+            <div className="p-4 sm:p-5 flex-1 overflow-y-auto space-y-5 max-h-[520px]">
+              {messages.map((msg) => (
+                <div key={msg.id} className="space-y-3">
+                  {msg.sender === 'user' ? (
+                    /* User Message Bubble */
+                    <div className="flex justify-end items-start gap-2.5">
+                      <div className="bg-[#6C2BD9] text-white p-3.5 rounded-2xl rounded-tr-none text-xs font-medium max-w-lg shadow-xs leading-relaxed">
+                        <p>{msg.text}</p>
+                        <span className="text-[10px] text-purple-200 block text-right mt-1 font-mono">{msg.timestamp}</span>
+                      </div>
+                      <div className="w-8 h-8 rounded-full bg-slate-900 text-white flex items-center justify-center font-bold text-xs shrink-0">
+                        JD
+                      </div>
+                    </div>
+                  ) : (
+                    /* Bot Message Bubble */
+                    <div className="flex items-start gap-3">
+                      <div className="w-8 h-8 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shrink-0 shadow-xs">
+                        <Bot className="w-4 h-4" />
+                      </div>
+                      <div className="flex-1 space-y-3 max-w-2xl">
+                        <div className="bg-slate-50 border border-slate-200 p-4 rounded-2xl rounded-tl-none text-xs text-slate-800 leading-relaxed shadow-2xs space-y-3">
+                          <p>{msg.text}</p>
+
+                          {/* Embedded Data Table inside Bot Response */}
+                          {msg.tableData && (
+                            <div className="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2">
+                              <table className="w-full text-left text-xs border-collapse">
+                                <thead className="bg-slate-50 text-slate-500 font-semibold text-[11px] border-b border-slate-200">
+                                  <tr>
+                                    <th className="py-2.5 px-3 w-8">#</th>
+                                    <th className="py-2.5 px-3">Asset Code</th>
+                                    <th className="py-2.5 px-3">Asset Name</th>
+                                    <th className="py-2.5 px-3">Category</th>
+                                    <th className="py-2.5 px-3 text-right">Maintenance Cost (AED)</th>
+                                  </tr>
+                                </thead>
+                                <tbody className="divide-y divide-slate-100 font-medium">
+                                  {msg.tableData.map((row) => (
+                                    <tr key={row.id} className="hover:bg-slate-50/70">
+                                      <td className="py-2.5 px-3 text-slate-400 text-[11px]">{row.id}</td>
+                                      <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{row.assetCode}</td>
+                                      <td className="py-2.5 px-3 text-slate-900">{row.assetName}</td>
+                                      <td className="py-2.5 px-3 text-slate-600">{row.category}</td>
+                                      <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{row.cost}</td>
+                                    </tr>
+                                  ))}
+                                </tbody>
+                              </table>
+                            </div>
+                          )}
+
+                          {msg.followUpText && (
+                            <p className="text-slate-600 font-medium pt-1 text-[11px]">{msg.followUpText}</p>
+                          )}
+
+                          {msg.actionLink && (
+                            <div className="pt-2">
+                              <button
+                                onClick={() => navigate(msg.actionLink.path)}
+                                className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 text-xs font-semibold transition-colors cursor-pointer border border-purple-200"
+                              >
+                                <span>{msg.actionLink.text}</span>
+                                <ArrowRight className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
                           )}
                         </div>
+                        <span className="text-[10px] text-slate-400 font-mono pl-1">{msg.timestamp}</span>
                       </div>
-                    )}
-                  </div>
-                );
-              })}
-
-              {/* 3. RELATED PROMPT SUGGESTIONS CARD */}
-              {(() => {
-                const filteredPrompts = activeTab === 'home'
-                  ? SUGGESTED_PROMPTS
-                  : SUGGESTED_PROMPTS.filter(p => p.tab === activeTab);
-                const activeTabLabel = CATEGORY_TABS.find(t => t.id === activeTab)?.label || 'All';
-
-                return filteredPrompts.length > 0 ? (
-                  <div className="bg-white border border-brand-200/80 rounded-2xl p-4 sm:p-5 space-y-3.5 shadow-xs my-4 overflow-hidden">
-                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
-                      <h4 className="text-xs sm:text-sm font-black text-slate-950 tracking-tight flex items-center gap-2">
-                        <Sparkles className="w-4 h-4 text-brand-600 animate-pulse shrink-0" />
-                        <span>
-                          {activeTab === 'home'
-                            ? 'Suggested Prompts & Related Questions:'
-                            : `${activeTabLabel} — Related Prompts & Suggestions:`}
-                        </span>
-                      </h4>
-                      <span className="text-[11px] text-slate-600 font-bold shrink-0 bg-slate-100 px-3 py-1 rounded-full border border-slate-200 self-start sm:self-auto">
-                        Click any option to query
-                      </span>
                     </div>
+                  )}
+                </div>
+              ))}
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
-                      {filteredPrompts.map((prompt) => {
-                        const IconComponent = prompt.icon;
-                        return (
-                          <button
-                            key={prompt.id}
-                            onClick={() => handleSendPrompt(prompt.text)}
-                            className="w-full flex items-center gap-3 p-3 rounded-xl bg-slate-50/80 hover:bg-brand-50/80 border border-slate-200 hover:border-brand-400 transition-all text-left group cursor-pointer shadow-2xs hover:shadow-xs"
-                          >
-                            <div className="p-2 rounded-lg bg-brand-100 text-brand-700 group-hover:bg-brand-600 group-hover:text-white transition-colors shrink-0">
-                              <IconComponent className="w-4 h-4" />
-                            </div>
-                            <span className="text-xs font-extrabold text-slate-800 group-hover:text-brand-900 transition-colors leading-snug">
-                              {prompt.text}
-                            </span>
-                          </button>
-                        );
-                      })}
-                    </div>
-                  </div>
-                ) : null;
-              })()}
-
-              {loading && (
-                <div className="flex items-center gap-2.5 text-xs text-brand-600 font-semibold p-3 bg-white rounded-xl border border-brand-200">
-                  <RefreshCw className="w-4 h-4 animate-spin text-brand-600" /> Asset 360° AI is processing query...
+              {isProcessing && (
+                <div className="flex items-center gap-3 text-xs text-[#6C2BD9] font-medium p-3 bg-purple-50 rounded-xl border border-purple-200 w-fit">
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Asset360 AI is querying module records &amp; computing confidence scores...</span>
                 </div>
               )}
               <div ref={chatEndRef} />
             </div>
 
-            {/* Input Bar */}
-            <div className="pt-2">
+            {/* Quick Prompt Pills Toolbar matching Screenshot 32 */}
+            <div className="px-4 py-2 bg-slate-50/70 border-t border-slate-100 flex flex-wrap items-center gap-2 text-xs">
+              <button
+                onClick={() => handleSendMessage('Show preventive maintenance due this week')}
+                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-[#6C2BD9] transition-colors cursor-pointer shadow-2xs text-[11px] font-medium"
+              >
+                Show preventive maintenance due this week
+              </button>
+              <button
+                onClick={() => handleSendMessage('Check low stock spare parts')}
+                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-[#6C2BD9] transition-colors cursor-pointer shadow-2xs text-[11px] font-medium"
+              >
+                Check low stock spare parts
+              </button>
+              <button
+                onClick={() => handleSendMessage('Generate asset health report')}
+                className="px-3 py-1.5 rounded-lg bg-white border border-slate-200 hover:border-purple-300 text-slate-700 hover:text-[#6C2BD9] transition-colors cursor-pointer shadow-2xs text-[11px] font-medium"
+              >
+                Generate asset health report
+              </button>
+              <button
+                onClick={() => setShowDuplicatesModal(true)}
+                className="px-3 py-1.5 rounded-lg bg-white border border-purple-200 text-[#6C2BD9] hover:bg-purple-50 transition-colors cursor-pointer shadow-2xs text-[11px] font-semibold flex items-center gap-1"
+              >
+                <span>Duplicate Audit</span>
+                <ChevronDown className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Chat Input Bar matching Screenshot 32 */}
+            <div className="p-4 border-t border-slate-200 bg-white rounded-b-xl">
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
-                  handleSendPrompt();
+                  handleSendMessage();
                 }}
-                className="flex items-center gap-2 bg-white p-2.5 rounded-2xl border border-slate-200 focus-within:border-brand-500 transition-all shadow-xs"
+                className="flex items-center gap-2"
               >
+                <input
+                  type="file"
+                  ref={fileInputRef}
+                  accept="image/*"
+                  onChange={handlePhotoUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="p-2.5 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 transition-colors cursor-pointer"
+                  title="Upload Manufacturer Label Photo for AI OCR"
+                >
+                  <Paperclip className="w-4 h-4" />
+                </button>
+
                 <input
                   type="text"
                   value={inputText}
                   onChange={(e) => setInputText(e.target.value)}
                   placeholder="Type your question here..."
-                  className="flex-1 bg-transparent px-4 py-2 text-xs text-slate-900 placeholder-slate-400 focus:outline-none"
+                  className="flex-1 px-4 py-2.5 bg-white border border-slate-200 rounded-lg text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                 />
-                
-                <button
-                  type="button"
-                  onClick={toggleSpeechRecognition}
-                  className={`p-2 rounded-xl transition-colors ${
-                    isListening ? 'text-rose-600 animate-pulse bg-rose-50' : 'text-slate-400 hover:text-slate-600'
-                  }`}
-                  title="Voice input"
-                >
-                  {isListening ? <Mic className="w-4 h-4" /> : <MicOff className="w-4 h-4" />}
-                </button>
 
                 <button
                   type="submit"
-                  disabled={!inputText.trim() || loading}
-                  className="w-10 h-10 rounded-xl bg-brand-600 hover:bg-brand-700 text-white font-bold flex items-center justify-center shadow-xs transition-all disabled:opacity-50 shrink-0 cursor-pointer"
+                  disabled={!inputText.trim() || isProcessing}
+                  className="px-5 py-2.5 rounded-lg bg-[#6C2BD9] hover:bg-[#5b21b6] text-white text-xs font-semibold transition-colors cursor-pointer shadow-xs disabled:opacity-50 flex items-center gap-1.5"
                 >
-                  <Send className="w-4 h-4 text-white" />
+                  <Send className="w-3.5 h-3.5" />
+                  <span>Send</span>
                 </button>
               </form>
             </div>
 
           </div>
+
+          {/* Right Side Panels (~32% width - 4 Cols) matching Screenshot 32 */}
+          <div className="col-span-12 lg:col-span-4 space-y-5">
+
+            {/* 1. Recommended Actions Panel */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">Recommended Actions</h3>
+                <button
+                  onClick={() => navigate('/maintenance')}
+                  className="text-xs text-[#6C2BD9] hover:text-[#5b21b6] font-semibold cursor-pointer"
+                >
+                  View All
+                </button>
+              </div>
+
+              <div className="space-y-2.5">
+                {/* Action 1 */}
+                <div
+                  onClick={() => navigate('/inventory/levels')}
+                  className="p-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-purple-50/40 hover:border-purple-200 transition-all cursor-pointer flex items-start justify-between gap-2"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded bg-rose-50 text-rose-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <AlertTriangle className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Reorder Air Filters (SP-HVAC-001)</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Stock below reorder level (5 remaining)</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 self-center" />
+                </div>
+
+                {/* Action 2 */}
+                <div
+                  onClick={() => navigate('/maintenance/create?assetId=CH-002')}
+                  className="p-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-purple-50/40 hover:border-purple-200 transition-all cursor-pointer flex items-start justify-between gap-2"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded bg-amber-50 text-amber-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <RefreshCw className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Schedule maintenance for Chiller CH-002</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Based on usage pattern and runtime hours</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 self-center" />
+                </div>
+
+                {/* Action 3 */}
+                <div
+                  onClick={() => setShowPredictiveModal(true)}
+                  className="p-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-purple-50/40 hover:border-purple-200 transition-all cursor-pointer flex items-start justify-between gap-2"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <TrendingUp className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Consider replacing Pump PUMP-004</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">High failure probability (78%)</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 self-center" />
+                </div>
+
+                {/* Action 4 */}
+                <div
+                  onClick={() => navigate('/maintenance')}
+                  className="p-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-purple-50/40 hover:border-purple-200 transition-all cursor-pointer flex items-start justify-between gap-2"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                      <FileText className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Review 12 overdue work orders</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Average overdue by 8 days</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 self-center" />
+                </div>
+
+                {/* Action 5 */}
+                <div
+                  onClick={() => navigate('/inventory')}
+                  className="p-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-purple-50/40 hover:border-purple-200 transition-all cursor-pointer flex items-start justify-between gap-2"
+                >
+                  <div className="flex items-start gap-2.5">
+                    <div className="w-7 h-7 rounded bg-purple-50 text-[#6C2BD9] flex items-center justify-center shrink-0 mt-0.5">
+                      <Box className="w-3.5 h-3.5" />
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold text-slate-900">Slow moving spare parts</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">15 items not used in last 12 months</p>
+                    </div>
+                  </div>
+                  <ChevronRight className="w-4 h-4 text-slate-400 shrink-0 self-center" />
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Recent AI Insights Panel */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-3">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-bold text-slate-900">Recent AI Insights</h3>
+                <button
+                  onClick={() => navigate('/reports')}
+                  className="text-xs text-[#6C2BD9] hover:text-[#5b21b6] font-semibold cursor-pointer"
+                >
+                  View All
+                </button>
+              </div>
+
+              <div className="space-y-3 text-xs">
+                {/* Insight 1 */}
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <TrendingUp className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-slate-900">Energy consumption increased by 18%</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">HVAC assets in Tower A compared to last month</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">02 Sep 2026</span>
+                </div>
+
+                {/* Insight 2 */}
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-slate-900">Unusual vibration detected</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">In Pump PUMP-003 based on sensor data</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">01 Sep 2026</span>
+                </div>
+
+                {/* Insight 3 */}
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-slate-900">3 assets likely to fail in next 30 days</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Based on historical data and AI model</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">30 Aug 2026</span>
+                </div>
+
+                {/* Insight 4 */}
+                <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
+                  <div className="flex items-start gap-2.5">
+                    <Box className="w-4 h-4 text-[#6C2BD9] shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-slate-900">Optimize spare parts inventory</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">Potential 23% cost reduction identified</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">28 Aug 2026</span>
+                </div>
+
+                {/* Insight 5 */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2.5">
+                    <Sparkles className="w-4 h-4 text-emerald-600 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="font-bold text-slate-900">Carbon footprint trend</p>
+                      <p className="text-[11px] text-slate-500 mt-0.5">10% reduction in emissions this quarter</p>
+                    </div>
+                  </div>
+                  <span className="text-[10px] text-slate-400 whitespace-nowrap">26 Aug 2026</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3. Quick Links Tile Panel */}
+            <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-4 space-y-3">
+              <h3 className="text-sm font-bold text-slate-900">Quick Links</h3>
+
+              <div className="grid grid-cols-2 gap-3 text-center">
+                <button
+                  onClick={() => navigate('/reports')}
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-purple-50 hover:border-purple-200 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5"
+                >
+                  <FileText className="w-5 h-5 text-[#6C2BD9]" />
+                  <span className="text-xs font-semibold text-slate-800">Generate Report</span>
+                </button>
+
+                <button
+                  onClick={() => handleSendMessage('How can I optimize maintenance costs?')}
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-purple-50 hover:border-purple-200 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5"
+                >
+                  <Bot className="w-5 h-5 text-[#6C2BD9]" />
+                  <span className="text-xs font-semibold text-slate-800">Ask a Question</span>
+                </button>
+
+                <button
+                  onClick={() => navigate('/reports?category=analytics')}
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-purple-50 hover:border-purple-200 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5"
+                >
+                  <BarChart3 className="w-5 h-5 text-[#6C2BD9]" />
+                  <span className="text-xs font-semibold text-slate-800">AI Analytics</span>
+                </button>
+
+                <button
+                  onClick={() => setShowSettingsModal(true)}
+                  className="p-3 rounded-xl border border-slate-200 bg-slate-50/50 hover:bg-purple-50 hover:border-purple-200 transition-all cursor-pointer flex flex-col items-center justify-center gap-1.5"
+                >
+                  <Settings className="w-5 h-5 text-[#6C2BD9]" />
+                  <span className="text-xs font-semibold text-slate-800">Configure AI</span>
+                </button>
+              </div>
+            </div>
+
+          </div>
         </div>
       </div>
 
-      {/* 4. FULL-WIDTH BOTTOM FEATURE FOOTER BANNER */}
-      <div className="w-full bg-white border border-slate-200 rounded-3xl p-6 sm:p-8 relative overflow-hidden shadow-xs">
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-center">
-          
-          {/* 5 Value Pillars */}
-          <div className="lg:col-span-8 grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-4">
-            <div className="flex items-start gap-3 p-2">
-              <div className="w-8 h-8 rounded-full border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center shrink-0 font-bold">
-                <Target className="w-4 h-4 text-brand-600" />
+      {/* MODAL 1: AI Settings Modal */}
+      {showSettingsModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-lg w-full shadow-2xl space-y-5">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Settings className="w-5 h-5 text-[#6C2BD9]" />
+                <h3 className="font-bold text-slate-900 text-base">Asset360 AI Configuration</h3>
               </div>
+              <button onClick={() => setShowSettingsModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="space-y-4 text-xs">
               <div>
-                <h4 className="text-xs font-bold text-slate-900">Save Time</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">Find information in seconds</p>
+                <label className="block font-semibold text-slate-700 mb-1">AI Reasoning Engine Model</label>
+                <select
+                  value={aiModel}
+                  onChange={(e) => setAiModel(e.target.value)}
+                  className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 font-mono text-xs focus:outline-none focus:border-[#6C2BD9]"
+                >
+                  <option value="Asset360-Enterprise-v4.2">Asset360-Enterprise-v4.2 (Fine-tuned for Industrial AM)</option>
+                  <option value="Asset360-Predictive-v2.1">Asset360-Predictive-v2.1 (High Precision Failure Modeling)</option>
+                  <option value="Asset360-Light-v1.0">Asset360-Light-v1.0 (Low-latency Query Engine)</option>
+                </select>
+              </div>
+
+              <div>
+                <div className="flex justify-between items-center mb-1">
+                  <label className="font-semibold text-slate-700">Minimum Confidence Threshold for Auto-Suggestions</label>
+                  <span className="font-mono font-bold text-[#6C2BD9]">{confidenceThreshold}%</span>
+                </div>
+                <input
+                  type="range"
+                  min={50}
+                  max={95}
+                  value={confidenceThreshold}
+                  onChange={(e) => setConfidenceThreshold(Number(e.target.value))}
+                  className="w-full accent-[#6C2BD9] cursor-pointer"
+                />
+                <p className="text-[11px] text-slate-400 mt-1">Suggestions below this threshold require explicit manager review.</p>
+              </div>
+
+              <div className="space-y-2 pt-2 border-t border-slate-100">
+                <label className="flex items-center justify-between font-semibold text-slate-700 cursor-pointer">
+                  <span>Enable Photo Label OCR Extraction</span>
+                  <input type="checkbox" checked={enableOcr} onChange={(e) => setEnableOcr(e.target.checked)} className="accent-[#6C2BD9] rounded" />
+                </label>
+                <label className="flex items-center justify-between font-semibold text-slate-700 cursor-pointer">
+                  <span>Enable Real-time Duplicate Record Detection</span>
+                  <input type="checkbox" checked={enableDuplicateDetection} onChange={(e) => setEnableDuplicateDetection(e.target.checked)} className="accent-[#6C2BD9] rounded" />
+                </label>
+                <label className="flex items-center justify-between font-semibold text-slate-700 cursor-pointer">
+                  <span>Enable Predictive Maintenance Failure Risk Assessment</span>
+                  <input type="checkbox" checked={enablePredictive} onChange={(e) => setEnablePredictive(e.target.checked)} className="accent-[#6C2BD9] rounded" />
+                </label>
               </div>
             </div>
 
-            <div className="flex items-start gap-3 p-2">
-              <div className="w-8 h-8 rounded-full border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center shrink-0 font-bold">
-                <Sparkles className="w-4 h-4 text-brand-600" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900">Improve Accuracy</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">AI powered insights you trust</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-2">
-              <div className="w-8 h-8 rounded-full border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center shrink-0 font-bold">
-                <TrendingUp className="w-4 h-4 text-brand-600" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900">Optimize Assets</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">Better visibility. Better use.</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-2">
-              <div className="w-8 h-8 rounded-full border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center shrink-0 font-bold">
-                <ShieldCheck className="w-4 h-4 text-brand-600" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900">Ensure Compliance</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">Complete audit trails</p>
-              </div>
-            </div>
-
-            <div className="flex items-start gap-3 p-2">
-              <div className="w-8 h-8 rounded-full border border-slate-200 bg-slate-50 text-slate-700 flex items-center justify-center shrink-0 font-bold">
-                <UserCheck className="w-4 h-4 text-brand-600" />
-              </div>
-              <div>
-                <h4 className="text-xs font-bold text-slate-900">Empower Everyone</h4>
-                <p className="text-[10px] text-slate-500 mt-0.5">IT, Finance, Operations & beyond</p>
-              </div>
+            <div className="border-t border-slate-100 pt-3 text-right">
+              <button
+                onClick={() => setShowSettingsModal(false)}
+                className="px-5 py-2 text-xs font-semibold bg-[#6C2BD9] text-white hover:bg-[#5b21b6] rounded-lg cursor-pointer shadow-xs"
+              >
+                Save AI Configuration
+              </button>
             </div>
           </div>
-
-          {/* Callout Badge on Right */}
-          <div className="lg:col-span-4 bg-brand-600 rounded-2xl p-5 text-white flex items-center gap-4 shadow-xs">
-            <div className="w-12 h-12 rounded-2xl bg-white text-brand-600 flex items-center justify-center shrink-0 shadow-xs">
-              <Bot className="w-7 h-7" />
-            </div>
-            <div>
-              <h4 className="text-sm font-black tracking-tight leading-snug text-white">
-                Ask. Analyze. Act.
-              </h4>
-              <p className="text-xs font-semibold text-brand-100 mt-0.5">
-                All with Asset 360° AI Assistant.
-              </p>
-            </div>
-          </div>
-
         </div>
-      </div>
+      )}
+
+      {/* MODAL 2: Photo OCR Label Scanner Simulation */}
+      {showOcrModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-xl w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <Camera className="w-5 h-5 text-[#6C2BD9]" />
+                <h3 className="font-bold text-slate-900 text-base">AI Label OCR &amp; Category Recommendation</h3>
+              </div>
+              <button onClick={() => setShowOcrModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 text-xs space-y-1">
+              <p className="font-bold text-[#6C2BD9]">Uploaded Image: {ocrImageName || 'label_photo.jpg'}</p>
+              <p className="text-slate-600">AI OCR Extracted text with 94% confidence. Verify before saving to Master.</p>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-slate-500 text-[11px] mb-1">Extracted Manufacturer</label>
+                  <input type="text" defaultValue="Dell Inc." className="w-full p-2 bg-slate-50 border rounded font-semibold text-slate-900" />
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-[11px] mb-1">Extracted Model</label>
+                  <input type="text" defaultValue="Latitude 5440" className="w-full p-2 bg-slate-50 border rounded font-semibold text-slate-900" />
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-[11px] mb-1">Extracted Serial Number</label>
+                  <input type="text" defaultValue="75K3D24" className="w-full p-2 bg-slate-50 border rounded font-mono font-bold text-[#6C2BD9]" />
+                </div>
+                <div>
+                  <label className="block text-slate-500 text-[11px] mb-1">Recommended Category (Confidence 94%)</label>
+                  <input type="text" defaultValue="IT Equipment > Laptops" className="w-full p-2 bg-purple-50 border border-purple-200 rounded font-semibold text-[#6C2BD9]" />
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-100">
+              <button onClick={() => setShowOcrModal(false)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button
+                onClick={() => {
+                  setShowOcrModal(false);
+                  navigate('/assets/new?serial=75K3D24&model=Latitude+5440&manufacturer=Dell');
+                }}
+                className="px-4 py-2 bg-[#6C2BD9] text-white rounded-lg text-xs font-semibold hover:bg-[#5b21b6]"
+              >
+                Confirm &amp; Open Registration Form
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 3: Duplicate Detection Review */}
+      {showDuplicatesModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-xl w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <AlertTriangle className="w-5 h-5 text-amber-600" />
+                <h3 className="font-bold text-slate-900 text-base">AI Duplicate Detection Audit</h3>
+              </div>
+              <button onClick={() => setShowDuplicatesModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 text-xs">
+              <p className="font-bold text-amber-900">92% Potential Duplicate Detected</p>
+              <p className="text-amber-700 mt-0.5">Match Reason: Identical Serial Number 75K3D24 and Manufacturer Dell Inc.</p>
+            </div>
+
+            <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 border-b text-slate-500">
+                  <tr>
+                    <th className="p-2.5">Field</th>
+                    <th className="p-2.5">Existing Record (AS-000123)</th>
+                    <th className="p-2.5">Incoming Record</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 font-medium">
+                  <tr><td className="p-2.5 text-slate-400">Serial No.</td><td className="p-2.5 font-mono text-[#6C2BD9]">75K3D24</td><td className="p-2.5 font-mono text-[#6C2BD9]">75K3D24</td></tr>
+                  <tr><td className="p-2.5 text-slate-400">Manufacturer</td><td className="p-2.5">Dell Inc.</td><td className="p-2.5">Dell Inc.</td></tr>
+                  <tr><td className="p-2.5 text-slate-400">Location</td><td className="p-2.5">Dubai HQ &gt; Block B &gt; 1F</td><td className="p-2.5">Dubai HQ &gt; Block B &gt; 2F</td></tr>
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowDuplicatesModal(false)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                Cancel
+              </button>
+              <button onClick={() => { setShowDuplicatesModal(false); navigate('/assets/AS-000123'); }} className="px-4 py-2 bg-[#6C2BD9] text-white rounded-lg text-xs font-semibold hover:bg-[#5b21b6]">
+                Open Existing Asset 360°
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MODAL 4: Predictive Risk Modal */}
+      {showPredictiveModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-lg w-full shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5 text-emerald-600" />
+                <h3 className="font-bold text-slate-900 text-base">Predictive Maintenance Analysis</h3>
+              </div>
+              <button onClick={() => setShowPredictiveModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="p-4 bg-slate-50 rounded-xl border border-slate-200 text-xs space-y-3">
+              <div className="flex justify-between items-center">
+                <span className="font-bold text-slate-900 text-sm">Pump PUMP-004 Risk Assessment</span>
+                <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-rose-50 text-rose-700 border border-rose-200">
+                  78% Failure Probability (High Risk)
+                </span>
+              </div>
+              <p className="text-slate-600">Contributing factors calculated from historical telemetry &amp; work orders:</p>
+              <ul className="list-disc pl-4 space-y-1 text-slate-700">
+                <li>Over 4,200 operating hours since last overhaul (Threshold: 4,000 hrs)</li>
+                <li>Vibration telemetry increased by +24% over 14 days</li>
+                <li>3 emergency corrective work orders logged in past 180 days</li>
+              </ul>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2">
+              <button onClick={() => setShowPredictiveModal(false)} className="px-4 py-2 border rounded-lg text-xs font-semibold text-slate-600 hover:bg-slate-50">
+                Close
+              </button>
+              <button onClick={() => { setShowPredictiveModal(false); navigate('/maintenance/create?assetId=PUMP-004'); }} className="px-4 py-2 bg-[#6C2BD9] text-white rounded-lg text-xs font-semibold hover:bg-[#5b21b6]">
+                Schedule Replacement WO
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   );
 }
+
+export default AISuite;

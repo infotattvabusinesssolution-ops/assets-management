@@ -1175,20 +1175,47 @@ export function MyAssets() {
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5 text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5"><Package className="w-3.5 h-3.5 text-[#6C2BD9]" /> Asset Information</span>
-                  <button className="text-[10px] text-[#6C2BD9] hover:underline flex items-center gap-0.5">
-                    <PenSquare className="w-3 h-3" /> Edit
+                  <button className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer">
+                    <PenSquare className="w-3 h-3 text-[#6C2BD9]" /> Edit
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-y-2 text-[11px]">
-                  <div><span className="text-slate-400 block text-[10px]">Asset ID</span> <span className="font-bold font-mono text-slate-800">{selectedAsset.id}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Serial Number</span> <span className="font-bold font-mono text-slate-800">{selectedAsset.serialNumber}</span></div>
-                  <div className="col-span-2"><span className="text-slate-400 block text-[10px]">RFID EPC</span> <span className="font-bold font-mono text-[#6C2BD9] text-[10px] truncate block">{selectedAsset.rfidEpc}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Barcode / QR</span> <span className="font-bold font-mono text-slate-800">{selectedAsset.barcode}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Category</span> <span className="font-bold text-slate-800">IT &gt; {selectedAsset.category}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Model</span> <span className="font-bold text-slate-800">{selectedAsset.model}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Manufacturer</span> <span className="font-bold text-slate-800">{selectedAsset.manufacturer}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Status</span> <span className="font-bold text-emerald-700">{selectedAsset.status}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Condition</span> <span className="font-bold text-emerald-700">{selectedAsset.condition}</span></div>
+                <div className="divide-y divide-slate-200/60 text-xs">
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Asset ID</span>
+                    <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.id}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Serial Number</span>
+                    <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.serialNumber}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">RFID EPC</span>
+                    <span className="font-mono font-bold text-[#6C2BD9] text-left truncate">{selectedAsset.rfidEpc}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Barcode / QR</span>
+                    <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.barcode}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Category</span>
+                    <span className="font-bold text-slate-900 text-left">IT &gt; {selectedAsset.category}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Model</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.model}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Manufacturer</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.manufacturer}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Status</span>
+                    <span className="font-bold text-emerald-600 text-left">{selectedAsset.status}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Condition</span>
+                    <span className="font-bold text-emerald-600 text-left">{selectedAsset.condition}</span>
+                  </div>
                 </div>
               </div>
 
@@ -1196,18 +1223,39 @@ export function MyAssets() {
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5 text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5"><Building className="w-3.5 h-3.5 text-[#6C2BD9]" /> Location &amp; Ownership</span>
-                  <button onClick={() => handleOpenAction('MAP', selectedAsset)} className="text-[10px] text-[#6C2BD9] hover:underline font-bold">
+                  <button onClick={() => handleOpenAction('MAP', selectedAsset)} className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer">
                     View on Map
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-y-1.5 text-[11px]">
-                  <div><span className="text-slate-400 block text-[10px]">Site</span> <span className="font-bold text-slate-800">{selectedAsset.site}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Building</span> <span className="font-bold text-slate-800">{selectedAsset.building}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Floor / Room</span> <span className="font-bold text-slate-800">{selectedAsset.floorRoom}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Department</span> <span className="font-bold text-slate-800">{selectedAsset.department}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Cost Center</span> <span className="font-bold text-slate-800">{selectedAsset.costCenter}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Custodian</span> <span className="font-bold text-[#6C2BD9]">{selectedAsset.custodian}</span></div>
-                  <div className="col-span-2"><span className="text-slate-400 block text-[10px]">Assigned Date</span> <span className="font-bold text-slate-800">{selectedAsset.assignedDate}</span></div>
+                <div className="divide-y divide-slate-200/60 text-xs">
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Site</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.site}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Building</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.building}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Floor / Room</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.floorRoom}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Department</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.department}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Cost Center</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.costCenter}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Custodian</span>
+                    <span className="font-bold text-[#6C2BD9] text-left">{selectedAsset.custodian}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Assigned Date</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.assignedDate}</span>
+                  </div>
                 </div>
               </div>
 
@@ -1215,17 +1263,35 @@ export function MyAssets() {
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5 text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5"><ShieldCheck className="w-3.5 h-3.5 text-[#6C2BD9]" /> Warranty &amp; Maintenance</span>
-                  <button onClick={() => handleOpenAction('MAINTENANCE', selectedAsset)} className="text-[10px] text-[#6C2BD9] hover:underline font-bold">
+                  <button onClick={() => handleOpenAction('MAINTENANCE', selectedAsset)} className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer">
                     View Details
                   </button>
                 </div>
-                <div className="grid grid-cols-2 gap-y-1.5 text-[11px]">
-                  <div><span className="text-slate-400 block text-[10px]">Warranty Status</span> <span className="font-bold text-emerald-600">{selectedAsset.warrantyStatus}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Start Date</span> <span className="font-bold text-slate-800">{selectedAsset.warrantyStart}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">End Date</span> <span className="font-bold text-slate-800">{selectedAsset.warrantyEnd}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Next Service Date</span> <span className="font-bold text-[#6C2BD9]">{selectedAsset.nextServiceDate}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Maintenance Type</span> <span className="font-bold text-slate-800">{selectedAsset.maintType}</span></div>
-                  <div><span className="text-slate-400 block text-[10px]">Checklist</span> <span className="font-bold text-slate-800">{selectedAsset.checklist}</span></div>
+                <div className="divide-y divide-slate-200/60 text-xs">
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Warranty Status</span>
+                    <span className="font-bold text-emerald-600 text-left">{selectedAsset.warrantyStatus}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Start Date</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.warrantyStart}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">End Date</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.warrantyEnd}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Next Service Date</span>
+                    <span className="font-bold text-[#6C2BD9] text-left">{selectedAsset.nextServiceDate}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Maintenance Type</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.maintType}</span>
+                  </div>
+                  <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
+                    <span className="text-slate-500 font-medium">Checklist</span>
+                    <span className="font-bold text-slate-900 text-left">{selectedAsset.checklist}</span>
+                  </div>
                 </div>
               </div>
 
@@ -1233,16 +1299,19 @@ export function MyAssets() {
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5 text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5"><FileText className="w-3.5 h-3.5 text-[#6C2BD9]" /> Documents</span>
-                  <button onClick={() => handleOpenAction('DOCUMENTS', selectedAsset)} className="text-[10px] text-[#6C2BD9] hover:underline font-bold">
+                  <button onClick={() => handleOpenAction('DOCUMENTS', selectedAsset)} className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer">
                     View All
                   </button>
                 </div>
                 {selectedAsset.documents && selectedAsset.documents.length > 0 ? (
                   <div className="space-y-1.5">
                     {selectedAsset.documents.map((doc) => (
-                      <div key={doc.name} className="flex items-center justify-between p-2 bg-white rounded-lg border border-slate-200 text-[11px]">
-                        <span className="font-bold text-slate-800 truncate">{doc.name}</span>
-                        <span className="text-[10px] text-slate-400 font-mono">{doc.size}</span>
+                      <div key={doc.name} className="flex items-center justify-between p-2.5 bg-white rounded-xl border border-slate-200 text-xs hover:bg-purple-50/50 transition-all cursor-pointer">
+                        <div className="flex items-center gap-2 font-semibold text-slate-800">
+                          <FileText className="w-4 h-4 text-rose-500" />
+                          <span className="truncate max-w-[180px]">{doc.name}</span>
+                        </div>
+                        <span className="text-xs font-bold text-purple-600 font-mono">{doc.size}</span>
                       </div>
                     ))}
                   </div>

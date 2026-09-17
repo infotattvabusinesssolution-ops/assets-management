@@ -35,11 +35,283 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
+const DEFAULT_REQUESTS = [
+  {
+    id: 'REQ-00045',
+    requestNumber: 'REQ-00045',
+    requestType: 'Transfer',
+    assetNo: 'AS-000123',
+    assetName: 'Laptop - Dell Latitude 5440',
+    fromLocation: 'Block A > GF',
+    toLocation: 'Block B > 1F',
+    fromLocationFull: 'Dubai HQ > Block A > Ground Floor',
+    toLocationFull: 'Dubai HQ > Block B > 1st Floor',
+    requestedBy: 'Sara Ali',
+    department: 'IT Department',
+    requestDate: '10 Sep 2026',
+    requestTime: '10:24',
+    status: 'Pending',
+    transferType: 'Location Transfer',
+    reason: 'Department Restructure',
+    effectiveDate: '10 Sep 2026',
+    newCustodian: 'Ahmed Khan',
+    remarks: 'Transfer to new IT floor as per department move.',
+    supportingDocuments: [
+      { name: 'transfer_request_form.pdf', size: '450 KB' },
+      { name: 'floor_plan.png', size: '1.2 MB' }
+    ],
+    assets: [
+      {
+        assetNo: 'AS-000123',
+        name: 'Laptop - Dell Latitude 5440',
+        category: 'Computers',
+        manufacturer: 'Dell',
+        model: 'Latitude 5440',
+        serialNumber: '75K3D24',
+        condition: 'Good',
+        currentLocation: 'Dubai HQ > Block A > GF > IT-101'
+      }
+    ],
+    workflowStages: [
+      { level: 1, title: 'Department Head Approval', approverName: 'Sara Ali (IT Lead)', status: 'Approved', actionDate: '10 Sep 2026 10:30', comments: 'Approved transfer.' },
+      { level: 2, title: 'Asset Manager Verification', approverName: 'John Doe (System Admin)', status: 'Pending', isCurrent: true }
+    ],
+    history: [
+      { action: 'Request Submitted', performedBy: 'Sara Ali', role: 'IT Lead', timestamp: '10 Sep 2026 10:24', comments: 'Initiated location move' }
+    ]
+  },
+  {
+    id: 'REQ-00044',
+    requestNumber: 'REQ-00044',
+    requestType: 'Transfer',
+    assetNo: 'AS-000127',
+    assetName: 'Chair - Office',
+    fromLocation: 'Block A > 2F',
+    toLocation: 'Block C > 2F',
+    fromLocationFull: 'Dubai HQ > Block A > 2nd Floor',
+    toLocationFull: 'Dubai HQ > Block C > 2nd Floor',
+    requestedBy: 'Omar Saleh',
+    department: 'Operations',
+    requestDate: '09 Sep 2026',
+    requestTime: '16:40',
+    status: 'Pending',
+    transferType: 'Location Transfer',
+    reason: 'Office Relocation',
+    effectiveDate: '09 Sep 2026',
+    newCustodian: 'Fatima Noor',
+    remarks: 'Relocating to design lab.',
+    supportingDocuments: [{ name: 'office_reallocation_request.pdf', size: '320 KB' }],
+    assets: [
+      { assetNo: 'AS-000127', name: 'Chair - Office', category: 'Furniture', manufacturer: 'Herman Miller', model: 'Ergonomic Task', serialNumber: 'HM-9982', condition: 'Good', currentLocation: 'Block A > 2F' }
+    ]
+  },
+  {
+    id: 'REQ-00043',
+    requestNumber: 'REQ-00043',
+    requestType: 'Assignment',
+    assetNo: 'AS-000125',
+    assetName: 'Printer - HP',
+    fromLocation: '-',
+    toLocation: 'IT Department',
+    fromLocationFull: 'Central Warehouse',
+    toLocationFull: 'Dubai HQ > Block B > 1st Floor',
+    requestedBy: 'IT Team',
+    department: 'IT Department',
+    requestDate: '09 Sep 2026',
+    requestTime: '11:20',
+    status: 'Pending',
+    transferType: 'Asset Allocation',
+    reason: 'New Employee Setup',
+    effectiveDate: '09 Sep 2026',
+    newCustodian: 'IT Team',
+    remarks: 'Deploying network printer.',
+    supportingDocuments: [],
+    assets: [
+      { assetNo: 'AS-000125', name: 'Printer - HP', category: 'Printers', manufacturer: 'HP', model: 'LaserJet Pro M404n', serialNumber: 'CNB47892', condition: 'New', currentLocation: 'Warehouse' }
+    ]
+  },
+  {
+    id: 'REQ-00042',
+    requestNumber: 'REQ-00042',
+    requestType: 'Transfer',
+    assetNo: 'AS-000129',
+    assetName: 'Projector - Epson',
+    fromLocation: 'Block C > 1F',
+    toLocation: 'Conference Room',
+    fromLocationFull: 'Dubai HQ > Block C > 1st Floor',
+    toLocationFull: 'Dubai HQ > Block C > Auditorium',
+    requestedBy: 'Layla Hassan',
+    department: 'Facilities',
+    requestDate: '08 Sep 2026',
+    requestTime: '14:05',
+    status: 'Pending',
+    transferType: 'Location Transfer',
+    reason: 'AV Setup',
+    effectiveDate: '08 Sep 2026',
+    newCustodian: 'Conference Room',
+    remarks: 'Permanent auditorium installation.',
+    supportingDocuments: [],
+    assets: [
+      { assetNo: 'AS-000129', name: 'Projector - Epson', category: 'AV Equipment', manufacturer: 'Epson', model: 'EB-2250U', serialNumber: 'EPS84920', condition: 'Good', currentLocation: 'Block C > 1F' }
+    ]
+  },
+  {
+    id: 'REQ-00041',
+    requestNumber: 'REQ-00041',
+    requestType: 'Custodian Transfer',
+    assetNo: 'AS-000132',
+    assetName: 'Monitor - Samsung',
+    fromLocation: '-',
+    toLocation: '-',
+    fromLocationFull: 'Dubai HQ > Block A > 1st Floor',
+    toLocationFull: 'Dubai HQ > Block A > 1st Floor',
+    requestedBy: 'Rashid Mohammed',
+    department: 'Finance',
+    requestDate: '08 Sep 2026',
+    requestTime: '09:50',
+    status: 'Pending',
+    transferType: 'Custody Handover',
+    reason: 'Role Change',
+    effectiveDate: '08 Sep 2026',
+    newCustodian: 'Rashid Mohammed',
+    remarks: 'Handover monitor from previous user.',
+    supportingDocuments: [],
+    assets: [
+      { assetNo: 'AS-000132', name: 'Monitor - Samsung', category: 'Monitors', manufacturer: 'Samsung', model: 'Odyssey G7', serialNumber: 'SAMS8787', condition: 'Good', currentLocation: 'Block A > 1F' }
+    ]
+  },
+  {
+    id: 'REQ-00040',
+    requestNumber: 'REQ-00040',
+    requestType: 'Transfer',
+    assetNo: 'AS-000126',
+    assetName: 'Access Point - Cisco',
+    fromLocation: 'Block B > 1F',
+    toLocation: 'Block B > 3F',
+    fromLocationFull: 'Dubai HQ > Block B > 1st Floor',
+    toLocationFull: 'Dubai HQ > Block B > 3rd Floor',
+    requestedBy: 'Fatima Noor',
+    department: 'IT Department',
+    requestDate: '07 Sep 2026',
+    requestTime: '15:15',
+    status: 'Pending',
+    transferType: 'Location Transfer',
+    reason: 'Network Expansion',
+    effectiveDate: '07 Sep 2026',
+    newCustodian: 'IT Team',
+    remarks: 'Installing high capacity AP.',
+    supportingDocuments: [],
+    assets: [
+      { assetNo: 'AS-000126', name: 'Access Point - Cisco', category: 'Networking', manufacturer: 'Cisco', model: 'Catalyst 9120', serialNumber: 'FCH9384', condition: 'Good', currentLocation: 'Block B > 1F' }
+    ]
+  },
+  {
+    id: 'REQ-00039',
+    requestNumber: 'REQ-00039',
+    requestType: 'Transfer',
+    assetNo: 'AS-000128',
+    assetName: 'Meeting Table',
+    fromLocation: 'Block A > 2F',
+    toLocation: 'Block A > 3F',
+    fromLocationFull: 'Dubai HQ > Block A > 2nd Floor',
+    toLocationFull: 'Dubai HQ > Block A > 3rd Floor',
+    requestedBy: 'Ahmed Khan',
+    department: 'Facilities',
+    requestDate: '06 Sep 2026',
+    requestTime: '10:00',
+    status: 'Pending',
+    transferType: 'Location Transfer',
+    reason: 'Floor Renovation',
+    effectiveDate: '06 Sep 2026',
+    newCustodian: 'Facilities Team',
+    remarks: 'Relocating table for floor 3 conf room.',
+    supportingDocuments: [],
+    assets: [
+      { assetNo: 'AS-000128', name: 'Meeting Table', category: 'Furniture', manufacturer: 'IKEA', model: 'Conference 10P', serialNumber: 'IK-7782', condition: 'Good', currentLocation: 'Block A > 2F' }
+    ]
+  },
+  {
+    id: 'REQ-00038',
+    requestNumber: 'REQ-00038',
+    requestType: 'Assignment',
+    assetNo: 'AS-000130',
+    assetName: 'Fire Extinguisher',
+    fromLocation: '-',
+    toLocation: 'Facilities Team',
+    fromLocationFull: 'Central Store',
+    toLocationFull: 'Dubai HQ > Block A > GF',
+    requestedBy: 'Mohammed Rashid',
+    department: 'Health & Safety',
+    requestDate: '06 Sep 2026',
+    requestTime: '08:30',
+    status: 'Pending',
+    transferType: 'Safety Dispatch',
+    reason: 'Compliance Safety Audit',
+    effectiveDate: '06 Sep 2026',
+    newCustodian: 'Facilities Team',
+    remarks: 'Replacement CO2 unit.',
+    supportingDocuments: [],
+    assets: [
+      { assetNo: 'AS-000130', name: 'Fire Extinguisher', category: 'Safety Equipment', manufacturer: 'Kidde', model: 'CO2 5kg', serialNumber: 'FE-99823', condition: 'New', currentLocation: 'Block A > GF' }
+    ]
+  },
+  {
+    id: 'REQ-00037',
+    requestNumber: 'REQ-00037',
+    requestType: 'Transfer',
+    assetNo: 'AS-000131',
+    assetName: 'Switch - Cisco',
+    fromLocation: 'Server Room',
+    toLocation: 'IT-201',
+    fromLocationFull: 'Dubai HQ > Block B > Server Room',
+    toLocationFull: 'Dubai HQ > Block B > 2nd Floor > IT-201',
+    requestedBy: 'Sara Ali',
+    department: 'IT Department',
+    requestDate: '05 Sep 2026',
+    requestTime: '17:00',
+    status: 'Pending',
+    transferType: 'Location Transfer',
+    reason: 'Rack Re-allocation',
+    effectiveDate: '05 Sep 2026',
+    newCustodian: 'Sara Ali',
+    remarks: 'Moved to rack 2.',
+    supportingDocuments: [],
+    assets: [
+      { assetNo: 'AS-000131', name: 'Switch - Cisco', category: 'Networking', manufacturer: 'Cisco', model: 'Catalyst 9300', serialNumber: 'FCH9385', condition: 'Good', currentLocation: 'Server Room' }
+    ]
+  },
+  {
+    id: 'REQ-00036',
+    requestNumber: 'REQ-00036',
+    requestType: 'Transfer',
+    assetNo: 'AS-000124',
+    assetName: 'Monitor - Samsung',
+    fromLocation: 'Block A > GF',
+    toLocation: 'Block A > 1F',
+    fromLocationFull: 'Dubai HQ > Block A > Ground Floor',
+    toLocationFull: 'Dubai HQ > Block A > 1st Floor',
+    requestedBy: 'Omar Saleh',
+    department: 'Operations',
+    requestDate: '05 Sep 2026',
+    requestTime: '12:10',
+    status: 'Pending',
+    transferType: 'Location Transfer',
+    reason: 'Workstation Shift',
+    effectiveDate: '05 Sep 2026',
+    newCustodian: 'Omar Saleh',
+    remarks: 'Desk shift to 1F.',
+    supportingDocuments: [],
+    assets: [
+      { assetNo: 'AS-000124', name: 'Monitor - Samsung', category: 'Monitors', manufacturer: 'Samsung', model: 'Odyssey G7', serialNumber: 'SAMS8787', condition: 'Good', currentLocation: 'Block A > GF' }
+    ]
+  }
+];
+
 export function MovementApprovals() {
   const navigate = useNavigate();
 
   // Requests and KPIs state
-  const [requests, setRequests] = useState([]);
+  const [requests, setRequests] = useState(DEFAULT_REQUESTS);
   const [loading, setLoading] = useState(false);
   const [kpis, setKpis] = useState({
     pendingApprovals: 12,
@@ -49,7 +321,7 @@ export function MovementApprovals() {
   });
 
   // Selected Request for Right Split Panel
-  const [selectedRequest, setSelectedRequest] = useState(null);
+  const [selectedRequest, setSelectedRequest] = useState(DEFAULT_REQUESTS[0]);
   const [activeDetailTab, setActiveDetailTab] = useState('details'); // 'details' | 'assets' | 'workflow' | 'history'
 
   // Selection state for bulk operations

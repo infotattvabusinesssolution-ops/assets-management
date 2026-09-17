@@ -4,12 +4,16 @@
 
 @layer base {
   body {
-    @apply bg-slate-50 text-slate-900 font-sans antialiased selection:bg-brand-500/20 selection:text-brand-600;
+    @apply bg-white text-black font-sans antialiased selection:bg-brand-500/20 selection:text-brand-600;
+    background-color: #ffffff !important;
+    color: #000000 !important;
   }
   
-  /* Global input layout reset to prevent browser default black outlines */
+  /* Global input layout reset */
   input, select, textarea {
-    @apply outline-none transition-all;
+    @apply bg-white text-black outline-none transition-all;
+    background-color: #ffffff !important;
+    color: #000000 !important;
   }
 
   input:focus, select:focus, textarea:focus {
@@ -17,58 +21,85 @@
     border-color: #6c2bd9 !important;
     box-shadow: 0 0 0 3px rgba(108, 43, 217, 0.15) !important;
   }
+
+  h1, h2, h3, h4, h5, h6, label, th, td, p, span, div, a {
+    color: inherit;
+  }
+
+  h1, h2, h3, h4, h5, h6 {
+    color: #000000;
+  }
 }
 
 /* Custom Enterprise UI utilities */
 .glass-panel {
   @apply bg-white border border-slate-200 rounded-xl shadow-sm;
+  background-color: #ffffff !important;
 }
 
 .glass-card {
-  @apply bg-white border border-slate-200 rounded-xl p-5 transition-all duration-200 hover:border-brand-500/40 hover:shadow-md;
+  @apply bg-white border border-slate-200 rounded-xl p-5 transition-all duration-200 hover:border-brand-500/40 hover:shadow-sm;
+  background-color: #ffffff !important;
 }
 
 .btn-primary {
   background-color: #6c2bd9 !important;
   color: #ffffff !important;
   font-weight: 600 !important;
-  @apply px-4 py-2 text-sm rounded-lg shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
+  @apply px-4 py-2 text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
 }
 
 .btn-primary:hover {
   background-color: #5b21b6 !important;
+  color: #ffffff !important;
 }
 
 .btn-secondary {
-  @apply px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 hover:border-slate-300 text-sm font-medium rounded-lg transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #6c2bd9 !important;
+  @apply px-4 py-2 hover:bg-purple-50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm;
+}
+
+.btn-secondary:hover {
+  background-color: #f3e8ff !important;
+  color: #000000 !important;
 }
 
 .btn-gold-outline,
 .btn-purple-outline {
-  background-color: rgba(108, 43, 217, 0.08) !important;
-  color: #6c2bd9 !important;
-  border: 1px solid rgba(108, 43, 217, 0.3) !important;
-  @apply px-3.5 py-1.5 text-xs font-semibold rounded-lg transition-all flex items-center justify-center gap-1.5;
+  background-color: #ffffff !important;
+  color: #000000 !important;
+  border: 1px solid #6c2bd9 !important;
+  @apply px-3.5 py-1.5 text-xs font-semibold rounded-xl hover:bg-purple-50 transition-all flex items-center justify-center gap-1.5;
 }
 
 .btn-gold-outline:hover,
 .btn-purple-outline:hover {
-  background-color: rgba(108, 43, 217, 0.16) !important;
+  background-color: #f3e8ff !important;
+  color: #000000 !important;
 }
 
 .btn-danger {
-  @apply px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-lg shadow-sm transition-all flex items-center justify-center gap-2;
+  @apply px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white text-sm font-semibold rounded-xl shadow-sm transition-all flex items-center justify-center gap-2;
 }
 
 @layer utilities {
   .shadow-2xs {
     box-shadow: 0 1px 2px 0 rgba(0, 0, 0, 0.03);
   }
+  .bg-tab-selected {
+    background-color: #f3e8ff !important;
+    color: #000000 !important;
+    font-weight: 600 !important;
+  }
 }
 
 .input-field,
 .input-primary {
-  @apply w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 placeholder-slate-400 focus:outline-none focus:border-[#6c2bd9] focus:ring-2 focus:ring-[#6c2bd9]/20 transition-all shadow-sm;
+  @apply w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-black placeholder-slate-400 focus:outline-none focus:border-[#6c2bd9] focus:ring-2 focus:ring-[#6c2bd9]/20 transition-all shadow-sm;
+  background-color: #ffffff !important;
+  color: #000000 !important;
 }
 
 .pl-9,
@@ -140,8 +171,7 @@
 }
 
 .asset360-glass-card {
-  background: rgba(255, 255, 255, 0.95);
-  backdrop-filter: blur(16px);
+  background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 20px 40px -15px rgba(108, 43, 217, 0.12);
+  box-shadow: 0 10px 25px -10px rgba(108, 43, 217, 0.08);
 }

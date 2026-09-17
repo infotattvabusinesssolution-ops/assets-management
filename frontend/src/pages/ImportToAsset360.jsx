@@ -266,30 +266,9 @@ export function ImportToAsset360() {
   return (
     <div className="min-h-screen bg-[#F8FAFC] text-slate-900 pb-16 select-none">
       
-      {/* 1. Header Bar */}
-      <div className="bg-white border-b border-slate-200 px-8 py-4 sticky top-0 z-30 shadow-2xs">
-        <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-          <div>
-            <h1 className="text-xl font-bold text-slate-900 tracking-tight">Import to Asset 360</h1>
-            <p className="text-xs text-slate-500 mt-0.5">
-              Import discovered devices and create or update assets in Asset360
-            </p>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="relative">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
-              <input
-                type="text"
-                placeholder="Search assets, devices, jobs..."
-                className="pl-8 pr-3 py-1.5 bg-slate-100/80 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 w-64 focus:outline-hidden focus:border-blue-500 transition-all"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* 5-Step Process Stepper */}
-        <div className="mt-5 pt-3 border-t border-slate-100 flex items-center justify-between max-w-4xl mx-auto text-xs font-semibold">
+      {/* 1. Header Bar & Stepper */}
+      <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-2xs mb-5">
+        <div className="flex items-center justify-between text-xs font-medium max-w-5xl mx-auto">
           {[
             { num: 1, label: 'Select Devices' },
             { num: 2, label: 'Map Fields' },
@@ -305,21 +284,21 @@ export function ImportToAsset360() {
                   <div
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
                       isActive
-                        ? 'bg-blue-600 text-white shadow-xs'
+                        ? 'bg-[#6C2BD9] text-white shadow-xs'
                         : isCompleted
                         ? 'bg-emerald-600 text-white'
-                        : 'bg-slate-200 text-slate-600'
+                        : 'border border-slate-300 text-slate-500 bg-white'
                     }`}
                   >
                     {isCompleted ? <Check className="w-3.5 h-3.5" /> : s.num}
                   </div>
-                  <span className={`${isActive ? 'text-blue-600 font-bold' : isCompleted ? 'text-emerald-700' : 'text-slate-500'}`}>
+                  <span className={`${isActive ? 'text-[#6C2BD9] font-extrabold' : isCompleted ? 'text-emerald-700 font-semibold' : 'text-slate-600 font-medium'}`}>
                     {s.label}
                   </span>
                 </div>
                 {idx < 4 && (
                   <div
-                    className={`flex-1 h-0.5 mx-3 transition-colors ${
+                    className={`flex-1 h-px mx-4 transition-colors ${
                       isCompleted ? 'bg-emerald-500' : 'bg-slate-200'
                     }`}
                   />
@@ -331,25 +310,27 @@ export function ImportToAsset360() {
       </div>
 
       {/* Main Container */}
-      <div className="max-w-7xl mx-auto px-8 py-6 space-y-6">
+      <div className="max-w-7xl mx-auto space-y-5">
 
         {/* STEP 1: SELECT DEVICES */}
         {currentStep === 1 && (
           <>
-            {/* Step Header */}
+            {/* Banner Row */}
             <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
-                <h2 className="text-sm font-bold text-slate-900">Step 1: Select Devices to Import</h2>
-                <p className="text-xs text-slate-500">
+                <h1 className="text-base font-extrabold text-slate-900 flex items-center gap-1.5">
+                  <span className="text-[#6C2BD9]">Step 1:</span> Select Devices to Import
+                </h1>
+                <p className="text-xs text-slate-500 mt-0.5">
                   Choose the discovered devices you want to import to Asset360. You can filter and select individual or multiple devices.
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => navigate('/discovery')}
-                className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs flex items-center gap-1.5 transition-colors self-start"
+                className="px-3.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-50 text-[#6C2BD9] text-xs font-bold shadow-2xs flex items-center gap-1.5 transition-all cursor-pointer self-start shrink-0"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
+                <ArrowLeft className="w-3.5 h-3.5 text-[#6C2BD9]" />
                 Back to Discovered Devices
               </button>
             </div>
@@ -358,49 +339,49 @@ export function ImportToAsset360() {
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
               
               {/* 1. Selected Devices */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Monitor className="w-6 h-6" />
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex items-center gap-4">
+                <div className="w-12 h-12 rounded-xl border border-purple-200 text-[#6C2BD9] flex items-center justify-center shrink-0 bg-purple-50/50 shadow-2xs">
+                  <Monitor className="w-6 h-6 text-[#6C2BD9]" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-slate-900 leading-tight">{selectedCount}</div>
-                  <div className="text-xs font-medium text-slate-600">Selected Devices</div>
+                  <div className="text-3xl font-extrabold text-[#6C2BD9] leading-none mb-1">{selectedCount}</div>
+                  <div className="text-xs font-bold text-slate-800">Selected Devices</div>
                 </div>
               </div>
 
               {/* 2. New Assets */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-full bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
-                  <Plus className="w-6 h-6 stroke-[2.5]" />
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center shrink-0">
+                  <Plus className="w-5 h-5 stroke-[2.5]" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-emerald-700 leading-tight">{newAssetsCount}</div>
-                  <div className="text-xs font-medium text-slate-800">New Assets</div>
-                  <div className="text-[11px] text-slate-400">Will be created</div>
+                  <div className="text-3xl font-extrabold text-emerald-600 leading-none mb-0.5">{newAssetsCount}</div>
+                  <div className="text-xs font-bold text-slate-800">New Assets</div>
+                  <div className="text-[11px] text-slate-400 font-medium">Will be created</div>
                 </div>
               </div>
 
               {/* 3. Match Existing */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-full bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
-                  <Link2 className="w-6 h-6" />
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-purple-100 text-[#6C2BD9] flex items-center justify-center shrink-0">
+                  <Link2 className="w-5 h-5 text-[#6C2BD9]" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-blue-700 leading-tight">{matchedCount}</div>
-                  <div className="text-xs font-medium text-slate-800">Match Existing</div>
-                  <div className="text-[11px] text-slate-400">Will be linked</div>
+                  <div className="text-3xl font-extrabold text-[#6C2BD9] leading-none mb-0.5">{matchedCount}</div>
+                  <div className="text-xs font-bold text-slate-800">Match Existing</div>
+                  <div className="text-[11px] text-slate-400 font-medium">Will be linked</div>
                 </div>
               </div>
 
               {/* 4. Requires Review */}
-              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex items-center gap-3.5">
-                <div className="w-11 h-11 rounded-xl bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
-                  <AlertTriangle className="w-6 h-6" />
+              <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-orange-100 text-orange-600 flex items-center justify-center shrink-0">
+                  <AlertTriangle className="w-5 h-5" />
                 </div>
                 <div>
-                  <div className="text-2xl font-bold text-slate-800 leading-tight">{reviewCount}</div>
-                  <div className="text-xs font-medium text-slate-800">Requires Review</div>
-                  <div className="text-[11px] text-slate-400">(excluded)</div>
+                  <div className="text-3xl font-extrabold text-amber-600 leading-none mb-0.5">{reviewCount}</div>
+                  <div className="text-xs font-bold text-slate-800">Requires Review</div>
+                  <div className="text-[11px] text-slate-400 font-medium">(excluded)</div>
                 </div>
               </div>
 
@@ -409,23 +390,23 @@ export function ImportToAsset360() {
             {/* Search and Filters Bar */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-3 flex flex-wrap items-center justify-between gap-3 text-xs">
               <div className="relative flex-1 min-w-[240px]">
-                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-2.5" />
+                <Search className="w-3.5 h-3.5 text-[#6C2BD9] absolute left-3 top-2.5" />
                 <input
                   type="text"
                   value={searchTerm}
                   onChange={e => setSearchTerm(e.target.value)}
                   placeholder="Search by hostname, IP, MAC, serial number..."
-                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:border-blue-500"
+                  className="w-full pl-8 pr-3 py-1.5 bg-slate-50/50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-hidden focus:border-[#6C2BD9] font-medium"
                 />
               </div>
 
-              <div className="flex flex-wrap items-center gap-2">
+              <div className="flex flex-wrap items-center gap-3">
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-medium">Asset Status:</span>
+                  <span className="text-slate-500 font-semibold">Asset Status</span>
                   <select
                     value={statusFilter}
                     onChange={e => setStatusFilter(e.target.value)}
-                    className="px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white text-slate-800 font-semibold focus:outline-hidden"
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white text-slate-800 font-semibold text-xs focus:outline-hidden focus:border-[#6C2BD9]"
                   >
                     <option value="New / Unregistered">New / Unregistered</option>
                     <option value="Matched">Matched</option>
@@ -434,11 +415,11 @@ export function ImportToAsset360() {
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-medium">Device Type:</span>
+                  <span className="text-slate-500 font-semibold">Device Type</span>
                   <select
                     value={deviceTypeFilter}
                     onChange={e => setDeviceTypeFilter(e.target.value)}
-                    className="px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white text-slate-800 font-semibold focus:outline-hidden"
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white text-slate-800 font-semibold text-xs focus:outline-hidden focus:border-[#6C2BD9]"
                   >
                     <option value="All Types">All Types</option>
                     <option value="Printer">Printer</option>
@@ -453,11 +434,11 @@ export function ImportToAsset360() {
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-medium">Location:</span>
+                  <span className="text-slate-500 font-semibold">Location</span>
                   <select
                     value={locationFilter}
                     onChange={e => setLocationFilter(e.target.value)}
-                    className="px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white text-slate-800 font-semibold focus:outline-hidden"
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white text-slate-800 font-semibold text-xs focus:outline-hidden focus:border-[#6C2BD9]"
                   >
                     <option value="All Locations">All Locations</option>
                     <option value="Dubai HQ - IT">Dubai HQ - IT</option>
@@ -469,11 +450,11 @@ export function ImportToAsset360() {
                 </div>
 
                 <div className="flex items-center gap-1.5">
-                  <span className="text-slate-500 font-medium">Discovery Job:</span>
+                  <span className="text-slate-500 font-semibold">Discovery Job</span>
                   <select
                     value={discoveryJobFilter}
                     onChange={e => setDiscoveryJobFilter(e.target.value)}
-                    className="px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white text-slate-800 font-semibold focus:outline-hidden"
+                    className="px-2.5 py-1.5 border border-slate-200 rounded-xl bg-white text-slate-800 font-semibold text-xs focus:outline-hidden focus:border-[#6C2BD9]"
                   >
                     <option value="HQ Network Scan">HQ Network Scan</option>
                     <option value="Branch Office Sweep">Branch Office Sweep</option>
@@ -482,9 +463,9 @@ export function ImportToAsset360() {
 
                 <button
                   type="button"
-                  className="px-3 py-1.5 border border-slate-200 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs"
+                  className="px-3.5 py-1.5 border border-purple-200 rounded-xl bg-white hover:bg-purple-50 text-[#6C2BD9] font-bold flex items-center gap-1.5 shadow-2xs text-xs transition-all cursor-pointer"
                 >
-                  <Filter className="w-3.5 h-3.5 text-slate-500" />
+                  <Filter className="w-3.5 h-3.5 text-[#6C2BD9]" />
                   More Filters
                 </button>
               </div>
@@ -493,31 +474,31 @@ export function ImportToAsset360() {
             {/* Device List Grid Table */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                <table className="w-full text-left text-xs border-collapse text-slate-800">
+                  <thead className="bg-purple-50/60 border-b border-slate-200 text-slate-800 font-extrabold text-[11px] tracking-wide select-none">
                     <tr>
-                      <th className="py-3 px-4 w-10 text-center">
+                      <th className="py-3 px-3.5 w-10 text-center">
                         <input
                           type="checkbox"
                           checked={selectedIds.length === filteredDevices.length && filteredDevices.length > 0}
                           onChange={handleToggleSelectAll}
-                          className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                          className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] accent-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                         />
                       </th>
-                      <th className="py-3 px-3 font-bold text-slate-700">#</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">Hostname</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">IP Address</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">MAC Address</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">Device Type</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">Manufacturer</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">Model</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">Serial Number</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">Asset Action</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">Target Location</th>
-                      <th className="py-3 px-4 font-bold text-slate-700">Remarks</th>
+                      <th className="py-3 px-3">#</th>
+                      <th className="py-3 px-4">Hostname</th>
+                      <th className="py-3 px-4">IP Address</th>
+                      <th className="py-3 px-4">MAC Address</th>
+                      <th className="py-3 px-4">Device Type</th>
+                      <th className="py-3 px-4">Manufacturer</th>
+                      <th className="py-3 px-4">Model</th>
+                      <th className="py-3 px-4">Serial Number</th>
+                      <th className="py-3 px-4">Asset Action</th>
+                      <th className="py-3 px-4">Target Location</th>
+                      <th className="py-3 px-4">Remarks</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-slate-100">
+                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     {paginatedDevices.map((dev, idx) => {
                       const isChecked = selectedIds.includes(dev.id);
                       const globalIndex = (currentPage - 1) * itemsPerPage + idx + 1;
@@ -525,44 +506,36 @@ export function ImportToAsset360() {
                       return (
                         <tr
                           key={dev.id}
-                          className={`transition-colors ${isChecked ? 'bg-blue-50/40' : 'hover:bg-slate-50/70'}`}
+                          className={`transition-colors ${isChecked ? 'bg-purple-50/50 font-semibold' : 'hover:bg-slate-50/70'}`}
                         >
-                          <td className="py-2.5 px-4 text-center">
+                          <td className="py-2.5 px-3.5 text-center">
                             <input
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => handleToggleSelect(dev.id)}
-                              className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] accent-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                             />
                           </td>
-                          <td className="py-2.5 px-3 font-mono text-slate-400">{globalIndex}</td>
-                          <td className="py-2.5 px-4 font-semibold text-slate-900">{dev.hostname}</td>
-                          <td className="py-2.5 px-4 font-mono font-medium text-slate-800">{dev.ipAddress}</td>
-                          <td className="py-2.5 px-4 font-mono text-[11px] text-slate-600">{dev.macAddress}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-500">{globalIndex}</td>
+                          <td className="py-2.5 px-4 font-bold text-slate-900">{dev.hostname}</td>
+                          <td className="py-2.5 px-4 font-mono font-bold text-[#6C2BD9]">{dev.ipAddress}</td>
+                          <td className="py-2.5 px-4 font-mono text-xs text-slate-600">{dev.macAddress}</td>
+                          <td className="py-2.5 px-4 text-slate-700 font-medium">{dev.deviceType}</td>
+                          <td className="py-2.5 px-4 text-slate-700 font-medium">{dev.manufacturer}</td>
+                          <td className="py-2.5 px-4 text-slate-700 font-medium">{dev.model}</td>
+                          <td className="py-2.5 px-4 font-mono text-slate-700">{dev.serialNumber}</td>
                           <td className="py-2.5 px-4">
-                            <div className="flex items-center gap-1.5 text-slate-700">
-                              {getDeviceIcon(dev.deviceType)}
-                              <span>{dev.deviceType}</span>
-                            </div>
-                          </td>
-                          <td className="py-2.5 px-4 text-slate-800 font-medium">{dev.manufacturer}</td>
-                          <td className="py-2.5 px-4 text-slate-600">{dev.model}</td>
-                          <td className="py-2.5 px-4 font-mono text-slate-800">{dev.serialNumber}</td>
-                          <td className="py-2.5 px-4">
-                            <select
-                              value={dev.assetAction}
-                              onChange={e => handleChangeAction(dev.id, e.target.value)}
-                              className={`px-2 py-0.5 rounded-full text-[11px] font-semibold border focus:outline-hidden ${
+                            <span
+                              className={`px-3 py-0.5 rounded-full text-xs font-extrabold inline-block text-center border ${
                                 dev.assetAction === 'Create New'
-                                  ? 'bg-emerald-100 text-emerald-800 border-emerald-200'
-                                  : 'bg-blue-100 text-blue-800 border-blue-200'
+                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                  : 'bg-purple-50 text-[#6C2BD9] border-purple-200'
                               }`}
                             >
-                              <option value="Create New">Create New</option>
-                              <option value="Match Existing">Match Existing</option>
-                            </select>
+                              {dev.assetAction}
+                            </span>
                           </td>
-                          <td className="py-2.5 px-4 text-slate-700">{dev.targetLocation}</td>
+                          <td className="py-2.5 px-4 text-slate-700 font-medium">{dev.targetLocation}</td>
                           <td className="py-2.5 px-4 font-mono text-[11px] text-slate-500">{dev.remarks}</td>
                         </tr>
                       );
@@ -572,11 +545,11 @@ export function ImportToAsset360() {
               </div>
 
               {/* Table Footer / Pagination */}
-              <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50">
+              <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50">
                 <div>
-                  Showing <span className="font-semibold text-slate-800">1</span> to{' '}
-                  <span className="font-semibold text-slate-800">{paginatedDevices.length}</span> of{' '}
-                  <span className="font-semibold text-slate-800">{filteredDevices.length}</span> selected devices
+                  Showing <span className="font-bold text-slate-900">1</span> to{' '}
+                  <span className="font-bold text-slate-900">{paginatedDevices.length}</span> of{' '}
+                  <span className="font-bold text-slate-900">{filteredDevices.length}</span> selected devices
                 </div>
 
                 <div className="flex items-center gap-1.5">
@@ -584,7 +557,7 @@ export function ImportToAsset360() {
                     type="button"
                     onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
                     disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
                   >
                     <ChevronLeft className="w-3.5 h-3.5" />
                   </button>
@@ -593,9 +566,9 @@ export function ImportToAsset360() {
                       key={i + 1}
                       type="button"
                       onClick={() => setCurrentPage(i + 1)}
-                      className={`w-7 h-7 rounded-lg text-xs font-bold transition-colors ${
+                      className={`w-7 h-7 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
                         currentPage === i + 1
-                          ? 'bg-blue-600 text-white'
+                          ? 'bg-[#6C2BD9] text-white shadow-xs'
                           : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'
                       }`}
                     >
@@ -606,110 +579,119 @@ export function ImportToAsset360() {
                     type="button"
                     onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
                     disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
+                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
                   >
                     <ChevronRight className="w-3.5 h-3.5" />
                   </button>
 
-                  <span className="text-slate-400 ml-2">10 per page</span>
+                  <select
+                    className="ml-2 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-hidden"
+                    defaultValue="10 per page"
+                  >
+                    <option>10 per page</option>
+                    <option>25 per page</option>
+                    <option>50 per page</option>
+                  </select>
                 </div>
               </div>
             </div>
 
-            {/* Bottom 3 Boxes */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+            {/* Bottom 3 Panels */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
               
-              {/* Box 1: Import Options (5 Cols) */}
-              <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 text-xs">
-                <h3 className="font-bold text-slate-900 mb-2.5">Import Options</h3>
-                <div className="space-y-2 text-slate-700">
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={importOptions.createNew}
-                      onChange={e => setImportOptions({ ...importOptions, createNew: e.target.checked })}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Create new assets for unregistered devices</span>
-                  </label>
+              {/* Box 1: Import Options */}
+              <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 text-xs flex flex-col justify-between">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm mb-3">Import Options</h3>
+                  <div className="space-y-2.5 text-slate-700 font-semibold">
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={importOptions.createNew}
+                        onChange={e => setImportOptions({ ...importOptions, createNew: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
+                      />
+                      <span>Create new assets for unregistered devices</span>
+                    </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={importOptions.linkExisting}
-                      onChange={e => setImportOptions({ ...importOptions, linkExisting: e.target.checked })}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Link to existing assets for matched devices</span>
-                  </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={importOptions.linkExisting}
+                        onChange={e => setImportOptions({ ...importOptions, linkExisting: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
+                      />
+                      <span>Link to existing assets for matched devices</span>
+                    </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={importOptions.skipMissing}
-                      onChange={e => setImportOptions({ ...importOptions, skipMissing: e.target.checked })}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Skip devices with missing mandatory fields</span>
-                  </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={importOptions.skipMissing}
+                        onChange={e => setImportOptions({ ...importOptions, skipMissing: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
+                      />
+                      <span>Skip devices with missing mandatory fields</span>
+                    </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={importOptions.updateLocation}
-                      onChange={e => setImportOptions({ ...importOptions, updateLocation: e.target.checked })}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Update asset location with discovered location (where applicable)</span>
-                  </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={importOptions.updateLocation}
+                        onChange={e => setImportOptions({ ...importOptions, updateLocation: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
+                      />
+                      <span>Update asset location with discovered location (where applicable)</span>
+                    </label>
 
-                  <label className="flex items-center gap-2 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={importOptions.sendNotification}
-                      onChange={e => setImportOptions({ ...importOptions, sendNotification: e.target.checked })}
-                      className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
-                    />
-                    <span>Send notification after import</span>
-                  </label>
+                    <label className="flex items-center gap-2 cursor-pointer select-none">
+                      <input
+                        type="checkbox"
+                        checked={importOptions.sendNotification}
+                        onChange={e => setImportOptions({ ...importOptions, sendNotification: e.target.checked })}
+                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
+                      />
+                      <span>Send notification after import</span>
+                    </label>
+                  </div>
                 </div>
               </div>
 
-              {/* Box 2: Mandatory Field Validation (4 Cols) */}
+              {/* Box 2: Mandatory Field Validation */}
               <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex flex-col justify-between text-xs">
                 <div>
-                  <div className="flex items-center gap-2 mb-2">
-                    <h3 className="font-bold text-slate-900">Mandatory Field Validation</h3>
-                  </div>
+                  <h3 className="font-extrabold text-slate-900 text-sm mb-3">Mandatory Field Validation</h3>
 
-                  <div className="flex items-start gap-2.5 p-2.5 bg-emerald-50/70 border border-emerald-100 rounded-xl mb-3">
-                    <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0 mt-0.5" />
+                  <div className="flex items-start gap-3 p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl mb-3">
+                    <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
+                      <Check className="w-5 h-5 stroke-[3]" />
+                    </div>
                     <div>
-                      <h4 className="font-bold text-emerald-900 text-xs">All selected devices have required information.</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5">
+                      <h4 className="font-bold text-emerald-800 text-xs">All selected devices have required information.</h4>
+                      <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
                         Devices with missing mandatory fields will be listed in the review step.
                       </p>
                     </div>
                   </div>
                 </div>
 
-                <div className="text-center pt-1">
+                <div className="text-center pt-2">
                   <button
                     type="button"
                     onClick={() => setIsValidationModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-3.5 py-1.5 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-700 font-semibold shadow-2xs transition-colors"
+                    className="inline-flex items-center gap-1.5 px-4 py-1.5 border border-purple-200 rounded-xl bg-white hover:bg-purple-50 text-[#6C2BD9] font-bold shadow-2xs transition-all text-xs cursor-pointer"
                   >
-                    <FileText className="w-3.5 h-3.5 text-slate-500" />
+                    <FileText className="w-3.5 h-3.5 text-[#6C2BD9]" />
                     View Validation Details
                   </button>
                 </div>
               </div>
 
-              {/* Box 3: Next Step (4 Cols) */}
+              {/* Box 3: Next Step */}
               <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex flex-col justify-between text-xs">
                 <div>
-                  <h3 className="font-bold text-slate-900 mb-1">Next Step</h3>
-                  <p className="text-slate-500 text-xs leading-relaxed">
+                  <h3 className="font-extrabold text-slate-900 text-sm mb-2">Next Step</h3>
+                  <p className="text-slate-600 text-xs leading-relaxed font-medium">
                     Click 'Next' to map the discovered device fields to Asset360 asset fields.
                   </p>
                 </div>
@@ -718,14 +700,14 @@ export function ImportToAsset360() {
                   <button
                     type="button"
                     onClick={() => navigate('/discovery')}
-                    className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl transition-colors shadow-2xs"
+                    className="px-4 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl transition-all shadow-2xs text-xs cursor-pointer"
                   >
                     Cancel
                   </button>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(2)}
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+                    className="px-5 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all text-xs cursor-pointer"
                   >
                     Next
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -791,7 +773,7 @@ export function ImportToAsset360() {
                       <tr key={idx} className="hover:bg-slate-50/70">
                         <td className="py-2 px-4 font-semibold text-slate-800">{m.disc}</td>
                         <td className="py-2 px-4 font-mono text-slate-600">{m.sample}</td>
-                        <td className="py-2 px-4 font-medium text-blue-700">{m.target}</td>
+                        <td className="py-2 px-4 font-bold text-[#6C2BD9]">{m.target}</td>
                         <td className="py-2 px-4 text-center">
                           <span className="inline-flex items-center gap-1 text-[10px] font-bold text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded-full">
                             <Check className="w-3 h-3" />
@@ -808,7 +790,7 @@ export function ImportToAsset360() {
               <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 flex flex-col justify-between text-xs space-y-4">
                 <div>
                   <div className="flex items-center gap-2 pb-3 mb-3 border-b border-slate-100">
-                    <Building2 className="w-4 h-4 text-blue-600" />
+                    <Building2 className="w-4 h-4 text-[#6C2BD9]" />
                     <div>
                       <h3 className="font-bold text-slate-900">Mandatory Business Metadata</h3>
                       <p className="text-[11px] text-slate-500">Apply company defaults to all {selectedCount} imported devices</p>
@@ -822,7 +804,7 @@ export function ImportToAsset360() {
                         type="text"
                         value={defaultBusinessValues.company}
                         onChange={e => setDefaultBusinessValues({ ...defaultBusinessValues, company: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
                         required
                       />
                     </div>
@@ -833,7 +815,7 @@ export function ImportToAsset360() {
                         type="text"
                         value={defaultBusinessValues.businessUnit}
                         onChange={e => setDefaultBusinessValues({ ...defaultBusinessValues, businessUnit: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
                         required
                       />
                     </div>
@@ -844,7 +826,7 @@ export function ImportToAsset360() {
                         type="text"
                         value={defaultBusinessValues.department}
                         onChange={e => setDefaultBusinessValues({ ...defaultBusinessValues, department: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
                         required
                       />
                     </div>
@@ -855,7 +837,7 @@ export function ImportToAsset360() {
                         type="text"
                         value={defaultBusinessValues.costCenter}
                         onChange={e => setDefaultBusinessValues({ ...defaultBusinessValues, costCenter: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs font-mono text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
                         required
                       />
                     </div>
@@ -866,7 +848,7 @@ export function ImportToAsset360() {
                         type="text"
                         value={defaultBusinessValues.custodian}
                         onChange={e => setDefaultBusinessValues({ ...defaultBusinessValues, custodian: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
+                        className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -876,14 +858,14 @@ export function ImportToAsset360() {
                   <button
                     type="button"
                     onClick={() => setCurrentStep(1)}
-                    className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl shadow-2xs"
+                    className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl shadow-2xs cursor-pointer"
                   >
                     Previous
                   </button>
                   <button
                     type="button"
                     onClick={() => setCurrentStep(3)}
-                    className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5"
+                    className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
                   >
                     Proceed to Review &amp; Validate
                     <ArrowRight className="w-3.5 h-3.5" />
@@ -909,7 +891,7 @@ export function ImportToAsset360() {
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs flex items-center gap-1.5"
+                className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer"
               >
                 <ArrowLeft className="w-3.5 h-3.5" />
                 Back to Mappings
@@ -921,13 +903,13 @@ export function ImportToAsset360() {
               <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4">
                 <span className="text-xs text-slate-500 font-medium">Total Records to Process</span>
                 <div className="text-2xl font-bold text-slate-900 mt-1">{selectedCount}</div>
-                <div className="text-[11px] text-blue-600 mt-0.5">{newAssetsCount} New + {matchedCount} Linked</div>
+                <div className="text-[11px] text-[#6C2BD9] font-bold mt-0.5">{newAssetsCount} New + {matchedCount} Linked</div>
               </div>
 
               <div className="bg-white rounded-2xl border border-emerald-200 shadow-2xs p-4 bg-emerald-50/20">
                 <span className="text-xs text-emerald-700 font-medium">Passed Validation</span>
                 <div className="text-2xl font-bold text-emerald-700 mt-1">{selectedCount} (100%)</div>
-                <div className="text-[11px] text-emerald-600 mt-0.5">Ready for immediate batch posting</div>
+                <div className="text-[11px] text-emerald-600 mt-0.5 font-medium">Ready for immediate batch posting</div>
               </div>
 
               <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-4">
@@ -940,7 +922,7 @@ export function ImportToAsset360() {
             {/* Governance Checklist Box */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs p-5 text-xs">
               <h3 className="font-bold text-slate-900 mb-3 flex items-center gap-2">
-                <ShieldCheck className="w-4 h-4 text-blue-600" />
+                <ShieldCheck className="w-4 h-4 text-[#6C2BD9]" />
                 Asset360 Governance Verification Checklist
               </h3>
               
@@ -971,7 +953,7 @@ export function ImportToAsset360() {
               </div>
               <div className="max-h-72 overflow-y-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 sticky top-0">
+                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
                     <tr>
                       <th className="py-2.5 px-4">#</th>
                       <th className="py-2.5 px-4">Hostname</th>
@@ -989,16 +971,16 @@ export function ImportToAsset360() {
                         <td className="py-2 px-4 font-mono text-slate-700">{dev.serialNumber}</td>
                         <td className="py-2 px-4">
                           <span
-                            className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                            className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
                               dev.assetAction === 'Create New'
-                                ? 'bg-emerald-100 text-emerald-800'
-                                : 'bg-blue-100 text-blue-800'
+                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                : 'bg-purple-50 text-[#6C2BD9] border-purple-200'
                             }`}
                           >
                             {dev.assetAction}
                           </span>
                         </td>
-                        <td className="py-2 px-4 font-mono text-blue-600 font-bold">
+                        <td className="py-2 px-4 font-mono text-[#6C2BD9] font-bold">
                           {dev.assetAction === 'Create New' ? `AST-2026-0${101 + idx}` : dev.matchedAssetId || 'AS-2024-0015'}
                         </td>
                         <td className="py-2 px-4 text-slate-600">{dev.targetLocation}</td>
@@ -1014,14 +996,14 @@ export function ImportToAsset360() {
               <button
                 type="button"
                 onClick={() => setCurrentStep(2)}
-                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl shadow-2xs text-xs"
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl shadow-2xs text-xs cursor-pointer"
               >
                 Previous Step
               </button>
               <button
                 type="button"
                 onClick={handleExecuteImport}
-                className="px-6 py-2.5 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs text-xs flex items-center gap-2"
+                className="px-6 py-2.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold rounded-xl shadow-xs text-xs flex items-center gap-2 transition-all cursor-pointer"
               >
                 <Check className="w-4 h-4" />
                 Confirm &amp; Execute Import Transaction
@@ -1033,12 +1015,12 @@ export function ImportToAsset360() {
         {/* STEP 4: IMPORT EXECUTION */}
         {currentStep === 4 && (
           <div className="max-w-xl mx-auto my-12 bg-white rounded-3xl border border-slate-200 shadow-xl p-8 text-center space-y-6">
-            <div className="w-16 h-16 rounded-2xl bg-blue-50 text-blue-600 flex items-center justify-center mx-auto animate-pulse">
+            <div className="w-16 h-16 rounded-2xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center mx-auto animate-pulse">
               <RefreshCw className="w-8 h-8 animate-spin" />
             </div>
 
             <div>
-              <h2 className="text-base font-bold text-slate-900">Executing Controlled Batch Import...</h2>
+              <h2 className="text-base font-extrabold text-slate-900">Executing Controlled Batch Import...</h2>
               <p className="text-xs text-slate-500 mt-1">{currentStageText}</p>
             </div>
 
@@ -1046,7 +1028,7 @@ export function ImportToAsset360() {
             <div className="space-y-2">
               <div className="w-full bg-slate-100 rounded-full h-3 overflow-hidden p-0.5">
                 <div
-                  className="bg-blue-600 h-full rounded-full transition-all duration-300"
+                  className="bg-[#6C2BD9] h-full rounded-full transition-all duration-300"
                   style={{ width: `${importProgress}%` }}
                 />
               </div>
@@ -1074,8 +1056,8 @@ export function ImportToAsset360() {
                 </div>
                 <div>
                   <div className="flex items-center gap-2">
-                    <h2 className="text-base font-bold text-slate-900">Import Batch Completed Successfully</h2>
-                    <span className="font-mono text-xs font-bold text-blue-700 bg-white px-2 py-0.5 rounded-md border border-blue-100 shadow-2xs">
+                    <h2 className="text-base font-extrabold text-slate-900">Import Batch Completed Successfully</h2>
+                    <span className="font-mono text-xs font-bold text-[#6C2BD9] bg-white px-2 py-0.5 rounded-md border border-purple-100 shadow-2xs">
                       {batchResult?.batchId || 'IMP-2026-0891'}
                     </span>
                   </div>
@@ -1089,7 +1071,7 @@ export function ImportToAsset360() {
                 <button
                   type="button"
                   onClick={() => navigate('/assets')}
-                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-xl text-xs font-semibold shadow-xs flex items-center gap-1.5 transition-colors"
+                  className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
                 >
                   <ExternalLink className="w-3.5 h-3.5" />
                   View Asset Register
@@ -1097,7 +1079,7 @@ export function ImportToAsset360() {
                 <button
                   type="button"
                   onClick={() => navigate('/discovery')}
-                  className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-colors"
+                  className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
                 >
                   Back to Auto Discovery
                 </button>
@@ -1114,9 +1096,9 @@ export function ImportToAsset360() {
                 <span className="text-[11px] text-emerald-700 font-medium">Assets Created</span>
                 <div className="text-xl font-bold text-emerald-700 mt-0.5">{newAssetsCount}</div>
               </div>
-              <div className="bg-white rounded-xl border border-blue-200 p-3 shadow-2xs bg-blue-50/30">
-                <span className="text-[11px] text-blue-700 font-medium">Existing Linked</span>
-                <div className="text-xl font-bold text-blue-700 mt-0.5">{matchedCount}</div>
+              <div className="bg-white rounded-xl border border-purple-200 p-3 shadow-2xs bg-purple-50/30">
+                <span className="text-[11px] text-[#6C2BD9] font-bold">Existing Linked</span>
+                <div className="text-xl font-bold text-[#6C2BD9] mt-0.5">{matchedCount}</div>
               </div>
               <div className="bg-white rounded-xl border border-slate-200 p-3 shadow-2xs">
                 <span className="text-[11px] text-slate-500 font-medium">Skipped Records</span>
@@ -1152,7 +1134,7 @@ export function ImportToAsset360() {
                 <tbody className="divide-y divide-slate-100">
                   {selectedDevices.slice(0, 10).map((dev, idx) => (
                     <tr key={dev.id} className="hover:bg-slate-50/60">
-                      <td className="py-2.5 px-4 font-mono font-bold text-blue-600">
+                      <td className="py-2.5 px-4 font-mono font-bold text-[#6C2BD9]">
                         {dev.assetAction === 'Create New' ? `AST-2026-0${101 + idx}` : dev.matchedAssetId || 'AS-2024-0015'}
                       </td>
                       <td className="py-2.5 px-4 font-semibold text-slate-900">{dev.hostname}</td>
@@ -1161,10 +1143,10 @@ export function ImportToAsset360() {
                       <td className="py-2.5 px-4 text-slate-600">{dev.deviceType}</td>
                       <td className="py-2.5 px-4">
                         <span
-                          className={`px-2 py-0.5 rounded-full text-[10px] font-semibold ${
+                          className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold border ${
                             dev.assetAction === 'Create New'
-                              ? 'bg-emerald-100 text-emerald-800'
-                              : 'bg-blue-100 text-blue-800'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : 'bg-purple-50 text-[#6C2BD9] border-purple-200'
                           }`}
                         >
                           {dev.assetAction === 'Create New' ? 'New Asset Created' : 'Linked to Existing'}
@@ -1189,7 +1171,7 @@ export function ImportToAsset360() {
                 onClick={() => {
                   alert('Exporting Import Summary Report CSV...');
                 }}
-                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold rounded-xl text-xs shadow-2xs flex items-center gap-1.5 transition-colors"
+                className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 font-semibold rounded-xl text-xs shadow-2xs flex items-center gap-1.5 transition-colors cursor-pointer"
               >
                 <Download className="w-3.5 h-3.5" />
                 Export Import Report (CSV)
@@ -1197,7 +1179,7 @@ export function ImportToAsset360() {
               <button
                 type="button"
                 onClick={() => navigate('/assets')}
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl text-xs shadow-xs flex items-center gap-1.5 transition-colors"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold rounded-xl text-xs shadow-xs flex items-center gap-1.5 transition-all cursor-pointer"
               >
                 Open Asset Register
                 <ArrowRight className="w-3.5 h-3.5" />

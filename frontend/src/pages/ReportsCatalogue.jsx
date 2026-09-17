@@ -895,8 +895,8 @@ export function ReportsCatalogue() {
             <div className="flex gap-2">
               <button
                 type="button"
-                onClick={fetchDashboard}
-                className="flex-1 py-2 px-3 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all"
+                onClick={() => setShowAdvancedFilters(true)}
+                className="flex-1 py-2 px-3 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <Filter className="w-3.5 h-3.5" /> Apply Filters
               </button>
@@ -904,7 +904,7 @@ export function ReportsCatalogue() {
                 type="button"
                 onClick={() => setShowAdvancedFilters(true)}
                 title="Advanced Filters"
-                className="p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors shadow-2xs"
+                className="p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors shadow-2xs cursor-pointer"
               >
                 <SlidersHorizontal className="w-4 h-4" />
               </button>
@@ -1886,6 +1886,389 @@ export function ReportsCatalogue() {
                   className="px-4 py-1.5 bg-slate-800 text-white rounded-lg font-bold"
                 >
                   Close
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ------------------------------------------------------------------- */}
+      {/* ADVANCED FILTERS MODAL (Matching Image 1)                            */}
+      {/* ------------------------------------------------------------------- */}
+      {showAdvancedFilters && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
+          <div className="bg-white rounded-3xl max-w-5xl w-full p-6 shadow-2xl space-y-5 animate-fadeIn border border-slate-200 my-8">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#2563EB] flex items-center justify-center border border-blue-100 shrink-0">
+                  <Filter className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-black text-slate-900 tracking-tight">Advanced Filters</h3>
+                  <p className="text-xs text-slate-500 font-medium">Refine your report data using one or more filters</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAdvancedFilters(false)}
+                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Body: 3-Column Grid matching Screenshot 1 */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
+              {/* 1. Report Category */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Report Category</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.reportCategory}
+                    onChange={(e) => setAdvFilters({ ...advFilters, reportCategory: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="Asset Reports">Asset Reports</option>
+                    <option value="Maintenance Reports">Maintenance Reports</option>
+                    <option value="Inventory Reports">Inventory Reports</option>
+                    <option value="Financial Reports">Financial Reports</option>
+                    <option value="Compliance Reports">Compliance Reports</option>
+                    <option value="Custom Reports">Custom Reports</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 2. Report Type */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Report Type</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.reportType}
+                    onChange={(e) => setAdvFilters({ ...advFilters, reportType: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="Assets by Location">Assets by Location</option>
+                    <option value="Assets by Category">Assets by Category</option>
+                    <option value="Maintenance Work Orders">Maintenance Work Orders</option>
+                    <option value="Inventory Valuation">Inventory Valuation</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 3. Date Range */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Date Range</label>
+                <div className="relative">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2563EB] pointer-events-none">
+                    <Calendar className="w-4 h-4" />
+                  </div>
+                  <select
+                    value={advFilters.dateRange}
+                    onChange={(e) => setAdvFilters({ ...advFilters, dateRange: e.target.value })}
+                    className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="This Year (Jan 2025 - Dec 2025)">This Year (Jan 2025 - Dec 2025)</option>
+                    <option value="This Month">This Month</option>
+                    <option value="Last Month">Last Month</option>
+                    <option value="This Quarter">This Quarter</option>
+                    <option value="Custom Range">Custom Range</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 4. Company */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Company</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.company}
+                    onChange={(e) => setAdvFilters({ ...advFilters, company: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Companies">All Companies</option>
+                    <option value="Wavelogix FZC">Wavelogix FZC</option>
+                    <option value="Infotatwaa Solutions">Infotatwaa Solutions</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 5. Location */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Location</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.location}
+                    onChange={(e) => setAdvFilters({ ...advFilters, location: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Locations">All Locations</option>
+                    <option value="Dubai HQ">Dubai HQ</option>
+                    <option value="Jebel Ali">Jebel Ali</option>
+                    <option value="Abu Dhabi">Abu Dhabi</option>
+                    <option value="Sharjah">Sharjah</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 6. Department */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Department</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.department}
+                    onChange={(e) => setAdvFilters({ ...advFilters, department: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Departments">All Departments</option>
+                    <option value="IT Department">IT Department</option>
+                    <option value="Operations">Operations</option>
+                    <option value="Finance">Finance</option>
+                    <option value="Facilities">Facilities</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 7. Cost Center */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Cost Center</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.costCenter}
+                    onChange={(e) => setAdvFilters({ ...advFilters, costCenter: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Cost Centers">All Cost Centers</option>
+                    <option value="CC-101 IT">CC-101 IT</option>
+                    <option value="CC-102 Operations">CC-102 Operations</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 8. Asset Class */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Class</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.assetClass}
+                    onChange={(e) => setAdvFilters({ ...advFilters, assetClass: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Classes">All Classes</option>
+                    <option value="Hardware">Hardware</option>
+                    <option value="Software">Software</option>
+                    <option value="Furniture">Furniture</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 9. Supplier */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Supplier</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.supplier}
+                    onChange={(e) => setAdvFilters({ ...advFilters, supplier: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Suppliers">All Suppliers</option>
+                    <option value="Zebra Technologies">Zebra Technologies</option>
+                    <option value="Honeywell">Honeywell</option>
+                    <option value="Brady Corporation">Brady Corporation</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 10. Asset Group */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Group</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.assetGroup}
+                    onChange={(e) => setAdvFilters({ ...advFilters, assetGroup: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Asset Groups">All Asset Groups</option>
+                    <option value="IT Hardware">IT Hardware</option>
+                    <option value="Enterprise Mobility">Enterprise Mobility</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 11. Asset Category */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Category</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.assetCategory}
+                    onChange={(e) => setAdvFilters({ ...advFilters, assetCategory: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Categories">All Categories</option>
+                    <option value="IT Equipment">IT Equipment</option>
+                    <option value="Office Furniture">Office Furniture</option>
+                    <option value="Vehicles">Vehicles</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 12. Asset Sub Category */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Sub Category</label>
+                <div className="relative">
+                  <select
+                    value={advFilters.assetSubCategory}
+                    onChange={(e) => setAdvFilters({ ...advFilters, assetSubCategory: e.target.value })}
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                  >
+                    <option value="All Sub Categories">All Sub Categories</option>
+                    <option value="Laptops">Laptops</option>
+                    <option value="Scanners">Scanners</option>
+                  </select>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+
+              {/* 13. Acquisition Date */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Acquisition Date</label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <input
+                      type="text"
+                      placeholder="From Date"
+                      value={advFilters.acqFromDate}
+                      onChange={(e) => setAdvFilters({ ...advFilters, acqFromDate: e.target.value })}
+                      className="w-full pl-8 pr-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:outline-hidden"
+                    />
+                  </div>
+                  <span className="text-slate-400 font-bold">→</span>
+                  <div className="relative flex-1">
+                    <input
+                      type="text"
+                      placeholder="To Date"
+                      value={advFilters.acqToDate}
+                      onChange={(e) => setAdvFilters({ ...advFilters, acqToDate: e.target.value })}
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:outline-hidden"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* 14. Asset Status */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Status</label>
+                <div className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs flex items-center justify-between min-h-[38px]">
+                  <div className="flex flex-wrap gap-1.5 items-center">
+                    {advFilters.assetStatus.map((st) => (
+                      <span
+                        key={st}
+                        className="px-2 py-0.5 rounded-lg bg-blue-50 text-[#2563EB] font-bold text-[11px] flex items-center gap-1 border border-blue-100"
+                      >
+                        {st}
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAdvFilters({
+                              ...advFilters,
+                              assetStatus: advFilters.assetStatus.filter((item) => item !== st)
+                            })
+                          }
+                          className="hover:text-blue-900 cursor-pointer ml-0.5"
+                        >
+                          <X className="w-3 h-3" />
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 pointer-events-none shrink-0" />
+                </div>
+              </div>
+
+              {/* 15. Tags */}
+              <div>
+                <label className="block text-xs font-bold text-slate-700 mb-1">Tags</label>
+                <div className="relative">
+                  <input
+                    type="text"
+                    placeholder="Search and select tags..."
+                    value={advFilters.tags}
+                    onChange={(e) => setAdvFilters({ ...advFilters, tags: e.target.value })}
+                    className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:outline-hidden"
+                  />
+                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Footer matching Screenshot 1 */}
+            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() =>
+                  setAdvFilters({
+                    reportCategory: 'Asset Reports',
+                    reportType: 'Assets by Location',
+                    dateRange: 'This Year (Jan 2025 - Dec 2025)',
+                    company: 'All Companies',
+                    location: 'All Locations',
+                    department: 'All Departments',
+                    costCenter: 'All Cost Centers',
+                    assetClass: 'All Classes',
+                    supplier: 'All Suppliers',
+                    assetGroup: 'All Asset Groups',
+                    assetCategory: 'All Categories',
+                    assetSubCategory: 'All Sub Categories',
+                    acqFromDate: '',
+                    acqToDate: '',
+                    assetStatus: ['Active', 'In Maintenance'],
+                    tags: ''
+                  })
+                }
+                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Reset Filters</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAdvancedFilters(false)}
+                  className="px-5 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setFilterCategory(advFilters.reportCategory);
+                    setFilterReportType(advFilters.reportType);
+                    setFilterDateRange(advFilters.dateRange);
+                    setFilterLocation(advFilters.location);
+                    setFilterDepartment(advFilters.department);
+                    fetchDashboard();
+                    setShowAdvancedFilters(false);
+                    setActionSuccessMsg('Advanced filters applied successfully.');
+                    setTimeout(() => setActionSuccessMsg(null), 3000);
+                  }}
+                  className="px-6 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer"
+                >
+                  <Filter className="w-3.5 h-3.5" />
+                  <span>Apply Filters</span>
                 </button>
               </div>
             </div>
