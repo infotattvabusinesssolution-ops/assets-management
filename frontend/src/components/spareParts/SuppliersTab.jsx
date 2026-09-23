@@ -300,7 +300,7 @@ export function SuppliersTab({ onShowToast }) {
                   placeholder="Search by supplier name, code, contact person..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] transition-colors"
                 />
               </div>
 
@@ -309,7 +309,7 @@ export function SuppliersTab({ onShowToast }) {
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="All Types">Supplier Type: All Types</option>
                   <option value="Parts Supplier">Parts Supplier</option>
@@ -322,7 +322,7 @@ export function SuppliersTab({ onShowToast }) {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="All">Status: All</option>
                   <option value="Active">Active</option>
@@ -335,7 +335,7 @@ export function SuppliersTab({ onShowToast }) {
                 <select
                   value={countryFilter}
                   onChange={(e) => setCountryFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="All Countries">All Countries</option>
                   <option value="UAE">UAE</option>
@@ -354,7 +354,7 @@ export function SuppliersTab({ onShowToast }) {
               {/* Filter Button */}
               <button
                 onClick={() => onShowToast?.('Filters applied')}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-3 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
                 <Filter className="w-3.5 h-3.5 fill-current" /> Filter
               </button>
@@ -373,7 +373,7 @@ export function SuppliersTab({ onShowToast }) {
                           selectedIds.length === filteredSuppliers.length
                         }
                         onChange={toggleSelectAll}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                       />
                     </th>
                     <th className="py-2.5 px-2 text-slate-400">#</th>
@@ -407,7 +407,7 @@ export function SuppliersTab({ onShowToast }) {
                           onClick={() => setSelectedSupplier(sup)}
                           className={`cursor-pointer transition-colors ${
                             isSelected
-                              ? 'bg-blue-50/80 font-semibold'
+                              ? 'bg-purple-50/80 font-semibold'
                               : 'hover:bg-slate-50/80'
                           }`}
                         >
@@ -420,7 +420,7 @@ export function SuppliersTab({ onShowToast }) {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => toggleSelect(sup.id)}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                             />
                           </td>
 
@@ -429,7 +429,7 @@ export function SuppliersTab({ onShowToast }) {
 
                           {/* Supplier Code */}
                           <td className="py-2.5 px-3">
-                            <span className="text-blue-600 font-semibold font-mono hover:underline">
+                            <span className="text-[#6C2BD9] font-semibold font-mono hover:underline">
                               {sup.code}
                             </span>
                           </td>
@@ -477,13 +477,13 @@ export function SuppliersTab({ onShowToast }) {
                           <td className="py-2.5 px-2 text-center">
                             <button
                               onClick={(e) => togglePreferred(sup.id, e)}
-                              className="text-blue-600 hover:scale-110 transition-transform"
+                              className="text-[#6C2BD9] hover:scale-110 transition-transform"
                               title={sup.isPreferred ? 'Preferred Supplier' : 'Set as Preferred'}
                             >
                               <Star
                                 className={`w-4 h-4 ${
                                   sup.isPreferred
-                                    ? 'fill-blue-600 text-blue-600'
+                                    ? 'fill-[#6C2BD9] text-[#6C2BD9]'
                                     : 'text-slate-400'
                                 }`}
                               />
@@ -498,7 +498,7 @@ export function SuppliersTab({ onShowToast }) {
                                   e.stopPropagation();
                                   setSelectedSupplier(sup);
                                 }}
-                                className="p-1 rounded-md text-blue-600 hover:bg-blue-100 transition-colors"
+                                className="p-1 rounded-md text-[#6C2BD9] hover:bg-purple-100 transition-colors"
                                 title="View Details"
                               >
                                 <Eye className="w-3.5 h-3.5" />
@@ -544,7 +544,7 @@ export function SuppliersTab({ onShowToast }) {
               <button className="px-2.5 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold disabled:opacity-50">
                 &lt;
               </button>
-              <button className="px-3 py-1 rounded bg-blue-600 text-white font-bold text-xs">1</button>
+              <button className="px-3 py-1 rounded bg-[#6C2BD9] text-white font-bold text-xs">1</button>
               <button className="px-3 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-medium">
                 2
               </button>
@@ -614,7 +614,7 @@ export function SuppliersTab({ onShowToast }) {
                   <Star
                     className={`w-4 h-4 ${
                       selectedSupplier.isPreferred
-                        ? 'fill-blue-600 text-blue-600'
+                        ? 'fill-[#6C2BD9] text-[#6C2BD9]'
                         : 'text-slate-300'
                     }`}
                   />
@@ -627,27 +627,27 @@ export function SuppliersTab({ onShowToast }) {
 
                 <div className="space-y-2 text-xs text-slate-700">
                   <div className="flex items-center gap-2">
-                    <User className="w-4 h-4 text-blue-600 shrink-0" />
+                    <User className="w-4 h-4 text-[#6C2BD9] shrink-0" />
                     <span className="font-semibold text-slate-900">{selectedSupplier.contactPerson}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Phone className="w-4 h-4 text-blue-600 shrink-0" />
+                    <Phone className="w-4 h-4 text-[#6C2BD9] shrink-0" />
                     <span className="font-mono text-slate-800">{selectedSupplier.phone}</span>
                   </div>
 
                   <div className="flex items-center gap-2">
-                    <Mail className="w-4 h-4 text-blue-600 shrink-0" />
+                    <Mail className="w-4 h-4 text-[#6C2BD9] shrink-0" />
                     <a
                       href={`mailto:${selectedSupplier.email}`}
-                      className="text-blue-600 hover:underline font-mono text-[11px]"
+                      className="text-[#6C2BD9] hover:underline font-mono text-[11px]"
                     >
                       {selectedSupplier.email}
                     </a>
                   </div>
 
                   <div className="flex items-start gap-2">
-                    <MapPin className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <MapPin className="w-4 h-4 text-[#6C2BD9] shrink-0 mt-0.5" />
                     <span className="text-slate-700">{selectedSupplier.address}</span>
                   </div>
                 </div>
@@ -689,7 +689,7 @@ export function SuppliersTab({ onShowToast }) {
                       href={`https://${selectedSupplier.website}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-blue-600 hover:underline font-medium flex items-center gap-1"
+                      className="text-[#6C2BD9] hover:underline font-medium flex items-center gap-1"
                     >
                       {selectedSupplier.website} <ExternalLink className="w-3 h-3" />
                     </a>

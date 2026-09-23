@@ -16,7 +16,7 @@ export function ReportsTab({ onShowToast }) {
 
         <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-2xs space-y-1">
           <p className="text-[11px] font-semibold text-slate-500">Fast Moving Items (Class A)</p>
-          <p className="text-xl font-extrabold text-blue-600 font-mono">184 Items</p>
+          <p className="text-xl font-extrabold text-[#6C2BD9] font-mono">184 Items</p>
           <p className="text-[10px] text-slate-500 font-medium">Contributes 70% of total issues</p>
         </div>
 
@@ -41,7 +41,7 @@ export function ReportsTab({ onShowToast }) {
 
           <button 
             onClick={() => onShowToast('Generating executive inventory summary...')}
-            className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+            className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
           >
             <Download className="w-3.5 h-3.5 text-white" /> Download All Reports
           </button>
@@ -56,7 +56,7 @@ export function ReportsTab({ onShowToast }) {
           ].map(rep => (
             <div key={rep.title} className="p-3.5 bg-slate-50 border border-slate-200 rounded-xl flex justify-between items-center">
               <div>
-                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[9px] font-bold">
+                <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] border border-purple-200 rounded text-[9px] font-bold">
                   {rep.type}
                 </span>
                 <h3 className="font-bold text-slate-900 text-xs mt-1">{rep.title}</h3>

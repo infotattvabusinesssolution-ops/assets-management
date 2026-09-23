@@ -411,7 +411,7 @@ export function StockTransactionsTab({ onShowToast }) {
                   placeholder="Search by transaction no., item code, item name..."
                   value={txnSearch}
                   onChange={(e) => setTxnSearch(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] transition-colors"
                 />
               </div>
 
@@ -420,7 +420,7 @@ export function StockTransactionsTab({ onShowToast }) {
                 <select
                   value={txnTypeFilter}
                   onChange={(e) => setTxnTypeFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="All">Transaction Type: All</option>
                   <option value="Receipt">Receipt</option>
@@ -436,7 +436,7 @@ export function StockTransactionsTab({ onShowToast }) {
                   type="date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 />
               </div>
 
@@ -446,7 +446,7 @@ export function StockTransactionsTab({ onShowToast }) {
                   type="date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 />
               </div>
 
@@ -455,7 +455,7 @@ export function StockTransactionsTab({ onShowToast }) {
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="All Locations">All Locations</option>
                   <option value="Main Warehouse">Main Warehouse</option>
@@ -476,7 +476,7 @@ export function StockTransactionsTab({ onShowToast }) {
               {/* Filter Button */}
               <button
                 onClick={() => onShowToast?.('Filter applied')}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-3 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
                 <Filter className="w-3.5 h-3.5 fill-current" /> Filter
               </button>
@@ -515,14 +515,14 @@ export function StockTransactionsTab({ onShowToast }) {
                           key={row.id}
                           onClick={() => setSelectedTxn(row)}
                           className={`cursor-pointer transition-colors ${
-                            isSelected ? 'bg-blue-50/80 font-semibold' : 'hover:bg-slate-50/80'
+                            isSelected ? 'bg-purple-50/80 font-semibold' : 'hover:bg-slate-50/80'
                           }`}
                         >
                           <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px]">{row.id}</td>
 
                           {/* Txn No */}
                           <td className="py-2.5 px-3">
-                            <span className="text-blue-600 font-semibold hover:underline font-mono">
+                            <span className="text-[#6C2BD9] font-semibold hover:underline font-mono">
                               {row.txnNo}
                             </span>
                           </td>
@@ -543,7 +543,7 @@ export function StockTransactionsTab({ onShowToast }) {
 
                           {/* Item Code */}
                           <td className="py-2.5 px-3">
-                            <span className="text-blue-600 font-mono hover:underline">{row.itemCode}</span>
+                            <span className="text-[#6C2BD9] font-mono hover:underline">{row.itemCode}</span>
                           </td>
 
                           {/* Item Name */}
@@ -580,7 +580,7 @@ export function StockTransactionsTab({ onShowToast }) {
                                 e.stopPropagation();
                                 setSelectedTxn(row);
                               }}
-                              className="p-1 rounded-md text-blue-600 hover:bg-blue-100 transition-colors"
+                              className="p-1 rounded-md text-[#6C2BD9] hover:bg-purple-100 transition-colors"
                               title="View Details"
                             >
                               <Eye className="w-4 h-4" />
@@ -605,7 +605,7 @@ export function StockTransactionsTab({ onShowToast }) {
               <button className="px-2.5 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold disabled:opacity-50">
                 &lt;
               </button>
-              <button className="px-3 py-1 rounded bg-blue-600 text-white font-bold text-xs">1</button>
+              <button className="px-3 py-1 rounded bg-[#6C2BD9] text-white font-bold text-xs">1</button>
               <button className="px-3 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-medium">
                 2
               </button>
@@ -681,7 +681,7 @@ export function StockTransactionsTab({ onShowToast }) {
                       e.preventDefault();
                       onShowToast?.(`Opening reference ${selectedTxn.refNo}`);
                     }}
-                    className="text-blue-600 hover:underline font-mono font-bold flex items-center gap-1"
+                    className="text-[#6C2BD9] hover:underline font-mono font-bold flex items-center gap-1"
                   >
                     {selectedTxn.refNo} <ExternalLink className="w-3 h-3" />
                   </a>
@@ -696,7 +696,7 @@ export function StockTransactionsTab({ onShowToast }) {
                         e.preventDefault();
                         onShowToast?.(`Navigating to Work Order ${selectedTxn.workOrder}`);
                       }}
-                      className="text-blue-600 hover:underline font-semibold flex items-center gap-1 text-right max-w-[180px] truncate"
+                      className="text-[#6C2BD9] hover:underline font-semibold flex items-center gap-1 text-right max-w-[180px] truncate"
                     >
                       {selectedTxn.workOrder} <ExternalLink className="w-3 h-3 shrink-0" />
                     </a>
@@ -763,7 +763,7 @@ export function StockTransactionsTab({ onShowToast }) {
                         e.preventDefault();
                         onShowToast?.(`Navigating to Location ${selectedTxn.fromLocation}`);
                       }}
-                      className="text-blue-600 hover:underline font-medium flex items-center gap-1"
+                      className="text-[#6C2BD9] hover:underline font-medium flex items-center gap-1"
                     >
                       {selectedTxn.fromLocation} <ExternalLink className="w-3 h-3" />
                     </a>
@@ -848,7 +848,7 @@ export function StockTransactionsTab({ onShowToast }) {
 
           <button
             onClick={() => setShowNewTxnModal(true)}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
+            className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
           >
             <Plus className="w-4 h-4 text-white" /> New Transaction
           </button>
@@ -861,7 +861,7 @@ export function StockTransactionsTab({ onShowToast }) {
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-lg w-full p-5 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Plus className="w-4 h-4 text-blue-600" /> Record New Stock Transaction
+                <Plus className="w-4 h-4 text-[#6C2BD9]" /> Record New Stock Transaction
               </h3>
               <button
                 onClick={() => setShowNewTxnModal(false)}
@@ -878,7 +878,7 @@ export function StockTransactionsTab({ onShowToast }) {
                   <select
                     value={newTxnForm.type}
                     onChange={(e) => setNewTxnForm({ ...newTxnForm, type: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="Issue">Issue (Work Order)</option>
                     <option value="Receipt">Receipt (Supplier PO)</option>
@@ -894,7 +894,7 @@ export function StockTransactionsTab({ onShowToast }) {
                     required
                     value={newTxnForm.itemCode}
                     onChange={(e) => setNewTxnForm({ ...newTxnForm, itemCode: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -906,7 +906,7 @@ export function StockTransactionsTab({ onShowToast }) {
                   required
                   value={newTxnForm.itemName}
                   onChange={(e) => setNewTxnForm({ ...newTxnForm, itemName: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                 />
               </div>
 
@@ -918,7 +918,7 @@ export function StockTransactionsTab({ onShowToast }) {
                     required
                     value={newTxnForm.qty}
                     onChange={(e) => setNewTxnForm({ ...newTxnForm, qty: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono font-bold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -927,7 +927,7 @@ export function StockTransactionsTab({ onShowToast }) {
                   <select
                     value={newTxnForm.location}
                     onChange={(e) => setNewTxnForm({ ...newTxnForm, location: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="Main Warehouse">Main Warehouse</option>
                     <option value="HQ Warehouse">HQ Warehouse</option>
@@ -945,7 +945,7 @@ export function StockTransactionsTab({ onShowToast }) {
                     value={newTxnForm.refNo}
                     onChange={(e) => setNewTxnForm({ ...newTxnForm, refNo: e.target.value })}
                     placeholder="e.g. WO-2025-0145"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -956,7 +956,7 @@ export function StockTransactionsTab({ onShowToast }) {
                     value={newTxnForm.issuedTo}
                     onChange={(e) => setNewTxnForm({ ...newTxnForm, issuedTo: e.target.value })}
                     placeholder="Ramesh Nair (Technician)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -967,7 +967,7 @@ export function StockTransactionsTab({ onShowToast }) {
                   rows={2}
                   value={newTxnForm.remarks}
                   onChange={(e) => setNewTxnForm({ ...newTxnForm, remarks: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                 />
               </div>
 
@@ -981,7 +981,7 @@ export function StockTransactionsTab({ onShowToast }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700 shadow-xs"
+                  className="px-4 py-2 bg-[#6C2BD9] text-white rounded-lg text-xs font-bold hover:bg-[#5B21B6] shadow-xs"
                 >
                   Save Transaction
                 </button>

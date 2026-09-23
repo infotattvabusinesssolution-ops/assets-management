@@ -519,14 +519,14 @@ export function ServiceProviderAction() {
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
             <button 
               onClick={() => setViewMode('LIST')} 
-              className="hover:text-blue-600 font-medium transition-colors"
+              className="hover:text-[#6C2BD9] font-medium transition-colors"
             >
               Service Providers
             </button>
             {viewMode === 'FORM' && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-blue-600 font-semibold">
+                <span className="text-[#6C2BD9] font-semibold">
                   {formMode === 'CREATE' ? 'Add Service Provider' : 'Edit Service Provider'}
                 </span>
               </>
@@ -536,12 +536,12 @@ export function ServiceProviderAction() {
           <h1 className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-2">
             {viewMode === 'FORM' ? (
               <>
-                <Building2 className="w-5 h-5 text-blue-600" />
+                <Building2 className="w-5 h-5 text-[#6C2BD9]" />
                 {formMode === 'CREATE' ? 'Add Service Provider' : `Edit Service Provider (${formData.providerCode})`}
               </>
             ) : (
               <>
-                <Building2 className="w-5 h-5 text-blue-600" />
+                <Building2 className="w-5 h-5 text-[#6C2BD9]" />
                 Service Providers Directory
               </>
             )}
@@ -588,7 +588,7 @@ export function ServiceProviderAction() {
                   placeholder="Search by code, provider name, registration #, TRN..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-9 pr-3 py-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                 />
               </div>
 
@@ -596,7 +596,7 @@ export function ServiceProviderAction() {
                 <select
                   value={typeFilter}
                   onChange={(e) => setTypeFilter(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-800"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#6C2BD9] text-slate-800"
                 >
                   <option value="ALL">All Provider Types</option>
                   <option value="AMC Provider">AMC Provider</option>
@@ -611,7 +611,7 @@ export function ServiceProviderAction() {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-blue-500 text-slate-800"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-[#6C2BD9] text-slate-800"
                 >
                   <option value="ALL">All Statuses</option>
                   <option value="Active">Active</option>
@@ -632,11 +632,11 @@ export function ServiceProviderAction() {
               >
                 <div className="flex justify-between items-start gap-2">
                   <div className="flex items-center gap-3">
-                    <div className="w-10 h-10 rounded-lg bg-blue-50 border border-blue-200 flex items-center justify-center font-bold text-blue-700 text-xs uppercase">
+                    <div className="w-10 h-10 rounded-lg bg-purple-50 border border-purple-200 flex items-center justify-center font-bold text-[#6C2BD9] text-xs uppercase">
                       {p.providerName.substring(0, 2)}
                     </div>
                     <div>
-                      <span className="font-mono text-[11px] text-blue-600 font-bold">{p.providerCode}</span>
+                      <span className="font-mono text-[11px] text-[#6C2BD9] font-bold">{p.providerCode}</span>
                       <h3 className="font-bold text-slate-900 text-sm">{p.providerName}</h3>
                     </div>
                   </div>
@@ -691,7 +691,7 @@ export function ServiceProviderAction() {
                       setFormMode('EDIT');
                       setViewMode('FORM');
                     }}
-                    className="px-3 py-1 bg-blue-50 hover:bg-blue-100 text-blue-700 font-semibold rounded text-xs transition-colors"
+                    className="px-3 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] font-semibold rounded text-xs transition-colors"
                   >
                     Manage / Edit
                   </button>
@@ -754,14 +754,14 @@ export function ServiceProviderAction() {
                         value={formData.providerCode}
                         onChange={(e) => handleInputChange('providerCode', e.target.value)}
                         disabled={formData.autoGenerateCode}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 font-semibold focus:outline-none focus:border-blue-500 disabled:opacity-60"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9] disabled:opacity-60"
                       />
                       <label className="flex items-center gap-1.5 mt-1.5 text-[11px] text-slate-500 cursor-pointer">
                         <input
                           type="checkbox"
                           checked={formData.autoGenerateCode}
                           onChange={(e) => handleInputChange('autoGenerateCode', e.target.checked)}
-                          className="rounded text-blue-600 focus:ring-blue-500"
+                          className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                         />
                         <span>Auto-generate code</span>
                       </label>
@@ -777,7 +777,7 @@ export function ServiceProviderAction() {
                         value={formData.providerName}
                         onChange={(e) => handleInputChange('providerName', e.target.value)}
                         placeholder="e.g. Al Futtaim AMC"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -789,7 +789,7 @@ export function ServiceProviderAction() {
                       <select
                         value={formData.providerType}
                         onChange={(e) => handleInputChange('providerType', e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       >
                         <option value="AMC Provider">AMC Provider</option>
                         <option value="Service Provider">Service Provider</option>
@@ -826,7 +826,7 @@ export function ServiceProviderAction() {
                         value={formData.companyRegistrationNo}
                         onChange={(e) => handleInputChange('companyRegistrationNo', e.target.value)}
                         placeholder="CN-458712"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -840,7 +840,7 @@ export function ServiceProviderAction() {
                         value={formData.taxRegistrationNo}
                         onChange={(e) => handleInputChange('taxRegistrationNo', e.target.value)}
                         placeholder="100258741200003"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -854,7 +854,7 @@ export function ServiceProviderAction() {
                         value={formData.website}
                         onChange={(e) => handleInputChange('website', e.target.value)}
                         placeholder="www.alfuttaim.com"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -870,7 +870,7 @@ export function ServiceProviderAction() {
                             value={formData.yearEstablished}
                             onChange={(e) => handleInputChange('yearEstablished', e.target.value)}
                             placeholder="2001"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                           <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2" />
                         </div>
@@ -883,7 +883,7 @@ export function ServiceProviderAction() {
                         <select
                           value={formData.defaultCurrency}
                           onChange={(e) => handleInputChange('defaultCurrency', e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-semibold"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-semibold"
                         >
                           <option value="AED">AED</option>
                           <option value="USD">USD</option>
@@ -901,7 +901,7 @@ export function ServiceProviderAction() {
                           value={formData.paymentTermsDays}
                           onChange={(e) => handleInputChange('paymentTermsDays', e.target.value)}
                           placeholder="30"
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
                     </div>
@@ -921,7 +921,7 @@ export function ServiceProviderAction() {
                         value={formData.remarks}
                         onChange={(e) => handleInputChange('remarks', e.target.value)}
                         placeholder="Authorized service provider details and operational notes..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -940,15 +940,15 @@ export function ServiceProviderAction() {
                         Company Logo
                       </label>
                       <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center bg-slate-50 hover:bg-slate-100/50 transition-colors">
-                        <div className="w-24 h-16 mx-auto bg-white border border-slate-200 rounded-lg flex items-center justify-center font-bold text-blue-800 text-sm shadow-2xs mb-2">
+                        <div className="w-24 h-16 mx-auto bg-white border border-slate-200 rounded-lg flex items-center justify-center font-bold text-purple-900 text-sm shadow-2xs mb-2">
                           {formData.providerName ? (
-                            <span className="text-xs text-center px-1 font-bold text-blue-700">{formData.providerName}</span>
+                            <span className="text-xs text-center px-1 font-bold text-[#6C2BD9]">{formData.providerName}</span>
                           ) : (
                             'Logo'
                           )}
                         </div>
                         <button className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold inline-flex items-center gap-1 hover:bg-slate-50 shadow-2xs">
-                          <Upload className="w-3.5 h-3.5 text-blue-600" /> Upload Logo
+                          <Upload className="w-3.5 h-3.5 text-[#6C2BD9]" /> Upload Logo
                         </button>
                         <p className="text-[10px] text-slate-400 mt-1.5">
                           Supported formats: JPG, PNG (Max 2MB)
@@ -974,7 +974,7 @@ export function ServiceProviderAction() {
                             value={type}
                             checked={formData.providerType === type}
                             onChange={(e) => handleInputChange('providerType', e.target.value)}
-                            className="text-blue-600 focus:ring-blue-500"
+                            className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                           />
                           <span>{type}</span>
                         </label>
@@ -1015,7 +1015,7 @@ export function ServiceProviderAction() {
                         type="button"
                         onClick={() => handleInputChange('preferredProvider', !formData.preferredProvider)}
                         className={`w-11 h-6 rounded-full transition-colors relative ${
-                          formData.preferredProvider ? 'bg-blue-600' : 'bg-slate-300'
+                          formData.preferredProvider ? 'bg-[#6C2BD9]' : 'bg-slate-300'
                         }`}
                       >
                         <span className={`w-4 h-4 bg-white rounded-full absolute top-1 transition-transform ${
@@ -1033,7 +1033,7 @@ export function ServiceProviderAction() {
                           type="number"
                           value={formData.leadTimeDays}
                           onChange={(e) => handleInputChange('leadTimeDays', e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
 
@@ -1078,7 +1078,7 @@ export function ServiceProviderAction() {
                         value={formData.primaryContact}
                         onChange={(e) => handleInputChange('primaryContact', e.target.value)}
                         placeholder="Saeed Ahmed"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       />
                     </div>
 
@@ -1091,7 +1091,7 @@ export function ServiceProviderAction() {
                         value={formData.designation}
                         onChange={(e) => handleInputChange('designation', e.target.value)}
                         placeholder="Account Manager"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1104,7 +1104,7 @@ export function ServiceProviderAction() {
                         value={formData.email}
                         onChange={(e) => handleInputChange('email', e.target.value)}
                         placeholder="saeed.ahmed@alfuttaim.com"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1117,7 +1117,7 @@ export function ServiceProviderAction() {
                         value={formData.phone}
                         onChange={(e) => handleInputChange('phone', e.target.value)}
                         placeholder="+971 50 123 4567"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1130,7 +1130,7 @@ export function ServiceProviderAction() {
                         value={formData.alternateContact}
                         onChange={(e) => handleInputChange('alternateContact', e.target.value)}
                         placeholder="Fatima Noor"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1143,7 +1143,7 @@ export function ServiceProviderAction() {
                         value={formData.alternatePhone}
                         onChange={(e) => handleInputChange('alternatePhone', e.target.value)}
                         placeholder="+971 50 765 4321"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -1165,7 +1165,7 @@ export function ServiceProviderAction() {
                         value={formData.addressLine1}
                         onChange={(e) => handleInputChange('addressLine1', e.target.value)}
                         placeholder="Al Futtaim Building, Sheikh Zayed Road"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1178,7 +1178,7 @@ export function ServiceProviderAction() {
                         value={formData.addressLine2}
                         onChange={(e) => handleInputChange('addressLine2', e.target.value)}
                         placeholder="P.O. Box 12345"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1191,7 +1191,7 @@ export function ServiceProviderAction() {
                         value={formData.city}
                         onChange={(e) => handleInputChange('city', e.target.value)}
                         placeholder="Dubai"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1202,7 +1202,7 @@ export function ServiceProviderAction() {
                       <select
                         value={formData.emirate}
                         onChange={(e) => handleInputChange('emirate', e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       >
                         <option value="Dubai">Dubai</option>
                         <option value="Abu Dhabi">Abu Dhabi</option>
@@ -1221,7 +1221,7 @@ export function ServiceProviderAction() {
                       <select
                         value={formData.country}
                         onChange={(e) => handleInputChange('country', e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       >
                         <option value="UAE">UAE</option>
                         <option value="Saudi Arabia">Saudi Arabia</option>
@@ -1256,7 +1256,7 @@ export function ServiceProviderAction() {
                       value={formData.primaryContact}
                       onChange={(e) => handleInputChange('primaryContact', e.target.value)}
                       placeholder="Saeed Ahmed"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                     />
                   </div>
 
@@ -1269,7 +1269,7 @@ export function ServiceProviderAction() {
                       value={formData.designation}
                       onChange={(e) => handleInputChange('designation', e.target.value)}
                       placeholder="Account Manager"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                     />
                   </div>
 
@@ -1282,7 +1282,7 @@ export function ServiceProviderAction() {
                       value={formData.email}
                       onChange={(e) => handleInputChange('email', e.target.value)}
                       placeholder="saeed.ahmed@alfuttaim.com"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                     />
                   </div>
 
@@ -1295,7 +1295,7 @@ export function ServiceProviderAction() {
                       value={formData.phone}
                       onChange={(e) => handleInputChange('phone', e.target.value)}
                       placeholder="+971 50 123 4567"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                     />
                   </div>
 
@@ -1308,7 +1308,7 @@ export function ServiceProviderAction() {
                       value={formData.mobile || '+971 50 123 4567'}
                       onChange={(e) => handleInputChange('mobile', e.target.value)}
                       placeholder="+971 50 123 4567"
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                     />
                   </div>
 
@@ -1319,7 +1319,7 @@ export function ServiceProviderAction() {
                     <select
                       value={formData.department || 'Operations'}
                       onChange={(e) => handleInputChange('department', e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                     >
                       <option value="Operations">Operations</option>
                       <option value="Maintenance">Maintenance</option>
@@ -1337,7 +1337,7 @@ export function ServiceProviderAction() {
                       type="checkbox"
                       checked={formData.isPrimaryChecked !== false}
                       onChange={(e) => handleInputChange('isPrimaryChecked', e.target.checked)}
-                      className="w-4 h-4 text-blue-600 rounded focus:ring-blue-500"
+                      className="w-4 h-4 text-[#6C2BD9] rounded focus:ring-[#6C2BD9]"
                     />
                     <span>Set as primary contact</span>
                   </label>
@@ -1353,9 +1353,9 @@ export function ServiceProviderAction() {
 
                   <button
                     onClick={() => setShowAddContactPersonModal(true)}
-                    className="px-3 py-1.5 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                    className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
                   >
-                    <Plus className="w-3.5 h-3.5 text-blue-600" /> Add Contact
+                    <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Contact
                   </button>
                 </div>
 
@@ -1378,11 +1378,11 @@ export function ServiceProviderAction() {
                           <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
                           <td className="p-2.5 font-bold text-slate-900">{alt.name}</td>
                           <td className="p-2.5 text-slate-600">{alt.designation}</td>
-                          <td className="p-2.5 text-blue-600">{alt.email}</td>
+                          <td className="p-2.5 text-[#6C2BD9]">{alt.email}</td>
                           <td className="p-2.5 font-mono">{alt.phone}</td>
                           <td className="p-2.5 font-mono">{alt.mobile}</td>
                           <td className="p-2.5 text-right space-x-2">
-                            <button className="text-slate-400 hover:text-blue-600 p-1">
+                            <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
@@ -1425,7 +1425,7 @@ export function ServiceProviderAction() {
                         onClick={() => setAddressSubTab(tab)}
                         className={`pb-2 px-3 border-b-2 transition-all ${
                           addressSubTab === tab
-                            ? 'border-blue-600 text-blue-600 font-bold'
+                            ? 'border-[#6C2BD9] text-[#6C2BD9] font-bold'
                             : 'border-transparent text-slate-500 hover:text-slate-800'
                         }`}
                       >
@@ -1445,7 +1445,7 @@ export function ServiceProviderAction() {
                         value={formData.addressLine1}
                         onChange={(e) => handleInputChange('addressLine1', e.target.value)}
                         placeholder="Al Futtaim Building, Sheikh Zayed Road"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       />
                     </div>
 
@@ -1458,7 +1458,7 @@ export function ServiceProviderAction() {
                         value={formData.addressLine2}
                         onChange={(e) => handleInputChange('addressLine2', e.target.value)}
                         placeholder="P.O. Box 12345"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1471,7 +1471,7 @@ export function ServiceProviderAction() {
                         value={formData.city}
                         onChange={(e) => handleInputChange('city', e.target.value)}
                         placeholder="Dubai"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       />
                     </div>
 
@@ -1482,7 +1482,7 @@ export function ServiceProviderAction() {
                       <select
                         value={formData.emirate}
                         onChange={(e) => handleInputChange('emirate', e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       >
                         <option value="Dubai">Dubai</option>
                         <option value="Abu Dhabi">Abu Dhabi</option>
@@ -1501,7 +1501,7 @@ export function ServiceProviderAction() {
                       <select
                         value={formData.country}
                         onChange={(e) => handleInputChange('country', e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       >
                         <option value="UAE">UAE</option>
                         <option value="Saudi Arabia">Saudi Arabia</option>
@@ -1521,7 +1521,7 @@ export function ServiceProviderAction() {
                         value={formData.postalCode || '12345'}
                         onChange={(e) => handleInputChange('postalCode', e.target.value)}
                         placeholder="12345"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -1535,13 +1535,13 @@ export function ServiceProviderAction() {
 
                   {/* Map Search Input */}
                   <div className="relative">
-                    <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-blue-600" />
+                    <MapPin className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-[#6C2BD9]" />
                     <input
                       type="text"
                       placeholder="Search or enter address"
                       value={mapSearchAddress}
                       onChange={(e) => setMapSearchAddress(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
                     />
                   </div>
 
@@ -1599,9 +1599,9 @@ export function ServiceProviderAction() {
                           status: 'Active'
                         });
                       }}
-                      className="px-3 py-1.5 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap"
+                      className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap"
                     >
-                      <Plus className="w-3.5 h-3.5 text-blue-600" /> Add Category
+                      <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Category
                     </button>
                   </div>
 
@@ -1610,7 +1610,7 @@ export function ServiceProviderAction() {
                       <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
                         <tr>
                           <th className="p-2.5 w-8">
-                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
+                            <input type="checkbox" className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]" />
                           </th>
                           <th className="p-2.5 w-8">#</th>
                           <th className="p-2.5">Asset Category</th>
@@ -1625,7 +1625,7 @@ export function ServiceProviderAction() {
                         {serviceCategoriesList.map((sc, idx) => (
                           <tr key={sc.id} className="hover:bg-slate-50/70 transition-colors">
                             <td className="p-2.5">
-                              <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
+                              <input type="checkbox" className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]" />
                             </td>
                             <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
                             <td className="p-2.5 font-bold text-slate-900">{sc.category}</td>
@@ -1649,7 +1649,7 @@ export function ServiceProviderAction() {
                                     status: sc.status
                                   });
                                 }}
-                                className="text-slate-400 hover:text-blue-600 p-1"
+                                className="text-slate-400 hover:text-[#6C2BD9] p-1"
                               >
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
@@ -1688,7 +1688,7 @@ export function ServiceProviderAction() {
                         <select
                           value={categoryForm.category}
                           onChange={(e) => setCategoryForm({ ...categoryForm, category: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                         >
                           <option value="HVAC">HVAC</option>
                           <option value="Electrical">Electrical</option>
@@ -1706,7 +1706,7 @@ export function ServiceProviderAction() {
                         <select
                           value={categoryForm.type}
                           onChange={(e) => setCategoryForm({ ...categoryForm, type: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                         >
                           <option value="Preventive, Corrective">Preventive, Corrective</option>
                           <option value="Inspection, Certification">Inspection, Certification</option>
@@ -1730,7 +1730,7 @@ export function ServiceProviderAction() {
                         value={categoryForm.desc}
                         onChange={(e) => setCategoryForm({ ...categoryForm, desc: e.target.value })}
                         placeholder="e.g. AC units, Chillers, AHU, FCU"
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1745,7 +1745,7 @@ export function ServiceProviderAction() {
                             name="coverageTypeRadio"
                             checked={categoryForm.coverageType === 'ALL'}
                             onChange={() => setCategoryForm({ ...categoryForm, coverageType: 'ALL' })}
-                            className="text-blue-600 focus:ring-blue-500"
+                            className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                           />
                           <span>All Locations</span>
                         </label>
@@ -1755,7 +1755,7 @@ export function ServiceProviderAction() {
                             name="coverageTypeRadio"
                             checked={categoryForm.coverageType === 'SPECIFIC'}
                             onChange={() => setCategoryForm({ ...categoryForm, coverageType: 'SPECIFIC' })}
-                            className="text-blue-600 focus:ring-blue-500"
+                            className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                           />
                           <span>Specific Locations</span>
                         </label>
@@ -1767,7 +1767,7 @@ export function ServiceProviderAction() {
                           placeholder="Select locations..."
                           value={categoryForm.specificLocation}
                           onChange={(e) => setCategoryForm({ ...categoryForm, specificLocation: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
                         />
                         <Search className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       </div>
@@ -1819,7 +1819,7 @@ export function ServiceProviderAction() {
                         setServiceCategoriesList(prev => [...prev, newCat]);
                         showToastMsg(`Service Category ${newCat.category} added!`);
                       }}
-                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold transition-all shadow-xs"
+                      className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold transition-all shadow-xs"
                     >
                       Add Category
                     </button>
@@ -1854,9 +1854,9 @@ export function ServiceProviderAction() {
                         setSupportedServicesList(prev => [...prev, createdSvc]);
                         showToastMsg('Service item added!');
                       }}
-                      className="px-3 py-1.5 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap"
+                      className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap"
                     >
-                      <Plus className="w-3.5 h-3.5 text-blue-600" /> Add Service
+                      <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Service
                     </button>
                   </div>
 
@@ -1865,7 +1865,7 @@ export function ServiceProviderAction() {
                       <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
                         <tr>
                           <th className="p-2.5 w-8">
-                            <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
+                            <input type="checkbox" className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]" />
                           </th>
                           <th className="p-2.5 w-8">#</th>
                           <th className="p-2.5">Service Name</th>
@@ -1880,11 +1880,11 @@ export function ServiceProviderAction() {
                         {supportedServicesList.map((svc, idx) => (
                           <tr key={svc.id} className="hover:bg-slate-50/70 transition-colors">
                             <td className="p-2.5">
-                              <input type="checkbox" className="rounded text-blue-600 focus:ring-blue-500" />
+                              <input type="checkbox" className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]" />
                             </td>
                             <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
                             <td className="p-2.5 font-bold text-slate-900">{svc.name}</td>
-                            <td className="p-2.5 font-mono text-blue-600 font-semibold">{svc.code}</td>
+                            <td className="p-2.5 font-mono text-[#6C2BD9] font-semibold">{svc.code}</td>
                             <td className="p-2.5 font-mono text-slate-700">{svc.sla}</td>
                             <td className="p-2.5 font-bold text-emerald-600">{svc.rate}</td>
                             <td className="p-2.5">
@@ -1893,7 +1893,7 @@ export function ServiceProviderAction() {
                               </span>
                             </td>
                             <td className="p-2.5 text-right space-x-1.5">
-                              <button className="text-slate-400 hover:text-blue-600 p-1">
+                              <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                               <button
@@ -1931,9 +1931,9 @@ export function ServiceProviderAction() {
                         setCertificationsList(prev => [...prev, newCert]);
                         showToastMsg('Certification record added!');
                       }}
-                      className="px-3 py-1.5 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap"
+                      className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap"
                     >
-                      <Plus className="w-3.5 h-3.5 text-blue-600" /> Add Certification
+                      <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Certification
                     </button>
                   </div>
 
@@ -1962,7 +1962,7 @@ export function ServiceProviderAction() {
                               </span>
                             </td>
                             <td className="p-2.5 text-right space-x-1.5">
-                              <button className="text-slate-400 hover:text-blue-600 p-1">
+                              <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
                                 <Edit3 className="w-3.5 h-3.5" />
                               </button>
                               <button
@@ -2021,7 +2021,7 @@ export function ServiceProviderAction() {
                             selectedTag: 'All Assets'
                           });
                         }}
-                        className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs whitespace-nowrap"
+                        className="px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs whitespace-nowrap"
                       >
                         <Plus className="w-3.5 h-3.5 text-white" /> Add Contract / AMC
                       </button>
@@ -2036,7 +2036,7 @@ export function ServiceProviderAction() {
                           placeholder="Search by contract no, name or reference..."
                           value={contractSearchTerm}
                           onChange={(e) => setContractSearchTerm(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
 
@@ -2045,7 +2045,7 @@ export function ServiceProviderAction() {
                         <select
                           value={contractStatusFilter}
                           onChange={(e) => setContractStatusFilter(e.target.value)}
-                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                          className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                         >
                           <option value="All">All</option>
                           <option value="Active">Active</option>
@@ -2079,7 +2079,7 @@ export function ServiceProviderAction() {
                           {amcContractsList.map((cnt, idx) => (
                             <tr key={cnt.id} className="hover:bg-slate-50/70 transition-colors">
                               <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
-                              <td className="p-2.5 font-mono font-bold text-blue-600">{cnt.contractNo}</td>
+                              <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">{cnt.contractNo}</td>
                               <td className="p-2.5 font-bold text-slate-900">{cnt.contractName}</td>
                               <td className="p-2.5 text-slate-600">{cnt.contractType}</td>
                               <td className="p-2.5 font-mono text-slate-700">{cnt.startDate}</td>
@@ -2110,12 +2110,12 @@ export function ServiceProviderAction() {
                                     coverageTarget: 'ALL',
                                     selectedTag: 'All HVAC Assets (126)'
                                   })}
-                                  className="text-slate-400 hover:text-blue-600 p-1"
+                                  className="text-slate-400 hover:text-[#6C2BD9] p-1"
                                   title="View Details"
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
-                                <button className="text-slate-400 hover:text-blue-600 p-1">
+                                <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
@@ -2137,7 +2137,7 @@ export function ServiceProviderAction() {
                       <div className="flex items-center gap-2">
                         <div className="flex items-center gap-1">
                           <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500">‹</button>
-                          <button className="px-2.5 py-0.5 bg-blue-600 text-white font-bold rounded">1</button>
+                          <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
                           <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500">›</button>
                         </div>
                         <select className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-700 bg-white">
@@ -2160,8 +2160,8 @@ export function ServiceProviderAction() {
 
                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                       {/* KPI Card 1 */}
-                      <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-lg bg-blue-600 text-white flex items-center justify-center font-bold shadow-2xs">
+                      <div className="bg-purple-50/60 border border-purple-200 rounded-xl p-3 flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-lg bg-[#6C2BD9] text-white flex items-center justify-center font-bold shadow-2xs">
                           <Layers className="w-5 h-5" />
                         </div>
                         <div>
@@ -2219,7 +2219,7 @@ export function ServiceProviderAction() {
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-900">
                           <tr className="hover:bg-amber-50/30 transition-colors">
-                            <td className="p-2.5 font-mono font-bold text-blue-600">SERV-2024-010</td>
+                            <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">SERV-2024-010</td>
                             <td className="p-2.5 font-bold text-slate-900">Fire System Support</td>
                             <td className="p-2.5 font-mono text-slate-700">31 Dec 2025</td>
                             <td className="p-2.5">
@@ -2229,7 +2229,7 @@ export function ServiceProviderAction() {
                             </td>
                             <td className="p-2.5 font-semibold text-slate-900">95,000</td>
                             <td className="p-2.5 text-right">
-                              <button className="text-slate-400 hover:text-blue-600 p-1">
+                              <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
                                 <Eye className="w-3.5 h-3.5" />
                               </button>
                             </td>
@@ -2249,7 +2249,7 @@ export function ServiceProviderAction() {
 
                     {/* SECTION 1: CONTRACT INFORMATION */}
                     <div className="space-y-3">
-                      <h3 className="text-xs font-bold text-blue-600">Contract Information</h3>
+                      <h3 className="text-xs font-bold text-[#6C2BD9]">Contract Information</h3>
 
                       <div className="grid grid-cols-2 gap-2">
                         <div>
@@ -2260,7 +2260,7 @@ export function ServiceProviderAction() {
                             type="text"
                             value={selectedContractForm.contractNo}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, contractNo: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                         </div>
 
@@ -2272,7 +2272,7 @@ export function ServiceProviderAction() {
                             type="text"
                             value={selectedContractForm.contractName}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, contractName: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                         </div>
                       </div>
@@ -2285,7 +2285,7 @@ export function ServiceProviderAction() {
                           <select
                             value={selectedContractForm.contractType}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, contractType: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                           >
                             <option value="AMC">AMC</option>
                             <option value="Service Contract">Service Contract</option>
@@ -2320,7 +2320,7 @@ export function ServiceProviderAction() {
                               type="date"
                               value={selectedContractForm.startDate}
                               onChange={(e) => setSelectedContractForm({ ...selectedContractForm, startDate: e.target.value })}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                             />
                           </div>
                         </div>
@@ -2334,7 +2334,7 @@ export function ServiceProviderAction() {
                               type="date"
                               value={selectedContractForm.endDate}
                               onChange={(e) => setSelectedContractForm({ ...selectedContractForm, endDate: e.target.value })}
-                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                              className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                             />
                           </div>
                         </div>
@@ -2349,7 +2349,7 @@ export function ServiceProviderAction() {
                             type="text"
                             value={selectedContractForm.contractValue}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, contractValue: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                         </div>
 
@@ -2360,7 +2360,7 @@ export function ServiceProviderAction() {
                           <select
                             value={selectedContractForm.currency || 'AED'}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, currency: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                           >
                             <option value="AED">AED</option>
                             <option value="USD">USD</option>
@@ -2379,7 +2379,7 @@ export function ServiceProviderAction() {
                             value={selectedContractForm.referenceNo}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, referenceNo: e.target.value })}
                             placeholder="PO-458712"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                         </div>
 
@@ -2392,7 +2392,7 @@ export function ServiceProviderAction() {
                             value={selectedContractForm.paymentTerms}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, paymentTerms: e.target.value })}
                             placeholder="30"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                         </div>
                       </div>
@@ -2411,14 +2411,14 @@ export function ServiceProviderAction() {
                           value={selectedContractForm.description}
                           onChange={(e) => setSelectedContractForm({ ...selectedContractForm, description: e.target.value })}
                           placeholder="Contract coverage description..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
                     </div>
 
                     {/* SECTION 2: COVERAGE DETAILS */}
                     <div className="space-y-2 pt-2 border-t border-slate-100">
-                      <h3 className="text-xs font-bold text-blue-600">Coverage Details</h3>
+                      <h3 className="text-xs font-bold text-[#6C2BD9]">Coverage Details</h3>
 
                       <div className="flex border-b border-slate-200 gap-2 text-xs font-semibold">
                         {['Covered Assets', 'Covered Locations', 'Covered Categories'].map(ctab => (
@@ -2427,7 +2427,7 @@ export function ServiceProviderAction() {
                             onClick={() => setCoverageSubTab(ctab)}
                             className={`pb-1.5 px-2 border-b-2 transition-all ${
                               coverageSubTab === ctab
-                                ? 'border-blue-600 text-blue-600 font-bold'
+                                ? 'border-[#6C2BD9] text-[#6C2BD9] font-bold'
                                 : 'border-transparent text-slate-500 hover:text-slate-800'
                             }`}
                           >
@@ -2444,7 +2444,7 @@ export function ServiceProviderAction() {
                               name="coverageTargetRadio"
                               checked={selectedContractForm.coverageTarget === 'ALL'}
                               onChange={() => setSelectedContractForm({ ...selectedContractForm, coverageTarget: 'ALL' })}
-                              className="text-blue-600 focus:ring-blue-500"
+                              className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                             />
                             <span>All Assets</span>
                           </label>
@@ -2454,7 +2454,7 @@ export function ServiceProviderAction() {
                               name="coverageTargetRadio"
                               checked={selectedContractForm.coverageTarget === 'SPECIFIC'}
                               onChange={() => setSelectedContractForm({ ...selectedContractForm, coverageTarget: 'SPECIFIC' })}
-                              className="text-blue-600 focus:ring-blue-500"
+                              className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                             />
                             <span>Specific Assets</span>
                           </label>
@@ -2464,17 +2464,17 @@ export function ServiceProviderAction() {
                           <input
                             type="text"
                             placeholder="Search and select assets..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                           />
                           <Search className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                         </div>
 
                         {selectedContractForm.selectedTag && (
-                          <div className="flex items-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 px-2.5 py-1 rounded-md text-xs font-semibold w-fit">
+                          <div className="flex items-center gap-1.5 bg-purple-50 text-[#6C2BD9] border border-purple-200 px-2.5 py-1 rounded-md text-xs font-semibold w-fit">
                             <span>{selectedContractForm.selectedTag}</span>
                             <button
                               onClick={() => setSelectedContractForm({ ...selectedContractForm, selectedTag: '' })}
-                              className="text-blue-500 hover:text-blue-800 ml-1 font-bold"
+                              className="text-[#6C2BD9] hover:text-purple-900 ml-1 font-bold"
                             >
                               ×
                             </button>
@@ -2494,7 +2494,7 @@ export function ServiceProviderAction() {
                     </button>
                     <button
                       type="button"
-                      className="px-3.5 py-1.5 border border-blue-600 text-blue-700 rounded-lg text-xs font-semibold hover:bg-blue-50 flex items-center gap-1"
+                      className="px-3.5 py-1.5 border border-[#6C2BD9] text-[#6C2BD9] rounded-lg text-xs font-semibold hover:bg-purple-50 flex items-center gap-1"
                     >
                       <FileText className="w-3.5 h-3.5" /> Save as Draft
                     </button>
@@ -2503,7 +2503,7 @@ export function ServiceProviderAction() {
                       onClick={() => {
                         showToastMsg(`Contract ${selectedContractForm.contractNo} saved!`);
                       }}
-                      className="px-4 py-1.5 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs transition-all shadow-xs"
+                      className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg text-xs transition-all shadow-xs"
                     >
                       Save Contract
                     </button>
@@ -2534,7 +2534,7 @@ export function ServiceProviderAction() {
                       <select
                         value={docTypeFilter}
                         onChange={(e) => setDocTypeFilter(e.target.value)}
-                        className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:border-blue-500"
+                        className="bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-800 font-medium focus:outline-none focus:border-[#6C2BD9]"
                       >
                         <option value="All Document Types">All Document Types</option>
                         <option value="Trade License">Trade License</option>
@@ -2554,7 +2554,7 @@ export function ServiceProviderAction() {
                           placeholder="Search documents..."
                           value={docSearchTerm}
                           onChange={(e) => setDocSearchTerm(e.target.value)}
-                          className="bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 w-44"
+                          className="bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] w-44"
                         />
                       </div>
                     </div>
@@ -2597,11 +2597,11 @@ export function ServiceProviderAction() {
                                       PDF
                                     </div>
                                   ) : (
-                                    <div className="w-6 h-6 rounded bg-blue-600 flex items-center justify-center text-white text-[9px] font-bold shrink-0 shadow-2xs font-serif">
+                                    <div className="w-6 h-6 rounded bg-[#6C2BD9] flex items-center justify-center text-white text-[9px] font-bold shrink-0 shadow-2xs font-serif">
                                       W
                                     </div>
                                   )}
-                                  <span className="text-blue-600 font-medium hover:underline cursor-pointer">
+                                  <span className="text-[#6C2BD9] font-medium hover:underline cursor-pointer">
                                     {doc.name}
                                   </span>
                                 </div>
@@ -2632,14 +2632,14 @@ export function ServiceProviderAction() {
                                     status: doc.status === 'N/A' ? 'Valid' : doc.status,
                                     description: doc.description || ''
                                   })}
-                                  className="text-blue-600 hover:text-blue-800 p-1"
+                                  className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="View Document Details"
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
                                 <button 
                                   onClick={() => showToastMsg(`Downloading ${doc.name}...`)}
-                                  className="text-blue-600 hover:text-blue-800 p-1"
+                                  className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="Download"
                                 >
                                   <Download className="w-3.5 h-3.5" />
@@ -2649,7 +2649,7 @@ export function ServiceProviderAction() {
                                     setProviderDocumentsList(prev => prev.filter(d => d.id !== doc.id));
                                     showToastMsg(`Document ${doc.name} deleted.`);
                                   }}
-                                  className="text-blue-600 hover:text-red-600 p-1"
+                                  className="text-[#6C2BD9] hover:text-red-600 p-1"
                                   title="Delete Document"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -2667,7 +2667,7 @@ export function ServiceProviderAction() {
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">‹</button>
-                        <button className="px-2.5 py-0.5 bg-blue-600 text-white font-bold rounded">1</button>
+                        <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
                         <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">›</button>
                       </div>
                       <select className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-700 bg-white">
@@ -2686,9 +2686,9 @@ export function ServiceProviderAction() {
                     </h2>
 
                     {/* Drag & Drop Dropzone */}
-                    <div className="border-2 border-dashed border-blue-200 bg-blue-50/30 hover:bg-blue-50/60 rounded-xl p-6 text-center transition-all cursor-pointer group">
-                      <div className="w-12 h-12 rounded-full bg-white border border-blue-100 flex items-center justify-center text-blue-600 mx-auto mb-2 shadow-2xs group-hover:scale-105 transition-transform">
-                        <Upload className="w-6 h-6 text-blue-600" />
+                    <div className="border-2 border-dashed border-purple-200 bg-purple-50/30 hover:bg-purple-50/60 rounded-xl p-6 text-center transition-all cursor-pointer group">
+                      <div className="w-12 h-12 rounded-full bg-white border border-purple-200 flex items-center justify-center text-[#6C2BD9] mx-auto mb-2 shadow-2xs group-hover:scale-105 transition-transform">
+                        <Upload className="w-6 h-6 text-[#6C2BD9]" />
                       </div>
 
                       <p className="text-xs font-bold text-slate-800">
@@ -2729,7 +2729,7 @@ export function ServiceProviderAction() {
                             }
                           }}
                         />
-                        <span className="px-4 py-1.5 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-2xs inline-block">
+                        <span className="px-4 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-2xs inline-block">
                           Choose Files
                         </span>
                       </label>
@@ -2756,7 +2756,7 @@ export function ServiceProviderAction() {
                           type="text"
                           value={selectedDocForm.name}
                           onChange={(e) => setSelectedDocForm({ ...selectedDocForm, name: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
 
@@ -2768,7 +2768,7 @@ export function ServiceProviderAction() {
                           <select
                             value={selectedDocForm.type}
                             onChange={(e) => setSelectedDocForm({ ...selectedDocForm, type: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                           >
                             <option value="Trade License">Trade License</option>
                             <option value="Tax Document">Tax Document</option>
@@ -2790,7 +2790,7 @@ export function ServiceProviderAction() {
                             value={selectedDocForm.refNo}
                             onChange={(e) => setSelectedDocForm({ ...selectedDocForm, refNo: e.target.value })}
                             placeholder="TL-2024-001"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                         </div>
                       </div>
@@ -2804,7 +2804,7 @@ export function ServiceProviderAction() {
                             type="date"
                             value={selectedDocForm.issueDate}
                             onChange={(e) => setSelectedDocForm({ ...selectedDocForm, issueDate: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                         </div>
 
@@ -2816,7 +2816,7 @@ export function ServiceProviderAction() {
                             type="date"
                             value={selectedDocForm.validTill}
                             onChange={(e) => setSelectedDocForm({ ...selectedDocForm, validTill: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                         </div>
                       </div>
@@ -2851,7 +2851,7 @@ export function ServiceProviderAction() {
                           value={selectedDocForm.description}
                           onChange={(e) => setSelectedDocForm({ ...selectedDocForm, description: e.target.value })}
                           placeholder="Document description..."
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
                     </div>
@@ -2883,7 +2883,7 @@ export function ServiceProviderAction() {
 
                       <button 
                         onClick={() => showToastMsg('Exporting Service History to Excel/PDF...')}
-                        className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 self-start sm:self-auto"
+                        className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 self-start sm:self-auto"
                       >
                         <Download className="w-3.5 h-3.5 text-white" /> Export
                       </button>
@@ -2899,7 +2899,7 @@ export function ServiceProviderAction() {
                             type="text"
                             value={shDateRange}
                             onChange={(e) => setShDateRange(e.target.value)}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2 pr-6 py-1.5 text-[11px] text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2 pr-6 py-1.5 text-[11px] text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                           />
                           <Calendar className="w-3 h-3 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
                         </div>
@@ -2913,7 +2913,7 @@ export function ServiceProviderAction() {
                           placeholder="Search WO number..."
                           value={shWoQuery}
                           onChange={(e) => setShWoQuery(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] text-slate-900 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
 
@@ -2925,7 +2925,7 @@ export function ServiceProviderAction() {
                           placeholder="Search asset (name or tag no.)..."
                           value={shAssetQuery}
                           onChange={(e) => setShAssetQuery(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] text-slate-900 focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
 
@@ -2935,7 +2935,7 @@ export function ServiceProviderAction() {
                         <select
                           value={shTypeFilter}
                           onChange={(e) => setShTypeFilter(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                         >
                           <option value="All">All</option>
                           <option value="Preventive Maintenance">Preventive Maintenance</option>
@@ -2951,7 +2951,7 @@ export function ServiceProviderAction() {
                         <select
                           value={shStatusFilter}
                           onChange={(e) => setShStatusFilter(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-[11px] text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                         >
                           <option value="All">All</option>
                           <option value="Completed">Completed</option>
@@ -3006,11 +3006,11 @@ export function ServiceProviderAction() {
                                   attachments: sh.attachments || []
                                 })}
                                 className={`cursor-pointer transition-colors ${
-                                  selectedServiceRecord.workOrderNo === sh.workOrderNo ? 'bg-blue-50/80 font-bold' : 'hover:bg-slate-50/70'
+                                  selectedServiceRecord.workOrderNo === sh.workOrderNo ? 'bg-purple-50/80 font-bold' : 'hover:bg-slate-50/70'
                                 }`}
                               >
                                 <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
-                                <td className="p-2.5 font-mono font-bold text-blue-600">{sh.workOrderNo}</td>
+                                <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">{sh.workOrderNo}</td>
                                 <td className="p-2.5 font-mono text-slate-700">{sh.serviceDate}</td>
                                 <td className="p-2.5 font-semibold text-slate-900">{sh.asset}</td>
                                 <td className="p-2.5 text-slate-700">{sh.serviceType}</td>
@@ -3022,7 +3022,7 @@ export function ServiceProviderAction() {
                                 </td>
                                 <td className="p-2.5 text-slate-800">{sh.engineer}</td>
                                 <td className="p-2.5 text-right">
-                                  <button className="text-blue-600 hover:text-blue-800 p-1" title="View Work Order Record">
+                                  <button className="text-[#6C2BD9] hover:text-purple-900 p-1" title="View Work Order Record">
                                     <Eye className="w-3.5 h-3.5" />
                                   </button>
                                 </td>
@@ -3039,7 +3039,7 @@ export function ServiceProviderAction() {
                         <div className="flex items-center gap-1 font-semibold">
                           <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">«</button>
                           <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">‹</button>
-                          <button className="px-2.5 py-0.5 bg-blue-600 text-white font-bold rounded">1</button>
+                          <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
                           <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">2</button>
                           <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">3</button>
                           <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">4</button>
@@ -3064,8 +3064,8 @@ export function ServiceProviderAction() {
 
                       <div className="grid grid-cols-2 gap-3">
                         {/* Total Services */}
-                        <div className="bg-blue-50/60 border border-blue-100 rounded-xl p-3 flex items-center gap-3">
-                          <div className="w-9 h-9 rounded-lg bg-blue-100 text-blue-600 flex items-center justify-center shrink-0">
+                        <div className="bg-purple-50/60 border border-purple-200 rounded-xl p-3 flex items-center gap-3">
+                          <div className="w-9 h-9 rounded-lg bg-purple-100 text-[#6C2BD9] flex items-center justify-center shrink-0">
                             <Wrench className="w-4 h-4" />
                           </div>
                           <div>
@@ -3121,7 +3121,7 @@ export function ServiceProviderAction() {
                           <svg className="w-full h-full -rotate-90" viewBox="0 0 36 36">
                             {/* Segment 1: Preventive 54% (Blue) */}
                             <path
-                              className="text-blue-500 stroke-current"
+                              className="text-[#6C2BD9] stroke-current"
                               strokeWidth="4"
                               strokeDasharray="54 100"
                               strokeDashoffset="0"
@@ -3166,7 +3166,7 @@ export function ServiceProviderAction() {
                         <div className="space-y-1.5 text-[11px] font-medium text-slate-700 flex-1">
                           <div className="flex justify-between items-center">
                             <div className="flex items-center gap-1.5">
-                              <span className="w-2.5 h-2.5 rounded bg-blue-500 inline-block" />
+                              <span className="w-2.5 h-2.5 rounded bg-[#6C2BD9] inline-block" />
                               <span>Preventive Maintenance</span>
                             </div>
                             <span className="font-bold text-slate-900">28 (54%)</span>
@@ -3212,9 +3212,9 @@ export function ServiceProviderAction() {
 
                       <button
                         onClick={() => showToastMsg(`Navigating to Work Order ${selectedServiceRecord.workOrderNo}...`)}
-                        className="px-3 py-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
+                        className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
                       >
-                        View Work Order <ExternalLink className="w-3 h-3 text-blue-600" />
+                        View Work Order <ExternalLink className="w-3 h-3 text-[#6C2BD9]" />
                       </button>
                     </div>
 
@@ -3225,7 +3225,7 @@ export function ServiceProviderAction() {
                     <div className="space-y-2.5 text-xs">
                       <div className="grid grid-cols-3 text-slate-600">
                         <span className="font-semibold text-slate-500">Work Order No.</span>
-                        <span className="col-span-2 font-mono font-bold text-blue-600">{selectedServiceRecord.workOrderNo}</span>
+                        <span className="col-span-2 font-mono font-bold text-[#6C2BD9]">{selectedServiceRecord.workOrderNo}</span>
                       </div>
 
                       <div className="grid grid-cols-3 text-slate-600">
@@ -3300,7 +3300,7 @@ export function ServiceProviderAction() {
 
                       <button
                         onClick={() => showToastMsg('Downloading all attachments...')}
-                        className="text-xs font-semibold text-blue-600 hover:text-blue-800 flex items-center gap-1"
+                        className="text-xs font-semibold text-[#6C2BD9] hover:text-purple-900 flex items-center gap-1"
                       >
                         <Download className="w-3.5 h-3.5" /> Download All
                       </button>
@@ -3320,12 +3320,12 @@ export function ServiceProviderAction() {
                           {(selectedServiceRecord.attachments || []).map((att, idx) => (
                             <tr key={att.id} className="hover:bg-slate-50/70">
                               <td className="p-2 text-slate-500 font-bold">{idx + 1}</td>
-                              <td className="p-2 font-medium text-blue-600 hover:underline cursor-pointer">{att.name}</td>
+                              <td className="p-2 font-medium text-[#6C2BD9] hover:underline cursor-pointer">{att.name}</td>
                               <td className="p-2 text-slate-500 font-mono text-[11px]">{att.size}</td>
                               <td className="p-2 text-right">
                                 <button 
                                   onClick={() => showToastMsg(`Downloading ${att.name}...`)}
-                                  className="text-blue-600 hover:text-blue-800 p-1"
+                                  className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                 </button>
@@ -3376,7 +3376,7 @@ export function ServiceProviderAction() {
                         };
                         setSelectedNoteForm(newNote);
                       }}
-                      className="px-3.5 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 self-start sm:self-auto"
+                      className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 self-start sm:self-auto"
                     >
                       <Plus className="w-3.5 h-3.5 text-white" /> Add Note
                     </button>
@@ -3392,7 +3392,7 @@ export function ServiceProviderAction() {
                         placeholder="Search notes..."
                         value={noteSearchQuery}
                         onChange={(e) => setNoteSearchQuery(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -3401,7 +3401,7 @@ export function ServiceProviderAction() {
                       <select
                         value={noteTypeFilter}
                         onChange={(e) => setNoteTypeFilter(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                       >
                         <option value="All">All Note Types</option>
                         <option value="General">General</option>
@@ -3417,7 +3417,7 @@ export function ServiceProviderAction() {
                       <select
                         value={noteAuthorFilter}
                         onChange={(e) => setNoteAuthorFilter(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                       >
                         <option value="All">All Authors</option>
                         <option value="John Doe">John Doe</option>
@@ -3434,7 +3434,7 @@ export function ServiceProviderAction() {
                         placeholder="Select date range"
                         value={noteDateRange}
                         onChange={(e) => setNoteDateRange(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 placeholder-slate-400"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] placeholder-slate-400"
                       />
                       <Calendar className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                     </div>
@@ -3471,7 +3471,7 @@ export function ServiceProviderAction() {
                               key={n.id} 
                               onClick={() => setSelectedNoteForm(n)}
                               className={`cursor-pointer transition-colors ${
-                                selectedNoteForm.id === n.id ? 'bg-blue-50/80 font-bold' : 'hover:bg-slate-50/70'
+                                selectedNoteForm.id === n.id ? 'bg-purple-50/80 font-bold' : 'hover:bg-slate-50/70'
                               }`}
                             >
                               <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
@@ -3479,7 +3479,7 @@ export function ServiceProviderAction() {
                               <td className="p-2.5">
                                 <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-bold border ${
                                   n.type === 'General' ? 'bg-slate-100 text-slate-700 border-slate-200' :
-                                  n.type === 'Meeting' ? 'bg-blue-50 text-blue-700 border-blue-200' :
+                                  n.type === 'Meeting' ? 'bg-purple-50 text-[#6C2BD9] border-purple-200' :
                                   n.type === 'Follow Up' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
                                   n.type === 'Issue' ? 'bg-red-50 text-red-700 border-red-200' : 'bg-purple-50 text-purple-700 border-purple-200'
                                 }`}>
@@ -3487,7 +3487,7 @@ export function ServiceProviderAction() {
                                 </span>
                               </td>
 
-                              <td className="p-2.5 font-bold text-blue-600 hover:underline">
+                              <td className="p-2.5 font-bold text-[#6C2BD9] hover:underline">
                                 {n.subject}
                               </td>
 
@@ -3501,7 +3501,7 @@ export function ServiceProviderAction() {
                                     e.stopPropagation();
                                     setSelectedNoteForm(n);
                                   }}
-                                  className="text-blue-600 hover:text-blue-800 p-1"
+                                  className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="View Note Details"
                                 >
                                   <Eye className="w-3.5 h-3.5" />
@@ -3511,7 +3511,7 @@ export function ServiceProviderAction() {
                                     e.stopPropagation();
                                     setSelectedNoteForm(n);
                                   }}
-                                  className="text-blue-600 hover:text-blue-800 p-1"
+                                  className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="Edit Note"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" />
@@ -3522,7 +3522,7 @@ export function ServiceProviderAction() {
                                     setProviderNotesList(prev => prev.filter(item => item.id !== n.id));
                                     showToastMsg(`Note "${n.subject}" deleted.`);
                                   }}
-                                  className="text-blue-600 hover:text-red-600 p-1"
+                                  className="text-[#6C2BD9] hover:text-red-600 p-1"
                                   title="Delete Note"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -3540,7 +3540,7 @@ export function ServiceProviderAction() {
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1">
                         <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">‹</button>
-                        <button className="px-2.5 py-0.5 bg-blue-600 text-white font-bold rounded">1</button>
+                        <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
                         <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">›</button>
                       </div>
                       <select className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-700 bg-white">
@@ -3565,7 +3565,7 @@ export function ServiceProviderAction() {
                       <select
                         value={selectedNoteForm.type}
                         onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, type: e.target.value })}
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                       >
                         <option value="General">General</option>
                         <option value="Meeting">Meeting</option>
@@ -3585,7 +3585,7 @@ export function ServiceProviderAction() {
                         value={selectedNoteForm.subject}
                         onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, subject: e.target.value })}
                         placeholder="Note subject..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -3604,7 +3604,7 @@ export function ServiceProviderAction() {
                         value={selectedNoteForm.description}
                         onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, description: e.target.value })}
                         placeholder="Enter note description..."
-                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-blue-500 leading-relaxed"
+                        className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] leading-relaxed"
                       />
                     </div>
 
@@ -3617,7 +3617,7 @@ export function ServiceProviderAction() {
                         <select
                           value={selectedNoteForm.relatedTo}
                           onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, relatedTo: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                         >
                           <option value="Contract / AMC">Contract / AMC</option>
                           <option value="Work Order">Work Order</option>
@@ -3636,7 +3636,7 @@ export function ServiceProviderAction() {
                             value={selectedNoteForm.reference}
                             onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, reference: e.target.value })}
                             placeholder="AMC-2025-001"
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-blue-500"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
                           <Search className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
                         </div>
@@ -3666,7 +3666,7 @@ export function ServiceProviderAction() {
                             type="text"
                             value={selectedNoteForm.createdOn || '12 Aug 2025 10:30 AM'}
                             onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, createdOn: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-500 font-mono text-[11px]"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#6C2BD9] font-mono text-[11px]"
                           />
                           <Calendar className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
                         </div>
@@ -3696,16 +3696,16 @@ export function ServiceProviderAction() {
                             type="text"
                             value={selectedNoteForm.lastModifiedOn || '12 Aug 2025 02:00 PM'}
                             onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, lastModifiedOn: e.target.value })}
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-blue-500 font-mono text-[11px]"
+                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#6C2BD9] font-mono text-[11px]"
                           />
                           <Calendar className="w-3.5 h-3.5 absolute right-2 top-1/2 -translate-y-1/2 text-slate-400" />
                         </div>
                       </div>
                     </div>
 
-                    {/* Blue Info Notice Box matching Screenshot */}
-                    <div className="p-3 bg-blue-50/70 border border-blue-200 rounded-xl flex items-start gap-2.5 text-blue-800 text-[11px] font-medium mt-2">
-                      <AlertCircle className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    {/* Purple Info Notice Box matching Screenshot */}
+                    <div className="p-3 bg-purple-50/70 border border-purple-200 rounded-xl flex items-start gap-2.5 text-purple-900 text-[11px] font-medium mt-2">
+                      <AlertCircle className="w-4 h-4 text-[#6C2BD9] shrink-0 mt-0.5" />
                       <span>
                         Notes are for internal reference only and are not shared with the service provider.
                       </span>
@@ -3726,7 +3726,7 @@ export function ServiceProviderAction() {
                           setProviderNotesList(updatedList);
                           showToastMsg(`Note "${selectedNoteForm.subject}" saved!`);
                         }}
-                        className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
+                        className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
                       >
                         <Save className="w-3.5 h-3.5 text-white" /> Save Note
                       </button>
@@ -3750,15 +3750,15 @@ export function ServiceProviderAction() {
               <button
                 disabled={saving}
                 onClick={() => handleSave(true)}
-                className="px-5 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-60"
+                className="px-5 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors shadow-2xs disabled:opacity-60"
               >
-                <FileText className="w-4 h-4 text-blue-600" /> Save as Draft
+                <FileText className="w-4 h-4 text-[#6C2BD9]" /> Save as Draft
               </button>
 
               <button
                 disabled={saving}
                 onClick={() => handleSave(false)}
-                className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-60"
+                className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-xs transition-all disabled:opacity-60"
               >
                 {saving ? (
                   <RefreshCw className="w-4 h-4 animate-spin text-white" />
@@ -3778,7 +3778,7 @@ export function ServiceProviderAction() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-lg w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <FileCheck className="w-4 h-4 text-blue-600" /> Link New Service Contract / AMC
+                <FileCheck className="w-4 h-4 text-[#6C2BD9]" /> Link New Service Contract / AMC
               </h3>
               <button onClick={() => setShowAddContractModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
@@ -3792,7 +3792,7 @@ export function ServiceProviderAction() {
                   value={newContractForm.contractName}
                   onChange={(e) => setNewContractForm({ ...newContractForm, contractName: e.target.value })}
                   placeholder="e.g. HVAC Annual Comprehensive Maintenance 2026"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500 font-semibold"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9] font-semibold"
                 />
               </div>
 
@@ -3804,7 +3804,7 @@ export function ServiceProviderAction() {
                     required
                     value={newContractForm.startDate}
                     onChange={(e) => setNewContractForm({ ...newContractForm, startDate: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -3815,7 +3815,7 @@ export function ServiceProviderAction() {
                     required
                     value={newContractForm.endDate}
                     onChange={(e) => setNewContractForm({ ...newContractForm, endDate: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -3828,7 +3828,7 @@ export function ServiceProviderAction() {
                     value={newContractForm.coverage}
                     onChange={(e) => setNewContractForm({ ...newContractForm, coverage: e.target.value })}
                     placeholder="Full Parts & Labor"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -3839,7 +3839,7 @@ export function ServiceProviderAction() {
                     value={newContractForm.contractValue}
                     onChange={(e) => setNewContractForm({ ...newContractForm, contractValue: e.target.value })}
                     placeholder="185000"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500 font-mono font-bold text-emerald-600"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9] font-mono font-bold text-emerald-600"
                   />
                 </div>
               </div>
@@ -3854,7 +3854,7 @@ export function ServiceProviderAction() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700"
+                  className="px-4 py-2 bg-[#6C2BD9] text-white rounded-lg text-xs font-bold hover:bg-[#5B21B6]"
                 >
                   Save Contract
                 </button>
@@ -3870,7 +3870,7 @@ export function ServiceProviderAction() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-md w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <User className="w-4 h-4 text-blue-600" /> Add Alternate Contact Person
+                <User className="w-4 h-4 text-[#6C2BD9]" /> Add Alternate Contact Person
               </h3>
               <button onClick={() => setShowAddContactPersonModal(false)} className="text-slate-400 hover:text-slate-600">✕</button>
             </div>
@@ -3911,7 +3911,7 @@ export function ServiceProviderAction() {
                   value={newContactPerson.name}
                   onChange={(e) => setNewContactPerson({ ...newContactPerson, name: e.target.value })}
                   placeholder="e.g. Tariq Mansoor"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500 font-semibold"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9] font-semibold"
                 />
               </div>
 
@@ -3922,7 +3922,7 @@ export function ServiceProviderAction() {
                   value={newContactPerson.designation}
                   onChange={(e) => setNewContactPerson({ ...newContactPerson, designation: e.target.value })}
                   placeholder="e.g. Technical Coordinator"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                 />
               </div>
 
@@ -3934,7 +3934,7 @@ export function ServiceProviderAction() {
                   value={newContactPerson.email}
                   onChange={(e) => setNewContactPerson({ ...newContactPerson, email: e.target.value })}
                   placeholder="tariq@alfuttaim.com"
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                 />
               </div>
 
@@ -3946,7 +3946,7 @@ export function ServiceProviderAction() {
                     value={newContactPerson.phone}
                     onChange={(e) => setNewContactPerson({ ...newContactPerson, phone: e.target.value })}
                     placeholder="+971 4 333 4455"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -3957,7 +3957,7 @@ export function ServiceProviderAction() {
                     value={newContactPerson.mobile}
                     onChange={(e) => setNewContactPerson({ ...newContactPerson, mobile: e.target.value })}
                     placeholder="+971 50 999 8877"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -3972,7 +3972,7 @@ export function ServiceProviderAction() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-bold hover:bg-blue-700"
+                  className="px-4 py-2 bg-[#6C2BD9] text-white rounded-lg text-xs font-bold hover:bg-[#5B21B6]"
                 >
                   Add Contact
                 </button>

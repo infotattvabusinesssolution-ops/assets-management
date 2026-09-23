@@ -27,9 +27,6 @@ import {
 
 const LANGUAGES = [
   { code: 'en', name: 'English', dir: 'ltr' },
-  { code: 'es', name: 'Español', dir: 'ltr' },
-  { code: 'fr', name: 'Français', dir: 'ltr' },
-  { code: 'de', name: 'Deutsch', dir: 'ltr' },
   { code: 'ar', name: 'العربية', dir: 'rtl' }
 ];
 

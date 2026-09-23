@@ -326,7 +326,7 @@ export function CreateWorkOrder() {
             <ChevronRight className="w-3 h-3 text-slate-400" />
             <span onClick={() => navigate('/maintenance')} className="hover:underline cursor-pointer">Work Orders</span>
             <ChevronRight className="w-3 h-3 text-slate-400" />
-            <span className="text-blue-700 font-bold">Create Work Order</span>
+            <span className="text-[#6C2BD9] font-bold">Create Work Order</span>
           </div>
           <h1 className="text-xl font-extrabold text-slate-900 mt-1">
             Create Work Order
@@ -347,9 +347,9 @@ export function CreateWorkOrder() {
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="px-4 py-1.5 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-2xs text-xs flex items-center gap-1.5"
+            className="px-4 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-2xs text-xs flex items-center gap-1.5"
           >
-            <Save className="w-3.5 h-3.5 text-blue-600" /> Save as Draft
+            <Save className="w-3.5 h-3.5 text-[#6C2BD9]" /> Save as Draft
           </button>
         </div>
       </div>
@@ -364,7 +364,7 @@ export function CreateWorkOrder() {
           
           {/* CARD 1: 1. WORK ORDER INFORMATION */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-sm font-bold text-blue-700 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-[#6C2BD9] flex items-center gap-1.5 border-b border-slate-100 pb-2">
               1. Work Order Information
             </h3>
 
@@ -386,7 +386,7 @@ export function CreateWorkOrder() {
                 <select
                   value={formData.woType}
                   onChange={(e) => setFormData({ ...formData, woType: e.target.value })}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="Corrective">Corrective</option>
                   <option value="Preventive">Preventive</option>
@@ -416,7 +416,7 @@ export function CreateWorkOrder() {
                 <select
                   value={formData.maintenanceType}
                   onChange={(e) => setFormData({ ...formData, maintenanceType: e.target.value })}
-                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500"
+                  className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="Repair">Repair</option>
                   <option value="Servicing">Servicing</option>
@@ -458,7 +458,7 @@ export function CreateWorkOrder() {
                 value={formData.description}
                 onChange={(e) => setFormData({ ...formData, description: e.target.value })}
                 placeholder="AC not cooling. Requires inspection and possible filter replacement."
-                className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-slate-300 rounded-lg p-2.5 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
               />
               <div className="text-right text-[10px] text-slate-400">
                 {formData.description.length}/500
@@ -468,7 +468,7 @@ export function CreateWorkOrder() {
 
           {/* CARD 3: 3. SCHEDULING */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-sm font-bold text-blue-700 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-[#6C2BD9] flex items-center gap-1.5 border-b border-slate-100 pb-2">
               3. Scheduling
             </h3>
 
@@ -527,7 +527,7 @@ export function CreateWorkOrder() {
                 id="breakdownCheck"
                 checked={formData.isBreakdown}
                 onChange={(e) => setFormData({ ...formData, isBreakdown: e.target.checked })}
-                className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
               />
               <label htmlFor="breakdownCheck" className="text-xs text-slate-700 font-medium cursor-pointer">
                 This is a breakdown (Unplanned)
@@ -537,7 +537,7 @@ export function CreateWorkOrder() {
 
           {/* CARD 4: 4. ASSIGNMENT */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-sm font-bold text-blue-700 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-[#6C2BD9] flex items-center gap-1.5 border-b border-slate-100 pb-2">
               4. Assignment
             </h3>
 
@@ -586,7 +586,7 @@ export function CreateWorkOrder() {
 
           {/* CARD 5: 5. ADDITIONAL INFORMATION */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-sm font-bold text-blue-700 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-[#6C2BD9] flex items-center gap-1.5 border-b border-slate-100 pb-2">
               5. Additional Information
             </h3>
 
@@ -654,7 +654,7 @@ export function CreateWorkOrder() {
           {/* CARD 2: 2. ASSET INFORMATION */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3 relative">
             <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-              <h3 className="text-sm font-bold text-blue-700">2. Asset Information</h3>
+              <h3 className="text-sm font-bold text-[#6C2BD9]">2. Asset Information</h3>
               <span className="px-2.5 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-bold">
                 Active
               </span>
@@ -675,12 +675,12 @@ export function CreateWorkOrder() {
                       type="text"
                       readOnly
                       value={formData.selectedAsset.assetId}
-                      className="w-full bg-white border border-slate-300 rounded-lg pl-2.5 pr-8 py-1.5 text-xs font-mono font-bold text-blue-700"
+                      className="w-full bg-white border border-slate-300 rounded-lg pl-2.5 pr-8 py-1.5 text-xs font-mono font-bold text-[#6C2BD9]"
                     />
                     <button
                       type="button"
                       onClick={() => setShowAssetModal(true)}
-                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-blue-600"
+                      className="absolute right-1 top-1/2 -translate-y-1/2 p-1 text-slate-500 hover:text-[#6C2BD9]"
                     >
                       <Search className="w-3.5 h-3.5" />
                     </button>
@@ -732,7 +732,7 @@ export function CreateWorkOrder() {
 
           {/* CARD 6: 6. LOCATION DETAILS */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-sm font-bold text-blue-700 flex items-center gap-1.5 border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-[#6C2BD9] flex items-center gap-1.5 border-b border-slate-100 pb-2">
               6. Location Details
             </h3>
 
@@ -774,7 +774,7 @@ export function CreateWorkOrder() {
 
           {/* CARD 7: 7. CHECKLIST (OPTIONAL) */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-sm font-bold text-blue-700 border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-[#6C2BD9] border-b border-slate-100 pb-2">
               7. Checklist (Optional)
             </h3>
 
@@ -795,16 +795,16 @@ export function CreateWorkOrder() {
               <button
                 type="button"
                 onClick={handleLoadChecklist}
-                className="mt-4 px-3 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg text-xs shadow-2xs flex items-center gap-1.5 whitespace-nowrap"
+                className="mt-4 px-3 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg text-xs shadow-2xs flex items-center gap-1.5 whitespace-nowrap"
               >
-                <ListChecks className="w-3.5 h-3.5 text-blue-600" /> Load Checklist
+                <ListChecks className="w-3.5 h-3.5 text-[#6C2BD9]" /> Load Checklist
               </button>
             </div>
           </div>
 
           {/* CARD 8: 8. REMARKS */}
           <div className="bg-white p-4 rounded-xl border border-slate-200 shadow-2xs space-y-3">
-            <h3 className="text-sm font-bold text-blue-700 border-b border-slate-100 pb-2">
+            <h3 className="text-sm font-bold text-[#6C2BD9] border-b border-slate-100 pb-2">
               8. Remarks
             </h3>
 
@@ -815,7 +815,7 @@ export function CreateWorkOrder() {
                 value={formData.remarks}
                 onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
                 placeholder="Additional remarks, special instructions or safety notes..."
-                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-blue-500"
+                className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
               />
               <div className="text-right text-[10px] text-slate-400">
                 {formData.remarks.length}/500
@@ -838,7 +838,7 @@ export function CreateWorkOrder() {
             <button
               onClick={() => setActiveTab('PARTS')}
               className={`pb-2 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'PARTS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeTab === 'PARTS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Parts &amp; Materials ({formData.parts.length})
@@ -847,7 +847,7 @@ export function CreateWorkOrder() {
             <button
               onClick={() => setActiveTab('TIMELOGS')}
               className={`pb-2 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'TIMELOGS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeTab === 'TIMELOGS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Labor / Time Logs ({formData.laborLogs.length})
@@ -856,7 +856,7 @@ export function CreateWorkOrder() {
             <button
               onClick={() => setActiveTab('CHECKLIST')}
               className={`pb-2 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'CHECKLIST' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeTab === 'CHECKLIST' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Checklist ({formData.checklistItems.length})
@@ -865,7 +865,7 @@ export function CreateWorkOrder() {
             <button
               onClick={() => setActiveTab('ATTACHMENTS')}
               className={`pb-2 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'ATTACHMENTS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeTab === 'ATTACHMENTS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Attachments (0)
@@ -874,7 +874,7 @@ export function CreateWorkOrder() {
             <button
               onClick={() => setActiveTab('RELATED')}
               className={`pb-2 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'RELATED' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeTab === 'RELATED' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Related Work Orders (0)
@@ -883,7 +883,7 @@ export function CreateWorkOrder() {
             <button
               onClick={() => setActiveTab('NOTES')}
               className={`pb-2 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeTab === 'NOTES' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeTab === 'NOTES' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Notes (0)
@@ -927,12 +927,12 @@ export function CreateWorkOrder() {
                     {formData.parts.map((p, idx) => (
                       <tr key={p.id || idx}>
                         <td className="p-2 font-mono text-slate-500">{idx + 1}</td>
-                        <td className="p-2 font-mono font-bold text-blue-600">{p.partNo}</td>
+                        <td className="p-2 font-mono font-bold text-[#6C2BD9]">{p.partNo}</td>
                         <td className="p-2 font-bold text-slate-900">{p.description}</td>
                         <td className="p-2 text-slate-600">{p.uom}</td>
                         <td className="p-2 text-center font-bold">{p.quantity}</td>
                         <td className="p-2 text-right font-mono">{p.unitCost}</td>
-                        <td className="p-2 text-right font-mono font-bold text-blue-700">{p.totalCost}</td>
+                        <td className="p-2 text-right font-mono font-bold text-[#6C2BD9]">{p.totalCost}</td>
                         <td className="p-2 text-center">
                           <button
                             type="button"
@@ -975,7 +975,7 @@ export function CreateWorkOrder() {
                         <p className="font-bold text-slate-900">{l.technician}</p>
                         <p className="text-slate-600 text-[11px]">{l.activity} ({l.hours} Hours @ AED {l.rate}/hr)</p>
                       </div>
-                      <span className="font-mono font-bold text-blue-700">AED {l.totalLaborCost}</span>
+                      <span className="font-mono font-bold text-[#6C2BD9]">AED {l.totalLaborCost}</span>
                     </div>
                   ))}
                 </div>
@@ -994,7 +994,7 @@ export function CreateWorkOrder() {
                 formData.checklistItems.map((item) => (
                   <div key={item.id} className="p-2.5 bg-slate-50 rounded-lg border border-slate-200 flex items-center justify-between text-xs">
                     <div className="flex items-center gap-2">
-                      <input type="checkbox" defaultChecked className="rounded text-blue-600" />
+                      <input type="checkbox" defaultChecked className="rounded text-[#6C2BD9]" />
                       <span className="font-medium text-slate-900">{item.task}</span>
                     </div>
                     <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 rounded font-bold text-[10px]">Pass</span>
@@ -1014,35 +1014,35 @@ export function CreateWorkOrder() {
 
         {/* LOWER RIGHT ESTIMATED COST SUMMARY CARD (4 Columns wide) */}
         <div className="lg:col-span-4 bg-white rounded-xl border border-slate-200 shadow-2xs p-4 space-y-3">
-          <h3 className="text-sm font-bold text-blue-700 border-b border-slate-100 pb-2">
+          <h3 className="text-sm font-bold text-[#6C2BD9] border-b border-slate-100 pb-2">
             Estimated Cost Summary
           </h3>
 
           <div className="space-y-2 text-xs">
             <div className="flex items-center justify-between py-1 border-b border-slate-100">
               <span className="text-slate-600 font-semibold flex items-center gap-1">
-                <Box className="w-3.5 h-3.5 text-blue-600" /> Parts Cost
+                <Box className="w-3.5 h-3.5 text-[#6C2BD9]" /> Parts Cost
               </span>
               <span className="font-mono font-bold text-slate-900">{formatCurrency(partsCostTotal)}</span>
             </div>
 
             <div className="flex items-center justify-between py-1 border-b border-slate-100">
               <span className="text-slate-600 font-semibold flex items-center gap-1">
-                <User className="w-3.5 h-3.5 text-blue-600" /> Labor Cost
+                <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> Labor Cost
               </span>
               <span className="font-mono font-bold text-slate-900">{formatCurrency(laborCostTotal)}</span>
             </div>
 
             <div className="flex items-center justify-between py-1 border-b border-slate-100">
               <span className="text-slate-600 font-semibold flex items-center gap-1">
-                <RefreshCw className="w-3.5 h-3.5 text-blue-600" /> Other Cost
+                <RefreshCw className="w-3.5 h-3.5 text-[#6C2BD9]" /> Other Cost
               </span>
               <span className="font-mono font-bold text-slate-900">{formatCurrency(otherCostTotal)}</span>
             </div>
 
-            <div className="p-3 bg-blue-50/80 rounded-lg border border-blue-200 flex items-center justify-between mt-2">
-              <span className="font-extrabold text-blue-900 text-xs">Total Estimated Cost</span>
-              <span className="font-mono font-extrabold text-blue-700 text-sm">{formatCurrency(grandTotalEstimatedCost)}</span>
+            <div className="p-3 bg-purple-50/80 rounded-lg border border-purple-200 flex items-center justify-between mt-2">
+              <span className="font-extrabold text-purple-950 text-xs">Total Estimated Cost</span>
+              <span className="font-mono font-extrabold text-[#6C2BD9] text-sm">{formatCurrency(grandTotalEstimatedCost)}</span>
             </div>
           </div>
         </div>
@@ -1056,7 +1056,7 @@ export function CreateWorkOrder() {
         <button
           type="button"
           onClick={() => navigate('/maintenance')}
-          className="px-5 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-2xs text-xs"
+          className="px-5 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-2xs text-xs"
         >
           Cancel
         </button>
@@ -1065,7 +1065,7 @@ export function CreateWorkOrder() {
           <button
             type="button"
             onClick={handleSaveDraft}
-            className="px-5 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-2xs text-xs"
+            className="px-5 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-2xs text-xs"
           >
             Save as Draft
           </button>
@@ -1074,7 +1074,7 @@ export function CreateWorkOrder() {
             type="button"
             onClick={handleSubmitWorkOrder}
             disabled={submitting}
-            className="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs text-xs flex items-center gap-1.5"
+            className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs text-xs flex items-center gap-1.5"
           >
             {submitting ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
             Submit Work Order
@@ -1090,7 +1090,7 @@ export function CreateWorkOrder() {
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-xl p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Search className="w-4 h-4 text-blue-600" /> Select Asset Master Record
+                <Search className="w-4 h-4 text-[#6C2BD9]" /> Select Asset Master Record
               </h3>
               <button onClick={() => setShowAssetModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-4 h-4" />
@@ -1118,14 +1118,14 @@ export function CreateWorkOrder() {
                   <div
                     key={a.id || a._id}
                     onClick={() => handleSelectAsset(a)}
-                    className="p-2.5 hover:bg-blue-50/70 cursor-pointer flex items-center justify-between transition-colors"
+                    className="p-2.5 hover:bg-purple-50/70 cursor-pointer flex items-center justify-between transition-colors"
                   >
                     <div>
-                      <span className="font-mono font-bold text-blue-600">{a.assetId || a.tagNumber}</span>
+                      <span className="font-mono font-bold text-[#6C2BD9]">{a.assetId || a.tagNumber}</span>
                       <p className="font-bold text-slate-900">{a.description || a.name}</p>
                       <p className="text-[11px] text-slate-500">SN: {a.serialNumber || 'N/A'}</p>
                     </div>
-                    <button className="px-3 py-1 bg-blue-600 text-white font-bold rounded text-[11px]">Select</button>
+                    <button className="px-3 py-1 bg-[#6C2BD9] text-white font-bold rounded text-[11px]">Select</button>
                   </div>
                 ))}
               </div>
@@ -1197,7 +1197,7 @@ export function CreateWorkOrder() {
 
               <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
                 <button type="button" onClick={() => setShowAddPartModal(false)} className="px-4 py-2 bg-slate-100 rounded font-bold">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white font-bold rounded shadow-xs">Add Part</button>
+                <button type="submit" className="px-4 py-2 bg-[#6C2BD9] text-white font-bold rounded shadow-xs">Add Part</button>
               </div>
             </form>
           </div>
@@ -1267,7 +1267,7 @@ export function CreateWorkOrder() {
 
               <div className="pt-3 flex justify-end gap-2 border-t border-slate-100">
                 <button type="button" onClick={() => setShowAddLaborModal(false)} className="px-4 py-2 bg-slate-100 rounded font-bold">Cancel</button>
-                <button type="submit" className="px-4 py-2 bg-blue-600 text-white font-bold rounded shadow-xs">Add Labor Log</button>
+                <button type="submit" className="px-4 py-2 bg-[#6C2BD9] text-white font-bold rounded shadow-xs">Add Labor Log</button>
               </div>
             </form>
           </div>

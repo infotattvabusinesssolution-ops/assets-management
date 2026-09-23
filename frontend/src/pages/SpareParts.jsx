@@ -616,7 +616,7 @@ export function SpareParts() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-xl w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Package className="w-4 h-4 text-blue-600" /> Create / Edit Spare Part Master
+                <Package className="w-4 h-4 text-[#6C2BD9]" /> Create / Edit Spare Part Master
               </h3>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-4 h-4" />
@@ -632,7 +632,7 @@ export function SpareParts() {
                     value={newPartForm.itemCode}
                     onChange={(e) => setNewPartForm({ ...newPartForm, itemCode: e.target.value })}
                     placeholder="Auto-generated e.g. SP-HVAC-011"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -644,7 +644,7 @@ export function SpareParts() {
                     value={newPartForm.itemName}
                     onChange={(e) => setNewPartForm({ ...newPartForm, itemName: e.target.value })}
                     placeholder="e.g. Air Filter (AHU)"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -655,7 +655,7 @@ export function SpareParts() {
                   <select
                     value={newPartForm.category}
                     onChange={(e) => setNewPartForm({ ...newPartForm, category: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500 font-semibold"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9] font-semibold"
                   >
                     <option value="HVAC">HVAC</option>
                     <option value="Electrical">Electrical</option>
@@ -671,7 +671,7 @@ export function SpareParts() {
                   <select
                     value={newPartForm.unit}
                     onChange={(e) => setNewPartForm({ ...newPartForm, unit: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="Piece">Piece</option>
                     <option value="Box">Box</option>
@@ -688,7 +688,7 @@ export function SpareParts() {
                     step="0.01"
                     value={newPartForm.unitCost}
                     onChange={(e) => setNewPartForm({ ...newPartForm, unitCost: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -700,7 +700,7 @@ export function SpareParts() {
                     type="number"
                     value={newPartForm.currentStock}
                     onChange={(e) => setNewPartForm({ ...newPartForm, currentStock: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -710,7 +710,7 @@ export function SpareParts() {
                     type="number"
                     value={newPartForm.reorderLevel}
                     onChange={(e) => setNewPartForm({ ...newPartForm, reorderLevel: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -720,7 +720,7 @@ export function SpareParts() {
                     type="number"
                     value={newPartForm.maxLevel}
                     onChange={(e) => setNewPartForm({ ...newPartForm, maxLevel: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs font-mono focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -733,7 +733,7 @@ export function SpareParts() {
                     value={newPartForm.supplier}
                     onChange={(e) => setNewPartForm({ ...newPartForm, supplier: e.target.value })}
                     placeholder="Al Futtaim Trading LLC"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
 
@@ -744,7 +744,7 @@ export function SpareParts() {
                     value={newPartForm.location}
                     onChange={(e) => setNewPartForm({ ...newPartForm, location: e.target.value })}
                     placeholder="Main Warehouse - Dubai HQ"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -756,7 +756,7 @@ export function SpareParts() {
                   value={newPartForm.description}
                   onChange={(e) => setNewPartForm({ ...newPartForm, description: e.target.value })}
                   placeholder="Technical description of spare part..."
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-blue-500"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs focus:outline-none focus:border-[#6C2BD9]"
                 />
               </div>
 

@@ -498,7 +498,7 @@ export function PreventiveMaintenance() {
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
             <span>Maintenance</span>
             <ChevronRight className="w-3 h-3 text-slate-400" />
-            <span className="text-blue-700 font-bold">Preventive Maintenance</span>
+            <span className="text-[#6C2BD9] font-bold">Preventive Maintenance</span>
           </div>
           <h1 className="text-xl font-extrabold text-slate-900 mt-1">
             Preventive Maintenance
@@ -511,7 +511,7 @@ export function PreventiveMaintenance() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={handleCreateNewScheduleMode}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
+            className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
           >
             <Plus className="w-4 h-4" /> Create PM Schedule
           </button>
@@ -526,9 +526,9 @@ export function PreventiveMaintenance() {
 
           <button
             onClick={() => showToast('success', 'Exporting PM schedules to Excel...')}
-            className="px-4 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-2xs text-xs flex items-center gap-1.5"
+            className="px-4 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-2xs text-xs flex items-center gap-1.5"
           >
-            <Download className="w-4 h-4 text-blue-600" /> Export
+            <Download className="w-4 h-4 text-[#6C2BD9]" /> Export
           </button>
         </div>
       </div>
@@ -629,7 +629,7 @@ export function PreventiveMaintenance() {
           <div className="lg:col-span-2 flex items-center gap-2">
             <button
               onClick={() => {}}
-              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1 text-xs"
+              className="flex-1 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold py-1.5 px-3 rounded-lg shadow-xs flex items-center justify-center gap-1 text-xs"
             >
               <Search className="w-3.5 h-3.5" /> Search
             </button>
@@ -640,7 +640,7 @@ export function PreventiveMaintenance() {
                 setStatusFilter('ALL');
                 setDueInFilter('Next 30 Days');
               }}
-              className="bg-white hover:bg-slate-50 border border-blue-600 text-blue-700 font-bold py-1.5 px-3 rounded-lg shadow-2xs text-xs whitespace-nowrap"
+              className="bg-white hover:bg-slate-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold py-1.5 px-3 rounded-lg shadow-2xs text-xs whitespace-nowrap"
             >
               Clear
             </button>
@@ -694,10 +694,10 @@ export function PreventiveMaintenance() {
                       <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={isSelected} onChange={() => setSelectedScheduleId(s.id)} className="rounded border-slate-300" />
                       </td>
-                      <td className="p-2.5 font-mono text-blue-600 font-bold hover:underline">
+                      <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
                         {s.scheduleNo}
                       </td>
-                      <td className="p-2.5 font-mono text-blue-700">
+                      <td className="p-2.5 font-mono text-[#6C2BD9]">
                         {s.assetNo}
                       </td>
                       <td className="p-2.5 font-bold text-slate-900">
@@ -737,7 +737,7 @@ export function PreventiveMaintenance() {
 
             <div className="flex items-center gap-1.5">
               <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&lt;</button>
-              <button className="px-2.5 py-1 bg-blue-600 text-white font-bold rounded text-xs shadow-2xs">1</button>
+              <button className="px-2.5 py-1 bg-[#6C2BD9] text-white font-bold rounded text-xs shadow-2xs">1</button>
               <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">2</button>
               <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">3</button>
               <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&gt;</button>
@@ -764,9 +764,9 @@ export function PreventiveMaintenance() {
               </span>
               <button 
                 onClick={() => showToast('success', `Edit mode enabled for ${selectedSchedule.scheduleNo}`)}
-                className="px-3 py-1 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-md text-xs flex items-center gap-1 shadow-2xs"
+                className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-md text-xs flex items-center gap-1 shadow-2xs"
               >
-                <Edit className="w-3.5 h-3.5 text-blue-600" /> Edit
+                <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" /> Edit
               </button>
             </div>
           </div>
@@ -793,7 +793,7 @@ export function PreventiveMaintenance() {
                     type="text"
                     readOnly
                     value={detailsForm.assetNo}
-                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-mono font-bold text-blue-700"
+                    className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-mono font-bold text-[#6C2BD9]"
                   />
                   <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -863,7 +863,7 @@ export function PreventiveMaintenance() {
                       name="frequencyRadio"
                       checked={!detailsForm.isMeterBased}
                       onChange={() => setDetailsForm({ ...detailsForm, isMeterBased: false })}
-                      className="text-blue-600"
+                      className="text-[#6C2BD9]"
                     />
                     Time Based
                   </label>
@@ -874,7 +874,7 @@ export function PreventiveMaintenance() {
                       name="frequencyRadio"
                       checked={detailsForm.isMeterBased}
                       onChange={() => setDetailsForm({ ...detailsForm, isMeterBased: true })}
-                      className="text-blue-600"
+                      className="text-[#6C2BD9]"
                     />
                     Meter Based
                   </label>
@@ -983,7 +983,7 @@ export function PreventiveMaintenance() {
 
             {/* ADDITIONAL SETTINGS SECTION */}
             <div className="pt-2 border-t border-slate-100 space-y-2">
-              <h4 className="text-xs font-bold text-blue-700">Additional Settings</h4>
+              <h4 className="text-xs font-bold text-[#6C2BD9]">Additional Settings</h4>
 
               <div className="space-y-2 text-xs font-medium text-slate-800">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -991,7 +991,7 @@ export function PreventiveMaintenance() {
                     type="checkbox"
                     checked={detailsForm.autoGenerateWo}
                     onChange={(e) => setDetailsForm({ ...detailsForm, autoGenerateWo: e.target.checked })}
-                    className="rounded text-blue-600 focus:ring-blue-500"
+                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Automatically generate work order when due
                 </label>
@@ -1002,7 +1002,7 @@ export function PreventiveMaintenance() {
                       type="checkbox"
                       checked={detailsForm.sendNotification}
                       onChange={(e) => setDetailsForm({ ...detailsForm, sendNotification: e.target.checked })}
-                      className="rounded text-blue-600 focus:ring-blue-500"
+                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                     />
                     Send notification before due date
                   </label>
@@ -1022,7 +1022,7 @@ export function PreventiveMaintenance() {
                     type="checkbox"
                     checked={detailsForm.requireChecklist}
                     onChange={(e) => setDetailsForm({ ...detailsForm, requireChecklist: e.target.checked })}
-                    className="rounded text-blue-600 focus:ring-blue-500"
+                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Require checklist completion
                 </label>
@@ -1032,7 +1032,7 @@ export function PreventiveMaintenance() {
                     type="checkbox"
                     checked={detailsForm.updateAssetNextService}
                     onChange={(e) => setDetailsForm({ ...detailsForm, updateAssetNextService: e.target.checked })}
-                    className="rounded text-blue-600 focus:ring-blue-500"
+                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Update asset next service date
                 </label>
@@ -1042,7 +1042,7 @@ export function PreventiveMaintenance() {
                     type="checkbox"
                     checked={detailsForm.notifyProvider}
                     onChange={(e) => setDetailsForm({ ...detailsForm, notifyProvider: e.target.checked })}
-                    className="rounded text-blue-600 focus:ring-blue-500"
+                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Notify service provider
                 </label>
@@ -1054,14 +1054,14 @@ export function PreventiveMaintenance() {
               <button
                 type="button"
                 onClick={() => showToast('success', 'Changes discarded')}
-                className="px-4 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-2xs text-xs"
+                className="px-4 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-2xs text-xs"
               >
                 Cancel
               </button>
               
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs text-xs"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs text-xs"
               >
                 Save Schedule
               </button>
@@ -1084,7 +1084,7 @@ export function PreventiveMaintenance() {
             <button
               onClick={() => setActiveBottomTab('UPCOMING')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'UPCOMING' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'UPCOMING' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Upcoming Schedules (10)
@@ -1093,7 +1093,7 @@ export function PreventiveMaintenance() {
             <button
               onClick={() => setActiveBottomTab('COMPLETED')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'COMPLETED' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'COMPLETED' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Completed (32)
@@ -1102,7 +1102,7 @@ export function PreventiveMaintenance() {
             <button
               onClick={() => setActiveBottomTab('OVERDUE')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'OVERDUE' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'OVERDUE' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Overdue (4)
@@ -1111,7 +1111,7 @@ export function PreventiveMaintenance() {
             <button
               onClick={() => setActiveBottomTab('GENERATED_WO')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'GENERATED_WO' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'GENERATED_WO' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Generated Work Orders (28)
@@ -1138,8 +1138,8 @@ export function PreventiveMaintenance() {
                   {EXACT_UPCOMING_SCHEDULES.map((u, idx) => (
                     <tr key={idx} className="hover:bg-slate-50">
                       <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">{u.dueDate}</td>
-                      <td className="p-2.5 font-mono font-bold text-blue-600 hover:underline">{u.scheduleNo}</td>
-                      <td className="p-2.5 font-mono font-bold text-blue-700">{u.assetNo}</td>
+                      <td className="p-2.5 font-mono font-bold text-[#6C2BD9] hover:underline">{u.scheduleNo}</td>
+                      <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">{u.assetNo}</td>
                       <td className="p-2.5 font-bold text-slate-900">{u.assetName}</td>
                       <td className="p-2.5 text-slate-800">{u.location}</td>
                       <td className="p-2.5 text-slate-800">{u.type}</td>

@@ -113,7 +113,7 @@ const CATEGORY_CARDS = [
     name: 'Custom Reports',
     description: 'Build your own reports',
     icon: SlidersHorizontal,
-    color: '#2563EB',
+    color: '#6C2BD9',
     bgColor: '#EFF6FF',
     borderColor: '#BFDBFE'
   }
@@ -138,17 +138,17 @@ const DEFAULT_KPIS = {
 };
 
 const ASSETS_BY_CATEGORY = [
-  { name: 'IT Equipment', count: 3245, pct: 26, color: '#2563EB' },
+  { name: 'IT Equipment', count: 3245, pct: 26, color: '#6C2BD9' },
   { name: 'Office Furniture', count: 2180, pct: 17, color: '#60A5FA' },
   { name: 'Vehicles', count: 1846, pct: 15, color: '#F59E0B' },
   { name: 'Machinery', count: 1520, pct: 12, color: '#EF4444' },
   { name: 'Tools & Equipment', count: 1245, pct: 10, color: '#06B6D4' },
-  { name: 'Facilities', count: 980, pct: 8, color: '#1E40AF' },
+  { name: 'Facilities', count: 980, pct: 8, color: '#5B21B6' },
   { name: 'Others', count: 1470, pct: 12, color: '#94A3B8' }
 ];
 
 const ASSETS_BY_LOCATION = [
-  { location: 'Dubai HQ', count: 3245, fill: '#2563EB' },
+  { location: 'Dubai HQ', count: 3245, fill: '#6C2BD9' },
   { location: 'Jebel Ali', count: 2180, fill: '#60A5FA' },
   { location: 'Abu Dhabi', count: 1846, fill: '#93C5FD' },
   { location: 'Sharjah', count: 1520, fill: '#93C5FD' },
@@ -625,7 +625,7 @@ export function ReportsCatalogue() {
               <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1">
                 <span className="text-slate-500">Reports & Analytics</span>
                 <ChevronRight className="w-3 h-3 text-slate-400" />
-                <span className="text-[#2563EB] font-bold">
+                <span className="text-[#6C2BD9] font-bold">
                   {viewMode === 'REPORT_VIEWER' ? selectedReportObj?.name : 'Dashboard'}
                 </span>
               </div>
@@ -651,7 +651,7 @@ export function ReportsCatalogue() {
               <div className="relative">
                 <button
                   onClick={() => setShowCreateDropdown(!showCreateDropdown)}
-                  className="px-4 py-2 rounded-xl bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
+                  className="px-4 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer active:scale-95"
                 >
                   <Plus className="w-4 h-4" />
                   <span>Create Report</span>
@@ -677,7 +677,7 @@ export function ReportsCatalogue() {
                       }}
                       className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 font-semibold"
                     >
-                      <SlidersHorizontal className="w-4 h-4 text-[#2563EB]" />
+                      <SlidersHorizontal className="w-4 h-4 text-[#6C2BD9]" />
                       <span>Custom Report</span>
                     </button>
                     <button
@@ -741,7 +741,7 @@ export function ReportsCatalogue() {
                 className={clsx(
                   'p-3 rounded-2xl border text-left transition-all relative overflow-hidden group cursor-pointer bg-white',
                   isSelected
-                    ? 'border-[#2563EB] shadow-md ring-2 ring-[#2563EB]/20'
+                    ? 'border-[#6C2BD9] shadow-md ring-2 ring-[#6C2BD9]/20'
                     : 'border-slate-200 hover:border-slate-300 hover:shadow-xs'
                 )}
               >
@@ -779,7 +779,7 @@ export function ReportsCatalogue() {
                 <select
                   value={filterCategory}
                   onChange={(e) => setFilterCategory(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] cursor-pointer"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
                 >
                   <option value="All Categories">All Categories</option>
                   <option value="Asset Reports">Asset Reports</option>
@@ -802,7 +802,7 @@ export function ReportsCatalogue() {
                 <select
                   value={filterReportType}
                   onChange={(e) => setFilterReportType(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] cursor-pointer"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
                 >
                   <option value="All Types">All Types</option>
                   <option value="Assets by Location">Assets by Location</option>
@@ -824,7 +824,7 @@ export function ReportsCatalogue() {
                   type="text"
                   value={filterDateRange}
                   onChange={(e) => setFilterDateRange(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                 />
                 <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -839,7 +839,7 @@ export function ReportsCatalogue() {
                 <select
                   value={filterLocation}
                   onChange={(e) => setFilterLocation(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] cursor-pointer"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
                 >
                   <option value="All Locations">All Locations</option>
                   <option value="Dubai HQ">Dubai HQ</option>
@@ -861,7 +861,7 @@ export function ReportsCatalogue() {
                 <select
                   value={filterDepartment}
                   onChange={(e) => setFilterDepartment(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] cursor-pointer"
+                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
                 >
                   <option value="All Departments">All Departments</option>
                   <option value="IT Department">IT Department</option>
@@ -896,7 +896,7 @@ export function ReportsCatalogue() {
               <button
                 type="button"
                 onClick={() => setShowAdvancedFilters(true)}
-                className="flex-1 py-2 px-3 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                className="flex-1 py-2 px-3 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
               >
                 <Filter className="w-3.5 h-3.5" /> Apply Filters
               </button>
@@ -926,10 +926,10 @@ export function ReportsCatalogue() {
                 filterValue: 'All Assets'
               })
             }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group"
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
                 <Layers className="w-4 h-4" />
               </div>
               <span className="text-xs font-bold text-slate-600">Total Assets</span>
@@ -954,7 +954,7 @@ export function ReportsCatalogue() {
                 filterValue: 'Open & In Progress'
               })
             }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group"
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-2 mb-2">
               <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
@@ -1008,10 +1008,10 @@ export function ReportsCatalogue() {
                 filterValue: 'High Cost'
               })
             }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group"
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#1E40AF] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#5B21B6] flex items-center justify-center">
                 <Clock className="w-4 h-4" />
               </div>
               <span className="text-xs font-bold text-slate-600">Maintenance Cost</span>
@@ -1036,10 +1036,10 @@ export function ReportsCatalogue() {
                 filterValue: 'Compliant'
               })
             }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#2563EB] hover:shadow-md transition-all cursor-pointer group"
+            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
           >
             <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
+              <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
                 <ShieldCheck className="w-4 h-4" />
               </div>
               <span className="text-xs font-bold text-slate-600">Compliance Rate</span>
@@ -1070,7 +1070,7 @@ export function ReportsCatalogue() {
                       CORE_PREDEFINED_REPORTS.find(r => r.id === 'asset-register')
                     )
                   }
-                  className="text-xs font-bold text-[#2563EB] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   View Report →
                 </button>
@@ -1080,12 +1080,12 @@ export function ReportsCatalogue() {
                 {/* SVG Donut Chart */}
                 <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
                   <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#2563EB" strokeWidth="15" strokeDasharray="62.1 238.8" strokeDashoffset="0" />
+                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#6C2BD9" strokeWidth="15" strokeDasharray="62.1 238.8" strokeDashoffset="0" />
                     <circle cx="50" cy="50" r="38" fill="transparent" stroke="#60A5FA" strokeWidth="15" strokeDasharray="40.6 238.8" strokeDashoffset="-62.1" />
                     <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F59E0B" strokeWidth="15" strokeDasharray="35.8 238.8" strokeDashoffset="-102.7" />
                     <circle cx="50" cy="50" r="38" fill="transparent" stroke="#EF4444" strokeWidth="15" strokeDasharray="28.7 238.8" strokeDashoffset="-138.5" />
                     <circle cx="50" cy="50" r="38" fill="transparent" stroke="#06B6D4" strokeWidth="15" strokeDasharray="23.9 238.8" strokeDashoffset="-167.2" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#1E40AF" strokeWidth="15" strokeDasharray="19.1 238.8" strokeDashoffset="-191.1" />
+                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#5B21B6" strokeWidth="15" strokeDasharray="19.1 238.8" strokeDashoffset="-191.1" />
                     <circle cx="50" cy="50" r="38" fill="transparent" stroke="#94A3B8" strokeWidth="15" strokeDasharray="28.6 238.8" strokeDashoffset="-210.2" />
                   </svg>
                   <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
@@ -1111,7 +1111,7 @@ export function ReportsCatalogue() {
                     >
                       <div className="flex items-center gap-1.5 truncate">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></span>
-                        <span className="text-[11px] font-medium text-slate-600 group-hover:text-[#2563EB] truncate">
+                        <span className="text-[11px] font-medium text-slate-600 group-hover:text-[#6C2BD9] truncate">
                           {item.name}
                         </span>
                       </div>
@@ -1136,7 +1136,7 @@ export function ReportsCatalogue() {
                       CORE_PREDEFINED_REPORTS.find(r => r.id === 'location-distribution')
                     )
                   }
-                  className="text-xs font-bold text-[#2563EB] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   View Report →
                 </button>
@@ -1166,7 +1166,7 @@ export function ReportsCatalogue() {
                       className="cursor-pointer"
                     >
                       {locationChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill || '#2563EB'} />
+                        <Cell key={`cell-${index}`} fill={entry.fill || '#6C2BD9'} />
                       ))}
                     </Bar>
                   </BarChart>
@@ -1186,7 +1186,7 @@ export function ReportsCatalogue() {
                       CORE_PREDEFINED_REPORTS.find(r => r.id === 'asset-register')
                     )
                   }
-                  className="text-xs font-bold text-[#2563EB] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   View Report →
                 </button>
@@ -1225,7 +1225,7 @@ export function ReportsCatalogue() {
                     >
                       <div className="flex items-center gap-1.5 truncate">
                         <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></span>
-                        <span className="text-[11px] font-medium text-slate-600 group-hover:text-[#2563EB] truncate">
+                        <span className="text-[11px] font-medium text-slate-600 group-hover:text-[#6C2BD9] truncate">
                           {item.status}
                         </span>
                       </div>
@@ -1251,7 +1251,7 @@ export function ReportsCatalogue() {
                 <h3 className="text-sm font-black text-slate-900">Recent Reports</h3>
                 <button
                   onClick={() => setShowStandardReportModal(true)}
-                  className="text-xs font-bold text-[#2563EB] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   View All Reports →
                 </button>
@@ -1273,7 +1273,7 @@ export function ReportsCatalogue() {
                     {recentReports.map((rep) => (
                       <tr key={rep.id} className="hover:bg-slate-50/70 transition-colors">
                         <td className="py-3 px-4 font-semibold text-slate-900 flex items-center gap-2">
-                          <FileSpreadsheet className="w-3.5 h-3.5 text-[#2563EB]" />
+                          <FileSpreadsheet className="w-3.5 h-3.5 text-[#6C2BD9]" />
                           <span>{rep.name}</span>
                         </td>
                         <td className="py-3 px-3">
@@ -1299,7 +1299,7 @@ export function ReportsCatalogue() {
                                 const found = CORE_PREDEFINED_REPORTS.find(c => c.name.toLowerCase().includes(rep.name.toLowerCase().split(' ')[0]));
                                 handleLaunchReport(found || CORE_PREDEFINED_REPORTS[0]);
                               }}
-                              className="p-1 rounded text-slate-400 hover:text-[#2563EB] hover:bg-blue-50 cursor-pointer"
+                              className="p-1 rounded text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 cursor-pointer"
                               title="View Report"
                             >
                               <Eye className="w-3.5 h-3.5" />
@@ -1338,7 +1338,7 @@ export function ReportsCatalogue() {
                 <h3 className="text-sm font-black text-slate-900">Scheduled Reports</h3>
                 <button
                   onClick={() => setShowScheduleReportModal(true)}
-                  className="text-xs font-bold text-[#2563EB] hover:underline flex items-center gap-1 cursor-pointer"
+                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
                 >
                   View All →
                 </button>
@@ -1394,7 +1394,7 @@ export function ReportsCatalogue() {
                           <div className="flex items-center justify-center gap-1.5">
                             <button
                               onClick={() => setShowScheduleReportModal(true)}
-                              className="p-1 rounded text-slate-400 hover:text-[#2563EB] hover:bg-blue-50 cursor-pointer"
+                              className="p-1 rounded text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 cursor-pointer"
                               title="Edit Schedule"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
@@ -1440,7 +1440,7 @@ export function ReportsCatalogue() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-9 h-9 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center font-black">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center font-black">
                   <Filter className="w-5 h-5" />
                 </div>
                 <div>
@@ -1669,7 +1669,7 @@ export function ReportsCatalogue() {
                   {advFilters.assetStatus.map((st) => (
                     <span
                       key={st}
-                      className="bg-blue-100 text-[#2563EB] px-2 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1"
+                      className="bg-purple-100 text-[#6C2BD9] px-2 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1"
                     >
                       {st}
                       <button
@@ -1680,7 +1680,7 @@ export function ReportsCatalogue() {
                             assetStatus: advFilters.assetStatus.filter(s => s !== st)
                           })
                         }
-                        className="hover:text-blue-900"
+                        className="hover:text-purple-900"
                       >
                         <X className="w-3 h-3" />
                       </button>
@@ -1764,7 +1764,7 @@ export function ReportsCatalogue() {
                     setActionSuccessMsg('Advanced filters applied.');
                     setTimeout(() => setActionSuccessMsg(null), 3000);
                   }}
-                  className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
                 >
                   <Filter className="w-3.5 h-3.5" /> Apply Filters
                 </button>
@@ -1782,7 +1782,7 @@ export function ReportsCatalogue() {
           <div className="bg-white rounded-2xl max-w-4xl w-full p-6 shadow-2xl space-y-4 animate-fadeIn max-h-[85vh] flex flex-col">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 text-[#2563EB] flex items-center justify-center">
+                <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
                   <Layers className="w-4 h-4" />
                 </div>
                 <div>
@@ -1803,7 +1803,7 @@ export function ReportsCatalogue() {
             <div className="flex-1 overflow-y-auto">
               {drillDownModal.loading ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
-                  <RefreshCw className="w-6 h-6 animate-spin text-[#2563EB]" />
+                  <RefreshCw className="w-6 h-6 animate-spin text-[#6C2BD9]" />
                   <span>Loading contributing transactional records...</span>
                 </div>
               ) : drillDownModal.records.length === 0 ? (
@@ -1827,7 +1827,7 @@ export function ReportsCatalogue() {
                   <tbody className="divide-y divide-slate-100 font-medium">
                     {drillDownModal.records.map((r, i) => (
                       <tr key={i} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-mono font-bold text-[#2563EB]">
+                        <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">
                           {r.assetNumber}
                         </td>
                         <td className="py-2.5 px-3 font-semibold text-slate-900">{r.name}</td>
@@ -1852,7 +1852,7 @@ export function ReportsCatalogue() {
                         <td className="py-2.5 px-3 text-center">
                           <button
                             onClick={() => navigate(`/assets/${r.assetNumber}`)}
-                            className="p-1 text-slate-400 hover:text-[#2563EB]"
+                            className="p-1 text-slate-400 hover:text-[#6C2BD9]"
                             title="View in Asset 360"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
@@ -1902,7 +1902,7 @@ export function ReportsCatalogue() {
             {/* Modal Header */}
             <div className="flex items-center justify-between pb-4 border-b border-slate-100">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-blue-50 text-[#2563EB] flex items-center justify-center border border-blue-100 shrink-0">
+                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center border border-purple-200 shrink-0">
                   <Filter className="w-5 h-5" />
                 </div>
                 <div>
@@ -1928,7 +1928,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.reportCategory}
                     onChange={(e) => setAdvFilters({ ...advFilters, reportCategory: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="Asset Reports">Asset Reports</option>
                     <option value="Maintenance Reports">Maintenance Reports</option>
@@ -1948,7 +1948,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.reportType}
                     onChange={(e) => setAdvFilters({ ...advFilters, reportType: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="Assets by Location">Assets by Location</option>
                     <option value="Assets by Category">Assets by Category</option>
@@ -1963,13 +1963,13 @@ export function ReportsCatalogue() {
               <div>
                 <label className="block text-xs font-bold text-slate-700 mb-1">Date Range</label>
                 <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#2563EB] pointer-events-none">
+                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6C2BD9] pointer-events-none">
                     <Calendar className="w-4 h-4" />
                   </div>
                   <select
                     value={advFilters.dateRange}
                     onChange={(e) => setAdvFilters({ ...advFilters, dateRange: e.target.value })}
-                    className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="This Year (Jan 2025 - Dec 2025)">This Year (Jan 2025 - Dec 2025)</option>
                     <option value="This Month">This Month</option>
@@ -1988,7 +1988,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.company}
                     onChange={(e) => setAdvFilters({ ...advFilters, company: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Companies">All Companies</option>
                     <option value="Wavelogix FZC">Wavelogix FZC</option>
@@ -2005,7 +2005,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.location}
                     onChange={(e) => setAdvFilters({ ...advFilters, location: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Locations">All Locations</option>
                     <option value="Dubai HQ">Dubai HQ</option>
@@ -2024,7 +2024,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.department}
                     onChange={(e) => setAdvFilters({ ...advFilters, department: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Departments">All Departments</option>
                     <option value="IT Department">IT Department</option>
@@ -2043,7 +2043,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.costCenter}
                     onChange={(e) => setAdvFilters({ ...advFilters, costCenter: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Cost Centers">All Cost Centers</option>
                     <option value="CC-101 IT">CC-101 IT</option>
@@ -2060,7 +2060,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.assetClass}
                     onChange={(e) => setAdvFilters({ ...advFilters, assetClass: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Classes">All Classes</option>
                     <option value="Hardware">Hardware</option>
@@ -2078,7 +2078,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.supplier}
                     onChange={(e) => setAdvFilters({ ...advFilters, supplier: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Suppliers">All Suppliers</option>
                     <option value="Zebra Technologies">Zebra Technologies</option>
@@ -2096,7 +2096,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.assetGroup}
                     onChange={(e) => setAdvFilters({ ...advFilters, assetGroup: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Asset Groups">All Asset Groups</option>
                     <option value="IT Hardware">IT Hardware</option>
@@ -2113,7 +2113,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.assetCategory}
                     onChange={(e) => setAdvFilters({ ...advFilters, assetCategory: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Categories">All Categories</option>
                     <option value="IT Equipment">IT Equipment</option>
@@ -2131,7 +2131,7 @@ export function ReportsCatalogue() {
                   <select
                     value={advFilters.assetSubCategory}
                     onChange={(e) => setAdvFilters({ ...advFilters, assetSubCategory: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:ring-2 focus:ring-[#2563EB]/20 focus:outline-hidden appearance-none cursor-pointer"
+                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
                   >
                     <option value="All Sub Categories">All Sub Categories</option>
                     <option value="Laptops">Laptops</option>
@@ -2152,7 +2152,7 @@ export function ReportsCatalogue() {
                       placeholder="From Date"
                       value={advFilters.acqFromDate}
                       onChange={(e) => setAdvFilters({ ...advFilters, acqFromDate: e.target.value })}
-                      className="w-full pl-8 pr-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:outline-hidden"
+                      className="w-full pl-8 pr-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:outline-hidden"
                     />
                   </div>
                   <span className="text-slate-400 font-bold">→</span>
@@ -2162,7 +2162,7 @@ export function ReportsCatalogue() {
                       placeholder="To Date"
                       value={advFilters.acqToDate}
                       onChange={(e) => setAdvFilters({ ...advFilters, acqToDate: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:outline-hidden"
+                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:outline-hidden"
                     />
                   </div>
                 </div>
@@ -2176,7 +2176,7 @@ export function ReportsCatalogue() {
                     {advFilters.assetStatus.map((st) => (
                       <span
                         key={st}
-                        className="px-2 py-0.5 rounded-lg bg-blue-50 text-[#2563EB] font-bold text-[11px] flex items-center gap-1 border border-blue-100"
+                        className="px-2 py-0.5 rounded-lg bg-purple-50 text-[#6C2BD9] font-bold text-[11px] flex items-center gap-1 border border-purple-200"
                       >
                         {st}
                         <button
@@ -2187,7 +2187,7 @@ export function ReportsCatalogue() {
                               assetStatus: advFilters.assetStatus.filter((item) => item !== st)
                             })
                           }
-                          className="hover:text-blue-900 cursor-pointer ml-0.5"
+                          className="hover:text-purple-900 cursor-pointer ml-0.5"
                         >
                           <X className="w-3 h-3" />
                         </button>
@@ -2207,7 +2207,7 @@ export function ReportsCatalogue() {
                     placeholder="Search and select tags..."
                     value={advFilters.tags}
                     onChange={(e) => setAdvFilters({ ...advFilters, tags: e.target.value })}
-                    className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#2563EB] focus:outline-hidden"
+                    className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:outline-hidden"
                   />
                   <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                 </div>
@@ -2265,7 +2265,7 @@ export function ReportsCatalogue() {
                     setActionSuccessMsg('Advanced filters applied successfully.');
                     setTimeout(() => setActionSuccessMsg(null), 3000);
                   }}
-                  className="px-6 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer"
+                  className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer"
                 >
                   <Filter className="w-3.5 h-3.5" />
                   <span>Apply Filters</span>
@@ -2414,11 +2414,11 @@ export function ReportsCatalogue() {
               {CORE_PREDEFINED_REPORTS.map((rep) => (
                 <div
                   key={rep.id}
-                  className="p-3.5 rounded-xl border border-slate-200 hover:border-[#2563EB] bg-slate-50/50 flex flex-col justify-between space-y-2 group"
+                  className="p-3.5 rounded-xl border border-slate-200 hover:border-[#6C2BD9] bg-slate-50/50 flex flex-col justify-between space-y-2 group"
                 >
                   <div>
-                    <span className="text-[10px] font-bold text-[#2563EB] uppercase">{rep.category}</span>
-                    <h4 className="font-bold text-slate-900 group-hover:text-[#2563EB] transition-colors">{rep.name}</h4>
+                    <span className="text-[10px] font-bold text-[#6C2BD9] uppercase">{rep.category}</span>
+                    <h4 className="font-bold text-slate-900 group-hover:text-[#6C2BD9] transition-colors">{rep.name}</h4>
                     <p className="text-[11px] text-slate-500 leading-snug">{rep.description}</p>
                   </div>
                   <button
@@ -2426,7 +2426,7 @@ export function ReportsCatalogue() {
                       setShowStandardReportModal(false);
                       handleLaunchReport(rep);
                     }}
-                    className="w-full py-1.5 rounded-lg bg-[#2563EB] text-white text-[11px] font-bold hover:bg-[#1D4ED8] transition-colors flex items-center justify-center gap-1"
+                    className="w-full py-1.5 rounded-lg bg-[#6C2BD9] text-white text-[11px] font-bold hover:bg-[#5B21B6] transition-colors flex items-center justify-center gap-1"
                   >
                     <Eye className="w-3 h-3" /> View Report
                   </button>
@@ -2468,7 +2468,7 @@ export function ReportsCatalogue() {
                 <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
                   {['Asset Tag', 'Asset Name', 'Category', 'Location', 'Custodian', 'Cost / Value', 'Purchase Date', 'Vendor', 'Condition'].map((col, i) => (
                     <label key={i} className="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
-                      <input type="checkbox" defaultChecked={i < 5} className="rounded text-[#2563EB]" />
+                      <input type="checkbox" defaultChecked={i < 5} className="rounded text-[#6C2BD9]" />
                       <span>{col}</span>
                     </label>
                   ))}
@@ -2507,7 +2507,7 @@ export function ReportsCatalogue() {
                   setShowCustomReportModal(false);
                   handleExportCSV('Custom_Asset360_Report.csv');
                 }}
-                className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
               >
                 <SlidersHorizontal className="w-3.5 h-3.5" /> Generate & Export
               </button>
@@ -2581,7 +2581,7 @@ export function ReportsCatalogue() {
                   setActionSuccessMsg('Automatic report schedule activated successfully.');
                   setTimeout(() => setActionSuccessMsg(null), 3000);
                 }}
-                className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
               >
                 <Clock className="w-3.5 h-3.5" /> Save Schedule
               </button>
@@ -2604,7 +2604,7 @@ export function ReportsCatalogue() {
                 <ArrowLeft className="w-4 h-4" />
               </button>
               <div>
-                <span className="text-[10px] font-bold text-[#2563EB] uppercase">
+                <span className="text-[10px] font-bold text-[#6C2BD9] uppercase">
                   {selectedReportObj.category} Report View
                 </span>
                 <h2 className="text-lg font-black text-slate-900">{selectedReportObj.name}</h2>
@@ -2651,7 +2651,7 @@ export function ReportsCatalogue() {
           <div className="overflow-x-auto">
             {viewerLoading ? (
               <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
-                <RefreshCw className="w-6 h-6 animate-spin text-[#2563EB]" />
+                <RefreshCw className="w-6 h-6 animate-spin text-[#6C2BD9]" />
                 <span>Generating live report dataset...</span>
               </div>
             ) : viewerData.length === 0 ? (

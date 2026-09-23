@@ -81,7 +81,7 @@ export function SparePartsListTab({
                 placeholder="Search by item code, name or description..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
               />
             </div>
 
@@ -90,7 +90,7 @@ export function SparePartsListTab({
               <select
                 value={categoryFilter}
                 onChange={(e) => setCategoryFilter(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
               >
                 <option value="All Categories">All Categories</option>
                 <option value="HVAC">HVAC</option>
@@ -107,7 +107,7 @@ export function SparePartsListTab({
               <select
                 value={locationFilter}
                 onChange={(e) => setLocationFilter(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
               >
                 <option value="All Locations">All Locations</option>
                 <option value="Main Warehouse">Main Warehouse</option>
@@ -122,7 +122,7 @@ export function SparePartsListTab({
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-blue-500"
+                className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
               >
                 <option value="All Status">All Status</option>
                 <option value="In Stock">In Stock</option>
@@ -144,7 +144,7 @@ export function SparePartsListTab({
               >
                 Reset
               </button>
-              <button className="px-3 py-1.5 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all shadow-xs">
+              <button className="px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1 transition-all shadow-xs">
                 <Filter className="w-3.5 h-3.5 text-white" /> Filter
               </button>
             </div>
@@ -160,7 +160,7 @@ export function SparePartsListTab({
                       type="checkbox"
                       checked={selectedRowIds.length === filteredParts.length && filteredParts.length > 0}
                       onChange={toggleSelectAll}
-                      className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                     />
                   </th>
                   <th className="p-2.5 w-8">#</th>
@@ -183,7 +183,7 @@ export function SparePartsListTab({
                       key={part.id}
                       onClick={() => onSelectItem(part)}
                       className={`cursor-pointer transition-colors ${
-                        isSelected ? 'bg-blue-50/80 font-bold' : 'hover:bg-slate-50/70'
+                        isSelected ? 'bg-purple-50/80 font-bold' : 'hover:bg-slate-50/70'
                       }`}
                     >
                       <td className="p-2.5" onClick={(e) => e.stopPropagation()}>
@@ -191,13 +191,13 @@ export function SparePartsListTab({
                           type="checkbox"
                           checked={selectedRowIds.includes(part.id)}
                           onChange={() => toggleRowSelect(part.id)}
-                          className="rounded text-blue-600 focus:ring-blue-500 cursor-pointer"
+                          className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                         />
                       </td>
 
                       <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
 
-                      <td className="p-2.5 font-mono font-bold text-blue-600">
+                      <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">
                         {part.itemCode}
                       </td>
 
@@ -232,21 +232,21 @@ export function SparePartsListTab({
                       <td className="p-2.5 text-right space-x-1" onClick={(e) => e.stopPropagation()}>
                         <button
                           onClick={() => onSelectItem(part)}
-                          className="text-blue-600 hover:text-blue-800 p-1"
+                          className="text-[#6C2BD9] hover:text-purple-900 p-1"
                           title="View Details"
                         >
                           <Eye className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => onEditItem(part)}
-                          className="text-blue-600 hover:text-blue-800 p-1"
+                          className="text-[#6C2BD9] hover:text-purple-900 p-1"
                           title="Edit Part"
                         >
                           <Edit3 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => onShowToast(`Options for ${part.itemCode}`)}
-                          className="text-blue-600 hover:text-slate-800 p-1"
+                          className="text-[#6C2BD9] hover:text-slate-800 p-1"
                           title="More Options"
                         >
                           <MoreHorizontal className="w-3.5 h-3.5" />
@@ -265,7 +265,7 @@ export function SparePartsListTab({
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 font-semibold">
                 <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">«</button>
-                <button className="px-2.5 py-0.5 bg-blue-600 text-white font-bold rounded">1</button>
+                <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
                 <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">2</button>
                 <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">3</button>
                 <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">4</button>
@@ -293,16 +293,16 @@ export function SparePartsListTab({
 
               <button
                 onClick={() => onEditItem(selectedItem)}
-                className="px-3 py-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
+                className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
               >
-                <Edit3 className="w-3 h-3 text-blue-600" /> Edit
+                <Edit3 className="w-3 h-3 text-[#6C2BD9]" /> Edit
               </button>
             </div>
 
             <div className="space-y-2.5 text-xs">
               <div className="grid grid-cols-3 text-slate-600">
                 <span className="font-semibold text-slate-500">Item Code</span>
-                <span className="col-span-2 font-mono font-bold text-blue-600">{selectedItem?.itemCode || 'SP-HVAC-001'}</span>
+                <span className="col-span-2 font-mono font-bold text-[#6C2BD9]">{selectedItem?.itemCode || 'SP-HVAC-001'}</span>
               </div>
 
               <div className="grid grid-cols-3 text-slate-600">
@@ -368,7 +368,7 @@ export function SparePartsListTab({
 
               <div className="grid grid-cols-3 text-slate-600">
                 <span className="font-semibold text-slate-500">Primary Supplier</span>
-                <span className="col-span-2 font-semibold text-blue-600 hover:underline cursor-pointer">
+                <span className="col-span-2 font-semibold text-[#6C2BD9] hover:underline cursor-pointer">
                   {selectedItem?.supplier || 'Al Futtaim Trading LLC'}
                 </span>
               </div>
@@ -406,9 +406,9 @@ export function SparePartsListTab({
 
               <button
                 onClick={() => onShowToast('Upload file attached!')}
-                className="px-3 py-1 bg-white border border-blue-600 text-blue-600 hover:bg-blue-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
+                className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
               >
-                <Plus className="w-3.5 h-3.5 text-blue-600" /> Add File
+                <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add File
               </button>
             </div>
 
@@ -430,19 +430,19 @@ export function SparePartsListTab({
                   ]).map((att, idx) => (
                     <tr key={att.id} className="hover:bg-slate-50/70">
                       <td className="p-2 text-slate-500 font-bold">{idx + 1}</td>
-                      <td className="p-2 font-medium text-blue-600 hover:underline cursor-pointer">{att.name}</td>
+                      <td className="p-2 font-medium text-[#6C2BD9] hover:underline cursor-pointer">{att.name}</td>
                       <td className="p-2 text-slate-600 font-mono text-[11px]">{att.fileType || 'PDF'}</td>
                       <td className="p-2 text-slate-500 font-mono text-[11px]">{att.size}</td>
                       <td className="p-2 text-right space-x-1">
                         <button 
                           onClick={() => onShowToast(`Downloading ${att.name}...`)}
-                          className="text-blue-600 hover:text-blue-800 p-1"
+                          className="text-[#6C2BD9] hover:text-purple-900 p-1"
                         >
                           <Download className="w-3.5 h-3.5" />
                         </button>
                         <button 
                           onClick={() => onShowToast(`Deleted ${att.name}`)}
-                          className="text-blue-600 hover:text-red-600 p-1"
+                          className="text-[#6C2BD9] hover:text-red-600 p-1"
                         >
                           <Trash2 className="w-3.5 h-3.5" />
                         </button>

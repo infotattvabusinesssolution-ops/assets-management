@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useAuth, MOCK_ROLES_DATA } from '../../context/AuthContext';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
-import { Search, Bell, Plus, User as UserIcon, Wifi, Sparkles, ChevronDown, Shield, Check, Lock } from 'lucide-react';
+import { Search, Bell, Plus, User as UserIcon, Wifi, Sparkles, ChevronDown, Shield, Check, Lock, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Asset360Logo } from '../common/Asset360Logo';
 
@@ -23,6 +23,8 @@ export function Topbar() {
   const { openPalette } = useCommandPalette();
   const navigate = useNavigate();
   const [showRoleDropdown, setShowRoleDropdown] = useState(false);
+  const [currentLang, setCurrentLang] = useState(localStorage.getItem('fams_lang') || 'en');
+  const [showLangDropdown, setShowLangDropdown] = useState(false);
 
   const activeRoleCode = user?.role?.code || 'SYS_ADMIN';
   const primaryRole = localStorage.getItem('fams_primary_role') || activeRoleCode;
@@ -32,6 +34,13 @@ export function Topbar() {
     if (!canSwitchRole) return;
     switchRole(roleCode);
     setShowRoleDropdown(false);
+  };
+
+  const handleLangChange = (langCode) => {
+    setCurrentLang(langCode);
+    setShowLangDropdown(false);
+    localStorage.setItem('fams_lang', langCode);
+    document.documentElement.dir = langCode === 'ar' ? 'rtl' : 'ltr';
   };
 
   return (
@@ -51,6 +60,41 @@ export function Topbar() {
 
       {/* Right Controls matching screenshot */}
       <div className="flex items-center gap-3 md:gap-3.5 text-black">
+        {/* Language Selector (English / العربية) */}
+        <div className="relative">
+          <button
+            onClick={() => setShowLangDropdown(!showLangDropdown)}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-black shadow-2xs cursor-pointer hover:bg-purple-50"
+            title="Select Language"
+          >
+            <Globe className="w-3.5 h-3.5 text-[#6C2BD9]" />
+            <span>{currentLang === 'ar' ? 'العربية' : 'English'}</span>
+            <ChevronDown className="w-3 h-3 text-slate-400" />
+          </button>
+          {showLangDropdown && (
+            <div className="absolute right-0 mt-1.5 w-32 bg-white border border-slate-200 shadow-xl rounded-xl p-1 z-50 text-xs space-y-0.5">
+              <button
+                onClick={() => handleLangChange('en')}
+                className={`w-full text-left px-3 py-1.5 rounded-lg font-bold flex items-center justify-between cursor-pointer ${
+                  currentLang === 'en' ? 'bg-purple-100 text-[#6C2BD9]' : 'text-slate-700 hover:bg-purple-50'
+                }`}
+              >
+                <span>English</span>
+                {currentLang === 'en' && <Check className="w-3.5 h-3.5" />}
+              </button>
+              <button
+                onClick={() => handleLangChange('ar')}
+                className={`w-full text-left px-3 py-1.5 rounded-lg font-bold flex items-center justify-between cursor-pointer ${
+                  currentLang === 'ar' ? 'bg-purple-100 text-[#6C2BD9]' : 'text-slate-700 hover:bg-purple-50'
+                }`}
+              >
+                <span>العربية</span>
+                {currentLang === 'ar' && <Check className="w-3.5 h-3.5" />}
+              </button>
+            </div>
+          )}
+        </div>
+
         {/* Dubai HQ Selector matching screenshot */}
         <div className="hidden lg:flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-300 bg-white text-xs font-bold text-black shadow-2xs cursor-pointer hover:bg-purple-50">
           <span className="text-black">Dubai HQ</span>

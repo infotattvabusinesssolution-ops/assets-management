@@ -447,7 +447,7 @@ export function MaintenancePlans() {
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
             <span>Maintenance</span>
             <ChevronRight className="w-3 h-3 text-slate-400" />
-            <span className="text-blue-700 font-bold">Maintenance Plans</span>
+            <span className="text-[#6C2BD9] font-bold">Maintenance Plans</span>
           </div>
           <h1 className="text-xl font-extrabold text-slate-900 mt-1">
             Maintenance Plans
@@ -460,16 +460,16 @@ export function MaintenancePlans() {
         <div className="flex items-center gap-2">
           <button
             onClick={handleCreateNewPlanMode}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
+            className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
           >
             <Plus className="w-4 h-4" /> Create Maintenance Plan
           </button>
           
           <button
             onClick={() => showToast('success', 'Exporting maintenance plans to Excel...')}
-            className="px-4 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-2xs text-xs flex items-center gap-1.5"
+            className="px-4 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-2xs text-xs flex items-center gap-1.5"
           >
-            <Download className="w-4 h-4 text-blue-600" /> Export
+            <Download className="w-4 h-4 text-[#6C2BD9]" /> Export
           </button>
         </div>
       </div>
@@ -489,7 +489,7 @@ export function MaintenancePlans() {
                 placeholder="Search by Plan No., Name, Asset Type..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                className="w-full bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
@@ -501,7 +501,7 @@ export function MaintenancePlans() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
               <option value="HVAC">HVAC</option>
@@ -518,7 +518,7 @@ export function MaintenancePlans() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
               <option value="Preventive">Preventive</option>
@@ -532,7 +532,7 @@ export function MaintenancePlans() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
               <option value="Active">Active</option>
@@ -546,7 +546,7 @@ export function MaintenancePlans() {
             <select
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
               <option value="Dubai HQ">Dubai HQ</option>
@@ -566,7 +566,7 @@ export function MaintenancePlans() {
               setStatusFilter('ALL');
               setLocationFilter('ALL');
             }}
-            className="bg-white hover:bg-slate-50 border border-blue-600 text-blue-700 font-bold py-1.5 px-4 rounded-lg shadow-2xs text-xs"
+            className="bg-white hover:bg-slate-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold py-1.5 px-4 rounded-lg shadow-2xs text-xs"
           >
             Clear Filters
           </button>
@@ -618,7 +618,7 @@ export function MaintenancePlans() {
                       <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={isSelected} onChange={() => setSelectedPlanId(plan.id)} className="rounded border-slate-300" />
                       </td>
-                      <td className="p-2.5 font-mono text-blue-600 font-bold hover:underline">
+                      <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
                         {plan.planNo}
                       </td>
                       <td className="p-2.5 font-bold text-slate-900">
@@ -665,7 +665,7 @@ export function MaintenancePlans() {
 
             <div className="flex items-center gap-1.5">
               <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&lt;</button>
-              <button className="px-2.5 py-1 bg-blue-600 text-white font-bold rounded text-xs shadow-2xs">1</button>
+              <button className="px-2.5 py-1 bg-[#6C2BD9] text-white font-bold rounded text-xs shadow-2xs">1</button>
               <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">2</button>
               <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&gt;</button>
 
@@ -687,9 +687,9 @@ export function MaintenancePlans() {
             <h3 className="text-sm font-bold text-slate-900">Plan Details</h3>
             <button 
               onClick={() => showToast('success', `Edit mode enabled for ${selectedPlan.planNo}`)}
-              className="px-3 py-1 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-md text-xs flex items-center gap-1 shadow-2xs"
+              className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-md text-xs flex items-center gap-1 shadow-2xs"
             >
-              <Edit className="w-3.5 h-3.5 text-blue-600" /> Edit
+              <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" /> Edit
             </button>
           </div>
 
@@ -779,7 +779,7 @@ export function MaintenancePlans() {
 
             {/* SCHEDULING SECTION */}
             <div className="pt-2 border-t border-slate-100 space-y-2">
-              <h4 className="text-xs font-bold text-blue-700">Scheduling</h4>
+              <h4 className="text-xs font-bold text-[#6C2BD9]">Scheduling</h4>
               
               <div className="grid grid-cols-12 gap-2 items-center">
                 <div className="col-span-7 space-y-1">
@@ -839,7 +839,7 @@ export function MaintenancePlans() {
 
             {/* APPLY TO SECTION */}
             <div className="pt-2 border-t border-slate-100 space-y-2">
-              <h4 className="text-xs font-bold text-blue-700">Apply To</h4>
+              <h4 className="text-xs font-bold text-[#6C2BD9]">Apply To</h4>
               
               <div className="grid grid-cols-2 gap-2 text-xs font-medium text-slate-800">
                 <label className="flex items-center gap-1.5 cursor-pointer">
@@ -848,7 +848,7 @@ export function MaintenancePlans() {
                     name="applyToRule"
                     checked={detailsForm.applyToRule === 'CATEGORY'}
                     onChange={() => setDetailsForm({ ...detailsForm, applyToRule: 'CATEGORY' })}
-                    className="text-blue-600 focus:ring-blue-500"
+                    className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   All assets of selected category
                 </label>
@@ -859,7 +859,7 @@ export function MaintenancePlans() {
                     name="applyToRule"
                     checked={detailsForm.applyToRule === 'SPECIFIC'}
                     onChange={() => setDetailsForm({ ...detailsForm, applyToRule: 'SPECIFIC' })}
-                    className="text-blue-600 focus:ring-blue-500"
+                    className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Specific assets
                 </label>
@@ -870,7 +870,7 @@ export function MaintenancePlans() {
                     name="applyToRule"
                     checked={detailsForm.applyToRule === 'LOCATION'}
                     onChange={() => setDetailsForm({ ...detailsForm, applyToRule: 'LOCATION' })}
-                    className="text-blue-600 focus:ring-blue-500"
+                    className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Assets by location
                 </label>
@@ -881,7 +881,7 @@ export function MaintenancePlans() {
                     name="applyToRule"
                     checked={detailsForm.applyToRule === 'CUSTODIAN'}
                     onChange={() => setDetailsForm({ ...detailsForm, applyToRule: 'CUSTODIAN' })}
-                    className="text-blue-600 focus:ring-blue-500"
+                    className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Assets by user/custodian
                 </label>
@@ -892,7 +892,7 @@ export function MaintenancePlans() {
                     name="applyToRule"
                     checked={detailsForm.applyToRule === 'FILTER'}
                     onChange={() => setDetailsForm({ ...detailsForm, applyToRule: 'FILTER' })}
-                    className="text-blue-600 focus:ring-blue-500"
+                    className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Assets from asset filter
                 </label>
@@ -901,7 +901,7 @@ export function MaintenancePlans() {
 
             {/* ADDITIONAL SETTINGS SECTION */}
             <div className="pt-2 border-t border-slate-100 space-y-2">
-              <h4 className="text-xs font-bold text-blue-700">Additional Settings</h4>
+              <h4 className="text-xs font-bold text-[#6C2BD9]">Additional Settings</h4>
 
               <div className="space-y-2 text-xs font-medium text-slate-800">
                 <label className="flex items-center gap-2 cursor-pointer">
@@ -909,7 +909,7 @@ export function MaintenancePlans() {
                     type="checkbox"
                     checked={detailsForm.autoCreateWo}
                     onChange={(e) => setDetailsForm({ ...detailsForm, autoCreateWo: e.target.checked })}
-                    className="rounded text-blue-600 focus:ring-blue-500"
+                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Automatically create work order
                 </label>
@@ -920,7 +920,7 @@ export function MaintenancePlans() {
                       type="checkbox"
                       checked={detailsForm.sendNotification}
                       onChange={(e) => setDetailsForm({ ...detailsForm, sendNotification: e.target.checked })}
-                      className="rounded text-blue-600 focus:ring-blue-500"
+                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                     />
                     Send notification before due date
                   </label>
@@ -940,7 +940,7 @@ export function MaintenancePlans() {
                     type="checkbox"
                     checked={detailsForm.linkAmc}
                     onChange={(e) => setDetailsForm({ ...detailsForm, linkAmc: e.target.checked })}
-                    className="rounded text-blue-600 focus:ring-blue-500"
+                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                   />
                   Link to service provider/AMC
                 </label>
@@ -951,7 +951,7 @@ export function MaintenancePlans() {
                       type="checkbox"
                       checked={detailsForm.requireChecklist}
                       onChange={(e) => setDetailsForm({ ...detailsForm, requireChecklist: e.target.checked })}
-                      className="rounded text-blue-600 focus:ring-blue-500"
+                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                     />
                     Require checklist
                   </label>
@@ -976,14 +976,14 @@ export function MaintenancePlans() {
               <button
                 type="button"
                 onClick={() => showToast('success', 'Changes discarded')}
-                className="px-4 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-2xs text-xs"
+                className="px-4 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-2xs text-xs"
               >
                 Cancel
               </button>
               
               <button
                 type="submit"
-                className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs text-xs"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs text-xs"
               >
                 Save Plan
               </button>
@@ -1006,7 +1006,7 @@ export function MaintenancePlans() {
             <button
               onClick={() => setActiveBottomTab('APPLICABLE_ASSETS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'APPLICABLE_ASSETS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'APPLICABLE_ASSETS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Applicable Assets (25)
@@ -1015,7 +1015,7 @@ export function MaintenancePlans() {
             <button
               onClick={() => setActiveBottomTab('WORK_ORDERS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'WORK_ORDERS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'WORK_ORDERS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Generated Work Orders (8)
@@ -1024,7 +1024,7 @@ export function MaintenancePlans() {
             <button
               onClick={() => setActiveBottomTab('CHECKLIST')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'CHECKLIST' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'CHECKLIST' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Checklist
@@ -1033,7 +1033,7 @@ export function MaintenancePlans() {
             <button
               onClick={() => setActiveBottomTab('COMMENTS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'COMMENTS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'COMMENTS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Comments (2)
@@ -1042,7 +1042,7 @@ export function MaintenancePlans() {
             <button
               onClick={() => setActiveBottomTab('HISTORY')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                activeBottomTab === 'HISTORY' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                activeBottomTab === 'HISTORY' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               History
@@ -1069,7 +1069,7 @@ export function MaintenancePlans() {
                     {EXACT_APPLICABLE_ASSETS.map((a) => (
                       <tr key={a.id} className="hover:bg-slate-50">
                         <td className="p-2.5 font-mono text-slate-500">{a.id}</td>
-                        <td className="p-2.5 font-mono font-bold text-blue-600 hover:underline">{a.assetNo}</td>
+                        <td className="p-2.5 font-mono font-bold text-[#6C2BD9] hover:underline">{a.assetNo}</td>
                         <td className="p-2.5 font-bold text-slate-900">{a.name}</td>
                         <td className="p-2.5 text-slate-800">{a.location}</td>
                         <td className="p-2.5 font-mono text-slate-600">{a.lastService}</td>
@@ -1093,7 +1093,7 @@ export function MaintenancePlans() {
 
                 <div className="flex items-center gap-1">
                   <button className="px-2 py-0.5 bg-white border border-slate-300 text-slate-600 rounded text-xs font-bold">&lt;</button>
-                  <button className="px-2.5 py-0.5 bg-blue-600 text-white font-bold rounded text-xs">1</button>
+                  <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded text-xs">1</button>
                   <button className="px-2.5 py-0.5 bg-white border border-slate-300 text-slate-700 rounded text-xs font-bold">2</button>
                   <button className="px-2.5 py-0.5 bg-white border border-slate-300 text-slate-700 rounded text-xs font-bold">3</button>
                   <button className="px-2.5 py-0.5 bg-white border border-slate-300 text-slate-700 rounded text-xs font-bold">4</button>

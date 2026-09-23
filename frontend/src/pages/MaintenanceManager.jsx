@@ -566,7 +566,7 @@ export function MaintenanceManager() {
         return 'bg-sky-100 text-sky-800 border-sky-300 font-bold';
       case 'In Progress':
       case 'IN_PROGRESS':
-        return 'bg-blue-100 text-blue-800 border-blue-300 font-bold';
+        return 'bg-purple-100 text-purple-900 border-purple-300 font-bold';
       case 'Completed':
       case 'COMPLETED':
         return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-bold';
@@ -604,7 +604,7 @@ export function MaintenanceManager() {
           <div className="flex items-center gap-1.5 text-[11px] text-slate-500 font-medium">
             <span>Maintenance</span>
             <ChevronRight className="w-3 h-3 text-slate-400" />
-            <span className="text-blue-700 font-bold">Asset Maintenance</span>
+            <span className="text-[#6C2BD9] font-bold">Asset Maintenance</span>
           </div>
           <h1 className="text-xl font-extrabold text-slate-900 mt-1">
             Asset Maintenance
@@ -617,16 +617,16 @@ export function MaintenanceManager() {
         <div className="flex items-center gap-2 flex-wrap">
           <button
             onClick={() => navigate('/maintenance/create')}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
+            className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
           >
             <Plus className="w-4 h-4" /> Create Work Order
           </button>
           
           <button
             onClick={() => setShowCreateSchedModal(true)}
-            className="px-4 py-2 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
+            className="px-4 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
           >
-            <Calendar className="w-4 h-4 text-blue-600" /> Schedule Maintenance
+            <Calendar className="w-4 h-4 text-[#6C2BD9]" /> Schedule Maintenance
           </button>
 
           <button
@@ -652,7 +652,7 @@ export function MaintenanceManager() {
                 placeholder="Search by WO No., Asset No., name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+                className="w-full bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
@@ -664,7 +664,7 @@ export function MaintenanceManager() {
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
               <option value="Scheduled">Scheduled</option>
@@ -682,7 +682,7 @@ export function MaintenanceManager() {
             <select
               value={typeFilter}
               onChange={(e) => setTypeFilter(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
               <option value="Preventive">Preventive</option>
@@ -697,7 +697,7 @@ export function MaintenanceManager() {
             <select
               value={categoryFilter}
               onChange={(e) => setCategoryFilter(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
               <option value="HVAC">HVAC Equipment</option>
@@ -712,7 +712,7 @@ export function MaintenanceManager() {
             <select
               value={locationFilter}
               onChange={(e) => setLocationFilter(e.target.value)}
-              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-blue-500 font-medium"
+              className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
               <option value="Dubai HQ">Dubai HQ</option>
@@ -739,7 +739,7 @@ export function MaintenanceManager() {
         <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100 justify-end">
           <button
             onClick={() => {}}
-            className="bg-blue-600 hover:bg-blue-700 text-white font-bold py-1.5 px-4 rounded-lg shadow-xs flex items-center justify-center gap-1.5 text-xs"
+            className="bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold py-1.5 px-4 rounded-lg shadow-xs flex items-center justify-center gap-1.5 text-xs"
           >
             <Search className="w-3.5 h-3.5" /> Search
           </button>
@@ -752,7 +752,7 @@ export function MaintenanceManager() {
               setLocationFilter('ALL');
               setPriorityFilter('ALL');
             }}
-            className="bg-white hover:bg-slate-50 border border-blue-600 text-blue-700 font-bold py-1.5 px-4 rounded-lg shadow-2xs text-xs"
+            className="bg-white hover:bg-slate-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold py-1.5 px-4 rounded-lg shadow-2xs text-xs"
           >
             Clear Filters
           </button>
@@ -808,10 +808,10 @@ export function MaintenanceManager() {
                       <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
                         <input type="checkbox" checked={isSelected} onChange={() => setSelectedWoId(woId)} className="rounded border-slate-300" />
                       </td>
-                      <td className="p-2.5 font-mono text-blue-600 font-bold hover:underline">
+                      <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
                         {wo.workOrderNumber}
                       </td>
-                      <td className="p-2.5 font-mono text-blue-700">
+                      <td className="p-2.5 font-mono text-[#6C2BD9]">
                         {assetObj.assetId || 'AS-00087'}
                       </td>
                       <td className="p-2.5 font-bold text-slate-900">
@@ -856,7 +856,7 @@ export function MaintenanceManager() {
 
             <div className="flex items-center gap-1.5">
               <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&lt;</button>
-              <button className="px-2.5 py-1 bg-blue-600 text-white font-bold rounded text-xs shadow-2xs">1</button>
+              <button className="px-2.5 py-1 bg-[#6C2BD9] text-white font-bold rounded text-xs shadow-2xs">1</button>
               <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">2</button>
               <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">3</button>
               <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&gt;</button>
@@ -879,9 +879,9 @@ export function MaintenanceManager() {
             <h3 className="text-sm font-bold text-slate-900">Work Order Details</h3>
             <button 
               onClick={() => setShowUpdateStatusModal(true)}
-              className="px-3 py-1 bg-white border border-blue-600 text-blue-700 hover:bg-blue-50 font-bold rounded-md text-xs flex items-center gap-1 shadow-2xs"
+              className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-md text-xs flex items-center gap-1 shadow-2xs"
             >
-              <Edit className="w-3.5 h-3.5 text-blue-600" /> Edit
+              <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" /> Edit
             </button>
           </div>
 
@@ -893,7 +893,7 @@ export function MaintenanceManager() {
             
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Asset No.</span>
-              <span className="col-span-7 font-mono font-bold text-blue-700">: AS-00087</span>
+              <span className="col-span-7 font-mono font-bold text-[#6C2BD9]">: AS-00087</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
@@ -918,7 +918,7 @@ export function MaintenanceManager() {
             <div className="grid grid-cols-12 gap-1.5 py-0.5 items-center">
               <span className="col-span-5 text-slate-500 font-semibold">Status</span>
               <span className="col-span-7">
-                : <span className="px-2 py-0.5 rounded text-[10px] border bg-blue-100 text-blue-800 border-blue-300 font-bold inline-block">
+                : <span className="px-2 py-0.5 rounded text-[10px] border bg-purple-100 text-purple-900 border-purple-300 font-bold inline-block">
                   In Progress
                 </span>
               </span>
@@ -954,32 +954,32 @@ export function MaintenanceManager() {
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setShowUpdateStatusModal(true)}
-                  className="w-full py-2 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-lg shadow-xs flex items-center justify-center gap-1 text-xs"
+                  className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs flex items-center justify-center gap-1 text-xs"
                 >
                   Update Status <ChevronDown className="w-3.5 h-3.5" />
                 </button>
 
                 <button
                   onClick={() => setShowAddTimeLogModal(true)}
-                  className="w-full py-2 bg-white hover:bg-blue-50 border border-blue-600 text-blue-700 font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
+                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
                 >
-                  <Clock className="w-3.5 h-3.5 text-blue-600" /> Add Time Log
+                  <Clock className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Time Log
                 </button>
               </div>
 
               <div className="grid grid-cols-2 gap-2">
                 <button
                   onClick={() => setShowAddPartsModal(true)}
-                  className="w-full py-2 bg-white hover:bg-blue-50 border border-blue-600 text-blue-700 font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
+                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
                 >
-                  <Box className="w-3.5 h-3.5 text-blue-600" /> Add Parts Used
+                  <Box className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Parts Used
                 </button>
 
                 <button
                   onClick={() => setShowCloseWoModal(true)}
-                  className="w-full py-2 bg-white hover:bg-blue-50 border border-blue-600 text-blue-700 font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
+                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
                 >
-                  <Check className="w-3.5 h-3.5 text-blue-600" /> Close Work Order
+                  <Check className="w-3.5 h-3.5 text-[#6C2BD9]" /> Close Work Order
                 </button>
               </div>
             </div>
@@ -1001,7 +1001,7 @@ export function MaintenanceManager() {
             <button
               onClick={() => setBottomTab('HISTORY')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                bottomTab === 'HISTORY' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                bottomTab === 'HISTORY' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Maintenance History
@@ -1010,7 +1010,7 @@ export function MaintenanceManager() {
             <button
               onClick={() => setBottomTab('SCHEDULED')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                bottomTab === 'SCHEDULED' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                bottomTab === 'SCHEDULED' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Scheduled Maintenance
@@ -1019,7 +1019,7 @@ export function MaintenanceManager() {
             <button
               onClick={() => setBottomTab('PARTS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                bottomTab === 'PARTS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                bottomTab === 'PARTS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Parts &amp; Consumables
@@ -1028,7 +1028,7 @@ export function MaintenanceManager() {
             <button
               onClick={() => setBottomTab('TIMELOGS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                bottomTab === 'TIMELOGS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                bottomTab === 'TIMELOGS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Time Logs
@@ -1037,7 +1037,7 @@ export function MaintenanceManager() {
             <button
               onClick={() => setBottomTab('ATTACHMENTS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                bottomTab === 'ATTACHMENTS' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                bottomTab === 'ATTACHMENTS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Attachments
@@ -1046,7 +1046,7 @@ export function MaintenanceManager() {
             <button
               onClick={() => setBottomTab('NOTES')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
-                bottomTab === 'NOTES' ? 'border-blue-600 text-blue-700' : 'border-transparent text-slate-500 hover:text-slate-800'
+                bottomTab === 'NOTES' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
             >
               Notes
@@ -1075,7 +1075,7 @@ export function MaintenanceManager() {
                       <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
                         {h.date}
                       </td>
-                      <td className="p-2.5 font-mono font-bold text-blue-600">
+                      <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">
                         {h.workOrderNumber}
                       </td>
                       <td className="p-2.5 text-slate-800">
@@ -1112,7 +1112,7 @@ export function MaintenanceManager() {
             <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
               <div className="flex justify-between font-bold text-slate-900">
                 <span>Preventive Maintenance Plan - AC Unit Office</span>
-                <span className="text-blue-600">Next Due: 15 Dec 2026</span>
+                <span className="text-[#6C2BD9]">Next Due: 15 Dec 2026</span>
               </div>
               <p className="text-slate-600">Frequency: Quarterly (Every 3 Months) | SLA Response: 4 Hours</p>
             </div>
@@ -1123,7 +1123,7 @@ export function MaintenanceManager() {
             <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
               <div className="flex justify-between font-bold text-slate-900">
                 <span>Air Intake Filter 24x24</span>
-                <span className="text-blue-700 font-mono">150 AED (1 Qty)</span>
+                <span className="text-[#6C2BD9] font-mono">150 AED (1 Qty)</span>
               </div>
             </div>
           )}
@@ -1166,7 +1166,7 @@ export function MaintenanceManager() {
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-blue-700">AS-00087</span>
+                  <span className="font-mono font-bold text-[#6C2BD9]">AS-00087</span>
                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-bold">
                     Active
                   </span>
@@ -1220,7 +1220,7 @@ export function MaintenanceManager() {
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-lg p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Wrench className="w-4 h-4 text-blue-600" /> Create Work Order
+                <Wrench className="w-4 h-4 text-[#6C2BD9]" /> Create Work Order
               </h3>
               <button onClick={() => setShowCreateWoModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-4 h-4" />
@@ -1258,7 +1258,7 @@ export function MaintenanceManager() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-xs"
+                  className="px-4 py-2 bg-[#6C2BD9] text-white font-bold rounded-lg hover:bg-[#5B21B6] shadow-xs"
                 >
                   Create Work Order
                 </button>
@@ -1304,7 +1304,7 @@ export function MaintenanceManager() {
                 </button>
                 <button
                   type="submit"
-                  className="px-4 py-2 bg-blue-600 text-white font-bold rounded-lg hover:bg-blue-700 shadow-xs"
+                  className="px-4 py-2 bg-[#6C2BD9] text-white font-bold rounded-lg hover:bg-[#5B21B6] shadow-xs"
                 >
                   Update Status
                 </button>

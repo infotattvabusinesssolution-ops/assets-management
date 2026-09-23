@@ -27,12 +27,12 @@ export function CategoriesTab({ onShowToast }) {
             <div key={cat.name} className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs">
               <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-8 h-8 rounded-lg bg-blue-50 border border-blue-200 text-blue-600 font-bold flex items-center justify-center">
+                  <div className="w-8 h-8 rounded-lg bg-purple-50 border border-purple-200 text-[#6C2BD9] font-bold flex items-center justify-center">
                     <Layers className="w-4 h-4" />
                   </div>
                   <h3 className="font-bold text-slate-900 text-sm">{cat.name}</h3>
                 </div>
-                <span className="px-2 py-0.5 bg-blue-50 text-blue-700 border border-blue-200 rounded text-[10px] font-bold">
+                <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] border border-purple-200 rounded text-[10px] font-bold">
                   {cat.totalItems} Items
                 </span>
               </div>
@@ -59,7 +59,7 @@ export function CategoriesTab({ onShowToast }) {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-slate-500">Reorder Policy:</span>
-                  <span className="font-semibold text-blue-600">{cat.reorderPolicy}</span>
+                  <span className="font-semibold text-[#6C2BD9]">{cat.reorderPolicy}</span>
                 </div>
               </div>
             </div>

@@ -27,11 +27,11 @@ export function LocationsTab({ onShowToast }) {
             <div key={wh.code} className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 shadow-2xs">
               <div className="flex justify-between items-start border-b border-slate-100 pb-2">
                 <div className="flex items-center gap-2.5">
-                  <div className="w-9 h-9 rounded-lg bg-blue-600 text-white font-bold flex items-center justify-center">
+                  <div className="w-9 h-9 rounded-lg bg-[#6C2BD9] text-white font-bold flex items-center justify-center">
                     <MapPin className="w-4 h-4 text-white" />
                   </div>
                   <div>
-                    <span className="font-mono text-[10px] text-blue-600 font-bold">{wh.code}</span>
+                    <span className="font-mono text-[10px] text-[#6C2BD9] font-bold">{wh.code}</span>
                     <h3 className="font-bold text-slate-900 text-sm">{wh.name}</h3>
                   </div>
                 </div>
@@ -46,7 +46,7 @@ export function LocationsTab({ onShowToast }) {
                 {/* Progress bar */}
                 <div className="w-full h-2 bg-slate-100 rounded-full overflow-hidden">
                   <div 
-                    className="h-full bg-blue-600 rounded-full" 
+                    className="h-full bg-[#6C2BD9] rounded-full" 
                     style={{ width: `${wh.occupancyPct}%` }}
                   />
                 </div>
@@ -65,7 +65,7 @@ export function LocationsTab({ onShowToast }) {
               <div className="pt-2 border-t border-slate-100 flex justify-end">
                 <button
                   onClick={() => onShowToast(`Inspecting Bins in ${wh.code}`)}
-                  className="px-3 py-1 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 rounded-md text-xs font-semibold transition-colors"
+                  className="px-3 py-1 bg-purple-50 text-[#6C2BD9] border border-purple-200 hover:bg-purple-100 rounded-md text-xs font-semibold transition-colors"
                 >
                   View Bins Layout
                 </button>

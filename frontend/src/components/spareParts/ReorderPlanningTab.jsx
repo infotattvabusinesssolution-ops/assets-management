@@ -352,7 +352,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                   placeholder="Search by item code, name or category..."
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-blue-500 transition-colors"
+                  className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-8 pr-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] transition-colors"
                 />
               </div>
 
@@ -361,7 +361,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                 <select
                   value={statusFilter}
                   onChange={(e) => setStatusFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="All">Stock Status: All</option>
                   <option value="To Reorder">To Reorder</option>
@@ -374,7 +374,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                 <select
                   value={supplierFilter}
                   onChange={(e) => setSupplierFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="All">Supplier: All</option>
                   <option value="Al Futtaim">Al Futtaim LLC</option>
@@ -390,7 +390,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                 <select
                   value={locationFilter}
                   onChange={(e) => setLocationFilter(e.target.value)}
-                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-blue-500"
+                  className="bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
                 >
                   <option value="All Locations">All Locations</option>
                   <option value="Main Warehouse">Main Warehouse</option>
@@ -411,7 +411,7 @@ export function ReorderPlanningTab({ onShowToast }) {
               {/* Filter Button */}
               <button
                 onClick={() => onShowToast?.('Filter applied')}
-                className="px-3 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+                className="px-3 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
                 <Filter className="w-3.5 h-3.5 fill-current" /> Filter
               </button>
@@ -430,7 +430,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                           selectedItems.length === filteredItems.length
                         }
                         onChange={toggleSelectAll}
-                        className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                        className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                       />
                     </th>
                     <th className="py-2.5 px-2 text-slate-400">#</th>
@@ -466,7 +466,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                           onClick={() => setSelectedItem(item)}
                           className={`cursor-pointer transition-colors ${
                             isRowSelected
-                              ? 'bg-blue-50/80 font-semibold'
+                              ? 'bg-purple-50/80 font-semibold'
                               : 'hover:bg-slate-50/80'
                           }`}
                         >
@@ -479,7 +479,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                               type="checkbox"
                               checked={isChecked}
                               onChange={() => toggleSelectItem(item.id)}
-                              className="rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                              className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                             />
                           </td>
 
@@ -488,7 +488,7 @@ export function ReorderPlanningTab({ onShowToast }) {
 
                           {/* Item Code */}
                           <td className="py-2.5 px-3">
-                            <span className="text-blue-600 font-semibold font-mono hover:underline">
+                            <span className="text-[#6C2BD9] font-semibold font-mono hover:underline">
                               {item.itemCode}
                             </span>
                           </td>
@@ -554,7 +554,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                                   e.stopPropagation();
                                   handleCreatePR(item);
                                 }}
-                                className="p-1 rounded-md text-blue-600 hover:bg-blue-100 transition-colors"
+                                className="p-1 rounded-md text-[#6C2BD9] hover:bg-purple-100 transition-colors"
                                 title="Create Purchase Request"
                               >
                                 <ShoppingCart className="w-3.5 h-3.5" />
@@ -590,7 +590,7 @@ export function ReorderPlanningTab({ onShowToast }) {
               <button className="px-2.5 py-1 rounded border border-slate-200 bg-white text-slate-600 hover:bg-slate-50 font-semibold disabled:opacity-50">
                 &lt;
               </button>
-              <button className="px-3 py-1 rounded bg-blue-600 text-white font-bold text-xs">1</button>
+              <button className="px-3 py-1 rounded bg-[#6C2BD9] text-white font-bold text-xs">1</button>
               <button className="px-3 py-1 rounded border border-slate-200 bg-white text-slate-700 hover:bg-slate-50 font-medium">
                 2
               </button>
@@ -696,7 +696,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                 {/* Remarks Callout Box */}
                 <div className="pt-1">
                   <span className="text-slate-500 font-medium block mb-1">Remarks</span>
-                  <div className="bg-blue-50/70 border border-blue-100 rounded-lg p-2.5 text-blue-900 text-[11px] font-medium leading-relaxed">
+                  <div className="bg-purple-50/70 border border-purple-200 rounded-lg p-2.5 text-purple-950 text-[11px] font-medium leading-relaxed">
                     {selectedItem.remarks}
                   </div>
                 </div>
@@ -705,9 +705,9 @@ export function ReorderPlanningTab({ onShowToast }) {
               {/* View Usage History Link Button */}
               <button
                 onClick={() => onShowToast?.(`Opening stock usage history for ${selectedItem.itemCode}`)}
-                className="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-blue-600 flex items-center justify-center gap-1.5 transition-colors"
+                className="w-full py-2 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg text-xs font-semibold text-[#6C2BD9] flex items-center justify-center gap-1.5 transition-colors"
               >
-                <BarChart2 className="w-4 h-4 text-blue-600" /> View Usage History
+                <BarChart2 className="w-4 h-4 text-[#6C2BD9]" /> View Usage History
               </button>
 
               <hr className="border-slate-100" />
@@ -772,7 +772,7 @@ export function ReorderPlanningTab({ onShowToast }) {
                           cx={pt.x}
                           cy={pt.y}
                           r="4"
-                          className="fill-blue-600 stroke-white stroke-2"
+                          className="fill-[#6C2BD9] stroke-white stroke-2"
                         />
                       ))}
                     </svg>
@@ -807,7 +807,7 @@ export function ReorderPlanningTab({ onShowToast }) {
 
           <button
             onClick={() => onShowToast?.('Reorder plan saved successfully!')}
-            className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
+            className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
           >
             <Save className="w-4 h-4 text-white" /> Save Plan
           </button>
