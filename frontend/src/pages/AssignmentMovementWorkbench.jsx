@@ -888,11 +888,11 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                 </div>
 
                 {/* Grid Table */}
-                <div className="overflow-x-auto">
+                <div className="overflow-x-auto overflow-y-auto max-h-[480px] relative scrollbar-thin">
                   <table className="w-full text-left text-xs border-collapse">
-                    <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                    <thead className="sticky top-0 z-20 bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 shadow-2xs">
                       <tr>
-                        <th className="py-2.5 px-3 w-8 text-center">
+                        <th className="py-2.5 px-3 w-8 text-center bg-slate-50">
                           <input
                             type="checkbox"
                             checked={selectedIds.length === paginatedAssets.length && paginatedAssets.length > 0}
@@ -900,14 +900,14 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                             className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
                           />
                         </th>
-                        <th className="py-2.5 px-3 font-bold text-slate-700">Asset No</th>
-                        <th className="py-2.5 px-3 font-bold text-slate-700">Asset Name</th>
-                        <th className="py-2.5 px-3 font-bold text-slate-700">Type</th>
-                        <th className="py-2.5 px-3 font-bold text-slate-700">Current Location</th>
-                        <th className="py-2.5 px-3 font-bold text-slate-700">Assigned To</th>
-                        <th className="py-2.5 px-3 font-bold text-slate-700">Status</th>
-                        <th className="py-2.5 px-3 font-bold text-slate-700">Last Moved</th>
-                        <th className="py-2.5 px-3 font-bold text-slate-700 text-right">Actions</th>
+                        <th className="py-2.5 px-3 font-bold text-slate-700 bg-slate-50">Asset No</th>
+                        <th className="py-2.5 px-3 font-bold text-slate-700 bg-slate-50">Asset Name</th>
+                        <th className="py-2.5 px-3 font-bold text-slate-700 bg-slate-50">Type</th>
+                        <th className="py-2.5 px-3 font-bold text-slate-700 bg-slate-50">Current Location</th>
+                        <th className="py-2.5 px-3 font-bold text-slate-700 bg-slate-50">Assigned To</th>
+                        <th className="py-2.5 px-3 font-bold text-slate-700 bg-slate-50">Status</th>
+                        <th className="py-2.5 px-3 font-bold text-slate-700 bg-slate-50">Last Moved</th>
+                        <th className="py-2.5 px-3 font-bold text-slate-700 text-right bg-slate-50">Actions</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">

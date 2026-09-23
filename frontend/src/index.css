@@ -18,8 +18,8 @@
 
   input:focus, select:focus, textarea:focus {
     outline: none !important;
-    border-color: #6c2bd9 !important;
-    box-shadow: 0 0 0 3px rgba(108, 43, 217, 0.15) !important;
+    border-color: #6E11E4 !important;
+    box-shadow: 0 0 0 3px rgba(110, 17, 228, 0.15) !important;
   }
 
   h1, h2, h3, h4, h5, h6, label, th, td, p, span, div, a {
@@ -43,21 +43,21 @@
 }
 
 .btn-primary {
-  background-color: #6c2bd9 !important;
+  background-color: #6E11E4 !important;
   color: #ffffff !important;
   font-weight: 600 !important;
   @apply px-4 py-2 text-sm rounded-xl shadow-sm transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed active:scale-95;
 }
 
 .btn-primary:hover {
-  background-color: #5b21b6 !important;
+  background-color: #5B0BC4 !important;
   color: #ffffff !important;
 }
 
 .btn-secondary {
   background-color: #ffffff !important;
   color: #000000 !important;
-  border: 1px solid #6c2bd9 !important;
+  border: 1px solid #6E11E4 !important;
   @apply px-4 py-2 hover:bg-purple-50 text-sm font-semibold rounded-xl transition-all flex items-center justify-center gap-2 disabled:opacity-50 shadow-sm;
 }
 
@@ -70,7 +70,7 @@
 .btn-purple-outline {
   background-color: #ffffff !important;
   color: #000000 !important;
-  border: 1px solid #6c2bd9 !important;
+  border: 1px solid #6E11E4 !important;
   @apply px-3.5 py-1.5 text-xs font-semibold rounded-xl hover:bg-purple-50 transition-all flex items-center justify-center gap-1.5;
 }
 
@@ -97,7 +97,7 @@
 
 .input-field,
 .input-primary {
-  @apply w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-black placeholder-slate-400 focus:outline-none focus:border-[#6c2bd9] focus:ring-2 focus:ring-[#6c2bd9]/20 transition-all shadow-sm;
+  @apply w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-black placeholder-slate-400 focus:outline-none focus:border-[#6E11E4] focus:ring-2 focus:ring-[#6E11E4]/20 transition-all shadow-sm;
   background-color: #ffffff !important;
   color: #000000 !important;
 }
@@ -165,7 +165,7 @@
 }
 
 .purple-gradient-text {
-  background: linear-gradient(135deg, #6c2bd9 0%, #8b5cf6 50%, #d946ef 100%);
+  background: linear-gradient(135deg, #6E11E4 0%, #8b5cf6 50%, #d946ef 100%);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
 }
@@ -173,5 +173,5 @@
 .asset360-glass-card {
   background: #ffffff;
   border: 1px solid rgba(226, 232, 240, 0.8);
-  box-shadow: 0 10px 25px -10px rgba(108, 43, 217, 0.08);
+  box-shadow: 0 10px 25px -10px rgba(110, 17, 228, 0.08);
 }

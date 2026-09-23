@@ -316,6 +316,278 @@ const INITIAL_MOCK_ASSETS = [
     maintType: 'Audit',
     checklistName: 'Badge Certificate Renewal',
     icon: CreditCard
+  },
+  {
+    id: 'ast-009',
+    _id: 'ast-009',
+    assetId: 'AST-000245',
+    description: 'Lenovo ThinkPad P1 Gen 6',
+    name: 'Lenovo ThinkPad P1',
+    categoryName: 'Laptop',
+    tagNumber: 'RFID-981246',
+    barcode: 'QR-000245',
+    rfidEpc: 'E28011700000001B111C',
+    serialNumber: 'LNV-P1-9021',
+    model: 'ThinkPad P1 Gen 6',
+    manufacturer: 'Lenovo',
+    locationStr: 'Dubai HQ Floor 4 / Room 402',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Floor 4 / Room 402',
+    departmentName: 'Engineering',
+    costCenterCode: 'ENG-001',
+    custodianName: 'Tariq Al-Mansoor',
+    assignedDate: '22 Feb 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '22 Feb 2024',
+    acquisitionValue: 8200,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '22 Feb 2024',
+    warrantyEnd: '21 Feb 2027',
+    nextServiceDate: '01 Nov 2026',
+    maintType: 'Preventive',
+    checklistName: 'Workstation Thermal Audit',
+    icon: Laptop
+  },
+  {
+    id: 'ast-010',
+    _id: 'ast-010',
+    assetId: 'AST-000258',
+    description: 'iPad Air M2 11"',
+    name: 'iPad Air M2',
+    categoryName: 'Mobile Device',
+    tagNumber: 'QR-000258',
+    barcode: 'QR-000258',
+    rfidEpc: 'E28011700000001B222C',
+    serialNumber: 'IPAD-M2-771',
+    model: 'iPad Air 11" 128GB',
+    manufacturer: 'Apple',
+    locationStr: 'Abu Dhabi Branch',
+    siteName: 'Abu Dhabi Branch',
+    buildingName: 'Main Tower',
+    floorRoom: 'Floor 2',
+    departmentName: 'Sales',
+    costCenterCode: 'SALES-002',
+    custodianName: 'Zayd Hassan',
+    assignedDate: '01 Mar 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '01 Mar 2024',
+    acquisitionValue: 2900,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '01 Mar 2024',
+    warrantyEnd: '28 Feb 2026',
+    nextServiceDate: '15 Dec 2026',
+    maintType: 'Inspection',
+    checklistName: 'Tablet Security Check',
+    icon: Smartphone
+  },
+  {
+    id: 'ast-011',
+    _id: 'ast-011',
+    assetId: 'AST-000270',
+    description: 'Cisco Catalyst 9300 Switch',
+    name: 'Cisco Switch 48-Port',
+    categoryName: 'IT Equipment',
+    tagNumber: 'RFID-983001',
+    barcode: 'QR-000270',
+    rfidEpc: 'E28011700000001B333C',
+    serialNumber: 'FOC2419L0P1',
+    model: 'Catalyst C9300-48P',
+    manufacturer: 'Cisco',
+    locationStr: 'Dubai HQ Server Room',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Basement / Rack 04',
+    departmentName: 'IT',
+    costCenterCode: 'IT-001',
+    custodianName: 'John Doe',
+    assignedDate: '15 Jan 2023',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '15 Jan 2023',
+    acquisitionValue: 18500,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '15 Jan 2023',
+    warrantyEnd: '14 Jan 2028',
+    nextServiceDate: '10 Nov 2026',
+    maintType: 'Preventive',
+    checklistName: 'Network Switch PM',
+    icon: Radio
+  },
+  {
+    id: 'ast-012',
+    _id: 'ast-012',
+    assetId: 'AST-000288',
+    description: 'Zebra ZT411 Industrial RFID Printer',
+    name: 'Zebra RFID Printer',
+    categoryName: 'Printer',
+    tagNumber: 'RFID-98411',
+    barcode: 'QR-000288',
+    rfidEpc: 'E28011700000001B444C',
+    serialNumber: 'ZBR-ZT411-9921',
+    model: 'ZT411 300dpi RFID',
+    manufacturer: 'Zebra Technologies',
+    locationStr: 'Warehouse Staging Area',
+    siteName: 'Sharjah Warehouse',
+    buildingName: 'Logistics Hub',
+    floorRoom: 'Ground / Printing Zone',
+    departmentName: 'Logistics',
+    costCenterCode: 'LOG-001',
+    custodianName: 'David Miller',
+    assignedDate: '05 Apr 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '05 Apr 2024',
+    acquisitionValue: 9800,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '05 Apr 2024',
+    warrantyEnd: '04 Apr 2026',
+    nextServiceDate: '25 Oct 2026',
+    maintType: 'Preventive',
+    checklistName: 'Thermal Printhead Alignment',
+    icon: Printer
+  },
+  {
+    id: 'ast-013',
+    _id: 'ast-013',
+    assetId: 'AST-000295',
+    description: 'Precision Industrial Air Conditioner 5-Ton',
+    name: 'HVAC Chiller Unit 5T',
+    categoryName: 'Facilities',
+    tagNumber: 'RFID-98501',
+    barcode: 'QR-000295',
+    rfidEpc: 'E28011700000001B555C',
+    serialNumber: 'TRN-5T-88210',
+    model: 'IntelliPak 5-Ton',
+    manufacturer: 'Trane',
+    locationStr: 'Dubai HQ Rooftop',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Roof / Bay 02',
+    departmentName: 'Facilities',
+    costCenterCode: 'FAC-001',
+    custodianName: 'Robert Chen',
+    assignedDate: '10 Aug 2023',
+    lifecycleStatus: 'UNDER_MAINTENANCE',
+    condition: 'Fair',
+    acquisitionDate: '10 Aug 2023',
+    acquisitionValue: 42000,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '10 Aug 2023',
+    warrantyEnd: '09 Aug 2026',
+    nextServiceDate: '28 Sep 2026',
+    maintType: 'Corrective',
+    checklistName: 'Compressor & Gas Refill',
+    icon: Radio
+  },
+  {
+    id: 'ast-014',
+    _id: 'ast-014',
+    assetId: 'AST-000310',
+    description: 'Toyota Hilux Double Cab Pickup',
+    name: 'Toyota Hilux Crew Cab',
+    categoryName: 'Vehicle',
+    tagNumber: 'RFID-00310',
+    barcode: 'QR-000310',
+    rfidEpc: 'E28011700000001B666C',
+    serialNumber: 'HLX-2024-4X4',
+    model: 'Hilux 4x4 2.8L',
+    manufacturer: 'Toyota',
+    locationStr: 'Yard - Jebel Ali',
+    siteName: 'Jebel Ali Site',
+    buildingName: 'Fleet Depot',
+    floorRoom: 'Parking Bay 12',
+    departmentName: 'Operations',
+    costCenterCode: 'OPS-004',
+    custodianName: 'Sultan Al-Rumaithi',
+    assignedDate: '14 May 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '14 May 2024',
+    acquisitionValue: 115000,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '14 May 2024',
+    warrantyEnd: '13 May 2027',
+    nextServiceDate: '14 Nov 2026',
+    maintType: 'Preventive',
+    checklistName: 'Fleet 10,000km Service',
+    icon: Car
+  },
+  {
+    id: 'ast-015',
+    _id: 'ast-015',
+    assetId: 'AST-000325',
+    description: 'Poly Studio X50 Video Bar System',
+    name: 'Poly Studio X50 Conference',
+    categoryName: 'IT Equipment',
+    tagNumber: 'QR-000325',
+    barcode: 'QR-000325',
+    rfidEpc: 'E28011700000001B777C',
+    serialNumber: 'POLY-X50-449',
+    model: 'Studio X50 TC8',
+    manufacturer: 'Poly',
+    locationStr: 'Dubai HQ Executive Boardroom',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building B',
+    floorRoom: 'Floor 4 / Boardroom 1',
+    departmentName: 'Executive',
+    costCenterCode: 'EXEC-001',
+    custodianName: 'Ahmed Khan',
+    assignedDate: '01 Jun 2024',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '01 Jun 2024',
+    acquisitionValue: 14500,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '01 Jun 2024',
+    warrantyEnd: '31 May 2026',
+    nextServiceDate: '01 Dec 2026',
+    maintType: 'Inspection',
+    checklistName: 'AV Firmware & Mic Calibration',
+    icon: Monitor
+  },
+  {
+    id: 'ast-016',
+    _id: 'ast-016',
+    assetId: 'AST-000340',
+    description: 'Schneider Galaxy 300 10kVA UPS System',
+    name: 'Schneider 10kVA UPS',
+    categoryName: 'Generator',
+    tagNumber: 'RFID-98340',
+    barcode: 'QR-000340',
+    rfidEpc: 'E28011700000001B888C',
+    serialNumber: 'SCH-UPS10K-901',
+    model: 'Galaxy 300 10kVA 400V',
+    manufacturer: 'Schneider Electric',
+    locationStr: 'Dubai HQ Server Room',
+    siteName: 'Dubai HQ',
+    buildingName: 'Building A',
+    floorRoom: 'Basement / UPS Bay',
+    departmentName: 'IT',
+    costCenterCode: 'IT-001',
+    custodianName: 'John Doe',
+    assignedDate: '10 Oct 2023',
+    lifecycleStatus: 'IN_SERVICE',
+    condition: 'Good',
+    acquisitionDate: '10 Oct 2023',
+    acquisitionValue: 34000,
+    currency: 'AED',
+    warrantyStatus: 'Active',
+    warrantyStart: '10 Oct 2023',
+    warrantyEnd: '09 Oct 2028',
+    nextServiceDate: '10 Oct 2026',
+    maintType: 'Preventive',
+    checklistName: 'Battery Bank Voltage Test',
+    icon: Radio
   }
 ];
 
@@ -402,6 +674,16 @@ export function AssetList() {
       return true;
     });
   }, [assets, activeTab, selectedCategory, selectedStatus, selectedLocation, selectedDepartment, search]);
+
+  // Paginated Assets Computation
+  const paginatedAssets = useMemo(() => {
+    const start = (currentPage - 1) * perPage;
+    return filteredAssets.slice(start, start + perPage);
+  }, [filteredAssets, currentPage, perPage]);
+
+  const totalPages = useMemo(() => {
+    return Math.max(1, Math.ceil(filteredAssets.length / perPage));
+  }, [filteredAssets, perPage]);
 
   // Handle Select All Checkbox
   const handleSelectAll = (e) => {
@@ -734,11 +1016,11 @@ export function AssetList() {
         {/* 4. Asset Register List Table (Callout 4) */}
         <div className={`transition-all ${selectedAsset ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto">
+            <div className="overflow-x-auto overflow-y-auto max-h-[480px] relative scrollbar-thin">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase font-bold text-[10px]">
-                    <th className="py-3 px-3 text-center w-8">
+                <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-2xs">
+                  <tr className="bg-slate-50 text-slate-500 uppercase font-bold text-[10px]">
+                    <th className="py-3 px-3 text-center w-8 bg-slate-50">
                       <input
                         type="checkbox"
                         onChange={handleSelectAll}
@@ -746,21 +1028,21 @@ export function AssetList() {
                         className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                       />
                     </th>
-                    <th className="py-3 px-3">Asset ID</th>
-                    <th className="py-3 px-3">Asset Name</th>
-                    <th className="py-3 px-3">Category</th>
-                    <th className="py-3 px-3">Tag / RFID</th>
-                    <th className="py-3 px-3">Location</th>
-                    <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-3">Condition</th>
-                    <th className="py-3 px-3">Acquisition Date</th>
-                    <th className="py-3 px-3 text-right">Value (AED)</th>
-                    <th className="py-3 px-3 text-center">Actions</th>
+                    <th className="py-3 px-3 bg-slate-50">Asset ID</th>
+                    <th className="py-3 px-3 bg-slate-50">Asset Name</th>
+                    <th className="py-3 px-3 bg-slate-50">Category</th>
+                    <th className="py-3 px-3 bg-slate-50">Tag / RFID</th>
+                    <th className="py-3 px-3 bg-slate-50">Location</th>
+                    <th className="py-3 px-3 bg-slate-50">Status</th>
+                    <th className="py-3 px-3 bg-slate-50">Condition</th>
+                    <th className="py-3 px-3 bg-slate-50">Acquisition Date</th>
+                    <th className="py-3 px-3 text-right bg-slate-50">Value (AED)</th>
+                    <th className="py-3 px-3 text-center bg-slate-50">Actions</th>
                   </tr>
                 </thead>
 
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {filteredAssets.map((asset) => {
+                  {paginatedAssets.map((asset) => {
                     const isSelected = selectedAsset?.id === asset.id;
                     const isChecked = selectedRowIds.includes(asset.id);
                     const Icon = asset.icon || Package;
@@ -929,13 +1211,19 @@ export function AssetList() {
 
             {/* Pagination Footer */}
             <div className="bg-slate-50 border-t border-slate-200 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
-              <span>Showing 1 to {filteredAssets.length} of 12,458 assets</span>
+              <span>
+                Showing {filteredAssets.length === 0 ? 0 : (currentPage - 1) * perPage + 1} to{' '}
+                {Math.min(currentPage * perPage, filteredAssets.length)} of {filteredAssets.length} assets
+              </span>
               <div className="flex items-center gap-2">
                 <span>Show</span>
                 <select
                   value={perPage}
-                  onChange={(e) => setPerPage(Number(e.target.value))}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold"
+                  onChange={(e) => {
+                    setPerPage(Number(e.target.value));
+                    setCurrentPage(1);
+                  }}
+                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold cursor-pointer"
                 >
                   <option value={10}>10</option>
                   <option value={20}>20</option>
@@ -944,13 +1232,31 @@ export function AssetList() {
                 <span>per page</span>
 
                 <div className="flex items-center gap-1 pl-2">
-                  <button className="p-1 rounded bg-white border border-slate-200 text-slate-600"><ChevronLeft className="w-3.5 h-3.5" /></button>
-                  <span className="px-2 font-bold text-[#6C2BD9]">1</span>
-                  <span className="px-1 text-slate-400">2</span>
-                  <span className="px-1 text-slate-400">3</span>
-                  <span className="px-1 text-slate-400">4</span>
-                  <span className="px-1 text-slate-400">... 1,246</span>
-                  <button className="p-1 rounded bg-white border border-slate-200 text-slate-600"><ChevronRight className="w-3.5 h-3.5" /></button>
+                  <button
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                    className="p-1 rounded bg-white border border-slate-200 text-slate-600 disabled:opacity-40 cursor-pointer hover:bg-slate-100"
+                  >
+                    <ChevronLeft className="w-3.5 h-3.5" />
+                  </button>
+                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
+                    <button
+                      key={pageNum}
+                      onClick={() => setCurrentPage(pageNum)}
+                      className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
+                        currentPage === pageNum ? 'bg-[#6C2BD9] text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200 bg-white border border-slate-200'
+                      }`}
+                    >
+                      {pageNum}
+                    </button>
+                  ))}
+                  <button
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage >= totalPages}
+                    className="p-1 rounded bg-white border border-slate-200 text-slate-600 disabled:opacity-40 cursor-pointer hover:bg-slate-100"
+                  >
+                    <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
                 </div>
               </div>
             </div>
@@ -959,7 +1265,7 @@ export function AssetList() {
 
         {/* 6. Asset 360° Right Detail Panel (Callout 6) */}
         {selectedAsset && (
-          <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl space-y-4 relative sticky top-20 animate-in fade-in zoom-in duration-150">
+          <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl space-y-4 relative sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin animate-in fade-in zoom-in duration-150">
             {/* Close Panel Button */}
             <button
               onClick={() => setSelectedAsset(null)}

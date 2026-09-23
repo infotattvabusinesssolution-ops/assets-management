@@ -979,22 +979,22 @@ export function UserManagement() {
           </span>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto overflow-y-auto max-h-[480px] relative scrollbar-thin">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-semibold select-none">
-                <th className="p-3 pl-4 w-10">
+            <thead className="sticky top-0 z-20 bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-semibold select-none shadow-2xs">
+              <tr className="bg-[#F8FAFC]">
+                <th className="p-3 pl-4 w-10 bg-[#F8FAFC]">
                   <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]" />
                 </th>
-                <th className="p-3 w-12 text-slate-400 font-normal">#</th>
-                <th className="p-3 font-semibold text-slate-900 cursor-pointer">Name &uarr;&darr;</th>
-                <th className="p-3 font-semibold text-slate-900">Role</th>
-                <th className="p-3 font-semibold text-slate-900">Department</th>
-                <th className="p-3 font-semibold text-slate-900">Location</th>
-                <th className="p-3 font-semibold text-slate-900">Company</th>
-                <th className="p-3 font-semibold text-slate-900">Status</th>
-                <th className="p-3 font-semibold text-slate-900">Last Login</th>
-                <th className="p-3 text-right pr-4 font-semibold text-slate-900">Actions</th>
+                <th className="p-3 w-12 text-slate-400 font-normal bg-[#F8FAFC]">#</th>
+                <th className="p-3 font-semibold text-slate-900 cursor-pointer bg-[#F8FAFC]">Name &uarr;&darr;</th>
+                <th className="p-3 font-semibold text-slate-900 bg-[#F8FAFC]">Role</th>
+                <th className="p-3 font-semibold text-slate-900 bg-[#F8FAFC]">Department</th>
+                <th className="p-3 font-semibold text-slate-900 bg-[#F8FAFC]">Location</th>
+                <th className="p-3 font-semibold text-slate-900 bg-[#F8FAFC]">Company</th>
+                <th className="p-3 font-semibold text-slate-900 bg-[#F8FAFC]">Status</th>
+                <th className="p-3 font-semibold text-slate-900 bg-[#F8FAFC]">Last Login</th>
+                <th className="p-3 text-right pr-4 font-semibold text-slate-900 bg-[#F8FAFC]">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
