@@ -278,14 +278,14 @@ export function AssetForm() {
               </div>
             </div>
 
-            {/* Stepper Progress Bar (1 to 5) */}
+            {/* Stepper Progress Bar */}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-slate-100">
               <div className="flex items-center gap-2 text-xs font-semibold w-full justify-between">
                 
                 {/* Step 1 */}
                 <div className="flex items-center gap-2">
                   <div className="w-7 h-7 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                    1
+                    <FileText className="w-3.5 h-3.5" />
                   </div>
                   <div>
                     <span className="font-bold text-slate-900 block text-xs">Basic Information</span>
@@ -298,7 +298,7 @@ export function AssetForm() {
                 {/* Step 2 */}
                 <div className="flex items-center gap-2 text-slate-400">
                   <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-                    2
+                    <DollarSign className="w-3.5 h-3.5" />
                   </div>
                   <div>
                     <span className="font-bold text-slate-700 block text-xs">Additional Details</span>
@@ -311,7 +311,7 @@ export function AssetForm() {
                 {/* Step 3 */}
                 <div className="flex items-center gap-2 text-slate-400">
                   <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-                    3
+                    <QrCode className="w-3.5 h-3.5" />
                   </div>
                   <div>
                     <span className="font-bold text-slate-700 block text-xs">Tagging &amp; Location</span>
@@ -324,7 +324,7 @@ export function AssetForm() {
                 {/* Step 4 */}
                 <div className="flex items-center gap-2 text-slate-400">
                   <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-                    4
+                    <Paperclip className="w-3.5 h-3.5" />
                   </div>
                   <div>
                     <span className="font-bold text-slate-700 block text-xs">Documents</span>
@@ -337,7 +337,7 @@ export function AssetForm() {
                 {/* Step 5 */}
                 <div className="flex items-center gap-2 text-slate-400">
                   <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-                    5
+                    <CheckCircle2 className="w-3.5 h-3.5" />
                   </div>
                   <div>
                     <span className="font-bold text-slate-700 block text-xs">Review &amp; Submit</span>
@@ -374,9 +374,6 @@ export function AssetForm() {
               {/* Callout 1: Basic Information */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                    1
-                  </div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Basic Information</h3>
                 </div>
 
@@ -469,9 +466,6 @@ export function AssetForm() {
               {/* Callout 2: Location & Ownership */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                    2
-                  </div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Location &amp; Ownership</h3>
                 </div>
 
@@ -573,9 +567,6 @@ export function AssetForm() {
               {/* Callout 3: Financial Information */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                    3
-                  </div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Financial Information</h3>
                 </div>
 
@@ -671,9 +662,6 @@ export function AssetForm() {
               {/* Callout 4: Description */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                    4
-                  </div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Description</h3>
                 </div>
 
@@ -697,9 +685,6 @@ export function AssetForm() {
               {/* Panel 5: Tagging Information */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                    5
-                  </div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Tagging Information</h3>
                 </div>
 
@@ -766,9 +751,6 @@ export function AssetForm() {
               {/* Panel 6: Asset Image */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                    6
-                  </div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Asset Image</h3>
                 </div>
 
@@ -790,9 +772,6 @@ export function AssetForm() {
               {/* Panel 7: Documents */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                    7
-                  </div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Documents</h3>
                 </div>
 
@@ -823,9 +802,6 @@ export function AssetForm() {
               {/* Panel 8: Approval Workflow */}
               <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
                 <div className="flex items-center gap-2 border-b border-slate-100 pb-2">
-                  <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                    8
-                  </div>
                   <h3 className="font-extrabold text-slate-900 text-sm">Approval Workflow</h3>
                 </div>
 
@@ -859,99 +835,6 @@ export function AssetForm() {
               </div>
 
             </div>
-          </div>
-
-          {/* Bottom 8 Explanation Cards matching Screenshot 1 bottom footer */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-8 gap-3 pt-2">
-            
-            {/* Card 1 */}
-            <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-2xs space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs">
-                <div className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center">1</div>
-                Basic Information
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Capture key asset details. Asset name, type, category, model, serial number, quantity, manufacturer. Mandatory fields with validation.
-              </p>
-            </div>
-
-            {/* Card 2 */}
-            <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-2xs space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs">
-                <div className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center">2</div>
-                Location &amp; Ownership
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Assign company, site, building, floor. Specify department, cost center, custodian and expected user. Dropdown values from master data.
-              </p>
-            </div>
-
-            {/* Card 3 */}
-            <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-2xs space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs">
-                <div className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center">3</div>
-                Financial Information
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Enter acquisition date, cost, currency. Link purchase order and supplier. Capture warranty start and end date. Store depreciation and useful life (if applicable).
-              </p>
-            </div>
-
-            {/* Card 4 */}
-            <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-2xs space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs">
-                <div className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center">4</div>
-                Description
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Provide asset description, remarks and any additional notes. Support rich text / character limit.
-              </p>
-            </div>
-
-            {/* Card 5 */}
-            <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-2xs space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs">
-                <div className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center">5</div>
-                Tagging Information
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Generate or enter barcode / RFID / QR. Validate uniqueness. Show tag availability status. Print tag label (optional).
-              </p>
-            </div>
-
-            {/* Card 6 */}
-            <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-2xs space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs">
-                <div className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center">6</div>
-                Asset Image
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Upload asset image. Preview before save. Support multiple images (if required).
-              </p>
-            </div>
-
-            {/* Card 7 */}
-            <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-2xs space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs">
-                <div className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center">7</div>
-                Documents
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Upload supporting documents. Link to purchase invoice, warranty, specification, manuals, etc. Multiple file upload with validation.
-              </p>
-            </div>
-
-            {/* Card 8 */}
-            <div className="bg-white border border-slate-200 p-3 rounded-xl shadow-2xs space-y-1">
-              <div className="flex items-center gap-1.5 font-extrabold text-slate-900 text-xs">
-                <div className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white text-[10px] font-black flex items-center justify-center">8</div>
-                Approval Workflow
-              </div>
-              <p className="text-[10px] text-slate-500 leading-tight">
-                Submit for approval based on organization policy. Show current status and next approver. Track approval history.
-              </p>
-            </div>
-
           </div>
 
         </div>
@@ -1012,7 +895,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-[#6C2BD9]" /> 1. Basic Information <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+                    <FileText className="w-4 h-4 text-[#6C2BD9]" /> Basic Information <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
                   </h3>
                 </div>
 
@@ -1098,7 +981,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <Layers className="w-4 h-4 text-[#6C2BD9]" /> 2. Classification <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+                    <Layers className="w-4 h-4 text-[#6C2BD9]" /> Classification <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
                   </h3>
                 </div>
 
@@ -1196,7 +1079,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <Wrench className="w-4 h-4 text-[#6C2BD9]" /> 3. Product Details <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+                    <Wrench className="w-4 h-4 text-[#6C2BD9]" /> Product Details <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
                   </h3>
                 </div>
 
@@ -1300,7 +1183,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <Radio className="w-4 h-4 text-[#6C2BD9]" /> 4. Location &amp; Ownership <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+                    <Radio className="w-4 h-4 text-[#6C2BD9]" /> Location &amp; Ownership <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
                   </h3>
                 </div>
 
@@ -1460,7 +1343,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <DollarSign className="w-4 h-4 text-[#6C2BD9]" /> 5. Financial Information
+                    <DollarSign className="w-4 h-4 text-[#6C2BD9]" /> Financial Information
                   </h3>
                 </div>
 
@@ -1569,7 +1452,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <ShieldCheck className="w-4 h-4 text-[#6C2BD9]" /> 6. Warranty &amp; Contract <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+                    <ShieldCheck className="w-4 h-4 text-[#6C2BD9]" /> Warranty &amp; Contract <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
                   </h3>
                 </div>
 
@@ -1668,7 +1551,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <Wrench className="w-4 h-4 text-[#6C2BD9]" /> 7. Maintenance Setup <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+                    <Wrench className="w-4 h-4 text-[#6C2BD9]" /> Maintenance Setup <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
                   </h3>
                 </div>
 
@@ -1756,7 +1639,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <Cpu className="w-4 h-4 text-[#6C2BD9]" /> 8. Auto Discovery <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+                    <Cpu className="w-4 h-4 text-[#6C2BD9]" /> Auto Discovery <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
                   </h3>
                 </div>
 
@@ -1869,7 +1752,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-[#6C2BD9]" /> 9. Additional Information
+                    <FileText className="w-4 h-4 text-[#6C2BD9]" /> Additional Information
                   </h3>
                 </div>
 
@@ -1924,7 +1807,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <Paperclip className="w-4 h-4 text-[#6C2BD9]" /> 10. Documents &amp; Attachments
+                    <Paperclip className="w-4 h-4 text-[#6C2BD9]" /> Documents &amp; Attachments
                   </h3>
                 </div>
 
@@ -1970,7 +1853,7 @@ export function AssetForm() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <Sliders className="w-4 h-4 text-[#6C2BD9]" /> 11. Custom Fields
+                    <Sliders className="w-4 h-4 text-[#6C2BD9]" /> Custom Fields
                   </h3>
                 </div>
 

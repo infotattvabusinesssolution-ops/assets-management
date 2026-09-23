@@ -224,9 +224,6 @@ export function WorkflowDesigner() {
           {/* Section 1: Basic Information */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-              <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">
-                1
-              </div>
               <h3 className="font-extrabold text-slate-900 text-sm">Basic Information</h3>
             </div>
 
@@ -340,9 +337,6 @@ export function WorkflowDesigner() {
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">
-                  2
-                </div>
                 <h3 className="font-extrabold text-slate-900 text-sm">Conditions (When to apply this workflow)</h3>
               </div>
               <button
@@ -467,9 +461,6 @@ export function WorkflowDesigner() {
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2.5">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">
-                  3
-                </div>
                 <h3 className="font-extrabold text-slate-900 text-sm">Approval Levels</h3>
               </div>
               <button
@@ -554,9 +545,6 @@ export function WorkflowDesigner() {
           {/* Section 4: Notifications */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-              <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">
-                4
-              </div>
               <h3 className="font-extrabold text-slate-900 text-sm">Notifications</h3>
             </div>
 
@@ -596,9 +584,6 @@ export function WorkflowDesigner() {
           {/* Section 5: Additional Settings */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
             <div className="flex items-center gap-2.5 border-b border-slate-100 pb-3">
-              <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">
-                5
-              </div>
               <h3 className="font-extrabold text-slate-900 text-sm">Additional Settings</h3>
             </div>
 

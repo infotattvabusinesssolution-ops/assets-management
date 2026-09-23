@@ -280,7 +280,10 @@ export function ImportToAsset360() {
             const isCompleted = currentStep > s.num;
             return (
               <React.Fragment key={s.num}>
-                <div className="flex items-center gap-2">
+                <div
+                  onClick={() => setCurrentStep(s.num)}
+                  className="flex items-center gap-2 cursor-pointer hover:opacity-80 transition-opacity"
+                >
                   <div
                     className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold transition-colors ${
                       isActive
@@ -596,125 +599,23 @@ export function ImportToAsset360() {
               </div>
             </div>
 
-            {/* Bottom 3 Panels */}
-            <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
-              
-              {/* Box 1: Import Options */}
-              <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 text-xs flex flex-col justify-between">
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm mb-3">Import Options</h3>
-                  <div className="space-y-2.5 text-slate-700 font-semibold">
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={importOptions.createNew}
-                        onChange={e => setImportOptions({ ...importOptions, createNew: e.target.checked })}
-                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
-                      />
-                      <span>Create new assets for unregistered devices</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={importOptions.linkExisting}
-                        onChange={e => setImportOptions({ ...importOptions, linkExisting: e.target.checked })}
-                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
-                      />
-                      <span>Link to existing assets for matched devices</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={importOptions.skipMissing}
-                        onChange={e => setImportOptions({ ...importOptions, skipMissing: e.target.checked })}
-                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
-                      />
-                      <span>Skip devices with missing mandatory fields</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={importOptions.updateLocation}
-                        onChange={e => setImportOptions({ ...importOptions, updateLocation: e.target.checked })}
-                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
-                      />
-                      <span>Update asset location with discovered location (where applicable)</span>
-                    </label>
-
-                    <label className="flex items-center gap-2 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={importOptions.sendNotification}
-                        onChange={e => setImportOptions({ ...importOptions, sendNotification: e.target.checked })}
-                        className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] accent-[#6C2BD9]"
-                      />
-                      <span>Send notification after import</span>
-                    </label>
-                  </div>
-                </div>
-              </div>
-
-              {/* Box 2: Mandatory Field Validation */}
-              <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex flex-col justify-between text-xs">
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm mb-3">Mandatory Field Validation</h3>
-
-                  <div className="flex items-start gap-3 p-3 bg-emerald-50/70 border border-emerald-200 rounded-xl mb-3">
-                    <div className="w-8 h-8 rounded-full bg-emerald-600 text-white flex items-center justify-center shrink-0 mt-0.5">
-                      <Check className="w-5 h-5 stroke-[3]" />
-                    </div>
-                    <div>
-                      <h4 className="font-bold text-emerald-800 text-xs">All selected devices have required information.</h4>
-                      <p className="text-[11px] text-slate-500 mt-0.5 font-medium">
-                        Devices with missing mandatory fields will be listed in the review step.
-                      </p>
-                    </div>
-                  </div>
-                </div>
-
-                <div className="text-center pt-2">
-                  <button
-                    type="button"
-                    onClick={() => setIsValidationModalOpen(true)}
-                    className="inline-flex items-center gap-1.5 px-4 py-1.5 border border-purple-200 rounded-xl bg-white hover:bg-purple-50 text-[#6C2BD9] font-bold shadow-2xs transition-all text-xs cursor-pointer"
-                  >
-                    <FileText className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                    View Validation Details
-                  </button>
-                </div>
-              </div>
-
-              {/* Box 3: Next Step */}
-              <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 shadow-2xs p-4 flex flex-col justify-between text-xs">
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm mb-2">Next Step</h3>
-                  <p className="text-slate-600 text-xs leading-relaxed font-medium">
-                    Click 'Next' to map the discovered device fields to Asset360 asset fields.
-                  </p>
-                </div>
-
-                <div className="flex items-center justify-end gap-2.5 pt-4">
-                  <button
-                    type="button"
-                    onClick={() => navigate('/discovery')}
-                    className="px-4 py-1.5 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl transition-all shadow-2xs text-xs cursor-pointer"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setCurrentStep(2)}
-                    className="px-5 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all text-xs cursor-pointer"
-                  >
-                    Next
-                    <ArrowRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
-
+            {/* Action Buttons */}
+            <div className="flex items-center justify-between pt-2">
+              <button
+                type="button"
+                onClick={() => navigate('/discovery')}
+                className="px-4 py-2 border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold rounded-xl transition-all shadow-2xs text-xs cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => setCurrentStep(2)}
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold rounded-xl shadow-xs flex items-center gap-1.5 transition-all text-xs cursor-pointer"
+              >
+                Next
+                <ArrowRight className="w-3.5 h-3.5" />
+              </button>
             </div>
           </>
         )}

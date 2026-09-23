@@ -286,13 +286,13 @@ export function AssetEdit() {
           </div>
         </div>
 
-        {/* Global Search Input Box */}
+        {/* Global Search Input Box (UI matched with Topbar) */}
         <div className="relative flex-1 max-w-md hidden md:block">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5 pointer-events-none" />
+          <Search className="w-4 h-4 text-[#6C2BD9] absolute left-3.5 top-2.5 pointer-events-none" />
           <input
             type="text"
             placeholder="Search assets, tags, serial numbers, locations..."
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-900 font-medium focus:border-[#6C2BD9] outline-none"
+            className="w-full pl-10 pr-4 py-2 bg-white hover:bg-purple-50/30 border border-slate-300 rounded-xl text-xs text-black font-semibold focus:border-[#6C2BD9] outline-none shadow-2xs transition-all placeholder:text-slate-400"
           />
         </div>
 
