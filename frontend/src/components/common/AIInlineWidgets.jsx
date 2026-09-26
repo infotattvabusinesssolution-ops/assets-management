@@ -200,9 +200,9 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
 
           {/* Laptop Inventory Data Table */}
-          <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+          <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
             <table className="w-full text-left text-xs text-slate-900 border-collapse">
-              <thead className="bg-slate-100 font-extrabold text-xs tracking-tight text-slate-900 border-b border-slate-300">
+              <thead className="sticky top-0 z-10 bg-slate-100 font-extrabold text-xs tracking-tight text-slate-900 border-b border-slate-300 shadow-2xs">
                 <tr>
                   <th className="px-4 py-3 whitespace-nowrap">Asset Name</th>
                   <th className="px-4 py-3 whitespace-nowrap">Barcode</th>
@@ -303,7 +303,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
             {/* Stat 2: In Use */}
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-start justify-center space-y-1">
               <div className="flex items-center gap-1.5 text-[10px] sm:text-xs font-bold text-slate-700">
-                <div className="p-1 rounded bg-blue-500/10 text-blue-600">
+                <div className="p-1 rounded bg-purple-500/10 text-[#6C2BD9]">
                   <Share2 className="w-4 h-4" />
                 </div>
                 <span className="truncate">In Use</span>
@@ -324,7 +324,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
 
           {/* Category Breakdown Table matching mockup */}
-          <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+          <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
             <table className="w-full text-left text-xs text-slate-900 border-collapse">
               <thead className="bg-slate-100 font-extrabold text-xs text-slate-950 border-b border-slate-300">
                 <tr>
@@ -435,7 +435,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
 
           {/* Custodian Assets Table */}
-          <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-xl bg-white">
+          <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-xl bg-white">
             <table className="w-full text-left text-xs text-slate-900 border-collapse">
               <thead className="bg-slate-100 font-extrabold uppercase text-xs tracking-wider text-slate-950 border-b border-slate-300">
                 <tr>
@@ -530,7 +530,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
               <BarChart3 className="w-4 h-4 text-purple-600" />
               Breakdown by Category
             </h5>
-            <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+            <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
               <table className="w-full text-left text-xs text-slate-900 border-collapse">
                 <thead className="bg-slate-100 font-extrabold text-xs text-slate-950 border-b border-slate-300">
                   <tr>
@@ -576,7 +576,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
                 </div>
               </div>
               <div className="flex items-center gap-2">
-                <div className="p-1 rounded bg-blue-500/10 text-blue-600">
+                <div className="p-1 rounded bg-purple-500/10 text-[#6C2BD9]">
                   <Share2 className="w-3.5 h-3.5" />
                 </div>
                 <div>
@@ -635,7 +635,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
             </div>
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-start space-y-1">
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700">
-                <div className="p-1 rounded bg-blue-500/10 text-blue-600"><TrendingUp className="w-3.5 h-3.5" /></div>
+                <div className="p-1 rounded bg-purple-500/10 text-[#6C2BD9]"><TrendingUp className="w-3.5 h-3.5" /></div>
                 <span>Average Value (AED)</span>
               </div>
               <div className="text-lg font-black text-slate-950 pl-0.5">AED 3,645</div>
@@ -643,7 +643,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
 
           {/* Purchased Assets Table */}
-          <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+          <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
             <table className="w-full text-left text-xs text-slate-900 border-collapse">
               <thead className="bg-slate-100 font-extrabold text-xs text-slate-950 border-b border-slate-300">
                 <tr>
@@ -732,7 +732,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
 
           {/* Depreciating Assets Table */}
-          <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+          <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
             <table className="w-full text-left text-xs text-slate-900 border-collapse">
               <thead className="bg-slate-100 font-extrabold text-xs text-slate-950 border-b border-slate-300">
                 <tr>
@@ -848,7 +848,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
               <History className="w-4 h-4 text-purple-600" />
               Movement History (Last 5)
             </h5>
-            <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+            <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
               <table className="w-full text-left text-xs text-slate-900 border-collapse">
                 <thead className="bg-slate-100 font-extrabold text-xs uppercase tracking-wider text-slate-950 border-b border-slate-300">
                   <tr>
@@ -919,7 +919,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
             </div>
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-start space-y-1">
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700">
-                <div className="p-1 rounded bg-blue-500/10 text-blue-600"><DollarSign className="w-3.5 h-3.5" /></div>
+                <div className="p-1 rounded bg-purple-500/10 text-[#6C2BD9]"><DollarSign className="w-3.5 h-3.5" /></div>
                 <span>Total Value (AED)</span>
               </div>
               <div className="text-lg font-black text-slate-950 pl-0.5">45,230</div>
@@ -927,7 +927,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
 
           {/* Disposal Records Table */}
-          <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+          <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
             <table className="w-full text-left text-xs text-slate-900 border-collapse">
               <thead className="bg-slate-100 font-extrabold text-xs text-slate-950 border-b border-slate-300">
                 <tr>
@@ -1037,12 +1037,12 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
             {/* Step 2: Reviewed By */}
             <div className="flex gap-3">
               <div className="flex flex-col items-center">
-                <div className="w-3 h-3 rounded-full bg-blue-500 border-2 border-blue-300 shrink-0" />
+                <div className="w-3 h-3 rounded-full bg-purple-500 border-2 border-purple-300 shrink-0" />
                 <div className="w-0.5 flex-1 bg-slate-200" />
               </div>
               <div className="pb-4 flex-1">
                 <div className="flex items-center justify-between">
-                  <p className="text-xs font-extrabold text-blue-700">Reviewed By</p>
+                  <p className="text-xs font-extrabold text-[#6C2BD9]">Reviewed By</p>
                   <span className="text-[10px] text-slate-500 font-semibold">07 Apr 2025, 10:20 AM</span>
                 </div>
                 <p className="text-[11px] font-bold text-slate-900 mt-0.5">Michael Brown (IT Manager)</p>
@@ -1122,7 +1122,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
             </div>
             <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-start space-y-0.5">
               <div className="flex items-center gap-1 text-[10px] font-bold text-slate-600">
-                <div className="p-0.5 rounded bg-blue-500/10 text-blue-600"><Layers className="w-3 h-3" /></div>
+                <div className="p-0.5 rounded bg-purple-500/10 text-[#6C2BD9]"><Layers className="w-3 h-3" /></div>
                 <span>Total Assets</span>
               </div>
               <div className="text-base font-black text-slate-900 pl-0.5">4,892</div>
@@ -1146,7 +1146,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           {/* Assets by Department Table with Progress Bars */}
           <div className="space-y-2">
             <h5 className="text-xs font-black text-slate-950">Assets by Department</h5>
-            <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+            <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
               <table className="w-full text-left text-xs text-slate-900 border-collapse">
                 <thead className="bg-slate-100 font-extrabold text-xs uppercase tracking-wider text-slate-950 border-b border-slate-300">
                   <tr>
@@ -1161,7 +1161,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
                 <tbody className="divide-y divide-slate-200">
                   {[
                     { dept: 'IT', total: 1245, inUse: 1080, avail: 165, pct: 25.5, color: 'bg-amber-500' },
-                    { dept: 'Finance', total: 982, inUse: 842, avail: 140, pct: 20.1, color: 'bg-blue-500' },
+                    { dept: 'Finance', total: 982, inUse: 842, avail: 140, pct: 20.1, color: 'bg-purple-500' },
                     { dept: 'Operations', total: 876, inUse: 742, avail: 134, pct: 17.9, color: 'bg-emerald-500' },
                     { dept: 'HR', total: 532, inUse: 450, avail: 82, pct: 10.9, color: 'bg-violet-500' },
                     { dept: 'Marketing', total: 418, inUse: 360, avail: 58, pct: 8.5, color: 'bg-rose-500' },
@@ -1189,9 +1189,9 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
 
           {/* Info Alert */}
-          <div className="flex items-center gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-            <Info className="w-4 h-4 text-blue-600 shrink-0" />
-            <p className="text-xs font-bold text-blue-900">IT holds the highest number of assets (25.5%).</p>
+          <div className="flex items-center gap-2.5 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+            <Info className="w-4 h-4 text-[#6C2BD9] shrink-0" />
+            <p className="text-xs font-bold text-purple-900">IT holds the highest number of assets (25.5%).</p>
           </div>
 
           {/* Feedback Bar */}
@@ -1222,7 +1222,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
             </div>
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-start space-y-1">
               <div className="flex items-center gap-1.5 text-xs font-extrabold text-slate-700">
-                <div className="p-1 rounded bg-blue-500/10 text-blue-600"><Layers className="w-3.5 h-3.5" /></div>
+                <div className="p-1 rounded bg-purple-500/10 text-[#6C2BD9]"><Layers className="w-3.5 h-3.5" /></div>
                 <span>Total Assets</span>
               </div>
               <div className="text-lg font-black text-slate-950 pl-0.5">4,892</div>
@@ -1239,7 +1239,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           {/* Top Custodians Table */}
           <div className="space-y-2">
             <h5 className="text-xs font-black text-slate-950">Top Custodians by Number of Assets</h5>
-            <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+            <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
               <table className="w-full text-left text-xs text-slate-900 border-collapse">
                 <thead className="bg-slate-100 font-extrabold text-xs uppercase tracking-wider text-slate-950 border-b border-slate-300">
                   <tr>
@@ -1308,7 +1308,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
             </div>
             <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-start space-y-0.5">
               <div className="flex items-center gap-1 text-xs font-extrabold text-slate-700">
-                <div className="p-0.5 rounded bg-blue-500/10 text-blue-600"><DollarSign className="w-3 h-3" /></div>
+                <div className="p-0.5 rounded bg-purple-500/10 text-[#6C2BD9]"><DollarSign className="w-3 h-3" /></div>
                 <span>Original Value (AED)</span>
               </div>
               <div className="text-base font-black text-slate-950 pl-0.5">12,845,360</div>
@@ -1332,7 +1332,7 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           {/* Depreciation Summary Table */}
           <div className="space-y-2">
             <h5 className="text-xs font-black text-slate-950">Depreciation Summary by Category</h5>
-            <div className="overflow-x-auto scrollbar-thin border border-slate-300 rounded-2xl bg-white">
+            <div className="overflow-auto max-h-[300px] scrollbar-thin border border-slate-300 rounded-2xl bg-white">
               <table className="w-full text-left text-xs text-slate-900 border-collapse">
                 <thead className="bg-slate-100 font-extrabold text-xs uppercase tracking-wider text-slate-950 border-b border-slate-300">
                   <tr>
@@ -1371,9 +1371,9 @@ export function AIInlineWidgets({ widgetType, apiData, onNavigate }) {
           </div>
 
           {/* Info Alert */}
-          <div className="flex items-center gap-2.5 p-3 bg-blue-50 border border-blue-200 rounded-xl">
-            <Info className="w-4 h-4 text-blue-600 shrink-0" />
-            <p className="text-xs font-bold text-blue-900">Servers category has the highest depreciation at <strong>63.3%</strong>.</p>
+          <div className="flex items-center gap-2.5 p-3 bg-purple-50 border border-purple-200 rounded-xl">
+            <Info className="w-4 h-4 text-[#6C2BD9] shrink-0" />
+            <p className="text-xs font-bold text-purple-900">Servers category has the highest depreciation at <strong>63.3%</strong>.</p>
           </div>
 
           {/* Feedback Bar */}

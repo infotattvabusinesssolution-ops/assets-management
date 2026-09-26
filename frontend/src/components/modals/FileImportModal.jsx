@@ -148,7 +148,7 @@ export function FileImportModal({ isOpen, onClose, onImportAssets, defaultValues
             <button
               type="button"
               onClick={downloadSampleTemplate}
-              className="flex items-center gap-1.5 text-xs text-blue-600 hover:text-blue-700 font-semibold px-2.5 py-1 bg-blue-50 rounded-lg hover:bg-blue-100 transition-colors"
+              className="flex items-center gap-1.5 text-xs text-[#6C2BD9] hover:text-[#6C2BD9] font-semibold px-2.5 py-1 bg-purple-50 rounded-lg hover:bg-purple-100 transition-colors"
             >
               <Download className="w-3.5 h-3.5" />
               Download CSV Template
@@ -168,7 +168,7 @@ export function FileImportModal({ isOpen, onClose, onImportAssets, defaultValues
             }}
             onClick={() => fileInputRef.current?.click()}
             className={`border-2 border-dashed rounded-2xl p-6 text-center cursor-pointer transition-colors ${
-              dragOver ? 'border-blue-500 bg-blue-50/50' : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'
+              dragOver ? 'border-[#6C2BD9] bg-purple-50/50' : 'border-slate-200 hover:border-slate-300 bg-slate-50/40'
             }`}
           >
             <input
@@ -178,7 +178,7 @@ export function FileImportModal({ isOpen, onClose, onImportAssets, defaultValues
               onChange={(e) => e.target.files && handleFileChange(e.target.files[0])}
               className="hidden"
             />
-            <div className="w-10 h-10 mx-auto rounded-full bg-blue-50 text-blue-600 flex items-center justify-center mb-2">
+            <div className="w-10 h-10 mx-auto rounded-full bg-purple-50 text-[#6C2BD9] flex items-center justify-center mb-2">
               <UploadCloud className="w-5 h-5" />
             </div>
             <p className="text-xs font-semibold text-slate-800">
@@ -247,7 +247,7 @@ export function FileImportModal({ isOpen, onClose, onImportAssets, defaultValues
             type="button"
             onClick={handleConfirmImport}
             disabled={validCount === 0}
-            className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors"
+            className="px-5 py-2 text-xs font-semibold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors"
           >
             Import {validCount} Asset{validCount === 1 ? '' : 's'}
           </button>

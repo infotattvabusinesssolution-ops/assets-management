@@ -378,10 +378,10 @@ export function MaintenancePlans() {
     });
   }, [plans, searchQuery, categoryFilter, typeFilter, statusFilter]);
 
-  const totalRecords = 12; // Matching screenshot counter
+  const totalRecords = filteredPlans.length;
   const paginatedPlans = useMemo(() => {
-    return filteredPlans.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [filteredPlans, currentPage, pageSize]);
+    return filteredPlans;
+  }, [filteredPlans]);
 
   // Handlers
   const handleSavePlan = (e) => {
@@ -586,97 +586,80 @@ export function MaintenancePlans() {
             </h3>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 rounded-lg">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-[#F8FAFC] text-slate-700 font-bold text-[11px] border-b border-slate-200">
-                <tr>
-                  <th className="p-2.5 text-center w-8">
-                    <input type="checkbox" className="rounded border-slate-300" />
-                  </th>
-                  <th className="p-2.5">Plan No.</th>
-                  <th className="p-2.5">Plan Name</th>
-                  <th className="p-2.5">Asset Category</th>
-                  <th className="p-2.5">Maintenance Type</th>
-                  <th className="p-2.5">Frequency</th>
-                  <th className="p-2.5 text-center">Status</th>
-                  <th className="p-2.5">Next Due Date</th>
-                  <th className="p-2.5 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-medium">
-                {paginatedPlans.map((plan) => {
-                  const isSelected = selectedPlanId === plan.id;
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="overflow-auto max-h-[540px]">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-700 font-bold text-[11px] border-b border-slate-200">
+                  <tr>
+                    <th className="p-2.5 text-center w-8">
+                      <input type="checkbox" className="rounded border-slate-300" />
+                    </th>
+                    <th className="p-2.5">Plan No.</th>
+                    <th className="p-2.5">Plan Name</th>
+                    <th className="p-2.5">Asset Category</th>
+                    <th className="p-2.5">Maintenance Type</th>
+                    <th className="p-2.5">Frequency</th>
+                    <th className="p-2.5 text-center">Status</th>
+                    <th className="p-2.5">Next Due Date</th>
+                    <th className="p-2.5 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                  {paginatedPlans.map((plan) => {
+                    const isSelected = selectedPlanId === plan.id;
 
-                  return (
-                    <tr 
-                      key={plan.id}
-                      onClick={() => setSelectedPlanId(plan.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={isSelected} onChange={() => setSelectedPlanId(plan.id)} className="rounded border-slate-300" />
-                      </td>
-                      <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
-                        {plan.planNo}
-                      </td>
-                      <td className="p-2.5 font-bold text-slate-900">
-                        {plan.planName}
-                      </td>
-                      <td className="p-2.5 text-slate-800">
-                        {plan.category}
-                      </td>
-                      <td className="p-2.5 text-slate-800">
-                        {plan.type}
-                      </td>
-                      <td className="p-2.5 text-slate-900 font-medium">
-                        {plan.frequency}
-                      </td>
-                      <td className="p-2.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
-                          plan.status === 'Active' 
-                            ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
-                            : 'bg-slate-200 text-slate-600 border-slate-300'
-                        }`}>
-                          {plan.status}
-                        </span>
-                      </td>
-                      <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
-                        {plan.nextDueDate}
-                      </td>
-                      <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button className="p-1 hover:bg-slate-200 rounded text-slate-600">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls Matching Screenshot */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <span className="text-xs text-slate-500">
-              Showing 1 to 10 of 12 records
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&lt;</button>
-              <button className="px-2.5 py-1 bg-[#6C2BD9] text-white font-bold rounded text-xs shadow-2xs">1</button>
-              <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">2</button>
-              <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&gt;</button>
-
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="ml-2 bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-700 font-medium"
-              >
-                <option value={10}>10 / page</option>
-                <option value={20}>20 / page</option>
-              </select>
+                    return (
+                      <tr 
+                        key={plan.id}
+                        onClick={() => setSelectedPlanId(plan.id)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" checked={isSelected} onChange={() => setSelectedPlanId(plan.id)} className="rounded border-slate-300" />
+                        </td>
+                        <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
+                          {plan.planNo}
+                        </td>
+                        <td className="p-2.5 font-bold text-slate-900">
+                          {plan.planName}
+                        </td>
+                        <td className="p-2.5 text-slate-800">
+                          {plan.category}
+                        </td>
+                        <td className="p-2.5 text-slate-800">
+                          {plan.type}
+                        </td>
+                        <td className="p-2.5 text-slate-900 font-medium">
+                          {plan.frequency}
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] font-bold border ${
+                            plan.status === 'Active' 
+                              ? 'bg-emerald-100 text-emerald-800 border-emerald-300' 
+                              : 'bg-slate-200 text-slate-600 border-slate-300'
+                          }`}>
+                            {plan.status}
+                          </span>
+                        </td>
+                        <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
+                          {plan.nextDueDate}
+                        </td>
+                        <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button className="p-1 hover:bg-slate-200 rounded text-slate-600">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {filteredPlans.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
         </div>
@@ -1052,58 +1035,42 @@ export function MaintenancePlans() {
           {/* TAB 1: APPLICABLE ASSETS TABLE MATCHING SCREENSHOT */}
           {activeBottomTab === 'APPLICABLE_ASSETS' && (
             <div className="space-y-2">
-              <div className="overflow-x-auto border border-slate-200 rounded-lg">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-[#F8FAFC] text-slate-700 font-bold border-b border-slate-200 text-[11px]">
-                    <tr>
-                      <th className="p-2.5 w-8">#</th>
-                      <th className="p-2.5">Asset No.</th>
-                      <th className="p-2.5">Asset Name</th>
-                      <th className="p-2.5">Location</th>
-                      <th className="p-2.5">Last Service Date</th>
-                      <th className="p-2.5">Next Due Date</th>
-                      <th className="p-2.5 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium">
-                    {EXACT_APPLICABLE_ASSETS.map((a) => (
-                      <tr key={a.id} className="hover:bg-slate-50">
-                        <td className="p-2.5 font-mono text-slate-500">{a.id}</td>
-                        <td className="p-2.5 font-mono font-bold text-[#6C2BD9] hover:underline">{a.assetNo}</td>
-                        <td className="p-2.5 font-bold text-slate-900">{a.name}</td>
-                        <td className="p-2.5 text-slate-800">{a.location}</td>
-                        <td className="p-2.5 font-mono text-slate-600">{a.lastService}</td>
-                        <td className="p-2.5 font-mono text-slate-600">{a.nextDue}</td>
-                        <td className="p-2.5 text-center">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
-                            {a.status}
-                          </span>
-                        </td>
+              <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="overflow-auto max-h-[300px]">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-700 font-bold border-b border-slate-200 text-[11px]">
+                      <tr>
+                        <th className="p-2.5 w-8">#</th>
+                        <th className="p-2.5">Asset No.</th>
+                        <th className="p-2.5">Asset Name</th>
+                        <th className="p-2.5">Location</th>
+                        <th className="p-2.5">Last Service Date</th>
+                        <th className="p-2.5">Next Due Date</th>
+                        <th className="p-2.5 text-center">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Sub-table Pagination */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-1">
-                <span className="text-xs text-slate-500">
-                  Showing 1 to 5 of 25 records
-                </span>
-
-                <div className="flex items-center gap-1">
-                  <button className="px-2 py-0.5 bg-white border border-slate-300 text-slate-600 rounded text-xs font-bold">&lt;</button>
-                  <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded text-xs">1</button>
-                  <button className="px-2.5 py-0.5 bg-white border border-slate-300 text-slate-700 rounded text-xs font-bold">2</button>
-                  <button className="px-2.5 py-0.5 bg-white border border-slate-300 text-slate-700 rounded text-xs font-bold">3</button>
-                  <button className="px-2.5 py-0.5 bg-white border border-slate-300 text-slate-700 rounded text-xs font-bold">4</button>
-                  <button className="px-2.5 py-0.5 bg-white border border-slate-300 text-slate-700 rounded text-xs font-bold">5</button>
-                  <button className="px-2 py-0.5 bg-white border border-slate-300 text-slate-600 rounded text-xs font-bold">&gt;</button>
-
-                  <select className="ml-2 bg-white border border-slate-300 rounded px-2 py-0.5 text-xs text-slate-700 font-medium">
-                    <option>5 / page</option>
-                    <option>10 / page</option>
-                  </select>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {EXACT_APPLICABLE_ASSETS.map((a) => (
+                        <tr key={a.id} className="hover:bg-slate-50">
+                          <td className="p-2.5 font-mono text-slate-500">{a.id}</td>
+                          <td className="p-2.5 font-mono font-bold text-[#6C2BD9] hover:underline">{a.assetNo}</td>
+                          <td className="p-2.5 font-bold text-slate-900">{a.name}</td>
+                          <td className="p-2.5 text-slate-800">{a.location}</td>
+                          <td className="p-2.5 font-mono text-slate-600">{a.lastService}</td>
+                          <td className="p-2.5 font-mono text-slate-600">{a.nextDue}</td>
+                          <td className="p-2.5 text-center">
+                            <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-300">
+                              {a.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-medium text-slate-600">Showing {EXACT_APPLICABLE_ASSETS.length} records</span>
+                  <span className="text-slate-400">Scroll down to view all records</span>
                 </div>
               </div>
             </div>

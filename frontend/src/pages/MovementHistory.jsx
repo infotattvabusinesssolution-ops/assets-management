@@ -652,7 +652,7 @@ export function MovementHistory() {
                   onChange={(e) => setFilterSearch(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleSearchClick()}
                   placeholder="AS-000123"
-                  className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                 />
                 <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -666,7 +666,7 @@ export function MovementHistory() {
               <select
                 value={filterAssetType}
                 onChange={(e) => setFilterAssetType(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All">All</option>
                 <option value="IT Equipment">IT Equipment</option>
@@ -684,7 +684,7 @@ export function MovementHistory() {
               <select
                 value={filterMovementType}
                 onChange={(e) => setFilterMovementType(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All">All</option>
                 <option value="Location Transfer">Location Transfer</option>
@@ -709,7 +709,7 @@ export function MovementHistory() {
                   value={filterFromDate}
                   onChange={(e) => setFilterFromDate(e.target.value)}
                   placeholder="01 Jan 2025"
-                  className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
                 />
                 <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -726,7 +726,7 @@ export function MovementHistory() {
                   value={filterToDate}
                   onChange={(e) => setFilterToDate(e.target.value)}
                   placeholder="10 Sep 2026"
-                  className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
                 />
                 <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
@@ -743,7 +743,7 @@ export function MovementHistory() {
               <select
                 value={filterSite}
                 onChange={(e) => setFilterSite(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All Sites">All Sites</option>
                 <option value="Dubai HQ">Dubai HQ</option>
@@ -761,7 +761,7 @@ export function MovementHistory() {
               <select
                 value={filterDepartment}
                 onChange={(e) => setFilterDepartment(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All Departments">All Departments</option>
                 <option value="IT Department">IT Department</option>
@@ -783,7 +783,7 @@ export function MovementHistory() {
               <select
                 value={filterCustodian}
                 onChange={(e) => setFilterCustodian(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All">All</option>
                 <option value="Ahmed Khan">Ahmed Khan</option>
@@ -803,7 +803,7 @@ export function MovementHistory() {
               <select
                 value={filterStatus}
                 onChange={(e) => setFilterStatus(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All">All</option>
                 <option value="Completed">Completed</option>
@@ -846,9 +846,9 @@ export function MovementHistory() {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[540px]">
               <table className="w-full text-left text-xs text-slate-600 border-collapse">
-                <thead className="bg-slate-50/80 text-slate-500 font-semibold text-[11px] border-b border-slate-200">
+                <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 font-semibold text-[11px] border-b border-slate-200">
                   <tr>
                     <th className="py-2.5 px-3 w-8">#</th>
                     <th className="py-2.5 px-3">Movement ID</th>
@@ -877,7 +877,7 @@ export function MovementHistory() {
                         )}
                       >
                         <td className="py-3 px-3 text-slate-400 text-center text-[11px]">
-                          {(currentPage - 1) * pageSize + idx + 1}
+                          {idx + 1}
                         </td>
                         <td className="py-3 px-3 font-mono font-semibold text-slate-900 text-[11px]">
                           {row.movementId}
@@ -941,66 +941,10 @@ export function MovementHistory() {
               </table>
             </div>
 
-            {/* Table Pagination matching Screenshot 27 */}
+            {/* Scroll Down Summary */}
             <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <div>
-                Showing 1 to {Math.min(pageSize, movements.length)} of {totalRecords} records
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  className={clsx(
-                    'w-7 h-7 flex items-center justify-center rounded text-xs font-semibold',
-                    currentPage === 1 ? 'bg-[#6C2BD9] text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  1
-                </button>
-                <button
-                  onClick={() => setCurrentPage(2)}
-                  className={clsx(
-                    'w-7 h-7 flex items-center justify-center rounded text-xs font-semibold',
-                    currentPage === 2 ? 'bg-[#6C2BD9] text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  2
-                </button>
-                <button
-                  onClick={() => setCurrentPage(3)}
-                  className={clsx(
-                    'w-7 h-7 flex items-center justify-center rounded text-xs font-semibold',
-                    currentPage === 3 ? 'bg-[#6C2BD9] text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  3
-                </button>
-                <button
-                  disabled={currentPage === 3}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-
-                <div className="ml-2">
-                  <select
-                    value={pageSize}
-                    onChange={(e) => setPageSize(Number(e.target.value))}
-                    className="px-2 py-1 text-xs bg-white border border-slate-200 rounded text-slate-600 focus:outline-none"
-                  >
-                    <option value={5}>5 / page</option>
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                  </select>
-                </div>
-              </div>
+              <span className="font-medium text-slate-600">Showing {movements.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
 

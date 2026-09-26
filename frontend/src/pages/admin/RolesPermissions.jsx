@@ -345,7 +345,7 @@ export function RolesPermissions() {
         <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
           <span>Administration</span>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-[#2563EB] font-bold">Roles &amp; Permissions</span>
+          <span className="text-[#6C2BD9] font-bold">Roles &amp; Permissions</span>
         </div>
         <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
           <div>
@@ -370,7 +370,7 @@ export function RolesPermissions() {
                 setRoleForm({ name: '', description: '', roleType: 'Custom Role', status: 'Active' });
                 setShowAddRoleModal(true);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               Add Role
@@ -383,12 +383,12 @@ export function RolesPermissions() {
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
         <div className="flex items-center justify-between mb-3">
           <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-            <Filter className="w-4 h-4 text-[#2563EB]" />
+            <Filter className="w-4 h-4 text-[#6C2BD9]" />
             <span>Filters</span>
           </div>
           <button
             onClick={() => triggerToast('Advanced filter options loaded.')}
-            className="text-xs font-bold text-[#2563EB] hover:underline flex items-center gap-1 cursor-pointer"
+            className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
           >
             <span>Advanced Filters</span>
             <ChevronRight className="w-3.5 h-3.5" />
@@ -403,7 +403,7 @@ export function RolesPermissions() {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Status">All Status</option>
                 <option value="Active">Active</option>
@@ -420,7 +420,7 @@ export function RolesPermissions() {
               <select
                 value={roleTypeFilter}
                 onChange={(e) => setRoleTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Types">All Types</option>
                 <option value="System Role">System Role</option>
@@ -437,7 +437,7 @@ export function RolesPermissions() {
               <select
                 value={moduleFilter}
                 onChange={(e) => setModuleFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Modules">All Modules</option>
                 <option value="Asset Management">Asset Management</option>
@@ -457,7 +457,7 @@ export function RolesPermissions() {
               <select
                 value={createdByFilter}
                 onChange={(e) => setCreatedByFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Users">All Users</option>
                 <option value="John Doe">John Doe</option>
@@ -481,7 +481,7 @@ export function RolesPermissions() {
                   placeholder="From Date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full pl-8 pr-2 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#2563EB] focus:outline-hidden"
+                  className="w-full pl-8 pr-2 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#6C2BD9] focus:outline-hidden"
                 />
               </div>
               <span className="text-slate-400 font-bold">→</span>
@@ -491,7 +491,7 @@ export function RolesPermissions() {
                   placeholder="To Date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#2563EB] focus:outline-hidden"
+                  className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#6C2BD9] focus:outline-hidden"
                 />
               </div>
             </div>
@@ -507,7 +507,7 @@ export function RolesPermissions() {
           </button>
           <button
             onClick={() => triggerToast('Filters applied.')}
-            className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <Filter className="w-3.5 h-3.5" />
             <span>Apply Filters</span>
@@ -529,57 +529,57 @@ export function RolesPermissions() {
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="Search roles by name or description..."
-              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+              className="w-full pl-9 pr-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
             />
           </div>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[540px]">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold select-none text-[11px] uppercase tracking-wider">
+            <thead className="sticky top-0 z-10 shadow-2xs">
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold select-none text-[11px] uppercase tracking-wider">
                 <th className="p-3 pl-4 w-10">
                   <input
                     type="checkbox"
                     checked={selectedRoleIds.length === filteredRoles.length && filteredRoles.length > 0}
                     onChange={handleSelectAll}
-                    className="rounded border-slate-300 text-[#2563EB] cursor-pointer"
+                    className="rounded border-slate-300 text-[#6C2BD9] cursor-pointer"
                   />
                 </th>
                 <th className="p-3 w-10 text-slate-400">#</th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Role Name</span>
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">Description</th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Role Type</span>
                     <ChevronDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Users</span>
                     <ChevronDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Status</span>
                     <ChevronDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Date Created</span>
                     <ChevronDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Created By</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
@@ -602,7 +602,7 @@ export function RolesPermissions() {
                       key={role.id}
                       className={clsx(
                         'transition-colors',
-                        isSelected ? 'bg-blue-50/40' : 'hover:bg-slate-50/60'
+                        isSelected ? 'bg-purple-50/40' : 'hover:bg-slate-50/60'
                       )}
                     >
                       <td className="p-3 pl-4">
@@ -610,11 +610,11 @@ export function RolesPermissions() {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleSelectOne(role.id)}
-                          className="rounded border-slate-300 text-[#2563EB] cursor-pointer"
+                          className="rounded border-slate-300 text-[#6C2BD9] cursor-pointer"
                         />
                       </td>
                       <td className="p-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
-                      <td className="p-3 font-bold text-[#2563EB]">
+                      <td className="p-3 font-bold text-[#6C2BD9]">
                         <span
                           className="cursor-pointer hover:underline"
                           onClick={() => handleOpenPermissions(role)}
@@ -628,7 +628,7 @@ export function RolesPermissions() {
                           className={clsx(
                             'inline-flex items-center px-2.5 py-0.5 rounded-md text-[11px] font-bold border',
                             role.roleType === 'System Role'
-                              ? 'bg-blue-50 text-blue-700 border-blue-200'
+                              ? 'bg-purple-50 text-[#6C2BD9] border-purple-200'
                               : 'bg-purple-50 text-purple-700 border-purple-200'
                           )}
                         >
@@ -667,9 +667,9 @@ export function RolesPermissions() {
                                 setShowViewDetailsModal(true);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Eye className="w-4 h-4 text-blue-600" />
+                              <Eye className="w-4 h-4 text-[#6C2BD9]" />
                               View Details
                             </button>
                             <button
@@ -684,23 +684,23 @@ export function RolesPermissions() {
                                 setShowAddRoleModal(true);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Edit2 className="w-4 h-4 text-blue-600" />
+                              <Edit2 className="w-4 h-4 text-[#6C2BD9]" />
                               Edit Role
                             </button>
                             <button
                               onClick={() => handleOpenPermissions(role)}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <ShieldCheck className="w-4 h-4 text-blue-600" />
+                              <ShieldCheck className="w-4 h-4 text-[#6C2BD9]" />
                               Manage Permissions
                             </button>
                             <button
                               onClick={() => handleCloneRole(role)}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Copy className="w-4 h-4 text-blue-600" />
+                              <Copy className="w-4 h-4 text-[#6C2BD9]" />
                               Clone Role
                             </button>
                             <button
@@ -709,9 +709,9 @@ export function RolesPermissions() {
                                 setShowAssignUsersModal(true);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Users className="w-4 h-4 text-blue-600" />
+                              <Users className="w-4 h-4 text-[#6C2BD9]" />
                               Assign Users
                             </button>
                             <button
@@ -719,9 +719,9 @@ export function RolesPermissions() {
                                 triggerToast(`Exporting role "${role.name}" specification...`);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Download className="w-4 h-4 text-blue-600" />
+                              <Download className="w-4 h-4 text-[#6C2BD9]" />
                               Export Role
                             </button>
 
@@ -729,7 +729,7 @@ export function RolesPermissions() {
 
                             <button
                               onClick={() => handleToggleStatus(role)}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
                               {role.status === 'Active' ? (
                                 <>
@@ -762,23 +762,10 @@ export function RolesPermissions() {
           </table>
         </div>
 
-        {/* Table Pagination Footer matching Screenshot */}
-        <div className="px-4 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>Showing 1 to {filteredRoles.length} of {roles.length} roles</div>
-          <div className="flex items-center gap-2">
-            <button className="px-2.5 py-1 border border-slate-200 rounded-lg disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer" disabled>
-              «
-            </button>
-            <button className="px-3 py-1 bg-[#2563EB] text-white rounded-lg font-bold">1</button>
-            <button className="px-2.5 py-1 border border-slate-200 rounded-lg disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer" disabled>
-              »
-            </button>
-            <select className="px-2.5 py-1 border border-slate-200 rounded-lg text-xs bg-white font-medium focus:outline-hidden cursor-pointer">
-              <option>10 / page</option>
-              <option>25 / page</option>
-              <option>50 / page</option>
-            </select>
-          </div>
+        {/* Table Summary Footer */}
+        <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="font-medium text-slate-600">Showing {filteredRoles.length} roles</div>
+          <div className="text-slate-400">Scroll down to view all records</div>
         </div>
       </div>
 
@@ -788,7 +775,7 @@ export function RolesPermissions() {
           <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-fadeIn">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-blue-50 text-[#2563EB] flex items-center justify-center border border-blue-100">
+                <div className="w-9 h-9 rounded-2xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center border border-purple-100">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
@@ -809,7 +796,7 @@ export function RolesPermissions() {
               <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
                 <div>
                   <span className="text-slate-400 font-medium block text-[11px]">Assigned Users</span>
-                  <span className="font-mono font-bold text-[#2563EB] text-sm">{selectedRole.userCount} Users</span>
+                  <span className="font-mono font-bold text-[#6C2BD9] text-sm">{selectedRole.userCount} Users</span>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium block text-[11px]">Status</span>
@@ -847,7 +834,7 @@ export function RolesPermissions() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
-                  <ShieldCheck className="w-5 h-5 text-[#2563EB]" />
+                  <ShieldCheck className="w-5 h-5 text-[#6C2BD9]" />
                   Permissions Matrix: {selectedRole.name}
                 </h3>
                 <p className="text-xs text-slate-500 mt-0.5">
@@ -899,7 +886,7 @@ export function RolesPermissions() {
                               [mod.key]: isAllSelected ? [] : [...allActions]
                             });
                           }}
-                          className="text-[11px] font-bold text-[#2563EB] hover:underline"
+                          className="text-[11px] font-bold text-[#6C2BD9] hover:underline"
                         >
                           Select All
                         </button>
@@ -927,7 +914,7 @@ export function RolesPermissions() {
                                   checked
                                     ? isSensitive
                                       ? 'bg-rose-50 border-rose-300 text-rose-700'
-                                      : 'bg-blue-50 border-blue-200 text-[#2563EB]'
+                                      : 'bg-purple-50 border-purple-200 text-[#6C2BD9]'
                                     : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
                                 )}
                               >
@@ -957,7 +944,7 @@ export function RolesPermissions() {
               <button
                 type="button"
                 onClick={handleSavePermissions}
-                className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
               >
                 Save Permissions
               </button>
@@ -988,7 +975,7 @@ export function RolesPermissions() {
                   value={roleForm.name}
                   onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
                   placeholder="e.g. Asset Custodian"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] font-medium"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] font-medium"
                 />
               </div>
 
@@ -999,7 +986,7 @@ export function RolesPermissions() {
                   value={roleForm.description}
                   onChange={(e) => setRoleForm({ ...roleForm, description: e.target.value })}
                   placeholder="Role responsibilities and intended access..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] font-medium"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] font-medium"
                 />
               </div>
 
@@ -1039,7 +1026,7 @@ export function RolesPermissions() {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-xs cursor-pointer"
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl shadow-xs cursor-pointer"
                 >
                   {editingRole ? 'Save Changes' : 'Create Role'}
                 </button>
@@ -1055,7 +1042,7 @@ export function RolesPermissions() {
           <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-fadeIn">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-blue-50 text-[#2563EB] flex items-center justify-center border border-blue-100">
+                <div className="w-9 h-9 rounded-2xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center border border-purple-100">
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
@@ -1078,7 +1065,7 @@ export function RolesPermissions() {
               ].map((u, i) => (
                 <label key={i} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 cursor-pointer">
                   <div className="flex items-center gap-2.5">
-                    <input type="checkbox" defaultChecked={u.assigned} className="rounded text-[#2563EB]" />
+                    <input type="checkbox" defaultChecked={u.assigned} className="rounded text-[#6C2BD9]" />
                     <div>
                       <div className="font-bold text-slate-800">{u.name}</div>
                       <div className="text-[10px] text-slate-400">{u.email}</div>
@@ -1101,7 +1088,7 @@ export function RolesPermissions() {
                   setShowAssignUsersModal(false);
                   triggerToast(`User assignments updated for ${selectedRole.name}.`);
                 }}
-                className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-xs"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl shadow-xs"
               >
                 Save Assignments
               </button>

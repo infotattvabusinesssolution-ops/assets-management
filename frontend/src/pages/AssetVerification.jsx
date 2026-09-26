@@ -1201,9 +1201,9 @@ export function AssetVerification() {
 
                 {/* Asset Table */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-                  <div className="overflow-x-auto">
+                  <div className="overflow-auto max-h-[540px]">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500">
+                      <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs border-b border-slate-200 text-[11px] font-semibold text-slate-500">
                         <tr>
                           <th className="py-2.5 px-3 w-8">
                             <input
@@ -1257,7 +1257,7 @@ export function AssetVerification() {
                                   className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                                 />
                               </td>
-                              <td className="py-3 px-3 font-semibold text-blue-600 hover:underline">
+                              <td className="py-3 px-3 font-semibold text-[#6C2BD9] hover:underline">
                                 {asset.assetNo}
                               </td>
                               <td className="py-3 px-3 text-slate-900 font-medium whitespace-nowrap">
@@ -1299,55 +1299,10 @@ export function AssetVerification() {
                     </table>
                   </div>
 
-                  {/* Pagination Footer */}
+                  {/* Scroll Footer */}
                   <div className="border-t border-slate-100 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
-                    <div>
-                      Showing 1 to 10 of {totalAssetsCount} assets
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <button
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                        className="p-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50 disabled:opacity-40"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </button>
-
-                      {[1, 2, 3, 4, 5].map(p => (
-                        <button
-                          key={p}
-                          onClick={() => setCurrentPage(p)}
-                          className={clsx(
-                            'w-7 h-7 rounded text-xs font-semibold flex items-center justify-center transition-colors',
-                            currentPage === p
-                              ? 'bg-[#6C2BD9] text-white'
-                              : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
-                          )}
-                        >
-                          {p}
-                        </button>
-                      ))}
-
-                      <button
-                        onClick={() => setCurrentPage(p => p + 1)}
-                        className="p-1 rounded border border-slate-200 text-slate-500 hover:bg-slate-50"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </button>
-                    </div>
-
-                    <div className="flex items-center gap-1">
-                      <select
-                        value={pageSize}
-                        onChange={(e) => setPageSize(Number(e.target.value))}
-                        className="bg-white border border-slate-200 rounded px-2 py-1 text-xs text-slate-600 focus:outline-none"
-                      >
-                        <option value={10}>10 / page</option>
-                        <option value={25}>25 / page</option>
-                        <option value={50}>50 / page</option>
-                      </select>
-                    </div>
+                    <span className="font-medium text-slate-600">Showing {filteredAssets.length} records</span>
+                    <span className="text-slate-400">Scroll down to view all records</span>
                   </div>
                 </div>
               </div>
@@ -1686,78 +1641,88 @@ export function AssetVerification() {
             </div>
 
             <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-              <table className="w-full text-left text-xs">
-                <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500">
-                  <tr>
-                    <th className="py-2.5 px-3">Exception #</th>
-                    <th className="py-2.5 px-3">Asset No. / Item</th>
-                    <th className="py-2.5 px-3">Exception Type</th>
-                    <th className="py-2.5 px-3">System Record</th>
-                    <th className="py-2.5 px-3">Observed Finding</th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
-                    <th className="py-2.5 px-3 text-right">Reconciliation Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {discrepancies
-                    .filter(d => {
-                      if (discrepancyFilter === 'PENDING') return !d.resolved;
-                      if (discrepancyFilter === 'RESOLVED') return d.resolved;
-                      return true;
-                    })
-                    .map((disc) => (
-                      <tr key={disc.id} className="hover:bg-slate-50/80">
-                        <td className="py-3 px-3 font-semibold text-slate-800">{disc.exceptionNo}</td>
-                        <td className="py-3 px-3">
-                          <p className="font-semibold text-blue-600">{disc.assetNo}</p>
-                          <p className="text-[11px] text-slate-500 truncate max-w-[180px]">{disc.assetName}</p>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={clsx(
-                            'px-2 py-0.5 rounded text-[11px] font-semibold',
-                            disc.exceptionType === 'DAMAGED' ? 'bg-red-100 text-red-800' :
-                            disc.exceptionType === 'NOT_FOUND' ? 'bg-rose-100 text-rose-800' :
-                            disc.exceptionType === 'UNREGISTERED' ? 'bg-purple-100 text-purple-800' :
-                            'bg-amber-100 text-amber-800'
-                          )}>
-                            {disc.typeLabel}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-[11px] text-slate-600">
-                          <p>Loc: {disc.systemLocation}</p>
-                          <p>Cust: {disc.systemCustodian}</p>
-                        </td>
-                        <td className="py-3 px-3 text-[11px] text-slate-900 font-medium">
-                          <p>Loc: {disc.verifiedLocation}</p>
-                          <p>Cust: {disc.verifiedCustodian}</p>
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          {disc.resolved ? (
-                            <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[10px] font-semibold">
-                              <CheckCircle2 className="w-3 h-3" /> Resolved
+              <div className="overflow-auto max-h-[500px]">
+                <table className="w-full text-left text-xs">
+                  <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs border-b border-slate-200 text-[11px] font-semibold text-slate-500">
+                    <tr>
+                      <th className="py-2.5 px-3">Exception #</th>
+                      <th className="py-2.5 px-3">Asset No. / Item</th>
+                      <th className="py-2.5 px-3">Exception Type</th>
+                      <th className="py-2.5 px-3">System Record</th>
+                      <th className="py-2.5 px-3">Observed Finding</th>
+                      <th className="py-2.5 px-3 text-center">Status</th>
+                      <th className="py-2.5 px-3 text-right">Reconciliation Action</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {discrepancies
+                      .filter(d => {
+                        if (discrepancyFilter === 'PENDING') return !d.resolved;
+                        if (discrepancyFilter === 'RESOLVED') return d.resolved;
+                        return true;
+                      })
+                      .map((disc) => (
+                        <tr key={disc.id} className="hover:bg-slate-50/80">
+                          <td className="py-3 px-3 font-semibold text-slate-800">{disc.exceptionNo}</td>
+                          <td className="py-3 px-3">
+                            <p className="font-semibold text-[#6C2BD9]">{disc.assetNo}</p>
+                            <p className="text-[11px] text-slate-500 truncate max-w-[180px]">{disc.assetName}</p>
+                          </td>
+                          <td className="py-3 px-3">
+                            <span className={clsx(
+                              'px-2 py-0.5 rounded text-[11px] font-semibold',
+                              disc.exceptionType === 'DAMAGED' ? 'bg-red-100 text-red-800' :
+                              disc.exceptionType === 'NOT_FOUND' ? 'bg-rose-100 text-rose-800' :
+                              disc.exceptionType === 'UNREGISTERED' ? 'bg-purple-100 text-purple-800' :
+                              'bg-amber-100 text-amber-800'
+                            )}>
+                              {disc.typeLabel}
                             </span>
-                          ) : (
-                            <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-[10px] font-semibold">
-                              <Clock className="w-3 h-3" /> Pending Review
-                            </span>
-                          )}
-                        </td>
-                        <td className="py-3 px-3 text-right">
-                          {disc.resolved ? (
-                            <span className="text-[11px] text-slate-400 font-medium">{disc.actionLabel}</span>
-                          ) : (
-                            <button
-                              onClick={() => handleReconcileDiscrepancy(disc.id, disc.actionLabel)}
-                              className="px-2.5 py-1 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-[11px] font-semibold rounded shadow-2xs transition-colors"
-                            >
-                              {disc.actionLabel}
-                            </button>
-                          )}
-                        </td>
-                      </tr>
-                    ))}
-                </tbody>
-              </table>
+                          </td>
+                          <td className="py-3 px-3 text-[11px] text-slate-600">
+                            <p>Loc: {disc.systemLocation}</p>
+                            <p>Cust: {disc.systemCustodian}</p>
+                          </td>
+                          <td className="py-3 px-3 text-[11px] text-slate-900 font-medium">
+                            <p>Loc: {disc.verifiedLocation}</p>
+                            <p>Cust: {disc.verifiedCustodian}</p>
+                          </td>
+                          <td className="py-3 px-3 text-center">
+                            {disc.resolved ? (
+                              <span className="inline-flex items-center gap-1 text-emerald-700 bg-emerald-100 px-2 py-0.5 rounded text-[10px] font-semibold">
+                                <CheckCircle2 className="w-3 h-3" /> Resolved
+                              </span>
+                            ) : (
+                              <span className="inline-flex items-center gap-1 text-amber-700 bg-amber-100 px-2 py-0.5 rounded text-[10px] font-semibold">
+                                <Clock className="w-3 h-3" /> Pending Review
+                              </span>
+                            )}
+                          </td>
+                          <td className="py-3 px-3 text-right">
+                            {disc.resolved ? (
+                              <span className="text-[11px] text-slate-400 font-medium">{disc.actionLabel}</span>
+                            ) : (
+                              <button
+                                onClick={() => handleReconcileDiscrepancy(disc.id, disc.actionLabel)}
+                                className="px-2.5 py-1 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-[11px] font-semibold rounded shadow-2xs transition-colors"
+                              >
+                                {disc.actionLabel}
+                              </button>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {discrepancies.filter(d => {
+                  if (discrepancyFilter === 'PENDING') return !d.resolved;
+                  if (discrepancyFilter === 'RESOLVED') return d.resolved;
+                  return true;
+                }).length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
           </div>
         )}

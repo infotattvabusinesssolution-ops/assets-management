@@ -378,7 +378,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
       case 'Completed':
         return <span className="px-3 py-1 rounded-full text-xs font-bold bg-emerald-100 text-emerald-700 border border-emerald-300">Completed</span>;
       case 'Running':
-        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-300">Running</span>;
+        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-[#6C2BD9] border border-purple-300">Running</span>;
       case 'Failed':
         return <span className="px-3 py-1 rounded-full text-xs font-bold bg-rose-100 text-rose-700 border border-rose-300">Failed</span>;
       case 'Scheduled':
@@ -453,12 +453,12 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
         </div>
 
         {/* Card 3: Running */}
-        <div className="bg-blue-50/70 border border-blue-200/60 rounded-2xl p-3.5 flex items-center gap-3 shadow-2xs">
-          <div className="w-10 h-10 rounded-xl bg-white border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+        <div className="bg-purple-50/70 border border-purple-200/60 rounded-2xl p-3.5 flex items-center gap-3 shadow-2xs">
+          <div className="w-10 h-10 rounded-xl bg-white border border-purple-200 flex items-center justify-center text-[#6C2BD9] shrink-0">
             <RefreshCw className="w-5 h-5 animate-spin" />
           </div>
           <div>
-            <div className="text-xl font-black text-blue-800 leading-none">{stats.running}</div>
+            <div className="text-xl font-black text-purple-900 leading-none">{stats.running}</div>
             <div className="text-[11px] text-slate-500 font-bold mt-1">Running</div>
           </div>
         </div>
@@ -583,7 +583,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
 
             <button
               onClick={handleResetFilters}
-              className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer shrink-0"
+              className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer shrink-0"
             >
               <RotateCcw className="w-3.5 h-3.5" />
               <span>Reset</span>
@@ -595,97 +595,83 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
 
       {/* Discovery Jobs Data Table matching Screenshot #18 */}
       <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
-        <div className="overflow-x-auto rounded-xl border border-slate-200">
-          <table className="w-full text-left border-collapse text-xs">
-            <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600">
-              <tr>
-                <th className="py-2.5 px-3 w-8 text-center">#</th>
-                <th className="py-2.5 px-3">Job Name</th>
-                <th className="py-2.5 px-3">Discovery Type</th>
-                <th className="py-2.5 px-3">IP Range / Target</th>
-                <th className="py-2.5 px-3">Profile</th>
-                <th className="py-2.5 px-3">Schedule</th>
-                <th className="py-2.5 px-3">Started On</th>
-                <th className="py-2.5 px-3">Completed On</th>
-                <th className="py-2.5 px-3 text-center">Devices Found</th>
-                <th className="py-2.5 px-3">Status</th>
-                <th className="py-2.5 px-3">Created By</th>
-                <th className="py-2.5 px-3 text-center">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-              {filteredJobs.map((job) => {
-                const isSelected = selectedJob.id === job.id;
-                return (
-                  <tr
-                    key={job.id}
-                    onClick={() => setSelectedJobId(job.id)}
-                    className={`cursor-pointer transition-colors ${
-                      isSelected ? 'bg-purple-50/70 font-semibold' : 'hover:bg-slate-50'
-                    }`}
-                  >
-                    <td className="py-2.5 px-3 text-center font-bold text-slate-400">{job.jobNum}</td>
-                    <td className="py-2.5 px-3 font-bold text-slate-900">{job.jobName}</td>
-                    <td className="py-2.5 px-3">{job.discoveryType}</td>
-                    <td className="py-2.5 px-3 font-mono text-blue-700 font-bold">{job.ipRange}</td>
-                    <td className="py-2.5 px-3">{job.profile}</td>
-                    <td className="py-2.5 px-3 text-slate-600">{job.schedule}</td>
-                    <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">{job.startedOn}</td>
-                    <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">{job.completedOn}</td>
-                    <td className="py-2.5 px-3 text-center font-bold text-slate-800">{job.devicesFound}</td>
-                    <td className="py-2.5 px-3">{getStatusBadge(job.status)}</td>
-                    <td className="py-2.5 px-3 text-slate-800">{job.createdBy}</td>
-                    <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                      <div className="flex items-center justify-center gap-1">
-                        <button
-                          onClick={() => {
-                            setSelectedJobId(job.id);
-                            if (onNavigateToDevices) onNavigateToDevices(job.jobName);
-                          }}
-                          className="p-1 text-blue-600 hover:bg-blue-50 rounded-md"
-                          title="View Discovered Devices"
-                        >
-                          <Eye className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => showToast(`Ping RTLS target for ${job.jobName}`)}
-                          className="p-1 text-purple-600 hover:bg-purple-50 rounded-md"
-                          title="Target Details"
-                        >
-                          <Crosshair className="w-3.5 h-3.5" />
-                        </button>
-                        <button className="p-1 text-slate-400 hover:bg-slate-100 rounded-md">
-                          <MoreHorizontal className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+        <div className="overflow-hidden rounded-xl border border-slate-200">
+          <div className="overflow-auto max-h-[540px]">
+            <table className="w-full text-left border-collapse text-xs">
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs border-b border-slate-200 font-bold text-slate-600">
+                <tr>
+                  <th className="py-2.5 px-3 w-8 text-center">#</th>
+                  <th className="py-2.5 px-3">Job Name</th>
+                  <th className="py-2.5 px-3">Discovery Type</th>
+                  <th className="py-2.5 px-3">IP Range / Target</th>
+                  <th className="py-2.5 px-3">Profile</th>
+                  <th className="py-2.5 px-3">Schedule</th>
+                  <th className="py-2.5 px-3">Started On</th>
+                  <th className="py-2.5 px-3">Completed On</th>
+                  <th className="py-2.5 px-3 text-center">Devices Found</th>
+                  <th className="py-2.5 px-3">Status</th>
+                  <th className="py-2.5 px-3">Created By</th>
+                  <th className="py-2.5 px-3 text-center">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                {filteredJobs.map((job) => {
+                  const isSelected = selectedJob.id === job.id;
+                  return (
+                    <tr
+                      key={job.id}
+                      onClick={() => setSelectedJobId(job.id)}
+                      className={`cursor-pointer transition-colors ${
+                        isSelected ? 'bg-purple-50/70 font-semibold' : 'hover:bg-slate-50'
+                      }`}
+                    >
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-400">{job.jobNum}</td>
+                      <td className="py-2.5 px-3 font-bold text-slate-900">{job.jobName}</td>
+                      <td className="py-2.5 px-3">{job.discoveryType}</td>
+                      <td className="py-2.5 px-3 font-mono text-[#6C2BD9] font-bold">{job.ipRange}</td>
+                      <td className="py-2.5 px-3">{job.profile}</td>
+                      <td className="py-2.5 px-3 text-slate-600">{job.schedule}</td>
+                      <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">{job.startedOn}</td>
+                      <td className="py-2.5 px-3 text-slate-500 whitespace-nowrap">{job.completedOn}</td>
+                      <td className="py-2.5 px-3 text-center font-bold text-slate-800">{job.devicesFound}</td>
+                      <td className="py-2.5 px-3">{getStatusBadge(job.status)}</td>
+                      <td className="py-2.5 px-3 text-slate-800">{job.createdBy}</td>
+                      <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex items-center justify-center gap-1">
+                          <button
+                            onClick={() => {
+                              setSelectedJobId(job.id);
+                              if (onNavigateToDevices) onNavigateToDevices(job.jobName);
+                            }}
+                            className="p-1 text-[#6C2BD9] hover:bg-purple-50 rounded-md"
+                            title="View Discovered Devices"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                          <button
+                            onClick={() => showToast(`Ping RTLS target for ${job.jobName}`)}
+                            className="p-1 text-purple-600 hover:bg-purple-50 rounded-md"
+                            title="Target Details"
+                          >
+                            <Crosshair className="w-3.5 h-3.5" />
+                          </button>
+                          <button className="p-1 text-slate-400 hover:bg-slate-100 rounded-md">
+                            <MoreHorizontal className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
         </div>
 
-        {/* Table Footer / Pagination matching Screenshot #18 */}
-        <div className="flex items-center justify-between pt-1 text-xs font-semibold text-slate-500">
-          <div>Showing 1 to 10 of 12 jobs</div>
-
-          <div className="flex items-center gap-1.5">
-            <button className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-40">
-              <ChevronLeft className="w-3.5 h-3.5" />
-            </button>
-            <button className="px-2.5 py-1 bg-[#6C2BD9] text-white rounded-lg font-bold">1</button>
-            <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">2</button>
-            <button className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-100">
-              <ChevronRight className="w-3.5 h-3.5" />
-            </button>
-
-            <select className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 rounded-lg px-2 py-1 ml-2">
-              <option>10 per page</option>
-              <option>25 per page</option>
-              <option>50 per page</option>
-            </select>
-          </div>
+        {/* Table Footer / Scroll Down */}
+        <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span className="font-medium text-slate-600">Showing {filteredJobs.length} records</span>
+          <span className="text-slate-400">Scroll down to view all records</span>
         </div>
       </div>
 
@@ -697,7 +683,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
           <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <div className="flex items-center gap-2">
-                <h3 className="text-xs font-bold text-blue-900">Job Details - {selectedJob.jobName}</h3>
+                <h3 className="text-xs font-bold text-purple-900">Job Details - {selectedJob.jobName}</h3>
                 {getStatusBadge(selectedJob.status)}
               </div>
             </div>
@@ -706,51 +692,51 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
             <div className="bg-white p-4 rounded-xl border border-slate-100 shadow-2xs">
               <div className="grid grid-cols-1 sm:grid-cols-4 gap-y-3 gap-x-3 text-xs items-center">
                 {/* Row 1 */}
-                <span className="text-[#3B4270] font-medium">Job ID</span>
+                <span className="text-[#0F172A] font-medium">Job ID</span>
                 <span className="font-mono font-semibold text-[#1B2559]">{selectedJob.id}</span>
-                <span className="text-[#3B4270] font-medium">Job Name</span>
+                <span className="text-[#0F172A] font-medium">Job Name</span>
                 <span className="font-semibold text-[#1B2559] truncate">{selectedJob.jobName}</span>
 
                 {/* Row 2 */}
-                <span className="text-[#3B4270] font-medium">Discovery Type</span>
+                <span className="text-[#0F172A] font-medium">Discovery Type</span>
                 <span className="font-semibold text-[#1B2559]">{selectedJob.discoveryType}</span>
-                <span className="text-[#3B4270] font-medium">IP Range</span>
+                <span className="text-[#0F172A] font-medium">IP Range</span>
                 <span className="font-mono font-semibold text-[#1A73E8]">{selectedJob.ipRange}</span>
 
                 {/* Row 3 */}
-                <span className="text-[#3B4270] font-medium">Profile</span>
+                <span className="text-[#0F172A] font-medium">Profile</span>
                 <span className="font-semibold text-[#1B2559]">{selectedJob.profile}</span>
-                <span className="text-[#3B4270] font-medium">Schedule</span>
+                <span className="text-[#0F172A] font-medium">Schedule</span>
                 <span className="font-semibold text-[#1B2559]">{selectedJob.schedule}</span>
 
                 {/* Row 4 */}
-                <span className="text-[#3B4270] font-medium">Created By</span>
+                <span className="text-[#0F172A] font-medium">Created By</span>
                 <span className="font-semibold text-[#1B2559]">{selectedJob.createdBy}</span>
-                <span className="text-[#3B4270] font-medium">Created On</span>
+                <span className="text-[#0F172A] font-medium">Created On</span>
                 <span className="font-semibold text-[#1B2559]">{selectedJob.createdOn}</span>
 
                 {/* Row 5 */}
-                <span className="text-[#3B4270] font-medium">Started On</span>
+                <span className="text-[#0F172A] font-medium">Started On</span>
                 <span className="font-semibold text-[#1B2559]">{selectedJob.startedOn}</span>
-                <span className="text-[#3B4270] font-medium">Completed On</span>
+                <span className="text-[#0F172A] font-medium">Completed On</span>
                 <span className="font-semibold text-[#1B2559]">{selectedJob.completedOn}</span>
 
                 {/* Row 6 */}
-                <span className="text-[#3B4270] font-medium">Duration</span>
+                <span className="text-[#0F172A] font-medium">Duration</span>
                 <span className="font-semibold text-[#1B2559]">{selectedJob.duration}</span>
-                <span className="text-[#3B4270] font-medium">Status</span>
+                <span className="text-[#0F172A] font-medium">Status</span>
                 <div>{getStatusBadge(selectedJob.status)}</div>
 
                 {/* Row 7 */}
-                <span className="text-[#3B4270] font-medium">Devices Found</span>
+                <span className="text-[#0F172A] font-medium">Devices Found</span>
                 <span className="font-bold text-slate-900">{selectedJob.devicesFound}</span>
-                <span className="text-[#3B4270] font-medium">New Assets</span>
+                <span className="text-[#0F172A] font-medium">New Assets</span>
                 <span className="font-bold text-[#1A73E8]">{selectedJob.newAssets}</span>
 
                 {/* Row 8 */}
-                <span className="text-[#3B4270] font-medium">Matched Assets</span>
+                <span className="text-[#0F172A] font-medium">Matched Assets</span>
                 <span className="font-bold text-emerald-700">{selectedJob.matchedAssets}</span>
-                <span className="text-[#3B4270] font-medium">Requires Review</span>
+                <span className="text-[#0F172A] font-medium">Requires Review</span>
                 <span className="font-bold text-amber-700">{selectedJob.requiresReview}</span>
               </div>
             </div>
@@ -784,7 +770,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
             <div className="space-y-2">
               <button
                 onClick={() => setIsJobDevicesModalOpen(true)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
               >
                 <Eye className="w-4 h-4" />
                 <span>View Discovered Devices</span>
@@ -792,7 +778,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
 
               <button
                 onClick={() => showToast(`Report for ${selectedJob.id} downloading...`)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
               >
                 <Download className="w-4 h-4" />
                 <span>Download Report</span>
@@ -800,7 +786,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
 
               <button
                 onClick={() => setIsRerunJobModalOpen(true)}
-                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
               >
                 <RefreshCw className="w-4 h-4" />
                 <span>Re-run Job</span>
@@ -865,7 +851,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px] font-bold">IP Range Scan</span>
-                  <span className="font-mono font-bold text-blue-700">{selectedJob.ipRange}</span>
+                  <span className="font-mono font-bold text-[#6C2BD9]">{selectedJob.ipRange}</span>
                 </div>
                 <div>
                   <span className="text-slate-400 block text-[10px] font-bold">Total Devices</span>
@@ -875,40 +861,42 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
 
               {/* Devices Table */}
               <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#F8FAFC] text-slate-500 font-semibold border-b border-slate-200">
-                    <tr>
-                      <th className="py-2.5 px-3 w-8">#</th>
-                      <th className="py-2.5 px-3">Hostname</th>
-                      <th className="py-2.5 px-3">IP Address</th>
-                      <th className="py-2.5 px-3">Device Type</th>
-                      <th className="py-2.5 px-3 text-center">Asset Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {[
-                      { num: 1, host: 'DESKTOP-001', ip: '192.168.1.10', type: 'Computer', status: 'Matched' },
-                      { num: 2, host: 'MONITOR-245', ip: '192.168.1.11', type: 'Monitor', status: 'Matched' },
-                      { num: 3, host: 'PRN-HQ-01', ip: '192.168.1.20', type: 'Printer', status: 'New' },
-                      { num: 4, host: 'SW-CORE-01', ip: '192.168.1.30', type: 'Network Device', status: 'Matched' },
-                      { num: 5, host: 'LAPTOP-078', ip: '192.168.1.45', type: 'Computer', status: 'Review' },
-                      { num: 6, host: 'AP-01', ip: '192.168.1.50', type: 'Network Device', status: 'Matched' }
-                    ].map((d) => (
-                      <tr key={d.num} className="hover:bg-slate-50">
-                        <td className="py-2.5 px-3 font-bold text-slate-400">{d.num}</td>
-                        <td className="py-2.5 px-3 font-bold text-slate-900">{d.host}</td>
-                        <td className="py-2.5 px-3 font-mono text-blue-700">{d.ip}</td>
-                        <td className="py-2.5 px-3">{d.type}</td>
-                        <td className="py-2.5 px-3 text-center">{getStatusBadge(d.status)}</td>
+                <div className="overflow-auto max-h-[300px]">
+                  <table className="w-full text-left text-xs">
+                    <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-500 font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3 w-8">#</th>
+                        <th className="py-2.5 px-3">Hostname</th>
+                        <th className="py-2.5 px-3">IP Address</th>
+                        <th className="py-2.5 px-3">Device Type</th>
+                        <th className="py-2.5 px-3 text-center">Asset Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {[
+                        { num: 1, host: 'DESKTOP-001', ip: '192.168.1.10', type: 'Computer', status: 'Matched' },
+                        { num: 2, host: 'MONITOR-245', ip: '192.168.1.11', type: 'Monitor', status: 'Matched' },
+                        { num: 3, host: 'PRN-HQ-01', ip: '192.168.1.20', type: 'Printer', status: 'New' },
+                        { num: 4, host: 'SW-CORE-01', ip: '192.168.1.30', type: 'Network Device', status: 'Matched' },
+                        { num: 5, host: 'LAPTOP-078', ip: '192.168.1.45', type: 'Computer', status: 'Review' },
+                        { num: 6, host: 'AP-01', ip: '192.168.1.50', type: 'Network Device', status: 'Matched' }
+                      ].map((d) => (
+                        <tr key={d.num} className="hover:bg-slate-50">
+                          <td className="py-2.5 px-3 font-bold text-slate-400">{d.num}</td>
+                          <td className="py-2.5 px-3 font-bold text-slate-900">{d.host}</td>
+                          <td className="py-2.5 px-3 font-mono text-[#6C2BD9]">{d.ip}</td>
+                          <td className="py-2.5 px-3">{d.type}</td>
+                          <td className="py-2.5 px-3 text-center">{getStatusBadge(d.status)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             </div>
 
             <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
-              <span className="text-xs text-slate-500">Showing 1 to 6 of 245 devices</span>
+              <span className="text-xs text-slate-500">Scroll down to view all records</span>
               <button
                 onClick={() => setIsJobDevicesModalOpen(false)}
                 className="px-6 py-2 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
@@ -942,7 +930,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
 
               <div className="bg-[#F8FAFC] border border-slate-200 rounded-2xl p-3 text-left space-y-1">
                 <p><span className="text-slate-500">Discovery Type:</span> <strong className="text-slate-800">{selectedJob.discoveryType}</strong></p>
-                <p><span className="text-slate-500">IP Range:</span> <strong className="font-mono text-blue-700">{selectedJob.ipRange}</strong></p>
+                <p><span className="text-slate-500">IP Range:</span> <strong className="font-mono text-[#6C2BD9]">{selectedJob.ipRange}</strong></p>
                 <p><span className="text-slate-500">Profile:</span> <strong className="text-slate-800">{selectedJob.profile}</strong></p>
                 <p><span className="text-slate-500">Schedule:</span> <strong className="text-slate-800">{selectedJob.schedule}</strong></p>
               </div>
@@ -957,8 +945,8 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
                 <span className="font-semibold text-slate-700">Use the same configuration and credentials</span>
               </label>
 
-              <div className="p-3 bg-blue-50 border border-blue-200 rounded-xl text-blue-900 text-left flex items-center gap-2">
-                <Info className="w-4 h-4 text-blue-600 shrink-0" />
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl text-purple-900 text-left flex items-center gap-2">
+                <Info className="w-4 h-4 text-[#6C2BD9] shrink-0" />
                 <span>A new execution will be created. Previous results will be retained.</span>
               </div>
             </div>

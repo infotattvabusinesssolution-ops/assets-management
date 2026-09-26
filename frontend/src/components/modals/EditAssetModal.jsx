@@ -47,7 +47,7 @@ export function EditAssetModal({ isOpen, onClose, asset, onSaveAsset }) {
       <div className="bg-white rounded-2xl shadow-2xl border border-slate-200 w-full max-w-md overflow-hidden animate-in fade-in zoom-in-95 duration-150">
         <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 bg-slate-50/60">
           <div className="flex items-center gap-2">
-            <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-7 h-7 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
               <Edit3 className="w-3.5 h-3.5" />
             </div>
             <h3 className="text-sm font-bold text-slate-900">Edit Received Asset</h3>
@@ -137,7 +137,7 @@ export function EditAssetModal({ isOpen, onClose, asset, onSaveAsset }) {
             </button>
             <button
               type="submit"
-              className="px-4 py-1.5 font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs"
+              className="px-4 py-1.5 font-semibold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] rounded-xl shadow-xs"
             >
               Save Changes
             </button>

@@ -55,7 +55,7 @@ export function ValidationDetailsModal({ isOpen, onClose, devices = [] }) {
               value={searchTerm}
               onChange={e => setSearchTerm(e.target.value)}
               placeholder="Filter by hostname, serial, IP..."
-              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:border-blue-500"
+              className="w-full pl-8 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
             />
           </div>
 
@@ -96,7 +96,7 @@ export function ValidationDetailsModal({ isOpen, onClose, devices = [] }) {
                       className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold ${
                         dev.assetAction === 'Create New'
                           ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
-                          : 'bg-blue-100 text-blue-800 border border-blue-200'
+                          : 'bg-blue-100 text-blue-800 border border-purple-200'
                       }`}
                     >
                       {dev.assetAction}
@@ -123,7 +123,7 @@ export function ValidationDetailsModal({ isOpen, onClose, devices = [] }) {
           <button
             type="button"
             onClick={onClose}
-            className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition-colors"
+            className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-semibold rounded-xl shadow-xs transition-colors"
           >
             Done
           </button>

@@ -161,9 +161,8 @@ export function ImportToAsset360() {
   // Pagination slice
   const totalPages = Math.ceil(filteredDevices.length / itemsPerPage);
   const paginatedDevices = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredDevices.slice(start, start + itemsPerPage);
-  }, [filteredDevices, currentPage]);
+    return filteredDevices;
+  }, [filteredDevices]);
 
   const handleToggleSelectAll = () => {
     if (selectedIds.length === filteredDevices.length) {
@@ -243,7 +242,7 @@ export function ImportToAsset360() {
   const getDeviceIcon = (type) => {
     switch (type) {
       case 'Computer':
-        return <Monitor className="w-3.5 h-3.5 text-blue-600" />;
+        return <Monitor className="w-3.5 h-3.5 text-[#6C2BD9]" />;
       case 'Monitor':
         return <Monitor className="w-3.5 h-3.5 text-sky-600" />;
       case 'Printer':
@@ -476,9 +475,9 @@ export function ImportToAsset360() {
 
             {/* Device List Grid Table */}
             <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[540px]">
                 <table className="w-full text-left text-xs border-collapse text-slate-800">
-                  <thead className="bg-purple-50/60 border-b border-slate-200 text-slate-800 font-extrabold text-[11px] tracking-wide select-none">
+                  <thead className="sticky top-0 z-10 bg-purple-50 shadow-2xs border-b border-slate-200 text-slate-800 font-extrabold text-[11px] tracking-wide select-none">
                     <tr>
                       <th className="py-3 px-3.5 w-10 text-center">
                         <input
@@ -504,7 +503,7 @@ export function ImportToAsset360() {
                   <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                     {paginatedDevices.map((dev, idx) => {
                       const isChecked = selectedIds.includes(dev.id);
-                      const globalIndex = (currentPage - 1) * itemsPerPage + idx + 1;
+                      const globalIndex = idx + 1;
 
                       return (
                         <tr
@@ -547,55 +546,10 @@ export function ImportToAsset360() {
                 </table>
               </div>
 
-              {/* Table Footer / Pagination */}
-              <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/50">
-                <div>
-                  Showing <span className="font-bold text-slate-900">1</span> to{' '}
-                  <span className="font-bold text-slate-900">{paginatedDevices.length}</span> of{' '}
-                  <span className="font-bold text-slate-900">{filteredDevices.length}</span> selected devices
-                </div>
-
-                <div className="flex items-center gap-1.5">
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                    disabled={currentPage === 1}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  {[...Array(totalPages)].map((_, i) => (
-                    <button
-                      key={i + 1}
-                      type="button"
-                      onClick={() => setCurrentPage(i + 1)}
-                      className={`w-7 h-7 rounded-lg text-xs font-extrabold transition-colors cursor-pointer ${
-                        currentPage === i + 1
-                          ? 'bg-[#6C2BD9] text-white shadow-xs'
-                          : 'bg-white border border-slate-200 hover:bg-slate-50 text-slate-700'
-                      }`}
-                    >
-                      {i + 1}
-                    </button>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                    disabled={currentPage === totalPages}
-                    className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50 cursor-pointer"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-
-                  <select
-                    className="ml-2 px-2.5 py-1 rounded-lg border border-slate-200 bg-white text-xs font-bold text-slate-800 focus:outline-hidden"
-                    defaultValue="10 per page"
-                  >
-                    <option>10 per page</option>
-                    <option>25 per page</option>
-                    <option>50 per page</option>
-                  </select>
-                </div>
+              {/* Table Footer / Scroll Down */}
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {filteredDevices.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>
 
@@ -854,7 +808,7 @@ export function ImportToAsset360() {
               </div>
               <div className="max-h-72 overflow-y-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                  <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 font-semibold border-b border-slate-200">
                     <tr>
                       <th className="py-2.5 px-4">#</th>
                       <th className="py-2.5 px-4">Hostname</th>
@@ -865,7 +819,7 @@ export function ImportToAsset360() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100">
-                    {selectedDevices.slice(0, 10).map((dev, idx) => (
+                    {selectedDevices.map((dev, idx) => (
                       <tr key={dev.id} className="hover:bg-slate-50/60">
                         <td className="py-2 px-4 font-mono text-slate-400">{idx + 1}</td>
                         <td className="py-2 px-4 font-semibold text-slate-900">{dev.hostname}</td>
@@ -1020,20 +974,21 @@ export function ImportToAsset360() {
                 </span>
               </div>
 
-              <table className="w-full text-left border-collapse">
-                <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
-                  <tr>
-                    <th className="py-2.5 px-4">Asset Tag</th>
-                    <th className="py-2.5 px-4">Hostname / Name</th>
-                    <th className="py-2.5 px-4">Serial Number</th>
-                    <th className="py-2.5 px-4">Location</th>
-                    <th className="py-2.5 px-4">Category</th>
-                    <th className="py-2.5 px-4">Action Taken</th>
-                    <th className="py-2.5 px-4 text-center">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {selectedDevices.slice(0, 10).map((dev, idx) => (
+              <div className="max-h-72 overflow-y-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 font-semibold border-b border-slate-200">
+                    <tr>
+                      <th className="py-2.5 px-4">Asset Tag</th>
+                      <th className="py-2.5 px-4">Hostname / Name</th>
+                      <th className="py-2.5 px-4">Serial Number</th>
+                      <th className="py-2.5 px-4">Location</th>
+                      <th className="py-2.5 px-4">Category</th>
+                      <th className="py-2.5 px-4">Action Taken</th>
+                      <th className="py-2.5 px-4 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {selectedDevices.map((dev, idx) => (
                     <tr key={dev.id} className="hover:bg-slate-50/60">
                       <td className="py-2.5 px-4 font-mono font-bold text-[#6C2BD9]">
                         {dev.assetAction === 'Create New' ? `AST-2026-0${101 + idx}` : dev.matchedAssetId || 'AS-2024-0015'}
@@ -1064,6 +1019,11 @@ export function ImportToAsset360() {
                 </tbody>
               </table>
             </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {selectedDevices.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
+            </div>
+          </div>
 
             {/* Bottom Actions */}
             <div className="flex items-center justify-end gap-3 pt-2">

@@ -722,7 +722,7 @@ export function Geofencing() {
                     <div className={`w-8 h-8 rounded-lg border-2 border-dashed flex items-center justify-center shrink-0 ${
                       z.color === 'emerald' ? 'border-emerald-500 bg-emerald-50 text-emerald-600' :
                       z.color === 'amber' ? 'border-amber-500 bg-amber-50 text-amber-600' :
-                      z.color === 'blue' ? 'border-blue-500 bg-blue-50 text-blue-600' :
+                      z.color === 'blue' ? 'border-[#6C2BD9] bg-purple-50 text-[#6C2BD9]' :
                       z.color === 'rose' ? 'border-rose-500 bg-rose-50 text-rose-600' :
                       'border-purple-500 bg-purple-50 text-purple-600'
                     }`}>
@@ -797,9 +797,9 @@ export function Geofencing() {
 
           {/* Table 1: Geofence Rules Grid */}
           {bottomTab === 'Geofence Rules' && (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[400px]">
               <table className="w-full text-left text-xs font-medium text-slate-700">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px] shadow-2xs">
                   <tr>
                     <th className="p-3">#</th>
                     <th className="p-3">Zone Name</th>
@@ -837,14 +837,18 @@ export function Geofencing() {
                   ))}
                 </tbody>
               </table>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {rules.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
           )}
 
           {/* Table 2: Alerts & Events Log */}
           {bottomTab === 'Alerts & Events' && (
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[400px]">
               <table className="w-full text-left text-xs font-medium text-slate-700">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px] shadow-2xs">
                   <tr>
                     <th className="p-3">Alert ID</th>
                     <th className="p-3">Timestamp</th>
@@ -893,6 +897,10 @@ export function Geofencing() {
                   ))}
                 </tbody>
               </table>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {alerts.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
           )}
 

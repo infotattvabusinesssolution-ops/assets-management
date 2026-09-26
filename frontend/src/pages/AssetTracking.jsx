@@ -708,7 +708,7 @@ export function AssetTracking() {
                     >
                       {/* Selection Ring */}
                       {isSelected && (
-                        <div className="absolute -inset-3 rounded-full border-2 border-blue-500 bg-blue-500/20 animate-pulse pointer-events-none" />
+                        <div className="absolute -inset-3 rounded-full border-2 border-[#6C2BD9] bg-purple-500/20 animate-pulse pointer-events-none" />
                       )}
 
                       {/* Main Dot Marker */}
@@ -765,7 +765,7 @@ export function AssetTracking() {
                 <span>Offline</span>
               </div>
               <div className="flex items-center gap-1.5">
-                <span className="w-3.5 h-3.5 rounded-full border-2 border-blue-500 inline-block" />
+                <span className="w-3.5 h-3.5 rounded-full border-2 border-[#6C2BD9] inline-block" />
                 <span>Selected</span>
               </div>
             </div>
@@ -900,7 +900,7 @@ export function AssetTracking() {
                 <button
                   type="button"
                   onClick={handleLocateAsset}
-                  className="px-3 py-2 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="px-3 py-2 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100 text-[#6C2BD9] text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <Crosshair className="w-3.5 h-3.5" />
                   <span>Locate</span>
@@ -909,7 +909,7 @@ export function AssetTracking() {
                 <button
                   type="button"
                   onClick={handleViewOnMap}
-                  className="px-3 py-2 rounded-xl border border-blue-200 bg-blue-50/60 hover:bg-blue-100 text-blue-700 text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                  className="px-3 py-2 rounded-xl border border-purple-200 bg-purple-50/60 hover:bg-purple-100 text-[#6C2BD9] text-xs font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <MapPin className="w-3.5 h-3.5" />
                   <span>View on Map</span>

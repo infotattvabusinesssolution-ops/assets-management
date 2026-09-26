@@ -469,7 +469,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
         );
       case 'New':
         return (
-          <span className="px-3 py-1 rounded-full text-xs font-bold bg-blue-100 text-blue-700 border border-blue-300">
+          <span className="px-3 py-1 rounded-full text-xs font-bold bg-purple-100 text-[#6C2BD9] border border-purple-300">
             New
           </span>
         );
@@ -514,7 +514,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
         <div className="flex items-center gap-3">
           <button
             onClick={() => setIsScheduleOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
           >
             <Plus className="w-3.5 h-3.5" />
             <span>Schedule Discovery</span>
@@ -522,7 +522,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
 
           <button
             onClick={() => setIsSettingsOpen(true)}
-            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
           >
             <Settings className="w-3.5 h-3.5" />
             <span>Discovery Settings</span>
@@ -554,7 +554,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
               {/* Top-Left Card: Discovery Configuration (4 Cols) */}
               <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-5 shadow-xs flex flex-col justify-between">
                 <div>
-                  <h2 className="text-sm font-bold text-blue-900 mb-4 pb-2 border-b border-slate-100">
+                  <h2 className="text-sm font-bold text-purple-900 mb-4 pb-2 border-b border-slate-100">
                     Discovery Configuration
                   </h2>
 
@@ -667,7 +667,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
 
                   <button
                     onClick={() => setIsScheduleOpen(true)}
-                    className="flex items-center gap-1.5 py-2 px-3 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 font-bold text-xs transition-all cursor-pointer whitespace-nowrap"
+                    className="flex items-center gap-1.5 py-2 px-3 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold text-xs transition-all cursor-pointer whitespace-nowrap"
                   >
                     <Calendar className="w-4 h-4" />
                     <span>Save as Job</span>
@@ -680,10 +680,10 @@ export function DiscoveryWorkbench({ defaultTab }) {
                 <div>
                   {/* Summary Header */}
                   <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
-                    <h2 className="text-sm font-bold text-blue-900">Discovery Summary</h2>
+                    <h2 className="text-sm font-bold text-purple-900">Discovery Summary</h2>
                     <div className="flex items-center gap-3 text-xs font-semibold">
                       <span className="text-slate-400">Last Scan: 10 Sep 2026 10:24 AM</span>
-                      <button className="text-blue-600 hover:underline font-bold flex items-center gap-1">
+                      <button className="text-[#6C2BD9] hover:underline font-bold flex items-center gap-1">
                         <span>View Details</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
@@ -716,12 +716,12 @@ export function DiscoveryWorkbench({ defaultTab }) {
                     </div>
 
                     {/* Card 3: New Assets */}
-                    <div className="bg-blue-50/70 border border-blue-200/60 rounded-xl p-3 flex items-center gap-3">
-                      <div className="w-9 h-9 rounded-lg bg-white border border-blue-200 flex items-center justify-center text-blue-600 shrink-0">
+                    <div className="bg-purple-50/70 border border-purple-200/60 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-9 h-9 rounded-lg bg-white border border-purple-200 flex items-center justify-center text-[#6C2BD9] shrink-0">
                         <Plus className="w-5 h-5" />
                       </div>
                       <div>
-                        <div className="text-lg font-black text-blue-800 leading-none">{summary.newAssets}</div>
+                        <div className="text-lg font-black text-purple-900 leading-none">{summary.newAssets}</div>
                         <div className="text-[11px] text-slate-500 font-semibold mt-1">New Assets Found</div>
                       </div>
                     </div>
@@ -811,7 +811,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
               
               {/* Table Header & Search Filter Bar */}
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
-                <h3 className="text-sm font-bold text-blue-900">
+                <h3 className="text-sm font-bold text-purple-900">
                   Discovered Devices <span className="text-slate-400 font-medium">(245)</span>
                 </h3>
 
@@ -870,120 +870,99 @@ export function DiscoveryWorkbench({ defaultTab }) {
                   </select>
 
                   {/* Actions Dropdown Button */}
-                  <button className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-xs font-bold transition-all cursor-pointer">
+                  <button className="flex items-center gap-1 px-3 py-1.5 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer">
                     <span>... Actions</span>
                   </button>
                 </div>
               </div>
 
               {/* Table Data matching Screenshot #17 */}
-              <div className="overflow-x-auto rounded-xl border border-slate-200">
-                <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600">
-                    <tr>
-                      <th className="py-2.5 px-3 w-8 text-center">
-                        <input
-                          type="checkbox"
-                          checked={selectedIds.length === filteredDevices.length}
-                          onChange={toggleSelectAll}
-                          className="accent-[#6C2BD9]"
-                        />
-                      </th>
-                      <th className="py-2.5 px-3">IP Address</th>
-                      <th className="py-2.5 px-3">Hostname</th>
-                      <th className="py-2.5 px-3">MAC Address</th>
-                      <th className="py-2.5 px-3">Device Type</th>
-                      <th className="py-2.5 px-3">Manufacturer</th>
-                      <th className="py-2.5 px-3">Model</th>
-                      <th className="py-2.5 px-3">Serial Number</th>
-                      <th className="py-2.5 px-3">Asset Status</th>
-                      <th className="py-2.5 px-3 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {filteredDevices.map((dev) => {
-                      const isSelected = selectedDevice.id === dev.id;
-                      const isChecked = selectedIds.includes(dev.id);
+              <div className="rounded-xl border border-slate-200 overflow-hidden">
+                <div className="overflow-auto max-h-[540px]">
+                  <table className="w-full text-left border-collapse text-xs">
+                    <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs border-b border-slate-200 font-bold text-slate-600">
+                      <tr>
+                        <th className="py-2.5 px-3 w-8 text-center">
+                          <input
+                            type="checkbox"
+                            checked={selectedIds.length === filteredDevices.length}
+                            onChange={toggleSelectAll}
+                            className="accent-[#6C2BD9]"
+                          />
+                        </th>
+                        <th className="py-2.5 px-3">IP Address</th>
+                        <th className="py-2.5 px-3">Hostname</th>
+                        <th className="py-2.5 px-3">MAC Address</th>
+                        <th className="py-2.5 px-3">Device Type</th>
+                        <th className="py-2.5 px-3">Manufacturer</th>
+                        <th className="py-2.5 px-3">Model</th>
+                        <th className="py-2.5 px-3">Serial Number</th>
+                        <th className="py-2.5 px-3">Asset Status</th>
+                        <th className="py-2.5 px-3 text-center">Action</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {filteredDevices.map((dev) => {
+                        const isSelected = selectedDevice.id === dev.id;
+                        const isChecked = selectedIds.includes(dev.id);
 
-                      return (
-                        <tr
-                          key={dev.id}
-                          onClick={() => setSelectedDevice(dev)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected ? 'bg-purple-50/70 font-semibold' : 'hover:bg-slate-50'
-                          }`}
-                        >
-                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <input
-                              type="checkbox"
-                              checked={isChecked}
-                              onChange={() => toggleSelectDevice(dev.id)}
-                              className="accent-[#6C2BD9]"
-                            />
-                          </td>
-                          <td className="py-2.5 px-3 font-mono text-blue-700 font-bold">{dev.ipAddress}</td>
-                          <td className="py-2.5 px-3 font-bold text-slate-900">{dev.hostname}</td>
-                          <td className="py-2.5 px-3 font-mono text-slate-500">{dev.macAddress}</td>
-                          <td className="py-2.5 px-3">{dev.deviceType}</td>
-                          <td className="py-2.5 px-3">{dev.manufacturer}</td>
-                          <td className="py-2.5 px-3">{dev.model}</td>
-                          <td className="py-2.5 px-3 font-mono text-slate-600">{dev.serialNumber}</td>
-                          <td className="py-2.5 px-3">{getStatusBadge(dev.status)}</td>
-                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => setSelectedDevice(dev)}
-                                className="p-1 text-blue-600 hover:bg-blue-50 rounded-md"
-                                title="View Details"
-                              >
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setMatchModalDevice(dev);
-                                  setIsMatchModalOpen(true);
-                                }}
-                                className="p-1 text-purple-600 hover:bg-purple-50 rounded-md"
-                                title="Reconcile Asset Match"
-                              >
-                                <LinkIcon className="w-3.5 h-3.5" />
-                              </button>
-                              <button className="p-1 text-slate-400 hover:bg-slate-100 rounded-md">
-                                <MoreHorizontal className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
-
-              {/* Pagination Bar matching Screenshot #17 */}
-              <div className="flex items-center justify-between pt-1 text-xs font-semibold text-slate-500">
-                <div>Showing 1 to 6 of 245 devices</div>
-
-                <div className="flex items-center gap-1.5">
-                  <button className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-100 disabled:opacity-40">
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  <button className="px-2.5 py-1 bg-[#6C2BD9] text-white rounded-lg font-bold">1</button>
-                  <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">2</button>
-                  <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">3</button>
-                  <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">4</button>
-                  <button className="px-2.5 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">5</button>
-                  <span className="px-1 text-slate-400">...</span>
-                  <button className="px-2 py-1 border border-slate-200 rounded-lg hover:bg-slate-100">41</button>
-                  <button className="p-1.5 border border-slate-200 rounded-lg hover:bg-slate-100">
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-
-                  <select className="bg-slate-50 border border-slate-200 text-xs font-bold text-slate-700 rounded-lg px-2 py-1 ml-2">
-                    <option>6 per page</option>
-                    <option>10 per page</option>
-                    <option>25 per page</option>
-                  </select>
+                        return (
+                          <tr
+                            key={dev.id}
+                            onClick={() => setSelectedDevice(dev)}
+                            className={`cursor-pointer transition-colors ${
+                              isSelected ? 'bg-purple-50/70 font-semibold' : 'hover:bg-slate-50'
+                            }`}
+                          >
+                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              <input
+                                type="checkbox"
+                                checked={isChecked}
+                                onChange={() => toggleSelectDevice(dev.id)}
+                                className="accent-[#6C2BD9]"
+                              />
+                            </td>
+                            <td className="py-2.5 px-3 font-mono text-[#6C2BD9] font-bold">{dev.ipAddress}</td>
+                            <td className="py-2.5 px-3 font-bold text-slate-900">{dev.hostname}</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-500">{dev.macAddress}</td>
+                            <td className="py-2.5 px-3">{dev.deviceType}</td>
+                            <td className="py-2.5 px-3">{dev.manufacturer}</td>
+                            <td className="py-2.5 px-3">{dev.model}</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-600">{dev.serialNumber}</td>
+                            <td className="py-2.5 px-3">{getStatusBadge(dev.status)}</td>
+                            <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => setSelectedDevice(dev)}
+                                  className="p-1 text-[#6C2BD9] hover:bg-purple-50 rounded-md"
+                                  title="View Details"
+                                >
+                                  <Eye className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  onClick={() => {
+                                    setMatchModalDevice(dev);
+                                    setIsMatchModalOpen(true);
+                                  }}
+                                  className="p-1 text-purple-600 hover:bg-purple-50 rounded-md"
+                                  title="Reconcile Asset Match"
+                                >
+                                  <LinkIcon className="w-3.5 h-3.5" />
+                                </button>
+                                <button className="p-1 text-slate-400 hover:bg-slate-100 rounded-md">
+                                  <MoreHorizontal className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-medium text-slate-600">Showing {filteredDevices.length} records</span>
+                  <span className="text-slate-400">Scroll down to view all records</span>
                 </div>
               </div>
 
@@ -996,7 +975,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
                 {/* Left Card: Selected Device Details (5 Cols) */}
                 <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
                   <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-                    <h3 className="text-xs font-bold text-blue-900">Selected Device Details</h3>
+                    <h3 className="text-xs font-bold text-purple-900">Selected Device Details</h3>
                   </div>
 
                   {/* Identity Box */}
@@ -1019,7 +998,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
                   <div className="space-y-1.5 text-[11px] font-medium text-slate-600 bg-white p-2 rounded-xl border border-slate-100">
                     <div className="flex justify-between py-0.5 border-b border-slate-50">
                       <span className="text-slate-400">IP Address</span>
-                      <span className="font-bold text-blue-700 font-mono">{selectedDevice.ipAddress}</span>
+                      <span className="font-bold text-[#6C2BD9] font-mono">{selectedDevice.ipAddress}</span>
                     </div>
                     <div className="flex justify-between py-0.5 border-b border-slate-50">
                       <span className="text-slate-400">MAC Address</span>
@@ -1106,31 +1085,37 @@ export function DiscoveryWorkbench({ defaultTab }) {
                   {/* Tab Content 1: Installed Software matching Screenshot #17 */}
                   {detailTab === 'software' && (
                     <div className="space-y-3">
-                      <div className="overflow-x-auto rounded-xl border border-slate-200">
-                        <table className="w-full text-left border-collapse text-xs">
-                          <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600">
-                            <tr>
-                              <th className="py-2 px-3 w-8 text-center">#</th>
-                              <th className="py-2 px-3">Software Name</th>
-                              <th className="py-2 px-3">Version</th>
-                              <th className="py-2 px-3">Publisher</th>
-                            </tr>
-                          </thead>
-                          <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                            {(selectedDevice.software || []).map((sw) => (
-                              <tr key={sw.id} className="hover:bg-slate-50">
-                                <td className="py-2 px-3 text-center text-slate-400 font-bold">{sw.id}</td>
-                                <td className="py-2 px-3 font-bold text-slate-900">{sw.name}</td>
-                                <td className="py-2 px-3 font-mono text-slate-600">{sw.version}</td>
-                                <td className="py-2 px-3 text-slate-600">{sw.publisher}</td>
+                      <div className="rounded-xl border border-slate-200 overflow-hidden">
+                        <div className="overflow-auto max-h-[260px]">
+                          <table className="w-full text-left border-collapse text-xs">
+                            <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs border-b border-slate-200 font-bold text-slate-600">
+                              <tr>
+                                <th className="py-2 px-3 w-8 text-center">#</th>
+                                <th className="py-2 px-3">Software Name</th>
+                                <th className="py-2 px-3">Version</th>
+                                <th className="py-2 px-3">Publisher</th>
                               </tr>
-                            ))}
-                          </tbody>
-                        </table>
+                            </thead>
+                            <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                              {(selectedDevice.software || []).map((sw) => (
+                                <tr key={sw.id} className="hover:bg-slate-50">
+                                  <td className="py-2 px-3 text-center text-slate-400 font-bold">{sw.id}</td>
+                                  <td className="py-2 px-3 font-bold text-slate-900">{sw.name}</td>
+                                  <td className="py-2 px-3 font-mono text-slate-600">{sw.version}</td>
+                                  <td className="py-2 px-3 text-slate-600">{sw.publisher}</td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                        <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                          <span className="font-medium text-slate-600">Showing {(selectedDevice.software || []).length} items</span>
+                          <span className="text-slate-400">Scroll down to view all</span>
+                        </div>
                       </div>
 
                       <div className="flex justify-end pt-1">
-                        <button className="text-xs font-bold text-blue-600 hover:underline flex items-center gap-1 cursor-pointer">
+                        <button className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer">
                           <span>View All Installed Software</span>
                           <ArrowRight className="w-3.5 h-3.5" />
                         </button>
@@ -1165,7 +1150,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
                     <div className="grid grid-cols-2 gap-3 text-xs font-semibold text-slate-700 p-2">
                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                         <span className="text-[10px] text-slate-400 font-bold block">IP SUBNET</span>
-                        <span className="text-blue-700 font-mono font-bold">{selectedDevice.network?.ipSubnet}</span>
+                        <span className="text-[#6C2BD9] font-mono font-bold">{selectedDevice.network?.ipSubnet}</span>
                       </div>
                       <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                         <span className="text-[10px] text-slate-400 font-bold block">GATEWAY</span>
@@ -1193,7 +1178,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
                       </div>
                       {selectedDevice.matchedAsset ? (
                         <div className="p-2.5 bg-white rounded-lg border border-slate-200 space-y-1">
-                          <p className="font-extrabold text-blue-700">{selectedDevice.matchedAsset.assetTag}</p>
+                          <p className="font-extrabold text-[#6C2BD9]">{selectedDevice.matchedAsset.assetTag}</p>
                           <p className="font-bold text-slate-800">{selectedDevice.matchedAsset.name}</p>
                           <p className="text-slate-500 text-[11px]">{selectedDevice.matchedAsset.assignedUser} • {selectedDevice.matchedAsset.location}</p>
                         </div>

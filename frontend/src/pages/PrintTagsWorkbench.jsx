@@ -629,10 +629,10 @@ export function PrintTagsWorkbench() {
               </div>
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[500px]">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
+                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase shadow-2xs">
+                  <tr>
                     <th className="py-2.5 px-3 w-10 text-center whitespace-nowrap">
                       <input
                         type="checkbox"
@@ -731,6 +731,10 @@ export function PrintTagsWorkbench() {
                 </tbody>
               </table>
             </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {searchResults.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
+            </div>
           </div>
 
           {/* Card 3: Selected Assets (2) Table Component */}
@@ -751,10 +755,10 @@ export function PrintTagsWorkbench() {
               )}
             </div>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[350px]">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
+                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase shadow-2xs">
+                  <tr>
                     <th className="py-2.5 px-3 w-8 text-slate-500 font-bold whitespace-nowrap">#</th>
                     <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Number</th>
                     <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Name</th>
@@ -809,6 +813,10 @@ export function PrintTagsWorkbench() {
                   )}
                 </tbody>
               </table>
+            </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {selectedForPrinting.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
         </div>

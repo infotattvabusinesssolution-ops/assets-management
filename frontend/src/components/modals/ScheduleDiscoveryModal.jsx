@@ -42,7 +42,7 @@ export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
               <Calendar className="w-4 h-4" />
             </div>
             <div>
@@ -161,7 +161,7 @@ export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
             <button
               type="submit"
               disabled={saving}
-              className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors"
+              className="px-5 py-2 text-xs font-semibold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] rounded-xl shadow-xs transition-colors"
             >
               {saving ? 'Scheduling...' : 'Save & Schedule Job'}
             </button>

@@ -22,10 +22,10 @@ export function DataTable({ columns, data, pagination, onPaginationChange }) {
   });
 
   return (
-    <div className="w-full space-y-4">
-      <div className="overflow-x-auto border border-slate-200 rounded-xl bg-white shadow-2xs">
+    <div className="w-full space-y-2">
+      <div className="overflow-auto max-h-[540px] border border-slate-200 rounded-xl bg-white shadow-2xs">
         <table className="w-full text-left text-sm text-black">
-          <thead className="bg-slate-50 text-xs uppercase font-black text-black border-b border-slate-200 tracking-wider">
+          <thead className="sticky top-0 z-10 bg-slate-50 text-xs uppercase font-black text-black border-b border-slate-200 tracking-wider shadow-2xs">
             {table.getHeaderGroups().map((headerGroup) => (
               <tr key={headerGroup.id}>
                 {headerGroup.headers.map((header) => (
@@ -68,37 +68,10 @@ export function DataTable({ columns, data, pagination, onPaginationChange }) {
         </table>
       </div>
 
-      {/* Pagination Footer */}
-      {pagination && (
-        <div className="flex items-center justify-between text-xs text-black px-1 font-semibold">
-          <div>
-            Showing <span className="font-extrabold text-black">{(pagination.page - 1) * pagination.limit + 1}</span> to{' '}
-            <span className="font-extrabold text-black">
-              {Math.min(pagination.page * pagination.limit, pagination.total)}
-            </span>{' '}
-            of <span className="font-extrabold text-black">{pagination.total}</span> records
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => onPaginationChange(pagination.page - 1)}
-              disabled={pagination.page <= 1}
-              className="btn-secondary px-2.5 py-1 text-xs"
-            >
-              <ChevronLeft className="w-4 h-4 text-black" /> Previous
-            </button>
-            <span className="px-2 font-bold text-black">
-              Page {pagination.page} of {pagination.pages}
-            </span>
-            <button
-              onClick={() => onPaginationChange(pagination.page + 1)}
-              disabled={pagination.page >= pagination.pages}
-              className="btn-secondary px-2.5 py-1 text-xs"
-            >
-              Next <ChevronRight className="w-4 h-4 text-black" />
-            </button>
-          </div>
-        </div>
-      )}
+      <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/20">
+        <span className="font-medium text-slate-600">Showing {data?.length || 0} records</span>
+        <span className="text-slate-400">Scroll down to view all records</span>
+      </div>
     </div>
   );
 }

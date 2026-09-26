@@ -910,42 +910,48 @@ export function CreateWorkOrder() {
                   <p className="text-[11px] text-slate-500">Click &apos;Add Part&apos; to record spare parts used for this work order.</p>
                 </div>
               ) : (
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 text-slate-700 font-bold border-b border-slate-200">
-                    <tr>
-                      <th className="p-2 w-8">#</th>
-                      <th className="p-2">Part No.</th>
-                      <th className="p-2">Part Description</th>
-                      <th className="p-2">UOM</th>
-                      <th className="p-2 text-center">Quantity</th>
-                      <th className="p-2 text-right">Unit Cost (AED)</th>
-                      <th className="p-2 text-right">Total Cost (AED)</th>
-                      <th className="p-2 text-center">Action</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {formData.parts.map((p, idx) => (
-                      <tr key={p.id || idx}>
-                        <td className="p-2 font-mono text-slate-500">{idx + 1}</td>
-                        <td className="p-2 font-mono font-bold text-[#6C2BD9]">{p.partNo}</td>
-                        <td className="p-2 font-bold text-slate-900">{p.description}</td>
-                        <td className="p-2 text-slate-600">{p.uom}</td>
-                        <td className="p-2 text-center font-bold">{p.quantity}</td>
-                        <td className="p-2 text-right font-mono">{p.unitCost}</td>
-                        <td className="p-2 text-right font-mono font-bold text-[#6C2BD9]">{p.totalCost}</td>
-                        <td className="p-2 text-center">
-                          <button
-                            type="button"
-                            onClick={() => setFormData({ ...formData, parts: formData.parts.filter(x => x.id !== p.id) })}
-                            className="text-rose-600 hover:text-rose-800 p-1"
-                          >
-                            <Trash2 className="w-3.5 h-3.5" />
-                          </button>
-                        </td>
+                <div className="border border-slate-200 rounded-lg overflow-auto max-h-[300px]">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="sticky top-0 z-10 bg-slate-50 text-slate-700 font-bold border-b border-slate-200 shadow-2xs">
+                      <tr>
+                        <th className="p-2 w-8">#</th>
+                        <th className="p-2">Part No.</th>
+                        <th className="p-2">Part Description</th>
+                        <th className="p-2">UOM</th>
+                        <th className="p-2 text-center">Quantity</th>
+                        <th className="p-2 text-right">Unit Cost (AED)</th>
+                        <th className="p-2 text-right">Total Cost (AED)</th>
+                        <th className="p-2 text-center">Action</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {formData.parts.map((p, idx) => (
+                        <tr key={p.id || idx}>
+                          <td className="p-2 font-mono text-slate-500">{idx + 1}</td>
+                          <td className="p-2 font-mono font-bold text-[#6C2BD9]">{p.partNo}</td>
+                          <td className="p-2 font-bold text-slate-900">{p.description}</td>
+                          <td className="p-2 text-slate-600">{p.uom}</td>
+                          <td className="p-2 text-center font-bold">{p.quantity}</td>
+                          <td className="p-2 text-right font-mono">{p.unitCost}</td>
+                          <td className="p-2 text-right font-mono font-bold text-[#6C2BD9]">{p.totalCost}</td>
+                          <td className="p-2 text-center">
+                            <button
+                              type="button"
+                              onClick={() => setFormData({ ...formData, parts: formData.parts.filter(x => x.id !== p.id) })}
+                              className="text-rose-600 hover:text-rose-800 p-1"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                  <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-medium text-slate-600">Showing {formData.parts.length} parts</span>
+                    <span className="text-slate-400">Scroll down to view all records</span>
+                  </div>
+                </div>
               )}
             </div>
           )}

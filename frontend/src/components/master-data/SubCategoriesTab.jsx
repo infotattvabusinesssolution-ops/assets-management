@@ -597,9 +597,9 @@ export function SubCategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMe
             </span>
           </div>
 
-          <div className="overflow-x-auto overflow-y-visible">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
                   <th className="py-3 px-3 text-center">
                     <input
@@ -759,28 +759,13 @@ export function SubCategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMe
             </table>
           </div>
 
-          <div className="p-3.5 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs bg-slate-50/40">
-            <span className="text-slate-500 font-medium">
-              Showing 1 to {filteredSubCategories.length} of {subCategoriesList.length} records
+          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs bg-slate-50/40">
+            <span className="text-slate-600 font-medium">
+              Showing {filteredSubCategories.length} records
             </span>
-
-            <div className="flex items-center gap-4">
-              <div className="flex items-center gap-1">
-                <button className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-                <button className="w-7 h-7 rounded-lg bg-[#6C2BD9] text-white font-bold flex items-center justify-center text-xs">
-                  1
-                </button>
-                <button className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 text-slate-500">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              <select className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 font-medium focus:outline-none cursor-pointer">
-                <option>10 / page</option>
-              </select>
-            </div>
+            <span className="text-slate-400">
+              Scroll down to view all records
+            </span>
           </div>
         </div>
 

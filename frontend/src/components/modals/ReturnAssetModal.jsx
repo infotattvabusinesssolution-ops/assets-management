@@ -59,7 +59,7 @@ export function ReturnAssetModal({ isOpen, onClose, asset, onReturnCompleted }) 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center font-bold">
               <RotateCcw className="w-4 h-4" />
             </div>
             <div>
@@ -159,7 +159,7 @@ export function ReturnAssetModal({ isOpen, onClose, asset, onReturnCompleted }) 
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition-colors"
+              className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-semibold rounded-xl shadow-xs transition-colors"
             >
               {loading ? 'Processing...' : 'Confirm Return & Check-In'}
             </button>

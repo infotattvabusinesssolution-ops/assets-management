@@ -252,11 +252,8 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
     });
   }, [units, searchQuery, companyFilter, statusFilter, typeFilter, parentFilter, createdByFilter]);
 
-  // Paginated List
-  const paginatedUnits = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredUnits.slice(start, start + pageSize);
-  }, [filteredUnits, currentPage, pageSize]);
+  // Paginated List (All units rendered for scroll-down view)
+  const paginatedUnits = filteredUnits;
 
   const totalPages = Math.ceil(filteredUnits.length / pageSize) || 1;
 
@@ -383,7 +380,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-xs">
         <div className="flex items-center justify-between mb-3">
           <div className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
-            <Filter className="w-4 h-4 text-[#2563EB]" />
+            <Filter className="w-4 h-4 text-[#6C2BD9]" />
             <span>Filters</span>
           </div>
         </div>
@@ -396,7 +393,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
               <select
                 value={companyFilter}
                 onChange={(e) => setCompanyFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Companies">All Companies</option>
                 <option value="Asset360 Holdings">Asset360 Holdings</option>
@@ -415,7 +412,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
               <select
                 value={statusFilter}
                 onChange={(e) => setStatusFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Status">All Status</option>
                 <option value="Active">Active</option>
@@ -432,7 +429,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
               <select
                 value={regionFilter}
                 onChange={(e) => setRegionFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Regions">All Regions</option>
                 <option value="UAE">UAE</option>
@@ -450,7 +447,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
               <select
                 value={typeFilter}
                 onChange={(e) => setTypeFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Types">All Types</option>
                 <option value="Operations">Operations</option>
@@ -470,7 +467,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
               <select
                 value={parentFilter}
                 onChange={(e) => setParentFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All">All</option>
                 <option value="UAE Operations">UAE Operations</option>
@@ -490,7 +487,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
               <select
                 value={createdByFilter}
                 onChange={(e) => setCreatedByFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] appearance-none cursor-pointer"
+                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Users">All Users</option>
                 <option value="System">System</option>
@@ -512,7 +509,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                   placeholder="From Date"
                   value={fromDate}
                   onChange={(e) => setFromDate(e.target.value)}
-                  className="w-full pl-8 pr-2 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#2563EB] focus:outline-hidden"
+                  className="w-full pl-8 pr-2 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#6C2BD9] focus:outline-hidden"
                 />
               </div>
               <span className="text-slate-400 font-bold">→</span>
@@ -522,7 +519,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                   placeholder="To Date"
                   value={toDate}
                   onChange={(e) => setToDate(e.target.value)}
-                  className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#2563EB] focus:outline-hidden"
+                  className="w-full px-2.5 py-2 border border-slate-200 rounded-xl text-xs font-medium focus:border-[#6C2BD9] focus:outline-hidden"
                 />
               </div>
             </div>
@@ -537,7 +534,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search by name, code or description..."
-                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB]"
+                className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
               />
             </div>
           </div>
@@ -552,7 +549,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
           </button>
           <button
             onClick={() => triggerToast && triggerToast('Business Unit filters applied.')}
-            className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <Filter className="w-3.5 h-3.5" />
             <span>Apply Filters</span>
@@ -574,63 +571,63 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[540px]">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold select-none text-[11px] uppercase tracking-wider">
+            <thead className="sticky top-0 z-10 shadow-2xs">
+              <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold select-none text-[11px] uppercase tracking-wider">
                 <th className="p-3 pl-4 w-10">
                   <input
                     type="checkbox"
                     checked={selectedUnitIds.length === paginatedUnits.length && paginatedUnits.length > 0}
                     onChange={handleSelectAll}
-                    className="rounded border-slate-300 text-[#2563EB] cursor-pointer"
+                    className="rounded border-slate-300 text-[#6C2BD9] cursor-pointer"
                   />
                 </th>
                 <th className="p-3 w-10 text-slate-400">#</th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Business Unit Name</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Code</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Company</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Parent Business Unit</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Type</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>No. of Departments</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>No. of Locations</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
-                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#2563EB]">
+                  <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
                     <span>Status</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
@@ -654,7 +651,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                       key={unit.id}
                       className={clsx(
                         'transition-colors',
-                        isSelected ? 'bg-blue-50/40' : 'hover:bg-slate-50/60'
+                        isSelected ? 'bg-purple-50/40' : 'hover:bg-slate-50/60'
                       )}
                     >
                       <td className="p-3 pl-4">
@@ -662,11 +659,11 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                           type="checkbox"
                           checked={isSelected}
                           onChange={() => handleSelectOne(unit.id)}
-                          className="rounded border-slate-300 text-[#2563EB] cursor-pointer"
+                          className="rounded border-slate-300 text-[#6C2BD9] cursor-pointer"
                         />
                       </td>
                       <td className="p-3 text-slate-400 font-mono text-[11px]">{globalIdx}</td>
-                      <td className="p-3 font-bold text-[#2563EB]">
+                      <td className="p-3 font-bold text-[#6C2BD9]">
                         <span
                           className="cursor-pointer hover:underline"
                           onClick={() => {
@@ -712,9 +709,9 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                                 setShowViewDetailsModal(true);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Eye className="w-4 h-4 text-blue-600" />
+                              <Eye className="w-4 h-4 text-[#6C2BD9]" />
                               View Details
                             </button>
                             <button
@@ -722,9 +719,9 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                                 handleOpenAddModal(unit);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Edit2 className="w-4 h-4 text-blue-600" />
+                              <Edit2 className="w-4 h-4 text-[#6C2BD9]" />
                               Edit Business Unit
                             </button>
                             <button
@@ -732,9 +729,9 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                                 setActiveDropdownId(null);
                                 onSwitchTab && onSwitchTab('departments');
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Network className="w-4 h-4 text-blue-600" />
+                              <Network className="w-4 h-4 text-[#6C2BD9]" />
                               Manage Departments
                             </button>
                             <button
@@ -742,9 +739,9 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                                 setActiveDropdownId(null);
                                 onSwitchTab && onSwitchTab('locations');
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <MapPin className="w-4 h-4 text-blue-600" />
+                              <MapPin className="w-4 h-4 text-[#6C2BD9]" />
                               Manage Locations
                             </button>
                             <button
@@ -752,9 +749,9 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                                 triggerToast && triggerToast(`Assign users to ${unit.name}`);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <Users className="w-4 h-4 text-blue-600" />
+                              <Users className="w-4 h-4 text-[#6C2BD9]" />
                               Assign Users
                             </button>
                             <button
@@ -762,9 +759,9 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                                 triggerToast && triggerToast(`Set ${unit.name} as Parent Business Unit.`);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
-                              <GitBranch className="w-4 h-4 text-blue-600" />
+                              <GitBranch className="w-4 h-4 text-[#6C2BD9]" />
                               Set as Parent
                             </button>
 
@@ -772,7 +769,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
 
                             <button
                               onClick={() => handleToggleStatus(unit)}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#2563EB] flex items-center gap-2.5 font-semibold"
+                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
                               {unit.status === 'Active' ? (
                                 <>
@@ -805,51 +802,10 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
           </table>
         </div>
 
-        {/* Table Pagination Footer matching Screenshot */}
-        <div className="px-4 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, filteredUnits.length)} of {filteredUnits.length} records
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-2.5 py-1 border border-slate-200 rounded-lg disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
-            >
-              «
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setCurrentPage(p)}
-                className={clsx(
-                  'px-3 py-1 rounded-lg font-bold cursor-pointer',
-                  currentPage === p ? 'bg-[#2563EB] text-white' : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
-                )}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-2.5 py-1 border border-slate-200 rounded-lg disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
-            >
-              »
-            </button>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="px-2.5 py-1 border border-slate-200 rounded-lg text-xs bg-white font-medium focus:outline-hidden cursor-pointer"
-            >
-              <option value={8}>8 / page</option>
-              <option value={10}>10 / page</option>
-              <option value={25}>25 / page</option>
-            </select>
-          </div>
+        {/* Table Summary Footer */}
+        <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <div className="font-medium text-slate-600">Showing {filteredUnits.length} records</div>
+          <div className="text-slate-400">Scroll down to view all records</div>
         </div>
       </div>
 
@@ -859,7 +815,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
           <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-lg shadow-2xl p-6 space-y-4 animate-fadeIn">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-2xl bg-blue-50 text-[#2563EB] flex items-center justify-center border border-blue-100">
+                <div className="w-9 h-9 rounded-2xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center border border-purple-100">
                   <GitBranch className="w-5 h-5" />
                 </div>
                 <div>
@@ -888,11 +844,11 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium block text-[11px]">Departments</span>
-                  <span className="font-mono font-bold text-[#2563EB]">{selectedUnit.departmentsCount} Departments</span>
+                  <span className="font-mono font-bold text-[#6C2BD9]">{selectedUnit.departmentsCount} Departments</span>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium block text-[11px]">Locations</span>
-                  <span className="font-mono font-bold text-[#2563EB]">{selectedUnit.locationsCount} Locations</span>
+                  <span className="font-mono font-bold text-[#6C2BD9]">{selectedUnit.locationsCount} Locations</span>
                 </div>
                 <div>
                   <span className="text-slate-400 font-medium block text-[11px]">Status</span>
@@ -941,7 +897,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                   value={unitForm.name}
                   onChange={(e) => setUnitForm({ ...unitForm, name: e.target.value })}
                   placeholder="e.g. UAE Operations"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] font-medium"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] font-medium"
                 />
               </div>
 
@@ -954,7 +910,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                     value={unitForm.code}
                     onChange={(e) => setUnitForm({ ...unitForm, code: e.target.value })}
                     placeholder="e.g. UAE-OPS"
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] font-mono font-bold"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] font-mono font-bold"
                   />
                 </div>
                 <div>
@@ -1007,7 +963,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                   value={unitForm.description}
                   onChange={(e) => setUnitForm({ ...unitForm, description: e.target.value })}
                   placeholder="Business unit scope and operational focus..."
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#2563EB]/20 focus:border-[#2563EB] font-medium"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] font-medium"
                 />
               </div>
 
@@ -1021,7 +977,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white font-bold rounded-xl shadow-xs cursor-pointer"
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl shadow-xs cursor-pointer"
                 >
                   {editingUnit ? 'Save Changes' : 'Create Business Unit'}
                 </button>

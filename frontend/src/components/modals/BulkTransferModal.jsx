@@ -44,7 +44,7 @@ export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTran
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center font-bold">
               <Layers className="w-4 h-4" />
             </div>
             <div>
@@ -60,9 +60,9 @@ export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTran
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
           
-          <div className="p-3 bg-blue-50/60 rounded-xl border border-blue-100 flex items-center justify-between">
-            <span className="font-semibold text-blue-900">{selectedAssets.length} Assets Selected for Transfer</span>
-            <span className="text-[11px] font-mono bg-white px-2 py-0.5 rounded text-blue-700 font-bold border border-blue-200">
+          <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100 flex items-center justify-between">
+            <span className="font-semibold text-purple-900">{selectedAssets.length} Assets Selected for Transfer</span>
+            <span className="text-[11px] font-mono bg-white px-2 py-0.5 rounded text-[#6C2BD9] font-bold border border-purple-200">
               Bulk Mode
             </span>
           </div>
@@ -153,7 +153,7 @@ export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTran
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs transition-colors"
+              className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-semibold rounded-xl shadow-xs transition-colors"
             >
               {loading ? 'Submitting...' : `Transfer ${selectedAssets.length} Assets`}
             </button>

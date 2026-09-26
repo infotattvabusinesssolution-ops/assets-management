@@ -114,7 +114,7 @@ export function ManualAssetModal({ isOpen, onClose, onAddAsset, defaultValues = 
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
               <Laptop className="w-4 h-4" />
             </div>
             <div>
@@ -151,7 +151,7 @@ export function ManualAssetModal({ isOpen, onClose, onAddAsset, defaultValues = 
                   value={formData.serialNumber}
                   onChange={handleSerialChange}
                   placeholder="e.g. DL7450-004"
-                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                  className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                   required
                 />
                 {validating && (
@@ -173,7 +173,7 @@ export function ManualAssetModal({ isOpen, onClose, onAddAsset, defaultValues = 
                 value={formData.assetName}
                 onChange={e => setFormData({ ...formData, assetName: e.target.value })}
                 placeholder="e.g. Dell Latitude 7450"
-                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                 required
               />
             </div>
@@ -262,7 +262,7 @@ export function ManualAssetModal({ isOpen, onClose, onAddAsset, defaultValues = 
             <button
               type="submit"
               disabled={isSerialValid === false || !formData.serialNumber.trim()}
-              className="px-5 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+              className="px-5 py-2 text-xs font-semibold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
             >
               <Plus className="w-3.5 h-3.5" />
               Add to Received Assets

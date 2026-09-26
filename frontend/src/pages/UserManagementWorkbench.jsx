@@ -543,7 +543,7 @@ Login Portal: ${window.location.origin}/login`;
       case 'SYS_ADMIN':
         return 'bg-purple-100 text-purple-800 border-purple-300 font-extrabold';
       case 'ASSET_ADMIN':
-        return 'bg-blue-100 text-blue-800 border-blue-300 font-extrabold';
+        return 'bg-blue-100 text-blue-800 border-purple-300 font-extrabold';
       case 'FINANCE':
         return 'bg-emerald-100 text-emerald-800 border-emerald-300 font-extrabold';
       case 'IT_MANAGER':
@@ -825,10 +825,11 @@ Login Portal: ${window.location.origin}/login`;
             <p className="text-slate-400">No account records match the current filter or search criteria.</p>
           </div>
         ) : (
-          <div className="overflow-x-auto">
+          <>
+            <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider">
+              <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-[11px] font-extrabold text-slate-500 uppercase tracking-wider shadow-2xs">
+                <tr>
                   <th className="px-4 py-3.5 w-10 text-center">
                     <input
                       type="checkbox"
@@ -961,6 +962,11 @@ Login Portal: ${window.location.origin}/login`;
               </tbody>
             </table>
           </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {filteredUsers.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
+            </div>
+          </>
         )}
       </div>
 

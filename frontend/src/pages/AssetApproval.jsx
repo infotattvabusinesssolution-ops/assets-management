@@ -433,13 +433,13 @@ export function AssetApproval() {
 
         {/* Returned This Month */}
         <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex items-center gap-4">
-          <div className="w-12 h-12 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-black shrink-0">
+          <div className="w-12 h-12 rounded-full bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-black shrink-0">
             <RotateCcw className="w-6 h-6" />
           </div>
           <div>
             <div className="flex items-baseline gap-1.5">
               <span className="text-2xl font-black text-slate-900 leading-none">3</span>
-              <span className="text-[10px] text-blue-700 font-bold">Returned</span>
+              <span className="text-[10px] text-[#6C2BD9] font-bold">Returned</span>
             </div>
             <span className="text-xs font-semibold text-slate-400 mt-1 block">This Month</span>
           </div>
@@ -550,9 +550,9 @@ export function AssetApproval() {
 
           {/* Table Container (Matching Exact Doc Columns: Request No, Transaction Type, Asset ID, Asset Name, Requested By, Request Date, Current Level, SLA/Due Date, Status) */}
           <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[540px]">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
+                <thead className="sticky top-0 z-10 shadow-2xs">
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
                     <th className="p-3 w-8">
                       <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9]" />
@@ -618,7 +618,7 @@ export function AssetApproval() {
                             {r.status === 'Pending' && r.slaStatus !== 'SLA Overdue' && <Clock className="w-3 h-3 text-amber-600" />}
                             {r.status === 'Approved' && <CheckCircle2 className="w-3 h-3 text-emerald-600" />}
                             {r.status === 'Rejected' && <XCircle className="w-3 h-3 text-rose-600" />}
-                            {r.status === 'Returned' && <RotateCcw className="w-3 h-3 text-blue-600" />}
+                            {r.status === 'Returned' && <RotateCcw className="w-3 h-3 text-[#6C2BD9]" />}
                             {r.status === 'Escalated' && <AlertTriangle className="w-3 h-3 text-red-600" />}
                             {r.slaStatus === 'SLA Overdue' ? 'SLA Overdue' : r.status}
                           </span>
@@ -646,16 +646,10 @@ export function AssetApproval() {
               </table>
             </div>
 
-            {/* Pagination Footer */}
+            {/* Table Summary Footer */}
             <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Showing 1 to {filteredRequests.length} of {requests.length} records</span>
-              <div className="flex items-center gap-1">
-                <button className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600 disabled:opacity-40">&lt;</button>
-                <button className="w-6 h-6 rounded-lg bg-[#6C2BD9] text-white flex items-center justify-center font-bold">1</button>
-                <button className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700">2</button>
-                <button className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700">3</button>
-                <button className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-600">&gt;</button>
-              </div>
+              <span className="font-medium text-slate-600">Showing {filteredRequests.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
 
@@ -783,7 +777,7 @@ export function AssetApproval() {
                   <div key={step.step} className="flex items-start gap-3 text-xs">
                     <div className={`w-7 h-7 rounded-full font-black text-xs flex items-center justify-center shrink-0 ${
                       step.isCurrent
-                        ? 'bg-blue-600 text-white shadow-sm'
+                        ? 'bg-[#6C2BD9] text-white shadow-sm'
                         : step.status === 'Approved'
                         ? 'bg-emerald-500 text-white'
                         : 'bg-slate-200 text-slate-600'
@@ -797,7 +791,7 @@ export function AssetApproval() {
                         <span className="text-[10px] text-slate-400">{step.date || ''}</span>
                       </div>
                       <span className={`text-[11px] font-bold block ${
-                        step.isCurrent ? 'text-blue-600' : step.status === 'Approved' ? 'text-emerald-700' : 'text-slate-400 font-medium'
+                        step.isCurrent ? 'text-[#6C2BD9]' : step.status === 'Approved' ? 'text-emerald-700' : 'text-slate-400 font-medium'
                       }`}>
                         {step.status}
                       </span>
@@ -835,7 +829,7 @@ export function AssetApproval() {
                   onClick={() => { setDecisionType('RETURN'); setActiveModal('DECISION_COMMENT'); }}
                   className="py-2.5 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-xs flex items-center justify-center gap-1 border border-slate-300 shadow-2xs transition-all cursor-pointer"
                 >
-                  <RotateCcw className="w-3.5 h-3.5 text-blue-600" /> Return
+                  <RotateCcw className="w-3.5 h-3.5 text-[#6C2BD9]" /> Return
                 </button>
               </div>
 
@@ -951,7 +945,7 @@ export function AssetApproval() {
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
                 {decisionType === 'APPROVE' && <Check className="w-5 h-5 text-emerald-600" />}
                 {decisionType === 'REJECT' && <X className="w-5 h-5 text-rose-600" />}
-                {decisionType === 'RETURN' && <RotateCcw className="w-5 h-5 text-blue-600" />}
+                {decisionType === 'RETURN' && <RotateCcw className="w-5 h-5 text-[#6C2BD9]" />}
                 Process Decision: {decisionType}
               </h3>
               <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
@@ -984,7 +978,7 @@ export function AssetApproval() {
                 className={`px-5 py-2 font-extrabold text-white rounded-xl shadow-md transition-all ${
                   decisionType === 'APPROVE' ? 'bg-emerald-600 hover:bg-emerald-700' :
                   decisionType === 'REJECT' ? 'bg-rose-600 hover:bg-rose-700' :
-                  'bg-blue-600 hover:bg-blue-700'
+                  'bg-[#6C2BD9] hover:bg-[#5B21B6]'
                 }`}
               >
                 Confirm {decisionType}

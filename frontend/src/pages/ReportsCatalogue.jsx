@@ -1257,9 +1257,9 @@ export function ReportsCatalogue() {
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[350px]">
                 <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-2xs">
                     <tr>
                       <th className="py-3 px-4">Report Name</th>
                       <th className="py-3 px-3">Category</th>
@@ -1328,6 +1328,10 @@ export function ReportsCatalogue() {
                   </tbody>
                 </table>
               </div>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {recentReports.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
           </div>
 
@@ -1344,9 +1348,9 @@ export function ReportsCatalogue() {
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[350px]">
                 <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-2xs">
                     <tr>
                       <th className="py-3 px-4">Report Name</th>
                       <th className="py-3 px-3">Frequency</th>
@@ -1425,6 +1429,10 @@ export function ReportsCatalogue() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {scheduledReports.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>
           </div>
@@ -1800,7 +1808,7 @@ export function ReportsCatalogue() {
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto">
+            <div className="flex-1 overflow-auto max-h-[450px]">
               {drillDownModal.loading ? (
                 <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
                   <RefreshCw className="w-6 h-6 animate-spin text-[#6C2BD9]" />
@@ -1812,7 +1820,7 @@ export function ReportsCatalogue() {
                 </div>
               ) : (
                 <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 border-b">
+                  <thead className="sticky top-0 z-10 bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b shadow-2xs">
                     <tr>
                       <th className="py-2.5 px-3">Asset Number</th>
                       <th className="py-2.5 px-3">Asset Name</th>
@@ -1865,10 +1873,9 @@ export function ReportsCatalogue() {
               )}
             </div>
 
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100 text-xs shrink-0">
-              <span className="text-slate-400 text-[11px]">
-                Showing {drillDownModal.records.length} records
-              </span>
+            <div className="flex items-center justify-between p-3 border-t border-slate-100 text-xs shrink-0">
+              <span className="font-medium text-slate-600">Showing {drillDownModal.records.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() =>
@@ -2368,9 +2375,9 @@ export function ReportsCatalogue() {
                     <span className="text-[10px] font-bold text-slate-500 uppercase block mb-1">
                       Supporting Asset Evidence
                     </span>
-                    <div className="bg-white rounded-lg border border-purple-100 overflow-hidden">
+                    <div className="bg-white rounded-lg border border-purple-100 overflow-auto max-h-[250px]">
                       <table className="w-full text-left text-[11px]">
-                        <thead className="bg-slate-50 border-b">
+                        <thead className="sticky top-0 z-10 bg-slate-50 border-b shadow-2xs">
                           <tr>
                             <th className="p-2">Code / Part</th>
                             <th className="p-2">Description</th>
@@ -2389,6 +2396,10 @@ export function ReportsCatalogue() {
                           ))}
                         </tbody>
                       </table>
+                    </div>
+                    <div className="p-2 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
+                      <span className="font-medium text-slate-600">Showing {aiResult.supportingRecords.length} records</span>
+                      <span className="text-slate-400">Scroll down to view all records</span>
                     </div>
                   </div>
                 )}
@@ -2648,7 +2659,7 @@ export function ReportsCatalogue() {
           </div>
 
           {/* Data Table */}
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[500px]">
             {viewerLoading ? (
               <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
                 <RefreshCw className="w-6 h-6 animate-spin text-[#6C2BD9]" />
@@ -2660,7 +2671,7 @@ export function ReportsCatalogue() {
               </div>
             ) : (
               <table className="w-full text-left text-xs text-slate-700">
-                <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b">
+                <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b shadow-2xs">
                   <tr>
                     {Object.keys(viewerData[0]).slice(0, 7).map((key) => (
                       <th key={key} className="py-3 px-3">
@@ -2684,6 +2695,10 @@ export function ReportsCatalogue() {
                 </tbody>
               </table>
             )}
+          </div>
+          <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span className="font-medium text-slate-600">Showing {viewerData.length} records</span>
+            <span className="text-slate-400">Scroll down to view all records</span>
           </div>
         </div>
       )}

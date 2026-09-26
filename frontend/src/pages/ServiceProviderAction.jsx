@@ -1605,9 +1605,9 @@ export function ServiceProviderAction() {
                     </button>
                   </div>
 
-                  <div className="overflow-x-auto">
+                  <div className="overflow-auto max-h-[350px] border border-slate-200 rounded-lg">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
+                      <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider shadow-2xs">
                         <tr>
                           <th className="p-2.5 w-8">
                             <input type="checkbox" className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]" />
@@ -1668,8 +1668,9 @@ export function ServiceProviderAction() {
                     </table>
                   </div>
 
-                  <div className="text-[11px] text-slate-500 font-medium pt-1">
-                    Showing 1 to {serviceCategoriesList.length} of {serviceCategoriesList.length} records
+                  <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-medium text-slate-600">Showing {serviceCategoriesList.length} records</span>
+                    <span className="text-slate-400">Scroll down to view all records</span>
                   </div>
                 </div>
 
@@ -2060,9 +2061,9 @@ export function ServiceProviderAction() {
                     </div>
 
                     {/* Contracts Table */}
-                    <div className="overflow-x-auto">
+                    <div className="overflow-auto max-h-[350px] border border-slate-200 rounded-lg">
                       <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
+                        <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider shadow-2xs">
                           <tr>
                             <th className="p-2.5 w-8">#</th>
                             <th className="p-2.5">Contract No.</th>
@@ -2131,19 +2132,10 @@ export function ServiceProviderAction() {
                       </table>
                     </div>
 
-                    {/* Pagination */}
-                    <div className="flex justify-between items-center text-[11px] text-slate-500 pt-1">
-                      <span>Showing 1 to {amcContractsList.length} of {amcContractsList.length} records</span>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1">
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500">‹</button>
-                          <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500">›</button>
-                        </div>
-                        <select className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-700 bg-white">
-                          <option>10 / page</option>
-                        </select>
-                      </div>
+                    {/* Scroll Footer */}
+                    <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                      <span className="font-medium text-slate-600">Showing {amcContractsList.length} records</span>
+                      <span className="text-slate-400">Scroll down to view all records</span>
                     </div>
                   </div>
 
@@ -2561,9 +2553,9 @@ export function ServiceProviderAction() {
                   </div>
 
                   {/* Documents Table */}
-                  <div className="overflow-x-auto">
+                  <div className="overflow-auto max-h-[350px] border border-slate-200 rounded-lg">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
+                      <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider shadow-2xs">
                         <tr>
                           <th className="p-2.5 w-8">#</th>
                           <th className="p-2.5">Document Name</th>
@@ -2661,19 +2653,10 @@ export function ServiceProviderAction() {
                     </table>
                   </div>
 
-                  {/* Pagination Footer */}
-                  <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-                    <span>Showing 1 to {providerDocumentsList.length} of {providerDocumentsList.length} records</span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">‹</button>
-                        <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
-                        <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">›</button>
-                      </div>
-                      <select className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-700 bg-white">
-                        <option>10 / page</option>
-                      </select>
-                    </div>
+                  {/* Scroll Footer */}
+                  <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-medium text-slate-600">Showing {providerDocumentsList.length} records</span>
+                    <span className="text-slate-400">Scroll down to view all records</span>
                   </div>
                 </div>
 
@@ -2962,9 +2945,9 @@ export function ServiceProviderAction() {
                     </div>
 
                     {/* Table */}
-                    <div className="overflow-x-auto">
+                    <div className="overflow-auto max-h-[400px] border border-slate-200 rounded-lg">
                       <table className="w-full text-left text-xs border-collapse">
-                        <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
+                        <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider shadow-2xs">
                           <tr>
                             <th className="p-2.5 w-8">#</th>
                             <th className="p-2.5">Work Order No.</th>
@@ -3032,25 +3015,10 @@ export function ServiceProviderAction() {
                       </table>
                     </div>
 
-                    {/* Pagination Footer */}
-                    <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-                      <span>Showing 1 to 10 of 52 records</span>
-                      <div className="flex items-center gap-2">
-                        <div className="flex items-center gap-1 font-semibold">
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">«</button>
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">‹</button>
-                          <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">2</button>
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">3</button>
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">4</button>
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">5</button>
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">›</button>
-                          <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">»</button>
-                        </div>
-                        <select className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-700 bg-white">
-                          <option>10 / page</option>
-                        </select>
-                      </div>
+                    {/* Scroll Footer */}
+                    <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                      <span className="font-medium text-slate-600">Showing {serviceHistoryRecordsList.length} records</span>
+                      <span className="text-slate-400">Scroll down to view all records</span>
                     </div>
                   </div>
 
@@ -3441,9 +3409,9 @@ export function ServiceProviderAction() {
                   </div>
 
                   {/* Notes Table */}
-                  <div className="overflow-x-auto">
+                  <div className="overflow-auto max-h-[350px] border border-slate-200 rounded-lg">
                     <table className="w-full text-left text-xs border-collapse">
-                      <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
+                      <thead className="sticky top-0 z-10 bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider shadow-2xs">
                         <tr>
                           <th className="p-2.5 w-8">#</th>
                           <th className="p-2.5">Note Type</th>
@@ -3534,19 +3502,10 @@ export function ServiceProviderAction() {
                     </table>
                   </div>
 
-                  {/* Pagination Footer */}
-                  <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-                    <span>Showing 1 to {providerNotesList.length} of {providerNotesList.length} records</span>
-                    <div className="flex items-center gap-2">
-                      <div className="flex items-center gap-1">
-                        <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">‹</button>
-                        <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
-                        <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">›</button>
-                      </div>
-                      <select className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-700 bg-white">
-                        <option>10 / page</option>
-                      </select>
-                    </div>
+                  {/* Scroll Footer */}
+                  <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-medium text-slate-600">Showing {providerNotesList.length} records</span>
+                    <span className="text-slate-400">Scroll down to view all records</span>
                   </div>
                 </div>
 

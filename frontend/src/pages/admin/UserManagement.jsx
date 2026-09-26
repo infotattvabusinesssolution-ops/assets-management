@@ -411,8 +411,7 @@ export function UserManagement() {
     }
 
     setTotalUsers(filtered.length);
-    const start = (page - 1) * limit;
-    setUsers(filtered.slice(start, start + limit));
+    setUsers(filtered);
     setLoading(false);
   };
 
@@ -979,7 +978,7 @@ export function UserManagement() {
           </span>
         </div>
 
-        <div className="overflow-x-auto overflow-y-auto max-h-[480px] relative scrollbar-thin">
+        <div className="overflow-x-auto overflow-y-auto max-h-[540px] relative scrollbar-thin">
           <table className="w-full text-left text-xs border-collapse">
             <thead className="sticky top-0 z-20 bg-[#F8FAFC] border-b border-slate-200 text-slate-600 font-semibold select-none shadow-2xs">
               <tr className="bg-[#F8FAFC]">
@@ -1195,59 +1194,10 @@ export function UserManagement() {
           </table>
         </div>
 
-        {/* Pagination Footer */}
-        <div className="px-5 py-3.5 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 text-xs text-slate-500">
-          <div>
-            Showing {(page - 1) * limit + 1} to {Math.min(page * limit, totalUsers)} of {totalUsers} records
-          </div>
-
-          <div className="flex items-center gap-3">
-            {/* Page Buttons */}
-            <div className="flex items-center gap-1">
-              <button
-                disabled={page <= 1}
-                onClick={() => setPage(page - 1)}
-                className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-              >
-                &laquo;
-              </button>
-              {[1, 2, 3, 4, 5].slice(0, totalPages).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPage(p)}
-                  className={`w-7 h-7 flex items-center justify-center rounded text-xs font-medium transition ${
-                    page === p
-                      ? 'bg-[#6C2BD9] text-white'
-                      : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-              <button
-                disabled={page >= totalPages}
-                onClick={() => setPage(page + 1)}
-                className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40"
-              >
-                &raquo;
-              </button>
-            </div>
-
-            {/* Page Size Dropdown */}
-            <select
-              value={limit}
-              onChange={(e) => {
-                setLimit(Number(e.target.value));
-                setPage(1);
-              }}
-              className="px-2.5 py-1 bg-white border border-slate-200 rounded text-xs text-slate-700 focus:ring-1 focus:ring-[#6C2BD9]"
-            >
-              <option value="10">10 / page</option>
-              <option value="25">25 / page</option>
-              <option value="50">50 / page</option>
-              <option value="100">100 / page</option>
-            </select>
-          </div>
+        {/* Table Summary Footer */}
+        <div className="px-5 py-3.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+          <div className="font-medium text-slate-600">Showing {users.length} users</div>
+          <div className="text-slate-400">Scroll down to view all records</div>
         </div>
       </div>
 

@@ -348,10 +348,10 @@ export function WorkflowDesigner() {
               </button>
             </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+            <div className="border border-slate-200 rounded-xl overflow-auto max-h-[350px] shadow-2xs">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider shadow-2xs">
+                  <tr>
                     <th className="p-3 w-10">#</th>
                     <th className="p-3 font-bold text-slate-900">Field</th>
                     <th className="p-3 font-bold text-slate-900">Operator</th>
@@ -455,6 +455,10 @@ export function WorkflowDesigner() {
                 </tbody>
               </table>
             </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {conditions.length} conditions</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
+            </div>
           </div>
 
           {/* Section 3: Approval Levels */}
@@ -472,10 +476,10 @@ export function WorkflowDesigner() {
               </button>
             </div>
 
-            <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs">
+            <div className="border border-slate-200 rounded-xl overflow-auto max-h-[350px] shadow-2xs">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px] uppercase tracking-wider shadow-2xs">
+                  <tr>
                     <th className="p-3 w-12 text-slate-900 font-bold">Level</th>
                     <th className="p-3 font-bold text-slate-900">Approver Type</th>
                     <th className="p-3 font-bold text-slate-900">Approver</th>
@@ -539,6 +543,10 @@ export function WorkflowDesigner() {
                   ))}
                 </tbody>
               </table>
+            </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {approvalLevels.length} levels</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
 
@@ -642,7 +650,7 @@ export function WorkflowDesigner() {
             {/* Stepper Flowchart matching Screenshot 10 */}
             <div className="flex flex-col items-center space-y-3 pt-1">
               {/* Start Node */}
-              <div className="w-full py-2 bg-blue-100 border border-blue-200 text-blue-900 rounded-full font-bold text-xs text-center shadow-2xs">
+              <div className="w-full py-2 bg-purple-100 border border-purple-200 text-purple-900 rounded-full font-bold text-xs text-center shadow-2xs">
                 Start
               </div>
               <span className="text-slate-400 font-bold text-xs">↓</span>
@@ -690,7 +698,7 @@ export function WorkflowDesigner() {
             <div className="space-y-2.5 text-slate-700 font-medium">
               <div className="flex justify-between border-b border-slate-100 pb-1.5">
                 <span className="text-slate-400 font-semibold">Transaction Type :</span>
-                <span className="font-bold text-[#2563EB]">{basicInfo.transactionType}</span>
+                <span className="font-bold text-[#6C2BD9]">{basicInfo.transactionType}</span>
               </div>
 
               <div className="flex justify-between border-b border-slate-100 pb-1.5">
@@ -700,17 +708,17 @@ export function WorkflowDesigner() {
 
               <div className="flex justify-between border-b border-slate-100 pb-1.5">
                 <span className="text-slate-400 font-semibold">Total Levels :</span>
-                <span className="font-mono font-bold text-[#2563EB]">{approvalLevels.length}</span>
+                <span className="font-mono font-bold text-[#6C2BD9]">{approvalLevels.length}</span>
               </div>
 
               <div className="flex justify-between border-b border-slate-100 pb-1.5">
                 <span className="text-slate-400 font-semibold">Conditions :</span>
-                <span className="font-mono font-bold text-[#2563EB]">{conditions.length}</span>
+                <span className="font-mono font-bold text-[#6C2BD9]">{conditions.length}</span>
               </div>
 
               <div className="flex justify-between border-b border-slate-100 pb-1.5">
                 <span className="text-slate-400 font-semibold">SLA (Days) :</span>
-                <span className="font-mono font-bold text-[#2563EB]">
+                <span className="font-mono font-bold text-[#6C2BD9]">
                   {approvalLevels.map((l) => l.sla).join(' / ')}
                 </span>
               </div>
@@ -722,17 +730,17 @@ export function WorkflowDesigner() {
 
               <div className="flex justify-between border-b border-slate-100 pb-1.5 pt-1">
                 <span className="text-slate-400 font-semibold">Created By :</span>
-                <span className="font-bold text-[#2563EB]">John Doe</span>
+                <span className="font-bold text-[#6C2BD9]">John Doe</span>
               </div>
 
               <div className="flex justify-between border-b border-slate-100 pb-1.5">
                 <span className="text-slate-400 font-semibold">Created On :</span>
-                <span className="font-mono text-[#2563EB] font-medium">10 Sep 2026 14:20</span>
+                <span className="font-mono text-[#6C2BD9] font-medium">10 Sep 2026 14:20</span>
               </div>
 
               <div className="flex justify-between">
                 <span className="text-slate-400 font-semibold">Last Modified :</span>
-                <span className="font-mono text-[#2563EB] font-medium">10 Sep 2026 14:20</span>
+                <span className="font-mono text-[#6C2BD9] font-medium">10 Sep 2026 14:20</span>
               </div>
             </div>
           </div>

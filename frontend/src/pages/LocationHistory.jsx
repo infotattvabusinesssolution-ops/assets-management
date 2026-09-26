@@ -96,7 +96,7 @@ const INITIAL_HISTORY_RECORDS = [
     remarks: 'Left Finance',
     coords: { x: 57, y: 72 },
     badgeColor: 'blue',
-    circleColor: 'bg-blue-600'
+    circleColor: 'bg-[#6C2BD9]'
   },
   {
     step: 3,
@@ -109,7 +109,7 @@ const INITIAL_HISTORY_RECORDS = [
     remarks: 'Entered Admin',
     coords: { x: 44, y: 35 },
     badgeColor: 'rose',
-    circleColor: 'bg-blue-600'
+    circleColor: 'bg-[#6C2BD9]'
   },
   {
     step: 2,
@@ -122,7 +122,7 @@ const INITIAL_HISTORY_RECORDS = [
     remarks: 'In Transit',
     coords: { x: 34, y: 46 },
     badgeColor: 'blue',
-    circleColor: 'bg-blue-600'
+    circleColor: 'bg-[#6C2BD9]'
   },
   {
     step: 1,
@@ -602,10 +602,10 @@ export function LocationHistory() {
             {/* Asset Header Preview */}
             <div className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-200 my-2.5 shrink-0">
               <div className="w-12 h-12 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0 shadow-2xs">
-                <Monitor className="w-6 h-6 text-blue-600" />
+                <Monitor className="w-6 h-6 text-[#6C2BD9]" />
               </div>
               <div className="truncate">
-                <span className="font-extrabold text-xs text-blue-700 block">{selectedAsset.id}</span>
+                <span className="font-extrabold text-xs text-[#6C2BD9] block">{selectedAsset.id}</span>
                 <h4 className="font-bold text-xs text-slate-900 truncate">{selectedAsset.name}</h4>
                 <p className="text-[10px] text-slate-500 font-medium truncate">{selectedAsset.category}</p>
               </div>
@@ -677,74 +677,55 @@ export function LocationHistory() {
             </div>
 
             {/* Table View matching Screenshot #18 */}
-            <div className="overflow-x-auto">
-              <table className="w-full text-left text-xs font-medium text-slate-700">
-                <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
-                  <tr>
-                    <th className="p-3">#</th>
-                    <th className="p-3">Date & Time</th>
-                    <th className="p-3">Location</th>
-                    <th className="p-3">Zone</th>
-                    <th className="p-3">Event Type</th>
-                    <th className="p-3">Reader / Source</th>
-                    <th className="p-3">Remarks</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {filteredRecords.map((r, idx) => {
-                    const isSelected = activeStep === r.step;
-                    return (
-                      <tr
-                        key={idx}
-                        onClick={() => handleSelectStep(r.step)}
-                        className={`transition-colors cursor-pointer ${
-                          isSelected ? 'bg-purple-50/80 font-bold text-[#6C2BD9]' : 'hover:bg-slate-50'
-                        }`}
-                      >
-                        <td className="p-3 font-bold text-slate-400">{r.step ? `#${r.step}` : idx + 1}</td>
-                        <td className="p-3 text-slate-800 font-medium">{r.dateTime}</td>
-                        <td className="p-3 font-semibold text-slate-900">{r.location}</td>
-                        <td className="p-3">{r.zone}</td>
-                        <td className="p-3">
-                          <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
-                            r.badgeColor === 'rose'
-                              ? 'bg-rose-100 text-rose-700 border border-rose-300'
-                              : 'bg-blue-100 text-blue-700 border border-blue-300'
-                          }`}>
-                            {r.eventType}
-                          </span>
-                        </td>
-                        <td className="p-3 font-mono text-slate-500 text-[11px]">{r.reader}</td>
-                        <td className="p-3 text-slate-600">{r.remarks}</td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-
-            {/* Pagination Controls matching Screenshot #18 */}
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs font-semibold text-slate-500">
-              <div className="flex items-center gap-2">
-                <span>Show</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="bg-slate-50 border border-slate-200 text-xs font-bold rounded-lg px-2 py-1"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-                <span>records</span>
-                <span className="ml-3 text-slate-400">Showing 1 to 8 of 12 records</span>
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="overflow-auto max-h-[500px]">
+                <table className="w-full text-left text-xs font-medium text-slate-700">
+                  <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+                    <tr>
+                      <th className="p-3">#</th>
+                      <th className="p-3">Date & Time</th>
+                      <th className="p-3">Location</th>
+                      <th className="p-3">Zone</th>
+                      <th className="p-3">Event Type</th>
+                      <th className="p-3">Reader / Source</th>
+                      <th className="p-3">Remarks</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {filteredRecords.map((r, idx) => {
+                      const isSelected = activeStep === r.step;
+                      return (
+                        <tr
+                          key={idx}
+                          onClick={() => handleSelectStep(r.step)}
+                          className={`transition-colors cursor-pointer ${
+                            isSelected ? 'bg-purple-50/80 font-bold text-[#6C2BD9]' : 'hover:bg-slate-50'
+                          }`}
+                        >
+                          <td className="p-3 font-bold text-slate-400">{r.step ? `#${r.step}` : idx + 1}</td>
+                          <td className="p-3 text-slate-800 font-medium">{r.dateTime}</td>
+                          <td className="p-3 font-semibold text-slate-900">{r.location}</td>
+                          <td className="p-3">{r.zone}</td>
+                          <td className="p-3">
+                            <span className={`px-2.5 py-0.5 rounded-full text-[10px] font-extrabold ${
+                              r.badgeColor === 'rose'
+                                ? 'bg-rose-100 text-rose-700 border border-rose-300'
+                                : 'bg-purple-100 text-[#6C2BD9] border border-purple-300'
+                            }`}>
+                              {r.eventType}
+                            </span>
+                          </td>
+                          <td className="p-3 font-mono text-slate-500 text-[11px]">{r.reader}</td>
+                          <td className="p-3 text-slate-600">{r.remarks}</td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
               </div>
-
-              <div className="flex items-center gap-1">
-                <button className="px-2 py-1 rounded hover:bg-slate-100 text-slate-600">&lt;</button>
-                <span className="w-6 h-6 rounded-lg bg-[#6C2BD9] text-white flex items-center justify-center font-bold text-xs">1</span>
-                <span className="w-6 h-6 rounded-lg hover:bg-slate-100 flex items-center justify-center text-slate-600">2</span>
-                <button className="px-2 py-1 rounded hover:bg-slate-100 text-slate-600">&gt;</button>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {filteredRecords.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>
 
@@ -794,7 +775,7 @@ export function LocationHistory() {
                       <div className="flex items-center justify-between">
                         <span className="font-bold text-xs text-slate-900 truncate">{rec.dateTime}</span>
                         <span className={`px-2 py-0.5 rounded-full text-[9px] font-extrabold ${
-                          rec.badgeColor === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-blue-100 text-blue-700'
+                          rec.badgeColor === 'rose' ? 'bg-rose-100 text-rose-700' : 'bg-purple-100 text-[#6C2BD9]'
                         }`}>
                           {rec.eventType}
                         </span>

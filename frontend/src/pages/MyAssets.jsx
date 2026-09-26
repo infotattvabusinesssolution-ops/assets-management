@@ -964,10 +964,10 @@ export function MyAssets() {
 
           {/* 4. Asset Register List Table (Callout 4 matching screenshot 1-to-1) */}
           <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[540px]">
               <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
+                <thead className="sticky top-0 z-10 shadow-2xs">
+                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
                     <th className="p-3 w-8">
                       <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9]" />
                     </th>
@@ -1089,23 +1089,10 @@ export function MyAssets() {
               </table>
             </div>
 
-            {/* Pagination Footer */}
+            {/* Table Summary Footer */}
             <div className="p-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500 font-semibold">
-              <span>Showing 1 to 10 of 16 assets</span>
-              <div className="flex items-center gap-2">
-                <span>Show</span>
-                <select className="bg-white border border-slate-200 rounded-lg px-2 py-0.5 font-bold text-slate-800">
-                  <option value="10">10</option>
-                  <option value="25">25</option>
-                </select>
-                <span>per page</span>
-                <div className="flex items-center gap-1 ml-2">
-                  <button className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-400">&lt;</button>
-                  <button className="w-6 h-6 rounded-lg bg-[#6C2BD9] text-white font-bold flex items-center justify-center">1</button>
-                  <button className="w-6 h-6 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold flex items-center justify-center">2</button>
-                  <button className="w-6 h-6 rounded-lg bg-white border border-slate-200 flex items-center justify-center text-slate-700">&gt;</button>
-                </div>
-              </div>
+              <span className="font-medium text-slate-600">Showing {filteredAssets.length} assets</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { Agentation } from 'agentation';
 import { AuthProvider, useAuth } from './context/AuthContext';
 import { CommandPaletteProvider } from './context/CommandPaletteContext';
 
@@ -203,6 +204,7 @@ export function App() {
                 <Route path="mobile-scan" element={<MobileScanWorkbench />} />
               </Route>
             </Routes>
+            <Agentation />
           </BrowserRouter>
         </CommandPaletteProvider> 
       </AuthProvider>

@@ -399,10 +399,10 @@ export function PreventiveMaintenance() {
     });
   }, [schedules, categoryFilter, locationFilter, statusFilter]);
 
-  const totalRecords = 24; // Matching screenshot counter
+  const totalRecords = filteredSchedules.length;
   const paginatedSchedules = useMemo(() => {
-    return filteredSchedules.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [filteredSchedules, currentPage, pageSize]);
+    return filteredSchedules;
+  }, [filteredSchedules]);
 
   // Handlers
   const handleGenerateWorkOrders = async () => {
@@ -662,94 +662,76 @@ export function PreventiveMaintenance() {
             </h3>
           </div>
 
-          <div className="overflow-x-auto border border-slate-200 rounded-lg">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-[#F8FAFC] text-slate-700 font-bold text-[11px] border-b border-slate-200">
-                <tr>
-                  <th className="p-2.5 text-center w-8">
-                    <input type="checkbox" className="rounded border-slate-300" />
-                  </th>
-                  <th className="p-2.5">Schedule No.</th>
-                  <th className="p-2.5">Asset No.</th>
-                  <th className="p-2.5">Asset Name</th>
-                  <th className="p-2.5">Schedule Type</th>
-                  <th className="p-2.5">Frequency</th>
-                  <th className="p-2.5">Next Due Date</th>
-                  <th className="p-2.5 text-center">Status</th>
-                  <th className="p-2.5 text-center">Action</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-medium">
-                {paginatedSchedules.map((s) => {
-                  const isSelected = selectedScheduleId === s.id;
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="overflow-auto max-h-[540px]">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-700 font-bold text-[11px] border-b border-slate-200">
+                  <tr>
+                    <th className="p-2.5 text-center w-8">
+                      <input type="checkbox" className="rounded border-slate-300" />
+                    </th>
+                    <th className="p-2.5">Schedule No.</th>
+                    <th className="p-2.5">Asset No.</th>
+                    <th className="p-2.5">Asset Name</th>
+                    <th className="p-2.5">Schedule Type</th>
+                    <th className="p-2.5">Frequency</th>
+                    <th className="p-2.5">Next Due Date</th>
+                    <th className="p-2.5 text-center">Status</th>
+                    <th className="p-2.5 text-center">Action</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                  {paginatedSchedules.map((s) => {
+                    const isSelected = selectedScheduleId === s.id;
 
-                  return (
-                    <tr 
-                      key={s.id}
-                      onClick={() => setSelectedScheduleId(s.id)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={isSelected} onChange={() => setSelectedScheduleId(s.id)} className="rounded border-slate-300" />
-                      </td>
-                      <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
-                        {s.scheduleNo}
-                      </td>
-                      <td className="p-2.5 font-mono text-[#6C2BD9]">
-                        {s.assetNo}
-                      </td>
-                      <td className="p-2.5 font-bold text-slate-900">
-                        {s.assetName}
-                      </td>
-                      <td className="p-2.5 text-slate-800">
-                        {s.scheduleType}
-                      </td>
-                      <td className="p-2.5 text-slate-900 font-medium">
-                        {s.frequency}
-                      </td>
-                      <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
-                        {s.nextDueDate}
-                      </td>
-                      <td className="p-2.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] border ${getStatusBadgeStyle(s.status)}`}>
-                          {s.status}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button className="p-1 hover:bg-slate-200 rounded text-slate-600">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Controls Matching Screenshot */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <span className="text-xs text-slate-500">
-              Showing 1 to 10 of 24 records
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&lt;</button>
-              <button className="px-2.5 py-1 bg-[#6C2BD9] text-white font-bold rounded text-xs shadow-2xs">1</button>
-              <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">2</button>
-              <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">3</button>
-              <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&gt;</button>
-
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="ml-2 bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-700 font-medium"
-              >
-                <option value={10}>10 / page</option>
-                <option value={20}>20 / page</option>
-              </select>
+                    return (
+                      <tr 
+                        key={s.id}
+                        onClick={() => setSelectedScheduleId(s.id)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" checked={isSelected} onChange={() => setSelectedScheduleId(s.id)} className="rounded border-slate-300" />
+                        </td>
+                        <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
+                          {s.scheduleNo}
+                        </td>
+                        <td className="p-2.5 font-mono text-[#6C2BD9]">
+                          {s.assetNo}
+                        </td>
+                        <td className="p-2.5 font-bold text-slate-900">
+                          {s.assetName}
+                        </td>
+                        <td className="p-2.5 text-slate-800">
+                          {s.scheduleType}
+                        </td>
+                        <td className="p-2.5 text-slate-900 font-medium">
+                          {s.frequency}
+                        </td>
+                        <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
+                          {s.nextDueDate}
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] border ${getStatusBadgeStyle(s.status)}`}>
+                            {s.status}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button className="p-1 hover:bg-slate-200 rounded text-slate-600">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {filteredSchedules.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
         </div>
@@ -1120,43 +1102,49 @@ export function PreventiveMaintenance() {
 
           {/* TAB 1: UPCOMING SCHEDULES TABLE MATCHING SCREENSHOT */}
           {activeBottomTab === 'UPCOMING' && (
-            <div className="overflow-x-auto border border-slate-200 rounded-lg">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-[#F8FAFC] text-slate-700 font-bold border-b border-slate-200 text-[11px]">
-                  <tr>
-                    <th className="p-2.5">Due Date</th>
-                    <th className="p-2.5">Schedule No.</th>
-                    <th className="p-2.5">Asset No.</th>
-                    <th className="p-2.5">Asset Name</th>
-                    <th className="p-2.5">Location</th>
-                    <th className="p-2.5">Type</th>
-                    <th className="p-2.5 text-center">Status</th>
-                    <th className="p-2.5 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {EXACT_UPCOMING_SCHEDULES.map((u, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">{u.dueDate}</td>
-                      <td className="p-2.5 font-mono font-bold text-[#6C2BD9] hover:underline">{u.scheduleNo}</td>
-                      <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">{u.assetNo}</td>
-                      <td className="p-2.5 font-bold text-slate-900">{u.assetName}</td>
-                      <td className="p-2.5 text-slate-800">{u.location}</td>
-                      <td className="p-2.5 text-slate-800">{u.type}</td>
-                      <td className="p-2.5 text-center">
-                        <span className={`px-2 py-0.5 rounded text-[10px] border ${getStatusBadgeStyle(u.status)}`}>
-                          {u.status}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-center">
-                        <button className="p-1 text-slate-500 hover:text-slate-900">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </td>
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="overflow-auto max-h-[350px]">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-700 font-bold border-b border-slate-200 text-[11px]">
+                    <tr>
+                      <th className="p-2.5">Due Date</th>
+                      <th className="p-2.5">Schedule No.</th>
+                      <th className="p-2.5">Asset No.</th>
+                      <th className="p-2.5">Asset Name</th>
+                      <th className="p-2.5">Location</th>
+                      <th className="p-2.5">Type</th>
+                      <th className="p-2.5 text-center">Status</th>
+                      <th className="p-2.5 text-center">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {EXACT_UPCOMING_SCHEDULES.map((u, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">{u.dueDate}</td>
+                        <td className="p-2.5 font-mono font-bold text-[#6C2BD9] hover:underline">{u.scheduleNo}</td>
+                        <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">{u.assetNo}</td>
+                        <td className="p-2.5 font-bold text-slate-900">{u.assetName}</td>
+                        <td className="p-2.5 text-slate-800">{u.location}</td>
+                        <td className="p-2.5 text-slate-800">{u.type}</td>
+                        <td className="p-2.5 text-center">
+                          <span className={`px-2 py-0.5 rounded text-[10px] border ${getStatusBadgeStyle(u.status)}`}>
+                            {u.status}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <button className="p-1 text-slate-500 hover:text-slate-900">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {EXACT_UPCOMING_SCHEDULES.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
           )}
 

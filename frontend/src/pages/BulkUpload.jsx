@@ -86,9 +86,8 @@ export function BulkUpload() {
 
   // Paginated Rows
   const paginatedRecords = useMemo(() => {
-    const start = (currentPage - 1) * perPage;
-    return filteredRecords.slice(start, start + perPage);
-  }, [filteredRecords, currentPage, perPage]);
+    return filteredRecords;
+  }, [filteredRecords]);
 
   const totalPages = Math.ceil(filteredRecords.length / perPage) || 1;
 
@@ -425,7 +424,7 @@ export function BulkUpload() {
               onClick={handleValidateFile}
               className={`w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
                 selectedFile
-                  ? 'bg-blue-600 hover:bg-blue-700 text-white shadow-blue-600/20'
+                  ? 'bg-[#6C2BD9] hover:bg-[#5B21B6] text-white shadow-purple-600/20'
                   : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
               }`}
             >
@@ -540,9 +539,9 @@ export function BulkUpload() {
 
         {/* Validation Results Standard Enterprise Data Table */}
         <div className="border border-slate-200 rounded-xl overflow-hidden shadow-2xs bg-white">
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left border-collapse text-xs text-black">
-              <thead>
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
                 <tr className="bg-slate-50 border-b border-slate-200 text-black font-black uppercase text-[11px] tracking-wider select-none">
                   <th className="px-4 py-3.5 w-10 text-black">
                     <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] accent-[#6C2BD9] cursor-pointer" />
@@ -621,63 +620,10 @@ export function BulkUpload() {
             </table>
           </div>
 
-          {/* Table Standard Pagination Footer */}
-          <div className="p-3.5 bg-slate-50 border-t border-slate-200 flex flex-col sm:flex-row sm:items-center justify-between text-xs text-black font-semibold gap-3">
-            <div>
-              Showing <span className="font-extrabold text-black">{filteredRecords.length > 0 ? ((currentPage - 1) * perPage) + 1 : 0}</span> to{' '}
-              <span className="font-extrabold text-black">
-                {Math.min(currentPage * perPage, filteredRecords.length)}
-              </span>{' '}
-              of <span className="font-extrabold text-black">{filteredRecords.length}</span> records
-            </div>
-            
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-black font-semibold">Show</span>
-                <select
-                  value={perPage}
-                  onChange={(e) => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}
-                  className="bg-white border border-slate-300 rounded-lg px-2.5 py-1 font-extrabold text-black shadow-2xs focus:border-[#6C2BD9] outline-none"
-                >
-                  <option value="10">10</option>
-                  <option value="25">25</option>
-                  <option value="50">50</option>
-                </select>
-                <span className="text-black font-semibold">per page</span>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-black font-bold hover:bg-purple-50 hover:text-[#6C2BD9] disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black transition-all shadow-2xs cursor-pointer flex items-center gap-1"
-                >
-                  &lt; Prev
-                </button>
-                
-                {Array.from({ length: totalPages }).map((_, i) => (
-                  <button
-                    key={i + 1}
-                    onClick={() => setCurrentPage(i + 1)}
-                    className={`w-7 h-7 rounded-lg flex items-center justify-center font-extrabold text-xs transition-all cursor-pointer ${
-                      currentPage === i + 1
-                        ? 'bg-[#6C2BD9] text-white shadow-2xs'
-                        : 'bg-white border border-slate-300 text-black hover:bg-purple-50 hover:text-[#6C2BD9]'
-                    }`}
-                  >
-                    {i + 1}
-                  </button>
-                ))}
-
-                <button
-                  disabled={currentPage === totalPages || totalPages === 0}
-                  onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-300 text-black font-bold hover:bg-purple-50 hover:text-[#6C2BD9] disabled:opacity-40 disabled:hover:bg-white disabled:hover:text-black transition-all shadow-2xs cursor-pointer flex items-center gap-1"
-                >
-                  Next &gt;
-                </button>
-              </div>
-            </div>
+          {/* Table Footer */}
+          <div className="p-3.5 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+            <span className="font-medium text-slate-600">Showing {filteredRecords.length} records</span>
+            <span className="text-slate-400">Scroll down to view all records</span>
           </div>
         </div>
 
@@ -700,41 +646,47 @@ export function BulkUpload() {
               </button>
             </div>
 
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
-                    <th className="p-3">Batch Ref</th>
-                    <th className="p-3">File Name</th>
-                    <th className="p-3">Uploaded By</th>
-                    <th className="p-3">Date / Time</th>
-                    <th className="p-3 text-center">Success</th>
-                    <th className="p-3 text-center">Failed</th>
-                    <th className="p-3 text-right">Status</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
-                  {(historyJobs.length > 0 ? historyJobs : [
-                    { batchRef: 'BATCH-UP-2026-001', fileName: 'Asset_Bulk_Upload_Q3.xlsx', uploadedBy: 'John Doe', uploadDate: '16 Sep 2026 10:30 AM', totalRecords: 12, successCount: 10, failedCount: 2, status: 'Completed' },
-                    { batchRef: 'BATCH-UP-2026-002', fileName: 'IT_Monitors_Batch.csv', uploadedBy: 'Sarah Ali', uploadDate: '14 Sep 2026 02:15 PM', totalRecords: 45, successCount: 45, failedCount: 0, status: 'Completed' },
-                    { batchRef: 'BATCH-UP-2026-003', fileName: 'Furniture_Replaced.xlsx', uploadedBy: 'Ahmed Khan', uploadDate: '10 Sep 2026 11:00 AM', totalRecords: 20, successCount: 18, failedCount: 2, status: 'Completed' }
-                  ]).map((j) => (
-                    <tr key={j.batchRef} className="hover:bg-slate-50">
-                      <td className="p-3 font-mono font-bold text-[#6C2BD9]">{j.batchRef}</td>
-                      <td className="p-3 font-bold text-slate-900">{j.fileName}</td>
-                      <td className="p-3 text-slate-600">{j.uploadedBy}</td>
-                      <td className="p-3 text-slate-500 text-[11px]">{j.uploadDate}</td>
-                      <td className="p-3 text-center font-bold text-emerald-600">{j.successCount}</td>
-                      <td className="p-3 text-center font-bold text-rose-600">{j.failedCount}</td>
-                      <td className="p-3 text-right">
-                        <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                          ✓ {j.status}
-                        </span>
-                      </td>
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="overflow-auto max-h-[300px]">
+                <table className="w-full text-left border-collapse text-xs">
+                  <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
+                      <th className="p-3">Batch Ref</th>
+                      <th className="p-3">File Name</th>
+                      <th className="p-3">Uploaded By</th>
+                      <th className="p-3">Date / Time</th>
+                      <th className="p-3 text-center">Success</th>
+                      <th className="p-3 text-center">Failed</th>
+                      <th className="p-3 text-right">Status</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
+                    {(historyJobs.length > 0 ? historyJobs : [
+                      { batchRef: 'BATCH-UP-2026-001', fileName: 'Asset_Bulk_Upload_Q3.xlsx', uploadedBy: 'John Doe', uploadDate: '16 Sep 2026 10:30 AM', totalRecords: 12, successCount: 10, failedCount: 2, status: 'Completed' },
+                      { batchRef: 'BATCH-UP-2026-002', fileName: 'IT_Monitors_Batch.csv', uploadedBy: 'Sarah Ali', uploadDate: '14 Sep 2026 02:15 PM', totalRecords: 45, successCount: 45, failedCount: 0, status: 'Completed' },
+                      { batchRef: 'BATCH-UP-2026-003', fileName: 'Furniture_Replaced.xlsx', uploadedBy: 'Ahmed Khan', uploadDate: '10 Sep 2026 11:00 AM', totalRecords: 20, successCount: 18, failedCount: 2, status: 'Completed' }
+                    ]).map((j) => (
+                      <tr key={j.batchRef} className="hover:bg-slate-50">
+                        <td className="p-3 font-mono font-bold text-[#6C2BD9]">{j.batchRef}</td>
+                        <td className="p-3 font-bold text-slate-900">{j.fileName}</td>
+                        <td className="p-3 text-slate-600">{j.uploadedBy}</td>
+                        <td className="p-3 text-slate-500 text-[11px]">{j.uploadDate}</td>
+                        <td className="p-3 text-center font-bold text-emerald-600">{j.successCount}</td>
+                        <td className="p-3 text-center font-bold text-rose-600">{j.failedCount}</td>
+                        <td className="p-3 text-right">
+                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
+                            ✓ {j.status}
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {(historyJobs.length > 0 ? historyJobs.length : 3)} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
 
             <div className="flex justify-end pt-2 border-t border-slate-100">

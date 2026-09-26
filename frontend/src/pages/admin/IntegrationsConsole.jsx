@@ -569,13 +569,9 @@ export function IntegrationsConsole() {
     });
   }, [filteredIntegrations, sortField, sortOrder]);
 
-  // Pagination calculation
+  // Integrations List (All items rendered for scroll-down view)
   const totalRecords = sortedIntegrations.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
-  const safeCurrentPage = Math.min(currentPage, totalPages);
-  const startIdx = (safeCurrentPage - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, totalRecords);
-  const paginatedIntegrations = sortedIntegrations.slice(startIdx, endIdx);
+  const paginatedIntegrations = sortedIntegrations;
 
   // Checkbox handlers
   const isAllOnPageSelected =
@@ -1047,9 +1043,9 @@ export function IntegrationsConsole() {
           </div>
 
           {/* Table */}
-          <div className="overflow-x-auto border border-slate-200 rounded-lg">
+          <div className="overflow-auto max-h-[540px] border border-slate-200 rounded-lg">
             <table className="w-full text-left text-xs">
-              <thead className="bg-[#FAF8FF] border-b border-slate-200 text-[11px] font-semibold text-slate-600 select-none">
+              <thead className="bg-[#FAF8FF] border-b border-slate-200 text-[11px] font-semibold text-slate-600 select-none sticky top-0 z-10 shadow-2xs">
                 <tr>
                   <th className="py-2.5 px-3 w-8">
                     <input
@@ -1232,73 +1228,10 @@ export function IntegrationsConsole() {
             </table>
           </div>
 
-          {/* Pagination Footer */}
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-2 text-xs text-slate-500">
-            <div>
-              Showing {totalRecords === 0 ? 0 : startIdx + 1} to {endIdx} of {totalRecords} records
-            </div>
-
-            <div className="flex items-center gap-1">
-              <button
-                disabled={safeCurrentPage <= 1}
-                onClick={() => setCurrentPage(1)}
-                className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
-              >
-                «
-              </button>
-              <button
-                disabled={safeCurrentPage <= 1}
-                onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
-              >
-                ‹
-              </button>
-
-              {Array.from({ length: totalPages }, (_, i) => i + 1).map((pageNum) => (
-                <button
-                  key={pageNum}
-                  onClick={() => setCurrentPage(pageNum)}
-                  className={clsx(
-                    'w-6 h-6 flex items-center justify-center rounded text-xs font-medium',
-                    safeCurrentPage === pageNum
-                      ? 'bg-[#6C2BD9] text-white font-bold shadow-2xs'
-                      : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
-                  )}
-                >
-                  {pageNum}
-                </button>
-              ))}
-
-              <button
-                disabled={safeCurrentPage >= totalPages}
-                onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
-              >
-                ›
-              </button>
-              <button
-                disabled={safeCurrentPage >= totalPages}
-                onClick={() => setCurrentPage(totalPages)}
-                className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
-              >
-                »
-              </button>
-
-              <div className="ml-2">
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="border border-slate-200 rounded px-2 py-1 text-slate-600 bg-white"
-                >
-                  <option value={10}>10 / page</option>
-                  <option value={20}>20 / page</option>
-                  <option value={50}>50 / page</option>
-                </select>
-              </div>
-            </div>
+          {/* Table Summary Footer */}
+          <div className="flex items-center justify-between pt-2 text-xs text-slate-500">
+            <div className="font-medium text-slate-600">Showing {totalRecords} records</div>
+            <div className="text-slate-400">Scroll down to view all records</div>
           </div>
         </div>
       </div>

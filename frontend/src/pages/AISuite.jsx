@@ -296,8 +296,8 @@ export function AISuite() {
           </div>
 
           {/* Card 3: 23% Potential Cost Savings */}
-          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center gap-4 hover:border-blue-300 transition-all cursor-pointer">
-            <div className="w-12 h-12 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+          <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center gap-4 hover:border-purple-300 transition-all cursor-pointer">
+            <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center shrink-0">
               <TrendingUp className="w-6 h-6" />
             </div>
             <div>
@@ -380,9 +380,9 @@ export function AISuite() {
 
                           {/* Embedded Data Table inside Bot Response */}
                           {msg.tableData && (
-                            <div className="border border-slate-200 rounded-lg overflow-hidden bg-white mt-2">
+                            <div className="border border-slate-200 rounded-lg overflow-auto max-h-[250px] bg-white mt-2">
                               <table className="w-full text-left text-xs border-collapse">
-                                <thead className="bg-slate-50 text-slate-500 font-semibold text-[11px] border-b border-slate-200">
+                                <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500 font-semibold text-[11px] border-b border-slate-200 shadow-2xs">
                                   <tr>
                                     <th className="py-2.5 px-3 w-8">#</th>
                                     <th className="py-2.5 px-3">Asset Code</th>
@@ -586,7 +586,7 @@ export function AISuite() {
                   className="p-3 rounded-lg border border-slate-100 bg-slate-50/60 hover:bg-purple-50/40 hover:border-purple-200 transition-all cursor-pointer flex items-start justify-between gap-2"
                 >
                   <div className="flex items-start gap-2.5">
-                    <div className="w-7 h-7 rounded bg-blue-50 text-blue-600 flex items-center justify-center shrink-0 mt-0.5">
+                    <div className="w-7 h-7 rounded bg-purple-50 text-[#6C2BD9] flex items-center justify-center shrink-0 mt-0.5">
                       <FileText className="w-3.5 h-3.5" />
                     </div>
                     <div>
@@ -656,7 +656,7 @@ export function AISuite() {
                 {/* Insight 3 */}
                 <div className="flex items-start justify-between gap-2 border-b border-slate-100 pb-2.5">
                   <div className="flex items-start gap-2.5">
-                    <Clock className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+                    <Clock className="w-4 h-4 text-[#6C2BD9] shrink-0 mt-0.5" />
                     <div>
                       <p className="font-bold text-slate-900">3 assets likely to fail in next 30 days</p>
                       <p className="text-[11px] text-slate-500 mt-0.5">Based on historical data and AI model</p>
@@ -883,9 +883,9 @@ export function AISuite() {
               <p className="text-amber-700 mt-0.5">Match Reason: Identical Serial Number 75K3D24 and Manufacturer Dell Inc.</p>
             </div>
 
-            <div className="border border-slate-200 rounded-lg overflow-hidden text-xs">
+            <div className="border border-slate-200 rounded-lg overflow-auto max-h-[250px] text-xs">
               <table className="w-full text-left">
-                <thead className="bg-slate-50 border-b text-slate-500">
+                <thead className="sticky top-0 z-10 bg-slate-50 border-b text-slate-500 shadow-2xs">
                   <tr>
                     <th className="p-2.5">Field</th>
                     <th className="p-2.5">Existing Record (AS-000123)</th>

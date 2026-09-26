@@ -137,7 +137,7 @@ export function ReviewSubmitModal({
             {/* Header */}
             <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/60">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
                   <ShieldCheck className="w-4 h-4" />
                 </div>
                 <div>
@@ -265,9 +265,9 @@ export function ReviewSubmitModal({
               </div>
 
               {/* Dynamic Approval Workflow Option */}
-              <div className="p-3.5 bg-blue-50/50 border border-blue-200 rounded-xl flex items-center justify-between">
+              <div className="p-3.5 bg-purple-50/50 border border-purple-200 rounded-xl flex items-center justify-between">
                 <div className="flex items-center gap-2.5">
-                  <Sparkles className="w-4 h-4 text-blue-600 shrink-0" />
+                  <Sparkles className="w-4 h-4 text-[#6C2BD9] shrink-0" />
                   <div>
                     <h5 className="text-xs font-bold text-slate-900">Dynamic Asset Approval Workflow</h5>
                     <p className="text-[11px] text-slate-500">Route newly registered assets through management approval prior to active activation</p>
@@ -280,7 +280,7 @@ export function ReviewSubmitModal({
                     onChange={(e) => setRequireApproval(e.target.checked)}
                     className="sr-only peer"
                   />
-                  <div className="w-9 h-5 bg-slate-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-blue-600"></div>
+                  <div className="w-9 h-5 bg-slate-300 peer-focus:outline-hidden rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-[#6C2BD9]"></div>
                 </label>
               </div>
             </div>
@@ -298,7 +298,7 @@ export function ReviewSubmitModal({
                 type="button"
                 onClick={handleFinalSubmit}
                 disabled={!isValid || submitting}
-                className="px-6 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors flex items-center gap-2"
+                className="px-6 py-2 text-xs font-semibold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 disabled:cursor-not-allowed rounded-xl shadow-xs transition-colors flex items-center gap-2"
               >
                 {submitting ? 'Posting Transaction...' : 'Confirm & Post Transaction'}
                 <ArrowRight className="w-3.5 h-3.5" />

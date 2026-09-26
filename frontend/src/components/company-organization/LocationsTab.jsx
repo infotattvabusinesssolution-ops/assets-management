@@ -329,11 +329,8 @@ export function LocationsTab({ triggerToast, onSwitchTab }) {
     costCenterFilter
   ]);
 
-  // Paginated List
-  const paginatedLocations = useMemo(() => {
-    const start = (currentPage - 1) * pageSize;
-    return filteredLocations.slice(start, start + pageSize);
-  }, [filteredLocations, currentPage, pageSize]);
+  // Displayed List (Scroll down only)
+  const paginatedLocations = filteredLocations;
 
   const totalPages = Math.ceil(filteredLocations.length / pageSize) || 1;
 
@@ -723,10 +720,10 @@ export function LocationsTab({ triggerToast, onSwitchTab }) {
           </button>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[540px]">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50/80 border-b border-slate-200 text-slate-600 font-bold select-none text-[11px] uppercase tracking-wider">
+            <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-600 font-bold select-none text-[11px] uppercase tracking-wider shadow-2xs">
+              <tr className="border-b border-slate-200 text-slate-600 font-bold select-none text-[11px] uppercase tracking-wider">
                 <th className="p-3 pl-4 w-10">
                   <input
                     type="checkbox"
@@ -797,7 +794,7 @@ export function LocationsTab({ triggerToast, onSwitchTab }) {
               ) : (
                 paginatedLocations.map((loc, idx) => {
                   const isSelected = selectedLocIds.includes(loc.id);
-                  const globalIdx = (currentPage - 1) * pageSize + idx + 1;
+                  const globalIdx = idx + 1;
                   return (
                     <tr
                       key={loc.id}
@@ -944,65 +941,10 @@ export function LocationsTab({ triggerToast, onSwitchTab }) {
           </table>
         </div>
 
-        {/* Table Pagination Footer matching Screenshot */}
-        <div className="px-4 py-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            Showing {(currentPage - 1) * pageSize + 1} to {Math.min(currentPage * pageSize, filteredLocations.length)} of {filteredLocations.length} records
-          </div>
-          <div className="flex items-center gap-2">
-            <button
-              onClick={() => setCurrentPage(1)}
-              disabled={currentPage === 1}
-              className="px-2.5 py-1 border border-slate-200 rounded-lg disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
-            >
-              «
-            </button>
-            <button
-              onClick={() => setCurrentPage((p) => Math.max(p - 1, 1))}
-              disabled={currentPage === 1}
-              className="px-2.5 py-1 border border-slate-200 rounded-lg disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
-            >
-              ‹
-            </button>
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
-              <button
-                key={p}
-                onClick={() => setCurrentPage(p)}
-                className={clsx(
-                  'px-3 py-1 rounded-lg font-bold cursor-pointer',
-                  currentPage === p ? 'bg-[#6C2BD9] text-white' : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
-                )}
-              >
-                {p}
-              </button>
-            ))}
-            <button
-              onClick={() => setCurrentPage((p) => Math.min(p + 1, totalPages))}
-              disabled={currentPage === totalPages}
-              className="px-2.5 py-1 border border-slate-200 rounded-lg disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
-            >
-              ›
-            </button>
-            <button
-              onClick={() => setCurrentPage(totalPages)}
-              disabled={currentPage === totalPages}
-              className="px-2.5 py-1 border border-slate-200 rounded-lg disabled:opacity-40 font-bold hover:bg-slate-50 cursor-pointer"
-            >
-              »
-            </button>
-            <select
-              value={pageSize}
-              onChange={(e) => {
-                setPageSize(Number(e.target.value));
-                setCurrentPage(1);
-              }}
-              className="px-2.5 py-1 border border-slate-200 rounded-lg text-xs bg-white font-medium focus:outline-hidden cursor-pointer"
-            >
-              <option value={10}>10 / page</option>
-              <option value={25}>25 / page</option>
-              <option value={50}>50 / page</option>
-            </select>
-          </div>
+        {/* Table Scroll Footer */}
+        <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+          <span className="font-medium text-slate-600">Showing {filteredLocations.length} records</span>
+          <span className="text-slate-400">Scroll down to view all records</span>
         </div>
       </div>
 

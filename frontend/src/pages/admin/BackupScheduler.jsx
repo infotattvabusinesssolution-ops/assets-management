@@ -749,9 +749,9 @@ export function BackupScheduler() {
               </div>
 
               {/* Data Grid */}
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[540px]">
                 <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider">
+                  <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[10px] tracking-wider sticky top-0 z-10 shadow-2xs">
                     <tr>
                       <th className="py-2.5 px-3 w-8 text-center">
                         <input
@@ -906,79 +906,10 @@ export function BackupScheduler() {
                 </table>
               </div>
 
-              {/* Table Pagination Matching Screenshot */}
-              <div className="p-3 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-2 text-xs text-slate-500">
-                <div>
-                  Showing 1 to {Math.min(10, filteredBackups.length)} of {kpis.totalBackups30Days} records
-                </div>
-                <div className="flex items-center gap-1.5">
-                  <button
-                    onClick={() => setCurrentPage(1)}
-                    disabled={currentPage === 1}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-30 cursor-pointer"
-                  >
-                    «
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-30 cursor-pointer"
-                  >
-                    ‹
-                  </button>
-                  <button
-                    className={clsx(
-                      'w-6 h-6 rounded-md font-bold text-xs flex items-center justify-center cursor-pointer',
-                      currentPage === 1 ? 'bg-[#6C2BD9] text-white' : 'text-slate-700 hover:bg-slate-100'
-                    )}
-                    onClick={() => setCurrentPage(1)}
-                  >
-                    1
-                  </button>
-                  <button
-                    className={clsx(
-                      'w-6 h-6 rounded-md font-bold text-xs flex items-center justify-center cursor-pointer',
-                      currentPage === 2 ? 'bg-[#6C2BD9] text-white' : 'text-slate-700 hover:bg-slate-100'
-                    )}
-                    onClick={() => setCurrentPage(2)}
-                  >
-                    2
-                  </button>
-                  <button
-                    className={clsx(
-                      'w-6 h-6 rounded-md font-bold text-xs flex items-center justify-center cursor-pointer',
-                      currentPage === 3 ? 'bg-[#6C2BD9] text-white' : 'text-slate-700 hover:bg-slate-100'
-                    )}
-                    onClick={() => setCurrentPage(3)}
-                  >
-                    3
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(prev => Math.min(3, prev + 1))}
-                    disabled={currentPage === 3}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-30 cursor-pointer"
-                  >
-                    ›
-                  </button>
-                  <button
-                    onClick={() => setCurrentPage(3)}
-                    disabled={currentPage === 3}
-                    className="p-1 rounded hover:bg-slate-100 text-slate-400 disabled:opacity-30 cursor-pointer"
-                  >
-                    »
-                  </button>
-
-                  <div className="ml-2 flex items-center gap-1">
-                    <select
-                      defaultValue="10"
-                      className="bg-white border border-slate-200 rounded-md px-2 py-1 text-[11px] font-semibold text-slate-700 focus:outline-none"
-                    >
-                      <option value="10">10 / page</option>
-                      <option value="25">25 / page</option>
-                      <option value="50">50 / page</option>
-                    </select>
-                  </div>
-                </div>
+              {/* Table Summary Footer */}
+              <div className="p-3 border-t border-slate-200 bg-white flex items-center justify-between text-xs text-slate-500">
+                <div className="font-medium text-slate-600">Showing {filteredBackups.length} records</div>
+                <div className="text-slate-400">Scroll down to view all records</div>
               </div>
             </div>
 

@@ -62,7 +62,7 @@ export function AssetMatchModal({ isOpen, onClose, device, onReconciled }) {
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-xl bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center font-bold">
               <ShieldCheck className="w-5 h-5" />
             </div>
             <div>
@@ -88,10 +88,10 @@ export function AssetMatchModal({ isOpen, onClose, device, onReconciled }) {
           
           {/* Comparison Cards Header */}
           <div className="grid grid-cols-2 gap-4">
-            <div className="p-3.5 bg-blue-50/60 border border-blue-100 rounded-xl">
+            <div className="p-3.5 bg-purple-50/60 border border-purple-100 rounded-xl">
               <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[11px] font-bold uppercase tracking-wider text-blue-700">Discovered Device (Live Network)</span>
-                <span className="text-[11px] font-mono px-2 py-0.5 bg-blue-100 text-blue-800 rounded font-medium">{device.ipAddress}</span>
+                <span className="text-[11px] font-bold uppercase tracking-wider text-[#6C2BD9]">Discovered Device (Live Network)</span>
+                <span className="text-[11px] font-mono px-2 py-0.5 bg-purple-100 text-[#6C2BD9] rounded font-medium">{device.ipAddress}</span>
               </div>
               <h4 className="text-sm font-bold text-slate-900">{device.hostname}</h4>
               <p className="text-[11px] text-slate-500">{device.manufacturer} • {device.model} ({device.deviceType})</p>
@@ -108,9 +108,9 @@ export function AssetMatchModal({ isOpen, onClose, device, onReconciled }) {
           </div>
 
           {/* Field Comparison Table */}
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
+          <div className="border border-slate-200 rounded-xl overflow-auto max-h-[300px]">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold">
+              <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold shadow-2xs">
                 <tr>
                   <th className="py-2.5 px-4 w-1/3">Attribute</th>
                   <th className="py-2.5 px-4 w-1/3">Discovered Value</th>
@@ -140,9 +140,9 @@ export function AssetMatchModal({ isOpen, onClose, device, onReconciled }) {
 
           {/* Notice box on Separation of Concerns */}
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 text-slate-500 text-[11px] leading-relaxed flex items-start gap-2.5">
-            <ShieldCheck className="w-4 h-4 text-blue-600 shrink-0 mt-0.5" />
+            <ShieldCheck className="w-4 h-4 text-[#6C2BD9] shrink-0 mt-0.5" />
             <span>
-              <strong>FSD Audit Rule:</strong> Confirming this match links technical discovery telemetry to Asset <code className="text-blue-700 font-mono">{matchData.assetTag}</code>. Financial fields, serial asset tags, custody assignments, and depreciation schedules remain strictly protected in the Asset Master.
+              <strong>FSD Audit Rule:</strong> Confirming this match links technical discovery telemetry to Asset <code className="text-[#6C2BD9] font-mono">{matchData.assetTag}</code>. Financial fields, serial asset tags, custody assignments, and depreciation schedules remain strictly protected in the Asset Master.
             </span>
           </div>
 
@@ -174,7 +174,7 @@ export function AssetMatchModal({ isOpen, onClose, device, onReconciled }) {
                 type="button"
                 disabled={actionLoading}
                 onClick={() => handleReconcile('REGISTER_NEW')}
-                className="px-4 py-2 text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
+                className="px-4 py-2 text-xs font-semibold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] rounded-xl shadow-xs transition-colors flex items-center gap-1.5"
               >
                 <PlusCircle className="w-3.5 h-3.5" />
                 Register as New Asset

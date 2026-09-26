@@ -60,7 +60,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-slate-50/70">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center font-bold">
+            <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center font-bold">
               <ArrowRight className="w-4 h-4" />
             </div>
             <div>
@@ -99,7 +99,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
             <select
               value={formData.transferType}
               onChange={e => setFormData({ ...formData, transferType: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-blue-500"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
             >
               <option value="Location Transfer">Location Transfer (Intra-Site)</option>
               <option value="Site-to-Site Transfer">Site-to-Site Transfer (With Dispatch / In-Transit)</option>
@@ -159,7 +159,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
                 type="text"
                 value={formData.destinationRoom}
                 onChange={e => setFormData({ ...formData, destinationRoom: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
               />
             </div>
           </div>
@@ -202,7 +202,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
               type="text"
               value={formData.reason}
               onChange={e => setFormData({ ...formData, reason: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-blue-500"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
               required
             />
           </div>
@@ -214,7 +214,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
                 type="checkbox"
                 checked={formData.requireDispatch}
                 onChange={e => setFormData({ ...formData, requireDispatch: e.target.checked })}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
               />
               <span className="font-semibold text-slate-800">Require Dispatch &amp; In-Transit Tracking</span>
             </label>
@@ -227,7 +227,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
                 type="checkbox"
                 checked={formData.requireApproval}
                 onChange={e => setFormData({ ...formData, requireApproval: e.target.checked })}
-                className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
               />
               <span className="font-semibold text-slate-800">Route via Approval Workflow</span>
             </label>
@@ -245,7 +245,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
             <button
               type="submit"
               disabled={loading}
-              className="px-5 py-2 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
+              className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5 transition-colors"
             >
               {loading ? 'Processing...' : 'Confirm Transfer'}
             </button>

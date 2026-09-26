@@ -539,20 +539,20 @@ export function ReceiveWithoutPO() {
           >
             <div className={clsx(
               'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
-              currentStep >= 1 ? 'bg-[#1E20E9] text-white' : 'bg-blue-50 text-[#1E20E9]'
+              currentStep >= 1 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
             )}>
               1
             </div>
             <div>
-              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 1 ? 'text-[#1E20E9]' : 'text-slate-800')}>
+              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 1 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                 Asset Details
               </div>
-              <div className="text-[11px] text-blue-500 font-medium">Enter receiving details</div>
+              <div className="text-[11px] text-purple-600 font-medium">Enter receiving details</div>
             </div>
           </div>
 
           {/* Arrow 1 */}
-          <div className="hidden md:block text-blue-500 shrink-0">
+          <div className="hidden md:block text-[#6C2BD9] shrink-0">
             <ArrowRight className="w-4 h-4" />
           </div>
 
@@ -563,20 +563,20 @@ export function ReceiveWithoutPO() {
           >
             <div className={clsx(
               'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
-              currentStep >= 2 ? 'bg-[#1E20E9] text-white' : 'bg-blue-50 text-[#1E20E9]'
+              currentStep >= 2 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
             )}>
               2
             </div>
             <div>
-              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 2 ? 'text-[#1E20E9]' : 'text-slate-800')}>
+              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 2 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                 Asset Verification
               </div>
-              <div className="text-[11px] text-blue-500 font-medium">Capture asset information</div>
+              <div className="text-[11px] text-purple-600 font-medium">Capture asset information</div>
             </div>
           </div>
 
           {/* Arrow 2 */}
-          <div className="hidden md:block text-blue-500 shrink-0">
+          <div className="hidden md:block text-[#6C2BD9] shrink-0">
             <ArrowRight className="w-4 h-4" />
           </div>
 
@@ -587,20 +587,20 @@ export function ReceiveWithoutPO() {
           >
             <div className={clsx(
               'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
-              currentStep >= 3 ? 'bg-[#1E20E9] text-white' : 'bg-blue-50 text-[#1E20E9]'
+              currentStep >= 3 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
             )}>
               3
             </div>
             <div>
-              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 3 ? 'text-[#1E20E9]' : 'text-slate-800')}>
+              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 3 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                 Tagging
               </div>
-              <div className="text-[11px] text-blue-500 font-medium">Scan/Print &amp; Assign Tags</div>
+              <div className="text-[11px] text-purple-600 font-medium">Scan/Print &amp; Assign Tags</div>
             </div>
           </div>
 
           {/* Arrow 3 */}
-          <div className="hidden md:block text-blue-500 shrink-0">
+          <div className="hidden md:block text-[#6C2BD9] shrink-0">
             <ArrowRight className="w-4 h-4" />
           </div>
 
@@ -611,15 +611,15 @@ export function ReceiveWithoutPO() {
           >
             <div className={clsx(
               'w-9 h-9 rounded-full flex items-center justify-center font-bold text-sm shrink-0 transition-all shadow-xs',
-              currentStep >= 4 ? 'bg-[#1E20E9] text-white' : 'bg-blue-50 text-[#1E20E9]'
+              currentStep >= 4 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-50 text-[#6C2BD9]'
             )}>
               4
             </div>
             <div>
-              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 4 ? 'text-[#1E20E9]' : 'text-slate-800')}>
+              <div className={clsx('text-xs font-extrabold leading-tight', currentStep === 4 ? 'text-[#6C2BD9]' : 'text-slate-800')}>
                 Review &amp; Submit
               </div>
-              <div className="text-[11px] text-blue-500 font-medium">Confirm and post</div>
+              <div className="text-[11px] text-purple-600 font-medium">Confirm and post</div>
             </div>
           </div>
         </div>
@@ -654,9 +654,9 @@ export function ReceiveWithoutPO() {
                       }}
                       onFocus={() => setIsSupplierDropdownOpen(true)}
                       placeholder="Search or select supplier"
-                      className="w-full px-3 py-2 pr-8 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                      className="w-full px-3 py-2 pr-8 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] bg-white"
                     />
-                    <Search className="w-3.5 h-3.5 text-blue-600 absolute right-3 top-3 pointer-events-none" />
+                    <Search className="w-3.5 h-3.5 text-[#6C2BD9] absolute right-3 top-3 pointer-events-none" />
                   </div>
 
                   {/* Dropdown Options */}
@@ -677,10 +677,10 @@ export function ReceiveWithoutPO() {
                               setReceivingInfo({ ...receivingInfo, supplier: s.name });
                               setIsSupplierDropdownOpen(false);
                             }}
-                            className="px-3 py-2 rounded-lg hover:bg-blue-50 cursor-pointer font-medium text-slate-700 flex items-center justify-between"
+                            className="px-3 py-2 rounded-lg hover:bg-purple-50 cursor-pointer font-medium text-slate-700 flex items-center justify-between"
                           >
                             <span>{s.name}</span>
-                            {receivingInfo.supplier === s.name && <Check className="w-3.5 h-3.5 text-blue-600" />}
+                            {receivingInfo.supplier === s.name && <Check className="w-3.5 h-3.5 text-[#6C2BD9]" />}
                           </div>
                         ))}
                     </div>
@@ -700,7 +700,7 @@ export function ReceiveWithoutPO() {
                         onChange={(e) => setReceivingInfo({ ...receivingInfo, receivingDate: e.target.value })}
                         className="w-full px-3 py-2 pr-8 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white"
                       />
-                      <Calendar className="w-3.5 h-3.5 text-blue-600 absolute right-3 top-3" />
+                      <Calendar className="w-3.5 h-3.5 text-[#6C2BD9] absolute right-3 top-3" />
                     </div>
                   </div>
 
@@ -954,7 +954,7 @@ export function ReceiveWithoutPO() {
                   onClick={() => setIsManualModalOpen(true)}
                   className="px-3 py-1.5 bg-white hover:bg-slate-50 border border-slate-200 text-slate-700 rounded-xl text-xs font-semibold shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
                 >
-                  <Plus className="w-3.5 h-3.5 text-blue-600" />
+                  <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" />
                   <span>Add Manually</span>
                 </button>
 
@@ -980,98 +980,104 @@ export function ReceiveWithoutPO() {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto border border-slate-200 rounded-xl">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold select-none">
-                  <tr>
-                    <th className="py-2.5 px-3 w-8">
-                      <input
-                        type="checkbox"
-                        checked={selectedAssetIds.length > 0 && selectedAssetIds.length === receivedAssets.length}
-                        onChange={handleToggleSelectAll}
-                        className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500"
-                      />
-                    </th>
-                    <th className="py-2.5 px-3 w-10">#</th>
-                    <th className="py-2.5 px-3">Serial Number</th>
-                    <th className="py-2.5 px-3">Asset Name</th>
-                    <th className="py-2.5 px-3">Category</th>
-                    <th className="py-2.5 px-3">Model</th>
-                    <th className="py-2.5 px-3">Condition</th>
-                    <th className="py-2.5 px-3">Tag Number</th>
-                    <th className="py-2.5 px-3 text-center">Status</th>
-                    <th className="py-2.5 px-3 text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100">
-                  {receivedAssets.map((asset, index) => {
-                    const isSelected = previewAsset?.serialNumber === asset.serialNumber;
-                    const isChecked = selectedAssetIds.includes(asset.id);
+            <div className="border border-slate-200 rounded-xl overflow-hidden">
+              <div className="overflow-auto max-h-[500px]">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 border-b border-slate-200 font-semibold select-none">
+                    <tr>
+                      <th className="py-2.5 px-3 w-8">
+                        <input
+                          type="checkbox"
+                          checked={selectedAssetIds.length > 0 && selectedAssetIds.length === receivedAssets.length}
+                          onChange={handleToggleSelectAll}
+                          className="rounded-sm border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                        />
+                      </th>
+                      <th className="py-2.5 px-3 w-10">#</th>
+                      <th className="py-2.5 px-3">Serial Number</th>
+                      <th className="py-2.5 px-3">Asset Name</th>
+                      <th className="py-2.5 px-3">Category</th>
+                      <th className="py-2.5 px-3">Model</th>
+                      <th className="py-2.5 px-3">Condition</th>
+                      <th className="py-2.5 px-3">Tag Number</th>
+                      <th className="py-2.5 px-3 text-center">Status</th>
+                      <th className="py-2.5 px-3 text-center">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {receivedAssets.map((asset, index) => {
+                      const isSelected = previewAsset?.serialNumber === asset.serialNumber;
+                      const isChecked = selectedAssetIds.includes(asset.id);
 
-                    return (
-                      <tr
-                        key={asset.id || index}
-                        onClick={() => handleSelectRow(asset.serialNumber)}
-                        className={`transition-colors cursor-pointer ${
-                          isSelected ? 'bg-blue-50/40' : 'hover:bg-slate-50/80'
-                        }`}
-                      >
-                        <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleSelectAsset(asset.id)}
-                            className="rounded-sm border-slate-300 text-blue-600 focus:ring-blue-500"
-                          />
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-400 font-mono">{index + 1}</td>
-                        <td className="py-2.5 px-3 font-mono font-medium text-slate-800">{asset.serialNumber}</td>
-                        <td className="py-2.5 px-3 font-medium text-slate-700">{asset.assetName}</td>
-                        <td className="py-2.5 px-3 text-slate-600">{asset.category}</td>
-                        <td className="py-2.5 px-3 text-slate-600">{asset.model}</td>
-                        <td className="py-2.5 px-3 text-slate-600">{asset.condition}</td>
-                        <td className="py-2.5 px-3 font-mono text-slate-600">
-                          {asset.tagNumber === '-' ? '-' : asset.tagNumber}
-                        </td>
-                        <td className="py-2.5 px-3 text-center">
-                          <span
-                            className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
-                              asset.status === 'Tagged'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-amber-50 text-amber-700 border border-amber-200'
-                            }`}
-                          >
-                            {asset.status}
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-2">
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setEditingAsset(asset);
-                                setIsEditModalOpen(true);
-                              }}
-                              className="text-blue-600 hover:text-blue-800 p-1 rounded-md hover:bg-blue-50 transition-colors"
-                              title="Edit Asset"
+                      return (
+                        <tr
+                          key={asset.id || index}
+                          onClick={() => handleSelectRow(asset.serialNumber)}
+                          className={`transition-colors cursor-pointer ${
+                            isSelected ? 'bg-purple-50/40' : 'hover:bg-slate-50/80'
+                          }`}
+                        >
+                          <td className="py-2.5 px-3" onClick={(e) => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleSelectAsset(asset.id)}
+                              className="rounded-sm border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                            />
+                          </td>
+                          <td className="py-2.5 px-3 text-slate-400 font-mono">{index + 1}</td>
+                          <td className="py-2.5 px-3 font-mono font-medium text-slate-800">{asset.serialNumber}</td>
+                          <td className="py-2.5 px-3 font-medium text-slate-700">{asset.assetName}</td>
+                          <td className="py-2.5 px-3 text-slate-600">{asset.category}</td>
+                          <td className="py-2.5 px-3 text-slate-600">{asset.model}</td>
+                          <td className="py-2.5 px-3 text-slate-600">{asset.condition}</td>
+                          <td className="py-2.5 px-3 font-mono text-slate-600">
+                            {asset.tagNumber === '-' ? '-' : asset.tagNumber}
+                          </td>
+                          <td className="py-2.5 px-3 text-center">
+                            <span
+                              className={`inline-block px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                                asset.status === 'Tagged'
+                                  ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                  : 'bg-amber-50 text-amber-700 border border-amber-200'
+                              }`}
                             >
-                              <Edit3 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleDeleteSingle(asset.id)}
-                              className="text-slate-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors"
-                              title="Remove Asset"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
+                              {asset.status}
+                            </span>
+                          </td>
+                          <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                            <div className="flex items-center justify-center gap-2">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setEditingAsset(asset);
+                                  setIsEditModalOpen(true);
+                                }}
+                                className="text-[#6C2BD9] hover:text-[#5B21B6] p-1 rounded-md hover:bg-purple-50 transition-colors"
+                                title="Edit Asset"
+                              >
+                                <Edit3 className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDeleteSingle(asset.id)}
+                                className="text-slate-400 hover:text-red-600 p-1 rounded-md hover:bg-red-50 transition-colors"
+                                title="Remove Asset"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {receivedAssets.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
           </div>
 
@@ -1084,33 +1090,39 @@ export function ReceiveWithoutPO() {
                 Recent Scanned Items ({recentScans.length})
               </h3>
 
-              <div className="overflow-x-auto border border-slate-200 rounded-xl">
-                <table className="w-full text-left text-xs border-collapse">
-                  <thead className="bg-slate-50 text-slate-500 border-b border-slate-200 font-semibold">
-                    <tr>
-                      <th className="py-2 px-3">Time</th>
-                      <th className="py-2 px-3">Serial Number</th>
-                      <th className="py-2 px-3">Tag Number</th>
-                      <th className="py-2 px-3">Asset Name</th>
-                      <th className="py-2 px-3 text-center">Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {recentScans.map((scan, idx) => (
-                      <tr key={scan.id || idx} className="hover:bg-slate-50/70">
-                        <td className="py-2 px-3 text-slate-500 whitespace-nowrap text-[11px]">{scan.time}</td>
-                        <td className="py-2 px-3 font-mono font-medium text-slate-800">{scan.serialNumber}</td>
-                        <td className="py-2 px-3 font-mono text-slate-600">{scan.tagNumber}</td>
-                        <td className="py-2 px-3 text-slate-700">{scan.assetName}</td>
-                        <td className="py-2 px-3 text-center">
-                          <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                            {scan.status}
-                          </span>
-                        </td>
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="overflow-auto max-h-[300px]">
+                  <table className="w-full text-left text-xs border-collapse">
+                    <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 border-b border-slate-200 font-semibold">
+                      <tr>
+                        <th className="py-2 px-3">Time</th>
+                        <th className="py-2 px-3">Serial Number</th>
+                        <th className="py-2 px-3">Tag Number</th>
+                        <th className="py-2 px-3">Asset Name</th>
+                        <th className="py-2 px-3 text-center">Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {recentScans.map((scan, idx) => (
+                        <tr key={scan.id || idx} className="hover:bg-slate-50/70">
+                          <td className="py-2 px-3 text-slate-500 whitespace-nowrap text-[11px]">{scan.time}</td>
+                          <td className="py-2 px-3 font-mono font-medium text-slate-800">{scan.serialNumber}</td>
+                          <td className="py-2 px-3 font-mono text-slate-600">{scan.tagNumber}</td>
+                          <td className="py-2 px-3 text-slate-700">{scan.assetName}</td>
+                          <td className="py-2 px-3 text-center">
+                            <span className="inline-block px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                              {scan.status}
+                            </span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-medium text-slate-600">Showing {recentScans.length} records</span>
+                  <span className="text-slate-400">Scroll down to view all records</span>
+                </div>
               </div>
             </div>
 
@@ -1192,7 +1204,7 @@ export function ReceiveWithoutPO() {
                 onClick={() => setActivePanelTab('scan')}
                 className={`pb-1 transition-colors cursor-pointer ${
                   activePanelTab === 'scan'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9]'
                     : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
@@ -1204,7 +1216,7 @@ export function ReceiveWithoutPO() {
                 onClick={() => setActivePanelTab('print')}
                 className={`pb-1 transition-colors cursor-pointer ${
                   activePanelTab === 'print'
-                    ? 'text-blue-600 border-b-2 border-blue-600'
+                    ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9]'
                     : 'text-slate-400 hover:text-slate-600'
                 }`}
               >
@@ -1237,11 +1249,11 @@ export function ReceiveWithoutPO() {
                     value={scanSerialInput}
                     onChange={(e) => setScanSerialInput(e.target.value)}
                     placeholder="Scan or enter serial number..."
-                    className="w-full px-3 py-2 pr-9 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2 pr-9 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] bg-white"
                   />
                   <button
                     type="submit"
-                    className="absolute right-2 top-2 text-blue-600 hover:text-blue-800 p-1"
+                    className="absolute right-2 top-2 text-[#6C2BD9] hover:text-[#5B21B6] p-1"
                     title="Scan Barcode"
                   >
                     <Barcode className="w-4 h-4" />
@@ -1268,11 +1280,11 @@ export function ReceiveWithoutPO() {
                     value={scanRfidInput}
                     onChange={(e) => setScanRfidInput(e.target.value)}
                     placeholder="Scan RFID tag..."
-                    className="w-full px-3 py-2 pr-9 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 bg-white"
+                    className="w-full px-3 py-2 pr-9 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] bg-white"
                   />
                   <button
                     type="submit"
-                    className="absolute right-2 top-2 text-blue-600 hover:text-blue-800 p-1"
+                    className="absolute right-2 top-2 text-[#6C2BD9] hover:text-[#5B21B6] p-1"
                     title="Scan RFID Tag"
                   >
                     <Radio className="w-4 h-4" />
@@ -1285,7 +1297,7 @@ export function ReceiveWithoutPO() {
                 <div className={`p-2 rounded-xl text-xs flex items-center gap-2 ${
                   scanFeedback.type === 'error'
                     ? 'bg-red-50 text-red-700 border border-red-200'
-                    : 'bg-blue-50 text-blue-700 border border-blue-200'
+                    : 'bg-purple-50 text-[#6C2BD9] border border-purple-200'
                 }`}>
                   <AlertCircle className="w-3.5 h-3.5 shrink-0" />
                   <span>{scanFeedback.msg}</span>

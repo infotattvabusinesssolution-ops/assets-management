@@ -573,11 +573,7 @@ export function SystemConfiguration() {
   }, [filteredParameters, paramSortField, paramSortOrder]);
 
   const totalParamRecords = sortedParameters.length;
-  const totalParamPages = Math.max(1, Math.ceil(totalParamRecords / paramPageSize));
-  const safeParamPage = Math.min(paramPage, totalParamPages);
-  const paramStartIdx = (safeParamPage - 1) * paramPageSize;
-  const paramEndIdx = Math.min(paramStartIdx + paramPageSize, totalParamRecords);
-  const paginatedParameters = sortedParameters.slice(paramStartIdx, paramEndIdx);
+  const paginatedParameters = sortedParameters;
 
   const isAllParamSelected =
     paginatedParameters.length > 0 &&
@@ -1049,9 +1045,9 @@ export function SystemConfiguration() {
               </div>
 
               {/* Data Table */}
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[540px] border border-slate-200 rounded-lg">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-[#FAF8FF] border-b border-slate-200 text-slate-600 text-[11px] font-semibold select-none">
+                  <thead className="sticky top-0 z-10 bg-[#FAF8FF] border-b border-slate-200 text-slate-600 text-[11px] font-semibold select-none shadow-2xs">
                     <tr>
                       <th className="py-3 px-3 w-8 text-center">
                         <input
@@ -1178,72 +1174,10 @@ export function SystemConfiguration() {
                 </table>
               </div>
 
-              {/* Pagination Footer */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-3 border-t border-slate-200 text-xs text-slate-500 bg-white">
-                <div>
-                  Showing {totalParamRecords > 0 ? paramStartIdx + 1 : 0} to {paramEndIdx} of {totalParamRecords} records
-                </div>
-
-                <div className="flex items-center gap-2">
-                  <div className="flex items-center gap-1">
-                    <button
-                      disabled={paramPage <= 1}
-                      onClick={() => setParamPage(1)}
-                      className="p-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                    >
-                      &laquo;
-                    </button>
-                    <button
-                      disabled={paramPage <= 1}
-                      onClick={() => setParamPage(prev => Math.max(1, prev - 1))}
-                      className="p-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                    >
-                      &lsaquo;
-                    </button>
-
-                    {Array.from({ length: totalParamPages }, (_, idx) => idx + 1).map((pageNum) => (
-                      <button
-                        key={pageNum}
-                        onClick={() => setParamPage(pageNum)}
-                        className={`w-6 h-6 rounded text-xs font-semibold cursor-pointer ${
-                          paramPage === pageNum
-                            ? 'bg-[#6C2BD9] text-white'
-                            : 'border border-slate-200 hover:bg-slate-50 text-slate-700'
-                        }`}
-                      >
-                        {pageNum}
-                      </button>
-                    ))}
-
-                    <button
-                      disabled={paramPage >= totalParamPages}
-                      onClick={() => setParamPage(prev => Math.min(totalParamPages, prev + 1))}
-                      className="p-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                    >
-                      &rsaquo;
-                    </button>
-                    <button
-                      disabled={paramPage >= totalParamPages}
-                      onClick={() => setParamPage(totalParamPages)}
-                      className="p-1 rounded border border-slate-200 hover:bg-slate-50 disabled:opacity-40 cursor-pointer"
-                    >
-                      &raquo;
-                    </button>
-                  </div>
-
-                  <select
-                    value={paramPageSize}
-                    onChange={(e) => {
-                      setParamPageSize(Number(e.target.value));
-                      setParamPage(1);
-                    }}
-                    className="border border-slate-200 rounded p-1 text-xs bg-white cursor-pointer"
-                  >
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                    <option value={50}>50 / page</option>
-                  </select>
-                </div>
+              {/* Scroll Footer */}
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {paginatedParameters.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>
           </div>
@@ -1361,9 +1295,9 @@ export function SystemConfiguration() {
                 </h3>
               </div>
 
-              <div className="overflow-x-auto">
+              <div className="overflow-auto max-h-[350px] border border-slate-200 rounded-lg">
                 <table className="w-full text-left border-collapse text-xs">
-                  <thead className="bg-[#FAF8FF] border-b border-slate-200 text-slate-600 text-[11px] font-semibold">
+                  <thead className="sticky top-0 z-10 bg-[#FAF8FF] border-b border-slate-200 text-slate-600 text-[11px] font-semibold shadow-2xs">
                     <tr>
                       <th className="py-2.5 px-3 w-8 text-center">
                         <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]" />
@@ -1422,6 +1356,10 @@ export function SystemConfiguration() {
                     })}
                   </tbody>
                 </table>
+              </div>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {filteredWorkflows.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>
 
@@ -1657,9 +1595,9 @@ export function SystemConfiguration() {
                           </button>
                         </div>
 
-                        <div className="border border-slate-200 rounded-lg overflow-hidden">
+                        <div className="border border-slate-200 rounded-lg overflow-auto max-h-[250px]">
                           <table className="w-full text-left border-collapse text-xs">
-                            <thead className="bg-[#FAF8FF] border-b border-slate-200 text-slate-600 text-[11px] font-semibold">
+                            <thead className="sticky top-0 z-10 bg-[#FAF8FF] border-b border-slate-200 text-slate-600 text-[11px] font-semibold shadow-2xs">
                               <tr>
                                 <th className="py-2 px-3 w-8 text-center">#</th>
                                 <th className="py-2 px-4">Approver Role / User</th>
@@ -1782,9 +1720,9 @@ export function SystemConfiguration() {
                   {/* TAB 5: HISTORY */}
                   {workflowDetailTab === 'History' && (
                     <div className="space-y-3 text-xs">
-                      <div className="border border-slate-200 rounded-lg overflow-hidden">
+                      <div className="border border-slate-200 rounded-lg overflow-auto max-h-[250px]">
                         <table className="w-full text-left border-collapse">
-                          <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600">
+                          <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-[11px] font-semibold text-slate-600 shadow-2xs">
                             <tr>
                               <th className="p-2.5">Date &amp; Time</th>
                               <th className="p-2.5">Modified By</th>
@@ -2042,9 +1980,9 @@ export function SystemConfiguration() {
             </div>
 
             {/* Lookups Table */}
-            <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="border border-slate-200 rounded-lg overflow-auto max-h-[450px]">
               <table className="w-full text-left border-collapse text-xs">
-                <thead className="bg-[#FAF8FF] border-b border-slate-200 text-slate-600 text-[11px] font-semibold">
+                <thead className="sticky top-0 z-10 bg-[#FAF8FF] border-b border-slate-200 text-slate-600 text-[11px] font-semibold shadow-2xs">
                   <tr>
                     <th className="py-2.5 px-4">Category</th>
                     <th className="py-2.5 px-3 font-mono">Code</th>
@@ -2093,6 +2031,10 @@ export function SystemConfiguration() {
                     ))}
                 </tbody>
               </table>
+            </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {lookups.filter(l => selectedLookupCategory === 'All Categories' || l.category === selectedLookupCategory).length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
         )}

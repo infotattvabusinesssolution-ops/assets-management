@@ -546,13 +546,10 @@ export function AuditExecution() {
     });
   }, [assets, searchQuery, locationFilter, statusFilter]);
 
-  // Paginated Assets for the grid
+  // All filtered assets for scroll down grid
   const paginatedAssets = useMemo(() => {
-    const startIndex = (currentPage - 1) * pageSize;
-    return filteredAssets.slice(startIndex, startIndex + pageSize);
-  }, [filteredAssets, currentPage, pageSize]);
-
-  const totalPages = Math.ceil(filteredAssets.length / pageSize) || 1;
+    return filteredAssets;
+  }, [filteredAssets]);
 
   // Real-time KPI Recalculation
   const kpis = useMemo(() => {
@@ -1105,7 +1102,7 @@ export function AuditExecution() {
             onClick={() => { setStatusFilter('Pending'); setActiveTab('VERIFICATION'); }}
             className="bg-white rounded-xl border border-slate-200 p-3.5 shadow-2xs hover:shadow-sm transition-all cursor-pointer flex items-center gap-3"
           >
-            <div className="w-9 h-9 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center shrink-0">
+            <div className="w-9 h-9 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center shrink-0">
               <Clock className="w-5 h-5" />
             </div>
             <div>
@@ -1340,11 +1337,11 @@ export function AuditExecution() {
                   </div>
                 </div>
 
-                {/* Main Verification Grid Table matching Screenshot 28 */}
+                {/* Main Verification Grid Table */}
                 <div className="bg-white rounded-xl border border-slate-200 shadow-2xs overflow-hidden">
-                  <div className="overflow-x-auto">
+                  <div className="overflow-auto max-h-[540px]">
                     <table className="w-full text-left text-xs">
-                      <thead className="bg-slate-50/80 border-b border-slate-200 text-[11px] font-semibold text-slate-500">
+                      <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs border-b border-slate-200 text-[11px] font-semibold text-slate-500">
                         <tr>
                           <th className="py-2.5 px-3 w-8">
                             <input
@@ -1441,61 +1438,10 @@ export function AuditExecution() {
                     </table>
                   </div>
 
-                  {/* Table Pagination Footer matching Screenshot 28 */}
-                  <div className="bg-white border-t border-slate-200 px-4 py-3 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
-                    <p>
-                      Showing {((currentPage - 1) * pageSize) + 1} to {Math.min(currentPage * pageSize, filteredAssets.length)} of {filteredAssets.length} assets
-                    </p>
-
-                    <div className="flex items-center gap-3">
-                      {/* Pagination Controls */}
-                      <div className="flex items-center gap-1">
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                          disabled={currentPage === 1}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                        >
-                          <ChevronLeft className="w-3.5 h-3.5" />
-                        </button>
-
-                        {[1, 2, 3, 4, 5].filter(p => p <= totalPages).map((p) => (
-                          <button
-                            key={p}
-                            onClick={() => setCurrentPage(p)}
-                            className={clsx(
-                              'w-7 h-7 flex items-center justify-center rounded-lg text-xs font-semibold transition-all cursor-pointer',
-                              currentPage === p
-                                ? 'bg-[#6C2BD9] text-white shadow-xs'
-                                : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
-                            )}
-                          >
-                            {p}
-                          </button>
-                        ))}
-
-                        <button
-                          onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                          disabled={currentPage >= totalPages}
-                          className="w-7 h-7 flex items-center justify-center rounded-lg border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-30 disabled:pointer-events-none cursor-pointer"
-                        >
-                          <ChevronRight className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
-
-                      {/* Rows per page dropdown */}
-                      <div className="relative">
-                        <select
-                          value={pageSize}
-                          onChange={(e) => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}
-                          className="bg-white border border-slate-200 rounded-lg px-2.5 py-1 text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-                        >
-                          <option value={10}>10 / page</option>
-                          <option value={20}>20 / page</option>
-                          <option value={50}>50 / page</option>
-                          <option value={100}>100 / page</option>
-                        </select>
-                      </div>
-                    </div>
+                  {/* Scroll Down Summary */}
+                  <div className="bg-white border-t border-slate-200 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
+                    <span className="font-medium text-slate-600">Showing {filteredAssets.length} records</span>
+                    <span className="text-slate-400">Scroll down to view all records</span>
                   </div>
                 </div>
               </div>
@@ -1521,9 +1467,9 @@ export function AuditExecution() {
                   </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[500px]">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-[11px] font-semibold text-slate-500 border-b border-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-[11px] font-semibold text-slate-500 border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3">Exception #</th>
                         <th className="py-2.5 px-3">Asset</th>
@@ -1535,11 +1481,11 @@ export function AuditExecution() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {exceptionsList.slice(0, 15).map(exc => (
+                      {exceptionsList.map(exc => (
                         <tr key={exc.id} className="hover:bg-slate-50/80">
                           <td className="py-3 px-3 font-bold text-slate-900">{exc.exceptionNo}</td>
                           <td className="py-3 px-3">
-                            <span className="font-semibold text-blue-600 block">{exc.assetNo}</span>
+                            <span className="font-semibold text-[#6C2BD9] block">{exc.assetNo}</span>
                             <span className="text-slate-500 text-[11px]">{exc.assetName}</span>
                           </td>
                           <td className="py-3 px-3">
@@ -1591,9 +1537,9 @@ export function AuditExecution() {
                   </p>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[500px]">
                   <table className="w-full text-left text-xs">
-                    <thead className="bg-slate-50 text-[11px] font-semibold text-slate-500 border-b border-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-[11px] font-semibold text-slate-500 border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3">Asset No.</th>
                         <th className="py-2.5 px-3">Asset Name</th>
@@ -1668,7 +1614,7 @@ export function AuditExecution() {
                       </div>
                       <div>
                         <div className="flex justify-between font-medium"><span>Network Equipment</span><span>67%</span></div>
-                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className="bg-blue-600 h-full w-[67%]"></div></div>
+                        <div className="w-full bg-slate-200 h-1.5 rounded-full overflow-hidden"><div className="bg-[#6C2BD9] h-full w-[67%]"></div></div>
                       </div>
                       <div>
                         <div className="flex justify-between font-medium"><span>Furniture</span><span>63%</span></div>
@@ -2126,9 +2072,9 @@ export function AuditExecution() {
                     <p className="text-[10px] font-semibold text-emerald-700">Matched &amp; Verified</p>
                     <p className="text-lg font-bold text-emerald-900">{rfidSummary.matchedCount}</p>
                   </div>
-                  <div className="p-2 rounded bg-blue-50 border border-blue-200">
-                    <p className="text-[10px] font-semibold text-blue-700">Already Verified</p>
-                    <p className="text-lg font-bold text-blue-900">{rfidSummary.alreadyVerifiedCount}</p>
+                  <div className="p-2 rounded bg-purple-50 border border-purple-200">
+                    <p className="text-[10px] font-semibold text-[#6C2BD9]">Already Verified</p>
+                    <p className="text-lg font-bold text-purple-900">{rfidSummary.alreadyVerifiedCount}</p>
                   </div>
                   <div className="p-2 rounded bg-purple-50 border border-purple-200">
                     <p className="text-[10px] font-semibold text-purple-700">Unregistered</p>

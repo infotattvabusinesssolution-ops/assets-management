@@ -757,10 +757,10 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                 </div>
 
                 {/* Asset Grid Table */}
-                <div className="border border-gray-200 rounded-lg overflow-x-auto">
+                <div className="border border-gray-200 rounded-lg overflow-auto max-h-[500px]">
                   <table className="w-full text-left border-collapse text-xs">
-                    <thead>
-                      <tr className="bg-[#FAF5FF] border-b border-purple-100 text-gray-700">
+                    <thead className="sticky top-0 z-10 bg-[#FAF5FF] shadow-2xs">
+                      <tr className="border-b border-purple-100 text-gray-700">
                         <th className="p-3 w-10">
                           <input
                             type="checkbox"
@@ -828,24 +828,9 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                 </div>
 
                 {/* Table Footer */}
-                <div className="flex items-center justify-between mt-3 text-xs text-gray-500">
-                  <span className="font-medium text-gray-700">{selectedAssetIds.length} assets selected</span>
-                  <div className="flex items-center gap-1">
-                    <button className="px-2 py-1 border rounded hover:bg-gray-50 text-gray-400">‹</button>
-                    <button className="px-2 py-1 bg-[#6C2BD9] text-white rounded font-bold">1</button>
-                    <button className="px-2 py-1 border rounded hover:bg-gray-50">2</button>
-                    <button className="px-2 py-1 border rounded hover:bg-gray-50">3</button>
-                    <button className="px-2 py-1 border rounded hover:bg-gray-50">4</button>
-                    <button className="px-2 py-1 border rounded hover:bg-gray-50">5</button>
-                    <span className="px-1 text-gray-400">...</span>
-                    <button className="px-2 py-1 border rounded hover:bg-gray-50">125</button>
-                    <button className="px-2 py-1 border rounded hover:bg-gray-50 text-gray-400">›</button>
-                    <select className="border border-gray-300 rounded px-1.5 py-1 text-xs ml-2 outline-none">
-                      <option>10 / page</option>
-                      <option>25 / page</option>
-                      <option>50 / page</option>
-                    </select>
-                  </div>
+                <div className="flex items-center justify-between p-3 border-t border-gray-100 text-xs text-gray-500">
+                  <span className="font-medium text-gray-700">{selectedAssetIds.length} assets selected ({assetsList.length} total)</span>
+                  <span className="text-gray-400">Scroll down to view all records</span>
                 </div>
               </div>
 
@@ -1361,10 +1346,10 @@ export default function TransferMovement({ defaultTab = 'form' }) {
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <div className="overflow-auto max-h-[500px] border border-gray-200 rounded-lg">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-700 border-b border-gray-200">
+                <thead className="sticky top-0 z-10 bg-gray-50 shadow-2xs">
+                  <tr className="text-gray-700 border-b border-gray-200">
                     <th className="p-3 font-semibold">Transfer No</th>
                     <th className="p-3 font-semibold">Type</th>
                     <th className="p-3 font-semibold">Assets</th>
@@ -1451,10 +1436,10 @@ export default function TransferMovement({ defaultTab = 'form' }) {
               Authorized logistics checkpoints: Dispatch items, track transit between facilities, and confirm destination receipt to update Asset Master.
             </p>
 
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <div className="overflow-auto max-h-[500px] border border-gray-200 rounded-lg">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-gray-50 text-gray-700 border-b border-gray-200">
+                <thead className="sticky top-0 z-10 bg-gray-50 shadow-2xs">
+                  <tr className="text-gray-700 border-b border-gray-200">
                     <th className="p-3 font-semibold">Transfer No</th>
                     <th className="p-3 font-semibold">From Facility</th>
                     <th className="p-3 font-semibold">Destination Facility</th>
@@ -1488,7 +1473,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                         {t.status === 'APPROVED' && (
                           <button
                             onClick={() => handleWorkflowAction(t.id, 'DISPATCH')}
-                            className="px-3 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded font-medium text-[11px]"
+                            className="px-3 py-1 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded font-medium text-[11px]"
                           >
                             Dispatch Goods
                           </button>
@@ -1535,10 +1520,10 @@ export default function TransferMovement({ defaultTab = 'form' }) {
               </div>
             </div>
 
-            <div className="overflow-x-auto border border-gray-200 rounded-lg">
+            <div className="overflow-auto max-h-[500px] border border-gray-200 rounded-lg">
               <table className="w-full text-left text-xs">
-                <thead>
-                  <tr className="bg-purple-50 text-gray-800 border-b border-purple-100">
+                <thead className="sticky top-0 z-10 bg-purple-50 shadow-2xs">
+                  <tr className="text-gray-800 border-b border-purple-100">
                     <th className="p-3 font-semibold">Movement ID</th>
                     <th className="p-3 font-semibold">Asset No</th>
                     <th className="p-3 font-semibold">Asset Name</th>

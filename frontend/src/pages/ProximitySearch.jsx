@@ -209,7 +209,7 @@ export function ProximitySearch() {
       case 'printer': return <Printer className="w-4 h-4 text-slate-700" />;
       case 'laptop': return <Laptop className="w-4 h-4 text-[#6C2BD9]" />;
       case 'tablet': return <Tablet className="w-4 h-4 text-purple-600" />;
-      default: return <Monitor className="w-4 h-4 text-blue-600" />;
+      default: return <Monitor className="w-4 h-4 text-[#6C2BD9]" />;
     }
   };
 
@@ -329,8 +329,8 @@ export function ProximitySearch() {
                 </div>
               </div>
             ) : (
-              <div className="flex items-center gap-2 text-xs font-bold text-blue-700 bg-blue-50 px-3 py-1.5 rounded-xl border border-blue-200">
-                <MapPin className="w-4 h-4 text-blue-600" />
+              <div className="flex items-center gap-2 text-xs font-bold text-[#6C2BD9] bg-purple-50 px-3 py-1.5 rounded-xl border border-purple-200">
+                <MapPin className="w-4 h-4 text-[#6C2BD9]" />
                 <span>Click any point on the floor map to set Search Center</span>
               </div>
             )}
@@ -468,9 +468,9 @@ export function ProximitySearch() {
                       width: `${radiusCirclePercent}%`,
                       height: `${radiusCirclePercent * 1.6}%`
                     }}
-                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-blue-500 bg-blue-500/10 flex items-center justify-center pointer-events-none z-20 animate-pulse"
+                    className="absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-dashed border-[#6C2BD9] bg-purple-500/10 flex items-center justify-center pointer-events-none z-20 animate-pulse"
                   >
-                    <span className="bg-blue-600 text-white font-mono font-bold text-[9px] px-1.5 py-0.5 rounded shadow">
+                    <span className="bg-[#6C2BD9] text-white font-mono font-bold text-[9px] px-1.5 py-0.5 rounded shadow">
                       {searchRadius}
                     </span>
                   </div>
@@ -481,13 +481,13 @@ export function ProximitySearch() {
                   style={{ left: `${referenceAsset.coords.x}%`, top: `${referenceAsset.coords.y}%` }}
                   className="absolute -translate-x-1/2 -translate-y-1/2 z-40 cursor-pointer group"
                 >
-                  <div className="w-8 h-8 rounded-full bg-blue-600 border-2 border-white shadow-xl flex items-center justify-center text-white ring-4 ring-blue-300">
+                  <div className="w-8 h-8 rounded-full bg-[#6C2BD9] border-2 border-white shadow-xl flex items-center justify-center text-white ring-4 ring-purple-300">
                     <Monitor className="w-4 h-4" />
                   </div>
 
                   {/* Reference Callout Popup matching Screenshot #19 */}
                   <div className="absolute bottom-9 left-1/2 -translate-x-1/2 bg-white text-slate-800 text-xs p-2.5 rounded-xl shadow-2xl border border-slate-300 whitespace-nowrap z-50">
-                    <span className="font-bold text-blue-700 block">{referenceAsset.id}</span>
+                    <span className="font-bold text-[#6C2BD9] block">{referenceAsset.id}</span>
                     <span className="font-bold text-slate-900 block">{referenceAsset.name}</span>
                     <span className="text-[10px] text-slate-500 font-medium">{referenceAsset.category}</span>
                   </div>
@@ -558,7 +558,7 @@ export function ProximitySearch() {
             {/* Bottom Legend matching Screenshot #19 */}
             <div className="pt-2 border-t border-slate-100 flex items-center justify-center gap-5 text-xs font-semibold text-slate-600 shrink-0 flex-wrap">
               <div className="flex items-center gap-1.5">
-                <span className="w-3 h-3 rounded-full bg-blue-600 inline-block" />
+                <span className="w-3 h-3 rounded-full bg-[#6C2BD9] inline-block" />
                 <span>Selected Asset</span>
               </div>
               <div className="flex items-center gap-1.5">
@@ -595,10 +595,10 @@ export function ProximitySearch() {
 
               <div className="flex items-center gap-3 p-2.5 bg-slate-50 rounded-xl border border-slate-200">
                 <div className="w-10 h-10 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
-                  <Monitor className="w-5 h-5 text-blue-600" />
+                  <Monitor className="w-5 h-5 text-[#6C2BD9]" />
                 </div>
                 <div className="truncate">
-                  <span className="font-extrabold text-xs text-blue-700 block">{referenceAsset.id}</span>
+                  <span className="font-extrabold text-xs text-[#6C2BD9] block">{referenceAsset.id}</span>
                   <h4 className="font-bold text-xs text-slate-900 truncate">{referenceAsset.name}</h4>
                   <p className="text-[10px] text-slate-500 font-medium">{referenceAsset.category}</p>
                 </div>
@@ -646,8 +646,8 @@ export function ProximitySearch() {
               <div className="grid grid-cols-3 gap-2">
                 
                 {/* Total Found */}
-                <div className="p-2 bg-blue-50 border border-blue-200 rounded-xl text-center">
-                  <div className="flex items-center justify-center gap-1 text-blue-700">
+                <div className="p-2 bg-purple-50 border border-purple-200 rounded-xl text-center">
+                  <div className="flex items-center justify-center gap-1 text-[#6C2BD9]">
                     <Compass className="w-3.5 h-3.5" />
                     <span className="text-base font-black">{stats.totalFound}</span>
                   </div>
@@ -698,9 +698,9 @@ export function ProximitySearch() {
           </div>
 
           {/* Table Grid matching Screenshot #19 */}
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[450px]">
             <table className="w-full text-left text-xs font-medium text-slate-700">
-              <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px]">
+              <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-500 font-bold uppercase text-[11px] shadow-2xs">
                 <tr>
                   <th className="p-3">#</th>
                   <th className="p-3">Asset Number</th>
@@ -725,7 +725,7 @@ export function ProximitySearch() {
                       }`}
                     >
                       <td className="p-3 font-bold text-slate-400">{idx + 1}</td>
-                      <td className="p-3 font-bold text-blue-700">{a.assetNumber}</td>
+                      <td className="p-3 font-bold text-[#6C2BD9]">{a.assetNumber}</td>
                       <td className="p-3 font-bold text-slate-900">{a.name}</td>
                       <td className="p-3 text-slate-600">{a.category}</td>
                       <td className="p-3">{a.location}</td>
@@ -743,7 +743,7 @@ export function ProximitySearch() {
                             setHighlightedAssetId(a.id);
                             showToast(`Centering map on ${a.name} (${a.distance}m away)`);
                           }}
-                          className="p-1.5 hover:bg-slate-100 rounded text-blue-600"
+                          className="p-1.5 hover:bg-slate-100 rounded text-[#6C2BD9]"
                           title="Locate on Map"
                         >
                           <MapPin className="w-3.5 h-3.5" />
@@ -757,6 +757,10 @@ export function ProximitySearch() {
                 })}
               </tbody>
             </table>
+          </div>
+          <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span className="font-medium text-slate-600">Showing {INITIAL_NEARBY_ASSETS.length} records</span>
+            <span className="text-slate-400">Scroll down to view all records</span>
           </div>
 
         </div>

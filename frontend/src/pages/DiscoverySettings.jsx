@@ -552,80 +552,78 @@ export function DiscoverySettings() {
                 </button>
               </div>
 
-              <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="bg-slate-50 text-slate-800 font-extrabold border-b border-slate-200 text-[11px] tracking-wide select-none">
-                    <tr>
-                      <th className="py-2.5 px-3">Profile Name</th>
-                      <th className="py-2.5 px-3">Discovery Type</th>
-                      <th className="py-2.5 px-3">Target/Scope</th>
-                      <th className="py-2.5 px-3 text-center">Status</th>
-                      <th className="py-2.5 px-3 text-right">Actions</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100">
-                    {profiles.map((p) => {
-                      const isSelected = selectedProfileId === p.id;
-                      return (
-                        <tr
-                          key={p.id}
-                          onClick={() => setSelectedProfileId(p.id)}
-                          className={`cursor-pointer transition-colors ${
-                            isSelected ? 'bg-purple-50/70 border-l-4 border-l-[#6C2BD9] font-bold text-slate-900' : 'hover:bg-slate-50/70'
-                          }`}
-                        >
-                          <td className="py-2.5 px-3 font-bold text-slate-900">{p.profileName}</td>
-                          <td className="py-2.5 px-3 text-slate-600 font-medium">{p.discoveryType}</td>
-                          <td className="py-2.5 px-3 font-mono text-xs text-slate-600">{p.targetScope}</td>
-                          <td className="py-2.5 px-3 text-center">
-                            <span
-                              className={`inline-block px-3 py-0.5 rounded-full text-xs font-extrabold text-center border ${
-                                p.status === 'Active'
-                                  ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                  : 'bg-rose-50 text-rose-700 border-rose-200'
-                              }`}
-                            >
-                              {p.status}
-                            </span>
-                          </td>
-                          <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center justify-end gap-1.5">
-                              <button
-                                title="Edit Profile"
-                                onClick={() => setSelectedProfileId(p.id)}
-                                className="p-1 border border-slate-200 hover:border-purple-300 rounded-lg bg-white hover:bg-purple-50 text-[#6C2BD9] transition-all cursor-pointer"
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <div className="overflow-auto max-h-[460px]">
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-800 font-extrabold border-b border-slate-200 text-[11px] tracking-wide select-none">
+                      <tr>
+                        <th className="py-2.5 px-3">Profile Name</th>
+                        <th className="py-2.5 px-3">Discovery Type</th>
+                        <th className="py-2.5 px-3">Target/Scope</th>
+                        <th className="py-2.5 px-3 text-center">Status</th>
+                        <th className="py-2.5 px-3 text-right">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {profiles.map((p) => {
+                        const isSelected = selectedProfileId === p.id;
+                        return (
+                          <tr
+                            key={p.id}
+                            onClick={() => setSelectedProfileId(p.id)}
+                            className={`cursor-pointer transition-colors ${
+                              isSelected ? 'bg-purple-50/70 border-l-4 border-l-[#6C2BD9] font-bold text-slate-900' : 'hover:bg-slate-50/70'
+                            }`}
+                          >
+                            <td className="py-2.5 px-3 font-bold text-slate-900">{p.profileName}</td>
+                            <td className="py-2.5 px-3 text-slate-600 font-medium">{p.discoveryType}</td>
+                            <td className="py-2.5 px-3 font-mono text-xs text-slate-600">{p.targetScope}</td>
+                            <td className="py-2.5 px-3 text-center">
+                              <span
+                                className={`inline-block px-3 py-0.5 rounded-full text-xs font-extrabold text-center border ${
+                                  p.status === 'Active'
+                                    ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                                    : 'bg-rose-50 text-rose-700 border-rose-200'
+                                }`}
                               >
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                title="Duplicate Profile"
-                                onClick={() => handleCloneProfile(p.id)}
-                                className="p-1 border border-slate-200 hover:border-purple-300 rounded-lg bg-white hover:bg-purple-50 text-[#6C2BD9] transition-all cursor-pointer"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                title="Delete Profile"
-                                onClick={() => handleDeleteProfile(p.id)}
-                                className="p-1 border border-rose-200 rounded-lg bg-white hover:bg-rose-50 text-rose-600 transition-all cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          </td>
-                        </tr>
-                      );
-                    })}
-                  </tbody>
-                </table>
-              </div>
+                                {p.status}
+                              </span>
+                            </td>
+                            <td className="py-2.5 px-3 text-right" onClick={(e) => e.stopPropagation()}>
+                              <div className="flex items-center justify-end gap-1.5">
+                                <button
+                                  title="Edit Profile"
+                                  onClick={() => setSelectedProfileId(p.id)}
+                                  className="p-1 border border-slate-200 hover:border-purple-300 rounded-lg bg-white hover:bg-purple-50 text-[#6C2BD9] transition-all cursor-pointer"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  title="Duplicate Profile"
+                                  onClick={() => handleCloneProfile(p.id)}
+                                  className="p-1 border border-slate-200 hover:border-purple-300 rounded-lg bg-white hover:bg-purple-50 text-[#6C2BD9] transition-all cursor-pointer"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                </button>
+                                <button
+                                  title="Delete Profile"
+                                  onClick={() => handleDeleteProfile(p.id)}
+                                  className="p-1 border border-rose-200 rounded-lg bg-white hover:bg-rose-50 text-rose-600 transition-all cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
+                </div>
 
-              <div className="flex items-center justify-between pt-1.5 text-slate-500 text-xs border-t border-slate-100">
-                <span>Showing 1 to {profiles.length} of {profiles.length} profiles</span>
-                <div className="flex items-center gap-1">
-                  <button className="px-2 py-0.5 border border-slate-200 rounded-lg text-slate-400 cursor-not-allowed text-xs">&lt;</button>
-                  <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white rounded-lg font-extrabold text-xs">1</button>
-                  <button className="px-2 py-0.5 border border-slate-200 rounded-lg text-slate-400 cursor-not-allowed text-xs">&gt;</button>
+                <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-medium text-slate-600">Showing {profiles.length} records</span>
+                  <span className="text-slate-400">Scroll down to view all records</span>
                 </div>
               </div>
             </div>

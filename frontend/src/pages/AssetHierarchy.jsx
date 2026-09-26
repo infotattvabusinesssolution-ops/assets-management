@@ -461,7 +461,7 @@ export function AssetHierarchy() {
             )}
 
             {node.level === 1 && <Building className="w-4 h-4 text-[#6C2BD9] shrink-0" />}
-            {node.level === 2 && <Cpu className="w-4 h-4 text-blue-600 shrink-0" />}
+            {node.level === 2 && <Cpu className="w-4 h-4 text-[#6C2BD9] shrink-0" />}
             {node.level === 3 && <Settings className="w-4 h-4 text-slate-500 shrink-0" />}
 
             <span className="font-mono font-bold text-xs text-slate-900 tracking-normal shrink-0">{node.assetId}</span>
@@ -494,7 +494,7 @@ export function AssetHierarchy() {
               ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
               : toast.type === 'error'
               ? 'bg-rose-50 border-rose-300 text-rose-800'
-              : 'bg-blue-50 border-blue-300 text-blue-800'
+              : 'bg-purple-50 border-purple-300 text-purple-900'
           }`}
         >
           {toast.type === 'success' ? (
@@ -773,10 +773,10 @@ export function AssetHierarchy() {
             {activeTab === 'Child' && (
               <div className="space-y-3 pt-1">
                 {selectedAsset.children && selectedAsset.children.length > 0 ? (
-                  <div className="border border-slate-200 rounded-xl overflow-hidden">
+                  <div className="border border-slate-200 rounded-xl overflow-auto max-h-[350px]">
                     <table className="w-full text-left border-collapse text-xs">
-                      <thead>
-                        <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
+                      <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px] shadow-2xs">
+                        <tr>
                           <th className="p-3">Asset ID</th>
                           <th className="p-3">Child Name</th>
                           <th className="p-3">Category</th>
@@ -830,7 +830,7 @@ export function AssetHierarchy() {
                 </div>
 
                 <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <FileText className="w-6 h-6 text-blue-600" />
+                  <FileText className="w-6 h-6 text-[#6C2BD9]" />
                   <div>
                     <span className="font-extrabold text-slate-900 block">Electrical_Schematics.pdf</span>
                     <span className="text-[10px] text-slate-400 font-mono">Drawing v3.1 (1.1 MB)</span>
@@ -850,10 +850,10 @@ export function AssetHierarchy() {
             {/* Tab 4: History */}
             {activeTab === 'History' && (
               <div className="space-y-3 pt-1">
-                <div className="border border-slate-200 rounded-xl overflow-hidden text-xs">
+                <div className="border border-slate-200 rounded-xl overflow-auto max-h-[350px] text-xs">
                   <table className="w-full text-left border-collapse">
-                    <thead>
-                      <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
+                    <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px] shadow-2xs">
+                      <tr>
                         <th className="p-3">Timestamp</th>
                         <th className="p-3">Previous Parent</th>
                         <th className="p-3">New Parent</th>
@@ -1021,11 +1021,11 @@ export function AssetHierarchy() {
                 </select>
               </div>
 
-              <div className="p-2.5 bg-blue-50 border border-blue-200 rounded-xl text-[11px] text-blue-900 space-y-1">
+              <div className="p-2.5 bg-purple-50 border border-purple-200 rounded-xl text-[11px] text-purple-900 space-y-1">
                 <span className="font-extrabold block flex items-center gap-1">
-                  <ShieldCheck className="w-3.5 h-3.5 text-blue-600" /> Backend Validation Rules:
+                  <ShieldCheck className="w-3.5 h-3.5 text-[#6C2BD9]" /> Backend Validation Rules:
                 </span>
-                <ul className="list-disc list-inside text-[10px] space-y-0.5 text-blue-800">
+                <ul className="list-disc list-inside text-[10px] space-y-0.5 text-slate-700">
                   <li>Prevents self-assignment ({selectedAsset.assetId} &rarr; {selectedAsset.assetId})</li>
                   <li>Prevents circular loops ({selectedAsset.assetId} &rarr; Sub-child &rarr; {selectedAsset.assetId})</li>
                   <li>Preserves custodian, site, and financial book value</li>

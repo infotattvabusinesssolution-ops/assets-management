@@ -85,7 +85,7 @@ export function CompanyOrganization() {
         <div className="flex items-center gap-1.5 text-xs text-slate-500 mb-1">
           <span>Administration</span>
           <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-          <span className="text-[#2563EB] font-bold">Company &amp; Organization</span>
+          <span className="text-[#6C2BD9] font-bold">Company &amp; Organization</span>
           {activeTab !== 'companies' && (
             <>
               <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
@@ -112,7 +112,7 @@ export function CompanyOrganization() {
                 const activeLabel = TABS.find((t) => t.id === activeTab)?.label;
                 triggerToast(`Add ${activeLabel} window opened.`);
               }}
-              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#2563EB] hover:bg-[#1D4ED8] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
+              className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
             >
               <Plus className="w-4 h-4" />
               <span>
@@ -135,11 +135,11 @@ export function CompanyOrganization() {
               className={clsx(
                 'flex items-center justify-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border',
                 isActive
-                  ? 'bg-white border-[#2563EB] text-[#2563EB] shadow-md ring-2 ring-[#2563EB]/15'
+                  ? 'bg-white border-[#6C2BD9] text-[#6C2BD9] shadow-md ring-2 ring-[#6C2BD9]/15'
                   : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50 hover:text-slate-900 hover:shadow-2xs'
               )}
             >
-              <Icon className={clsx('w-4 h-4', isActive ? 'text-[#2563EB]' : 'text-slate-400')} />
+              <Icon className={clsx('w-4 h-4', isActive ? 'text-[#6C2BD9]' : 'text-slate-400')} />
               <span>{tab.label}</span>
             </button>
           );

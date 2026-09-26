@@ -469,11 +469,10 @@ export function MaintenanceManager() {
     });
   }, [workOrders, searchQuery, statusFilter, typeFilter, priorityFilter]);
 
-  const totalRecords = 24; // Matching mockup screenshot total counter
-  const totalPages = 3;
+  const totalRecords = filteredWorkOrders.length;
   const paginatedWorkOrders = useMemo(() => {
-    return filteredWorkOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
-  }, [filteredWorkOrders, currentPage, pageSize]);
+    return filteredWorkOrders;
+  }, [filteredWorkOrders]);
 
   // Handlers
   const handleCreateWoSubmit = async (e) => {
@@ -771,104 +770,85 @@ export function MaintenanceManager() {
               Work Order List ({totalRecords})
             </h3>
           </div>
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
+            <div className="overflow-auto max-h-[540px]">
+              <table className="w-full text-left border-collapse">
+                <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-700 font-bold text-[11px] border-b border-slate-200">
+                  <tr>
+                    <th className="p-2.5 text-center w-8">
+                      <input type="checkbox" className="rounded border-slate-300" />
+                    </th>
+                    <th className="p-2.5">WO No.</th>
+                    <th className="p-2.5">Asset No.</th>
+                    <th className="p-2.5">Asset Name</th>
+                    <th className="p-2.5">Maintenance Type</th>
+                    <th className="p-2.5">Priority</th>
+                    <th className="p-2.5">Scheduled Date</th>
+                    <th className="p-2.5">Status</th>
+                    <th className="p-2.5">Assigned To</th>
+                    <th className="p-2.5 text-center">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs font-medium">
+                  {paginatedWorkOrders.map((wo) => {
+                    const woId = wo._id || wo.id;
+                    const isSelected = selectedWoId === woId;
+                    const assetObj = typeof wo.assetId === 'object' && wo.assetId !== null ? wo.assetId : {};
+                    const techName = wo.assignedTechnician?.fullName || (typeof wo.assignedTechnicianId === 'string' ? wo.assignedTechnicianId : '-');
 
-          <div className="overflow-x-auto border border-slate-200 rounded-lg">
-            <table className="w-full text-left border-collapse">
-              <thead className="bg-[#F8FAFC] text-slate-700 font-bold text-[11px] border-b border-slate-200">
-                <tr>
-                  <th className="p-2.5 text-center w-8">
-                    <input type="checkbox" className="rounded border-slate-300" />
-                  </th>
-                  <th className="p-2.5">WO No.</th>
-                  <th className="p-2.5">Asset No.</th>
-                  <th className="p-2.5">Asset Name</th>
-                  <th className="p-2.5">Maintenance Type</th>
-                  <th className="p-2.5">Priority</th>
-                  <th className="p-2.5">Scheduled Date</th>
-                  <th className="p-2.5">Status</th>
-                  <th className="p-2.5">Assigned To</th>
-                  <th className="p-2.5 text-center">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs font-medium">
-                {paginatedWorkOrders.map((wo) => {
-                  const woId = wo._id || wo.id;
-                  const isSelected = selectedWoId === woId;
-                  const assetObj = typeof wo.assetId === 'object' && wo.assetId !== null ? wo.assetId : {};
-                  const techName = wo.assignedTechnician?.fullName || (typeof wo.assignedTechnicianId === 'string' ? wo.assignedTechnicianId : '-');
-
-                  return (
-                    <tr 
-                      key={woId}
-                      onClick={() => setSelectedWoId(woId)}
-                      className={`cursor-pointer transition-colors ${
-                        isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50'
-                      }`}
-                    >
-                      <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input type="checkbox" checked={isSelected} onChange={() => setSelectedWoId(woId)} className="rounded border-slate-300" />
-                      </td>
-                      <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
-                        {wo.workOrderNumber}
-                      </td>
-                      <td className="p-2.5 font-mono text-[#6C2BD9]">
-                        {assetObj.assetId || 'AS-00087'}
-                      </td>
-                      <td className="p-2.5 font-bold text-slate-900">
-                        {assetObj.description || 'AC Unit - Office'}
-                      </td>
-                      <td className="p-2.5 text-slate-800">
-                        {wo.workType}
-                      </td>
-                      <td className="p-2.5">
-                        <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${getPriorityBadgeStyle(wo.priority)}`}>
-                          {wo.priority}
-                        </span>
-                      </td>
-                      <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
-                        {wo.scheduledDate}
-                      </td>
-                      <td className="p-2.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] border ${getStatusBadgeStyle(wo.status)}`}>
-                          {wo.status}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-slate-800">
-                        {techName}
-                      </td>
-                      <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                        <button className="p-1 hover:bg-slate-200 rounded text-slate-600">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-
-          {/* Pagination Matching Mock Screenshot */}
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-2">
-            <span className="text-xs text-slate-500">
-              Showing 1 to 8 of 24 records
-            </span>
-
-            <div className="flex items-center gap-1.5">
-              <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&lt;</button>
-              <button className="px-2.5 py-1 bg-[#6C2BD9] text-white font-bold rounded text-xs shadow-2xs">1</button>
-              <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">2</button>
-              <button className="px-2.5 py-1 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 rounded text-xs font-bold">3</button>
-              <button className="px-2 py-1 bg-white border border-slate-300 text-slate-600 rounded text-xs hover:bg-slate-50 font-bold">&gt;</button>
-
-              <select
-                value={pageSize}
-                onChange={(e) => setPageSize(Number(e.target.value))}
-                className="ml-2 bg-white border border-slate-300 rounded px-2 py-1 text-xs text-slate-700 font-medium"
-              >
-                <option value={8}>10 / page</option>
-                <option value={20}>20 / page</option>
-              </select>
+                    return (
+                      <tr 
+                        key={woId}
+                        onClick={() => setSelectedWoId(woId)}
+                        className={`cursor-pointer transition-colors ${
+                          isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50'
+                        }`}
+                      >
+                        <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input type="checkbox" checked={isSelected} onChange={() => setSelectedWoId(woId)} className="rounded border-slate-300" />
+                        </td>
+                        <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
+                          {wo.workOrderNumber}
+                        </td>
+                        <td className="p-2.5 font-mono text-[#6C2BD9]">
+                          {assetObj.assetId || 'AS-00087'}
+                        </td>
+                        <td className="p-2.5 font-bold text-slate-900">
+                          {assetObj.description || 'AC Unit - Office'}
+                        </td>
+                        <td className="p-2.5 text-slate-800">
+                          {wo.workType}
+                        </td>
+                        <td className="p-2.5">
+                          <span className={`px-2.5 py-0.5 rounded text-[10px] font-bold border ${getPriorityBadgeStyle(wo.priority)}`}>
+                            {wo.priority}
+                          </span>
+                        </td>
+                        <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
+                          {wo.scheduledDate}
+                        </td>
+                        <td className="p-2.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] border ${getStatusBadgeStyle(wo.status)}`}>
+                            {wo.status}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-slate-800">
+                          {techName}
+                        </td>
+                        <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
+                          <button className="p-1 hover:bg-slate-200 rounded text-slate-600">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {filteredWorkOrders.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
         </div>
@@ -1055,55 +1035,61 @@ export function MaintenanceManager() {
 
           {/* TAB 1: MAINTENANCE HISTORY TABLE MATCHING SCREENSHOT 31 */}
           {bottomTab === 'HISTORY' && (
-            <div className="overflow-x-auto border border-slate-200 rounded-lg">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="bg-[#F8FAFC] text-slate-700 font-bold border-b border-slate-200 text-[11px]">
-                  <tr>
-                    <th className="p-2.5">Date</th>
-                    <th className="p-2.5">WO No.</th>
-                    <th className="p-2.5">Maintenance Type</th>
-                    <th className="p-2.5">Description</th>
-                    <th className="p-2.5">Performed By</th>
-                    <th className="p-2.5">Status</th>
-                    <th className="p-2.5 text-right">Cost (AED)</th>
-                    <th className="p-2.5 text-center">Action</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {EXACT_MOCK_HISTORY.map((h, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50">
-                      <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
-                        {h.date}
-                      </td>
-                      <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">
-                        {h.workOrderNumber}
-                      </td>
-                      <td className="p-2.5 text-slate-800">
-                        {h.workType}
-                      </td>
-                      <td className="p-2.5 text-slate-900 max-w-[220px] truncate">
-                        {h.description}
-                      </td>
-                      <td className="p-2.5 text-slate-800">
-                        {h.performedBy}
-                      </td>
-                      <td className="p-2.5">
-                        <span className={`px-2 py-0.5 rounded text-[10px] ${getStatusBadgeStyle(h.status)}`}>
-                          {h.status}
-                        </span>
-                      </td>
-                      <td className="p-2.5 text-right font-mono font-bold text-slate-900">
-                        {h.cost}
-                      </td>
-                      <td className="p-2.5 text-center">
-                        <button className="p-1 text-slate-500 hover:text-slate-900">
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
-                      </td>
+            <div className="border border-slate-200 rounded-lg overflow-hidden">
+              <div className="overflow-auto max-h-[350px]">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-700 font-bold border-b border-slate-200 text-[11px]">
+                    <tr>
+                      <th className="p-2.5">Date</th>
+                      <th className="p-2.5">WO No.</th>
+                      <th className="p-2.5">Maintenance Type</th>
+                      <th className="p-2.5">Description</th>
+                      <th className="p-2.5">Performed By</th>
+                      <th className="p-2.5">Status</th>
+                      <th className="p-2.5 text-right">Cost (AED)</th>
+                      <th className="p-2.5 text-center">Action</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {EXACT_MOCK_HISTORY.map((h, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50">
+                        <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
+                          {h.date}
+                        </td>
+                        <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">
+                          {h.workOrderNumber}
+                        </td>
+                        <td className="p-2.5 text-slate-800">
+                          {h.workType}
+                        </td>
+                        <td className="p-2.5 text-slate-900 max-w-[220px] truncate">
+                          {h.description}
+                        </td>
+                        <td className="p-2.5 text-slate-800">
+                          {h.performedBy}
+                        </td>
+                        <td className="p-2.5">
+                          <span className={`px-2 py-0.5 rounded text-[10px] ${getStatusBadgeStyle(h.status)}`}>
+                            {h.status}
+                          </span>
+                        </td>
+                        <td className="p-2.5 text-right font-mono font-bold text-slate-900">
+                          {h.cost}
+                        </td>
+                        <td className="p-2.5 text-center">
+                          <button className="p-1 text-slate-500 hover:text-slate-900">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </button>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+              <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {EXACT_MOCK_HISTORY.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
           )}
 

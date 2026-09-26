@@ -150,10 +150,10 @@ export function SparePartsListTab({
             </div>
           </div>
 
-          {/* Spare Parts Grid Table matching Screenshot */}
-          <div className="overflow-x-auto">
+          {/* Spare Parts Grid Table */}
+          <div className="overflow-auto max-h-[540px] border border-slate-200 rounded-lg">
             <table className="w-full text-left text-xs border-collapse">
-              <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider">
+              <thead className="bg-slate-50 text-slate-600 border-b border-slate-200 font-semibold uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
                   <th className="p-2.5 w-6">
                     <input
@@ -259,26 +259,10 @@ export function SparePartsListTab({
             </table>
           </div>
 
-          {/* Pagination Footer matching Screenshot */}
-          <div className="flex justify-between items-center text-[11px] text-slate-500 pt-2 border-t border-slate-100">
-            <span>Showing 1 to {filteredParts.length} of 1,248 records</span>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1 font-semibold">
-                <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">«</button>
-                <button className="px-2.5 py-0.5 bg-[#6C2BD9] text-white font-bold rounded">1</button>
-                <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">2</button>
-                <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">3</button>
-                <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">4</button>
-                <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">5</button>
-                <span className="px-1 text-slate-400">...</span>
-                <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-600 hover:bg-slate-50">125</button>
-                <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">›</button>
-                <button className="px-2 py-0.5 border border-slate-200 rounded text-slate-500 hover:bg-slate-50">»</button>
-              </div>
-              <select className="border border-slate-200 rounded px-1.5 py-0.5 text-xs text-slate-700 bg-white font-medium">
-                <option>10 / page</option>
-              </select>
-            </div>
+          {/* Table Summary Footer */}
+          <div className="flex justify-between items-center text-xs text-slate-500 pt-3 border-t border-slate-200">
+            <span className="font-medium text-slate-600">Showing {filteredParts.length} records</span>
+            <span className="text-slate-400">Scroll down to view all records</span>
           </div>
         </div>
 

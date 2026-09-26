@@ -652,9 +652,9 @@ export function SuppliersTab({ triggerToast, activeRowMenuId, setActiveRowMenuId
             </span>
           </div>
 
-          <div className="overflow-x-auto overflow-y-visible">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50/80 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+              <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
                   <th className="py-3 px-3 text-center">
                     <input
@@ -792,25 +792,10 @@ export function SuppliersTab({ triggerToast, activeRowMenuId, setActiveRowMenuId
             </table>
           </div>
 
-          {/* Pagination matching reference screenshot */}
+          {/* Table Summary Footer */}
           <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/20">
-            <span>Showing 1 to {filteredSuppliers.length} of 42 records</span>
-            <div className="flex items-center gap-2">
-              <div className="flex items-center gap-1">
-                <button className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold cursor-pointer">«</button>
-                <button className="px-2.5 py-1 rounded-lg bg-[#6C2BD9] text-white font-bold cursor-pointer">1</button>
-                <button className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold cursor-pointer">2</button>
-                <button className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold cursor-pointer">3</button>
-                <button className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold cursor-pointer">4</button>
-                <button className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold cursor-pointer">5</button>
-                <button className="px-2.5 py-1 rounded-lg border border-slate-200 hover:bg-slate-50 font-semibold cursor-pointer">»</button>
-              </div>
-              <select className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-xs font-medium cursor-pointer">
-                <option value="10">10 / page</option>
-                <option value="25">25 / page</option>
-                <option value="50">50 / page</option>
-              </select>
-            </div>
+            <span className="font-medium text-slate-600">Showing {filteredSuppliers.length} records</span>
+            <span className="text-slate-400">Scroll down to view all records</span>
           </div>
         </div>
 

@@ -297,7 +297,7 @@ export function LocationMap() {
   // Icon renderer helper
   const renderAssetIcon = (iconType) => {
     switch (iconType) {
-      case 'desktop': return <Monitor className="w-5 h-5 text-blue-600" />;
+      case 'desktop': return <Monitor className="w-5 h-5 text-[#6C2BD9]" />;
       case 'printer': return <Printer className="w-5 h-5 text-slate-700" />;
       case 'tablet': return <Tablet className="w-5 h-5 text-purple-600" />;
       case 'fire': return <Flame className="w-5 h-5 text-rose-600" />;
@@ -740,12 +740,12 @@ export function LocationMap() {
                     >
                       {/* Selection Ring */}
                       {isSelected && (
-                        <div className="absolute -inset-2.5 rounded-full border-2 border-blue-500 bg-blue-400/20 animate-pulse pointer-events-none" />
+                        <div className="absolute -inset-2.5 rounded-full border-2 border-[#6C2BD9] bg-purple-400/20 animate-pulse pointer-events-none" />
                       )}
 
                       {/* Marker Pin */}
                       <div className={`w-7 h-7 rounded-full ${markerBg} border-2 border-white shadow-lg flex items-center justify-center transition-transform hover:scale-125 ${
-                        isSelected ? 'scale-125 ring-4 ring-blue-300' : ''
+                        isSelected ? 'scale-125 ring-4 ring-purple-300' : ''
                       }`}>
                         {iconElement}
                       </div>
@@ -761,7 +761,7 @@ export function LocationMap() {
                       {isSelected && showTooltipPopup && (
                         <div className="absolute bottom-9 left-1/2 -translate-x-1/2 bg-white text-slate-800 text-xs p-3 rounded-xl shadow-2xl border border-slate-300 w-52 z-50 animate-in fade-in zoom-in-95 duration-100">
                           <div className="flex items-start justify-between">
-                            <span className="font-extrabold text-blue-700 text-xs">{asset.id}</span>
+                            <span className="font-extrabold text-[#6C2BD9] text-xs">{asset.id}</span>
                             <button
                               onClick={(e) => {
                                 e.stopPropagation();
@@ -905,7 +905,7 @@ export function LocationMap() {
                             {renderAssetIcon(a.icon)}
                           </div>
                           <div className="min-w-0 flex-1">
-                            <span className="font-extrabold text-[11px] text-blue-700 block truncate leading-tight">{a.id}</span>
+                            <span className="font-extrabold text-[11px] text-[#6C2BD9] block truncate leading-tight">{a.id}</span>
                             <p className="text-[11px] font-bold text-slate-800 truncate leading-tight">{a.name}</p>
                             <p className="text-[9.5px] text-slate-400 font-medium truncate mt-0.5">{a.detectedZone}</p>
                           </div>
@@ -954,7 +954,7 @@ export function LocationMap() {
                   {renderAssetIcon(selectedAsset.icon)}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <span className="font-extrabold text-[11px] text-blue-700 block leading-tight">{selectedAsset.id}</span>
+                  <span className="font-extrabold text-[11px] text-[#6C2BD9] block leading-tight">{selectedAsset.id}</span>
                   <span className="font-bold text-[11px] text-slate-800 truncate block leading-tight">{selectedAsset.name}</span>
                 </div>
               </div>
@@ -995,7 +995,7 @@ export function LocationMap() {
               <div className="pt-1 flex items-center justify-between gap-1.5">
                 <button
                   onClick={() => handleLocateAsset(selectedAsset)}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
                 >
                   <Crosshair className="w-3 h-3 shrink-0" />
                   <span>Locate</span>
@@ -1003,7 +1003,7 @@ export function LocationMap() {
 
                 <button
                   onClick={() => setShowHistoryModal(true)}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-blue-600 text-blue-600 hover:bg-blue-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
+                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
                 >
                   <Clock className="w-3 h-3 shrink-0" />
                   <span>View History</span>

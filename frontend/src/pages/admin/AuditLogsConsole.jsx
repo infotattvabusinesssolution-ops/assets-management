@@ -739,9 +739,9 @@ export function AuditLogsConsole() {
             </div>
 
             {/* Logs Data Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[540px]">
               <table className="w-full text-left text-xs">
-                <thead className="border-b border-slate-200 bg-slate-50/70 font-bold text-slate-700">
+                <thead className="border-b border-slate-200 bg-slate-50 font-bold text-slate-700 sticky top-0 z-10 shadow-2xs">
                   <tr>
                     <th className="p-3 w-10 text-center">
                       <input
@@ -847,60 +847,14 @@ export function AuditLogsConsole() {
               </table>
             </div>
 
-            {/* Bottom Pagination */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-3 border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
-              <span>
-                Showing 1 to {Math.min(logs.length, 10)} of {totalRecords.toLocaleString()} records
+            {/* Table Summary Footer */}
+            <div className="flex items-center justify-between border-t border-slate-100 px-4 py-3 text-xs text-slate-500">
+              <span className="font-medium text-slate-600">
+                Showing {logs.length} records
               </span>
-
-              <div className="flex items-center gap-1.5">
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(1)}
-                  disabled={currentPage === 1}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-                >
-                  <ChevronsLeft className="h-3.5 w-3.5 text-[#6C2BD9]" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  disabled={currentPage === 1}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50 disabled:opacity-40"
-                >
-                  <ChevronLeft className="h-3.5 w-3.5 text-[#6C2BD9]" />
-                </button>
-
-                {[1, 2, 3, 4, 5].map(pg => (
-                  <button
-                    key={pg}
-                    type="button"
-                    onClick={() => setCurrentPage(pg)}
-                    className={`flex h-7 w-7 items-center justify-center rounded-lg text-xs font-bold transition-colors ${
-                      currentPage === pg
-                        ? 'bg-[#6C2BD9] text-white shadow-2xs'
-                        : 'border border-slate-200 bg-white text-slate-700 hover:bg-slate-50'
-                    }`}
-                  >
-                    {pg}
-                  </button>
-                ))}
-
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-                >
-                  <ChevronRight className="h-3.5 w-3.5 text-[#6C2BD9]" />
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setCurrentPage(5)}
-                  className="flex h-7 w-7 items-center justify-center rounded-lg border border-slate-200 text-slate-700 hover:bg-slate-50"
-                >
-                  <ChevronsRight className="h-3.5 w-3.5 text-[#6C2BD9]" />
-                </button>
-              </div>
+              <span className="text-slate-400">
+                Scroll down to view all records
+              </span>
             </div>
           </div>
         </div>

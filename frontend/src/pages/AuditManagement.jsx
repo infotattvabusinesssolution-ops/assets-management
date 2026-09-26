@@ -584,9 +584,9 @@ export function AuditManagement() {
             </div>
 
             {/* Table */}
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[540px]">
               <table className="w-full text-left text-xs text-slate-600 border-collapse">
-                <thead className="bg-slate-50/80 text-slate-500 font-semibold text-[11px] border-b border-slate-200">
+                <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 font-semibold text-[11px] border-b border-slate-200">
                   <tr>
                     <th className="py-2.5 px-3 w-8 text-center">
                       <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]" />
@@ -678,56 +678,10 @@ export function AuditManagement() {
               </table>
             </div>
 
-            {/* Pagination matching Screenshot 28 */}
+            {/* Scroll Down Summary */}
             <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <div>
-                Showing 1 to {Math.min(pageSize, filteredAudits.length)} of {SEED_AUDITS.length} records
-              </div>
-              <div className="flex items-center gap-1.5">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-                <button
-                  onClick={() => setCurrentPage(1)}
-                  className={clsx(
-                    'w-7 h-7 flex items-center justify-center rounded text-xs font-semibold',
-                    currentPage === 1 ? 'bg-[#6C2BD9] text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  1
-                </button>
-                <button
-                  onClick={() => setCurrentPage(2)}
-                  className={clsx(
-                    'w-7 h-7 flex items-center justify-center rounded text-xs font-semibold',
-                    currentPage === 2 ? 'bg-[#6C2BD9] text-white shadow-xs' : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                  )}
-                >
-                  2
-                </button>
-                <button
-                  disabled={currentPage === 2}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-
-                <div className="ml-2">
-                  <select
-                    className="px-2 py-1 text-xs bg-white border border-slate-200 rounded text-slate-600 focus:outline-none"
-                    defaultValue={10}
-                  >
-                    <option value={5}>5 / page</option>
-                    <option value={10}>10 / page</option>
-                    <option value={20}>20 / page</option>
-                  </select>
-                </div>
-              </div>
+              <span className="font-medium text-slate-600">Showing {filteredAudits.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
 
@@ -1025,9 +979,9 @@ export function AuditManagement() {
                     </button>
                   </div>
 
-                  <div className="border border-slate-200 rounded-lg overflow-hidden">
+                  <div className="border border-slate-200 rounded-lg overflow-auto max-h-[300px]">
                     <table className="w-full text-left text-xs text-slate-600 border-collapse">
-                      <thead className="bg-slate-50/80 text-slate-500 font-semibold text-[11px] border-b border-slate-200">
+                      <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 font-semibold text-[11px] border-b border-slate-200">
                         <tr>
                           <th className="py-2.5 px-3 w-8">#</th>
                           <th className="py-2.5 px-3">User Name</th>
@@ -1122,9 +1076,9 @@ export function AuditManagement() {
                   </button>
                 </div>
 
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-slate-200 rounded-lg overflow-auto max-h-[300px]">
                   <table className="w-full text-left text-xs text-slate-600 border-collapse">
-                    <thead className="bg-slate-50/80 text-slate-500 font-semibold text-[11px] border-b border-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 font-semibold text-[11px] border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3 w-8">#</th>
                         <th className="py-2.5 px-3">User Name</th>
@@ -1179,9 +1133,9 @@ export function AuditManagement() {
                   </button>
                 </div>
 
-                <div className="border border-slate-200 rounded-lg overflow-hidden">
+                <div className="border border-slate-200 rounded-lg overflow-auto max-h-[300px]">
                   <table className="w-full text-left text-xs text-slate-600 border-collapse">
-                    <thead className="bg-slate-50/80 text-slate-500 font-semibold text-[11px] border-b border-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 font-semibold text-[11px] border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3">Asset No.</th>
                         <th className="py-2.5 px-3">Asset Name</th>

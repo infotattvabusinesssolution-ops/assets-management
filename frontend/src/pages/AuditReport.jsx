@@ -316,7 +316,7 @@ export function AuditReport() {
         );
       }
 
-      setAssets(filtered.slice(0, pageSize));
+      setAssets(filtered);
       setTotalRecords(filtered.length);
     }
   };
@@ -437,7 +437,7 @@ export function AuditReport() {
       );
     }
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-blue-50 text-blue-700">
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-[11px] font-semibold bg-purple-50 text-[#6C2BD9]">
         Pending
       </span>
     );
@@ -750,22 +750,22 @@ export function AuditReport() {
                   className={clsx(
                     'p-2.5 rounded-xl border text-left transition-all relative overflow-hidden group cursor-pointer',
                     activeKpiFilter === 'PENDING'
-                      ? 'bg-blue-100/70 border-blue-600 shadow-xs'
-                      : 'bg-[#EFF6FF] border-blue-200 hover:bg-blue-100/50'
+                      ? 'bg-purple-100/70 border-[#6C2BD9] shadow-xs'
+                      : 'bg-[#EFF6FF] border-purple-200 hover:bg-purple-100/50'
                   )}
                 >
-                  <div className="flex items-center gap-1.5 mb-1 text-blue-600">
-                    <Clock className="w-3.5 h-3.5 text-blue-600" />
+                  <div className="flex items-center gap-1.5 mb-1 text-[#6C2BD9]">
+                    <Clock className="w-3.5 h-3.5 text-[#6C2BD9]" />
                   </div>
                   <div className="flex items-baseline gap-1">
-                    <span className="text-xl font-black text-blue-800 leading-none">
+                    <span className="text-xl font-black text-purple-900 leading-none">
                       {kpis.pending}
                     </span>
-                    <span className="text-[10px] font-bold text-blue-600">
+                    <span className="text-[10px] font-bold text-[#6C2BD9]">
                       ({kpis.pendingPct}%)
                     </span>
                   </div>
-                  <span className="text-[10px] font-semibold text-blue-700 uppercase tracking-tight mt-1 block">
+                  <span className="text-[10px] font-semibold text-[#6C2BD9] uppercase tracking-tight mt-1 block">
                     Pending
                   </span>
                 </button>
@@ -1223,10 +1223,10 @@ export function AuditReport() {
             </div>
           </div>
 
-          {/* Main Data Table Matching Screenshot */}
-          <div className="overflow-x-auto">
+          {/* Main Data Table */}
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs text-slate-700">
-              <thead className="bg-slate-50/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-3 w-10 text-center">#</th>
                   <th className="py-3 px-3">Asset No.</th>
@@ -1362,76 +1362,10 @@ export function AuditReport() {
             </table>
           </div>
 
-          {/* Pagination Footer Matching Screenshot */}
-          <div className="p-4 border-t border-slate-200 bg-white flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-            <div>
-              Showing <span className="font-bold text-slate-800">1</span> to{' '}
-              <span className="font-bold text-slate-800">{assets.length}</span> of{' '}
-              <span className="font-bold text-slate-800">{totalRecords}</span> records
-            </div>
-
-            <div className="flex items-center gap-3">
-              {/* Pagination Numbers */}
-              <div className="flex items-center gap-1">
-                <button
-                  disabled={currentPage === 1}
-                  onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  <ChevronLeft className="w-3.5 h-3.5" />
-                </button>
-
-                {[1, 2, 3, 4, 5].map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={clsx(
-                      'w-7 h-7 rounded-lg text-xs font-bold transition-all',
-                      currentPage === page
-                        ? 'bg-[#6C2BD9] text-white shadow-2xs'
-                        : 'border border-slate-200 text-slate-600 hover:bg-slate-50'
-                    )}
-                  >
-                    {page}
-                  </button>
-                ))}
-
-                <span className="px-1 text-slate-400">...</span>
-
-                <button
-                  onClick={() => setCurrentPage(120)}
-                  className="w-7 h-7 rounded-lg text-xs font-bold border border-slate-200 text-slate-600 hover:bg-slate-50"
-                >
-                  120
-                </button>
-
-                <button
-                  disabled={currentPage >= Math.ceil(totalRecords / pageSize)}
-                  onClick={() => setCurrentPage(p => p + 1)}
-                  className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 text-slate-600 disabled:opacity-30 disabled:pointer-events-none"
-                >
-                  <ChevronRight className="w-3.5 h-3.5" />
-                </button>
-              </div>
-
-              {/* Page Size Selector (5 / page ∨) */}
-              <div className="relative">
-                <select
-                  value={pageSize}
-                  onChange={(e) => {
-                    setPageSize(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="pl-2.5 pr-7 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-medium text-slate-700 appearance-none focus:outline-hidden cursor-pointer"
-                >
-                  <option value={5}>5 / page</option>
-                  <option value={10}>10 / page</option>
-                  <option value={25}>25 / page</option>
-                  <option value={50}>50 / page</option>
-                </select>
-                <ChevronDown className="w-3 h-3 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
+          {/* Scroll Down Summary */}
+          <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span className="font-medium text-slate-600">Showing {assets.length} records</span>
+            <span className="text-slate-400">Scroll down to view all records</span>
           </div>
         </div>
       </div>

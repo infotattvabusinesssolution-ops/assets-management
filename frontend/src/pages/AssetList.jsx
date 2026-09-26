@@ -21,8 +21,6 @@ import {
   Building,
   User,
   X,
-  ChevronLeft,
-  ChevronRight,
   MoreVertical,
   ArrowLeftRight,
   Wrench,
@@ -622,9 +620,6 @@ export function AssetList() {
   const [selectedAssetType, setSelectedAssetType] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
 
-  // Pagination State
-  const [perPage, setPerPage] = useState(10);
-  const [currentPage, setCurrentPage] = useState(1);
 
   // 360° Detail Panel Tabs
   const [detailPanelTab, setDetailPanelTab] = useState('Details');
@@ -675,15 +670,6 @@ export function AssetList() {
     });
   }, [assets, activeTab, selectedCategory, selectedStatus, selectedLocation, selectedDepartment, search]);
 
-  // Paginated Assets Computation
-  const paginatedAssets = useMemo(() => {
-    const start = (currentPage - 1) * perPage;
-    return filteredAssets.slice(start, start + perPage);
-  }, [filteredAssets, currentPage, perPage]);
-
-  const totalPages = useMemo(() => {
-    return Math.max(1, Math.ceil(filteredAssets.length / perPage));
-  }, [filteredAssets, perPage]);
 
   // Handle Select All Checkbox
   const handleSelectAll = (e) => {
@@ -1016,7 +1002,7 @@ export function AssetList() {
         {/* 4. Asset Register List Table (Callout 4) */}
         <div className={`transition-all ${selectedAsset ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto overflow-y-auto max-h-[480px] relative scrollbar-thin">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[420px] relative scrollbar-thin">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-2xs">
                   <tr className="bg-slate-50 text-slate-500 uppercase font-bold text-[10px]">
@@ -1042,7 +1028,7 @@ export function AssetList() {
                 </thead>
 
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {paginatedAssets.map((asset) => {
+                  {filteredAssets.map((asset) => {
                     const isSelected = selectedAsset?.id === asset.id;
                     const isChecked = selectedRowIds.includes(asset.id);
                     const Icon = asset.icon || Package;
@@ -1209,56 +1195,14 @@ export function AssetList() {
               </table>
             </div>
 
-            {/* Pagination Footer */}
-            <div className="bg-slate-50 border-t border-slate-200 px-4 py-3 flex items-center justify-between text-xs text-slate-500">
-              <span>
-                Showing {filteredAssets.length === 0 ? 0 : (currentPage - 1) * perPage + 1} to{' '}
-                {Math.min(currentPage * perPage, filteredAssets.length)} of {filteredAssets.length} assets
+            {/* Table Footer: Total count and scroll indicator without pagination buttons */}
+            <div className="bg-slate-50 border-t border-slate-200 px-4 py-2.5 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-semibold text-slate-700">
+                Showing all {filteredAssets.length} assets
               </span>
-              <div className="flex items-center gap-2">
-                <span>Show</span>
-                <select
-                  value={perPage}
-                  onChange={(e) => {
-                    setPerPage(Number(e.target.value));
-                    setCurrentPage(1);
-                  }}
-                  className="bg-white border border-slate-200 rounded-lg px-2 py-1 text-slate-700 font-semibold cursor-pointer"
-                >
-                  <option value={10}>10</option>
-                  <option value={20}>20</option>
-                  <option value={50}>50</option>
-                </select>
-                <span>per page</span>
-
-                <div className="flex items-center gap-1 pl-2">
-                  <button
-                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                    disabled={currentPage === 1}
-                    className="p-1 rounded bg-white border border-slate-200 text-slate-600 disabled:opacity-40 cursor-pointer hover:bg-slate-100"
-                  >
-                    <ChevronLeft className="w-3.5 h-3.5" />
-                  </button>
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={`px-2.5 py-1 rounded-lg text-xs font-bold cursor-pointer transition-colors ${
-                        currentPage === pageNum ? 'bg-[#6C2BD9] text-white shadow-2xs' : 'text-slate-600 hover:bg-slate-200 bg-white border border-slate-200'
-                      }`}
-                    >
-                      {pageNum}
-                    </button>
-                  ))}
-                  <button
-                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                    disabled={currentPage >= totalPages}
-                    className="p-1 rounded bg-white border border-slate-200 text-slate-600 disabled:opacity-40 cursor-pointer hover:bg-slate-100"
-                  >
-                    <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              </div>
+              <span className="text-[11px] text-slate-400 font-medium">
+                Scroll to view records
+              </span>
             </div>
           </div>
         </div>

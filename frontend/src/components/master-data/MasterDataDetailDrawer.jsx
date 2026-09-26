@@ -310,10 +310,10 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
               )}
             </div>
           ) : (
-            <div className="border border-slate-200 rounded-2xl overflow-hidden shadow-2xs bg-white">
+            <div className="border border-slate-200 rounded-2xl overflow-auto max-h-[480px] shadow-2xs bg-white">
               <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider shadow-2xs">
+                  <tr>
                     <th className="py-3 px-4">Code / Name</th>
                     <th className="py-3 px-4">Details</th>
                     <th className="py-3 px-4 text-center">Status</th>
@@ -384,6 +384,10 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
                   })}
                 </tbody>
               </table>
+              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                <span className="font-medium text-slate-600">Showing {filteredItems.length} records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
+              </div>
             </div>
           )}
         </div>

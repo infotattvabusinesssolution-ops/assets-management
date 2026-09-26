@@ -661,9 +661,9 @@ export function AssignAsset() {
                 </div>
 
                 {/* Radio Selection Table */}
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[500px]">
                   <table className="w-full text-left text-xs text-slate-600 border-collapse">
-                    <thead className="bg-slate-50/80 text-slate-500 font-semibold text-[11px] border-b border-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-500 font-semibold text-[11px] border-b border-slate-200">
                       <tr>
                         <th className="py-2.5 px-3 w-8 text-center"></th>
                         <th className="py-2.5 px-3">Asset No</th>
@@ -726,49 +726,10 @@ export function AssignAsset() {
                   </table>
                 </div>
 
-                {/* Pagination Footer matching Screenshot 26 */}
+                {/* Scroll Down Summary */}
                 <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                  <div>
-                    Showing 1 to 5 of 1,248 assets
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      disabled
-                      className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-400 bg-slate-50 cursor-not-allowed"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded bg-[#6C2BD9] text-white font-semibold text-xs shadow-xs">
-                      1
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs">
-                      2
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs">
-                      3
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs">
-                      4
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs">
-                      5
-                    </button>
-                    <span className="px-1 text-slate-400">...</span>
-                    <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs">
-                      250
-                    </button>
-                    <button className="w-7 h-7 flex items-center justify-center rounded border border-slate-200 text-slate-600 hover:bg-slate-50">
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-
-                    <div className="ml-2">
-                      <select className="px-2 py-1 text-xs bg-white border border-slate-200 rounded text-slate-600 focus:outline-none">
-                        <option>5 / page</option>
-                        <option>10 / page</option>
-                        <option>25 / page</option>
-                      </select>
-                    </div>
-                  </div>
+                  <span className="font-medium text-slate-600">Showing {filteredAssets.length} assets</span>
+                  <span className="text-slate-400">Scroll down to view all records</span>
                 </div>
               </div>
 
@@ -791,7 +752,7 @@ export function AssignAsset() {
                       <select
                         value={formData.assignmentType}
                         onChange={(e) => setFormData({ ...formData, assignmentType: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
                         <option value="Employee">Employee</option>
                         <option value="Department">Department</option>
@@ -812,7 +773,7 @@ export function AssignAsset() {
                           type="text"
                           value={formData.assignedTo}
                           onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                          className="w-full pl-3 pr-9 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          className="w-full pl-3 pr-9 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                         />
                         <button
                           type="button"
@@ -832,7 +793,7 @@ export function AssignAsset() {
                       <select
                         value={formData.department}
                         onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
                         <option value="IT Department">IT Department</option>
                         <option value="Finance">Finance</option>
@@ -851,7 +812,7 @@ export function AssignAsset() {
                       <select
                         value={formData.location}
                         onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
                         <option value="Dubai HQ">Dubai HQ</option>
                         <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
@@ -868,7 +829,7 @@ export function AssignAsset() {
                       <select
                         value={formData.building}
                         onChange={(e) => setFormData({ ...formData, building: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
                         <option value="Block A">Block A</option>
                         <option value="Block B">Block B</option>
@@ -885,7 +846,7 @@ export function AssignAsset() {
                       <select
                         value={formData.floor}
                         onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
                         <option value="Ground Floor">Ground Floor</option>
                         <option value="1st Floor">1st Floor</option>
@@ -903,7 +864,7 @@ export function AssignAsset() {
                         type="text"
                         value={formData.room}
                         onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -937,7 +898,7 @@ export function AssignAsset() {
                           value={formData.expectedReturnDate}
                           onChange={(e) => setFormData({ ...formData, expectedReturnDate: e.target.value })}
                           placeholder="Select date"
-                          className="w-full pl-3 pr-9 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                          className="w-full pl-3 pr-9 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                         />
                         <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
@@ -951,7 +912,7 @@ export function AssignAsset() {
                       <select
                         value={formData.assignmentPurpose}
                         onChange={(e) => setFormData({ ...formData, assignmentPurpose: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
                         <option value="Regular Use">Regular Use</option>
                         <option value="Project Work">Project Work</option>
@@ -969,7 +930,7 @@ export function AssignAsset() {
                       <select
                         value={formData.conditionAtIssue}
                         onChange={(e) => setFormData({ ...formData, conditionAtIssue: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
                         <option value="Good">Good</option>
                         <option value="New / Sealed">New / Sealed</option>
@@ -987,7 +948,7 @@ export function AssignAsset() {
                         type="text"
                         value={formData.accessoriesIncluded}
                         onChange={(e) => setFormData({ ...formData, accessoriesIncluded: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       />
                     </div>
 
@@ -1000,7 +961,7 @@ export function AssignAsset() {
                         rows={2}
                         value={formData.remarks}
                         onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-blue-500/20 focus:border-blue-500 resize-none"
+                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] resize-none"
                       />
                     </div>
 
@@ -1009,10 +970,10 @@ export function AssignAsset() {
                       <label className="block font-semibold text-slate-700 mb-1">
                         Upload Evidence
                       </label>
-                      <div className="border-2 border-dashed border-slate-200 hover:border-blue-400 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50">
-                        <UploadCloud className="w-6 h-6 text-blue-500 mx-auto mb-1.5" />
+                      <div className="border-2 border-dashed border-slate-200 hover:border-purple-400 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50">
+                        <UploadCloud className="w-6 h-6 text-[#6C2BD9] mx-auto mb-1.5" />
                         <p className="text-xs font-semibold text-slate-700">
-                          Drag and drop files here or <span className="text-blue-600 underline">click to browse</span>
+                          Drag and drop files here or <span className="text-[#6C2BD9] underline">click to browse</span>
                         </p>
                         <p className="text-[10px] text-slate-400 mt-0.5">
                           Supported files: JPG, PNG, PDF (Max 5 MB)
@@ -1142,7 +1103,7 @@ export function AssignAsset() {
                             name="ackMethod"
                             checked={ackMethod === 'digital_signature'}
                             onChange={() => setAckMethod('digital_signature')}
-                            className="w-3.5 h-3.5 text-blue-600 focus:ring-blue-500"
+                            className="w-3.5 h-3.5 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                           />
                           <span className="font-semibold text-slate-800">Digital Signature</span>
                         </label>
@@ -1152,7 +1113,7 @@ export function AssignAsset() {
                             name="ackMethod"
                             checked={ackMethod === 'photo_capture'}
                             onChange={() => setAckMethod('photo_capture')}
-                            className="w-3.5 h-3.5 text-blue-600 focus:ring-blue-500"
+                            className="w-3.5 h-3.5 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                           />
                           <span className="text-slate-600">Photo Capture</span>
                         </label>
@@ -1234,12 +1195,12 @@ export function AssignAsset() {
                     ) : (
                       /* Photo Capture Mode */
                       <div className="border-2 border-dashed border-slate-200 rounded-xl p-5 text-center bg-slate-50/50 space-y-2">
-                        <Camera className="w-8 h-8 text-blue-600 mx-auto" />
+                        <Camera className="w-8 h-8 text-[#6C2BD9] mx-auto" />
                         <p className="font-semibold text-slate-700">Take Photo of Physical Handover</p>
                         <p className="text-[10px] text-slate-400">Capture asset handover with employee badge</p>
                         <button
                           type="button"
-                          className="px-3 py-1.5 bg-blue-50 text-blue-600 rounded-lg font-semibold hover:bg-blue-100"
+                          className="px-3 py-1.5 bg-purple-50 text-[#6C2BD9] rounded-lg font-semibold hover:bg-purple-100"
                         >
                           Open Camera
                         </button>
@@ -1253,7 +1214,7 @@ export function AssignAsset() {
                           type="checkbox"
                           checked={isConfirmedCheckbox}
                           onChange={(e) => setIsConfirmedCheckbox(e.target.checked)}
-                          className="mt-0.5 w-3.5 h-3.5 text-blue-600 focus:ring-blue-500 rounded"
+                          className="mt-0.5 w-3.5 h-3.5 text-[#6C2BD9] focus:ring-[#6C2BD9] rounded"
                         />
                         <span className="text-[11px] text-slate-700 font-medium leading-tight">
                           I confirm that I have received the above asset in good condition.
@@ -1339,7 +1300,7 @@ export function AssignAsset() {
           <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-md w-full shadow-xl space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
-                <div className="w-8 h-8 rounded-lg bg-blue-50 text-blue-600 flex items-center justify-center">
+                <div className="w-8 h-8 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
                   <Scan className="w-4 h-4" />
                 </div>
                 <div>
@@ -1357,7 +1318,7 @@ export function AssignAsset() {
 
             {/* Simulated Viewfinder */}
             <div className="h-40 rounded-xl bg-slate-900 flex flex-col items-center justify-center relative overflow-hidden text-center text-white p-4">
-              <div className="w-44 h-24 border-2 border-dashed border-blue-400/80 rounded-lg relative flex items-center justify-center">
+              <div className="w-44 h-24 border-2 border-dashed border-purple-400/80 rounded-lg relative flex items-center justify-center">
                 <div className="w-full h-0.5 bg-rose-500/80 absolute top-1/2 -translate-y-1/2 shadow-xs shadow-rose-500 animate-pulse" />
                 <span className="text-[10px] text-slate-400 uppercase tracking-widest font-mono">
                   Align Barcode / QR / Tag
@@ -1377,11 +1338,11 @@ export function AssignAsset() {
                   onChange={(e) => setScanInput(e.target.value)}
                   onKeyDown={(e) => e.key === 'Enter' && handleScanSubmit()}
                   placeholder="e.g. AS-000123, 75K3D24, E28011606000002053A1B4C0"
-                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500/20"
+                  className="flex-1 px-3 py-2 text-xs border border-slate-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
                 />
                 <button
                   onClick={handleScanSubmit}
-                  className="px-4 py-2 bg-blue-600 text-white rounded-lg text-xs font-semibold hover:bg-blue-700 cursor-pointer"
+                  className="px-4 py-2 bg-[#6C2BD9] text-white rounded-lg text-xs font-semibold hover:bg-[#5B21B6] cursor-pointer"
                 >
                   Lookup
                 </button>
@@ -1395,7 +1356,7 @@ export function AssignAsset() {
                   <button
                     key={tag}
                     onClick={() => setScanInput(tag)}
-                    className="px-2 py-0.5 bg-white border border-slate-200 rounded text-blue-600 font-mono hover:bg-blue-50 cursor-pointer"
+                    className="px-2 py-0.5 bg-white border border-slate-200 rounded text-[#6C2BD9] font-mono hover:bg-purple-50 cursor-pointer"
                   >
                     {tag}
                   </button>

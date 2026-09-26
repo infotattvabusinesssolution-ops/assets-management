@@ -616,7 +616,7 @@ export function MovementApprovals() {
             toastMessage.type === 'error'
               ? "bg-rose-50 text-rose-900 border-rose-200"
               : toastMessage.type === 'info'
-              ? "bg-blue-50 text-blue-900 border-blue-200"
+              ? "bg-purple-50 text-purple-900 border-purple-200"
               : "bg-emerald-50 text-emerald-900 border-emerald-200"
           )}
         >
@@ -727,8 +727,8 @@ export function MovementApprovals() {
         </div>
 
         {/* Card 4: Overdue Requests */}
-        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4 hover:border-blue-300 transition-colors">
-          <div className="w-12 h-12 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-blue-600">
+        <div className="bg-white rounded-2xl p-5 border border-slate-200 shadow-xs flex items-center gap-4 hover:border-purple-300 transition-colors">
+          <div className="w-12 h-12 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-[#6C2BD9]">
             <Clock className="w-6 h-6" />
           </div>
           <div>
@@ -876,9 +876,9 @@ export function MovementApprovals() {
             </h2>
           </div>
 
-          <div className="overflow-x-auto">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
-              <thead className="bg-slate-50 text-slate-600 font-bold border-b border-slate-200">
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs text-slate-600 font-bold border-b border-slate-200">
                 <tr>
                   <th className="py-3 px-3 w-8">
                     <input
@@ -1040,55 +1040,10 @@ export function MovementApprovals() {
             </table>
           </div>
 
-          {/* Pagination Controls */}
-          <div className="p-3 bg-slate-50/70 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-2 text-slate-600">
-              <span>Showing 1 to {requests.length} of {totalRecords} requests</span>
-            </div>
-
-            <div className="flex items-center gap-1.5">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center disabled:opacity-40 font-bold hover:bg-slate-100"
-              >
-                &lt;
-              </button>
-
-              {[1, 2].map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setCurrentPage(p)}
-                  className={clsx(
-                    "w-7 h-7 rounded-lg font-bold transition-colors",
-                    currentPage === p ? "bg-[#6C2BD9] text-white" : "bg-white text-slate-700 hover:bg-slate-100 border border-slate-200"
-                  )}
-                >
-                  {p}
-                </button>
-              ))}
-
-              <button
-                disabled={currentPage >= totalPages}
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center disabled:opacity-40 font-bold hover:bg-slate-100"
-              >
-                &gt;
-              </button>
-
-              <select
-                value={itemsPerPage}
-                onChange={(e) => {
-                  setItemsPerPage(Number(e.target.value));
-                  setCurrentPage(1);
-                }}
-                className="ml-2 bg-white border border-slate-200 rounded-lg px-2 py-1 font-semibold text-slate-700 text-xs"
-              >
-                <option value="10">10 / page</option>
-                <option value="25">25 / page</option>
-                <option value="50">50 / page</option>
-              </select>
-            </div>
+          {/* Scroll Down Summary */}
+          <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+            <span className="font-medium text-slate-600">Showing {requests.length} records</span>
+            <span className="text-slate-400">Scroll down to view all records</span>
           </div>
         </div>
 

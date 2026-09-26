@@ -1029,10 +1029,10 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
           </p>
         </div>
 
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[400px]">
           <table className="w-full text-left text-xs border-collapse">
-            <thead>
-              <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600">
+            <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
+              <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-600">
                 <th className="py-2.5 px-4 w-10">
                   <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]" />
                 </th>
@@ -1144,10 +1144,10 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
             <span className="text-[10px] text-slate-400 font-medium">Refreshes in real-time</span>
           </div>
 
-          <div className="border border-slate-200 rounded-xl overflow-hidden">
+          <div className="border border-slate-200 rounded-xl overflow-auto max-h-[300px]">
             <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-600">
+              <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
+                <tr className="border-b border-slate-200 text-[11px] font-bold text-slate-600">
                   <th className="py-2.5 px-3">Time</th>
                   <th className="py-2.5 px-3">Serial Number</th>
                   <th className="py-2.5 px-3">Tag Number</th>
@@ -1200,8 +1200,8 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
             {/* 4 Metric Boxes */}
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
               {/* Box 1: PO Items */}
-              <div className="p-2.5 rounded-xl border border-blue-100 bg-blue-50/50 flex flex-col items-center justify-center text-center">
-                <div className="w-7 h-7 rounded-lg bg-blue-500 text-white flex items-center justify-center mb-1 shadow-2xs">
+              <div className="p-2.5 rounded-xl border border-purple-100 bg-purple-50/50 flex flex-col items-center justify-center text-center">
+                <div className="w-7 h-7 rounded-lg bg-purple-500 text-white flex items-center justify-center mb-1 shadow-2xs">
                   <Package className="w-4 h-4" />
                 </div>
                 <span className="text-lg font-black text-slate-900">{totalPoItems}</span>

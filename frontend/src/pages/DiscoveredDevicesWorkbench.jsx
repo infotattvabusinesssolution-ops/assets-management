@@ -1261,9 +1261,9 @@ export function DiscoveredDevicesWorkbench() {
 
       {/* DISCOVERED DEVICES TABLE (Screenshot #19) */}
       <div className="bg-white rounded-2xl border border-slate-200 shadow-2xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-auto max-h-[540px]">
           <table className="w-full text-left text-xs">
-            <thead className="bg-[#F8FAFC] text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
+            <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-500 font-semibold border-b border-slate-200 uppercase tracking-wider">
               <tr>
                 <th className="py-3 px-3 w-8 text-center">
                   <input
@@ -1293,7 +1293,7 @@ export function DiscoveredDevicesWorkbench() {
                   </td>
                 </tr>
               ) : (
-                filteredDevices.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage).map((dev) => {
+                filteredDevices.map((dev) => {
                   const isSelected = selectedDevice?.id === dev.id;
                   const isChecked = selectedIds.has(dev.id);
 
@@ -1352,86 +1352,10 @@ export function DiscoveredDevicesWorkbench() {
           </table>
         </div>
 
-        {/* TABLE FOOTER / PAGINATION (Screenshot #19) */}
-        <div className="p-3.5 bg-[#F8FAFC] border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-          <div>
-            Showing <span className="font-bold text-slate-800">1</span> to <span className="font-bold text-slate-800">10</span> of <span className="font-bold text-slate-800">245</span> devices
-          </div>
-
-          <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1">
-              <button
-                disabled={currentPage === 1}
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-600 disabled:opacity-40 cursor-pointer"
-              >
-                &lt;
-              </button>
-              <button
-                onClick={() => setCurrentPage(1)}
-                className={clsx(
-                  "w-7 h-7 rounded-lg font-bold text-xs flex items-center justify-center cursor-pointer",
-                  currentPage === 1 ? "bg-[#6C2BD9] text-white" : "bg-white border border-slate-200 text-slate-700"
-                )}
-              >
-                1
-              </button>
-              <button
-                onClick={() => setCurrentPage(2)}
-                className={clsx(
-                  "w-7 h-7 rounded-lg font-bold text-xs flex items-center justify-center cursor-pointer",
-                  currentPage === 2 ? "bg-[#6C2BD9] text-white" : "bg-white border border-slate-200 text-slate-700"
-                )}
-              >
-                2
-              </button>
-              <button
-                onClick={() => setCurrentPage(3)}
-                className={clsx(
-                  "w-7 h-7 rounded-lg font-bold text-xs flex items-center justify-center cursor-pointer",
-                  currentPage === 3 ? "bg-[#6C2BD9] text-white" : "bg-white border border-slate-200 text-slate-700"
-                )}
-              >
-                3
-              </button>
-              <button
-                onClick={() => setCurrentPage(4)}
-                className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center cursor-pointer"
-              >
-                4
-              </button>
-              <button
-                onClick={() => setCurrentPage(5)}
-                className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center cursor-pointer"
-              >
-                5
-              </button>
-              <span className="px-1 text-slate-400">...</span>
-              <button
-                onClick={() => setCurrentPage(25)}
-                className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center cursor-pointer"
-              >
-                25
-              </button>
-              <button
-                disabled={currentPage === 25}
-                onClick={() => setCurrentPage(p => Math.min(25, p + 1))}
-                className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-600 disabled:opacity-40 cursor-pointer"
-              >
-                &gt;
-              </button>
-            </div>
-
-            <select
-              value={itemsPerPage}
-              onChange={(e) => setItemsPerPage(Number(e.target.value))}
-              className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-700"
-            >
-              <option value="10">10 per page</option>
-              <option value="25">25 per page</option>
-              <option value="50">50 per page</option>
-            </select>
-          </div>
+        {/* TABLE FOOTER / SCROLL INFO */}
+        <div className="p-3.5 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
+          <span className="font-medium text-slate-600">Showing {filteredDevices.length} records</span>
+          <span className="text-slate-400">Scroll down to view all records</span>
         </div>
       </div>
 
@@ -1706,8 +1630,8 @@ export function DiscoveredDevicesWorkbench() {
             {/* Header */}
             <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
               <div className="flex items-center gap-2.5">
-                <div className="w-8 h-8 rounded-xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0033FF]">
-                  <Sliders className="w-4 h-4 text-[#0033FF]" />
+                <div className="w-8 h-8 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center text-[#6C2BD9]">
+                  <Sliders className="w-4 h-4 text-[#6C2BD9]" />
                 </div>
                 <h2 className="text-base font-extrabold text-[#0F172A]">Advanced Filters</h2>
               </div>
@@ -1730,7 +1654,7 @@ export function DiscoveredDevicesWorkbench() {
                     placeholder="e.g. 192.168.1.10"
                     value={advFilters.ipAddress}
                     onChange={(e) => setAdvFilters({ ...advFilters, ipAddress: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#0033FF] focus:ring-1 focus:ring-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#6C2BD9] focus:ring-1 focus:ring-[#6C2BD9]"
                   />
                 </div>
                 <div>
@@ -1740,7 +1664,7 @@ export function DiscoveredDevicesWorkbench() {
                     placeholder="Enter hostname"
                     value={advFilters.hostname}
                     onChange={(e) => setAdvFilters({ ...advFilters, hostname: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#0033FF] focus:ring-1 focus:ring-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#6C2BD9] focus:ring-1 focus:ring-[#6C2BD9]"
                   />
                 </div>
               </div>
@@ -1754,7 +1678,7 @@ export function DiscoveredDevicesWorkbench() {
                     placeholder="e.g. 00:1A:2B:3C:4D:5E"
                     value={advFilters.macAddress}
                     onChange={(e) => setAdvFilters({ ...advFilters, macAddress: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#0033FF] focus:ring-1 focus:ring-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#6C2BD9] focus:ring-1 focus:ring-[#6C2BD9]"
                   />
                 </div>
                 <div>
@@ -1762,7 +1686,7 @@ export function DiscoveredDevicesWorkbench() {
                   <select
                     value={advFilters.deviceType}
                     onChange={(e) => setAdvFilters({ ...advFilters, deviceType: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="All">All</option>
                     <option value="Computer">Computer</option>
@@ -1786,7 +1710,7 @@ export function DiscoveredDevicesWorkbench() {
                     placeholder="Enter serial number"
                     value={advFilters.serialNumber}
                     onChange={(e) => setAdvFilters({ ...advFilters, serialNumber: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#0033FF] focus:ring-1 focus:ring-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#6C2BD9] focus:ring-1 focus:ring-[#6C2BD9]"
                   />
                 </div>
                 <div>
@@ -1794,7 +1718,7 @@ export function DiscoveredDevicesWorkbench() {
                   <select
                     value={advFilters.assetStatus}
                     onChange={(e) => setAdvFilters({ ...advFilters, assetStatus: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="All">All</option>
                     <option value="Matched">Matched</option>
@@ -1811,7 +1735,7 @@ export function DiscoveredDevicesWorkbench() {
                   <select
                     value={advFilters.manufacturer}
                     onChange={(e) => setAdvFilters({ ...advFilters, manufacturer: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="All">All</option>
                     <option value="Dell">Dell</option>
@@ -1830,7 +1754,7 @@ export function DiscoveredDevicesWorkbench() {
                   <select
                     value={advFilters.location}
                     onChange={(e) => setAdvFilters({ ...advFilters, location: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="All Locations">All Locations</option>
                     <option value="Dubai HQ - IT Department">Dubai HQ - IT Department</option>
@@ -1852,7 +1776,7 @@ export function DiscoveredDevicesWorkbench() {
                   <select
                     value={advFilters.model}
                     onChange={(e) => setAdvFilters({ ...advFilters, model: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="All">All</option>
                     <option value="OptiPlex 7020">OptiPlex 7020</option>
@@ -1872,7 +1796,7 @@ export function DiscoveredDevicesWorkbench() {
                   <select
                     value={advFilters.discoveryJob}
                     onChange={(e) => setAdvFilters({ ...advFilters, discoveryJob: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="All Jobs">All Jobs</option>
                     <option value="HQ Network Scan">HQ Network Scan</option>
@@ -1889,7 +1813,7 @@ export function DiscoveredDevicesWorkbench() {
                   <select
                     value={advFilters.operatingSystem}
                     onChange={(e) => setAdvFilters({ ...advFilters, operatingSystem: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="All">All</option>
                     <option value="Windows 11 Pro 23H2">Windows 11 Pro 23H2</option>
@@ -1912,9 +1836,9 @@ export function DiscoveredDevicesWorkbench() {
                       placeholder="dd/mm/yyyy"
                       value={advFilters.lastSeenFrom}
                       onChange={(e) => setAdvFilters({ ...advFilters, lastSeenFrom: e.target.value })}
-                      className="w-full py-2.5 pl-3 pr-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                      className="w-full py-2.5 pl-3 pr-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                     />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-[#0033FF] text-white flex items-center justify-center pointer-events-none shadow-xs">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-[#6C2BD9] text-white flex items-center justify-center pointer-events-none shadow-xs">
                       <Calendar className="w-3.5 h-3.5" />
                     </div>
                   </div>
@@ -1928,7 +1852,7 @@ export function DiscoveredDevicesWorkbench() {
                   <select
                     value={advFilters.discoverySource}
                     onChange={(e) => setAdvFilters({ ...advFilters, discoverySource: e.target.value })}
-                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                    className="w-full p-2.5 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                   >
                     <option value="All">All</option>
                     <option value="WMI/WinRM & SNMP">WMI/WinRM & SNMP</option>
@@ -1951,9 +1875,9 @@ export function DiscoveredDevicesWorkbench() {
                       placeholder="dd/mm/yyyy"
                       value={advFilters.lastSeenTo}
                       onChange={(e) => setAdvFilters({ ...advFilters, lastSeenTo: e.target.value })}
-                      className="w-full py-2.5 pl-3 pr-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                      className="w-full py-2.5 pl-3 pr-10 bg-white border border-slate-200 rounded-xl text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                     />
-                    <div className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-[#0033FF] text-[#0033FF] flex items-center justify-center pointer-events-none shadow-xs">
+                    <div className="absolute right-2 top-1/2 -translate-y-1/2 w-6 h-6 rounded-lg bg-[#6C2BD9] text-[#6C2BD9] flex items-center justify-center pointer-events-none shadow-xs">
                       <Calendar className="w-3.5 h-3.5 text-white" />
                     </div>
                   </div>
@@ -1966,7 +1890,7 @@ export function DiscoveredDevicesWorkbench() {
                   type="checkbox"
                   checked={advFilters.latestOnly}
                   onChange={(e) => setAdvFilters({ ...advFilters, latestOnly: e.target.checked })}
-                  className="w-4 h-4 rounded border-slate-300 text-[#0033FF] focus:ring-[#0033FF]"
+                  className="w-4 h-4 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                 />
                 <span className="font-semibold text-slate-700 text-xs">Show only latest records</span>
               </label>
@@ -1976,7 +1900,7 @@ export function DiscoveredDevicesWorkbench() {
             <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
               <button
                 onClick={handleResetFilters}
-                className="px-6 py-2 bg-white hover:bg-blue-50 border border-[#0033FF] text-[#0033FF] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                className="px-6 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
               >
                 Reset
               </button>
@@ -1985,7 +1909,7 @@ export function DiscoveredDevicesWorkbench() {
                   showToast('Advanced filters applied to discovery repository');
                   setIsAdvancedFiltersOpen(false);
                 }}
-                className="px-6 py-2 bg-[#0033FF] hover:bg-[#0022DD] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
+                className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold transition-all cursor-pointer shadow-md"
               >
                 Apply Filters
               </button>
@@ -2013,8 +1937,8 @@ export function DiscoveredDevicesWorkbench() {
             <div className="p-6 space-y-5 text-xs max-h-[75vh] overflow-y-auto">
               {/* Device Header Info Banner matching Screenshot #3 */}
               <div className="flex items-center gap-4 pb-2 border-b border-slate-100">
-                <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center text-[#0033FF] shrink-0">
-                  <Monitor className="w-8 h-8 text-[#0033FF]" />
+                <div className="w-14 h-14 rounded-2xl bg-purple-50 border border-purple-100 flex items-center justify-center text-[#6C2BD9] shrink-0">
+                  <Monitor className="w-8 h-8 text-[#6C2BD9]" />
                 </div>
                 <div>
                   <div className="flex items-center gap-2.5">
@@ -2044,7 +1968,7 @@ export function DiscoveredDevicesWorkbench() {
                     className={clsx(
                       "font-bold text-xs pb-2.5 border-b-2 transition-all cursor-pointer",
                       modalTab === t.id
-                        ? "border-[#0033FF] text-[#0033FF]"
+                        ? "border-[#6C2BD9] text-[#6C2BD9]"
                         : "border-transparent text-slate-500 hover:text-slate-800"
                     )}
                   >
@@ -2124,7 +2048,7 @@ export function DiscoveredDevicesWorkbench() {
                             setIsViewDetailsModalOpen(false);
                             navigate(`/assets/${modalDevice?.matchedAssetId || selectedDevice?.matchedAssetId}`);
                           }}
-                          className="font-mono font-bold text-[#0033FF] underline hover:text-blue-800 cursor-pointer"
+                          className="font-mono font-bold text-[#6C2BD9] underline hover:text-purple-800 cursor-pointer"
                         >
                           {modalDevice?.matchedAssetId || selectedDevice?.matchedAssetId}
                         </button>
@@ -2136,18 +2060,18 @@ export function DiscoveredDevicesWorkbench() {
 
                   {/* Right Column: Location on Map Card matching Screenshot #3 */}
                   <div className="md:col-span-5 bg-[#F8FAFC] border border-slate-200 rounded-2xl p-4 flex flex-col justify-between space-y-3">
-                    <span className="font-extrabold text-[#0033FF] text-xs">Location on Map</span>
+                    <span className="font-extrabold text-[#6C2BD9] text-xs">Location on Map</span>
 
                     {/* Architectural Map Preview with Blue Pin Marker */}
                     <div className="relative w-full h-36 bg-slate-200 rounded-xl overflow-hidden border border-slate-300 flex items-center justify-center">
                       <div className="absolute inset-0 bg-[linear-gradient(to_right,#cbd5e1_1px,transparent_1px),linear-gradient(to_bottom,#cbd5e1_1px,transparent_1px)] bg-[size:1rem_1rem]"></div>
                       <div className="absolute top-2 left-2 w-20 h-14 border-2 border-slate-400 rounded bg-white/70"></div>
                       <div className="absolute top-2 right-2 w-24 h-14 border-2 border-slate-400 rounded bg-white/70"></div>
-                      <div className="absolute bottom-2 left-4 w-28 h-14 border-2 border-blue-400 bg-blue-50/70"></div>
+                      <div className="absolute bottom-2 left-4 w-28 h-14 border-2 border-purple-400 bg-purple-50/70"></div>
 
                       {/* Map Pin Marker matching Screenshot #3 */}
                       <div className="absolute bottom-6 left-16 flex flex-col items-center">
-                        <div className="w-8 h-8 rounded-full bg-[#0033FF] text-white flex items-center justify-center shadow-lg animate-bounce">
+                        <div className="w-8 h-8 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center shadow-lg animate-bounce">
                           <MapPin className="w-5 h-5 fill-white" />
                         </div>
                       </div>
@@ -2163,9 +2087,9 @@ export function DiscoveredDevicesWorkbench() {
                         setIsViewDetailsModalOpen(false);
                         navigate('/rtls/map');
                       }}
-                      className="w-full py-2.5 bg-white hover:bg-blue-50 border border-[#0033FF] text-[#0033FF] rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
+                      className="w-full py-2.5 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] rounded-xl font-bold text-xs flex items-center justify-center gap-2 transition-colors cursor-pointer shadow-2xs"
                     >
-                      <MapPin className="w-4 h-4 text-[#0033FF]" />
+                      <MapPin className="w-4 h-4 text-[#6C2BD9]" />
                       <span>View on Map</span>
                     </button>
                   </div>
@@ -2293,7 +2217,7 @@ export function DiscoveredDevicesWorkbench() {
             <div className="p-4 border-t border-slate-100 flex items-center justify-end bg-slate-50/50">
               <button
                 onClick={() => setIsViewDetailsModalOpen(false)}
-                className="px-6 py-2 bg-white hover:bg-blue-50 border border-[#0033FF] text-[#0033FF] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
+                className="px-6 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] rounded-xl text-xs font-bold transition-all cursor-pointer shadow-2xs"
               >
                 Close
               </button>
@@ -2324,13 +2248,13 @@ export function DiscoveredDevicesWorkbench() {
                 <div className="flex flex-col items-center z-10">
                   <div className={clsx(
                     "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-xs transition-colors",
-                    createAssetStep >= 1 ? "bg-[#0033FF] text-white" : "bg-slate-100 text-slate-500 border border-slate-300"
+                    createAssetStep >= 1 ? "bg-[#6C2BD9] text-white" : "bg-slate-100 text-slate-500 border border-slate-300"
                   )}>
                     1
                   </div>
                   <span className={clsx(
                     "text-[11px] font-bold mt-1.5 whitespace-nowrap",
-                    createAssetStep === 1 ? "text-[#0033FF]" : "text-slate-500"
+                    createAssetStep === 1 ? "text-[#6C2BD9]" : "text-slate-500"
                   )}>
                     Basic Information
                   </span>
@@ -2339,20 +2263,20 @@ export function DiscoveredDevicesWorkbench() {
                 {/* Line 1-2 */}
                 <div className={clsx(
                   "flex-1 h-0.5 mx-2 -mt-4 transition-colors",
-                  createAssetStep >= 2 ? "bg-[#0033FF]" : "bg-slate-200"
+                  createAssetStep >= 2 ? "bg-[#6C2BD9]" : "bg-slate-200"
                 )}></div>
 
                 {/* Step 2 */}
                 <div className="flex flex-col items-center z-10">
                   <div className={clsx(
                     "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-xs transition-colors",
-                    createAssetStep >= 2 ? "bg-[#0033FF] text-white" : "bg-slate-100 text-slate-500 border border-slate-300"
+                    createAssetStep >= 2 ? "bg-[#6C2BD9] text-white" : "bg-slate-100 text-slate-500 border border-slate-300"
                   )}>
                     2
                   </div>
                   <span className={clsx(
                     "text-[11px] font-bold mt-1.5 whitespace-nowrap",
-                    createAssetStep === 2 ? "text-[#0033FF]" : "text-slate-500"
+                    createAssetStep === 2 ? "text-[#6C2BD9]" : "text-slate-500"
                   )}>
                     Additional Details
                   </span>
@@ -2361,20 +2285,20 @@ export function DiscoveredDevicesWorkbench() {
                 {/* Line 2-3 */}
                 <div className={clsx(
                   "flex-1 h-0.5 mx-2 -mt-4 transition-colors",
-                  createAssetStep >= 3 ? "bg-[#0033FF]" : "bg-slate-200"
+                  createAssetStep >= 3 ? "bg-[#6C2BD9]" : "bg-slate-200"
                 )}></div>
 
                 {/* Step 3 */}
                 <div className="flex flex-col items-center z-10">
                   <div className={clsx(
                     "w-8 h-8 rounded-full flex items-center justify-center font-bold text-xs shadow-xs transition-colors",
-                    createAssetStep >= 3 ? "bg-[#0033FF] text-white" : "bg-slate-100 text-slate-500 border border-slate-300"
+                    createAssetStep >= 3 ? "bg-[#6C2BD9] text-white" : "bg-slate-100 text-slate-500 border border-slate-300"
                   )}>
                     3
                   </div>
                   <span className={clsx(
                     "text-[11px] font-bold mt-1.5 whitespace-nowrap",
-                    createAssetStep === 3 ? "text-[#0033FF]" : "text-slate-500"
+                    createAssetStep === 3 ? "text-[#6C2BD9]" : "text-slate-500"
                   )}>
                     Review & Create
                   </span>
@@ -2395,7 +2319,7 @@ export function DiscoveredDevicesWorkbench() {
                         type="text"
                         value={createAssetForm.name}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, name: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -2407,7 +2331,7 @@ export function DiscoveredDevicesWorkbench() {
                       <select
                         value={createAssetForm.category}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, category: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                       >
                         <option value="IT Equipment">IT Equipment</option>
                         <option value="Office Hardware">Office Hardware</option>
@@ -2424,7 +2348,7 @@ export function DiscoveredDevicesWorkbench() {
                       <select
                         value={createAssetForm.type}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, type: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                       >
                         <option value="Computer">Computer</option>
                         <option value="Monitor">Monitor</option>
@@ -2444,7 +2368,7 @@ export function DiscoveredDevicesWorkbench() {
                         type="text"
                         value={createAssetForm.manufacturer}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, manufacturer: e.target.value })}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -2457,7 +2381,7 @@ export function DiscoveredDevicesWorkbench() {
                         type="text"
                         value={createAssetForm.model}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, model: e.target.value })}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -2470,7 +2394,7 @@ export function DiscoveredDevicesWorkbench() {
                         type="text"
                         value={createAssetForm.serialNumber}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, serialNumber: e.target.value })}
-                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -2482,7 +2406,7 @@ export function DiscoveredDevicesWorkbench() {
                       <select
                         value={createAssetForm.location}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, location: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-700 focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-semibold text-xs text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
                       >
                         <option value="Dubai HQ - IT Department">Dubai HQ - IT Department</option>
                         <option value="Dubai HQ - Copy Room">Dubai HQ - Copy Room</option>
@@ -2505,13 +2429,13 @@ export function DiscoveredDevicesWorkbench() {
                         placeholder="Search user..."
                         value={createAssetForm.owner}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, owner: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:border-[#6C2BD9]"
                       />
                       <button
                         type="button"
-                        className="w-10 h-10 rounded-xl border border-slate-200 bg-white hover:bg-blue-50 text-[#0033FF] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
+                        className="w-10 h-10 rounded-xl border border-slate-200 bg-white hover:bg-purple-50 text-[#6C2BD9] flex items-center justify-center shrink-0 cursor-pointer shadow-2xs"
                       >
-                        <Search className="w-4 h-4 text-[#0033FF]" />
+                        <Search className="w-4 h-4 text-[#6C2BD9]" />
                       </button>
                     </div>
                   </div>
@@ -2524,7 +2448,7 @@ export function DiscoveredDevicesWorkbench() {
                         rows="3"
                         value={createAssetForm.remarks}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, remarks: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:border-[#0033FF] resize-y"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:border-[#6C2BD9] resize-y"
                       />
                     </div>
                   </div>
@@ -2541,7 +2465,7 @@ export function DiscoveredDevicesWorkbench() {
                         type="text"
                         value={createAssetForm.department}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, department: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-medium text-xs focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -2553,7 +2477,7 @@ export function DiscoveredDevicesWorkbench() {
                         type="text"
                         value={createAssetForm.cost}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, cost: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -2565,7 +2489,7 @@ export function DiscoveredDevicesWorkbench() {
                         type="text"
                         value={createAssetForm.purchaseOrder}
                         onChange={(e) => setCreateAssetForm({ ...createAssetForm, purchaseOrder: e.target.value })}
-                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#0033FF]"
+                        className="w-full p-2.5 bg-white border border-slate-200 rounded-xl font-mono text-xs focus:outline-none focus:border-[#6C2BD9]"
                       />
                     </div>
                   </div>
@@ -2575,8 +2499,8 @@ export function DiscoveredDevicesWorkbench() {
               {/* STEP 3: Review & Create */}
               {createAssetStep === 3 && (
                 <div className="space-y-4">
-                  <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl space-y-2">
-                    <h4 className="font-extrabold text-[#0033FF] text-xs">Summary of Asset to be Created</h4>
+                  <div className="p-4 bg-purple-50/50 border border-purple-100 rounded-2xl space-y-2">
+                    <h4 className="font-extrabold text-[#6C2BD9] text-xs">Summary of Asset to be Created</h4>
                     <div className="grid grid-cols-2 gap-2 text-xs">
                       <div><span className="text-slate-400">Name:</span> <strong className="text-slate-900">{createAssetForm.name}</strong></div>
                       <div><span className="text-slate-400">Category:</span> <strong className="text-slate-900">{createAssetForm.category}</strong></div>
@@ -2822,73 +2746,66 @@ export function DiscoveredDevicesWorkbench() {
 
               {/* Devices Table matching Screenshot #5 */}
               <div className="border border-slate-200 rounded-2xl overflow-hidden bg-white shadow-2xs">
-                <table className="w-full text-left text-xs">
-                  <thead className="bg-[#F8FAFC] text-slate-500 font-semibold border-b border-slate-200">
-                    <tr>
-                      <th className="py-2.5 px-3 w-10 text-center">#</th>
-                      <th className="py-2.5 px-3">Hostname</th>
-                      <th className="py-2.5 px-3">IP Address</th>
-                      <th className="py-2.5 px-3">Device Type</th>
-                      <th className="py-2.5 px-3 text-center">Asset Status</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                    {[
-                      { num: 1, host: 'DESKTOP-001', ip: '192.168.1.10', type: 'Computer', status: 'Matched' },
-                      { num: 2, host: 'MONITOR-245', ip: '192.168.1.11', type: 'Monitor', status: 'Matched' },
-                      { num: 3, host: 'PRN-HQ-01', ip: '192.168.1.20', type: 'Printer', status: 'New' },
-                      { num: 4, host: 'SW-CORE-01', ip: '192.168.1.30', type: 'Network Device', status: 'Matched' },
-                      { num: 5, host: 'LAPTOP-078', ip: '192.168.1.45', type: 'Computer', status: 'Review' },
-                      { num: 6, host: 'AP-01', ip: '192.168.1.50', type: 'Network Device', status: 'Matched' }
-                    ]
-                    .filter((d) => {
-                      if (jobSearchQuery.trim()) {
-                        const q = jobSearchQuery.toLowerCase();
-                        if (!d.host.toLowerCase().includes(q) && !d.ip.includes(q)) return false;
-                      }
-                      if (jobStatusFilter !== 'All Status') {
-                        if (jobStatusFilter === 'Review' && (d.status === 'Review' || d.status === 'Requires Review')) return true;
-                        if (d.status.toLowerCase() !== jobStatusFilter.toLowerCase()) return false;
-                      }
-                      return true;
-                    })
-                    .map((d) => (
-                      <tr
-                        key={d.num}
-                        className="hover:bg-purple-50/40 cursor-pointer transition-colors"
-                        onClick={() => {
-                          const dev = devices.find(x => x.hostname === d.host);
-                          if (dev) {
-                            setModalDevice(dev);
-                            setSelectedDevice(dev);
-                            setIsViewDetailsModalOpen(true);
-                          }
-                        }}
-                      >
-                        <td className="py-2.5 px-3 text-center font-bold text-slate-400">{d.num}</td>
-                        <td className="py-2.5 px-3 font-extrabold text-slate-900">{d.host}</td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{d.ip}</td>
-                        <td className="py-2.5 px-3 text-slate-700">{d.type}</td>
-                        <td className="py-2.5 px-3 text-center">{renderStatusBadge(d.status)}</td>
+                <div className="overflow-auto max-h-[300px]">
+                  <table className="w-full text-left text-xs">
+                    <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-500 font-semibold border-b border-slate-200">
+                      <tr>
+                        <th className="py-2.5 px-3 w-10 text-center">#</th>
+                        <th className="py-2.5 px-3">Hostname</th>
+                        <th className="py-2.5 px-3">IP Address</th>
+                        <th className="py-2.5 px-3">Device Type</th>
+                        <th className="py-2.5 px-3 text-center">Asset Status</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                      {[
+                        { num: 1, host: 'DESKTOP-001', ip: '192.168.1.10', type: 'Computer', status: 'Matched' },
+                        { num: 2, host: 'MONITOR-245', ip: '192.168.1.11', type: 'Monitor', status: 'Matched' },
+                        { num: 3, host: 'PRN-HQ-01', ip: '192.168.1.20', type: 'Printer', status: 'New' },
+                        { num: 4, host: 'SW-CORE-01', ip: '192.168.1.30', type: 'Network Device', status: 'Matched' },
+                        { num: 5, host: 'LAPTOP-078', ip: '192.168.1.45', type: 'Computer', status: 'Review' },
+                        { num: 6, host: 'AP-01', ip: '192.168.1.50', type: 'Network Device', status: 'Matched' }
+                      ]
+                      .filter((d) => {
+                        if (jobSearchQuery.trim()) {
+                          const q = jobSearchQuery.toLowerCase();
+                          if (!d.host.toLowerCase().includes(q) && !d.ip.includes(q)) return false;
+                        }
+                        if (jobStatusFilter !== 'All Status') {
+                          if (jobStatusFilter === 'Review' && (d.status === 'Review' || d.status === 'Requires Review')) return true;
+                          if (d.status.toLowerCase() !== jobStatusFilter.toLowerCase()) return false;
+                        }
+                        return true;
+                      })
+                      .map((d) => (
+                        <tr
+                          key={d.num}
+                          className="hover:bg-purple-50/40 cursor-pointer transition-colors"
+                          onClick={() => {
+                            const dev = devices.find(x => x.hostname === d.host);
+                            if (dev) {
+                              setModalDevice(dev);
+                              setSelectedDevice(dev);
+                              setIsViewDetailsModalOpen(true);
+                            }
+                          }}
+                        >
+                          <td className="py-2.5 px-3 text-center font-bold text-slate-400">{d.num}</td>
+                          <td className="py-2.5 px-3 font-extrabold text-slate-900">{d.host}</td>
+                          <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{d.ip}</td>
+                          <td className="py-2.5 px-3 text-slate-700">{d.type}</td>
+                          <td className="py-2.5 px-3 text-center">{renderStatusBadge(d.status)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               </div>
 
-              {/* Table Summary & Pagination Footer matching Screenshot #5 */}
-              <div className="flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 pt-1">
-                <span>Showing <strong className="text-slate-800">1</strong> to <strong className="text-slate-800">6</strong> of <strong className="text-slate-800">245</strong> devices</span>
-
-                <div className="flex items-center gap-1">
-                  <button className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 cursor-pointer">&lt;</button>
-                  <button className="w-7 h-7 rounded-lg bg-[#6C2BD9] text-white font-bold text-xs flex items-center justify-center shadow-xs cursor-pointer">1</button>
-                  <button className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center hover:bg-slate-50 cursor-pointer">2</button>
-                  <button className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center hover:bg-slate-50 cursor-pointer">3</button>
-                  <span className="px-1 text-slate-400">...</span>
-                  <button className="w-7 h-7 rounded-lg bg-white border border-slate-200 text-slate-700 font-bold text-xs flex items-center justify-center hover:bg-slate-50 cursor-pointer">41</button>
-                  <button className="w-7 h-7 rounded-lg bg-white border border-slate-200 flex items-center justify-center font-bold text-slate-600 hover:bg-slate-50 cursor-pointer">&gt;</button>
-                </div>
+              {/* Table Summary & Scroll Footer */}
+              <div className="flex items-center justify-between text-xs text-slate-500 pt-1">
+                <span className="font-medium text-slate-600">Showing all records</span>
+                <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>
 

@@ -640,8 +640,8 @@ export default function CreateAudit() {
                   </span>
 
                   <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b text-gray-400 text-[11px]">
+                    <thead className="sticky top-0 z-10 bg-white shadow-2xs">
+                      <tr className="border-b text-gray-500 font-semibold text-[11px]">
                         <th className="py-1">Location Code</th>
                         <th className="py-1">Location Name</th>
                         <th className="py-1">Type</th>
@@ -667,6 +667,10 @@ export default function CreateAudit() {
                       ))}
                     </tbody>
                   </table>
+                  <div className="pt-2 border-t border-gray-100 flex items-center justify-between text-[11px] text-gray-500">
+                    <span className="font-medium text-gray-600">Showing {selectedLocations.length} locations</span>
+                    <span className="text-gray-400">Scroll down to view all</span>
+                  </div>
                 </div>
 
               </div>

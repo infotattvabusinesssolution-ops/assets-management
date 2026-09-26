@@ -401,12 +401,10 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
     });
   }, [assets, filterSearch, filterSite, filterBuilding, filterLocation, filterType, filterDepartment, filterAssignedTo, filterStatus]);
 
-  // Paginated Slice
-  const totalPages = Math.ceil(filteredAssets.length / itemsPerPage);
+  // All assets for scroll down grid
   const paginatedAssets = useMemo(() => {
-    const start = (currentPage - 1) * itemsPerPage;
-    return filteredAssets.slice(start, start + itemsPerPage);
-  }, [filteredAssets, currentPage]);
+    return filteredAssets;
+  }, [filteredAssets]);
 
   const handleResetFilters = () => {
     setFilterSearch('');
@@ -888,7 +886,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                 </div>
 
                 {/* Grid Table */}
-                <div className="overflow-x-auto overflow-y-auto max-h-[480px] relative scrollbar-thin">
+                <div className="overflow-auto max-h-[540px] relative scrollbar-thin">
                   <table className="w-full text-left text-xs border-collapse">
                     <thead className="sticky top-0 z-20 bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 shadow-2xs">
                       <tr>
@@ -897,7 +895,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                             type="checkbox"
                             checked={selectedIds.length === paginatedAssets.length && paginatedAssets.length > 0}
                             onChange={handleToggleSelectAll}
-                            className="w-3.5 h-3.5 rounded border-slate-300 text-blue-600 focus:ring-blue-500"
+                            className="w-3.5 h-3.5 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                           />
                         </th>
                         <th className="py-2.5 px-3 font-bold text-slate-700 bg-slate-50">Asset No</th>
@@ -957,7 +955,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                                   setModalAsset(asset);
                                   setIsTransferModalOpen(true);
                                 }}
-                                className="p-1 text-slate-400 hover:text-blue-600 rounded-lg transition-colors"
+                                className="p-1 text-slate-400 hover:text-[#6C2BD9] rounded-lg transition-colors"
                               >
                                 <MoreVertical className="w-4 h-4" />
                               </button>
@@ -969,53 +967,10 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                   </table>
                 </div>
 
-                {/* Table Footer / Pagination */}
+                {/* Scroll Down Summary */}
                 <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/40">
-                  <div>
-                    Showing <span className="font-semibold text-slate-800">1</span> to{' '}
-                    <span className="font-semibold text-slate-800">{paginatedAssets.length}</span> of{' '}
-                    <span className="font-semibold text-slate-800">{filteredAssets.length.toLocaleString()}</span> assets
-                  </div>
-
-                  <div className="flex items-center gap-1.5">
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage(p => Math.max(p - 1, 1))}
-                      disabled={currentPage === 1}
-                      className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50 disabled:opacity-50"
-                    >
-                      <ChevronLeft className="w-3.5 h-3.5" />
-                    </button>
-                    {[1, 2, 3, 4, 5].map(p => (
-                      <button
-                        key={p}
-                        type="button"
-                        onClick={() => setCurrentPage(p)}
-                        className={`w-6 h-6 rounded-lg text-xs font-bold transition-colors cursor-pointer ${
-                          currentPage === p ? 'bg-[#6C2BD9] text-white' : 'bg-white border border-slate-200 text-slate-700'
-                        }`}
-                      >
-                        {p}
-                      </button>
-                    ))}
-                    <span className="text-slate-400">...</span>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage(125)}
-                      className="w-7 h-6 rounded-lg border border-slate-200 bg-white text-slate-700 text-xs font-medium"
-                    >
-                      125
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => setCurrentPage(p => Math.min(p + 1, totalPages))}
-                      className="p-1.5 rounded-lg border border-slate-200 bg-white hover:bg-slate-50"
-                    >
-                      <ChevronRight className="w-3.5 h-3.5" />
-                    </button>
-
-                    <span className="text-slate-400 ml-2">10 / page ▾</span>
-                  </div>
+                  <span className="font-semibold text-slate-800">Showing {filteredAssets.length.toLocaleString()} assets</span>
+                  <span className="text-slate-400">Scroll down to view all records</span>
                 </div>
 
               </div>
@@ -1203,9 +1158,9 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                   </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[300px]">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 shadow-2xs">
                       <tr>
                         <th className="py-2.5 px-3">Date &amp; Time</th>
                         <th className="py-2.5 px-3">Asset No</th>
@@ -1218,7 +1173,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {recentMovements.slice(0, 5).map((rec) => (
+                      {recentMovements.map((rec) => (
                         <tr key={rec.id} className="hover:bg-slate-50/60">
                           <td className="py-2 px-3 font-mono text-slate-500 text-[11px]">{rec.dateTime}</td>
                           <td className="py-2 px-3 font-mono font-semibold text-[#6C2BD9]">{rec.assetNo}</td>
@@ -1260,9 +1215,9 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                   </button>
                 </div>
 
-                <div className="overflow-x-auto">
+                <div className="overflow-auto max-h-[300px]">
                   <table className="w-full text-left border-collapse">
-                    <thead className="bg-slate-50 text-slate-500 font-semibold border-b border-slate-200">
+                    <thead className="sticky top-0 z-10 bg-slate-50 text-slate-500 font-semibold border-b border-slate-200 shadow-2xs">
                       <tr>
                         <th className="py-2.5 px-3">Request ID</th>
                         <th className="py-2.5 px-3">Asset No</th>
@@ -1273,7 +1228,7 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100">
-                      {pendingApprovals.slice(0, 5).map((req) => (
+                      {pendingApprovals.map((req) => (
                         <tr key={req.requestId} className="hover:bg-slate-50/60">
                           <td className="py-2 px-3 font-mono font-bold text-slate-800">{req.requestId}</td>
                           <td className="py-2 px-3 font-mono text-[#6C2BD9] font-semibold">{req.assetNo}</td>

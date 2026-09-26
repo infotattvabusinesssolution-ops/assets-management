@@ -525,13 +525,9 @@ export function EmailNotifications() {
     });
   }, [templates, searchQuery, moduleFilter, eventTypeFilter, statusFilter]);
 
-  // Pagination calculation
+  // Templates List (All items rendered for scroll-down view)
   const totalRecords = filteredTemplates.length;
-  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
-  const currentPageSafe = Math.min(currentPage, totalPages);
-  const startIdx = (currentPageSafe - 1) * pageSize;
-  const endIdx = Math.min(startIdx + pageSize, totalRecords);
-  const displayedTemplates = filteredTemplates.slice(startIdx, endIdx);
+  const displayedTemplates = filteredTemplates;
 
   // Checkbox handlers
   const isAllSelected = displayedTemplates.length > 0 && displayedTemplates.every(t => selectedRowIds.has(t.id));
@@ -865,9 +861,9 @@ export function EmailNotifications() {
               </div>
 
               {/* Templates Data Table */}
-              <div className="overflow-x-auto border border-slate-200 rounded-lg">
+              <div className="overflow-auto max-h-[540px] border border-slate-200 rounded-lg">
                 <table className="w-full text-left text-xs">
-                  <thead className="bg-[#FAF8FF] border-b border-slate-200 text-[11px] font-semibold text-slate-600">
+                  <thead className="bg-[#FAF8FF] border-b border-slate-200 text-[11px] font-semibold text-slate-600 sticky top-0 z-10 shadow-2xs">
                     <tr>
                       <th className="py-2.5 px-3 w-8">
                         <input
@@ -965,64 +961,10 @@ export function EmailNotifications() {
                 </table>
               </div>
 
-              {/* Pagination Footer */}
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pt-1 text-xs text-slate-500">
-                <div>
-                  Showing {totalRecords === 0 ? 0 : startIdx + 1} to {endIdx} of {totalRecords} records
-                </div>
-
-                <div className="flex items-center gap-1">
-                  <button
-                    disabled={currentPageSafe <= 1}
-                    onClick={() => setCurrentPage(1)}
-                    className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
-                  >
-                    «
-                  </button>
-                  <button
-                    disabled={currentPageSafe <= 1}
-                    onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
-                  >
-                    ‹
-                  </button>
-
-                  {Array.from({ length: totalPages }, (_, i) => i + 1).map(pageNum => (
-                    <button
-                      key={pageNum}
-                      onClick={() => setCurrentPage(pageNum)}
-                      className={clsx(
-                        'w-6 h-6 flex items-center justify-center rounded text-xs font-medium',
-                        currentPageSafe === pageNum
-                          ? 'bg-[#6C2BD9] text-white font-bold shadow-2xs'
-                          : 'border border-slate-200 text-slate-700 hover:bg-slate-50'
-                      )}
-                    >
-                      {pageNum}
-                    </button>
-                  ))}
-
-                  <button
-                    disabled={currentPageSafe >= totalPages}
-                    onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
-                  >
-                    ›
-                  </button>
-                  <button
-                    disabled={currentPageSafe >= totalPages}
-                    onClick={() => setCurrentPage(totalPages)}
-                    className="w-6 h-6 flex items-center justify-center border border-slate-200 rounded hover:bg-slate-50 disabled:opacity-30 disabled:cursor-not-allowed text-slate-600"
-                  >
-                    »
-                  </button>
-
-                  <div className="ml-2">
-                    <span className="border border-slate-200 rounded px-2 py-1 text-slate-600 bg-white">
-                      12 / page ▾
-                    </span>
-                  </div>
-                </div>
+              {/* Table Summary Footer */}
+              <div className="flex items-center justify-between pt-1 text-xs text-slate-500">
+                <div className="font-medium text-slate-600">Showing {filteredTemplates.length} records</div>
+                <div className="text-slate-400">Scroll down to view all records</div>
               </div>
             </div>
 

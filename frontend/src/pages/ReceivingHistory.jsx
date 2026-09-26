@@ -626,10 +626,10 @@ export function ReceivingHistory() {
             </div>
 
             {/* Table Container */}
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[540px]">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
+                <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
+                  <tr className="border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
                     <th className="py-2.5 px-3 w-10 text-center whitespace-nowrap">
                       <input
                         type="checkbox"
@@ -747,55 +747,10 @@ export function ReceivingHistory() {
               </table>
             </div>
 
-            {/* Pagination Footer Component */}
-            <div className="p-3 border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
-              <div>Showing 1 to 10 of 45 records</div>
-
-              {/* Page Numbers */}
-              <div className="flex items-center gap-1">
-                <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
-                  <ChevronsLeft className="w-4 h-4" />
-                </button>
-                <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
-                  <ChevronLeft className="w-4 h-4" />
-                </button>
-
-                {[1, 2, 3, 4, 5].map((page) => (
-                  <button
-                    key={page}
-                    onClick={() => setCurrentPage(page)}
-                    className={clsx(
-                      'w-7 h-7 rounded-lg text-xs font-bold transition-all cursor-pointer',
-                      currentPage === page
-                        ? 'bg-[#6C2BD9] text-white shadow-2xs'
-                        : 'text-slate-700 hover:bg-slate-100'
-                    )}
-                  >
-                    {page}
-                  </button>
-                ))}
-
-                <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
-                  <ChevronRight className="w-4 h-4" />
-                </button>
-                <button className="p-1.5 rounded-lg hover:bg-slate-100 text-slate-400 cursor-pointer">
-                  <ChevronsRight className="w-4 h-4" />
-                </button>
-              </div>
-
-              {/* Rows Per Page */}
-              <div className="flex items-center gap-2">
-                <span>Rows per page</span>
-                <select
-                  value={rowsPerPage}
-                  onChange={(e) => setRowsPerPage(Number(e.target.value))}
-                  className="px-2 py-1 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
-                >
-                  <option value={10}>10</option>
-                  <option value={25}>25</option>
-                  <option value={50}>50</option>
-                </select>
-              </div>
+            {/* Scroll Down Summary */}
+            <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Showing {transactions.length} records</span>
+              <span className="text-slate-400">Scroll down to view all records</span>
             </div>
           </div>
         </div>
@@ -872,10 +827,10 @@ export function ReceivingHistory() {
               Items Received ({activeTx.itemsCount})
             </h3>
 
-            <div className="overflow-x-auto">
+            <div className="overflow-auto max-h-[300px]">
               <table className="w-full text-left text-xs border-collapse">
-                <thead>
-                  <tr className="bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
+                <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
+                  <tr className="border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
                     <th className="py-2 px-2.5 w-6 text-slate-500 font-bold whitespace-nowrap">#</th>
                     <th className="py-2 px-2.5 font-bold whitespace-nowrap">Asset Name</th>
                     <th className="py-2 px-2.5 font-bold whitespace-nowrap">Serial Number</th>
