@@ -627,6 +627,8 @@ export function MyAssets() {
 
     if (actionType === 'VIEW') {
       setSelectedAsset(asset);
+    } else if (actionType === 'EDIT') {
+      navigate(`/assets/edit/${asset.id || asset.assetId}`);
     } else if (actionType === 'ACKNOWLEDGE') {
       setActiveModal('ACKNOWLEDGE');
     } else if (actionType === 'TRANSFER') {
@@ -1055,6 +1057,9 @@ export function MyAssets() {
                               <button onClick={(e) => handleOpenAction('VIEW', asset, e)} className="w-full p-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-xl flex items-center gap-2">
                                 <Eye className="w-3.5 h-3.5" /> View Asset 360°
                               </button>
+                              <button onClick={(e) => handleOpenAction('EDIT', asset, e)} className="w-full p-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-xl flex items-center gap-2">
+                                <PenSquare className="w-3.5 h-3.5 text-[#6C2BD9]" /> Edit Asset
+                              </button>
                               <button onClick={(e) => handleOpenAction('TRANSFER', asset, e)} className="w-full p-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-xl flex items-center gap-2">
                                 <ArrowLeftRight className="w-3.5 h-3.5" /> Request Transfer
                               </button>
@@ -1106,7 +1111,10 @@ export function MyAssets() {
               <span className="w-6 h-6 rounded-md bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-bold text-xs">6</span>
               Asset 360°
             </h3>
-            <button className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer">
+            <button
+              onClick={() => setSelectedAsset(null)}
+              className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+            >
               <X className="w-4 h-4" />
             </button>
           </div>
@@ -1162,7 +1170,10 @@ export function MyAssets() {
               <div className="bg-slate-50 border border-slate-200 rounded-xl p-3 space-y-2">
                 <div className="flex items-center justify-between border-b border-slate-200/60 pb-1.5 text-slate-700 font-bold">
                   <span className="flex items-center gap-1.5"><Package className="w-3.5 h-3.5 text-[#6C2BD9]" /> Asset Information</span>
-                  <button className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer">
+                  <button
+                    onClick={() => navigate(`/assets/edit/${selectedAsset.id || selectedAsset.assetId}`)}
+                    className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
+                  >
                     <PenSquare className="w-3 h-3 text-[#6C2BD9]" /> Edit
                   </button>
                 </div>

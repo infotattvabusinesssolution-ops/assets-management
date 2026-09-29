@@ -353,7 +353,7 @@ export function LocationMap() {
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight flex items-center gap-2">
             <MapPin className="w-5 h-5 text-[#6C2BD9]" />
-            Location Map
+            RTLS Map & Location
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
             Visualize and locate your assets on interactive floor plans

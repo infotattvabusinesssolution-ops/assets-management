@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { useLocation } from 'react-router-dom';
 import {
   Package,
   CheckCircle2,
@@ -38,9 +39,44 @@ import { LocationsTab } from '../components/spareParts/LocationsTab';
 import { ReportsTab } from '../components/spareParts/ReportsTab';
 
 export function SpareParts() {
-  const [activeTab, setActiveTab] = useState('SUPPLIERS'); // Default active tab matching user screenshot
+  const location = useLocation();
+
+  const getInitialTab = () => {
+    const path = (location.pathname || '').toLowerCase();
+    const search = (location.search || '').toLowerCase();
+    if (path.includes('levels') || search.includes('tab=reorder') || search.includes('tab=levels')) return 'REORDER';
+    if (path.includes('ledger') || search.includes('tab=transactions') || search.includes('tab=ledger')) return 'TRANSACTIONS';
+    if (search.includes('tab=suppliers')) return 'SUPPLIERS';
+    if (search.includes('tab=categories')) return 'CATEGORIES';
+    if (search.includes('tab=locations')) return 'LOCATIONS';
+    if (search.includes('tab=reports')) return 'REPORTS';
+    if (path.endsWith('/inventory') || path.endsWith('/inventory/') || search.includes('tab=list')) return 'LIST';
+    return 'SUPPLIERS';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
   const [toast, setToast] = useState(null);
   const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    const path = (location.pathname || '').toLowerCase();
+    const search = (location.search || '').toLowerCase();
+    if (path.includes('levels') || search.includes('tab=reorder') || search.includes('tab=levels')) {
+      setActiveTab('REORDER');
+    } else if (path.includes('ledger') || search.includes('tab=transactions') || search.includes('tab=ledger')) {
+      setActiveTab('TRANSACTIONS');
+    } else if (search.includes('tab=suppliers')) {
+      setActiveTab('SUPPLIERS');
+    } else if (search.includes('tab=categories')) {
+      setActiveTab('CATEGORIES');
+    } else if (search.includes('tab=locations')) {
+      setActiveTab('LOCATIONS');
+    } else if (search.includes('tab=reports')) {
+      setActiveTab('REPORTS');
+    } else if (path.endsWith('/inventory') || path.endsWith('/inventory/') || search.includes('tab=list')) {
+      setActiveTab('LIST');
+    }
+  }, [location.pathname, location.search]);
 
   // Spare Parts dataset state
   const [sparePartsList, setSparePartsList] = useState([]);
@@ -204,17 +240,17 @@ export function SpareParts() {
           <div className="flex items-center gap-2 text-xs text-slate-500 font-medium">
             <span>Maintenance</span>
             <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-            <span>Spare Parts</span>
+            <span>Spare Parts & Inventory</span>
             {activeTab === 'TRANSACTIONS' && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-[#6C2BD9] font-bold">Stock Transactions</span>
+                <span className="text-[#6C2BD9] font-bold">Stock Transactions / Ledger</span>
               </>
             )}
             {activeTab === 'REORDER' && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-[#6C2BD9] font-bold">Reorder Planning</span>
+                <span className="text-[#6C2BD9] font-bold">Stock Levels & Reorder Planning</span>
               </>
             )}
             {activeTab === 'SUPPLIERS' && (
@@ -223,26 +259,36 @@ export function SpareParts() {
                 <span className="text-[#6C2BD9] font-bold">Suppliers</span>
               </>
             )}
+            {activeTab === 'LIST' && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[#6C2BD9] font-bold">Inventory Items</span>
+              </>
+            )}
           </div>
 
           <h1 className="text-xl font-bold text-slate-900 mt-1 flex items-center gap-2">
             <Package className="w-5 h-5 text-[#6C2BD9]" />
             {activeTab === 'TRANSACTIONS'
-              ? 'Stock Transactions'
+              ? 'Stock Transactions / Ledger'
               : activeTab === 'REORDER'
-              ? 'Reorder Planning'
+              ? 'Stock Levels & Reorder Planning'
               : activeTab === 'SUPPLIERS'
               ? 'Suppliers'
-              : 'Spare Parts'}
+              : activeTab === 'LIST'
+              ? 'Inventory Items'
+              : 'Spare Parts & Inventory'}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {activeTab === 'TRANSACTIONS'
-              ? 'View and manage all stock movements for spare parts'
+              ? 'View and manage all stock movements, issues, returns, and transfers'
               : activeTab === 'REORDER'
-              ? 'Identify and plan spare part replenishments based on stock levels, usage and lead time'
+              ? 'Identify and plan spare part replenishments based on stock levels, usage, and lead time'
               : activeTab === 'SUPPLIERS'
               ? 'Manage suppliers for spare parts and services'
-              : 'Manage spare parts, stock levels and issue/return transactions'}
+              : activeTab === 'LIST'
+              ? 'Manage spare parts inventory, stock on hand, bin locations, and unit costs'
+              : 'Manage spare parts, stock levels, and issue/return transactions'}
           </p>
         </div>
 

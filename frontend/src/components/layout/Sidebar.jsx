@@ -55,18 +55,6 @@ const NAV_STRUCTURE = [
     ]
   },
   {
-    id: 'inventory',
-    name: 'Inventory',
-    path: '/inventory',
-    icon: Boxes,
-    roles: ['*'],
-    subItems: [
-      { name: 'Inventory Items', path: '/inventory' },
-      { name: 'Stock Levels', path: '/inventory/levels' },
-      { name: 'Stock Ledger', path: '/inventory/ledger' }
-    ]
-  },
-  {
     id: 'receiving',
     name: 'Receiving & Tagging',
     path: '/receiving',
@@ -89,7 +77,7 @@ const NAV_STRUCTURE = [
     roles: ['*'],
     subItems: [
       { name: 'Asset Tracking', path: '/rtls' },
-      { name: 'Location Map', path: '/rtls/map' },
+      { name: 'RTLS Map & Location', path: '/rtls/map' },
       { name: 'Geofencing', path: '/geofencing' },
       { name: 'Location History', path: '/location-history' },
       { name: 'Proximity Search', path: '/proximity-search' }
@@ -108,13 +96,6 @@ const NAV_STRUCTURE = [
       { name: 'Import to Asset360', path: '/discovery/import' },
       { name: 'Discovery Settings', path: '/discovery/settings' }
     ]
-  },
-  {
-    id: 'rtls-map',
-    name: 'RTLS, Map & Location',
-    path: '/rtls/map',
-    icon: Map,
-    roles: ['*']
   },
   {
     id: 'movements',
@@ -153,7 +134,10 @@ const NAV_STRUCTURE = [
       { name: 'Maintenance Plans', path: '/maintenance/plans' },
       { name: 'Preventive Maintenance', path: '/maintenance/preventive' },
       { name: 'Service Providers', path: '/maintenance/providers' },
-      { name: 'Spare Parts', path: '/maintenance/spare-parts' }
+      { name: 'Spare Parts', path: '/maintenance/spare-parts' },
+      { name: 'Inventory Items', path: '/inventory' },
+      { name: 'Stock Levels', path: '/inventory/levels' },
+      { name: 'Stock Ledger', path: '/inventory/ledger' }
     ]
   },
   {
@@ -268,7 +252,12 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
       (sub.path === '/maintenance/plans' && (pathname === '/maintenance/plans' || pathname === '/maintenance-plans')) ||
       (sub.path === '/maintenance/preventive' && (pathname === '/maintenance/preventive' || pathname === '/preventive-maintenance')) ||
       (sub.path === '/maintenance/providers' && (pathname === '/maintenance/providers' || pathname === '/service-providers')) ||
-      (sub.path === '/maintenance/spare-parts' && (pathname === '/maintenance/spare-parts' || pathname === '/spare-parts'));
+      (sub.path === '/maintenance/spare-parts' && (pathname === '/maintenance/spare-parts' || pathname === '/spare-parts')) ||
+      ((sub.path === '/inventory' || sub.path === '/maintenance/inventory') && (pathname === '/inventory' || pathname === '/maintenance/inventory')) ||
+      ((sub.path === '/inventory/levels' || sub.path === '/maintenance/inventory/levels') && (pathname === '/inventory/levels' || pathname === '/maintenance/inventory/levels')) ||
+      ((sub.path === '/inventory/ledger' || sub.path === '/maintenance/inventory/ledger') && (pathname === '/inventory/ledger' || pathname === '/maintenance/inventory/ledger')) ||
+      ((sub.path === '/rtls/map' || sub.path === '/location-map') && (pathname === '/rtls/map' || pathname === '/location-map')) ||
+      ((sub.path === '/rtls' || sub.path === '/asset-tracking') && (pathname === '/rtls' || pathname === '/asset-tracking'));
   });
 
   if (exactPathMatch) return exactPathMatch.path;
@@ -285,13 +274,12 @@ export function Sidebar({ collapsed, setCollapsed }) {
 
   const [openMenus, setOpenMenus] = useState({
     assets: location.pathname.startsWith('/assets'),
-    inventory: location.pathname.startsWith('/inventory'),
     receiving: location.pathname.startsWith('/receiving') || location.pathname.startsWith('/tagging') || location.pathname === '/receiving',
-    tracking: location.pathname.startsWith('/rtls') || location.pathname.startsWith('/geofencing') || location.pathname.startsWith('/location-history') || location.pathname.startsWith('/proximity-search') || location.pathname.startsWith('/maps'),
+    tracking: location.pathname.startsWith('/rtls') || location.pathname.startsWith('/geofencing') || location.pathname.startsWith('/location-history') || location.pathname.startsWith('/proximity-search') || location.pathname.startsWith('/maps') || location.pathname.startsWith('/asset-tracking') || location.pathname.startsWith('/location-map'),
     discovery: location.pathname.startsWith('/discovery'),
     movements: location.pathname.startsWith('/movements') || location.pathname.startsWith('/movement-approvals'),
     stocktakes: location.pathname.startsWith('/stocktakes') || location.pathname.startsWith('/verification'),
-    maintenance: location.pathname.startsWith('/maintenance') || location.pathname.startsWith('/service-providers') || location.pathname.startsWith('/spare-parts') || location.pathname.startsWith('/preventive-maintenance'),
+    maintenance: location.pathname.startsWith('/maintenance') || location.pathname.startsWith('/service-providers') || location.pathname.startsWith('/spare-parts') || location.pathname.startsWith('/preventive-maintenance') || location.pathname.startsWith('/inventory'),
     reports: location.pathname.startsWith('/reports'),
     administration: location.pathname.startsWith('/admin') || location.pathname.startsWith('/master-data') || location.pathname.startsWith('/audit-trail') || location.pathname.startsWith('/notifications') || location.pathname.startsWith('/backup-scheduler') || location.pathname.startsWith('/integrations')
   });

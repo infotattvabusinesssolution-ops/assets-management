@@ -257,110 +257,127 @@ export function AssetForm() {
           
           {/* Header & Purpose Banner matching Screenshot 1 */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
-            <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4">
+            {/* Top Row: Title & Action Buttons */}
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-xs font-bold text-[#6C2BD9]">
-                  <span>New Asset Registration</span>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-50 text-[#6C2BD9] border border-purple-200">
+                    Asset Onboarding
+                  </span>
                 </div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">New Asset Registration</h1>
                 <p className="text-xs text-slate-500 font-medium">
-                  Screen Features, Functionality and Data Requirements (For Development)<br />
-                  <span className="text-slate-400">Easily register new assets into the system with complete details, tagging, document upload and approval workflow.</span>
+                  Screen Features, Functionality and Data Requirements • <span className="text-slate-400">Easily register new assets with complete details, tagging and approval workflow.</span>
                 </p>
               </div>
 
-              {/* Purpose Box */}
-              <div className="bg-purple-50/70 border border-purple-100 p-3 rounded-xl max-w-md text-xs">
-                <span className="font-bold text-purple-950 block mb-0.5">Purpose</span>
-                <p className="text-[11px] text-purple-900 leading-snug">
-                  The New Asset Registration screen allows users to capture and register new assets into Asset360 with all relevant details, assign tags and submit for approval as per the organization's asset management policy.
-                </p>
-              </div>
-            </div>
-
-            {/* Stepper Progress Bar */}
-            <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-slate-100">
-              <div className="flex items-center gap-2 text-xs font-semibold w-full justify-between">
-                
-                {/* Step 1 */}
-                <div className="flex items-center gap-2">
-                  <div className="w-7 h-7 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center font-bold text-xs shadow-sm">
-                    <FileText className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-900 block text-xs">Basic Information</span>
-                    <span className="text-[10px] text-slate-400 block">Enter primary asset details</span>
-                  </div>
-                </div>
-
-                <div className="h-0.5 flex-1 bg-slate-200 mx-2 hidden sm:block" />
-
-                {/* Step 2 */}
-                <div className="flex items-center gap-2 text-slate-400">
-                  <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-                    <DollarSign className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-700 block text-xs">Additional Details</span>
-                    <span className="text-[10px] text-slate-400 block">Financial, warranty, etc.</span>
-                  </div>
-                </div>
-
-                <div className="h-0.5 flex-1 bg-slate-200 mx-2 hidden sm:block" />
-
-                {/* Step 3 */}
-                <div className="flex items-center gap-2 text-slate-400">
-                  <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-                    <QrCode className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-700 block text-xs">Tagging &amp; Location</span>
-                    <span className="text-[10px] text-slate-400 block">Assign barcode/RFID</span>
-                  </div>
-                </div>
-
-                <div className="h-0.5 flex-1 bg-slate-200 mx-2 hidden sm:block" />
-
-                {/* Step 4 */}
-                <div className="flex items-center gap-2 text-slate-400">
-                  <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-                    <Paperclip className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-700 block text-xs">Documents</span>
-                    <span className="text-[10px] text-slate-400 block">Upload supporting files</span>
-                  </div>
-                </div>
-
-                <div className="h-0.5 flex-1 bg-slate-200 mx-2 hidden sm:block" />
-
-                {/* Step 5 */}
-                <div className="flex items-center gap-2 text-slate-400">
-                  <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs">
-                    <CheckCircle2 className="w-3.5 h-3.5" />
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-700 block text-xs">Review &amp; Submit</span>
-                    <span className="text-[10px] text-slate-400 block">Verify and submit</span>
-                  </div>
-                </div>
-
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex items-center gap-2 shrink-0 pt-2 sm:pt-0">
+              {/* Action Buttons - Responsive Header Placement */}
+              <div className="flex items-center gap-2.5 flex-wrap shrink-0">
                 <button
+                  type="button"
+                  onClick={() => navigate('/assets')}
+                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-xl text-xs border border-slate-300 shadow-2xs transition-all cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
                   onClick={() => handleSubmit('DRAFT')}
-                  className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-300 shadow-2xs transition-all cursor-pointer"
+                  disabled={loading}
+                  className="px-4 py-2 bg-white hover:bg-purple-50 text-[#6C2BD9] hover:text-[#5b21b6] font-bold rounded-xl text-xs border border-purple-200 hover:border-purple-300 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
                 >
                   Save as Draft
                 </button>
                 <button
+                  type="button"
                   onClick={() => handleSubmit('SUBMITTED')}
-                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer"
+                  disabled={loading}
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
                 >
+                  {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                   Submit for Approval
                 </button>
+              </div>
+            </div>
+
+            {/* Purpose Banner */}
+            <div className="bg-purple-50/70 border border-purple-100 p-3 rounded-xl flex items-start gap-2.5 text-xs text-purple-900">
+              <div className="w-5 h-5 rounded-lg bg-purple-200/60 text-[#6C2BD9] flex items-center justify-center shrink-0 mt-0.5 text-[11px] font-bold">
+                ⓘ
+              </div>
+              <div className="leading-relaxed">
+                <span className="font-bold text-purple-950 mr-1.5">Purpose:</span>
+                <span>The New Asset Registration screen allows users to capture and register new assets into Asset360 with all relevant details, assign tags and submit for approval as per the organization's asset management policy.</span>
+              </div>
+            </div>
+
+            {/* Stepper Progress Bar - Full Width & Responsive */}
+            <div className="pt-3 border-t border-slate-100 overflow-x-auto pb-1 scrollbar-none">
+              <div className="flex items-center justify-between gap-2 min-w-[700px] xl:min-w-0 w-full text-xs font-semibold">
+                
+                {/* Step 1 */}
+                <div className="flex items-center gap-2 shrink-0">
+                  <div className="w-7 h-7 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center font-bold text-xs shadow-sm shrink-0">
+                    <FileText className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-900 block text-xs whitespace-nowrap">Basic Information</span>
+                    <span className="text-[10px] text-slate-400 block whitespace-nowrap">Enter primary asset details</span>
+                  </div>
+                </div>
+
+                <div className="h-0.5 flex-1 bg-slate-200 mx-2 min-w-[16px] hidden sm:block" />
+
+                {/* Step 2 */}
+                <div className="flex items-center gap-2 text-slate-400 shrink-0">
+                  <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs shrink-0">
+                    <DollarSign className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700 block text-xs whitespace-nowrap">Additional Details</span>
+                    <span className="text-[10px] text-slate-400 block whitespace-nowrap">Financial, warranty, etc.</span>
+                  </div>
+                </div>
+
+                <div className="h-0.5 flex-1 bg-slate-200 mx-2 min-w-[16px] hidden sm:block" />
+
+                {/* Step 3 */}
+                <div className="flex items-center gap-2 text-slate-400 shrink-0">
+                  <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs shrink-0">
+                    <QrCode className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700 block text-xs whitespace-nowrap">Tagging &amp; Location</span>
+                    <span className="text-[10px] text-slate-400 block whitespace-nowrap">Assign barcode/RFID</span>
+                  </div>
+                </div>
+
+                <div className="h-0.5 flex-1 bg-slate-200 mx-2 min-w-[16px] hidden sm:block" />
+
+                {/* Step 4 */}
+                <div className="flex items-center gap-2 text-slate-400 shrink-0">
+                  <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs shrink-0">
+                    <Paperclip className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700 block text-xs whitespace-nowrap">Documents</span>
+                    <span className="text-[10px] text-slate-400 block whitespace-nowrap">Upload supporting files</span>
+                  </div>
+                </div>
+
+                <div className="h-0.5 flex-1 bg-slate-200 mx-2 min-w-[16px] hidden sm:block" />
+
+                {/* Step 5 */}
+                <div className="flex items-center gap-2 text-slate-400 shrink-0">
+                  <div className="w-7 h-7 rounded-full border border-slate-300 text-slate-500 flex items-center justify-center font-bold text-xs shrink-0">
+                    <CheckCircle2 className="w-3.5 h-3.5" />
+                  </div>
+                  <div>
+                    <span className="font-bold text-slate-700 block text-xs whitespace-nowrap">Review &amp; Submit</span>
+                    <span className="text-[10px] text-slate-400 block whitespace-nowrap">Verify and submit</span>
+                  </div>
+                </div>
+
               </div>
             </div>
           </div>
@@ -834,6 +851,39 @@ export function AssetForm() {
                 </div>
               </div>
 
+            </div>
+          </div>
+
+          {/* Bottom Action Footer Bar */}
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-2xs">
+            <div className="text-xs text-slate-500">
+              <span className="font-bold text-slate-700">Need to finish later?</span> Save as draft to retain your inputs, or submit directly for approval workflow verification.
+            </div>
+            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-end shrink-0">
+              <button
+                type="button"
+                onClick={() => navigate('/assets')}
+                className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs border border-slate-300 shadow-2xs transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmit('DRAFT')}
+                disabled={loading}
+                className="px-4 py-2 bg-white hover:bg-purple-50 text-[#6C2BD9] hover:text-[#5b21b6] font-bold rounded-xl text-xs border border-purple-200 hover:border-purple-300 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
+              >
+                Save as Draft
+              </button>
+              <button
+                type="button"
+                onClick={() => handleSubmit('SUBMITTED')}
+                disabled={loading}
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+              >
+                {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : null}
+                Submit for Approval
+              </button>
             </div>
           </div>
 

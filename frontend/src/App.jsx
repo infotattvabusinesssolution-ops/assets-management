@@ -157,6 +157,9 @@ export function App() {
                 <Route path="service-providers" element={<ServiceProviderAction />} />
                 <Route path="maintenance/spare-parts" element={<SpareParts />} />
                 <Route path="spare-parts" element={<SpareParts />} />
+                <Route path="maintenance/inventory" element={<SpareParts />} />
+                <Route path="maintenance/inventory/levels" element={<SpareParts />} />
+                <Route path="maintenance/inventory/ledger" element={<SpareParts />} />
                 <Route path="discovery" element={<DiscoveryWorkbench defaultTab="network" />} />
                 <Route path="discovery/jobs" element={<DiscoveryWorkbench defaultTab="jobs" />} />
                 <Route path="discovery/devices" element={<DiscoveredDevicesWorkbench />} />
@@ -169,6 +172,9 @@ export function App() {
                 <Route path="proximity-search" element={<ProximitySearch />} />
                 <Route path="rtls" element={<AssetTracking />} />
                 <Route path="rtls/map" element={<LocationMap />} />
+                <Route path="rtls-map" element={<Navigate to="/rtls/map" replace />} />
+                <Route path="tracking" element={<Navigate to="/rtls" replace />} />
+                <Route path="tracking/map" element={<Navigate to="/rtls/map" replace />} />
                 <Route path="reports" element={<ReportsCatalogue />} />
                 <Route path="workflows" element={<WorkflowDesigner />} />
                 <Route path="admin/workflow-configuration" element={<WorkflowDesigner />} />

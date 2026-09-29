@@ -609,7 +609,7 @@ export function AssetList() {
   const [loading, setLoading] = useState(false);
   const [selectedAsset, setSelectedAsset] = useState(INITIAL_MOCK_ASSETS[0]);
   const [activeTab, setActiveTab] = useState('ALL');
-  const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const [selectedRowIds, setSelectedRowIds] = useState([INITIAL_MOCK_ASSETS[0].id]);
   const [openActionMenuId, setOpenActionMenuId] = useState(null);
 
   // Filters State
@@ -671,20 +671,30 @@ export function AssetList() {
   }, [assets, activeTab, selectedCategory, selectedStatus, selectedLocation, selectedDepartment, search]);
 
 
-  // Handle Select All Checkbox
+  // Handle Select All Checkbox (Only top checkbox can select all)
   const handleSelectAll = (e) => {
     if (e.target.checked) {
       setSelectedRowIds(filteredAssets.map(a => a.id));
+      if (!selectedAsset && filteredAssets.length > 0) {
+        setSelectedAsset(filteredAssets[0]);
+      }
     } else {
       setSelectedRowIds([]);
     }
   };
 
-  const handleSelectRow = (id) => {
-    if (selectedRowIds.includes(id)) {
-      setSelectedRowIds(selectedRowIds.filter(i => i !== id));
+  // Handle Single Asset Row Selection (Only 1 asset can be selected from the list)
+  const handleSelectRow = (e, asset) => {
+    e.stopPropagation();
+    const id = asset.id;
+    // If clicking the checkbox of the currently selected single asset, toggle/uncheck it
+    if (selectedRowIds.length === 1 && selectedRowIds[0] === id) {
+      setSelectedRowIds([]);
+      setSelectedAsset(null);
     } else {
-      setSelectedRowIds([...selectedRowIds, id]);
+      // Single selection from the list: deselect all others and select only this asset
+      setSelectedRowIds([id]);
+      setSelectedAsset(asset);
     }
   };
 
@@ -1036,23 +1046,26 @@ export function AssetList() {
                     return (
                       <tr
                         key={asset.id}
-                        className={`transition-colors ${isSelected ? 'bg-purple-50/70 border-l-4 border-l-[#6C2BD9]' : 'hover:bg-slate-50'}`}
+                        onClick={() => {
+                          setSelectedAsset(asset);
+                          setSelectedRowIds([asset.id]);
+                        }}
+                        className={`transition-colors cursor-pointer ${isSelected ? 'bg-purple-50/80 border-l-4 border-l-[#6C2BD9]' : 'hover:bg-slate-50'}`}
                       >
                         {/* Checkbox */}
-                        <td className="py-3 px-3 text-center">
+                        <td className="py-3 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           <input
                             type="checkbox"
                             checked={isChecked}
-                            onChange={() => handleSelectRow(asset.id)}
-                            className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                            onChange={(e) => handleSelectRow(e, asset)}
+                            className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                           />
                         </td>
 
                         {/* Asset ID Link */}
                         <td className="py-3 px-3 font-mono font-bold text-[#6C2BD9]">
                           <span
-                            onClick={() => setSelectedAsset(asset)}
-                            className="hover:underline cursor-pointer flex items-center gap-1"
+                            className="hover:underline flex items-center gap-1"
                           >
                             {asset.assetId}
                           </span>
@@ -1061,8 +1074,7 @@ export function AssetList() {
                         {/* Asset Name + Image Thumbnail */}
                         <td className="py-3 px-3">
                           <div
-                            onClick={() => setSelectedAsset(asset)}
-                            className="flex items-center gap-2.5 cursor-pointer group"
+                            className="flex items-center gap-2.5 group"
                           >
                             <div className="w-8 h-8 rounded-lg bg-purple-100 text-[#6C2BD9] flex items-center justify-center flex-shrink-0 border border-purple-200">
                               <Icon className="w-4 h-4" />
@@ -1103,7 +1115,7 @@ export function AssetList() {
                         </td>
 
                         {/* Actions (3-Dots Dropdown Menu Callout 5) */}
-                        <td className="py-3 px-3 text-center relative">
+                        <td className="py-3 px-3 text-center relative" onClick={(e) => e.stopPropagation()}>
                           <button
                             onClick={() => setOpenActionMenuId(openActionMenuId === asset.id ? null : asset.id)}
                             className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 cursor-pointer transition-colors"
@@ -1116,6 +1128,7 @@ export function AssetList() {
                               <button
                                 onClick={() => {
                                   setSelectedAsset(asset);
+                                  setSelectedRowIds([asset.id]);
                                   setOpenActionMenuId(null);
                                 }}
                                 className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
@@ -1169,6 +1182,7 @@ export function AssetList() {
                                 onClick={() => {
                                   setOpenActionMenuId(null);
                                   setSelectedAsset(asset);
+                                  setSelectedRowIds([asset.id]);
                                 }}
                                 className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
                               >
@@ -1179,6 +1193,7 @@ export function AssetList() {
                                 onClick={() => {
                                   setOpenActionMenuId(null);
                                   setSelectedAsset(asset);
+                                  setSelectedRowIds([asset.id]);
                                   setDetailPanelTab('History');
                                 }}
                                 className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
@@ -1212,8 +1227,13 @@ export function AssetList() {
           <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl space-y-4 relative sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin animate-in fade-in zoom-in duration-150">
             {/* Close Panel Button */}
             <button
-              onClick={() => setSelectedAsset(null)}
-              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1"
+              onClick={() => {
+                setSelectedAsset(null);
+                if (selectedRowIds.length === 1) {
+                  setSelectedRowIds([]);
+                }
+              }}
+              className="absolute right-3 top-3 text-slate-400 hover:text-slate-600 p-1 cursor-pointer"
             >
               <X className="w-4 h-4" />
             </button>
@@ -1230,15 +1250,19 @@ export function AssetList() {
                 <span className="text-xs font-mono font-bold text-[#6C2BD9] block">{selectedAsset.assetId}</span>
 
                 <div className="flex items-center gap-1.5 pt-1">
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    ✓ In Use
-                  </span>
-                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                    ✓ Good
+                  <StatusBadge status={selectedAsset.lifecycleStatus} />
+                  <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold border ${
+                    selectedAsset.condition === 'Good'
+                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                      : selectedAsset.condition === 'Fair'
+                      ? 'bg-amber-50 text-amber-700 border-amber-200'
+                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                  }`}>
+                    ✓ {selectedAsset.condition || 'Good'}
                   </span>
                 </div>
                 <p className="text-[10px] text-slate-400 font-medium pt-1">
-                  {selectedAsset.categoryName} | {selectedAsset.manufacturer} | {selectedAsset.model}
+                  {selectedAsset.categoryName}{selectedAsset.manufacturer ? ` | ${selectedAsset.manufacturer}` : ''}{selectedAsset.model ? ` | ${selectedAsset.model}` : ''}
                 </p>
               </div>
             </div>
@@ -1285,35 +1309,37 @@ export function AssetList() {
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Serial Number</span>
-                      <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.serialNumber}</span>
+                      <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.serialNumber || 'N/A'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">RFID EPC</span>
-                      <span className="font-mono font-bold text-[#6C2BD9] text-left truncate">{selectedAsset.rfidEpc}</span>
+                      <span className="font-mono font-bold text-[#6C2BD9] text-left truncate">{selectedAsset.rfidEpc || 'N/A'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Barcode / QR</span>
-                      <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.barcode}</span>
+                      <span className="font-mono font-bold text-slate-900 text-left">{selectedAsset.barcode || selectedAsset.tagNumber || 'N/A'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Category</span>
-                      <span className="font-bold text-slate-900 text-left">IT &gt; {selectedAsset.categoryName}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.categoryName}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Model</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.model}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.model || 'Standard'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Manufacturer</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.manufacturer}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.manufacturer || 'OEM'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Status</span>
-                      <span className="font-bold text-emerald-600 text-left">{selectedAsset.lifecycleStatus}</span>
+                      <div className="text-left"><StatusBadge status={selectedAsset.lifecycleStatus} /></div>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Condition</span>
-                      <span className="font-bold text-emerald-600 text-left">{selectedAsset.condition}</span>
+                      <span className={`font-bold text-left ${
+                        selectedAsset.condition === 'Good' ? 'text-emerald-600' : selectedAsset.condition === 'Fair' ? 'text-amber-600' : 'text-rose-600'
+                      }`}>{selectedAsset.condition}</span>
                     </div>
                   </div>
                 </div>
@@ -1334,31 +1360,31 @@ export function AssetList() {
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-slate-700 divide-y divide-slate-200/60">
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Site</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.siteName}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.siteName || 'Dubai HQ'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Building</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.buildingName}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.buildingName || 'Building A'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Floor / Room</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.floorRoom}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.floorRoom || selectedAsset.locationStr}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Department</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.departmentName}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.departmentName || 'Operations'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Cost Center</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.costCenterCode}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.costCenterCode || 'CC-001'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Custodian</span>
-                      <span className="font-bold text-[#6C2BD9] text-left">{selectedAsset.custodianName}</span>
+                      <span className="font-bold text-[#6C2BD9] text-left">{selectedAsset.custodianName || 'Unassigned'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Assigned Date</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.assignedDate}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.assignedDate || selectedAsset.acquisitionDate}</span>
                     </div>
                   </div>
                 </div>
@@ -1379,27 +1405,29 @@ export function AssetList() {
                   <div className="bg-slate-50 p-3 rounded-xl border border-slate-200/80 text-slate-700 divide-y divide-slate-200/60">
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Warranty Status</span>
-                      <span className="font-bold text-emerald-600 text-left">Active</span>
+                      <span className={`font-bold text-left ${
+                        (selectedAsset.warrantyStatus || 'Active') === 'Active' ? 'text-emerald-600' : 'text-slate-500'
+                      }`}>{selectedAsset.warrantyStatus || 'Active'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Start Date</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.warrantyStart}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.warrantyStart || selectedAsset.acquisitionDate}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">End Date</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.warrantyEnd}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.warrantyEnd || 'N/A'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Next Service Date</span>
-                      <span className="font-bold text-purple-700 text-left">{selectedAsset.nextServiceDate}</span>
+                      <span className="font-bold text-purple-700 text-left">{selectedAsset.nextServiceDate || 'Not Scheduled'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Maintenance Type</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.maintType}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.maintType || 'Preventive'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Checklist</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.checklistName}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.checklistName || 'Standard PM'}</span>
                     </div>
                   </div>
                 </div>
@@ -1418,23 +1446,16 @@ export function AssetList() {
                     <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:bg-purple-50/50 transition-all cursor-pointer">
                       <div className="flex items-center gap-2 font-semibold text-slate-800">
                         <FileText className="w-4 h-4 text-rose-500" />
-                        <span>Purchase Invoice.pdf</span>
+                        <span>Purchase Invoice_{selectedAsset.assetId}.pdf</span>
                       </div>
                       <span className="text-xs font-bold text-purple-600 font-mono">320 KB</span>
                     </div>
                     <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:bg-purple-50/50 transition-all cursor-pointer">
                       <div className="flex items-center gap-2 font-semibold text-slate-800">
                         <FileText className="w-4 h-4 text-rose-500" />
-                        <span>Warranty.pdf</span>
+                        <span>Warranty_{selectedAsset.assetId}.pdf</span>
                       </div>
                       <span className="text-xs font-bold text-purple-600 font-mono">450 KB</span>
-                    </div>
-                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between text-xs hover:bg-purple-50/50 transition-all cursor-pointer">
-                      <div className="flex items-center gap-2 font-semibold text-slate-800">
-                        <FileText className="w-4 h-4 text-amber-500" />
-                        <span>Asset Photo.jpg</span>
-                      </div>
-                      <span className="text-xs font-bold text-purple-600 font-mono">1.2 MB</span>
                     </div>
                   </div>
                 </div>
@@ -1446,11 +1467,16 @@ export function AssetList() {
               <div className="space-y-3 text-xs">
                 <div className="p-3 bg-purple-50 rounded-xl border border-purple-200 space-y-1">
                   <span className="font-bold text-[#6C2BD9] block">RTLS Map Positioning</span>
-                  <p className="text-[11px] text-slate-600">Physical coordinates: X: 142.5m, Y: 88.2m (Building A, Floor 3, Room 312).</p>
+                  <p className="text-[11px] text-slate-700 font-medium">
+                    {selectedAsset.locationStr || `${selectedAsset.siteName || ''} - ${selectedAsset.floorRoom || ''}`}
+                  </p>
+                  <p className="text-[10px] text-slate-500">
+                    Site: {selectedAsset.siteName || 'HQ'} • Building: {selectedAsset.buildingName || 'Main'} • Zone: {selectedAsset.floorRoom || 'Standard'}
+                  </p>
                 </div>
                 <button
                   onClick={() => navigate('/rtls/map')}
-                  className="w-full py-2 bg-[#6C2BD9] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs"
+                  className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl flex items-center justify-center gap-1.5 shadow-xs cursor-pointer transition-colors"
                 >
                   <ExternalLink className="w-3.5 h-3.5" /> Open Floor Map View
                 </button>
@@ -1461,8 +1487,15 @@ export function AssetList() {
             {detailPanelTab === 'Maintenance' && (
               <div className="space-y-2 text-xs">
                 <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <span className="font-bold text-slate-900 block">WO-2026-901 (Preventive PM)</span>
-                  <p className="text-[11px] text-slate-500">Scheduled for 15 Oct 2026 • Lead Technician: Robert Chen</p>
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-slate-900 block">
+                      {selectedAsset.maintType ? `${selectedAsset.maintType} Schedule` : 'Preventive PM'}
+                    </span>
+                    <StatusBadge status={selectedAsset.lifecycleStatus} />
+                  </div>
+                  <p className="text-[11px] text-slate-500">
+                    Next Due: {selectedAsset.nextServiceDate || 'Not Scheduled'} • Plan: {selectedAsset.checklistName || 'Standard Checklist'}
+                  </p>
                 </div>
               </div>
             )}
@@ -1471,12 +1504,16 @@ export function AssetList() {
             {detailPanelTab === 'History' && (
               <div className="space-y-2 text-xs">
                 <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <span className="font-bold text-[#6C2BD9] block">ASSIGNMENT</span>
-                  <p className="text-[11px] text-slate-600">Assigned to John Doe (IT Dept) on 10 Jan 2024</p>
+                  <span className="font-bold text-[#6C2BD9] block">ASSIGNMENT & CUSTODY</span>
+                  <p className="text-[11px] text-slate-600">
+                    Assigned to <span className="font-bold text-slate-800">{selectedAsset.custodianName || 'Unassigned'}</span> ({selectedAsset.departmentName || 'General'}) on {selectedAsset.assignedDate || selectedAsset.acquisitionDate}
+                  </p>
                 </div>
                 <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <span className="font-bold text-emerald-600 block">TAGGING</span>
-                  <p className="text-[11px] text-slate-600">Barcoded &amp; RFID EPC registered on 10 Jan 2024</p>
+                  <span className="font-bold text-emerald-600 block">TAGGING & REGISTRATION</span>
+                  <p className="text-[11px] text-slate-600">
+                    Tag: <span className="font-mono font-semibold">{selectedAsset.tagNumber}</span> • Serial: <span className="font-mono font-semibold">{selectedAsset.serialNumber || 'N/A'}</span> registered on {selectedAsset.acquisitionDate}
+                  </p>
                 </div>
               </div>
             )}
