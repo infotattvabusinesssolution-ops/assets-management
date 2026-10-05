@@ -1630,11 +1630,45 @@ export function AssetList() {
                               )}
 
                               {/* 6. Active Actions (For ALL, IN_USE, etc.) */}
-                              {asset.lifecycleStatus !== 'DISPOSED' && asset.lifecycleStatus !== 'UNDER_MAINTENANCE' && asset.lifecycleStatus !== 'DISPOSAL' && asset.lifecycleStatus !== 'PENDING_DISPOSAL' && (
+                              {asset.lifecycleStatus !== 'DISPOSED' && (
                                 <>
                                   <button
                                     type="button"
-                                    onClick={() => {
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      setOpenActionMenuId(null);
+                                      const assetKey = asset.assetId || asset.id;
+                                      navigate(`/movements/assign?assetId=${encodeURIComponent(assetKey)}`, {
+                                        state: { assetId: assetKey, asset }
+                                      });
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> Assign to Custodian
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
+                                      setOpenActionMenuId(null);
+                                      const assetKey = asset.assetId || asset.id;
+                                      navigate(`/movements/transfer?assetId=${encodeURIComponent(assetKey)}`, {
+                                        state: { assetId: assetKey, asset }
+                                      });
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer Location / Site
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      e.preventDefault();
                                       setOpenActionMenuId(null);
                                       setTransferModalAsset({
                                         ...asset,
@@ -1647,56 +1681,38 @@ export function AssetList() {
                                     }}
                                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50/70 hover:bg-purple-100 rounded-xl transition-all cursor-pointer"
                                   >
-                                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Quick Move / Assign (Popup)
+                                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Quick Move / Assign (Popup Modal)
                                   </button>
 
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      navigate(`/movements/assign?assetId=${encodeURIComponent(asset.assetId || asset.id)}`, {
-                                        state: { assetId: asset.assetId || asset.id, asset }
-                                      });
-                                    }}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
-                                  >
-                                    <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> Assign to Custodian
-                                  </button>
+                                  {asset.lifecycleStatus !== 'UNDER_MAINTENANCE' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setOpenActionMenuId(null);
+                                        handleTransitionStatus(asset.id, 'UNDER_MAINTENANCE');
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                                    >
+                                      <Wrench className="w-3.5 h-3.5 text-[#6C2BD9]" /> Send for Maintenance
+                                    </button>
+                                  )}
 
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      navigate(`/movements/transfer?assetId=${encodeURIComponent(asset.assetId || asset.id)}`, {
-                                        state: { assetId: asset.assetId || asset.id, asset }
-                                      });
-                                    }}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
-                                  >
-                                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer Location / Site
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      handleTransitionStatus(asset.id, 'UNDER_MAINTENANCE');
-                                    }}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
-                                  >
-                                    <Wrench className="w-3.5 h-3.5 text-[#6C2BD9]" /> Send for Maintenance
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setOpenActionMenuId(null);
-                                      setDisposalRequestAsset(asset);
-                                    }}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
-                                  >
-                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Request Disposal
-                                  </button>
+                                  {asset.lifecycleStatus !== 'PENDING_DISPOSAL' && asset.lifecycleStatus !== 'DISPOSAL' && (
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        e.stopPropagation();
+                                        e.preventDefault();
+                                        setOpenActionMenuId(null);
+                                        setDisposalRequestAsset(asset);
+                                      }}
+                                      className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                    >
+                                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Request Disposal
+                                    </button>
+                                  )}
                                 </>
                               )}
 

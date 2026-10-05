@@ -13,6 +13,7 @@ import {
   History,
   FileText,
   ArrowLeft,
+  ArrowLeftRight,
   CheckCircle,
   Edit3,
   Printer,
@@ -338,6 +339,32 @@ export function Asset360Detail() {
               title="Edit asset attributes"
             >
               <Edit3 className="w-3.5 h-3.5 text-[#6C2BD9]" /> Edit Asset
+            </button>
+
+            <button
+              onClick={() => {
+                const targetId = asset.assetId || asset.id;
+                navigate(`/movements/assign?assetId=${encodeURIComponent(targetId)}`, {
+                  state: { assetId: targetId, asset }
+                });
+              }}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              title="Assign to employee / custodian"
+            >
+              <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> Assign to Custodian
+            </button>
+
+            <button
+              onClick={() => {
+                const targetId = asset.assetId || asset.id;
+                navigate(`/movements/transfer?assetId=${encodeURIComponent(targetId)}`, {
+                  state: { assetId: targetId, asset }
+                });
+              }}
+              className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+              title="Transfer to location / site"
+            >
+              <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer Location / Site
             </button>
 
             <button
