@@ -1,23 +1,23 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { 
-  Inbox, 
-  History, 
-  ArrowRight, 
-  Plus, 
-  FolderDown, 
-  Trash2, 
-  Edit3, 
-  CheckCircle2, 
-  Clock, 
-  Barcode, 
-  Radio, 
-  Search, 
-  Calendar, 
-  Settings, 
-  Laptop, 
-  Check, 
+import {
+  Inbox,
+  History,
+  ArrowRight,
+  Plus,
+  FolderDown,
+  Trash2,
+  Edit3,
+  CheckCircle2,
+  Clock,
+  Barcode,
+  Radio,
+  Search,
+  Calendar,
+  Settings,
+  Laptop,
+  Check,
   AlertCircle,
   X,
   Printer,
@@ -43,21 +43,21 @@ export function ReceiveWithoutPO() {
 
   // Receiving Information Form State
   const [receivingInfo, setReceivingInfo] = useState({
-    supplier: 'Dell Technologies',
-    receivingDate: '21 Aug 2026',
-    referenceNo: 'DN-2026-0087',
-    receivingLocation: 'Dubai HQ - IT Store',
-    receivedBy: 'John Doe',
-    reason: 'Initial stock / Donation / Transfer',
+    supplier: '',
+    receivingDate: new Date().toISOString().slice(0, 10),
+    referenceNo: '',
+    receivingLocation: '',
+    receivedBy: '',
+    reason: '',
     remarks: ''
   });
 
   // Asset Default Information Form State
   const [assetDefaults, setAssetDefaults] = useState({
-    category: 'Laptop',
-    subCategory: 'Business Laptop',
-    manufacturer: 'Dell',
-    model: 'Latitude 7450',
+    category: '',
+    subCategory: '',
+    manufacturer: '',
+    model: '',
     condition: 'New',
     warrantyMonths: 36
   });
@@ -78,88 +78,15 @@ export function ReceiveWithoutPO() {
   const [scanFeedback, setScanFeedback] = useState(null);
 
   // Currently Previewed Asset
-  const [previewAsset, setPreviewAsset] = useState({
-    serialNumber: 'DL7450-001',
-    assetName: 'Dell Latitude 7450',
-    category: 'Laptop',
-    model: 'Latitude 7450',
-    tagNumber: 'E36000012345',
-    status: 'Ready to Assign',
-    imageUrl: '/laptop.png'
-  });
+  const [previewAsset, setPreviewAsset] = useState(null);
 
   // Received Assets List (initial state matches screenshot)
-  const [receivedAssets, setReceivedAssets] = useState([
-    {
-      id: 'AST-INIT-01',
-      serialNumber: 'DL7450-001',
-      assetName: 'Dell Latitude 7450',
-      category: 'Laptop',
-      subCategory: 'Business Laptop',
-      manufacturer: 'Dell',
-      model: 'Latitude 7450',
-      condition: 'New',
-      tagNumber: 'E36000012345',
-      status: 'Tagged',
-      imageUrl: '/laptop.png'
-    },
-    {
-      id: 'AST-INIT-02',
-      serialNumber: 'DL7450-002',
-      assetName: 'Dell Latitude 7450',
-      category: 'Laptop',
-      subCategory: 'Business Laptop',
-      manufacturer: 'Dell',
-      model: 'Latitude 7450',
-      condition: 'New',
-      tagNumber: 'E36000012346',
-      status: 'Tagged',
-      imageUrl: '/laptop.png'
-    },
-    {
-      id: 'AST-INIT-03',
-      serialNumber: 'DL7450-003',
-      assetName: 'Dell Latitude 7450',
-      category: 'Laptop',
-      subCategory: 'Business Laptop',
-      manufacturer: 'Dell',
-      model: 'Latitude 7450',
-      condition: 'New',
-      tagNumber: '-',
-      status: 'Pending',
-      imageUrl: '/laptop.png'
-    }
-  ]);
+  const [receivedAssets, setReceivedAssets] = useState([]);
 
   const [selectedAssetIds, setSelectedAssetIds] = useState([]);
 
   // Recent Scanned Items (initial state matches screenshot)
-  const [recentScans, setRecentScans] = useState([
-    {
-      id: 'SCAN-01',
-      time: '21 Aug 2026 11:20',
-      serialNumber: 'DL7450-003',
-      tagNumber: 'E36000012347',
-      assetName: 'Dell Latitude 7450',
-      status: 'Tagged'
-    },
-    {
-      id: 'SCAN-02',
-      time: '21 Aug 2026 11:18',
-      serialNumber: 'DL7450-002',
-      tagNumber: 'E36000012346',
-      assetName: 'Dell Latitude 7450',
-      status: 'Tagged'
-    },
-    {
-      id: 'SCAN-03',
-      time: '21 Aug 2026 11:15',
-      serialNumber: 'DL7450-001',
-      tagNumber: 'E36000012345',
-      assetName: 'Dell Latitude 7450',
-      status: 'Tagged'
-    }
-  ]);
+  const [recentScans, setRecentScans] = useState([]);
 
   // Modals state
   const [isManualModalOpen, setIsManualModalOpen] = useState(false);
@@ -219,7 +146,7 @@ export function ReceiveWithoutPO() {
           setSitesList(sitesRes.value.sites);
         }
       } catch (err) {
-        console.warn('Master data loaded with fallback defaults:', err);
+        showToast(err?.message || 'Could not load receiving reference data', 'error');
       }
     };
     loadMasterData();
@@ -232,10 +159,21 @@ export function ReceiveWithoutPO() {
   const issuesCount = 0;
 
   // Handle Serial Scanner Input (Enter key or button click)
-  const handleScanSerialSubmit = (e) => {
+  const handleScanSerialSubmit = async (e) => {
     e?.preventDefault();
     const sn = scanSerialInput.trim();
     if (!sn) return;
+
+    try {
+      const validation = await api.post('/receiving/validate-serial', { serialNumber: sn });
+      if (!validation.valid) {
+        setScanFeedback({ type: 'error', msg: validation.message });
+        return;
+      }
+    } catch (err) {
+      setScanFeedback({ type: 'error', msg: err?.message || 'Serial validation failed' });
+      return;
+    }
 
     // Check if asset already exists in current batch
     const existingIndex = receivedAssets.findIndex(a => a.serialNumber.toLowerCase() === sn.toLowerCase());
@@ -247,7 +185,7 @@ export function ReceiveWithoutPO() {
         assetName: asset.assetName,
         category: asset.category,
         model: asset.model,
-        tagNumber: asset.tagNumber === '-' ? `E360000${Math.floor(10000 + Math.random() * 90000)}` : asset.tagNumber,
+        tagNumber: asset.tagNumber === '-' ? '' : asset.tagNumber,
         status: asset.status === 'Tagged' ? 'Tagged' : 'Ready to Assign',
         imageUrl: asset.imageUrl || '/laptop.png'
       });
@@ -255,7 +193,7 @@ export function ReceiveWithoutPO() {
       setScanFeedback({ type: 'info', msg: `Identified existing batch item: ${sn}` });
     } else {
       // Auto-create new item from Default Information
-      const newTagNum = `E360000${Math.floor(10000 + Math.random() * 90000)}`;
+      const newTagNum = '';
       const newAsset = {
         id: `AST-SCN-${Date.now()}`,
         serialNumber: sn,
@@ -310,7 +248,11 @@ export function ReceiveWithoutPO() {
       return;
     }
 
-    const tagToAssign = previewAsset.tagNumber?.trim() || `E360000${Math.floor(10000 + Math.random() * 90000)}`;
+    const tagToAssign = previewAsset.tagNumber?.trim();
+    if (!tagToAssign) {
+      setScanFeedback({ type: 'error', msg: 'Scan or enter a tag first.' });
+      return;
+    }
 
     try {
       // Validate tag availability via backend
@@ -320,7 +262,8 @@ export function ReceiveWithoutPO() {
         return;
       }
     } catch (e) {
-      // Graceful offline pass
+      setScanFeedback({ type: 'error', msg: e?.message || 'Tag validation failed' });
+      return;
     }
 
     // Update received assets list
@@ -383,7 +326,7 @@ export function ReceiveWithoutPO() {
         assetName: item.assetName,
         category: item.category,
         model: item.model,
-        tagNumber: item.tagNumber === '-' ? `E360000${Math.floor(10000 + Math.random() * 90000)}` : item.tagNumber,
+        tagNumber: item.tagNumber === '-' ? '' : item.tagNumber,
         status: item.status === 'Tagged' ? 'Tagged' : 'Ready to Assign',
         imageUrl: item.imageUrl || '/laptop.png'
       });
@@ -399,7 +342,7 @@ export function ReceiveWithoutPO() {
   };
 
   const handleToggleSelectAsset = (id) => {
-    setSelectedAssetIds(prev => 
+    setSelectedAssetIds(prev =>
       prev.includes(id) ? prev.filter(item => item !== id) : [...prev, id]
     );
   };
@@ -431,14 +374,13 @@ export function ReceiveWithoutPO() {
       showToast('Receiving session draft successfully saved!');
     } catch (err) {
       // Save locally to localStorage
-      localStorage.setItem('fams_non_po_draft', JSON.stringify(draftPayload));
-      showToast('Receiving session draft saved locally!');
+
+      showToast(err?.message || 'Could not save draft', 'error');
     }
   };
 
   // Proceed to Review Action
   const handleProceedToReview = async () => {
-    setCurrentStep(4);
     try {
       const report = await api.post('/receiving/validate-batch', {
         supplier: receivingInfo.supplier,
@@ -450,13 +392,10 @@ export function ReceiveWithoutPO() {
       });
       setValidationReport(report);
     } catch (e) {
-      setValidationReport({
-        valid: true,
-        errors: [],
-        warnings: pendingCount > 0 ? [{ message: `${pendingCount} assets pending tag assignment.` }] : [],
-        duplicates: []
-      });
+      showToast(e?.message || 'Batch validation failed', 'error');
+      return;
     }
+    setCurrentStep(4);
     setIsReviewModalOpen(true);
   };
 
@@ -478,18 +417,7 @@ export function ReceiveWithoutPO() {
         showToast(`Printed ${res.tags.length} label(s) to ${printConfig.printer}`);
       }
     } catch (err) {
-      // Offline mock generation
-      const tags = [];
-      const qty = parseInt(printConfig.quantity) || 1;
-      for (let i = 0; i < qty; i++) {
-        tags.push({
-          tagNumber: `${printConfig.tagPrefix}${Math.floor(10000 + Math.random() * 90000)}`,
-          printer: printConfig.printer,
-          printedAt: new Date().toLocaleTimeString()
-        });
-      }
-      setPrintedTagsList(tags);
-      showToast(`Printed ${qty} label(s) successfully!`);
+      showToast(err?.message || 'Label request failed', 'error');
     } finally {
       setIsPrinting(false);
     }
@@ -497,7 +425,7 @@ export function ReceiveWithoutPO() {
 
   return (
     <div className="p-6 max-w-[1720px] mx-auto space-y-6 font-sans select-none bg-[#F8FAFC] min-h-screen text-slate-800">
-      
+
       {/* Toast Notification */}
       {toastMessage && (
         <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white text-xs px-4 py-3 rounded-xl shadow-xl flex items-center gap-2 border border-slate-700 animate-in fade-in slide-in-from-bottom-4">
@@ -627,17 +555,17 @@ export function ReceiveWithoutPO() {
 
       {/* Main Grid: Left side (Receiving Info + Asset Defaults + Received Assets) & Right side (Scan & Tag panel) */}
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-6 items-start">
-        
+
         {/* Left 8 Columns */}
         <div className="xl:col-span-8 space-y-6">
-          
+
           {/* Top Row: Receiving Information & Asset Default Information side-by-side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Receiving Information Card */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
               <h3 className="text-sm font-bold text-slate-900 tracking-tight">Receiving Information</h3>
-              
+
               <div className="space-y-3 text-xs">
                 {/* Supplier Field with Search Dropdown */}
                 <div className="relative">
@@ -662,14 +590,7 @@ export function ReceiveWithoutPO() {
                   {/* Dropdown Options */}
                   {isSupplierDropdownOpen && (
                     <div className="absolute left-0 right-0 mt-1 bg-white border border-slate-200 rounded-xl shadow-xl z-30 max-h-48 overflow-y-auto p-1 text-xs">
-                      {(suppliersList.length > 0 ? suppliersList : [
-                        { name: 'Dell Technologies' },
-                        { name: 'Apple Inc.' },
-                        { name: 'Cisco Systems Inc.' },
-                        { name: 'HP Enterprise' },
-                        { name: 'Lenovo Global' },
-                        { name: 'Internal Transfer (HQ Warehouse)' }
-                      ]).filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase()))
+                      {suppliersList.filter(s => s.name.toLowerCase().includes(supplierSearch.toLowerCase()))
                         .map((s, idx) => (
                           <div
                             key={idx}
@@ -762,14 +683,7 @@ export function ReceiveWithoutPO() {
                     onChange={(e) => setReceivingInfo({ ...receivingInfo, reason: e.target.value })}
                     className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white cursor-pointer"
                   >
-                    {(reasonsList.length > 0 ? reasonsList : [
-                      { name: 'Initial stock / Donation / Transfer' },
-                      { name: 'Donated Equipment / Grants' },
-                      { name: 'Inter-Department / Entity Transfer' },
-                      { name: 'Vendor Replacement / Warranty RMA' },
-                      { name: 'Found During Physical Audit' },
-                      { name: 'Petty Cash / Direct P-Card Purchase' }
-                    ]).map((r, idx) => (
+                    {reasonsList.map((r, idx) => (
                       <option key={idx} value={r.name}>{r.name}</option>
                     ))}
                   </select>
@@ -1083,7 +997,7 @@ export function ReceiveWithoutPO() {
 
           {/* Bottom Row: Recent Scanned Items & Summary Side-by-Side */}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            
+
             {/* Recent Scanned Items Card */}
             <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-3">
               <h3 className="text-sm font-bold text-slate-900 tracking-tight">
@@ -1195,7 +1109,7 @@ export function ReceiveWithoutPO() {
 
         {/* Right 4 Columns: Scan & Tag / Print Labels Panel */}
         <div className="xl:col-span-4 bg-white border border-slate-200 rounded-2xl p-5 shadow-2xs space-y-4">
-          
+
           {/* Panel Tab Header with Settings Icon */}
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <div className="flex items-center gap-4 text-xs font-bold">
@@ -1237,7 +1151,7 @@ export function ReceiveWithoutPO() {
           {/* Tab 1: Scan & Tag */}
           {activePanelTab === 'scan' ? (
             <div className="space-y-4">
-              
+
               {/* Scan Barcode Input */}
               <div>
                 <label className="block text-xs font-semibold text-slate-700 mb-1">
@@ -1458,13 +1372,13 @@ export function ReceiveWithoutPO() {
                 <div className="bg-white p-3 rounded-lg border border-slate-300 shadow-2xs inline-block mx-auto min-w-[200px]">
                   <div className="text-[9px] font-bold text-slate-900 tracking-wider">ASSET360 ENTERPRISE</div>
                   <div className="font-mono text-xs font-black text-slate-900 my-1">
-                    {previewAsset?.tagNumber || `${printConfig.tagPrefix}12345`}
+                    {previewAsset?.tagNumber || 'Scan a tag'}
                   </div>
                   <div className="flex items-center justify-center gap-1 my-1 text-slate-800">
                     <Barcode className="w-24 h-6" />
                   </div>
                   <div className="text-[8px] text-slate-500 truncate max-w-[180px]">
-                    {previewAsset?.assetName || 'Dell Latitude 7450'}
+                    {previewAsset?.assetName || 'No asset selected'}
                   </div>
                 </div>
               </div>
@@ -1543,7 +1457,7 @@ export function ReceiveWithoutPO() {
             assetName: newAsset.assetName,
             category: newAsset.category,
             model: newAsset.model,
-            tagNumber: newAsset.tagNumber === '-' ? `E360000${Math.floor(10000 + Math.random() * 90000)}` : newAsset.tagNumber,
+            tagNumber: newAsset.tagNumber === '-' ? '' : newAsset.tagNumber,
             status: newAsset.status === 'Tagged' ? 'Tagged' : 'Ready to Assign',
             imageUrl: newAsset.imageUrl || '/laptop.png'
           });
@@ -1597,7 +1511,7 @@ export function ReceiveWithoutPO() {
         items={receivedAssets}
         validationReport={validationReport}
         onSubmitSuccess={(receipt) => {
-          showToast(`Receiving posted! GRN: ${receipt.receiptNumber || 'GRN-2026-0087'}`);
+          showToast(`Receiving posted! GRN: ${receipt.receiptNumber}`);
         }}
       />
 

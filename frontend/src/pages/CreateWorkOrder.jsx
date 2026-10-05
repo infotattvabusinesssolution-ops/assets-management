@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import { 
   Wrench, 
@@ -41,8 +41,10 @@ import {
 
 export function CreateWorkOrder() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const preselectedAssetId = searchParams.get('assetId');
+  const preselectedAssetId = searchParams.get('assetId') || location.state?.assetId;
+  const passedAsset = location.state?.asset;
 
   // Master Data Options
   const [assets, setAssets] = useState([]);
@@ -197,6 +199,28 @@ export function CreateWorkOrder() {
     setShowAssetModal(false);
     showToast('success', `Asset ${formattedAsset.assetId} selected. Warranty & Location auto-populated.`);
   };
+
+  // Pre-populate asset if passed via navigation state or query param
+  useEffect(() => {
+    if (passedAsset) {
+      handleSelectAsset(passedAsset);
+    } else if (preselectedAssetId) {
+      if (assets.length > 0) {
+        const found = assets.find(a => a.assetId === preselectedAssetId || a.id === preselectedAssetId);
+        if (found) {
+          handleSelectAsset(found);
+          return;
+        }
+      }
+      api.get(`/assets/${encodeURIComponent(preselectedAssetId)}/360`)
+        .then(res => {
+          if (res?.success && res.asset360?.asset) {
+            handleSelectAsset(res.asset360.asset);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [passedAsset, preselectedAssetId, assets.length]);
 
   // Load Checklist Template Items
   const handleLoadChecklist = () => {

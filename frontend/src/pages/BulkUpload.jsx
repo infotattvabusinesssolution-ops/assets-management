@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
+import ExcelJS from 'exceljs';
 import {
   FileSpreadsheet,
   Upload,
@@ -24,31 +25,16 @@ import {
   Settings
 } from 'lucide-react';
 
-const SAMPLE_PREVIEW_RECORDS = [
-  { row: 2, status: 'Valid', assetId: 'AST-000201', name: 'Dell Latitude 7450', category: 'Laptop', serialNumber: 'DL7450-001', location: 'Dubai HQ', custodian: 'John Doe', remarks: '-' },
-  { row: 3, status: 'Valid', assetId: 'AST-000202', name: 'iPhone 15 Pro', category: 'Mobile Device', serialNumber: 'IP15-9001', location: 'Dubai HQ', custodian: 'Jane Smith', remarks: '-' },
-  { row: 4, status: 'Error', assetId: 'AST-000203', name: 'HP LaserJet M404', category: 'Printer', serialNumber: '-', location: 'Dubai HQ', custodian: 'Ahmed Ali', remarks: 'Serial number is required' },
-  { row: 5, status: 'Valid', assetId: 'AST-000204', name: 'Samsung Monitor 27"', category: 'Monitor', serialNumber: 'SM27-7788', location: 'Abu Dhabi', custodian: 'Fatima Khan', remarks: '-' },
-  { row: 6, status: 'Warning', assetId: 'AST-000205', name: 'Ergonomic Chair', category: 'Furniture', serialNumber: 'CH-5566', location: 'Dubai HQ', custodian: '-', remarks: 'Custodian not found. Will be skipped.' },
-  { row: 7, status: 'Error', assetId: 'AST-000206', name: 'Surface Pro 9', category: 'Tablet', serialNumber: 'SP9-2233', location: '-', custodian: 'Omar Saeed', remarks: 'Invalid location' },
-  { row: 8, status: 'Valid', assetId: 'AST-000207', name: 'Logitech MX Master 3S', category: 'Accessory', serialNumber: 'MXM-9912', location: 'Dubai HQ', custodian: 'John Doe', remarks: '-' },
-  { row: 9, status: 'Valid', assetId: 'AST-000208', name: 'Dell UltraSharp U2723QE', category: 'Monitor', serialNumber: 'DELL-9001', location: 'Dubai HQ', custodian: 'Sarah Ali', remarks: '-' },
-  { row: 10, status: 'Valid', assetId: 'AST-000209', name: 'Caterpillar Generator 100KVA', category: 'Generator', serialNumber: 'CAT-100K', location: 'Yard Jebel Ali', custodian: 'Robert Chen', remarks: '-' },
-  { row: 11, status: 'Valid', assetId: 'AST-000210', name: 'Toyota Forklift 2-Ton', category: 'Vehicle', serialNumber: 'TOY-FL88', location: 'Jebel Ali Site', custodian: 'David Miller', remarks: '-' },
-  { row: 12, status: 'Valid', assetId: 'AST-000211', name: 'Access Control Badge iCLASS', category: 'Access Control', serialNumber: 'HID-8812', location: 'Dubai HQ', custodian: 'John Doe', remarks: '-' },
-  { row: 13, status: 'Valid', assetId: 'AST-000212', name: 'Cisco Catalyst 9300 Switch', category: 'Network', serialNumber: 'CSCO-9300', location: 'Dubai HQ Data Center', custodian: 'IT Admin', remarks: '-' }
-];
-
 export function BulkUpload() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   // Workflow Steps & File State
-  const [selectedFile, setSelectedFile] = useState({ name: 'Asset_Bulk_Upload.xlsx', size: '12.4 KB' });
-  const [isValidated, setIsValidated] = useState(true);
+  const [selectedFile, setSelectedFile] = useState(null);
+  const [isValidated, setIsValidated] = useState(false);
   const [isValidating, setIsValidating] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [records, setRecords] = useState(SAMPLE_PREVIEW_RECORDS);
+  const [records, setRecords] = useState([]);
 
   // Table Filter & Pagination State
   const [statusFilter, setStatusFilter] = useState('All');
@@ -86,20 +72,14 @@ export function BulkUpload() {
 
   // Paginated Rows
   const paginatedRecords = useMemo(() => {
-    return filteredRecords;
-  }, [filteredRecords]);
+    return filteredRecords.slice((currentPage - 1) * perPage, currentPage * perPage);
+  }, [filteredRecords, currentPage, perPage]);
 
   const totalPages = Math.ceil(filteredRecords.length / perPage) || 1;
 
   // Handle Download Excel Template
   const handleDownloadTemplate = () => {
-    const csvContent =
-      'data:text/csv;charset=utf-8,' +
-      'Asset ID,Asset Name,Category,Serial Number,Location,Custodian,Acquisition Value,Currency,Status,Condition\n' +
-      'AST-000201,Dell Latitude 7450,Laptop,DL7450-001,Dubai HQ,John Doe,4500,AED,In Use,Good\n' +
-      'AST-000202,iPhone 15 Pro,Mobile Device,IP15-9001,Dubai HQ,Jane Smith,4000,AED,In Use,Good\n' +
-      'AST-000203,HP LaserJet M404,Printer,,Dubai HQ,Ahmed Ali,1500,AED,In Use,Good\n';
-
+    const csvContent = 'Asset ID,Asset Name,Category,Serial Number,Location,Custodian,Acquisition Value,Currency,Status,Condition\n';
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -107,16 +87,16 @@ export function BulkUpload() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast('success', 'Downloaded Asset360 Bulk Upload Excel/CSV template!');
+    showToast('success', 'Downloaded Asset360 Bulk Upload CSV template!');
   };
 
   // Handle Download Error Report CSV
   const handleDownloadErrorReport = () => {
     const errorRows = records.filter(r => r.status === 'Error' || r.status === 'Warning');
     const headers = ['Row Number', 'Status', 'Asset ID', 'Asset Name', 'Category', 'Serial Number', 'Remarks / Error Reason'];
-    const rows = errorRows.map(r => [r.row, r.status, r.assetId, r.name, r.category, r.serialNumber, `"${r.remarks}"`]);
-    
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const rows = errorRows.map(r => [r.row, r.status, r.assetId, r.name, r.category, r.serialNumber, r.remarks]);
+    const cell = value => '"' + String(value ?? '').replace(/"/g, '""') + '"';
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].map(row => row.map(cell).join(',')).join('\n');
     const encodedUri = encodeURI(csvContent);
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
@@ -127,34 +107,96 @@ export function BulkUpload() {
     showToast('success', 'Downloaded Error Report CSV for unresolved records!');
   };
 
-  // Handle File Selection / Drop
-  const handleFileDrop = (e) => {
+  const handleFileDrop = async (e) => {
     e.preventDefault();
-    const files = e.dataTransfer ? e.dataTransfer.files : e.target.files;
-    if (files && files.length > 0) {
-      const file = files[0];
-      setSelectedFile({
-        name: file.name,
-        size: `${(file.size / 1024).toFixed(1)} KB`
-      });
-      setIsValidated(false);
-      showToast('info', `Uploaded file: ${file.name}. Click 'Validate File' to perform server validation.`);
+    const file = (e.dataTransfer ? e.dataTransfer.files : e.target.files)?.[0];
+    if (!file) return;
+    setSelectedFile(null);
+    setRecords([]);
+    setIsValidated(false);
+    setCurrentPage(1);
+    if (file.size > 10 * 1024 * 1024 || !/\.(csv|xlsx)$/i.test(file.name)) {
+      showToast('error', 'Choose a CSV or XLSX file smaller than 10 MB.');
+      return;
+    }
+    try {
+      let rows;
+      if (/\.xlsx$/i.test(file.name)) {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(await file.arrayBuffer());
+        const sheet = workbook.worksheets[0];
+        if (!sheet) throw new Error('The workbook has no sheets.');
+        rows = [];
+        sheet.eachRow({ includeEmpty: false }, row => {
+          rows.push(Array.from({ length: sheet.columnCount }, (_, i) => {
+            const value = row.getCell(i + 1).value;
+            return String(value?.text ?? value?.result ?? value ?? '').trim();
+          }));
+        });
+      } else {
+        const source = await file.text();
+        rows = [[]];
+        let cell = '', quoted = false;
+        for (let i = 0; i < source.length; i++) {
+          const char = source[i];
+          if (char === '"' && quoted && source[i + 1] === '"') { cell += '"'; i++; }
+          else if (char === '"') quoted = !quoted;
+          else if (char === ',' && !quoted) { rows.at(-1).push(cell.trim()); cell = ''; }
+          else if ((char === '\n' || char === '\r') && !quoted) {
+            if (char === '\r' && source[i + 1] === '\n') i++;
+            rows.at(-1).push(cell.trim()); cell = ''; rows.push([]);
+          } else cell += char;
+        }
+        if (quoted) throw new Error('CSV has an unclosed quoted field.');
+        rows.at(-1).push(cell.trim());
+      }
+      const headers = (rows.shift() || []).map(h => h.replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+      const field = (values, ...names) => {
+        const index = headers.findIndex(h => names.includes(h));
+        return index < 0 ? '' : (values[index] || '');
+      };
+      const parsed = rows.filter(values => values.some(Boolean)).map((values, index) => ({
+        row: index + 2,
+        assetId: field(values, 'assetid'),
+        name: field(values, 'assetname', 'name', 'description'),
+        category: field(values, 'category'),
+        serialNumber: field(values, 'serialnumber'),
+        location: field(values, 'location', 'site'),
+        custodian: field(values, 'custodian'),
+        acquisitionValue: field(values, 'acquisitionvalue', 'acquisitioncost', 'cost'),
+        currency: field(values, 'currency'),
+        status: 'Unvalidated',
+        remarks: 'Awaiting server validation'
+      }));
+      if (!parsed.length) throw new Error('The file has no asset rows.');
+      setSelectedFile({ name: file.name, size: (file.size / 1024).toFixed(1) + ' KB' });
+      setRecords(parsed);
+      showToast('info', 'Loaded ' + parsed.length + ' rows. Validate the file before submitting.');
+    } catch (error) {
+      showToast('error', error.message || 'Could not read this file.');
     }
   };
 
   // Handle Validate File API
   const handleValidateFile = async () => {
+    if (!selectedFile || !records.length) return;
     try {
       setIsValidating(true);
-      const res = await api.post('/imports/validate', { rows: SAMPLE_PREVIEW_RECORDS });
-      if (res?.records) {
+      setIsValidated(false);
+      const res = await api.post('/imports/validate', { rows: records });
+      if (res?.success && Array.isArray(res.records)) {
         setRecords(res.records);
+        setIsValidated(true);
+        showToast(
+          'success',
+          `File data validation complete! ${res.validCount || 0} Valid, ${res.warningCount || 0} Warnings, ${res.errorCount || 0} Errors found.`
+        );
+      } else {
+        throw new Error('Server returned no validation result.');
       }
-      setIsValidated(true);
-      showToast('success', 'File data validation complete! 9 Valid, 1 Warning, 2 Errors found.');
     } catch (err) {
-      setIsValidated(true);
-      showToast('success', 'File data validation complete! 9 Valid, 1 Warning, 2 Errors found.');
+      showToast('error', err?.response?.data?.message || err?.message || 'Validation request failed.');
+      setIsValidated(false);
     } finally {
       setIsValidating(false);
     }
@@ -162,21 +204,29 @@ export function BulkUpload() {
 
   // Handle Submit Upload API
   const handleSubmitUpload = async () => {
+    if (!isValidated || !selectedFile) return;
     try {
       setIsSubmitting(true);
-      const validRows = records.filter(r => r.status === 'Valid');
-      const batchRef = `BATCH-UP-2026-${Math.floor(Math.random() * 899 + 100)}`;
-      await api.post('/imports/submit', {
+      const validRows = records.filter((r) => r.status === 'Valid' || r.status === 'Warning');
+      if (validRows.length === 0) {
+        showToast('error', 'No valid records to upload. Please fix validation errors.');
+        setIsSubmitting(false);
+        return;
+      }
+      const batchRef = `BATCH-UP-${new Date().getFullYear()}-${Math.floor(Math.random() * 899 + 100)}`;
+      const res = await api.post('/imports/submit', {
         batchReference: batchRef,
         fileName: selectedFile.name,
-        rows: validRows
+        rows: records
       });
-      showToast('success', `Bulk upload batch ${batchRef} processed successfully! ${validRows.length} assets created/updated.`);
-      setTimeout(() => navigate('/assets'), 1400);
+      if (!res?.success) throw new Error(res?.message || 'Upload failed.');
+      showToast(
+        res.failedCount > 0 ? 'error' : 'success',
+        res?.message || `Bulk upload batch ${batchRef} processed successfully! ${validRows.length} assets created/updated.`
+      );
+      if (!res.failedCount) setTimeout(() => navigate('/assets'), 1400);
     } catch (err) {
-      const batchRef = `BATCH-UP-2026-${Math.floor(Math.random() * 899 + 100)}`;
-      showToast('success', `Bulk upload batch ${batchRef} processed successfully! 9 assets created/updated.`);
-      setTimeout(() => navigate('/assets'), 1400);
+      showToast('error', err?.response?.data?.message || err?.message || 'Bulk upload submission failed.');
     } finally {
       setIsSubmitting(false);
     }
@@ -190,7 +240,8 @@ export function BulkUpload() {
         setHistoryJobs(res.history);
       }
     } catch (err) {
-      console.warn('Using default upload history jobs:', err);
+      setHistoryJobs([]);
+      showToast('error', err?.response?.data?.message || 'Could not load upload history.');
     }
     setActiveModal('UPLOAD_HISTORY');
   };
@@ -327,7 +378,7 @@ export function BulkUpload() {
               <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">1</div>
               <h3 className="font-extrabold text-slate-900 text-sm">Download Template</h3>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Download the latest template with field definitions and sample data.</p>
+            <p className="text-xs text-slate-500 mt-2">Download the CSV template with the required column headings.</p>
           </div>
 
           <div className="space-y-2.5 pt-1">
@@ -373,7 +424,7 @@ export function BulkUpload() {
               >
                 <input
                   type="file"
-                  accept=".xlsx,.xls,.csv"
+                  accept=".xlsx,.csv"
                   onChange={handleFileDrop}
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
@@ -394,7 +445,7 @@ export function BulkUpload() {
                       <span className="text-[10px] text-slate-400 font-mono block">{selectedFile.size}</span>
                     </div>
                   </div>
-                  <button type="button" onClick={() => setSelectedFile(null)} className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
+                  <button type="button" onClick={() => { setSelectedFile(null); setRecords([]); setIsValidated(false); }} className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                 </div>
               ) : (
                 <div className="border border-slate-200 bg-slate-50/50 rounded-xl p-2.5 flex items-center justify-center text-[10px] text-slate-400 font-medium">
@@ -403,7 +454,7 @@ export function BulkUpload() {
               )}
             </div>
 
-            <p className="text-[9px] text-slate-400 text-center">Supported formats: .xlsx, .xls, .csv (Max size: 10 MB)</p>
+            <p className="text-[9px] text-slate-400 text-center">Supported formats: .xlsx, .csv (Max size: 10 MB)</p>
           </div>
         </div>
 
@@ -420,7 +471,7 @@ export function BulkUpload() {
           <div className="pt-3">
             <button
               type="button"
-              disabled={!selectedFile || isValidating}
+              disabled={!selectedFile || !records.length || isValidating}
               onClick={handleValidateFile}
               className={`w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 shadow-md transition-all cursor-pointer ${
                 selectedFile
@@ -446,7 +497,7 @@ export function BulkUpload() {
           <div className="pt-3">
             <button
               type="button"
-              disabled={!isValidated || isSubmitting}
+              disabled={!isValidated || isSubmitting || !records.some(row => row.status === "Valid" || row.status === "Warning")}
               onClick={handleSubmitUpload}
               className={`w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 isValidated
@@ -544,7 +595,7 @@ export function BulkUpload() {
               <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
                 <tr className="bg-slate-50 border-b border-slate-200 text-black font-black uppercase text-[11px] tracking-wider select-none">
                   <th className="px-4 py-3.5 w-10 text-black">
-                    <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] accent-[#6C2BD9] cursor-pointer" />
+                    <span className="w-4 block" />
                   </th>
                   <th className="px-4 py-3.5 text-black">Row</th>
                   <th className="px-4 py-3.5 text-black">Status</th>
@@ -564,7 +615,7 @@ export function BulkUpload() {
                     return (
                       <tr key={r.row} className="hover:bg-purple-50/40 transition-colors">
                         <td className="px-4 py-3.5">
-                          <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9] accent-[#6C2BD9] cursor-pointer" />
+                          <span className="w-4 block" />
                         </td>
 
                         <td className="px-4 py-3.5 text-black font-mono font-bold">{r.row}</td>
@@ -622,8 +673,13 @@ export function BulkUpload() {
 
           {/* Table Footer */}
           <div className="p-3.5 bg-white border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-            <span className="font-medium text-slate-600">Showing {filteredRecords.length} records</span>
-            <span className="text-slate-400">Scroll down to view all records</span>
+            <span>Showing {paginatedRecords.length} of {filteredRecords.length} records</span>
+            <div className="flex items-center gap-2">
+              <select aria-label="Rows per page" value={perPage} onChange={e => { setPerPage(Number(e.target.value)); setCurrentPage(1); }}><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select>
+              <button type="button" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Previous</button>
+              <span>{currentPage} / {totalPages}</span>
+              <button type="button" disabled={currentPage >= totalPages} onClick={() => setCurrentPage(p => p + 1)}>Next</button>
+            </div>
           </div>
         </div>
 
@@ -661,11 +717,7 @@ export function BulkUpload() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
-                    {(historyJobs.length > 0 ? historyJobs : [
-                      { batchRef: 'BATCH-UP-2026-001', fileName: 'Asset_Bulk_Upload_Q3.xlsx', uploadedBy: 'John Doe', uploadDate: '16 Sep 2026 10:30 AM', totalRecords: 12, successCount: 10, failedCount: 2, status: 'Completed' },
-                      { batchRef: 'BATCH-UP-2026-002', fileName: 'IT_Monitors_Batch.csv', uploadedBy: 'Sarah Ali', uploadDate: '14 Sep 2026 02:15 PM', totalRecords: 45, successCount: 45, failedCount: 0, status: 'Completed' },
-                      { batchRef: 'BATCH-UP-2026-003', fileName: 'Furniture_Replaced.xlsx', uploadedBy: 'Ahmed Khan', uploadDate: '10 Sep 2026 11:00 AM', totalRecords: 20, successCount: 18, failedCount: 2, status: 'Completed' }
-                    ]).map((j) => (
+                    {historyJobs.map((j) => (
                       <tr key={j.batchRef} className="hover:bg-slate-50">
                         <td className="p-3 font-mono font-bold text-[#6C2BD9]">{j.batchRef}</td>
                         <td className="p-3 font-bold text-slate-900">{j.fileName}</td>
@@ -680,11 +732,12 @@ export function BulkUpload() {
                         </td>
                       </tr>
                     ))}
+                    {historyJobs.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-slate-500">No upload history found.</td></tr>}
                   </tbody>
                 </table>
               </div>
               <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span className="font-medium text-slate-600">Showing {(historyJobs.length > 0 ? historyJobs.length : 3)} records</span>
+                <span className="font-medium text-slate-600">Showing {historyJobs.length} records</span>
                 <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>

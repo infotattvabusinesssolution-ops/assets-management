@@ -10,12 +10,30 @@ export const ASSET_STATUSES = [
   'ASSIGNED',
   'IN_TRANSIT',
   'UNDER_MAINTENANCE',
+  'OVERDUE',
+  'PENDING_DISPOSAL',
+  'DISPOSAL',
   'MISSING',
   'LOST_STOLEN',
   'DAMAGED',
   'RETIRED',
   'DISPOSED'
 ];
+
+export async function resolveDbUserId(reqUser) {
+  let userId = reqUser?.id;
+  const dbUser = await prisma.user.findFirst({
+    where: {
+      OR: [
+        ...(userId ? [{ id: userId }] : []),
+        { username: reqUser?.username || 'admin' }
+      ]
+    }
+  });
+  if (dbUser) return dbUser.id;
+  const firstUser = await prisma.user.findFirst();
+  return firstUser ? firstUser.id : (userId || 'user-001');
+}
 
 export async function getAssets(req, res, next) {
   try {
@@ -37,11 +55,11 @@ export async function getAssets(req, res, next) {
 
     if (search) {
       where.OR = [
-        { assetId: { contains: search, mode: 'insensitive' } },
-        { tagNumber: { contains: search, mode: 'insensitive' } },
-        { serialNumber: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { hostname: { contains: search, mode: 'insensitive' } }
+        { assetId: { contains: search } },
+        { tagNumber: { contains: search } },
+        { serialNumber: { contains: search } },
+        { description: { contains: search } },
+        { hostname: { contains: search } }
       ];
     }
     if (status) where.lifecycleStatus = status;
@@ -54,7 +72,9 @@ export async function getAssets(req, res, next) {
     const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
     const take = parseInt(limit, 10);
 
-    const [assets, total] = await Promise.all([
+    const baseWhere = { ...req.dataScopeFilter };
+
+    const [assets, total, countInUse, countMaintenance, countDisposed, countOverdue, countPendingDisposal] = await Promise.all([
       prisma.asset.findMany({
         where,
         include: {
@@ -64,20 +84,43 @@ export async function getAssets(req, res, next) {
           building: true,
           floor: true,
           room: true,
+          department: true,
+          costCenter: true,
           custodian: true,
           manufacturer: true,
-          model: true
+          model: true,
+          warranty: true
         },
         orderBy: { [sortBy]: sortOrder.toLowerCase() },
         skip,
         take
       }),
-      prisma.asset.count({ where })
+      prisma.asset.count({ where }),
+      prisma.asset.count({ where: { ...baseWhere, lifecycleStatus: { in: ['IN_SERVICE', 'ASSIGNED', 'In Use'] } } }),
+      prisma.asset.count({ where: { ...baseWhere, lifecycleStatus: { in: ['UNDER_MAINTENANCE', 'Under Maintenance'] } } }),
+      prisma.asset.count({ where: { ...baseWhere, lifecycleStatus: { in: ['DISPOSED', 'RETIRED', 'Disposed'] } } }),
+      prisma.asset.count({ where: { ...baseWhere, lifecycleStatus: { in: ['OVERDUE', 'Overdue', 'MISSING'] } } }),
+      prisma.asset.count({ where: { ...baseWhere, lifecycleStatus: { in: ['DISPOSAL', 'PENDING_DISPOSAL', 'Pending Disposal'] } } })
     ]);
+
+    const totalPortfolio = await prisma.asset.count({ where: baseWhere });
 
     res.json({
       success: true,
       assets,
+      kpiCounts: {
+        total: totalPortfolio,
+        inUse: countInUse,
+        inUsePct: totalPortfolio > 0 ? `${((countInUse / totalPortfolio) * 100).toFixed(1)}%` : '0%',
+        maintenance: countMaintenance,
+        maintPct: totalPortfolio > 0 ? `${((countMaintenance / totalPortfolio) * 100).toFixed(1)}%` : '0%',
+        pendingDisposal: countPendingDisposal,
+        pendingDisposalPct: totalPortfolio > 0 ? `${((countPendingDisposal / totalPortfolio) * 100).toFixed(1)}%` : '0%',
+        disposed: countDisposed,
+        disposedPct: totalPortfolio > 0 ? `${((countDisposed / totalPortfolio) * 100).toFixed(1)}%` : '0%',
+        overdue: countOverdue,
+        overduePct: totalPortfolio > 0 ? `${((countOverdue / totalPortfolio) * 100).toFixed(1)}%` : '0%'
+      },
       pagination: {
         page: parseInt(page, 10),
         limit: take,
@@ -94,28 +137,37 @@ export async function getAsset360(req, res, next) {
   try {
     const { id } = req.params;
 
-    const asset = await prisma.asset.findUnique({
+    const assetIncludes = {
+      category: true,
+      assetClass: true,
+      company: true,
+      site: true,
+      building: true,
+      floor: true,
+      room: true,
+      zone: true,
+      department: true,
+      costCenter: true,
+      custodian: true,
+      manufacturer: true,
+      model: true,
+      parentAsset: true
+    };
+
+    let asset = await prisma.asset.findUnique({
       where: { id },
-      include: {
-        category: true,
-        assetClass: true,
-        company: true,
-        site: true,
-        building: true,
-        floor: true,
-        room: true,
-        zone: true,
-        department: true,
-        costCenter: true,
-        custodian: true,
-        manufacturer: true,
-        model: true,
-        parentAsset: true
-      }
+      include: assetIncludes
     });
 
     if (!asset) {
-      return res.status(404).json({ success: false, message: 'Asset not found' });
+      asset = await prisma.asset.findFirst({
+        where: { assetId: id },
+        include: assetIncludes
+      });
+    }
+
+    if (!asset) {
+      return res.status(404).json({ success: false, message: `Asset [${id}] not found` });
     }
 
     const [
@@ -182,61 +234,205 @@ export async function getAsset360(req, res, next) {
 
 export async function createAsset(req, res, next) {
   try {
-    let { categoryId, companyId, siteId } = req.body;
+    const rawCategory = req.body.categoryId || req.body.category || 'Laptop';
+    const rawCompany = req.body.companyId || req.body.company;
+    const rawSite = req.body.siteId || req.body.site;
+    const rawDept = req.body.departmentId || req.body.department;
+    const rawCostCenter = req.body.costCenterId || req.body.costCenter;
+    const rawCustodian = req.body.custodianId || req.body.custodian;
+    const rawMfr = req.body.manufacturerId || req.body.manufacturer || req.body.brand || 'Dell';
+    const rawModel = req.body.modelId || req.body.model || req.body.modelNumber || 'Standard Model';
 
-    // Resolve categoryId if code passed or missing
-    let category = null;
-    if (categoryId) {
-      category = await prisma.category.findFirst({
-        where: { OR: [{ id: categoryId }, { code: categoryId }] }
-      });
-    }
+    // 1. Resolve or auto-create Category
+    let category = await prisma.category.findFirst({
+      where: {
+        OR: [
+          { id: rawCategory },
+          { code: rawCategory },
+          { name: rawCategory }
+        ]
+      }
+    });
     if (!category) {
       category = await prisma.category.findFirst({ where: { active: true } });
     }
     if (!category) {
-      return res.status(400).json({ success: false, message: 'Please create an Asset Category in Master Data first.' });
+      category = await prisma.category.create({
+        data: {
+          code: 'CAT-' + rawCategory.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8),
+          name: rawCategory
+        }
+      });
     }
-    categoryId = category.id;
+    const categoryId = category.id;
 
-    // Resolve companyId if code passed or missing
+    // 2. Resolve or fallback Company
     let company = null;
-    if (companyId) {
+    if (rawCompany) {
       company = await prisma.company.findFirst({
-        where: { OR: [{ id: companyId }, { code: companyId }] }
+        where: {
+          OR: [
+            { id: rawCompany },
+            { code: rawCompany },
+            { name: rawCompany }
+          ]
+        }
       });
     }
     if (!company) {
       company = await prisma.company.findFirst({ where: { active: true } });
     }
     if (!company) {
-      return res.status(400).json({ success: false, message: 'Please create a Company Entity in Master Data first.' });
+      company = await prisma.company.create({
+        data: {
+          code: 'CMP-DEFAULT',
+          name: 'Corporate HQ'
+        }
+      });
     }
-    companyId = company.id;
+    const companyId = company.id;
 
-    // Resolve siteId if code passed or missing
+    // 3. Resolve or fallback Site
     let site = null;
-    if (siteId) {
+    if (rawSite) {
       site = await prisma.site.findFirst({
-        where: { OR: [{ id: siteId }, { code: siteId }] }
+        where: {
+          OR: [
+            { id: rawSite },
+            { code: rawSite },
+            { name: rawSite }
+          ]
+        }
       });
     }
     if (!site) {
       site = await prisma.site.findFirst({ where: { active: true } });
     }
     if (!site) {
-      return res.status(400).json({ success: false, message: 'Please create a Site Campus in Master Data first.' });
+      site = await prisma.site.create({
+        data: {
+          companyId,
+          code: 'SITE-MAIN',
+          name: 'Main Site Campus'
+        }
+      });
     }
-    siteId = site.id;
+    const siteId = site.id;
+
+    // 4. Resolve Department & Cost Center if provided
+    let departmentId = null;
+    if (rawDept) {
+      const dept = await prisma.department.findFirst({
+        where: { OR: [{ id: rawDept }, { code: rawDept }, { name: rawDept }] }
+      });
+      if (dept) departmentId = dept.id;
+    }
+
+    let costCenterId = null;
+    if (rawCostCenter) {
+      const cc = await prisma.costCenter.findFirst({
+        where: { OR: [{ id: rawCostCenter }, { code: rawCostCenter }, { name: rawCostCenter }] }
+      });
+      if (cc) costCenterId = cc.id;
+    }
+
+    // 5. Resolve Custodian / Employee if provided
+    let custodianId = null;
+    if (rawCustodian) {
+      const emp = await prisma.employee.findFirst({
+        where: {
+          OR: [
+            { id: rawCustodian },
+            { employeeCode: rawCustodian },
+            { fullName: { contains: rawCustodian } }
+          ]
+        }
+      });
+      if (emp) custodianId = emp.id;
+    }
+
+    // 6. Resolve or auto-create Manufacturer
+    let manufacturerId = null;
+    if (rawMfr) {
+      let mfr = await prisma.manufacturer.findFirst({
+        where: { OR: [{ id: rawMfr }, { name: rawMfr }] }
+      });
+      if (!mfr) {
+        mfr = await prisma.manufacturer.create({
+          data: { name: rawMfr }
+        });
+      }
+      manufacturerId = mfr.id;
+    }
+
+    // 7. Resolve or auto-create Model
+    let modelId = null;
+    if (rawModel && manufacturerId) {
+      let mdl = await prisma.assetModel.findFirst({
+        where: {
+          OR: [
+            { id: rawModel },
+            { name: rawModel },
+            { modelNumber: rawModel }
+          ]
+        }
+      });
+      if (!mdl) {
+        mdl = await prisma.assetModel.create({
+          data: {
+            name: rawModel,
+            modelNumber: req.body.modelNumber || rawModel,
+            manufacturerId,
+            categoryId
+          }
+        });
+      }
+      modelId = mdl.id;
+    }
+
+    // Parse financial values safely
+    const rawVal = req.body.acquisitionValue || req.body.acquisitionCost || req.body.purchaseCost || 0;
+    const acqValue = typeof rawVal === 'string' ? parseFloat(rawVal.replace(/[^0-9.-]+/g, '')) || 0 : Number(rawVal) || 0;
+
+    // Check / Generate Unique Asset ID
+    let assetId = req.body.assetId;
+    if (!assetId || assetId === 'AUTO') {
+      const count = await prisma.asset.count();
+      assetId = `AST-${new Date().getFullYear()}-${String(count + 1001).padStart(4, '0')}`;
+    }
+    const existingAssetWithId = await prisma.asset.findUnique({ where: { assetId } });
+    if (existingAssetWithId) {
+      assetId = `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 89999 + 10000)}`;
+    }
+
+    const tagNumber = req.body.tagNumber || req.body.assetTagBarcode || req.body.barcode || `TAG-${assetId}`;
+    const barcode = req.body.barcode || req.body.assetTagBarcode || tagNumber;
+
+    // Map lifecycle status
+    let lifecycleStatus = req.body.lifecycleStatus || 'IN_SERVICE';
+    if (lifecycleStatus === 'New' || lifecycleStatus === 'Active') lifecycleStatus = 'IN_SERVICE';
+    if (lifecycleStatus === 'Draft') lifecycleStatus = 'RECEIVED';
+    // Resolve DB user for foreign key audit & transaction integrity
+    let finalUserId = req.user?.id;
+    const userInDb = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(finalUserId ? [{ id: finalUserId }] : []),
+          { username: req.user?.username || 'admin' }
+        ]
+      }
+    });
+    if (userInDb) finalUserId = userInDb.id;
+    else {
+      const anyUser = await prisma.user.findFirst();
+      finalUserId = anyUser ? anyUser.id : null;
+    }
 
     const result = await prisma.$transaction(async (tx) => {
-      const assetId = req.body.assetId || ('AST-2026-' + Math.floor(Math.random() * 899 + 100));
-      const acqValue = parseFloat(req.body.acquisitionValue) || 0;
-
       const newAsset = await tx.asset.create({
         data: {
           assetId,
-          description: req.body.description || 'New Asset',
+          description: req.body.description || req.body.assetName || req.body.name || 'New Enterprise Asset',
           categoryId,
           companyId,
           siteId,
@@ -244,70 +440,111 @@ export async function createAsset(req, res, next) {
           floorId: req.body.floorId || null,
           roomId: req.body.roomId || null,
           zoneId: req.body.zoneId || null,
-          departmentId: req.body.departmentId || null,
-          costCenterId: req.body.costCenterId || null,
-          custodianId: req.body.custodianId || null,
-          manufacturerId: req.body.manufacturerId || null,
-          modelId: req.body.modelId || null,
-          tagNumber: req.body.tagNumber || null,
-          barcode: req.body.barcode || req.body.tagNumber || null,
-          qrCode: req.body.qrCode || null,
+          departmentId,
+          costCenterId,
+          custodianId,
+          manufacturerId,
+          modelId,
+          tagNumber,
+          barcode,
+          qrCode: req.body.qrCode || barcode,
           rfidEpc: req.body.rfidEpc || null,
-          serialNumber: req.body.serialNumber || null,
-          lifecycleStatus: req.body.lifecycleStatus || 'RECEIVED',
+          serialNumber: req.body.serialNumber || `SN-${assetId}`,
+          lifecycleStatus,
           condition: req.body.condition || 'NEW',
           criticality: req.body.criticality || 'MEDIUM',
           acquisitionValue: acqValue,
           currency: req.body.currency || 'USD',
-          poNumber: req.body.poNumber || null,
-          supplierName: req.body.supplierName || null,
-          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : null,
-          inServiceDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : null,
+          poNumber: req.body.poNumber || req.body.poInvoiceNo || null,
+          supplierName: req.body.supplierName || req.body.supplier || req.body.vendorSupplier || null,
+          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date(),
+          inServiceDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : new Date(),
           hostname: req.body.hostname || null,
           macAddress: req.body.macAddress || null,
           ipAddress: req.body.ipAddress || null,
-          createdByUserId: req.user.id,
-          updatedByUserId: req.user.id
+          createdByUserId: finalUserId,
+          updatedByUserId: finalUserId
         }
       });
 
-      await tx.assetBookValue.create({
-        data: {
-          assetId: newAsset.id,
-          bookType: 'CORPORATE',
-          capitalizationDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : new Date(),
-          capitalizationValue: acqValue,
-          usefulLifeMonths: req.body.usefulLifeMonths || 60,
-          depreciationMethod: 'STRAIGHT_LINE',
-          residualValue: 0,
-          accumulatedDepreciation: 0,
-          netBookValue: acqValue
-        }
-      });
+      const childOperations = [
+        // 1. Initial Corporate Book Value
+        tx.assetBookValue.create({
+          data: {
+            assetId: newAsset.id,
+            bookType: 'CORPORATE',
+            capitalizationDate: new Date(),
+            capitalizationValue: acqValue,
+            usefulLifeMonths: parseInt(req.body.usefulLifeYears, 10) * 12 || 60,
+            depreciationMethod: req.body.depreciationMethod === 'Straight Line' ? 'STRAIGHT_LINE' : 'STRAIGHT_LINE',
+            residualValue: parseFloat(req.body.residualValue) || 0,
+            accumulatedDepreciation: 0,
+            netBookValue: acqValue
+          }
+        }),
 
-      await tx.assetTransaction.create({
-        data: {
-          assetId: newAsset.id,
-          transactionType: 'RECEIVE',
-          fromStatus: 'NONE',
-          toStatus: newAsset.lifecycleStatus,
-          performedByUserId: req.user.id,
-          notes: 'Initial Asset Registration'
-        }
-      });
+        // 2. Initial Asset Transaction Log
+        tx.assetTransaction.create({
+          data: {
+            assetId: newAsset.id,
+            transactionType: 'RECEIVE',
+            fromStatus: 'NONE',
+            toStatus: newAsset.lifecycleStatus,
+            performedByUserId: finalUserId,
+            notes: req.body.notes || 'Asset Registration via Asset 360 Form'
+          }
+        }),
 
-      await tx.auditEvent.create({
-        data: {
-          userId: req.user.id,
-          action: 'ASSET_CREATE',
-          entityType: 'Asset',
-          entityId: newAsset.id,
-          afterState: newAsset
-        }
-      });
+        // 3. Audit Log Event
+        tx.auditEvent.create({
+          data: {
+            userId: finalUserId,
+            action: 'ASSET_CREATE',
+            entityType: 'Asset',
+            entityId: newAsset.id,
+            afterState: JSON.stringify({ assetId: newAsset.assetId, description: newAsset.description, status: newAsset.lifecycleStatus }).slice(0, 250)
+          }
+        })
+      ];
+
+      // 4. Custody Assignment if Custodian is specified
+      if (custodianId && finalUserId) {
+        childOperations.push(
+          tx.custodyAssignment.create({
+            data: {
+              assetId: newAsset.id,
+              custodianId,
+              issuedByUserId: finalUserId,
+              issuedDate: new Date(),
+              active: true,
+              acknowledged: false,
+              conditionAtIssue: newAsset.condition
+            }
+          })
+        );
+      }
+
+      // 5. Warranty Setup if specified
+      if (req.body.underWarranty && req.body.warrantyStartDate && req.body.warrantyEndDate) {
+        childOperations.push(
+          tx.warranty.create({
+            data: {
+              assetId: newAsset.id,
+              providerName: req.body.provider || req.body.providerName || rawMfr || 'Standard Warranty',
+              warrantyNumber: req.body.warrantyNumber || req.body.contractReference || `WAR-${assetId}`,
+              startDate: new Date(req.body.warrantyStartDate),
+              endDate: new Date(req.body.warrantyEndDate),
+              terms: req.body.coverage || 'Parts & Labour',
+              coverageType: req.body.warrantyType || 'FULL'
+            }
+          })
+        );
+      }
+
+      await Promise.all(childOperations);
 
       return newAsset;
-    });
+    }, { timeout: 30000, maxWait: 10000 });
 
     res.status(201).json({ success: true, asset: result });
   } catch (err) {
@@ -320,9 +557,36 @@ export async function updateAsset(req, res, next) {
     const { id } = req.params;
 
     // Find asset by UUID or assetId
-    let oldAsset = await prisma.asset.findUnique({ where: { id } });
+    let oldAsset = await prisma.asset.findUnique({
+      where: { id },
+      include: {
+        category: true,
+        company: true,
+        site: true,
+        building: true,
+        floor: true,
+        room: true,
+        custodian: true,
+        manufacturer: true,
+        model: true
+      }
+    });
+
     if (!oldAsset) {
-      oldAsset = await prisma.asset.findFirst({ where: { assetId: id } });
+      oldAsset = await prisma.asset.findFirst({
+        where: { assetId: id },
+        include: {
+          category: true,
+          company: true,
+          site: true,
+          building: true,
+          floor: true,
+          room: true,
+          custodian: true,
+          manufacturer: true,
+          model: true
+        }
+      });
     }
 
     if (!oldAsset) {
@@ -337,62 +601,234 @@ export async function updateAsset(req, res, next) {
       barcode,
       qrCode,
       rfidEpc,
+      rfidTid,
       condition,
       lifecycleStatus,
+      status,
       criticality,
       acquisitionValue,
+      acquisitionCost,
       currency,
       hostname,
       ipAddress,
       macAddress,
+      healthScore,
+      poNumber,
+      supplierName,
+      supplier,
+      purchaseDate,
+      inServiceDate,
+      acquisitionDate,
+      category,
+      categoryId,
+      manufacturer,
+      manufacturerId,
+      model,
+      modelId,
+      custodian,
+      custodianId,
+      site,
+      siteId,
+      buildingId,
+      floorId,
+      roomId,
       notes,
-      requiresApproval
+      isDraft
     } = req.body;
 
-    // Uniqueness validation for Serial Number, Tag, Barcode, QR, RFID if changed
+    // Uniqueness validation for Serial Number, Tag, RFID EPC if changed
     if (serialNumber && serialNumber !== oldAsset.serialNumber) {
-      const duplicate = await prisma.asset.findFirst({ where: { serialNumber, NOT: { id: oldAsset.id } } });
+      const duplicate = await prisma.asset.findFirst({
+        where: { serialNumber, NOT: { id: oldAsset.id } }
+      });
       if (duplicate) {
-        return res.status(400).json({ success: false, message: `Serial Number [${serialNumber}] is already assigned to asset ${duplicate.assetId}.` });
+        return res.status(400).json({
+          success: false,
+          message: `Serial Number [${serialNumber}] is already assigned to asset ${duplicate.assetId}.`
+        });
       }
     }
 
     if (tagNumber && tagNumber !== oldAsset.tagNumber) {
-      const duplicate = await prisma.asset.findFirst({ where: { tagNumber, NOT: { id: oldAsset.id } } });
+      const duplicate = await prisma.asset.findFirst({
+        where: { tagNumber, NOT: { id: oldAsset.id } }
+      });
       if (duplicate) {
-        return res.status(400).json({ success: false, message: `Tag Number [${tagNumber}] is already assigned to asset ${duplicate.assetId}.` });
+        return res.status(400).json({
+          success: false,
+          message: `Tag Number [${tagNumber}] is already assigned to asset ${duplicate.assetId}.`
+        });
       }
     }
 
     if (rfidEpc && rfidEpc !== oldAsset.rfidEpc) {
-      const duplicate = await prisma.asset.findFirst({ where: { rfidEpc, NOT: { id: oldAsset.id } } });
+      const duplicate = await prisma.asset.findFirst({
+        where: { rfidEpc, NOT: { id: oldAsset.id } }
+      });
       if (duplicate) {
-        return res.status(400).json({ success: false, message: `RFID EPC [${rfidEpc}] is already assigned to asset ${duplicate.assetId}.` });
+        return res.status(400).json({
+          success: false,
+          message: `RFID EPC [${rfidEpc}] is already assigned to asset ${duplicate.assetId}.`
+        });
       }
+    }
+
+    // Resolve User for audit and foreign keys
+    let finalUserId = req.user?.id;
+    const userInDb = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(finalUserId ? [{ id: finalUserId }] : []),
+          { username: req.user?.username || 'admin' }
+        ]
+      }
+    });
+    if (userInDb) finalUserId = userInDb.id;
+    else {
+      const anyUser = await prisma.user.findFirst();
+      finalUserId = anyUser ? anyUser.id : null;
     }
 
     // Build update data
     const updateData = {};
-    if (description !== undefined) updateData.description = description || assetName || oldAsset.description;
+
+    // Basic Info
+    if (description !== undefined || assetName !== undefined) {
+      updateData.description = description || assetName || oldAsset.description;
+    }
     if (serialNumber !== undefined) updateData.serialNumber = serialNumber;
     if (tagNumber !== undefined) updateData.tagNumber = tagNumber;
     if (barcode !== undefined) updateData.barcode = barcode;
     if (qrCode !== undefined) updateData.qrCode = qrCode;
     if (rfidEpc !== undefined) updateData.rfidEpc = rfidEpc;
-    if (condition !== undefined) updateData.condition = condition;
-    if (lifecycleStatus !== undefined) updateData.lifecycleStatus = lifecycleStatus;
-    if (criticality !== undefined) updateData.criticality = criticality;
-    if (acquisitionValue !== undefined) updateData.acquisitionValue = parseFloat(acquisitionValue) || oldAsset.acquisitionValue;
+    if (rfidTid !== undefined) updateData.rfidTid = rfidTid;
+
+    // Condition normalization
+    if (condition !== undefined) {
+      const condUpper = String(condition).toUpperCase();
+      if (['NEW', 'GOOD', 'FAIR', 'DAMAGED', 'RETIRED'].includes(condUpper)) {
+        updateData.condition = condUpper;
+      } else {
+        updateData.condition = condUpper === 'IN USE' ? 'GOOD' : condUpper;
+      }
+    }
+
+    // Lifecycle Status normalization
+    const rawStatus = lifecycleStatus || status;
+    if (rawStatus !== undefined) {
+      const statusMap = {
+        'In Use': 'IN_SERVICE',
+        'IN USE': 'IN_SERVICE',
+        'Active': 'IN_SERVICE',
+        'ACTIVE': 'IN_SERVICE',
+        'IN_SERVICE': 'IN_SERVICE',
+        'Under Maintenance': 'UNDER_MAINTENANCE',
+        'UNDER_MAINTENANCE': 'UNDER_MAINTENANCE',
+        'Pending Return': 'PENDING_RETURN',
+        'PENDING_RETURN': 'PENDING_RETURN',
+        'In Store': 'IN_STORE',
+        'IN_STORE': 'IN_STORE',
+        'Assigned': 'ASSIGNED',
+        'ASSIGNED': 'ASSIGNED',
+        'Retired': 'RETIRED',
+        'RETIRED': 'RETIRED',
+        'Disposed': 'DISPOSED',
+        'DISPOSED': 'DISPOSED'
+      };
+      updateData.lifecycleStatus = statusMap[rawStatus] || rawStatus;
+    }
+
+    if (criticality !== undefined) {
+      updateData.criticality = String(criticality).toUpperCase();
+    }
+
+    // Financial Values
+    const rawAcq = acquisitionValue !== undefined ? acquisitionValue : acquisitionCost;
+    if (rawAcq !== undefined) {
+      const val = typeof rawAcq === 'string' ? parseFloat(rawAcq.replace(/[^0-9.-]+/g, '')) || 0 : Number(rawAcq) || 0;
+      updateData.acquisitionValue = val;
+    }
     if (currency !== undefined) updateData.currency = currency;
+    if (poNumber !== undefined) updateData.poNumber = poNumber;
+    const finalSupplier = supplierName || supplier;
+    if (finalSupplier !== undefined) updateData.supplierName = finalSupplier;
+    if (purchaseDate !== undefined) updateData.purchaseDate = purchaseDate ? new Date(purchaseDate) : null;
+    const finalInService = inServiceDate || acquisitionDate;
+    if (finalInService !== undefined) updateData.inServiceDate = finalInService ? new Date(finalInService) : null;
+
+    // Technical Details
     if (hostname !== undefined) updateData.hostname = hostname;
     if (ipAddress !== undefined) updateData.ipAddress = ipAddress;
     if (macAddress !== undefined) updateData.macAddress = macAddress;
-    updateData.updatedByUserId = req.user.id;
+    if (healthScore !== undefined) updateData.healthScore = parseInt(healthScore, 10) || oldAsset.healthScore;
+
+    // Relational lookups: Category
+    const rawCategory = categoryId || category;
+    if (rawCategory) {
+      const cat = await prisma.category.findFirst({
+        where: { OR: [{ id: rawCategory }, { code: rawCategory }, { name: rawCategory }] }
+      });
+      if (cat) updateData.categoryId = cat.id;
+    }
+
+    // Relational lookups: Manufacturer
+    const rawManufacturer = manufacturerId || manufacturer;
+    if (rawManufacturer) {
+      let mfr = await prisma.manufacturer.findFirst({
+        where: { OR: [{ id: rawManufacturer }, { name: rawManufacturer }] }
+      });
+      if (!mfr && typeof rawManufacturer === 'string') {
+        mfr = await prisma.manufacturer.create({ data: { name: rawManufacturer } });
+      }
+      if (mfr) updateData.manufacturerId = mfr.id;
+    }
+
+    // Relational lookups: Model
+    const rawMdl = modelId || model;
+    if (rawMdl) {
+      let mdl = await prisma.assetModel.findFirst({
+        where: { OR: [{ id: rawMdl }, { name: rawMdl }, { modelNumber: rawMdl }] }
+      });
+      if (!mdl && typeof rawMdl === 'string' && (updateData.manufacturerId || oldAsset.manufacturerId)) {
+        mdl = await prisma.assetModel.create({
+          data: {
+            name: rawMdl,
+            modelNumber: rawMdl,
+            manufacturerId: updateData.manufacturerId || oldAsset.manufacturerId,
+            categoryId: updateData.categoryId || oldAsset.categoryId
+          }
+        });
+      }
+      if (mdl) updateData.modelId = mdl.id;
+    }
+
+    // Relational lookups: Custodian / Employee
+    const rawCustodian = custodianId || custodian;
+    if (rawCustodian) {
+      const emp = await prisma.employee.findFirst({
+        where: { OR: [{ id: rawCustodian }, { employeeCode: rawCustodian }, { fullName: rawCustodian }] }
+      });
+      if (emp) updateData.custodianId = emp.id;
+    }
+
+    // Relational lookups: Site / Building / Room
+    const rawSite = siteId || site;
+    if (rawSite) {
+      const s = await prisma.site.findFirst({
+        where: { OR: [{ id: rawSite }, { code: rawSite }, { name: rawSite }] }
+      });
+      if (s) updateData.siteId = s.id;
+    }
+    if (buildingId !== undefined) updateData.buildingId = buildingId || null;
+    if (floorId !== undefined) updateData.floorId = floorId || null;
+    if (roomId !== undefined) updateData.roomId = roomId || null;
+
+    updateData.updatedByUserId = finalUserId;
 
     // Detect changed fields for audit log
     const changedFields = [];
     Object.keys(updateData).forEach((key) => {
-      if (key !== 'updatedByUserId' && oldAsset[key] !== updateData[key]) {
+      if (key !== 'updatedByUserId' && String(oldAsset[key]) !== String(updateData[key])) {
         changedFields.push({
           field: key,
           oldValue: oldAsset[key],
@@ -421,29 +857,41 @@ export async function updateAsset(req, res, next) {
     await prisma.assetTransaction.create({
       data: {
         assetId: oldAsset.id,
-        transactionType: 'MASTER_EDIT',
+        transactionType: isDraft ? 'DRAFT_SAVED' : 'MASTER_EDIT',
         fromStatus: oldAsset.lifecycleStatus,
         toStatus: updatedAsset.lifecycleStatus,
-        performedByUserId: req.user.id,
-        notes: notes || `Asset Master updated. Modified fields: ${changedFields.map(f => f.field).join(', ') || 'None'}`
+        performedByUserId: finalUserId || 'usr-default',
+        notes: notes || (isDraft
+          ? `Draft changes saved for asset [${oldAsset.assetId}].`
+          : `Asset Master updated. Modified fields: ${changedFields.map((f) => f.field).join(', ') || 'None'}`)
       }
     });
 
     // Write Audit Event record
+    const beforeDiff = changedFields.length > 0
+      ? JSON.stringify(changedFields.reduce((acc, f) => { acc[f.field] = f.old; return acc; }, {}))
+      : JSON.stringify({ assetId: oldAsset.assetId, description: oldAsset.description, status: oldAsset.lifecycleStatus });
+
+    const afterDiff = changedFields.length > 0
+      ? JSON.stringify(changedFields.reduce((acc, f) => { acc[f.field] = f.new; return acc; }, {}))
+      : JSON.stringify({ assetId: updatedAsset.assetId, description: updatedAsset.description, status: updatedAsset.lifecycleStatus });
+
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
-        action: 'ASSET_EDIT_UPDATE',
+        userId: finalUserId,
+        action: isDraft ? 'ASSET_DRAFT_SAVE' : 'ASSET_EDIT_UPDATE',
         entityType: 'Asset',
         entityId: updatedAsset.id,
-        beforeState: JSON.stringify(oldAsset),
-        afterState: JSON.stringify(updatedAsset)
+        beforeState: beforeDiff.slice(0, 240),
+        afterState: afterDiff.slice(0, 240)
       }
     });
 
     res.json({
       success: true,
-      message: 'Asset master information updated successfully with complete audit trail.',
+      message: isDraft
+        ? `Draft saved for asset [${updatedAsset.assetId}].`
+        : `Asset [${updatedAsset.assetId}] master information updated successfully with complete audit trail.`,
       asset: updatedAsset,
       changedFields
     });
@@ -456,22 +904,26 @@ export async function transitionLifecycle(req, res, next) {
   try {
     const { id } = req.params;
     const { toStatus, notes } = req.body;
+    const finalUserId = await resolveDbUserId(req.user);
 
     if (!ASSET_STATUSES.includes(toStatus)) {
       return res.status(400).json({ success: false, message: `Invalid status [${toStatus}]` });
     }
 
-    const asset = await prisma.asset.findUnique({ where: { id } });
+    let asset = await prisma.asset.findUnique({ where: { id } });
+    if (!asset) {
+      asset = await prisma.asset.findFirst({ where: { assetId: id } });
+    }
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
     const fromStatus = asset.lifecycleStatus;
     const updatedAsset = await prisma.asset.update({
-      where: { id },
+      where: { id: asset.id },
       data: {
         lifecycleStatus: toStatus,
-        updatedByUserId: req.user.id
+        updatedByUserId: finalUserId
       }
     });
 
@@ -481,7 +933,7 @@ export async function transitionLifecycle(req, res, next) {
         transactionType: 'STATUS_CHANGE',
         fromStatus,
         toStatus,
-        performedByUserId: req.user.id,
+        performedByUserId: finalUserId,
         notes: notes || `Lifecycle state changed from ${fromStatus} to ${toStatus}`
       }
     });
@@ -559,14 +1011,14 @@ export async function getMyAssets(req, res, next) {
       where.AND = [
         {
           OR: [
-            { assetId: { contains: search, mode: 'insensitive' } },
-            { tagNumber: { contains: search, mode: 'insensitive' } },
-            { serialNumber: { contains: search, mode: 'insensitive' } },
-            { barcode: { contains: search, mode: 'insensitive' } },
-            { qrCode: { contains: search, mode: 'insensitive' } },
-            { rfidEpc: { contains: search, mode: 'insensitive' } },
-            { description: { contains: search, mode: 'insensitive' } },
-            { hostname: { contains: search, mode: 'insensitive' } }
+            { assetId: { contains: search } },
+            { tagNumber: { contains: search } },
+            { serialNumber: { contains: search } },
+            { barcode: { contains: search } },
+            { qrCode: { contains: search } },
+            { rfidEpc: { contains: search } },
+            { description: { contains: search } },
+            { hostname: { contains: search } }
           ]
         }
       ];
@@ -651,11 +1103,18 @@ export async function acknowledgeAsset(req, res, next) {
   try {
     const { id } = req.params;
     const { status = 'ACKNOWLEDGED', condition, remarks } = req.body;
+    const finalUserId = await resolveDbUserId(req.user);
 
-    const asset = await prisma.asset.findUnique({
+    let asset = await prisma.asset.findUnique({
       where: { id },
       include: { custodyAssignments: { where: { active: true }, take: 1 } }
     });
+    if (!asset) {
+      asset = await prisma.asset.findFirst({
+        where: { assetId: id },
+        include: { custodyAssignments: { where: { active: true }, take: 1 } }
+      });
+    }
 
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
@@ -674,31 +1133,31 @@ export async function acknowledgeAsset(req, res, next) {
     }
 
     const updatedAsset = await prisma.asset.update({
-      where: { id },
+      where: { id: asset.id },
       data: {
         condition: condition || asset.condition,
-        updatedByUserId: req.user.id
+        updatedByUserId: finalUserId
       }
     });
 
     await prisma.assetTransaction.create({
       data: {
-        assetId: id,
+        assetId: asset.id,
         transactionType: status === 'ACKNOWLEDGED' ? 'CUSTODY_ACKNOWLEDGE' : 'CUSTODY_REJECT',
         fromStatus: asset.lifecycleStatus,
         toStatus: asset.lifecycleStatus,
-        performedByUserId: req.user.id,
+        performedByUserId: finalUserId,
         notes: remarks || `Asset acknowledgement status: ${status}`
       }
     });
 
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
+        userId: finalUserId,
         action: status === 'ACKNOWLEDGED' ? 'ASSET_ACKNOWLEDGE' : 'ASSET_ACKNOWLEDGE_REJECT',
         entityType: 'Asset',
-        entityId: id,
-        afterState: { status, condition, remarks }
+        entityId: asset.id,
+        afterState: JSON.stringify({ status, condition, remarks }).slice(0, 240)
       }
     });
 
@@ -716,8 +1175,12 @@ export async function requestAssetTransfer(req, res, next) {
   try {
     const { id } = req.params;
     const { targetEmployee, targetLocation, reason, remarks } = req.body;
+    const finalUserId = await resolveDbUserId(req.user);
 
-    const asset = await prisma.asset.findUnique({ where: { id } });
+    let asset = await prisma.asset.findUnique({ where: { id } });
+    if (!asset) {
+      asset = await prisma.asset.findFirst({ where: { assetId: id } });
+    }
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
@@ -727,32 +1190,32 @@ export async function requestAssetTransfer(req, res, next) {
     const transfer = await prisma.assetTransfer.create({
       data: {
         transferNumber,
-        assetId: id,
+        assetId: asset.id,
         transferType: 'SELF_SERVICE_REQUEST',
         status: 'PENDING_APPROVAL',
         reason: reason || 'Self-service transfer request',
-        requestedByUserId: req.user.id
+        requestedByUserId: finalUserId
       }
     });
 
     await prisma.assetTransaction.create({
       data: {
-        assetId: id,
+        assetId: asset.id,
         transactionType: 'TRANSFER_REQUESTED',
         fromStatus: asset.lifecycleStatus,
         toStatus: asset.lifecycleStatus,
-        performedByUserId: req.user.id,
+        performedByUserId: finalUserId,
         notes: `Transfer requested to ${targetEmployee || 'Employee'} (${targetLocation || 'Location'}). Reason: ${reason || 'N/A'}`
       }
     });
 
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
+        userId: finalUserId,
         action: 'ASSET_TRANSFER_REQUEST',
         entityType: 'AssetTransfer',
         entityId: transfer.id,
-        afterState: { transferNumber, targetEmployee, targetLocation, reason }
+        afterState: JSON.stringify({ transferNumber, targetEmployee, targetLocation, reason }).slice(0, 240)
       }
     });
 
@@ -770,39 +1233,43 @@ export async function requestAssetReturn(req, res, next) {
   try {
     const { id } = req.params;
     const { reason, returnStore, condition, accessories, remarks } = req.body;
+    const finalUserId = await resolveDbUserId(req.user);
 
-    const asset = await prisma.asset.findUnique({ where: { id } });
+    let asset = await prisma.asset.findUnique({ where: { id } });
+    if (!asset) {
+      asset = await prisma.asset.findFirst({ where: { assetId: id } });
+    }
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
     const updatedAsset = await prisma.asset.update({
-      where: { id },
+      where: { id: asset.id },
       data: {
         lifecycleStatus: 'PENDING_RETURN',
         condition: condition || asset.condition,
-        updatedByUserId: req.user.id
+        updatedByUserId: finalUserId
       }
     });
 
     await prisma.assetTransaction.create({
       data: {
-        assetId: id,
+        assetId: asset.id,
         transactionType: 'RETURN_REQUESTED',
         fromStatus: asset.lifecycleStatus,
         toStatus: 'PENDING_RETURN',
-        performedByUserId: req.user.id,
+        performedByUserId: finalUserId,
         notes: `Return initiated to store [${returnStore || 'Default Store'}]. Reason: ${reason || 'N/A'}. Condition: ${condition || asset.condition}`
       }
     });
 
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
+        userId: finalUserId,
         action: 'ASSET_RETURN_REQUEST',
         entityType: 'Asset',
-        entityId: id,
-        afterState: { returnStore, condition, reason, remarks }
+        entityId: asset.id,
+        afterState: JSON.stringify({ returnStore, condition, reason, remarks }).slice(0, 240)
       }
     });
 
@@ -820,8 +1287,12 @@ export async function reportAssetIssue(req, res, next) {
   try {
     const { id } = req.params;
     const { issueType, severity = 'MEDIUM', description, isUnusable } = req.body;
+    const finalUserId = await resolveDbUserId(req.user);
 
-    const asset = await prisma.asset.findUnique({ where: { id } });
+    let asset = await prisma.asset.findUnique({ where: { id } });
+    if (!asset) {
+      asset = await prisma.asset.findFirst({ where: { assetId: id } });
+    }
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
@@ -831,12 +1302,12 @@ export async function reportAssetIssue(req, res, next) {
     const workOrder = await prisma.maintenanceWorkOrder.create({
       data: {
         workOrderNumber,
-        assetId: id,
+        assetId: asset.id,
         workType: issueType || 'CORRECTIVE',
         priority: severity ? severity.toUpperCase() : 'MEDIUM',
         status: 'OPEN',
         description: description || 'Issue reported from My Assets self-service workspace',
-        createdByUserId: req.user.id
+        createdByUserId: finalUserId
       }
     });
 
@@ -844,29 +1315,29 @@ export async function reportAssetIssue(req, res, next) {
     if (isUnusable) {
       newStatus = 'UNDER_MAINTENANCE';
       await prisma.asset.update({
-        where: { id },
+        where: { id: asset.id },
         data: { lifecycleStatus: 'UNDER_MAINTENANCE', condition: 'DAMAGED' }
       });
     }
 
     await prisma.assetTransaction.create({
       data: {
-        assetId: id,
+        assetId: asset.id,
         transactionType: 'ISSUE_REPORTED',
         fromStatus: asset.lifecycleStatus,
         toStatus: newStatus,
-        performedByUserId: req.user.id,
+        performedByUserId: finalUserId,
         notes: `Issue [${issueType || 'Malfunction'}] reported (Work Order ${workOrderNumber}). Severity: ${severity}`
       }
     });
 
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
+        userId: finalUserId,
         action: 'ASSET_ISSUE_REPORT',
         entityType: 'MaintenanceWorkOrder',
         entityId: workOrder.id,
-        afterState: { issueType, severity, description, workOrderNumber }
+        afterState: JSON.stringify({ issueType, severity, description, workOrderNumber }).slice(0, 240)
       }
     });
 
@@ -883,13 +1354,14 @@ export async function reportAssetIssue(req, res, next) {
 export async function requestNewAsset(req, res, next) {
   try {
     const { category, requiredDate, costCenter, justification, specifications } = req.body;
+    const finalUserId = await resolveDbUserId(req.user);
 
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
+        userId: finalUserId,
         action: 'SELF_SERVICE_ASSET_REQUEST',
         entityType: 'AssetRequest',
-        afterState: { category, requiredDate, costCenter, justification, specifications }
+        afterState: JSON.stringify({ category, requiredDate, costCenter, justification, specifications }).slice(0, 240)
       }
     });
 
@@ -905,17 +1377,21 @@ export async function requestNewAsset(req, res, next) {
 export async function getAssetDocuments(req, res, next) {
   try {
     const { id } = req.params;
-    const asset = await prisma.asset.findUnique({ where: { id } });
+    const asset = await prisma.asset.findFirst({ where: { OR: [{ id }, { assetId: id }] } });
 
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
-    const documents = [
-      { id: 'doc-1', name: `${asset.assetId}_Warranty_Certificate.pdf`, type: 'Warranty', size: '420 KB', date: '2024-01-15' },
-      { id: 'doc-2', name: `${asset.assetId}_Assignment_Form.pdf`, type: 'Custody', size: '280 KB', date: '2024-01-18' },
-      { id: 'doc-3', name: 'User_Manual_Guide.pdf', type: 'Manual', size: '1.4 MB', date: '2023-11-10' }
-    ];
+    const attachments = await prisma.attachment.findMany({
+      where: { entityType: { in: ['Asset', 'ASSET'] }, entityId: { in: [asset.id, asset.assetId] } },
+      orderBy: { createdAt: 'desc' }
+    });
+    const documents = attachments.map(file => ({
+      id: file.id, name: file.fileName, type: file.fileType || 'Document',
+      size: file.fileSize ? (file.fileSize / 1024).toFixed(1) + ' KB' : '',
+      date: file.createdAt, url: file.url
+    }));
 
     res.json({
       success: true,
@@ -929,25 +1405,64 @@ export async function getAssetDocuments(req, res, next) {
 export async function deleteAsset(req, res, next) {
   try {
     const { id } = req.params;
-    const existing = await prisma.asset.findUnique({ where: { id } });
+    let existing = await prisma.asset.findUnique({ where: { id } });
+    if (!existing) {
+      existing = await prisma.asset.findFirst({ where: { assetId: id } });
+    }
 
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
-    await prisma.asset.delete({ where: { id } });
+    const assetDbId = existing.id;
 
-    await prisma.auditEvent.create({
-      data: {
-        userId: req.user.id,
-        action: 'ASSET_DELETE',
-        entityType: 'Asset',
-        entityId: id,
-        beforeState: existing
-      }
-    });
+    // Parallel cascade delete of all child relations before removing core asset
+    await prisma.$transaction(async (tx) => {
+      await Promise.all([
+        tx.assetBookValue.deleteMany({ where: { assetId: assetDbId } }),
+        tx.assetTransaction.deleteMany({ where: { assetId: assetDbId } }),
+        tx.custodyAssignment.deleteMany({ where: { assetId: assetDbId } }),
+        tx.maintenanceWorkOrder.deleteMany({ where: { assetId: assetDbId } }),
+        tx.maintenanceSchedule.deleteMany({ where: { assetId: assetDbId } }),
+        tx.contractAsset.deleteMany({ where: { assetId: assetDbId } }),
+        tx.warranty.deleteMany({ where: { assetId: assetDbId } }),
+        tx.tagHistory.deleteMany({ where: { assetId: assetDbId } }),
+        tx.tag.deleteMany({ where: { assetId: assetDbId } }),
+        tx.assetMapPosition.deleteMany({ where: { assetId: assetDbId } }),
+        tx.discoveryMatch.deleteMany({ where: { matchedAssetId: assetDbId } }),
+        tx.aIRecommendation.deleteMany({ where: { assetId: assetDbId } }),
+        tx.assetCustomFieldValue.deleteMany({ where: { assetId: assetDbId } }),
+        tx.assetTransfer.deleteMany({ where: { assetId: assetDbId } }),
+        tx.rtlsMovement.deleteMany({ where: { assetId: assetDbId } }),
+        tx.rtlsAssetLocation.deleteMany({ where: { assetId: assetDbId } }),
+        tx.asset.updateMany({ where: { parentAssetId: assetDbId }, data: { parentAssetId: null } })
+      ]);
 
-    res.json({ success: true, message: 'Asset deleted successfully' });
+      await tx.asset.delete({ where: { id: assetDbId } });
+
+      let deleteUserId = req.user?.id;
+      const dbUser = await tx.user.findFirst({
+        where: {
+          OR: [
+            ...(deleteUserId ? [{ id: deleteUserId }] : []),
+            { username: req.user?.username || 'admin' }
+          ]
+        }
+      });
+      deleteUserId = dbUser ? dbUser.id : null;
+
+      await tx.auditEvent.create({
+        data: {
+          userId: deleteUserId,
+          action: 'ASSET_DELETE',
+          entityType: 'Asset',
+          entityId: assetDbId,
+          beforeState: JSON.stringify({ assetId: existing.assetId, description: existing.description }).slice(0, 250)
+        }
+      });
+    }, { timeout: 30000, maxWait: 10000 });
+
+    res.json({ success: true, message: `Asset ${existing.assetId} deleted successfully` });
   } catch (err) {
     next(err);
   }
@@ -960,9 +1475,10 @@ export async function getAssetHierarchyTree(req, res, next) {
 
     if (search) {
       where.OR = [
-        { assetId: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { serialNumber: { contains: search, mode: 'insensitive' } }
+        { assetId: { contains: search } },
+        { description: { contains: search } },
+        { serialNumber: { contains: search } },
+        { tagNumber: { contains: search } }
       ];
     }
 
@@ -976,14 +1492,116 @@ export async function getAssetHierarchyTree(req, res, next) {
         room: true,
         custodian: true,
         manufacturer: true,
-        model: true
+        model: true,
+        warranty: true
       },
       orderBy: { assetId: 'asc' }
     });
 
+    const formatStatus = (st) => {
+      if (st === 'IN_SERVICE') return 'In Use';
+      if (st === 'UNDER_MAINTENANCE') return 'Under Maintenance';
+      if (st === 'PENDING_RETURN') return 'Pending Return';
+      if (st === 'IN_STORE') return 'In Store';
+      if (st === 'ASSIGNED') return 'In Use';
+      if (st === 'RECEIVED') return 'In Store';
+      if (st === 'RETIRED') return 'Retired';
+      if (st === 'DISPOSED') return 'Disposed';
+      return st || '-';
+    };
+
+    const formatCondition = (c) => {
+      if (!c) return '-';
+      return c.charAt(0).toUpperCase() + c.slice(1).toLowerCase();
+    };
+
+    // Index all assets by id and assetId
+    const nodeMap = new Map();
+    allAssets.forEach((a) => {
+      const locationParts = [a.site?.name, a.building?.name, a.room?.name].filter(Boolean);
+      const node = {
+        id: a.id,
+        dbId: a.id,
+        assetId: a.assetId,
+        name: a.description || a.assetId,
+        category: a.category?.name || '-',
+        type: '-',
+        level: 1,
+        levelName: 'Parent System',
+        status: formatStatus(a.lifecycleStatus),
+        condition: formatCondition(a.condition),
+        criticality: a.criticality || 'MEDIUM',
+        location: locationParts.length > 0 ? locationParts.join(', ') : '-',
+        custodian: a.custodian?.fullName || '-',
+        model: a.model?.name || '-',
+        serialNumber: a.serialNumber || '-',
+        manufacturer: a.manufacturer?.name || '-',
+        purchaseDate: a.purchaseDate
+          ? new Date(a.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          : '-',
+        warrantyExpiry: a.warranty?.endDate ? new Date(a.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+        parentAssetId: null,
+        parentAssetName: null,
+        rawParentId: a.parentAssetId,
+        acquisitionValue: parseFloat(a.acquisitionValue) || 0,
+        currency: a.currency || 'USD',
+        children: []
+      };
+      nodeMap.set(a.id, node);
+      nodeMap.set(a.assetId, node);
+    });
+
+    // Build hierarchy links
+    const rootNodes = [];
+    allAssets.forEach((a) => {
+      const node = nodeMap.get(a.id);
+      if (a.parentAssetId && nodeMap.has(a.parentAssetId)) {
+        const parentNode = nodeMap.get(a.parentAssetId);
+        node.parentAssetId = parentNode.assetId;
+        node.parentAssetName = parentNode.name;
+        parentNode.children.push(node);
+      } else {
+        rootNodes.push(node);
+      }
+    });
+
+    // Recursively calculate levels, levelNames, types, and descendant rollups
+    function processHierarchy(nodes, currentLevel = 1) {
+      nodes.forEach((n) => {
+        n.level = currentLevel;
+        if (currentLevel === 1) {
+          n.type = 'System';
+          n.levelName = 'Parent System';
+        } else if (currentLevel === 2) {
+          n.type = 'Equipment';
+          n.levelName = 'Child Asset';
+        } else {
+          n.type = 'Component';
+          n.levelName = 'Sub-Component';
+        }
+
+        if (n.children && n.children.length > 0) {
+          processHierarchy(n.children, currentLevel + 1);
+          n.childCount = n.children.length;
+          n.totalDescendantCount = n.children.reduce((acc, c) => acc + 1 + (c.totalDescendantCount || 0), 0);
+          n.totalAcquisitionValue = n.acquisitionValue + n.children.reduce((acc, c) => acc + (c.totalAcquisitionValue || c.acquisitionValue || 0), 0);
+        } else {
+          n.childCount = 0;
+          n.totalDescendantCount = 0;
+          n.totalAcquisitionValue = n.acquisitionValue;
+        }
+      });
+    }
+
+    processHierarchy(rootNodes, 1);
+
+    // If search is active, also include search matches in root if not already there
     res.json({
       success: true,
-      assets: allAssets
+      tree: rootNodes,
+      assets: allAssets,
+      totalCount: allAssets.length,
+      rootCount: rootNodes.length
     });
   } catch (err) {
     next(err);
@@ -999,15 +1617,30 @@ export async function assignParentAsset(req, res, next) {
     }
 
     if (assetId === parentAssetId) {
-      return res.status(400).json({ success: false, message: 'Validation Error: An asset cannot be assigned as its own parent.' });
+      return res.status(400).json({
+        success: false,
+        message: 'Validation Error: An asset cannot be assigned as its own parent.'
+      });
     }
+
+    // Resolve User for audit
+    let finalUserId = req.user?.id;
+    const userInDb = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(finalUserId ? [{ id: finalUserId }] : []),
+          { username: req.user?.username || 'admin' }
+        ]
+      }
+    });
+    finalUserId = userInDb ? userInDb.id : (await prisma.user.findFirst())?.id || null;
 
     const asset = await prisma.asset.findFirst({
       where: { OR: [{ id: assetId }, { assetId: assetId }] }
     });
 
     if (!asset) {
-      return res.status(404).json({ success: false, message: 'Asset not found.' });
+      return res.status(404).json({ success: false, message: `Asset [${assetId}] not found.` });
     }
 
     let parentAsset = null;
@@ -1016,21 +1649,40 @@ export async function assignParentAsset(req, res, next) {
         where: { OR: [{ id: parentAssetId }, { assetId: parentAssetId }] }
       });
       if (!parentAsset) {
-        return res.status(404).json({ success: false, message: 'Parent asset not found in database.' });
+        return res.status(404).json({
+          success: false,
+          message: `Parent asset [${parentAssetId}] not found in database.`
+        });
+      }
+
+      if (parentAsset.id === asset.id || parentAsset.assetId === asset.assetId) {
+        return res.status(400).json({
+          success: false,
+          message: 'Validation Error: An asset cannot be assigned as its own parent.'
+        });
       }
 
       // Check circular reference (prevent loop A -> B -> A)
-      let currentParent = parentAsset;
+      let currentParentId = parentAsset.parentAssetId;
       let depth = 0;
-      while (currentParent && depth < 20) {
-        if (currentParent.id === asset.id || currentParent.assetId === asset.assetId) {
+      while (currentParentId && depth < 30) {
+        if (currentParentId === asset.id || currentParentId === asset.assetId) {
           return res.status(400).json({
             success: false,
             message: `Circular Reference Error: Assigning ${asset.assetId} under ${parentAsset.assetId} creates a circular relationship loop.`
           });
         }
-        if (!currentParent.parentAssetId) break;
-        currentParent = await prisma.asset.findUnique({ where: { id: currentParent.parentAssetId } });
+        const ancestor = await prisma.asset.findFirst({
+          where: { OR: [{ id: currentParentId }, { assetId: currentParentId }] }
+        });
+        if (!ancestor) break;
+        if (ancestor.id === asset.id || ancestor.assetId === asset.assetId) {
+          return res.status(400).json({
+            success: false,
+            message: `Circular Reference Error: Assigning ${asset.assetId} under ${parentAsset.assetId} creates a circular relationship loop.`
+          });
+        }
+        currentParentId = ancestor.parentAssetId;
         depth++;
       }
     }
@@ -1038,18 +1690,40 @@ export async function assignParentAsset(req, res, next) {
     const previousParentId = asset.parentAssetId;
     const updated = await prisma.asset.update({
       where: { id: asset.id },
-      data: { parentAssetId: parentAsset ? parentAsset.id : null }
+      data: {
+        parentAssetId: parentAsset ? parentAsset.id : null,
+        updatedByUserId: finalUserId
+      },
+      include: {
+        parentAsset: true,
+        category: true,
+        custodian: true
+      }
+    });
+
+    // Record Asset Transaction
+    await prisma.assetTransaction.create({
+      data: {
+        assetId: asset.id,
+        transactionType: 'HIERARCHY_CHANGE',
+        fromStatus: asset.lifecycleStatus,
+        toStatus: asset.lifecycleStatus,
+        performedByUserId: finalUserId || 'usr-default',
+        notes: parentAsset
+          ? `Hierarchy updated: Assigned under parent [${parentAsset.assetId}] (${parentAsset.description})`
+          : `Hierarchy updated: Removed parent relationship`
+      }
     });
 
     // Record Audit Log for relationship change
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
+        userId: finalUserId,
         action: 'ASSET_HIERARCHY_CHANGE',
         entityType: 'Asset',
         entityId: asset.id,
-        beforeState: { parentAssetId: previousParentId },
-        afterState: { parentAssetId: parentAsset ? parentAsset.id : null }
+        beforeState: JSON.stringify({ parentAssetId: previousParentId }),
+        afterState: JSON.stringify({ parentAssetId: parentAsset ? parentAsset.id : null, parentAssetIdCode: parentAsset?.assetId })
       }
     });
 
@@ -1075,34 +1749,99 @@ export async function addChildAsset(req, res, next) {
       return res.status(400).json({ success: false, message: 'Validation Error: An asset cannot be added as a child of itself.' });
     }
 
+    // Resolve User for audit
+    let finalUserId = req.user?.id;
+    const userInDb = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(finalUserId ? [{ id: finalUserId }] : []),
+          { username: req.user?.username || 'admin' }
+        ]
+      }
+    });
+    finalUserId = userInDb ? userInDb.id : (await prisma.user.findFirst())?.id || null;
+
     const [parent, child] = await Promise.all([
       prisma.asset.findFirst({ where: { OR: [{ id: parentAssetId }, { assetId: parentAssetId }] } }),
       prisma.asset.findFirst({ where: { OR: [{ id: childAssetId }, { assetId: childAssetId }] } })
     ]);
 
     if (!parent || !child) {
-      return res.status(404).json({ success: false, message: 'Parent or Child asset not found.' });
+      return res.status(404).json({
+        success: false,
+        message: `Parent [${parentAssetId}] or Child [${childAssetId}] asset not found in database.`
+      });
     }
 
+    if (parent.id === child.id || parent.assetId === child.assetId) {
+      return res.status(400).json({ success: false, message: 'Validation Error: An asset cannot be added as a child of itself.' });
+    }
+
+    // Circular check: Verify parent is not already a descendant of child
+    let currentParentId = parent.parentAssetId;
+    let depth = 0;
+    while (currentParentId && depth < 30) {
+      if (currentParentId === child.id || currentParentId === child.assetId) {
+        return res.status(400).json({
+          success: false,
+          message: `Circular Reference Error: Cannot attach ${child.assetId} under ${parent.assetId} because ${parent.assetId} is already a descendant of ${child.assetId}.`
+        });
+      }
+      const ancestor = await prisma.asset.findFirst({
+        where: { OR: [{ id: currentParentId }, { assetId: currentParentId }] }
+      });
+      if (!ancestor) break;
+      if (ancestor.id === child.id || ancestor.assetId === child.assetId) {
+        return res.status(400).json({
+          success: false,
+          message: `Circular Reference Error: Cannot attach ${child.assetId} under ${parent.assetId} because ${parent.assetId} is already a descendant of ${child.assetId}.`
+        });
+      }
+      currentParentId = ancestor.parentAssetId;
+      depth++;
+    }
+
+    const previousParentId = child.parentAssetId;
     const updatedChild = await prisma.asset.update({
       where: { id: child.id },
-      data: { parentAssetId: parent.id }
+      data: {
+        parentAssetId: parent.id,
+        updatedByUserId: finalUserId
+      },
+      include: {
+        parentAsset: true,
+        category: true,
+        custodian: true
+      }
     });
 
+    // Write Asset Transaction
+    await prisma.assetTransaction.create({
+      data: {
+        assetId: child.id,
+        transactionType: 'HIERARCHY_ATTACH_CHILD',
+        fromStatus: child.lifecycleStatus,
+        toStatus: child.lifecycleStatus,
+        performedByUserId: finalUserId || 'usr-default',
+        notes: `Attached as child asset under parent [${parent.assetId}] (${parent.description})`
+      }
+    });
+
+    // Write Audit Log
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
+        userId: finalUserId,
         action: 'ASSET_HIERARCHY_ADD_CHILD',
         entityType: 'Asset',
         entityId: child.id,
-        beforeState: { parentAssetId: child.parentAssetId },
-        afterState: { parentAssetId: parent.id }
+        beforeState: JSON.stringify({ parentAssetId: previousParentId }),
+        afterState: JSON.stringify({ parentAssetId: parent.id, parentAssetIdCode: parent.assetId })
       }
     });
 
     res.json({
       success: true,
-      message: `Child asset ${child.assetId} successfully attached under ${parent.assetId}.`,
+      message: `Child asset ${child.assetId} successfully attached under parent ${parent.assetId}.`,
       asset: updatedChild
     });
   } catch (err) {
@@ -1113,34 +1852,63 @@ export async function addChildAsset(req, res, next) {
 export async function removeParentRelationship(req, res, next) {
   try {
     const { id } = req.params;
+
+    // Resolve User for audit
+    let finalUserId = req.user?.id;
+    const userInDb = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(finalUserId ? [{ id: finalUserId }] : []),
+          { username: req.user?.username || 'admin' }
+        ]
+      }
+    });
+    finalUserId = userInDb ? userInDb.id : (await prisma.user.findFirst())?.id || null;
+
     const asset = await prisma.asset.findFirst({
       where: { OR: [{ id }, { assetId: id }] }
     });
 
     if (!asset) {
-      return res.status(404).json({ success: false, message: 'Asset not found.' });
+      return res.status(404).json({ success: false, message: `Asset [${id}] not found.` });
     }
 
     const previousParentId = asset.parentAssetId;
     const updated = await prisma.asset.update({
       where: { id: asset.id },
-      data: { parentAssetId: null }
+      data: {
+        parentAssetId: null,
+        updatedByUserId: finalUserId
+      }
     });
 
+    // Record Asset Transaction
+    await prisma.assetTransaction.create({
+      data: {
+        assetId: asset.id,
+        transactionType: 'HIERARCHY_REMOVE_PARENT',
+        fromStatus: asset.lifecycleStatus,
+        toStatus: asset.lifecycleStatus,
+        performedByUserId: finalUserId || 'usr-default',
+        notes: `Detached from parent asset. Now a standalone root asset.`
+      }
+    });
+
+    // Record Audit Log
     await prisma.auditEvent.create({
       data: {
-        userId: req.user.id,
+        userId: finalUserId,
         action: 'ASSET_HIERARCHY_REMOVE',
         entityType: 'Asset',
         entityId: asset.id,
-        beforeState: { parentAssetId: previousParentId },
-        afterState: { parentAssetId: null }
+        beforeState: JSON.stringify({ parentAssetId: previousParentId }),
+        afterState: JSON.stringify({ parentAssetId: null })
       }
     });
 
     res.json({
       success: true,
-      message: `Removed parent relationship for ${asset.assetId}.`,
+      message: `Removed parent relationship for [${asset.assetId}]. Asset is now a standalone root system.`,
       asset: updated
     });
   } catch (err) {
@@ -1152,16 +1920,33 @@ export async function getHierarchyAuditHistory(req, res, next) {
   try {
     const history = await prisma.auditEvent.findMany({
       where: {
-        action: { in: ['ASSET_HIERARCHY_CHANGE', 'ASSET_HIERARCHY_ADD_CHILD', 'ASSET_HIERARCHY_REMOVE'] }
+        action: {
+          in: ['ASSET_HIERARCHY_CHANGE', 'ASSET_HIERARCHY_ADD_CHILD', 'ASSET_HIERARCHY_REMOVE', 'ASSET_HIERARCHY_ASSIGN_PARENT']
+        },
+        ...(req.query.assetId ? { entityId: req.query.assetId } : {})
       },
       include: { user: true },
       orderBy: { timestamp: 'desc' },
       take: 50
     });
 
+    const parseState = value => {
+      try { return JSON.parse(value || '{}'); } catch { return {}; }
+    };
+    const formatted = history.map((h) => ({
+      id: h.id,
+      previousParent: parseState(h.beforeState).parentAssetId || null,
+      newParent: parseState(h.afterState).parentAssetIdCode || parseState(h.afterState).parentAssetId || null,
+      action: h.action,
+      entityId: h.entityId,
+      user: h.user ? h.user.fullName || h.user.username : 'System Administrator',
+      timestamp: h.timestamp ? new Date(h.timestamp).toLocaleString('en-GB') : '-',
+      details: typeof h.afterState === 'string' ? h.afterState : JSON.stringify(h.afterState)
+    }));
+
     res.json({
       success: true,
-      history
+      history: formatted
     });
   } catch (err) {
     next(err);

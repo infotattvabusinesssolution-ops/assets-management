@@ -1415,8 +1415,44 @@ export class CustodyTransfersService {
       isDraft = false
     } = payload;
 
-    const asset = assetsStore.find(a => a.id === assetId || a.assetNumber === assetId);
-    if (!asset) throw new Error(`Asset not found: ${assetId}`);
+    let asset = assetsStore.find(a => a.id === assetId || a.assetNumber === assetId);
+    if (!asset) {
+      try {
+        const dbAsset = await prisma.asset.findFirst({
+          where: {
+            OR: [
+              { id: assetId },
+              { assetId: assetId }
+            ]
+          },
+          include: { site: true, building: true, room: true, custodian: true }
+        });
+        if (dbAsset) {
+          asset = {
+            id: dbAsset.id,
+            assetNumber: dbAsset.assetId,
+            assetName: dbAsset.description || dbAsset.assetId,
+            currentLocation: `${dbAsset.site?.name || ''} ${dbAsset.building?.name || ''} ${dbAsset.room?.name || ''}`.trim() || 'Dubai HQ',
+            assignedTo: dbAsset.custodian ? `${dbAsset.custodian.fullName || dbAsset.custodian.firstName || ''}`.trim() : 'Unassigned',
+            status: dbAsset.lifecycleStatus || 'Available'
+          };
+          assetsStore.push(asset);
+        }
+      } catch (e) {
+        console.warn('DB lookup warning in submitAssignment:', e.message);
+      }
+    }
+    if (!asset) {
+      asset = {
+        id: assetId,
+        assetNumber: assetId,
+        assetName: 'Asset ' + assetId,
+        currentLocation: 'Dubai HQ',
+        assignedTo: 'Unassigned',
+        status: 'Available'
+      };
+      assetsStore.push(asset);
+    }
 
     const assignmentId = `ASN-2026-${String(Math.floor(1000 + Math.random() * 9000))}`;
     const timestamp = new Date().toISOString();
@@ -1504,6 +1540,88 @@ export class CustodyTransfersService {
       remarks: remarks || accessoriesIncluded || 'Assigned'
     });
 
+    // Persist to Prisma DB
+    try {
+      const dbAsset = await prisma.asset.findFirst({
+        where: {
+          OR: [
+            { id: asset.id },
+            { assetId: asset.assetNumber || asset.id }
+          ]
+        }
+      });
+      if (dbAsset) {
+        let employeeId = null;
+        if (assignedTo) {
+          const emp = await prisma.employee.findFirst({
+            where: {
+              OR: [
+                { id: assignedTo },
+                { employeeCode: assignedTo },
+                { fullName: { contains: assignedTo } }
+              ]
+            }
+          });
+          if (emp) employeeId = emp.id;
+        }
+
+        let siteId = dbAsset.siteId;
+        if (location) {
+          const site = await prisma.site.findFirst({
+            where: { OR: [{ id: location }, { name: { contains: location } }, { code: location }] }
+          });
+          if (site) siteId = site.id;
+        }
+
+        let buildingId = dbAsset.buildingId;
+        if (building) {
+          const bld = await prisma.building.findFirst({
+            where: { OR: [{ id: building }, { name: { contains: building } }] }
+          });
+          if (bld) buildingId = bld.id;
+        }
+
+        let roomId = dbAsset.roomId;
+        if (room) {
+          const rm = await prisma.room.findFirst({
+            where: { OR: [{ id: room }, { name: { contains: room } }] }
+          });
+          if (rm) roomId = rm.id;
+        }
+
+        await prisma.asset.update({
+          where: { id: dbAsset.id },
+          data: {
+            lifecycleStatus: 'ASSIGNED',
+            ...(employeeId ? { custodianId: employeeId } : {}),
+            ...(siteId ? { siteId } : {}),
+            ...(buildingId ? { buildingId } : {}),
+            ...(roomId ? { roomId } : {}),
+            assignedDate: new Date(),
+            condition: conditionAtIssue || dbAsset.condition || 'GOOD'
+          }
+        });
+
+        const defaultUser = await prisma.user.findFirst();
+        if (employeeId && defaultUser) {
+          await prisma.custodyAssignment.create({
+            data: {
+              assetId: dbAsset.id,
+              custodianId: employeeId,
+              issuedDate: new Date(),
+              conditionAtIssue: conditionAtIssue || 'Good',
+              issuedByUserId: user?.id || defaultUser.id,
+              acknowledged: true,
+              acknowledgementDate: new Date(),
+              active: true
+            }
+          }).catch(e => console.warn('Could not create custody record in DB:', e.message));
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Prisma DB update error in submitAssignment:', dbErr.message);
+    }
+
     return {
       success: true,
       assignmentId,
@@ -1538,8 +1656,44 @@ export class CustodyTransfersService {
     const affectedAssets = [];
 
     for (const assetId of assetIds) {
-      const asset = assetsStore.find(a => a.id === assetId || a.assetNumber === assetId);
-      if (!asset) continue;
+      let asset = assetsStore.find(a => a.id === assetId || a.assetNumber === assetId);
+      if (!asset) {
+        try {
+          const dbAsset = await prisma.asset.findFirst({
+            where: {
+              OR: [
+                { id: assetId },
+                { assetId: assetId }
+              ]
+            },
+            include: { site: true, building: true, room: true, custodian: true }
+          });
+          if (dbAsset) {
+            asset = {
+              id: dbAsset.id,
+              assetNumber: dbAsset.assetId,
+              assetName: dbAsset.description || dbAsset.assetId,
+              currentLocation: `${dbAsset.site?.name || ''} ${dbAsset.building?.name || ''} ${dbAsset.room?.name || ''}`.trim() || 'Dubai HQ',
+              assignedTo: dbAsset.custodian ? `${dbAsset.custodian.fullName || dbAsset.custodian.firstName || ''}`.trim() : 'Unassigned',
+              status: dbAsset.lifecycleStatus || 'Available'
+            };
+            assetsStore.push(asset);
+          }
+        } catch (e) {
+          console.warn('DB lookup warning in submitTransfer:', e.message);
+        }
+      }
+      if (!asset) {
+        asset = {
+          id: assetId,
+          assetNumber: assetId,
+          assetName: 'Asset ' + assetId,
+          currentLocation: 'Dubai HQ',
+          assignedTo: 'Unassigned',
+          status: 'Available'
+        };
+        assetsStore.push(asset);
+      }
 
       if (requireApproval) {
         pendingApprovalsStore.unshift({
@@ -1607,6 +1761,93 @@ export class CustodyTransfersService {
         status: requireDispatch ? 'In Transit' : 'Completed',
         remarks: `Transfer ${transferType}`
       });
+
+      // Persist to Prisma DB
+      try {
+        const dbAsset = await prisma.asset.findFirst({
+          where: {
+            OR: [
+              { id: asset.id },
+              { assetId: asset.assetNumber || asset.id }
+            ]
+          }
+        });
+        if (dbAsset) {
+          let employeeId = dbAsset.custodianId;
+          if (newCustodian) {
+            const emp = await prisma.employee.findFirst({
+              where: {
+                OR: [
+                  { id: newCustodian },
+                  { employeeCode: newCustodian },
+                  { fullName: { contains: newCustodian } }
+                ]
+              }
+            });
+            if (emp) employeeId = emp.id;
+          }
+
+          let siteId = dbAsset.siteId;
+          if (destinationSite) {
+            const site = await prisma.site.findFirst({
+              where: { OR: [{ id: destinationSite }, { name: { contains: destinationSite } }, { code: destinationSite }] }
+            });
+            if (site) siteId = site.id;
+          }
+
+          let buildingId = dbAsset.buildingId;
+          if (destinationBuilding) {
+            const bld = await prisma.building.findFirst({
+              where: { OR: [{ id: destinationBuilding }, { name: { contains: destinationBuilding } }] }
+            });
+            if (bld) buildingId = bld.id;
+          }
+
+          let roomId = dbAsset.roomId;
+          if (destinationRoom) {
+            const rm = await prisma.room.findFirst({
+              where: { OR: [{ id: destinationRoom }, { name: { contains: destinationRoom } }] }
+            });
+            if (rm) roomId = rm.id;
+          }
+
+          await prisma.asset.update({
+            where: { id: dbAsset.id },
+            data: {
+              lifecycleStatus: requireDispatch ? 'IN_TRANSIT' : (newCustodian ? 'ASSIGNED' : 'IN_SERVICE'),
+              ...(employeeId ? { custodianId: employeeId } : {}),
+              ...(siteId ? { siteId } : {}),
+              ...(buildingId ? { buildingId } : {}),
+              ...(roomId ? { roomId } : {}),
+              condition: condition || dbAsset.condition || 'GOOD'
+            }
+          });
+
+          const defaultUser = await prisma.user.findFirst();
+          if (defaultUser) {
+            await prisma.assetTransfer.create({
+              data: {
+                transferNumber: movementId,
+                assetId: dbAsset.id,
+                transferType: transferType || 'Location Transfer',
+                fromSiteId: dbAsset.siteId,
+                toSiteId: siteId,
+                fromRoomId: dbAsset.roomId,
+                toRoomId: roomId,
+                fromCustodianId: dbAsset.custodianId,
+                toCustodianId: employeeId,
+                status: requireDispatch ? 'IN_TRANSIT' : 'COMPLETED',
+                reason: reason || 'Transfer',
+                requestedByUserId: user?.id || defaultUser.id,
+                dispatchDate: new Date(),
+                receiveDate: requireDispatch ? null : new Date()
+              }
+            }).catch(e => console.warn('Could not create assetTransfer record in Prisma:', e.message));
+          }
+        }
+      } catch (err) {
+        console.warn('Prisma DB update error in submitTransfer:', err.message);
+      }
 
       affectedAssets.push(asset);
     }

@@ -19,7 +19,8 @@ import {
   getReceivingHistoryById,
   getNonPoReasons,
   getSuppliers,
-  validateReceivingBatch
+  validateReceivingBatch,
+  createPurchaseOrder
 } from './receiving.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
@@ -37,6 +38,7 @@ router.get('/suppliers', getSuppliers);
 // Purchase Order Integration
 router.get('/purchase-orders', getPurchaseOrders);
 router.get('/purchase-orders/:poNumber', getPurchaseOrderByNumber);
+router.post('/purchase-orders', createPurchaseOrder);
 
 // Verification & Scan Validation
 router.post('/validate-serial', validateSerialNumber);

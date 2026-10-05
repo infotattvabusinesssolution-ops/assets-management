@@ -1,40 +1,16 @@
 import React, { useState } from 'react';
-import { useAuth, MOCK_ROLES_DATA } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
 import { useCommandPalette } from '../../context/CommandPaletteContext';
 import { Search, Bell, Plus, User as UserIcon, Wifi, Sparkles, ChevronDown, Shield, Check, Lock, Globe } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { Asset360Logo } from '../common/Asset360Logo';
 
-const AVAILABLE_ROLES = [
-  { code: 'SYS_ADMIN', name: 'System Administrator' },
-  { code: 'ASSET_ADMIN', name: 'Asset Administrator' },
-  { code: 'FINANCE', name: 'Finance Controller' },
-  { code: 'IT_MANAGER', name: 'IT Asset Manager' },
-  { code: 'FACILITIES', name: 'Facilities Manager' },
-  { code: 'RECEIVING', name: 'Store Receiving Lead' },
-  { code: 'CUSTODIAN', name: 'Custodian / Employee' },
-  { code: 'TECHNICIAN', name: 'Maintenance Technician' },
-  { code: 'AUDITOR', name: 'Compliance Auditor' },
-  { code: 'MANAGEMENT', name: 'Executive Management' }
-];
-
 export function Topbar() {
-  const { user, switchRole } = useAuth();
+  const { user } = useAuth();
   const { openPalette } = useCommandPalette();
   const navigate = useNavigate();
-  const [showRoleDropdown, setShowRoleDropdown] = useState(false);
   const [currentLang, setCurrentLang] = useState(localStorage.getItem('fams_lang') || 'en');
   const [showLangDropdown, setShowLangDropdown] = useState(false);
-
-  const activeRoleCode = user?.role?.code || 'SYS_ADMIN';
-  const primaryRole = localStorage.getItem('fams_primary_role') || activeRoleCode;
-  const canSwitchRole = primaryRole === 'SYS_ADMIN';
-
-  const handleRoleChange = (roleCode) => {
-    if (!canSwitchRole) return;
-    switchRole(roleCode);
-    setShowRoleDropdown(false);
-  };
 
   const handleLangChange = (langCode) => {
     setCurrentLang(langCode);
@@ -123,48 +99,14 @@ export function Topbar() {
         </button>
 
         {/* User Profile */}
-        <div className="relative">
-          <button
-            onClick={() => canSwitchRole && setShowRoleDropdown(!showRoleDropdown)}
-            className="flex items-center gap-2.5 pl-2 py-1 pr-1.5 rounded-xl hover:bg-purple-50 border border-transparent hover:border-slate-200 transition-all cursor-pointer text-black"
-          >
-            <div className="w-8 h-8 rounded-full bg-[#6C2BD9] text-white font-extrabold text-xs shadow-2xs flex items-center justify-center shrink-0">
-              JD
-            </div>
-            <div className="text-left hidden sm:block">
-              <p className="text-xs font-extrabold text-black leading-tight">John Doe</p>
-              <p className="text-[10px] text-black font-bold leading-tight">System Administrator</p>
-            </div>
-            <ChevronDown className="w-3.5 h-3.5 text-[#6C2BD9] shrink-0" />
-          </button>
-
-          {/* Role Dropdown Menu */}
-          {canSwitchRole && showRoleDropdown && (
-            <div className="absolute right-0 mt-2 w-64 bg-white border border-slate-300 shadow-xl rounded-xl p-2 z-50 space-y-1">
-              <div className="px-3 py-1.5 text-[10px] uppercase font-mono text-black border-b border-slate-200 font-bold">
-                Switch Role Perspective
-              </div>
-              <div className="max-h-64 overflow-y-auto space-y-1 pt-1">
-                {AVAILABLE_ROLES.map((r) => {
-                  const isCurrent = activeRoleCode === r.code;
-                  return (
-                    <button
-                      key={r.code}
-                      onClick={() => handleRoleChange(r.code)}
-                      className={`w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center justify-between transition-all ${
-                        isCurrent
-                          ? 'bg-purple-100 text-black font-extrabold border border-[#6C2BD9]'
-                          : 'text-black hover:bg-purple-50'
-                      }`}
-                    >
-                      <span className="text-black">{r.name}</span>
-                      {isCurrent && <Check className="w-3.5 h-3.5 text-[#6C2BD9]" />}
-                    </button>
-                  );
-                })}
-              </div>
-            </div>
-          )}
+        <div className="flex items-center gap-2.5 pl-2 py-1 pr-1.5 text-black">
+          <div className="w-8 h-8 rounded-full bg-[#6C2BD9] text-white font-extrabold text-xs shadow-2xs flex items-center justify-center shrink-0">
+            {(user?.fullName || user?.username || '?').split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase()}
+          </div>
+          <div className="text-left hidden sm:block">
+            <p className="text-xs font-extrabold text-black leading-tight">{user?.fullName || user?.username || 'User'}</p>
+            <p className="text-[10px] text-black font-bold leading-tight">{user?.role?.name || user?.role?.code || ''}</p>
+          </div>
         </div>
       </div>
     </header>

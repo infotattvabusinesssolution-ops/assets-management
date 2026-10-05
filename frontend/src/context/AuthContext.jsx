@@ -97,99 +97,82 @@ export const MOCK_ROLES_DATA = {
 };
 
 export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const saved = localStorage.getItem('fams_user');
-    return saved ? JSON.parse(saved) : MOCK_ROLES_DATA.SYS_ADMIN;
+  const [token, setToken] = useState(() => {
+    if (localStorage.getItem('fams_explicit_logout') === 'true') return null;
+    const saved = localStorage.getItem('fams_token');
+    const initial = saved && !saved.startsWith('token-') ? saved : 'demo-jwt-token-2026';
+    localStorage.setItem('fams_token', initial);
+    return initial;
   });
-  const [token, setToken] = useState(() => localStorage.getItem('fams_token') || 'demo-jwt-token-2026');
-  const [loading, setLoading] = useState(false);
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(Boolean(token));
+
+  useEffect(() => {
+    if (!token) { setLoading(false); return; }
+    let active = true;
+    setLoading(true);
+    api.get('/auth/profile')
+      .then(res => {
+        if (!active) return;
+        if (!res?.success || !res.user) throw new Error('Profile unavailable');
+        const { passwordHash, ...profile } = res.user;
+        setUser(profile);
+        localStorage.setItem('fams_user', JSON.stringify(profile));
+        localStorage.setItem('fams_primary_role', profile.role?.code || '');
+      })
+      .catch(() => {
+        if (!active) return;
+        setUser(null);
+        setToken(null);
+        localStorage.removeItem('fams_token');
+        localStorage.removeItem('fams_user');
+      })
+      .finally(() => { if (active) setLoading(false); });
+    return () => { active = false; };
+  }, [token]);
 
   const login = async (username, password) => {
+    if (!username?.trim() || !password) return { success: false, message: 'Enter username and password.' };
     setLoading(true);
-
-    if (!username || !username.trim()) {
+    try {
+      const res = await api.post('/auth/login', { username: username.trim(), password });
+      if (!res?.success || !res.token || !res.user) throw new Error(res?.message || 'Login failed.');
+      localStorage.removeItem('fams_explicit_logout');
+      localStorage.setItem('fams_token', res.token);
+      localStorage.setItem('fams_user', JSON.stringify(res.user));
+      localStorage.setItem('fams_primary_role', res.user.role?.code || '');
+      setUser(res.user);
+      setToken(res.token);
+      return { success: true, user: res.user };
+    } catch (err) {
+      return { success: false, message: err?.response?.data?.message || err?.message || 'Login failed.' };
+    } finally {
       setLoading(false);
-      return { success: false, message: 'Please enter a valid username' };
-    }
-
-    const cleanName = username.toLowerCase().trim();
-    const matchedKey = Object.keys(MOCK_ROLES_DATA).find(
-      k => MOCK_ROLES_DATA[k].username.toLowerCase() === cleanName ||
-           k.toLowerCase() === cleanName ||
-           MOCK_ROLES_DATA[k].email.toLowerCase() === cleanName
-    );
-
-    let authUser;
-    if (matchedKey) {
-      authUser = MOCK_ROLES_DATA[matchedKey];
-    } else {
-      authUser = {
-        id: `user-${Date.now()}`,
-        username: username.trim(),
-        fullName: username.includes('@') ? username.split('@')[0] : username,
-        email: username.includes('@') ? username : `${cleanName}@asset360.com`,
-        role: { code: 'SYS_ADMIN', name: 'System Administrator', permissions: ['*'] },
-        company: { name: 'Asset360 Holdings', code: 'CMP-GLOBAL' },
-        site: { name: 'Dubai HQ Campus', city: 'Dubai HQ' }
-      };
-    }
-
-    const mockToken = `token-${authUser.role?.code?.toLowerCase() || 'sys_admin'}-${Date.now()}`;
-    setUser(authUser);
-    setToken(mockToken);
-    localStorage.setItem('fams_token', mockToken);
-    localStorage.setItem('fams_user', JSON.stringify(authUser));
-    localStorage.setItem('fams_primary_role', authUser.role?.code || 'SYS_ADMIN');
-    setLoading(false);
-    return { success: true, user: authUser };
-  };
-
-  const switchRole = (roleCode) => {
-    const primaryRole = localStorage.getItem('fams_primary_role') || user?.role?.code || 'SYS_ADMIN';
-    if (primaryRole !== 'SYS_ADMIN') {
-      console.warn('Role switching is disabled for non-System Administrator users.');
-      return;
-    }
-    if (MOCK_ROLES_DATA[roleCode]) {
-      const targetUser = MOCK_ROLES_DATA[roleCode];
-      setUser(targetUser);
-      localStorage.setItem('fams_user', JSON.stringify(targetUser));
     }
   };
 
   const logout = () => {
     setUser(null);
     setToken(null);
+    localStorage.setItem('fams_explicit_logout', 'true');
     localStorage.removeItem('fams_token');
     localStorage.removeItem('fams_user');
   };
 
   const hasPermission = (permCode) => {
-    if (!user || !user.role) return false;
+    if (!user?.role) return false;
     if (user.role.code === 'SYS_ADMIN') return true;
     const perms = user.role.permissions || [];
     return perms.includes('*') || perms.includes(permCode);
   };
 
-  const hasRole = (roleCode) => {
-    if (!user || !user.role) return false;
-    return user.role.code === roleCode;
-  };
+  const hasRole = (roleCode) => user?.role?.code === roleCode;
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        token,
-        isAuthenticated: !!user,
-        loading,
-        login,
-        logout,
-        switchRole,
-        hasPermission,
-        hasRole
-      }}
-    >
+    <AuthContext.Provider value={{
+      user, token, isAuthenticated: !!user, loading, login, logout,
+      switchRole: () => false, hasPermission, hasRole
+    }}>
       {children}
     </AuthContext.Provider>
   );

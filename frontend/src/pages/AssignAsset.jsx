@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import {
   ArrowLeft,
   Search,
@@ -124,8 +124,9 @@ const INITIAL_ASSETS = [
 
 export function AssignAsset() {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams] = useSearchParams();
-  const preselectedAssetId = searchParams.get('assetId') || 'AS-000123';
+  const preselectedAssetId = searchParams.get('assetId') || location.state?.assetId || 'AS-000123';
 
   // Stepper state (1: Select Asset, 2: Assignment Details, 3: Review & Confirm, 4: Completion)
   const [currentStep, setCurrentStep] = useState(1);
@@ -135,6 +136,46 @@ export function AssignAsset() {
   const [assetsList, setAssetsList] = useState(INITIAL_ASSETS);
   const [selectedAssetId, setSelectedAssetId] = useState(preselectedAssetId);
   const [currentPage, setCurrentPage] = useState(1);
+
+  // Pre-select asset if navigated from Asset Register
+  useEffect(() => {
+    const passed = location.state?.asset;
+    const passedId = location.state?.assetId || searchParams.get('assetId');
+    if (passed) {
+      const formatted = {
+        id: passed.id || passed.assetId,
+        assetNumber: passed.assetId || passed.tagNumber || 'AS-000128',
+        assetName: passed.name || passed.description || 'Asset',
+        serialNumber: passed.serialNumber || 'N/A',
+        tagEpc: passed.rfidEpc || passed.tagNumber || 'N/A',
+        type: passed.categoryName || 'IT Equipment',
+        category: passed.categoryName || 'General',
+        model: passed.model || 'Standard',
+        brand: passed.manufacturer || 'OEM',
+        currentLocation: passed.locationStr || 'Dubai HQ',
+        site: passed.siteName || 'Dubai HQ',
+        building: passed.buildingName || 'Block A',
+        floor: passed.floorRoom || 'Ground Floor',
+        room: passed.floorRoom || 'IT-101',
+        status: passed.lifecycleStatus || 'Available',
+        image: passed.imageUrl || null
+      };
+      setAssetsList(prev => {
+        const exists = prev.some(a => a.id === formatted.id || a.assetNumber === formatted.assetNumber);
+        return exists ? prev : [formatted, ...prev];
+      });
+      setSelectedAssetId(formatted.id);
+      setFormData(prev => ({
+        ...prev,
+        location: passed.siteName || prev.location,
+        building: passed.buildingName || prev.building,
+        floor: passed.floorRoom || prev.floor,
+        room: passed.floorRoom || prev.room
+      }));
+    } else if (passedId) {
+      setSelectedAssetId(passedId);
+    }
+  }, [location.state, searchParams]);
 
   // Scan Modal State
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);

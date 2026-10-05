@@ -5,6 +5,7 @@ import {
   toggleDefinitionStatus,
   getPendingApprovals,
   getWorkflowHistory,
+  getAllApprovals,
   approveStep,
   createApprovalRequest
 } from './workflows.controller.js';
@@ -18,8 +19,8 @@ router.post('/definitions', createDefinition);
 router.patch('/definitions/:id/toggle', toggleDefinitionStatus);
 router.get('/pending', getPendingApprovals);
 router.get('/history', getWorkflowHistory);
+router.get('/all', getAllApprovals);
 router.post('/approve/:instanceId', approveStep);
 router.post('/create', createApprovalRequest);
 
 export default router;
-

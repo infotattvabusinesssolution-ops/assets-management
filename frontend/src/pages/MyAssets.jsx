@@ -365,6 +365,7 @@ export function MyAssets() {
   const [activeKpi, setActiveKpi] = useState('ALL'); // ALL, IN_USE, MAINTENANCE, OVERDUE, PENDING_RETURN
   const [activeTab, setActiveTab] = useState('ASSIGNED'); // ASSIGNED, MAINTENANCE, PENDING_RETURN, RETURNED, REQUESTED, HISTORY
   const [selectedAsset, setSelectedAsset] = useState(INITIAL_MY_ASSETS[0]);
+  const [selectedRowIds, setSelectedRowIds] = useState([INITIAL_MY_ASSETS[0].id]);
   const [drawerTab, setDrawerTab] = useState('details'); // details, location, maintenance, history
   const [loading, setLoading] = useState(false);
 
@@ -474,6 +475,7 @@ export function MyAssets() {
         setAssets(mappedAssets);
         if (mappedAssets[0] && !selectedAsset) {
           setSelectedAsset(mappedAssets[0]);
+          setSelectedRowIds([mappedAssets[0].id]);
         }
       }
       if (res?.kpiCounts) setServerKpiCounts(res.kpiCounts);
@@ -650,6 +652,71 @@ export function MyAssets() {
     }
   };
 
+  // Checkbox Selection Handlers (Matching Asset Register Functionality)
+  const handleSelectAll = (e) => {
+    if (e.target.checked) {
+      const allIds = filteredAssets.map((a) => a.id);
+      setSelectedRowIds(allIds);
+      if (!selectedAsset && filteredAssets.length > 0) {
+        setSelectedAsset(filteredAssets[0]);
+      }
+    } else {
+      setSelectedRowIds([]);
+      setSelectedAsset(null);
+    }
+  };
+
+  const handleSelectRow = (e, asset) => {
+    e.stopPropagation();
+    const id = asset.id;
+    if (selectedRowIds.includes(id)) {
+      const next = selectedRowIds.filter((item) => item !== id);
+      setSelectedRowIds(next);
+      if (selectedAsset?.id === id) {
+        const nextAsset = assets.find((a) => next.includes(a.id)) || null;
+        setSelectedAsset(nextAsset);
+      }
+    } else {
+      const next = [...selectedRowIds, id];
+      setSelectedRowIds(next);
+      setSelectedAsset(asset);
+    }
+  };
+
+  // CSV Export for filtered or selected assets
+  const handleExport = () => {
+    const listToExport = selectedRowIds.length > 0
+      ? filteredAssets.filter(a => selectedRowIds.includes(a.id))
+      : filteredAssets;
+
+    if (listToExport.length === 0) {
+      showToast('error', 'No assets available to export.');
+      return;
+    }
+
+    const headers = ['Asset ID', 'Asset Name', 'Category', 'Tag/RFID', 'Location', 'Status', 'Condition', 'Assigned Date', 'Custodian'];
+    const rows = listToExport.map(a => [
+      a.id,
+      `"${(a.name || '').replace(/"/g, '""')}"`,
+      `"${(a.category || '').replace(/"/g, '""')}"`,
+      a.tagRfid || '',
+      `"${(a.location || '').replace(/"/g, '""')}"`,
+      a.status || '',
+      a.condition || '',
+      a.assignedDate || '',
+      `"${(a.custodian || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `My_Assets_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('success', `Exported ${listToExport.length} asset(s) to CSV!`);
+  };
+
   return (
     <div className="max-w-[1550px] mx-auto space-y-4 pb-12 font-sans text-slate-900 select-none">
       
@@ -677,10 +744,10 @@ export function MyAssets() {
 
         <div className="flex items-center gap-2.5">
           <button
-            onClick={() => showToast('success', 'Exported My Assets list to Excel!')}
+            onClick={handleExport}
             className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-slate-300 shadow-2xs transition-all cursor-pointer"
           >
-            Export
+            <Download className="w-4 h-4 text-slate-500" /> Export
           </button>
 
           <button
@@ -692,11 +759,11 @@ export function MyAssets() {
         </div>
       </div>
 
-      {/* Main Screen Layout: Left Area (75%) + Right Asset 360° Panel (25%) */}
+      {/* Main Screen Layout: Left Area (75% or 100%) + Right Asset 360° Panel (25%) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         
         {/* Left Area (Cards, Tabs, Filters, Table) */}
-        <div className="lg:col-span-8 space-y-4">
+        <div className={`transition-all ${selectedAsset ? 'lg:col-span-8' : 'lg:col-span-12'} space-y-4`}>
           
           {/* 1. Summary Cards (Callout 1 matching screenshot 1-to-1) */}
           <div className="grid grid-cols-2 sm:grid-cols-5 gap-2.5">
@@ -964,14 +1031,102 @@ export function MyAssets() {
             )}
           </div>
 
+          {/* Batch / Selected Assets Action Bar (Respective Functionalities) */}
+          {selectedRowIds.length > 0 && (
+            <div className="bg-purple-50/90 border border-purple-200 px-4 py-2.5 rounded-xl shadow-xs flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="flex items-center gap-2">
+                <span className="w-5 h-5 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center text-[10px] font-bold">
+                  {selectedRowIds.length}
+                </span>
+                <span className="text-xs font-bold text-purple-950">
+                  {selectedRowIds.length === 1
+                    ? `1 asset selected (${selectedAsset?.id || selectedRowIds[0]})`
+                    : `${selectedRowIds.length} assets selected`}
+                </span>
+                <span className="text-purple-300">|</span>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedRowIds([]);
+                    setSelectedAsset(null);
+                  }}
+                  className="text-xs font-semibold text-purple-700 hover:text-purple-950 underline cursor-pointer"
+                >
+                  Deselect all
+                </button>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap">
+                {/* Request Return */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedAsset || assets.find(a => selectedRowIds.includes(a.id));
+                    if (target) {
+                      setActionAsset(target);
+                      setActiveModal('RETURN');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-white hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <RotateCcw className="w-3.5 h-3.5 text-[#6C2BD9]" /> Request Return
+                </button>
+
+                {/* Request Transfer */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedAsset || assets.find(a => selectedRowIds.includes(a.id));
+                    if (target) {
+                      setActionAsset(target);
+                      setActiveModal('TRANSFER');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-white hover:bg-purple-100 text-purple-900 border border-purple-200 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Request Transfer
+                </button>
+
+                {/* Report Issue */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedAsset || assets.find(a => selectedRowIds.includes(a.id));
+                    if (target) {
+                      setActionAsset(target);
+                      setActiveModal('REPORT_ISSUE');
+                    }
+                  }}
+                  className="px-3 py-1.5 bg-white hover:bg-rose-50 text-rose-700 border border-rose-200 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Report Issue
+                </button>
+
+                {/* Export Selected */}
+                <button
+                  type="button"
+                  onClick={handleExport}
+                  className="px-3 py-1.5 bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-bold rounded-lg text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5 text-slate-500" /> Export Selected
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* 4. Asset Register List Table (Callout 4 matching screenshot 1-to-1) */}
           <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
             <div className="overflow-auto max-h-[540px]">
               <table className="w-full text-left border-collapse text-xs">
                 <thead className="sticky top-0 z-10 shadow-2xs">
                   <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-bold text-[11px]">
-                    <th className="p-3 w-8">
-                      <input type="checkbox" className="rounded border-slate-300 text-[#6C2BD9]" />
+                    <th className="p-3 w-8 text-center">
+                      <input
+                        type="checkbox"
+                        checked={filteredAssets.length > 0 && selectedRowIds.length === filteredAssets.length}
+                        onChange={handleSelectAll}
+                        className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
+                      />
                     </th>
                     <th className="p-3">Asset ID</th>
                     <th className="p-3">Asset Name</th>
@@ -986,18 +1141,27 @@ export function MyAssets() {
                 <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
                   {filteredAssets.map((asset) => {
                     const isSelected = selectedAsset?.id === asset.id;
+                    const isChecked = selectedRowIds.includes(asset.id);
                     const IconComponent = asset.icon || Package;
 
                     return (
                       <tr
                         key={asset.id}
-                        onClick={() => setSelectedAsset(asset)}
+                        onClick={() => {
+                          setSelectedAsset(asset);
+                          setSelectedRowIds([asset.id]);
+                        }}
                         className={`hover:bg-purple-50/40 transition-colors cursor-pointer ${
                           isSelected ? 'bg-purple-50/80 border-l-4 border-l-[#6C2BD9]' : ''
                         }`}
                       >
-                        <td className="p-3" onClick={(e) => e.stopPropagation()}>
-                          <input type="checkbox" checked={isSelected} readOnly className="rounded border-slate-300 text-[#6C2BD9]" />
+                        <td className="p-3 text-center" onClick={(e) => e.stopPropagation()}>
+                          <input
+                            type="checkbox"
+                            checked={isChecked}
+                            onChange={(e) => handleSelectRow(e, asset)}
+                            className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
+                          />
                         </td>
 
                         {/* Asset ID Link */}
@@ -1103,21 +1267,27 @@ export function MyAssets() {
         </div>
 
         {/* 6. Asset 360° Drawer Panel (Right Panel 4-Columns - Callout 6 matching screenshot 1-to-1) */}
-        <div className="lg:col-span-4 bg-white border border-slate-200 rounded-xl shadow-xl p-4 space-y-4">
-          
-          {/* Header */}
-          <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-            <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
-              <span className="w-6 h-6 rounded-md bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-bold text-xs">6</span>
-              Asset 360°
-            </h3>
-            <button
-              onClick={() => setSelectedAsset(null)}
-              className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
+        {selectedAsset && (
+          <div className="lg:col-span-4 bg-white border border-slate-200 rounded-xl shadow-xl p-4 space-y-4 relative sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin animate-in fade-in duration-150">
+            
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+              <h3 className="font-black text-slate-900 text-base flex items-center gap-2">
+                <span className="w-6 h-6 rounded-md bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-bold text-xs">6</span>
+                Asset 360°
+              </h3>
+              <button
+                onClick={() => {
+                  setSelectedAsset(null);
+                  if (selectedRowIds.length === 1) {
+                    setSelectedRowIds([]);
+                  }
+                }}
+                className="p-1 text-slate-400 hover:text-slate-700 cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
 
           {/* Asset Image & Title Card */}
           <div className="flex items-start gap-3 bg-slate-50 border border-slate-200/80 rounded-xl p-3">
@@ -1349,6 +1519,7 @@ export function MyAssets() {
           )}
 
         </div>
+        )}
       </div>
 
       {/* 8. Bottom Informational Callout Cards Bar (Callouts 1 to 8 matching reference image 1-to-1) */}

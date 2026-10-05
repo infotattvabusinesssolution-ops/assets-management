@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import {
@@ -238,6 +238,57 @@ export function ReceivingHistory() {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
+
+  useEffect(() => {
+    async function fetchHistory() {
+      try {
+        const queryParams = new URLSearchParams();
+        if (filters.receiveNumber) queryParams.set('receiveNumber', filters.receiveNumber);
+        if (filters.poNumber) queryParams.set('poNumber', filters.poNumber);
+        if (filters.receiveType && filters.receiveType !== 'All Types') queryParams.set('receiveType', filters.receiveType);
+        if (filters.status && filters.status !== 'All Status') queryParams.set('status', filters.status);
+        if (filters.supplier && filters.supplier !== 'All Suppliers') queryParams.set('supplier', filters.supplier);
+        if (filters.location && filters.location !== 'All Locations') queryParams.set('location', filters.location);
+        if (filters.receivedBy && filters.receivedBy !== 'All Users') queryParams.set('receivedBy', filters.receivedBy);
+        if (filters.fromDate) queryParams.set('fromDate', filters.fromDate);
+        if (filters.toDate) queryParams.set('toDate', filters.toDate);
+
+        const res = await api.get(`/receiving/history?${queryParams.toString()}`);
+        if (res && (res.history || res.receipts)) {
+          const list = res.history || res.receipts;
+          if (Array.isArray(list) && list.length > 0) {
+            const mapped = list.map((r, idx) => ({
+              id: r.id || `rcv-${idx}`,
+              receiveNumber: r.receiptNumber,
+              receiveDate: r.receivedDate ? new Date(r.receivedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '21 Aug 2026',
+              receiveTime: r.receivedDate ? new Date(r.receivedDate).toLocaleString('en-GB') : '21 Aug 2026 10:45',
+              poNumber: r.poNumber || '-',
+              supplier: r.vendorName || 'Generic Supplier',
+              receiveType: r.mode === 'WITHOUT_PO' || r.poNumber === 'NON-PO' ? 'Without PO' : 'With PO',
+              itemsCount: r.summary?.unitsReceived || r.lineItems?.length || 1,
+              taggedCount: r.summary?.unitsTagged || r.lineItems?.length || 1,
+              status: r.status === 'PENDING_APPROVAL' ? 'Partial' : 'Completed',
+              receivedBy: r.receivedBy || 'System User',
+              location: r.receivingLocation || 'IT Store - Dubai HQ',
+              remarks: r.remarks || 'Standard Intake',
+              items: (r.lineItems || []).map((l, lIdx) => ({
+                id: l.id || `item-${lIdx}`,
+                idx: lIdx + 1,
+                assetName: l.description || 'Received Asset',
+                serialNumber: l.serialNumbers || 'N/A',
+                tagNumber: l.createdAssetIds ? `TAG-${l.createdAssetIds.slice(0, 6)}` : 'TAG-AUTO',
+                tagStatus: 'Tagged'
+              }))
+            }));
+            setTransactions(mapped);
+          }
+        }
+      } catch (err) {
+        // Fallback to static demo items if offline
+      }
+    }
+    fetchHistory();
+  }, [filters]);
 
   // Row selection handler
   const handleSelectRow = (tx) => {

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import {
@@ -228,6 +228,37 @@ export function PrintTagsWorkbench() {
       custodian: 'All Custodians'
     });
   };
+
+  useEffect(() => {
+    async function loadAssets() {
+      try {
+        const queryParams = new URLSearchParams();
+        if (filters.assetNumber) queryParams.set('assetNumber', filters.assetNumber);
+        if (filters.assetName) queryParams.set('assetName', filters.assetName);
+        if (filters.category && filters.category !== 'All Categories') queryParams.set('category', filters.category);
+        if (filters.location && filters.location !== 'All Locations') queryParams.set('location', filters.location);
+        if (filters.department && filters.department !== 'All Departments') queryParams.set('department', filters.department);
+
+        const res = await api.get(`/tagging/assets?${queryParams.toString()}`);
+        if (res && res.assets && res.assets.length > 0) {
+          const mapped = res.assets.map((a) => ({
+            id: a.id,
+            assetNumber: a.assetNumber || a.assetId,
+            assetName: a.assetName || a.description,
+            category: a.category || 'General',
+            location: a.location || 'Dubai HQ',
+            serialNumber: a.serialNumber || 'N/A',
+            currentTag: a.currentTag || a.tagNumber || '-',
+            printStatus: a.currentTag && a.currentTag !== '-' ? 'Printed' : 'Not Printed'
+          }));
+          setSearchResults(mapped);
+        }
+      } catch (err) {
+        // Fallback to static dummy list
+      }
+    }
+    loadAssets();
+  }, [filters]);
 
   // Checkbox option toggle
   const handleOptionToggle = (key) => {

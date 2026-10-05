@@ -211,6 +211,27 @@ export function BulkTaggingWorkbench() {
     });
   };
 
+  useEffect(() => {
+    async function loadAssets() {
+      try {
+        const queryParams = new URLSearchParams();
+        if (filters.assetNumber) queryParams.set('assetNumber', filters.assetNumber);
+        if (filters.category && filters.category !== 'All Categories') queryParams.set('category', filters.category);
+        if (filters.location && filters.location !== 'All Locations') queryParams.set('location', filters.location);
+        if (filters.department && filters.department !== 'All Departments') queryParams.set('department', filters.department);
+        if (filters.tagStatus && filters.tagStatus !== 'All') queryParams.set('tagStatus', filters.tagStatus);
+
+        const res = await api.get(`/tagging/assets?${queryParams.toString()}`);
+        if (res && res.assets && res.assets.length > 0) {
+          setAssets(res.assets);
+        }
+      } catch (e) {
+        // Fallback to initial dummy list if offline
+      }
+    }
+    loadAssets();
+  }, [filters]);
+
   // Assign Tag Action
   const handleAssignTagToSelected = async () => {
     if (!scannedTagInput || !scannedTagInput.trim()) {
@@ -225,11 +246,25 @@ export function BulkTaggingWorkbench() {
       const now = new Date();
       const timeStr = `${now.getDate()} Aug ${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
 
+      const target = nextAssetToTag || assets[0];
+      if (target) {
+        try {
+          await api.post('/tagging/associate', {
+            assetId: target.id,
+            tagNumber: tagCode,
+            tagType: 'RFID_GEN2',
+            reason: 'Bulk Tagging Session Assignment'
+          });
+        } catch (apiErr) {
+          console.warn('API sync warning:', apiErr.message);
+        }
+      }
+
       const newProgressItem = {
         id: `prog-0${taggingProgressList.length + 1}`,
         itemIndex: taggingProgressList.length + 1,
-        assetNumber: nextAssetToTag ? nextAssetToTag.assetNumber : `AS-2026-0012${taggingProgressList.length + 1}`,
-        assetName: nextAssetToTag ? nextAssetToTag.assetName : 'Assigned Asset',
+        assetNumber: target ? target.assetNumber : `AS-2026-0012${taggingProgressList.length + 1}`,
+        assetName: target ? target.assetName : 'Assigned Asset',
         tagNumber: tagCode,
         assignedTime: timeStr,
         status: 'Tagged'

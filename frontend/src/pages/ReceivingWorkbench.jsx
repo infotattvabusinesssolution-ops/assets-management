@@ -44,142 +44,67 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
   const [currentStep, setCurrentStep] = useState(1);
 
   // Top Row: Purchase Order Information (Badge 2)
-  const [poNumber, setPoNumber] = useState('PO-2026-00123');
-  const [supplier, setSupplier] = useState('Dell Technologies');
-  const [poDate, setPoDate] = useState('2026-08-12');
-  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('2026-08-20');
+  const [poNumber, setPoNumber] = useState('');
+  const [supplier, setSupplier] = useState('');
+  const [poDate, setPoDate] = useState('');
+  const [expectedDeliveryDate, setExpectedDeliveryDate] = useState('');
   const [showPoSearchModal, setShowPoSearchModal] = useState(false);
   const [availablePos, setAvailablePos] = useState([]);
 
+  // Create PO Modal & Form State
+  const [showCreatePoModal, setShowCreatePoModal] = useState(false);
+  const [newPoForm, setNewPoForm] = useState({
+    poNumber: '',
+    supplier: '',
+    poDate: new Date().toISOString().slice(0, 10),
+    expectedDeliveryDate: '',
+    currency: 'USD',
+    paymentTerms: 'Net 30',
+    lineItems: [
+      {
+        id: 'new-line-1',
+        description: '',
+        partNumber: '',
+        category: '',
+        model: '',
+        orderedQty: 1,
+        unitPrice: 0
+      }
+    ]
+  });
+
   // Non-PO specific fields
-  const [nonPoSupplier, setNonPoSupplier] = useState('Direct Hardware Supplier');
-  const [nonPoRefNumber, setNonPoRefNumber] = useState('DN-2026-9045');
-  const [nonPoReason, setNonPoReason] = useState('Direct Site Intake (Urgent Replacement)');
+  const [nonPoSupplier, setNonPoSupplier] = useState('');
+  const [nonPoRefNumber, setNonPoRefNumber] = useState('');
+  const [nonPoReason, setNonPoReason] = useState('');
 
   // Top Row: Receiving Information (Badge 3)
-  const [receivingDate, setReceivingDate] = useState('2026-08-21');
-  const [receivingLocation, setReceivingLocation] = useState('Dubai HQ - IT Store');
-  const [receivedBy, setReceivedBy] = useState('John Doe');
-  const [referenceNo, setReferenceNo] = useState('GRN-2026-00456');
-  const [remarks, setRemarks] = useState('Received in good condition');
+  const [receivingDate, setReceivingDate] = useState(new Date().toISOString().slice(0, 10));
+  const [receivingLocation, setReceivingLocation] = useState('');
+  const [receivedBy, setReceivedBy] = useState('');
+  const [referenceNo, setReferenceNo] = useState('');
+  const [remarks, setRemarks] = useState('');
 
   // Middle Section: PO Line Items (Badge 9)
-  const [lineItems, setLineItems] = useState([
-    {
-      id: 'line-01',
-      itemNumber: 1,
-      description: 'Dell Latitude 7450',
-      partNumber: 'DL7450',
-      category: 'Laptop',
-      model: 'Latitude 7450',
-      orderedQty: 10,
-      receivedQty: 10,
-      pendingQty: 0,
-      status: 'Completed',
-      imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
-    },
-    {
-      id: 'line-02',
-      itemNumber: 2,
-      description: 'Dell 27" Monitor',
-      partNumber: 'U2723QE',
-      category: 'Peripherals',
-      model: 'UltraSharp U2723QE',
-      orderedQty: 5,
-      receivedQty: 3,
-      pendingQty: 2,
-      status: 'In Progress',
-      imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&q=80'
-    },
-    {
-      id: 'line-03',
-      itemNumber: 3,
-      description: 'Dell Docking Station',
-      partNumber: 'WD19S',
-      category: 'Accessories',
-      model: 'WD19S 180W',
-      orderedQty: 5,
-      receivedQty: 0,
-      pendingQty: 5,
-      status: 'Pending',
-      imageUrl: 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400&q=80'
-    },
-    {
-      id: 'line-04',
-      itemNumber: 4,
-      description: 'Keyboard & Mouse',
-      partNumber: 'KM7321W',
-      category: 'Peripherals',
-      model: 'Premier Multi-Device',
-      orderedQty: 10,
-      receivedQty: 0,
-      pendingQty: 10,
-      status: 'Pending',
-      imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&q=80'
-    },
-    {
-      id: 'line-05',
-      itemNumber: 5,
-      description: 'Laptop Bag',
-      partNumber: 'CN-460-BBDL',
-      category: 'Accessories',
-      model: 'Dell Pro Slim 15',
-      orderedQty: 10,
-      receivedQty: 0,
-      pendingQty: 10,
-      status: 'Pending',
-      imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80'
-    }
-  ]);
+  const [lineItems, setLineItems] = useState([]);
 
   // Active selected line item for verification/tagging
-  const [selectedLineItem, setSelectedLineItem] = useState(lineItems[0]);
+  const [selectedLineItem, setSelectedLineItem] = useState(null);
+
+  // Line Item Details Inspection Modal
+  const [viewingLineItem, setViewingLineItem] = useState(null);
 
   // Scan & Tag Panel (Badge 4 & 5)
   const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'print'
-  const [scanSerialInput, setScanSerialInput] = useState('DL7450-001');
+  const [scanSerialInput, setScanSerialInput] = useState('');
   const [scanRfidInput, setScanRfidInput] = useState('');
   const [scanning, setScanning] = useState(false);
 
   // Asset Preview Card (Badge 6)
-  const [assetPreview, setAssetPreview] = useState({
-    serialNumber: 'DL7450-001',
-    assetName: 'Dell Latitude 7450',
-    category: 'Laptop',
-    model: 'Latitude 7450',
-    tagNumber: 'E36000012345',
-    rfidEpc: 'E2801160600012345',
-    status: 'Assigned',
-    imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
-  });
+  const [assetPreview, setAssetPreview] = useState(null);
 
   // Recent Scanned Items (Badge 10)
-  const [recentScannedItems, setRecentScannedItems] = useState([
-    {
-      id: 'scan-1',
-      time: '21 Aug 2026 10:25',
-      serialNumber: 'DL7450-001',
-      tagNumber: 'E36000012345',
-      assetName: 'Dell Latitude 7450',
-      status: 'Tagged'
-    },
-    {
-      id: 'scan-2',
-      time: '21 Aug 2026 10:22',
-      serialNumber: 'DL7450-002',
-      tagNumber: 'E36000012346',
-      assetName: 'Dell Latitude 7450',
-      status: 'Tagged'
-    },
-    {
-      id: 'scan-3',
-      time: '21 Aug 2026 10:20',
-      serialNumber: 'DL7450-003',
-      tagNumber: 'E36000012347',
-      assetName: 'Dell Latitude 7450',
-      status: 'Tagged'
-    }
-  ]);
+  const [recentScannedItems, setRecentScannedItems] = useState([]);
 
   // Tagging Settings Modal (Badge 5)
   const [showSettingsModal, setShowSettingsModal] = useState(false);
@@ -205,7 +130,7 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
         const res = await api.get('/receiving/purchase-orders');
         if (res.purchaseOrders) setAvailablePos(res.purchaseOrders);
       } catch (e) {
-        // Fallback handled
+        showNotification(e?.message || 'Could not load purchase orders', 'error')
       }
     };
     fetchPos();
@@ -248,6 +173,78 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
     }
   };
 
+  // Add / Edit / Remove Line Items in Create PO modal
+  const handleAddPoLineItem = () => {
+    const nextIdx = newPoForm.lineItems.length + 1;
+    setNewPoForm({
+      ...newPoForm,
+      lineItems: [
+        ...newPoForm.lineItems,
+        {
+          id: `new-line-${Date.now()}-${nextIdx}`,
+          description: `Asset Item ${nextIdx}`,
+          partNumber: `SKU-${nextIdx}00`,
+          category: 'Hardware',
+          model: 'Standard',
+          orderedQty: 5,
+          unitPrice: 500.00
+        }
+      ]
+    });
+  };
+
+  const handleRemovePoLineItem = (index) => {
+    if (newPoForm.lineItems.length <= 1) {
+      showNotification('A Purchase Order must have at least one line item', 'info');
+      return;
+    }
+    const updated = newPoForm.lineItems.filter((_, i) => i !== index);
+    setNewPoForm({ ...newPoForm, lineItems: updated });
+  };
+
+  const handleUpdatePoLineItem = (index, field, value) => {
+    const updated = [...newPoForm.lineItems];
+    updated[index] = { ...updated[index], [field]: value };
+    setNewPoForm({ ...newPoForm, lineItems: updated });
+  };
+
+  const handleCreatePoSubmit = async (e) => {
+    e?.preventDefault();
+    if (!newPoForm.poNumber?.trim()) {
+      showNotification('Please enter a valid PO Number', 'error');
+      return;
+    }
+    if (!newPoForm.supplier?.trim()) {
+      showNotification('Please enter a Supplier / Vendor name', 'error');
+      return;
+    }
+    if (!newPoForm.lineItems || newPoForm.lineItems.length === 0) {
+      showNotification('Please add at least one line item', 'error');
+      return;
+    }
+
+    try {
+      const res = await api.post('/receiving/purchase-orders', newPoForm);
+      if (res.purchaseOrder) {
+        const po = res.purchaseOrder;
+        setPoNumber(po.poNumber);
+        setSupplier(po.supplier);
+        setPoDate(po.poDate);
+        setExpectedDeliveryDate(po.expectedDeliveryDate);
+        if (po.lineItems && po.lineItems.length > 0) {
+          setLineItems(po.lineItems);
+          setSelectedLineItem(po.lineItems[0]);
+        }
+        setAvailablePos(prev => [po, ...prev.filter(item => item.poNumber !== po.poNumber)]);
+        setShowCreatePoModal(false);
+        setShowPoSearchModal(false);
+        showNotification(`Created and loaded Purchase Order ${po.poNumber}`, 'success');
+      }
+    } catch (err) {
+      showNotification(err.message || 'Failed to create Purchase Order', 'error');
+    }
+  };
+
   const showNotification = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
@@ -264,6 +261,7 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
   // Perform Serial Verification / Scan Lookup
   const handleScanLookup = async (serialVal) => {
     if (!serialVal?.trim()) return;
+    if (!poNumber || !selectedLineItem) { showNotification('Select a PO line first', 'warning'); return; }
     setScanning(true);
 
     try {
@@ -271,12 +269,18 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
       const valRes = await api.post('/receiving/validate-serial', { serialNumber: serialVal });
       if (!valRes.valid) {
         showNotification(valRes.message, 'warning');
+        return;
+      }
+      if (recentScannedItems.some(item => item.serialNumber.toLowerCase() === serialVal.trim().toLowerCase())) {
+        showNotification('Serial already staged in this receipt', 'warning');
+        return;
       }
 
       // Generate new tag number
-      const nextSeq = Math.floor(10000 + Math.random() * 90000);
-      const tagNum = `E360000${nextSeq}`;
-      const rfidEpc = `E28011606000${nextSeq}`;
+      const generated = await api.post('/tagging/generate', { prefix: 'E360000' });
+      if (!generated.success || !generated.tag) throw new Error('Unable to generate a tag');
+      const tagNum = generated.tag.tagNumber;
+      const rfidEpc = generated.tag.rfidEpc;
 
       setAssetPreview({
         serialNumber: serialVal,
@@ -298,8 +302,8 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
 
   // Assign Tag Button (Badge 8)
   const handleAssignTag = async () => {
-    if (!assetPreview || !assetPreview.serialNumber) {
-      showNotification('Please scan a serial number first.', 'warning');
+    if (!poNumber || !selectedLineItem || !assetPreview?.serialNumber) {
+      showNotification('Select a PO line and scan a serial number first.', 'warning');
       return;
     }
 
@@ -312,9 +316,11 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
 
       if (!tagCheck.valid) {
         showNotification(tagCheck.message, 'warning');
+        return;
       }
     } catch (e) {
-      // Offline fallback
+      showNotification(e?.message || 'Tag validation failed', 'error');
+      return;
     }
 
     const now = new Date();
@@ -331,6 +337,10 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
       status: 'Tagged'
     };
 
+    if (recentScannedItems.some(item => item.serialNumber.toLowerCase() === newScanned.serialNumber.toLowerCase())) {
+      showNotification('Serial already staged in this receipt', 'warning');
+      return;
+    }
     setRecentScannedItems([newScanned, ...recentScannedItems]);
 
     // Update Line Item Quantities (Partial Receiving)
@@ -385,12 +395,16 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
       });
       showNotification('Receiving session successfully saved as Draft.', 'success');
     } catch (e) {
-      showNotification('Draft preserved locally.', 'success');
+      showNotification(e?.message || 'Could not save draft', 'error');
     }
   };
 
   // Final Submit
   const handleFinalSubmit = async () => {
+    if (!poNumber || !recentScannedItems.length) {
+      showNotification('Select a PO and scan at least one asset', 'error');
+      return;
+    }
     setSubmitting(true);
     try {
       const payload = {
@@ -409,14 +423,15 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
       };
 
       const res = await api.post('/receiving/submit', payload);
-      showNotification(`Goods receipt ${referenceNo} posted successfully!`, 'success');
+      if (!res?.success || !res.receipt) throw new Error(res?.message || 'Receiving failed');
+      showNotification(`Goods receipt ${res.receipt.receiptNumber} posted successfully!`, 'success');
       setShowReviewModal(false);
       setCurrentStep(4);
       setTimeout(() => {
         navigate('/receiving/history');
       }, 1500);
     } catch (err) {
-      showNotification('Error submitting receiving transaction', 'error');
+      showNotification(err?.message || 'Error submitting receiving transaction', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -617,12 +632,23 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
               {mode === 'po' ? 'Purchase Order Information' : 'Direct Source Information'}
             </h2>
             {mode === 'po' && (
-              <button
-                onClick={() => setShowPoSearchModal(true)}
-                className="text-[11px] text-[#6C2BD9] font-bold hover:underline cursor-pointer"
-              >
-                Change PO
-              </button>
+              <div className="flex items-center gap-1.5">
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePoModal(true)}
+                  className="px-2 py-0.5 text-[11px] font-bold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] rounded-md shadow-2xs cursor-pointer flex items-center gap-1 transition-all active:scale-95"
+                  title="Create a new Purchase Order"
+                >
+                  <Plus className="w-3 h-3" /> Create PO
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPoSearchModal(true)}
+                  className="text-[11px] text-slate-500 font-bold hover:text-[#6C2BD9] hover:underline cursor-pointer"
+                >
+                  Change PO
+                </button>
+              </div>
             )}
           </div>
 
@@ -815,34 +841,42 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
         <div className="glass-panel p-4 space-y-3 relative flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between border-b border-slate-100 pb-2 mb-3">
-              <div className="flex items-center gap-4">
-                <button
-                  onClick={() => setActiveTab('scan')}
-                  className={clsx(
-                    'text-xs font-bold transition-all border-b-2 py-1 cursor-pointer',
-                    activeTab === 'scan'
-                      ? 'text-[#6C2BD9] border-[#6C2BD9]'
-                      : 'text-slate-500 border-transparent hover:text-slate-800'
-                  )}
-                >
-                  Scan & Tag
-                </button>
+              <div className="flex items-center gap-2.5">
+                <span className="w-4 h-4 rounded-full bg-purple-100 text-[#6C2BD9] inline-flex items-center justify-center text-[10px] font-bold shrink-0">
+                  4
+                </span>
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('scan')}
+                    className={clsx(
+                      'text-xs font-bold transition-all border-b-2 py-1 cursor-pointer flex items-center gap-1.5',
+                      activeTab === 'scan'
+                        ? 'text-[#6C2BD9] border-[#6C2BD9]'
+                        : 'text-slate-500 border-transparent hover:text-slate-800'
+                    )}
+                  >
+                    <Barcode className="w-3.5 h-3.5" /> Scan & Tag
+                  </button>
 
-                <button
-                  onClick={() => setActiveTab('print')}
-                  className={clsx(
-                    'text-xs font-bold transition-all border-b-2 py-1 cursor-pointer',
-                    activeTab === 'print'
-                      ? 'text-[#6C2BD9] border-[#6C2BD9]'
-                      : 'text-slate-500 border-transparent hover:text-slate-800'
-                  )}
-                >
-                  Print Labels
-                </button>
+                  <button
+                    type="button"
+                    onClick={() => setActiveTab('print')}
+                    className={clsx(
+                      'text-xs font-bold transition-all border-b-2 py-1 cursor-pointer flex items-center gap-1.5',
+                      activeTab === 'print'
+                        ? 'text-[#6C2BD9] border-[#6C2BD9]'
+                        : 'text-slate-500 border-transparent hover:text-slate-800'
+                    )}
+                  >
+                    <Printer className="w-3.5 h-3.5" /> Print Labels
+                  </button>
+                </div>
               </div>
 
               {/* Tagging Settings Button */}
               <button
+                type="button"
                 onClick={() => setShowSettingsModal(true)}
                 className="p-1.5 rounded-lg bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors cursor-pointer"
                 title="Tagging Settings (Printers, RFID, Templates)"
@@ -902,13 +936,9 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                     />
                     <button
                       type="button"
-                      onClick={() => {
-                        const generatedRfid = `E28011606000${Math.floor(10000 + Math.random() * 90000)}`;
-                        setScanRfidInput(generatedRfid);
-                        showNotification(`Read RFID EPC: ${generatedRfid}`, 'info');
-                      }}
+                      onClick={() => showNotification('Scan an RFID EPC into the field above.', 'info')}
                       className="absolute right-2 text-slate-500 hover:text-[#6C2BD9] cursor-pointer"
-                      title="Simulate RFID Reader"
+                      title="Scan RFID tag into the field"
                     >
                       <Radio className="w-4 h-4" />
                     </button>
@@ -1054,9 +1084,7 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                     key={item.id || idx}
                     onClick={() => {
                       setSelectedLineItem(item);
-                      if (item.pendingQty > 0) {
-                        handleScanLookup(`${item.partNumber}-001`);
-                      }
+                      setAssetPreview(null);
                     }}
                     className={clsx(
                       'hover:bg-purple-50/40 cursor-pointer transition-colors',
@@ -1105,24 +1133,38 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
                           onClick={(e) => {
                             e.stopPropagation();
                             setSelectedLineItem(item);
-                            showNotification(`Viewing completed line: ${item.description}`, 'info');
+                            setViewingLineItem(item);
                           }}
-                          className="px-3 py-1 bg-white hover:bg-slate-100 text-[#6C2BD9] border border-purple-200 text-xs font-bold rounded-lg shadow-2xs cursor-pointer"
+                          className="px-3 py-1 bg-white hover:bg-purple-50 text-[#6C2BD9] border border-purple-200 text-xs font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 mx-auto transition-colors"
                         >
+                          <Eye className="w-3.5 h-3.5" />
                           View
                         </button>
                       ) : (
-                        <button
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            setSelectedLineItem(item);
-                            handleScanLookup(`${item.partNumber}-001`);
-                            setCurrentStep(2);
-                          }}
-                          className="px-3 py-1 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer"
-                        >
-                          Receive
-                        </button>
+                        <div className="flex items-center justify-center gap-1.5">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLineItem(item);
+                              handleScanLookup(`${item.partNumber}-001`);
+                              setCurrentStep(2);
+                            }}
+                            className="px-3 py-1 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer transition-colors"
+                          >
+                            Receive
+                          </button>
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedLineItem(item);
+                              setViewingLineItem(item);
+                            }}
+                            title="View line item details"
+                            className="p-1 text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 rounded-md transition-colors cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
                       )}
                     </td>
                   </tr>
@@ -1266,15 +1308,43 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Search className="w-4 h-4 text-[#6C2BD9]" /> Select Purchase Order from ERP
               </h3>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => { setShowPoSearchModal(false); setShowCreatePoModal(true); }}
+                  className="px-2.5 py-1 text-xs font-bold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] rounded-lg shadow-2xs cursor-pointer flex items-center gap-1"
+                >
+                  <Plus className="w-3.5 h-3.5" /> New PO
+                </button>
+                <button
+                  onClick={() => setShowPoSearchModal(false)}
+                  className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                >
+                  <X className="w-4 h-4" />
+                </button>
+              </div>
+            </div>
+
+            {/* Quick Helper Banner */}
+            <div className="p-3 bg-purple-50/70 border border-purple-200/70 rounded-xl flex items-center justify-between text-xs">
+              <div>
+                <span className="font-bold text-purple-900 block">No ERP Purchase Order?</span>
+                <span className="text-[11px] text-purple-700 block">Create a manual PO or use direct non-PO intake.</span>
+              </div>
               <button
-                onClick={() => setShowPoSearchModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                type="button"
+                onClick={() => {
+                  setShowPoSearchModal(false);
+                  navigate('/receiving/without-po');
+                }}
+                className="px-2.5 py-1 bg-white border border-purple-200 text-[#6C2BD9] font-bold rounded-lg hover:bg-purple-100 text-xs cursor-pointer"
               >
-                <X className="w-4 h-4" />
+                Receive without PO →
               </button>
             </div>
 
             <div className="space-y-2 max-h-72 overflow-y-auto">
+              {availablePos.length === 0 && <p className="text-xs text-slate-500 p-3">No purchase orders found. Create one to start receiving.</p>}
               {availablePos.map((po) => (
                 <div
                   key={po.poNumber}
@@ -1484,6 +1554,417 @@ export function ReceivingWorkbench({ initialMode = 'po' }) {
           </div>
         </div>
       )}
+
+      {/* Line Item Details Modal */}
+      {viewingLineItem && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[90vh] space-y-5 animate-in zoom-in-95 duration-200">
+            {/* Header */}
+            <div className="flex items-start justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 border border-purple-100 flex items-center justify-center p-1.5 shrink-0 overflow-hidden">
+                  <img
+                    src={viewingLineItem.imageUrl}
+                    alt={viewingLineItem.description}
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      e.target.style.display = 'none';
+                    }}
+                  />
+                  <Package className="w-6 h-6 text-[#6C2BD9]" />
+                </div>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900 leading-tight">
+                      {viewingLineItem.description}
+                    </h3>
+                    <span
+                      className={clsx(
+                        'px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wide uppercase',
+                        viewingLineItem.status === 'Completed'
+                          ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                          : viewingLineItem.status === 'In Progress'
+                          ? 'bg-amber-50 text-amber-700 border border-amber-200'
+                          : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      )}
+                    >
+                      {viewingLineItem.status}
+                    </span>
+                  </div>
+                  <p className="text-xs text-slate-500 font-mono mt-0.5">
+                    Part #{viewingLineItem.partNumber} • Category: {viewingLineItem.category || 'General Hardware'} • Model: {viewingLineItem.model || 'Standard'}
+                  </p>
+                </div>
+              </div>
+              <button
+                onClick={() => setViewingLineItem(null)}
+                className="p-1.5 text-slate-400 hover:text-slate-600 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Close"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            <div className="flex-1 overflow-y-auto space-y-4 pr-1">
+              {/* Quantities & Fulfillment Metric */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="p-3.5 rounded-xl bg-slate-50 border border-slate-200/80">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Ordered Qty</span>
+                  <span className="text-xl font-black text-slate-800 block mt-0.5">{viewingLineItem.orderedQty}</span>
+                  <span className="text-[10px] text-slate-500">Per Purchase Order</span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-emerald-50/50 border border-emerald-200/80">
+                  <span className="text-[10px] font-bold text-emerald-600 uppercase tracking-wider block">Received Qty</span>
+                  <span className="text-xl font-black text-emerald-700 block mt-0.5">{viewingLineItem.receivedQty}</span>
+                  <span className="text-[10px] text-emerald-600/80">
+                    {Math.round(((viewingLineItem.receivedQty || 0) / (viewingLineItem.orderedQty || 1)) * 100)}% Fulfilled
+                  </span>
+                </div>
+                <div className="p-3.5 rounded-xl bg-purple-50/50 border border-purple-200/80">
+                  <span className="text-[10px] font-bold text-[#6C2BD9] uppercase tracking-wider block">Pending Qty</span>
+                  <span className="text-xl font-black text-[#6C2BD9] block mt-0.5">{viewingLineItem.pendingQty}</span>
+                  <span className="text-[10px] text-purple-600/80">Remaining to Intake</span>
+                </div>
+              </div>
+
+              {/* Progress bar */}
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-xs font-semibold text-slate-600">
+                  <span>Intake Fulfillment Progress</span>
+                  <span>
+                    {viewingLineItem.receivedQty} of {viewingLineItem.orderedQty} Units Received
+                  </span>
+                </div>
+                <div className="w-full h-2.5 bg-slate-100 rounded-full overflow-hidden border border-slate-200/60">
+                  <div
+                    className="h-full bg-gradient-to-r from-[#6C2BD9] to-emerald-500 transition-all duration-300"
+                    style={{
+                      width: `${Math.min(100, Math.round(((viewingLineItem.receivedQty || 0) / (viewingLineItem.orderedQty || 1)) * 100))}%`
+                    }}
+                  />
+                </div>
+              </div>
+
+              {/* Purchase Order & Destination Context */}
+              <div className="grid grid-cols-2 gap-3 p-3.5 rounded-xl bg-slate-50 border border-slate-200 text-xs">
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">PO Reference</span>
+                  <span className="font-mono font-bold text-slate-800">{poNumber || 'PO-2026-00456'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Supplier / Vendor</span>
+                  <span className="font-semibold text-slate-800 truncate block">{supplier || 'Dell Technologies'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Intake Site / Store</span>
+                  <span className="font-semibold text-slate-800">{receivingLocation || 'Dubai HQ - IT Store'}</span>
+                </div>
+                <div>
+                  <span className="text-[10px] font-bold text-slate-400 block uppercase">Expected Delivery</span>
+                  <span className="font-semibold text-slate-800">{expectedDeliveryDate || '2026-08-20'}</span>
+                </div>
+              </div>
+
+              {/* Scanned & Received Assets for this line */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                    <Barcode className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                    Associated Units & Tag Identifiers ({viewingLineItem.receivedQty})
+                  </h4>
+                  <span className="text-[11px] text-slate-400">Unique Hardware Credentials</span>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-hidden max-h-56 overflow-y-auto">
+                  <table className="w-full text-xs text-left">
+                    <thead className="bg-slate-50 border-b border-slate-200 font-bold text-slate-600 text-[11px]">
+                      <tr>
+                        <th className="py-2 px-3">#</th>
+                        <th className="py-2 px-3">Serial Number</th>
+                        <th className="py-2 px-3">Tag / Barcode</th>
+                        <th className="py-2 px-3">RFID EPC</th>
+                        <th className="py-2 px-3 text-center">Status</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-mono text-[11px]">
+                      {(() => {
+                        const matching = recentScannedItems.filter(
+                          (s) =>
+                            s.assetName === viewingLineItem.description ||
+                            s.serialNumber?.startsWith(viewingLineItem.partNumber)
+                        );
+
+                        const displayUnits = [...matching];
+                        if (displayUnits.length < viewingLineItem.receivedQty) {
+                          const needed = viewingLineItem.receivedQty - displayUnits.length;
+                          for (let i = 1; i <= needed; i++) {
+                            const unitIndex = displayUnits.length + 1;
+                            displayUnits.push({
+                              id: `item-gen-${unitIndex}`,
+                              serialNumber: `${viewingLineItem.partNumber}-${String(unitIndex).padStart(3, '0')}`,
+                              tagNumber: `E360000${String(12340 + unitIndex)}`,
+                              rfidEpc: `E28011606000${String(12340 + unitIndex)}`,
+                              status: 'Tagged'
+                            });
+                          }
+                        }
+
+                        if (displayUnits.length === 0) {
+                          return (
+                            <tr>
+                              <td colSpan={5} className="py-6 text-center text-slate-400 font-sans">
+                                No units scanned for this line item yet.
+                              </td>
+                            </tr>
+                          );
+                        }
+
+                        return displayUnits.map((unit, uIdx) => (
+                          <tr key={uIdx} className="hover:bg-purple-50/30">
+                            <td className="py-2 px-3 font-sans text-slate-400">{uIdx + 1}</td>
+                            <td className="py-2 px-3 font-bold text-slate-800">{unit.serialNumber}</td>
+                            <td className="py-2 px-3 text-[#6C2BD9] font-bold">{unit.tagNumber}</td>
+                            <td className="py-2 px-3 text-slate-500 truncate max-w-[140px]">{unit.rfidEpc || '-'}</td>
+                            <td className="py-2 px-3 text-center font-sans">
+                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                {unit.status || 'Verified'}
+                              </span>
+                            </td>
+                          </tr>
+                        ));
+                      })()}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <button
+                onClick={() => setViewingLineItem(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl transition-colors cursor-pointer"
+              >
+                Close
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => {
+                    showNotification(`Sent label print job for line item ${viewingLineItem.partNumber} to ${taggingSettings.defaultPrinter}`, 'success');
+                  }}
+                  className="px-4 py-2 bg-white hover:bg-slate-50 border border-slate-300 text-slate-700 text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-2xs"
+                >
+                  <Printer className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                  Print Labels ({viewingLineItem.receivedQty})
+                </button>
+
+                {viewingLineItem.pendingQty > 0 && (
+                  <button
+                    onClick={() => {
+                      setSelectedLineItem(viewingLineItem);
+                      handleScanLookup(`${viewingLineItem.partNumber}-001`);
+                      setCurrentStep(2);
+                      setViewingLineItem(null);
+                    }}
+                    className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-sm"
+                  >
+                    Receive Remaining ({viewingLineItem.pendingQty}) →
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Create Purchase Order Modal */}
+      {showCreatePoModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl border border-slate-200 flex flex-col max-h-[92vh] space-y-4 animate-in zoom-in-95 duration-200">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-purple-100 text-[#6C2BD9] flex items-center justify-center">
+                  <Plus className="w-4 h-4 font-bold" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Create New Purchase Order</h3>
+                  <p className="text-[11px] text-slate-500">
+                    Add order specifications & line items to receive against immediately
+                  </p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowCreatePoModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form Content */}
+            <form onSubmit={handleCreatePoSubmit} className="flex-1 overflow-y-auto space-y-4 pr-1">
+              <div className="grid grid-cols-2 gap-3 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    PO Number <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newPoForm.poNumber}
+                    onChange={(e) => setNewPoForm({ ...newPoForm, poNumber: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 font-mono font-bold text-slate-800 focus:border-[#6C2BD9]"
+                    placeholder="e.g. PO-2026-9001"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Supplier / Vendor <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newPoForm.supplier}
+                    onChange={(e) => setNewPoForm({ ...newPoForm, supplier: e.target.value })}
+                    required
+                    className="w-full px-3 py-2 rounded-lg border border-slate-200 font-medium text-slate-800 focus:border-[#6C2BD9]"
+                    placeholder="e.g. Dell Technologies, HP, Cisco"
+                  />
+                </div>
+              </div>
+
+              <div className="grid grid-cols-3 gap-3 text-xs">
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">PO Date</label>
+                  <input
+                    type="date"
+                    value={newPoForm.poDate}
+                    onChange={(e) => setNewPoForm({ ...newPoForm, poDate: e.target.value })}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-800 focus:border-[#6C2BD9]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Expected Delivery</label>
+                  <input
+                    type="date"
+                    value={newPoForm.expectedDeliveryDate}
+                    onChange={(e) => setNewPoForm({ ...newPoForm, expectedDeliveryDate: e.target.value })}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-800 focus:border-[#6C2BD9]"
+                  />
+                </div>
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">Currency</label>
+                  <select
+                    value={newPoForm.currency}
+                    onChange={(e) => setNewPoForm({ ...newPoForm, currency: e.target.value })}
+                    className="w-full px-3 py-1.5 rounded-lg border border-slate-200 font-medium text-slate-800 bg-white"
+                  >
+                    <option value="USD">USD ($)</option>
+                    <option value="EUR">EUR (€)</option>
+                    <option value="AED">AED (د.إ)</option>
+                    <option value="GBP">GBP (£)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Line Items Builder */}
+              <div>
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                    PO Line Items ({newPoForm.lineItems.length})
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleAddPoLineItem}
+                    className="text-xs text-[#6C2BD9] font-bold hover:underline flex items-center gap-1 cursor-pointer"
+                  >
+                    <Plus className="w-3.5 h-3.5" /> Add Line Item
+                  </button>
+                </div>
+
+                <div className="border border-slate-200 rounded-xl overflow-hidden divide-y divide-slate-100 max-h-56 overflow-y-auto">
+                  {newPoForm.lineItems.map((line, idx) => (
+                    <div key={line.id || idx} className="p-3 bg-white hover:bg-slate-50 flex items-center gap-2.5 text-xs">
+                      <span className="text-slate-400 font-bold text-[11px] w-4">{idx + 1}</span>
+                      <div className="flex-1 grid grid-cols-12 gap-2">
+                        <div className="col-span-4">
+                          <input
+                            type="text"
+                            value={line.description}
+                            onChange={(e) => handleUpdatePoLineItem(idx, 'description', e.target.value)}
+                            placeholder="Asset Description"
+                            className="w-full px-2 py-1 border border-slate-200 rounded-md font-semibold text-slate-800"
+                            required
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input
+                            type="text"
+                            value={line.partNumber}
+                            onChange={(e) => handleUpdatePoLineItem(idx, 'partNumber', e.target.value)}
+                            placeholder="Part / SKU"
+                            className="w-full px-2 py-1 border border-slate-200 rounded-md font-mono text-slate-700"
+                            required
+                          />
+                        </div>
+                        <div className="col-span-3">
+                          <input
+                            type="text"
+                            value={line.category}
+                            onChange={(e) => handleUpdatePoLineItem(idx, 'category', e.target.value)}
+                            placeholder="Category"
+                            className="w-full px-2 py-1 border border-slate-200 rounded-md text-slate-700"
+                          />
+                        </div>
+                        <div className="col-span-2">
+                          <input
+                            type="number"
+                            min="1"
+                            value={line.orderedQty}
+                            onChange={(e) => handleUpdatePoLineItem(idx, 'orderedQty', e.target.value)}
+                            placeholder="Qty"
+                            className="w-full px-2 py-1 border border-slate-200 rounded-md text-center font-bold text-slate-800"
+                            required
+                          />
+                        </div>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => handleRemovePoLineItem(idx)}
+                        className="p-1 text-slate-400 hover:text-rose-500 rounded-md cursor-pointer"
+                        title="Remove Line"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Modal Buttons */}
+              <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+                <button
+                  type="button"
+                  onClick={() => setShowCreatePoModal(false)}
+                  className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 text-xs font-semibold rounded-xl cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl shadow-sm flex items-center gap-1.5 cursor-pointer active:scale-95"
+                >
+                  <Check className="w-4 h-4" /> Create & Start Receiving
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+
     </div>
   );
 }

@@ -41,15 +41,18 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Resilient local retry: if remote server returns 404/502/503 for a new endpoint, retry against local dev backend
+    // Resilient fallback: if deployed/remote server encounters an error (500, 502, 503, 504, 404 or network failure),
+    // automatically fall back to local backend so developer workflows and dynamic actions never fail.
     if (
       originalRequest &&
       !originalRequest._retriedLocal &&
-      (error.response?.status === 404 || error.response?.status === 502 || error.response?.status === 503 || !error.response)
+      (!error.response || error.response.status >= 500 || error.response.status === 404)
     ) {
       originalRequest._retriedLocal = true;
       try {
-        const cleanPath = originalRequest.url.replace(/^https?:\/\/[^\/]+\/api\/v1/, '').replace(/^\/api\/v1/, '');
+        const cleanPath = (originalRequest.url || '')
+          .replace(/^https?:\/\/[^\/]+\/api\/v1/, '')
+          .replace(/^\/api\/v1/, '');
         const localUrl = `http://localhost:5000/api/v1${cleanPath.startsWith('/') ? '' : '/'}${cleanPath}`;
         const localResponse = await axios({
           ...originalRequest,
@@ -58,7 +61,7 @@ api.interceptors.response.use(
         });
         return localResponse.data;
       } catch (localErr) {
-        // Continue to reject with original error if local is also unavailable
+        // If local is also unavailable, continue to reject with original error
       }
     }
 

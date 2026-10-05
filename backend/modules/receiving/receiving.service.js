@@ -1,279 +1,29 @@
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
+import { listPurchaseOrders, findPurchaseOrder, storePurchaseOrder } from './receiving.live.js';
 
-// Sample ERP Purchase Orders for integration / lookup
-export const MOCK_ERP_PURCHASE_ORDERS = [
-  {
-    poNumber: 'PO-2026-00123',
-    supplier: 'Dell Technologies',
-    poDate: '2026-08-12',
-    expectedDeliveryDate: '2026-08-20',
-    currency: 'USD',
-    paymentTerms: 'Net 30',
-    status: 'IN_PROGRESS',
-    lineItems: [
-      {
-        id: 'line-01',
-        itemNumber: 1,
-        description: 'Dell Latitude 7450',
-        partNumber: 'DL7450',
-        category: 'Laptop',
-        model: 'Latitude 7450',
-        orderedQty: 10,
-        unitPrice: 1450.00,
-        imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80',
-        preReceivedQty: 10, // Already received in prior delivery
-      },
-      {
-        id: 'line-02',
-        itemNumber: 2,
-        description: 'Dell 27" Monitor',
-        partNumber: 'U2723QE',
-        category: 'Peripherals',
-        model: 'UltraSharp U2723QE',
-        orderedQty: 5,
-        unitPrice: 580.00,
-        imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&q=80',
-        preReceivedQty: 3,
-      },
-      {
-        id: 'line-03',
-        itemNumber: 3,
-        description: 'Dell Docking Station',
-        partNumber: 'WD19S',
-        category: 'Accessories',
-        model: 'WD19S 180W',
-        orderedQty: 5,
-        unitPrice: 220.00,
-        imageUrl: 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400&q=80',
-        preReceivedQty: 0,
-      },
-      {
-        id: 'line-04',
-        itemNumber: 4,
-        description: 'Keyboard & Mouse',
-        partNumber: 'KM7321W',
-        category: 'Peripherals',
-        model: 'Premier Multi-Device',
-        orderedQty: 10,
-        unitPrice: 75.00,
-        imageUrl: 'https://images.unsplash.com/photo-1587829741301-dc798b83add3?w=400&q=80',
-        preReceivedQty: 0,
-      },
-      {
-        id: 'line-05',
-        itemNumber: 5,
-        description: 'Laptop Bag',
-        partNumber: 'CN-460-BBDL',
-        category: 'Accessories',
-        model: 'Dell Pro Slim 15',
-        orderedQty: 10,
-        unitPrice: 45.00,
-        imageUrl: 'https://images.unsplash.com/photo-1553062407-98eeb64c6a62?w=400&q=80',
-        preReceivedQty: 0,
-      }
-    ]
-  },
-  {
-    poNumber: 'PO-2026-00124',
-    supplier: 'Cisco Systems Inc.',
-    poDate: '2026-08-15',
-    expectedDeliveryDate: '2026-08-25',
-    currency: 'USD',
-    paymentTerms: 'Net 45',
-    status: 'PENDING',
-    lineItems: [
-      {
-        id: 'line-11',
-        itemNumber: 1,
-        description: 'Catalyst 9300 48-Port Switch',
-        partNumber: 'C9300-48P-A',
-        category: 'Networking',
-        model: 'Catalyst 9300',
-        orderedQty: 4,
-        unitPrice: 4800.00,
-        imageUrl: 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400&q=80',
-        preReceivedQty: 0,
-      },
-      {
-        id: 'line-12',
-        itemNumber: 2,
-        description: 'Cisco SFP+ 10G Transceiver',
-        partNumber: 'SFP-10G-SR',
-        category: 'Networking',
-        model: '10GBASE-SR',
-        orderedQty: 16,
-        unitPrice: 280.00,
-        imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80',
-        preReceivedQty: 0,
-      }
-    ]
-  },
-  {
-    poNumber: 'PO-2026-00125',
-    supplier: 'Apple Inc.',
-    poDate: '2026-08-18',
-    expectedDeliveryDate: '2026-08-28',
-    currency: 'USD',
-    paymentTerms: 'Prepaid',
-    status: 'PENDING',
-    lineItems: [
-      {
-        id: 'line-21',
-        itemNumber: 1,
-        description: 'MacBook Pro 16" M3 Max',
-        partNumber: 'MBP16-M3MAX',
-        category: 'Laptop',
-        model: 'MacBook Pro 16',
-        orderedQty: 6,
-        unitPrice: 3499.00,
-        imageUrl: 'https://images.unsplash.com/photo-1517336714731-489689fd1ca8?w=400&q=80',
-        preReceivedQty: 0,
-      }
-    ]
-  }
-];
-
-// In-memory store for drafts, simulated transactions, and offline resilience
 const draftsStore = new Map();
-const mockReceiptsStore = [
-  {
-    id: 'REC-HIST-001',
-    receiptNumber: 'GRN-2026-00456',
-    poNumber: 'PO-2026-00123',
-    vendorName: 'Dell Technologies',
-    receivingLocation: 'Dubai HQ - IT Store',
-    receivedBy: 'John Doe',
-    receivedDate: '2026-08-21T10:30:00Z',
-    status: 'COMPLETED',
-    remarks: 'Received in good condition. Partial batch 1 of 2.',
-    lineItems: [
-      {
-        itemDescription: 'Dell Latitude 7450',
-        partNumber: 'DL7450',
-        orderedQty: 10,
-        receivedQty: 10,
-        pendingQty: 0,
-        status: 'Completed',
-        assets: [
-          { serialNumber: 'DL7450-001', tagNumber: 'E36000012345', rfidEpc: 'E2801160600012345', status: 'Tagged' },
-          { serialNumber: 'DL7450-002', tagNumber: 'E36000012346', rfidEpc: 'E2801160600012346', status: 'Tagged' },
-          { serialNumber: 'DL7450-003', tagNumber: 'E36000012347', rfidEpc: 'E2801160600012347', status: 'Tagged' }
-        ]
-      },
-      {
-        itemDescription: 'Dell 27" Monitor',
-        partNumber: 'U2723QE',
-        orderedQty: 5,
-        receivedQty: 3,
-        pendingQty: 2,
-        status: 'In Progress',
-        assets: [
-          { serialNumber: 'MON27-8801', tagNumber: 'E36000012380', rfidEpc: 'E2801160600012380', status: 'Tagged' },
-          { serialNumber: 'MON27-8802', tagNumber: 'E36000012381', rfidEpc: 'E2801160600012381', status: 'Tagged' },
-          { serialNumber: 'MON27-8803', tagNumber: 'E36000012382', rfidEpc: 'E2801160600012382', status: 'Tagged' }
-        ]
-      }
-    ],
-    summary: {
-      poItems: 5,
-      unitsReceived: 13,
-      unitsTagged: 3,
-      unitsPending: 2
-    },
-    auditTrail: [
-      { action: 'PO_FETCHED', timestamp: '2026-08-21T09:45:00Z', user: 'John Doe', details: 'Retrieved PO-2026-00123 from ERP integration' },
-      { action: 'ASSET_VERIFIED', timestamp: '2026-08-21T10:15:00Z', user: 'John Doe', details: 'Verified physical units for Dell Latitude 7450' },
-      { action: 'TAGS_ASSIGNED', timestamp: '2026-08-21T10:25:00Z', user: 'John Doe', details: 'Associated Barcode & RFID EPC tags E36000012345-47' },
-      { action: 'SUBMITTED', timestamp: '2026-08-21T10:30:00Z', user: 'John Doe', details: 'GRN-2026-00456 posted. Routed to Asset Approval.' }
-    ]
-  }
-];
 
 export class ReceivingService {
   /**
    * Search / List available Purchase Orders
    */
   static async getPurchaseOrders(query = '') {
-    const q = query.trim().toLowerCase();
-    let orders = MOCK_ERP_PURCHASE_ORDERS;
-    if (q) {
-      orders = orders.filter(
-        (po) =>
-          po.poNumber.toLowerCase().includes(q) ||
-          po.supplier.toLowerCase().includes(q)
-      );
-    }
-    return orders;
+    return listPurchaseOrders(query);
+  }
+
+  /**
+   * Create a new manual / internal Purchase Order
+   */
+  static async createPurchaseOrder(payload, user) {
+    return storePurchaseOrder(payload, user);
   }
 
   /**
    * Get specific PO with dynamically computed cumulative receiving counts
    */
   static async getPurchaseOrderByNumber(poNumber) {
-    const foundPo = MOCK_ERP_PURCHASE_ORDERS.find(
-      (p) => p.poNumber.toUpperCase() === poNumber.trim().toUpperCase()
-    );
-
-    if (!foundPo) {
-      return null;
-    }
-
-    // Try fetching actual completed receipts from Prisma DB if connected
-    let completedReceipts = [];
-    if (isSqlServerConnected) {
-      try {
-        completedReceipts = await prisma.receipt.findMany({
-          where: { poNumber: foundPo.poNumber, status: 'COMPLETED' },
-          include: { lineItems: true }
-        });
-      } catch (e) {
-        completedReceipts = mockReceiptsStore.filter(
-          (r) => r.poNumber === foundPo.poNumber && r.status === 'COMPLETED'
-        );
-      }
-    } else {
-      completedReceipts = mockReceiptsStore.filter(
-        (r) => r.poNumber === foundPo.poNumber && r.status === 'COMPLETED'
-      );
-    }
-
-    // Calculate cumulative received quantities per line item
-    const computedLines = foundPo.lineItems.map((line) => {
-      let cumulativeReceived = line.preReceivedQty || 0;
-
-      // Add quantities from DB receipts if any additional
-      for (const rec of completedReceipts) {
-        if (rec.lineItems) {
-          for (const item of rec.lineItems) {
-            const desc = item.description || item.itemDescription || '';
-            if (desc.toLowerCase().includes(line.partNumber.toLowerCase()) || desc.toLowerCase().includes(line.description.toLowerCase())) {
-              cumulativeReceived = Math.max(cumulativeReceived, item.quantity || item.receivedQty || 0);
-            }
-          }
-        }
-      }
-
-      const pendingQty = Math.max(0, line.orderedQty - cumulativeReceived);
-      let status = 'Pending';
-      if (cumulativeReceived >= line.orderedQty) {
-        status = 'Completed';
-      } else if (cumulativeReceived > 0) {
-        status = 'In Progress';
-      }
-
-      return {
-        ...line,
-        receivedQty: cumulativeReceived,
-        pendingQty,
-        status
-      };
-    });
-
-    return {
-      ...foundPo,
-      lineItems: computedLines
-    };
+    return findPurchaseOrder(poNumber);
   }
 
   /**
@@ -283,6 +33,7 @@ export class ReceivingService {
     const sn = serialNumber?.trim();
     if (!sn) return { valid: false, message: 'Serial number is required' };
 
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
     if (isSqlServerConnected) {
       try {
         const existing = await prisma.asset.findFirst({
@@ -296,23 +47,7 @@ export class ReceivingService {
             existingAsset: existing
           };
         }
-      } catch (e) {
-        // Fallback
-      }
-    }
-
-    // In offline/mock mode check mock store
-    for (const rec of mockReceiptsStore) {
-      for (const line of rec.lineItems || []) {
-        for (const a of line.assets || []) {
-          if (a.serialNumber?.toLowerCase() === sn.toLowerCase()) {
-            return {
-              valid: false,
-              message: `Serial Number '${sn}' is already registered in receipt ${rec.receiptNumber}.`
-            };
-          }
-        }
-      }
+      } catch (e) { throw e; }
     }
 
     return { valid: true, message: 'Serial number is unique and available' };
@@ -330,6 +65,7 @@ export class ReceivingService {
       return { valid: false, message: 'Either Tag Number or RFID EPC is required' };
     }
 
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
     if (isSqlServerConnected) {
       try {
         if (tag) {
@@ -359,24 +95,8 @@ export class ReceivingService {
             };
           }
         }
-      } catch (e) {
-        // Fallback
-      }
+      } catch (e) { throw e; }
     }
-      // Local fallback check
-      for (const rec of mockReceiptsStore) {
-        for (const line of rec.lineItems || []) {
-          for (const a of line.assets || []) {
-            if ((tag && a.tagNumber === tag) || (epc && a.rfidEpc === epc)) {
-              return {
-                valid: false,
-                message: `Tag / EPC is already assigned in transaction ${rec.receiptNumber}.`
-              };
-            }
-          }
-        }
-      }
-
     return { valid: true, message: 'Tag / RFID EPC is available for assignment' };
   }
 
@@ -433,37 +153,7 @@ export class ReceivingService {
       // offline fallback
     }
 
-    // 3. Fallback: Parse common barcode / serial prefixes
-    let assetName = 'Dell Latitude 7450';
-    let category = 'Laptop';
-    let model = 'Latitude 7450';
-    let imageUrl = 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80';
-
-    if (val.toLowerCase().includes('mon') || val.toLowerCase().includes('u2723')) {
-      assetName = 'Dell 27" Monitor';
-      category = 'Peripherals';
-      model = 'UltraSharp U2723QE';
-      imageUrl = 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&q=80';
-    } else if (val.toLowerCase().includes('dock') || val.toLowerCase().includes('wd19')) {
-      assetName = 'Dell Docking Station';
-      category = 'Accessories';
-      model = 'WD19S 180W';
-      imageUrl = 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400&q=80';
-    }
-
-    return {
-      success: true,
-      type: 'SERIAL_PARSED',
-      suggestedAsset: {
-        serialNumber: val,
-        assetName,
-        category,
-        model,
-        imageUrl,
-        tagNumber: `E360000${Math.floor(10000 + Math.random() * 90000)}`,
-        rfidEpc: `E28011606000${Math.floor(10000 + Math.random() * 90000)}`
-      }
-    };
+    return { success: false, message: 'No matching asset or PO line found.' };
   }
 
   /**
@@ -514,16 +204,18 @@ export class ReceivingService {
       requireApproval = true
     } = payload;
 
-    const grnNumber = referenceNo || `GRN-2026-${Math.floor(10000 + Math.random() * 90000)}`;
+    if (!supplier?.trim() || !receivingLocation?.trim() || !Array.isArray(scannedItems) || !scannedItems.length) throw new Error('Supplier, location, and at least one scanned asset are required.');
+    if (mode === 'WITH_PO' && !poNumber) throw new Error('Select a purchase order first.');
+    const grnNumber = referenceNo || `GRN-${Date.now()}`;
 
     const transactionRecord = {
       id: `REC-${Date.now().toString(36).toUpperCase()}`,
       receiptNumber: grnNumber,
       mode,
-      poNumber: mode === 'WITH_PO' ? (poNumber || 'PO-2026-00123') : 'NON-PO',
-      vendorName: supplier || 'Generic Supplier',
-      receivingLocation: receivingLocation || 'Dubai HQ - IT Store',
-      receivedBy: receivedBy || user?.fullName || 'John Doe',
+      poNumber: mode === 'WITH_PO' ? poNumber : 'NON-PO',
+      vendorName: supplier,
+      receivingLocation: receivingLocation,
+      receivedBy: receivedBy || user?.fullName || user?.username,
       receivedDate: receivingDate,
       status: requireApproval ? 'PENDING_APPROVAL' : 'COMPLETED',
       remarks: remarks || (mode === 'WITHOUT_PO' ? `Non-PO: ${nonPoReason || 'Direct Receipt'}` : 'Received via Receiving & Tagging Workbench'),
@@ -555,8 +247,8 @@ export class ReceivingService {
       ]
     };
 
-    // Store in mock/memory store
-    mockReceiptsStore.unshift(transactionRecord);
+    if (!isSqlServerConnected) throw new Error('Database is unavailable. Receipt was not saved.');
+    if (mode === 'WITH_PO' && !(await findPurchaseOrder(poNumber))) throw new Error('Purchase order was not found.');
 
     // If draft exists, remove draft
     if (payload.draftId) {
@@ -567,10 +259,28 @@ export class ReceivingService {
     if (isSqlServerConnected) {
       try {
         let company = await prisma.company.findFirst({ where: { active: true } });
-        let site = await prisma.site.findFirst({ where: { active: true } });
-        let category = await prisma.category.findFirst({ where: { active: true } });
+        if (!company) company = await prisma.company.findFirst();
 
-        if (company && site) {
+        let site = await prisma.site.findFirst({ where: { active: true } });
+        if (!site) site = await prisma.site.findFirst();
+
+        let category = await prisma.category.findFirst({ where: { active: true } });
+        if (!category) category = await prisma.category.findFirst();
+
+        // Resolve user to a valid dbo.users record to satisfy foreign key constraints
+        const dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              ...(user?.id ? [{ id: user.id }] : []),
+              { username: user?.username || 'admin' }
+            ]
+          }
+        });
+        const firstUser = dbUser || (await prisma.user.findFirst());
+        const dbUserId = firstUser ? firstUser.id : (user?.id || 'usr-default');
+
+        if (!company || !site || !category || !firstUser) throw new Error('Receiving reference data is incomplete.');
+        {
           await prisma.$transaction(async (tx) => {
             const receipt = await tx.receipt.create({
               data: {
@@ -580,31 +290,46 @@ export class ReceivingService {
                 companyId: company.id,
                 siteId: site.id,
                 status: requireApproval ? 'PENDING_APPROVAL' : 'COMPLETED',
-                receivedByUserId: user?.id || company.id
+                receivedByUserId: dbUserId
               }
             });
 
-            for (const item of scannedItems) {
-              const assetId = `AST-2026-${Math.floor(1000 + Math.random() * 8999)}`;
-              const tagNum = item.tagNumber || `TAG-${Math.floor(10000 + Math.random() * 90000)}`;
+            for (let idx = 0; idx < scannedItems.length; idx++) {
+              const item = scannedItems[idx];
+              const uniqueSuffix = `${Date.now().toString().slice(-5)}${Math.floor(100 + Math.random() * 900)}${idx + 1}`;
+              const assetId = item.assetId || `AST-REC-${uniqueSuffix}`;
+              const tagNum = (item.tagNumber && item.tagNumber !== '-') ? item.tagNumber : `TAG-${uniqueSuffix}`;
+
+              let itemCategory = category;
+              if (item.category) {
+                const foundCat = await tx.category.findFirst({
+                  where: {
+                    OR: [
+                      { name: { contains: item.category } },
+                      { code: { contains: item.category } }
+                    ]
+                  }
+                });
+                if (foundCat) itemCategory = foundCat;
+              }
 
               const asset = await tx.asset.create({
                 data: {
                   assetId,
                   description: item.assetName || item.description || 'Received Physical Asset',
-                  serialNumber: item.serialNumber,
+                  serialNumber: item.serialNumber || `SN-${uniqueSuffix}`,
                   tagNumber: tagNum,
                   barcode: tagNum,
                   rfidEpc: item.rfidEpc || null,
                   rfidTid: item.rfidTid || null,
-                  categoryId: category ? category.id : undefined,
+                  categoryId: itemCategory.id,
                   companyId: company.id,
                   siteId: site.id,
                   supplierName: transactionRecord.vendorName,
                   poNumber: transactionRecord.poNumber,
                   lifecycleStatus: requireApproval ? 'RECEIVED' : 'TAGGED',
                   condition: 'NEW',
-                  createdByUserId: user?.id || null
+                  createdByUserId: dbUserId
                 }
               });
 
@@ -614,14 +339,12 @@ export class ReceivingService {
                 update: {
                   assetId: asset.id,
                   status: 'ACTIVE',
-                  rfidEpc: item.rfidEpc || null,
-                  rfidTid: item.rfidTid || null
+                  ...(item.rfidEpc ? { rfidEpc: item.rfidEpc } : {})
                 },
                 create: {
                   tagNumber: tagNum,
                   tagType: item.rfidEpc ? 'RFID_EPC' : 'BARCODE_128',
-                  rfidEpc: item.rfidEpc || null,
-                  rfidTid: item.rfidTid || null,
+                  ...(item.rfidEpc ? { rfidEpc: item.rfidEpc } : {}),
                   assetId: asset.id,
                   status: 'ACTIVE',
                   printedDate: new Date()
@@ -635,15 +358,27 @@ export class ReceivingService {
                   transactionType: 'RECEIVE_AND_TAG',
                   fromStatus: 'NONE',
                   toStatus: asset.lifecycleStatus,
-                  performedByUserId: user?.id || company.id,
+                  performedByUserId: dbUserId,
                   notes: `Received via ${grnNumber} (PO: ${transactionRecord.poNumber}). Tag assigned: ${tagNum}`
+                }
+              });
+
+              // Record line item in receipt_line_items
+              await tx.receiptLineItem.create({
+                data: {
+                  receiptId: receipt.id,
+                  description: item.assetName || item.description || 'Received Item',
+                  quantity: 1,
+                  categoryId: itemCategory.id,
+                  serialNumbers: item.serialNumber || '',
+                  createdAssetIds: asset.id
                 }
               });
             }
           });
         }
       } catch (dbErr) {
-        console.warn('Prisma DB sync warning (persisted in offline store):', dbErr.message);
+        throw dbErr;
       }
     }
 
@@ -655,21 +390,42 @@ export class ReceivingService {
    */
   static async getHistory(filters = {}) {
     const { q, poNumber, supplier, location, status } = filters;
-    let records = [...mockReceiptsStore];
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    let records = [];
 
-    // Try fetching from Prisma if possible
+    // Fetch from Prisma if SQL Server is connected
     if (isSqlServerConnected) {
       try {
         const dbReceipts = await prisma.receipt.findMany({
+          where: { status: { not: 'PURCHASE_ORDER' } },
           include: { company: true, site: true, lineItems: true },
           orderBy: { createdAt: 'desc' }
         });
         if (dbReceipts && dbReceipts.length > 0) {
-          // Merge or populate
+          const dbRecords = dbReceipts.map((r) => ({
+            id: r.id,
+            receiptNumber: r.receiptNumber,
+            mode: r.poNumber === 'NON-PO' ? 'WITHOUT_PO' : 'WITH_PO',
+            poNumber: r.poNumber,
+            vendorName: r.vendorName,
+            receivingLocation: r.site?.name || 'Main IT Store',
+            receivedBy: r.receivedByUserId || 'System',
+            receivedDate: r.receivedDate ? r.receivedDate.toISOString() : new Date().toISOString(),
+            status: r.status,
+            remarks: `Receipt ${r.receiptNumber}`,
+            lineItems: r.lineItems || [],
+            scannedAssets: [],
+            summary: {
+              poItems: r.lineItems?.length || 0,
+              unitsReceived: r.lineItems?.reduce((acc, l) => acc + (l.quantity || 1), 0) || 0,
+              unitsTagged: r.lineItems?.length || 0,
+              unitsPending: 0
+            }
+          }));
+
+          records = dbRecords;
         }
-      } catch (e) {
-        // Use records from mock store
-      }
+      } catch (e) { throw e; }
     }
 
     if (q) {
@@ -687,26 +443,78 @@ export class ReceivingService {
       records = records.filter((r) => r.poNumber.toLowerCase().includes(poNumber.toLowerCase()));
     }
 
-    if (supplier) {
+    if (filters.receiveNumber) {
+      records = records.filter((r) => r.receiptNumber.toLowerCase().includes(filters.receiveNumber.toLowerCase()));
+    }
+
+    if (supplier && supplier !== 'All' && supplier !== 'All Suppliers') {
       records = records.filter((r) => r.vendorName.toLowerCase().includes(supplier.toLowerCase()));
     }
 
-    if (location) {
+    if (location && location !== 'All' && location !== 'All Locations') {
       records = records.filter((r) => (r.receivingLocation || '').toLowerCase().includes(location.toLowerCase()));
     }
 
-    if (status) {
+    if (status && status !== 'All' && status !== 'All Status') {
       records = records.filter((r) => r.status.toLowerCase() === status.toLowerCase());
+    }
+
+    if (filters.receiveType && filters.receiveType !== 'All' && filters.receiveType !== 'All Types') {
+      const type = filters.receiveType.toLowerCase();
+      if (type.includes('with po') || type === 'with_po') {
+        records = records.filter((r) => r.mode === 'WITH_PO' || r.poNumber !== 'NON-PO');
+      } else if (type.includes('without po') || type === 'without_po' || type.includes('non-po')) {
+        records = records.filter((r) => r.mode === 'WITHOUT_PO' || r.poNumber === 'NON-PO');
+      }
+    }
+
+    if (filters.receivedBy && filters.receivedBy !== 'All' && filters.receivedBy !== 'All Users') {
+      records = records.filter((r) => (r.receivedBy || '').toLowerCase().includes(filters.receivedBy.toLowerCase()));
+    }
+
+    if (filters.fromDate) {
+      records = records.filter((r) => new Date(r.receivedDate) >= new Date(filters.fromDate));
+    }
+
+    if (filters.toDate) {
+      records = records.filter((r) => new Date(r.receivedDate) <= new Date(filters.toDate));
     }
 
     return records;
   }
 
   static async getHistoryDetail(id) {
-    const found = mockReceiptsStore.find(
-      (r) => r.id === id || r.receiptNumber === id
-    );
-    return found || null;
+    if (isSqlServerConnected) {
+      try {
+        const dbReceipt = await prisma.receipt.findFirst({
+          where: { status: { not: 'PURCHASE_ORDER' }, OR: [{ id }, { receiptNumber: id }] },
+          include: { company: true, site: true, lineItems: { include: { category: true } } }
+        });
+        if (dbReceipt) {
+          return {
+            id: dbReceipt.id,
+            receiptNumber: dbReceipt.receiptNumber,
+            mode: dbReceipt.poNumber === 'NON-PO' ? 'WITHOUT_PO' : 'WITH_PO',
+            poNumber: dbReceipt.poNumber,
+            vendorName: dbReceipt.vendorName,
+            receivingLocation: dbReceipt.site?.name || 'Main IT Store',
+            receivedBy: dbReceipt.receivedByUserId,
+            receivedDate: dbReceipt.receivedDate ? dbReceipt.receivedDate.toISOString() : new Date().toISOString(),
+            status: dbReceipt.status,
+            remarks: `Receipt ${dbReceipt.receiptNumber}`,
+            lineItems: dbReceipt.lineItems || [],
+            scannedAssets: [],
+            summary: {
+              poItems: dbReceipt.lineItems?.length || 0,
+              unitsReceived: dbReceipt.lineItems?.reduce((acc, l) => acc + (l.quantity || 1), 0) || 0,
+              unitsTagged: dbReceipt.lineItems?.length || 0,
+              unitsPending: 0
+            }
+          };
+        }
+      } catch (e) { throw e; }
+    }
+    return null;
   }
 
   /**

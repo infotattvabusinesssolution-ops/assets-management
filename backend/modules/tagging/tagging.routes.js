@@ -3,10 +3,12 @@ import {
   getAssets,
   validateTag,
   associateTag,
+  bulkAssociateTags,
   getRecentTagged,
   getTaggingStats,
   generateTags,
   printLabels,
+  getPrintTemplates,
   saveDraft,
   getDraft,
   completeTagging,
@@ -28,11 +30,13 @@ router.use(authenticateToken);
 router.get('/assets', getAssets);
 router.post('/validate', validateTag);
 router.post('/associate', associateTag);
+router.post('/bulk-associate', bulkAssociateTags);
 router.get('/recent', getRecentTagged);
 router.get('/stats', getTaggingStats);
 router.post('/generate', generateTags);
 router.post('/print', printLabels);
 router.post('/print-labels', printLabels);
+router.get('/templates', getPrintTemplates);
 router.post('/draft', saveDraft);
 router.get('/draft', getDraft);
 router.post('/complete', completeTagging);

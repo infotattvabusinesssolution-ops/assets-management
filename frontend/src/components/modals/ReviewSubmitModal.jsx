@@ -29,6 +29,7 @@ export function ReviewSubmitModal({
   const [submitting, setSubmitting] = useState(false);
   const [requireApproval, setRequireApproval] = useState(true);
   const [submittedReceipt, setSubmittedReceipt] = useState(null);
+  const [submitError, setSubmitError] = useState('');
 
   if (!isOpen) return null;
 
@@ -40,13 +41,15 @@ export function ReviewSubmitModal({
   const pendingCount = items.length - taggedCount;
 
   const handleFinalSubmit = async () => {
+    if (!isValid || !items.length) return;
+    setSubmitError('');
     setSubmitting(true);
     try {
       const payload = {
         mode: 'WITHOUT_PO',
         supplier: receivingData.supplier,
         receivingDate: receivingData.receivingDate,
-        referenceNo: receivingData.referenceNo || `DN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
+        referenceNo: receivingData.referenceNo || undefined,
         receivingLocation: receivingData.receivingLocation,
         receivedBy: receivingData.receivedBy,
         nonPoReason: receivingData.reason,
@@ -57,28 +60,14 @@ export function ReviewSubmitModal({
 
       const res = await api.post('/receiving/submit', payload);
       if (res && res.success) {
-        setSubmittedReceipt(res.receipt || {
-          receiptNumber: payload.referenceNo,
-          status: requireApproval ? 'PENDING_APPROVAL' : 'COMPLETED',
-          receivedDate: payload.receivingDate,
-          summary: { unitsReceived: items.length, unitsTagged: taggedCount }
-        });
+        setSubmittedReceipt(res.receipt);
         if (onSubmitSuccess) {
           onSubmitSuccess(res.receipt);
         }
       }
     } catch (err) {
       console.error('Submission failed:', err);
-      // Fallback simulated success
-      setSubmittedReceipt({
-        receiptNumber: receivingData.referenceNo || `GRN-2026-0087`,
-        status: requireApproval ? 'PENDING_APPROVAL' : 'COMPLETED',
-        receivedDate: receivingData.receivingDate,
-        summary: { unitsReceived: items.length, unitsTagged: taggedCount }
-      });
-      if (onSubmitSuccess) {
-        onSubmitSuccess({ receiptNumber: receivingData.referenceNo || `GRN-2026-0087` });
-      }
+      setSubmitError(err?.message || 'Receiving submission failed');
     } finally {
       setSubmitting(false);
     }
@@ -150,6 +139,7 @@ export function ReviewSubmitModal({
               </button>
             </div>
 
+            {submitError && <p role="alert" className="mx-6 mt-4 text-xs text-red-700">{submitError}</p>}
             {/* Body */}
             <div className="p-6 space-y-5 max-h-[70vh] overflow-y-auto">
               

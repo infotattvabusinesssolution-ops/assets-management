@@ -27,6 +27,7 @@ import movementApprovalRoutes from './modules/movement-approvals/movementApprova
 import adminOrgRoutes from './modules/admin/adminOrg.routes.js';
 import adminConfigRoutes from './modules/admin/adminConfig.routes.js';
 import adminGovernanceRoutes from './modules/admin/adminGovernance.routes.js';
+import uploadRoutes from './modules/uploads/upload.routes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -79,6 +80,7 @@ app.use('/api/v1/admin/config', adminConfigRoutes);
 app.use('/api/v1/admin', adminOrgRoutes);
 app.use('/api/v1/admin', adminGovernanceRoutes);
 app.use('/api/v1/audit-logs', adminGovernanceRoutes);
+app.use('/api/v1/uploads', uploadRoutes);
 
 // Error Handling Middleware
 app.use(errorHandler);

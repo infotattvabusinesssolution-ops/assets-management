@@ -26,8 +26,13 @@ export async function authenticateToken(req, res, next) {
     let user = null;
     if (isSqlServerConnected) {
       try {
-        user = await prisma.user.findUnique({
-          where: { id: decoded.id },
+        user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { id: decoded.id },
+              { username: decoded.username }
+            ]
+          },
           include: {
             role: true,
             dataScopes: true

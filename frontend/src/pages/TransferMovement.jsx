@@ -203,6 +203,41 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   // By default, AS-000123 and AS-000124 are checked matching the screenshot
   const [selectedAssetIds, setSelectedAssetIds] = useState(['AST-000123', 'AST-000124']);
 
+  // Handle preselected asset passed from Asset Register or other pages
+  useEffect(() => {
+    const passedAsset = location.state?.asset;
+    const passedAssetId = location.state?.assetId || (new URLSearchParams(location.search)).get('assetId');
+
+    if (passedAsset) {
+      const formatted = {
+        id: passedAsset.id || passedAsset.assetId,
+        assetNumber: passedAsset.assetId || passedAsset.tagNumber || 'AS-000128',
+        assetName: passedAsset.name || passedAsset.description || 'Asset',
+        type: passedAsset.categoryName || 'General',
+        serialNumber: passedAsset.serialNumber || 'N/A',
+        barcode: passedAsset.barcode || passedAsset.tagNumber || 'N/A',
+        rfidEpc: passedAsset.rfidEpc || 'N/A',
+        currentLocation: passedAsset.locationStr || 'Dubai HQ',
+        siteName: passedAsset.siteName || 'Dubai HQ',
+        buildingName: passedAsset.buildingName || 'Building A',
+        floorName: passedAsset.floorRoom || 'Floor 3',
+        roomName: passedAsset.floorRoom || '',
+        currentCustodian: passedAsset.custodianName || 'Unassigned',
+        status: passedAsset.lifecycleStatus || 'In Service',
+        imageUrl: passedAsset.imageUrl || 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&auto=format&fit=crop&q=60',
+        isEligible: true
+      };
+
+      setAssetsList(prev => {
+        const exists = prev.some(a => a.id === formatted.id || a.assetNumber === formatted.assetNumber);
+        return exists ? prev : [formatted, ...prev];
+      });
+      setSelectedAssetIds([formatted.id]);
+    } else if (passedAssetId) {
+      setSelectedAssetIds([passedAssetId]);
+    }
+  }, [location.state, location.search]);
+
   // Transfers & Movement History from server
   const [transfersList, setTransfersList] = useState([]);
   const [historyList, setHistoryList] = useState([]);
@@ -257,7 +292,39 @@ export default function TransferMovement({ defaultTab = 'form' }) {
           isEligible: a.isEligibleForTransfer,
           reason: a.ineligibilityReason
         }));
-        setAssetsList(formatted);
+
+        const passed = location.state?.asset;
+        if (passed) {
+          const passedId = passed.id || passed.assetId;
+          const exists = formatted.some(a => a.id === passedId || a.assetNumber === passed.assetId);
+          if (!exists) {
+            const formattedPassed = {
+              id: passed.id || passed.assetId,
+              assetNumber: passed.assetId || passed.tagNumber || 'AS-000128',
+              assetName: passed.name || passed.description || 'Asset',
+              type: passed.categoryName || 'General',
+              serialNumber: passed.serialNumber || 'N/A',
+              barcode: passed.barcode || passed.tagNumber || 'N/A',
+              rfidEpc: passed.rfidEpc || 'N/A',
+              currentLocation: passed.locationStr || 'Dubai HQ',
+              siteName: passed.siteName || 'Dubai HQ',
+              buildingName: passed.buildingName || 'Building A',
+              floorName: passed.floorRoom || 'Floor 3',
+              roomName: passed.floorRoom || '',
+              currentCustodian: passed.custodianName || 'Unassigned',
+              status: passed.lifecycleStatus || 'In Service',
+              imageUrl: passed.imageUrl || 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&auto=format&fit=crop&q=60',
+              isEligible: true
+            };
+            setAssetsList([formattedPassed, ...formatted]);
+            setSelectedAssetIds([formattedPassed.id]);
+          } else {
+            setAssetsList(formatted);
+            setSelectedAssetIds([passedId]);
+          }
+        } else {
+          setAssetsList(formatted);
+        }
       }
 
       if (tRes.status === 'fulfilled' && tRes.value.transfers) {

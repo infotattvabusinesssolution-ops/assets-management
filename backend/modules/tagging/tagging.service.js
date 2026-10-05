@@ -2,173 +2,10 @@ import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 
 // Initial Mock Assets to Tag matching reference functional design
-export const INITIAL_ASSETS_TO_TAG = [
-  {
-    id: 'ast-tag-001',
-    assetNumber: 'AS-2026-00121',
-    assetName: 'Dell OptiPlex 7020',
-    category: 'Desktop',
-    location: 'IT Store',
-    department: 'IT Store',
-    serialNumber: '7CD1234',
-    currentTag: '-',
-    status: 'Not Tagged',
-    custodian: 'Alex Murphy',
-    assetStatus: 'Active',
-    imageUrl: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=500&q=80',
-    rfidEpc: null,
-    barcode: null
-  },
-  {
-    id: 'ast-tag-002',
-    assetNumber: 'AS-2026-00122',
-    assetName: 'HP LaserJet Pro',
-    category: 'Printer',
-    location: 'Admin Block',
-    department: 'Admin Block',
-    serialNumber: 'CNB89001',
-    currentTag: '-',
-    status: 'Not Tagged',
-    custodian: 'Sarah Connor',
-    assetStatus: 'Active',
-    imageUrl: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=500&q=80',
-    rfidEpc: null,
-    barcode: null
-  },
-  {
-    id: 'ast-tag-003',
-    assetNumber: 'AS-2026-00123',
-    assetName: 'Samsung Monitor 27"',
-    category: 'Monitor',
-    location: 'Finance Dept',
-    department: 'Finance Dept',
-    serialNumber: 'SM27-3310',
-    currentTag: 'E36000009876',
-    status: 'Tagged',
-    custodian: 'Michael Scott',
-    assetStatus: 'Active',
-    imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&q=80',
-    rfidEpc: 'E2801160600009876',
-    barcode: 'E36000009876'
-  },
-  {
-    id: 'ast-tag-004',
-    assetNumber: 'AS-2026-00124',
-    assetName: 'Lenovo ThinkPad',
-    category: 'Laptop',
-    location: 'Dubai HQ',
-    department: 'Dubai HQ',
-    serialNumber: 'PF9A2211',
-    currentTag: '-',
-    status: 'Not Tagged',
-    custodian: 'John Doe',
-    assetStatus: 'Active',
-    imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500&q=80',
-    rfidEpc: null,
-    barcode: null
-  },
-  {
-    id: 'ast-tag-005',
-    assetNumber: 'AS-2026-00125',
-    assetName: 'iPad Air',
-    category: 'Tablet',
-    location: 'HR Dept',
-    department: 'HR Dept',
-    serialNumber: 'IPD-7782',
-    currentTag: '-',
-    status: 'Not Tagged',
-    custodian: 'Elena Vance',
-    assetStatus: 'Active',
-    imageUrl: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500&q=80',
-    rfidEpc: null,
-    barcode: null
-  },
-  {
-    id: 'ast-tag-006',
-    assetNumber: 'AS-2026-00126',
-    assetName: 'Access Point',
-    category: 'Network',
-    location: 'Warehouse',
-    department: 'Warehouse',
-    serialNumber: 'AP-9981',
-    currentTag: '-',
-    status: 'Not Tagged',
-    custodian: 'David Miller',
-    assetStatus: 'Active',
-    imageUrl: 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=500&q=80',
-    rfidEpc: null,
-    barcode: null
-  }
-];
-
-// Initial Recent Tagged Assets matching screenshot
-export const INITIAL_RECENT_TAGGED = [
-  {
-    id: 'rec-01',
-    time: '21 Aug 2026 11:20',
-    timestamp: new Date('2026-08-21T11:20:00Z').toISOString(),
-    assetNumber: 'AS-2026-00120',
-    assetName: 'Dell Docking Station',
-    serialNumber: 'WD195-2210',
-    tagNumber: 'E36000012341',
-    rfidEpc: 'E2801160600012341',
-    taggedBy: 'John Doe',
-    status: 'Tagged'
-  },
-  {
-    id: 'rec-02',
-    time: '21 Aug 2026 11:18',
-    timestamp: new Date('2026-08-21T11:18:00Z').toISOString(),
-    assetNumber: 'AS-2026-00119',
-    assetName: 'Keyboard & Mouse',
-    serialNumber: 'KM7321W',
-    tagNumber: 'E36000012340',
-    rfidEpc: 'E2801160600012340',
-    taggedBy: 'John Doe',
-    status: 'Tagged'
-  },
-  {
-    id: 'rec-03',
-    time: '21 Aug 2026 11:15',
-    timestamp: new Date('2026-08-21T11:15:00Z').toISOString(),
-    assetNumber: 'AS-2026-00118',
-    assetName: 'Office Chair',
-    serialNumber: 'CH-5567',
-    tagNumber: 'E36000012339',
-    rfidEpc: 'E2801160600012339',
-    taggedBy: 'John Doe',
-    status: 'Tagged'
-  },
-  {
-    id: 'rec-04',
-    time: '21 Aug 2026 11:12',
-    timestamp: new Date('2026-08-21T11:12:00Z').toISOString(),
-    assetNumber: 'AS-2026-00117',
-    assetName: 'Meeting Room TV',
-    serialNumber: 'LG-7744',
-    tagNumber: 'E36000012338',
-    rfidEpc: 'E2801160600012338',
-    taggedBy: 'John Doe',
-    status: 'Tagged'
-  },
-  {
-    id: 'rec-05',
-    time: '21 Aug 2026 11:10',
-    timestamp: new Date('2026-08-21T11:10:00Z').toISOString(),
-    assetNumber: 'AS-2026-00116',
-    assetName: 'Access Point',
-    serialNumber: 'AP-9881',
-    tagNumber: 'E36000012337',
-    rfidEpc: 'E2801160600012337',
-    taggedBy: 'John Doe',
-    status: 'Tagged'
-  }
-];
-
 class TaggingServiceStore {
   constructor() {
-    this.assets = [...INITIAL_ASSETS_TO_TAG];
-    this.recentTagged = [...INITIAL_RECENT_TAGGED];
+    this.assets = [];
+    this.recentTagged = [];
     this.auditLogs = [];
     this.draftSessions = new Map();
     this.nextTagSeq = 12345;
@@ -207,14 +44,13 @@ class TaggingServiceStore {
       category = '',
       location = '',
       department = '',
-      tagStatus = 'Not Tagged',
+      tagStatus = '',
       custodian = '',
-      assetStatus = 'Active'
+      assetStatus = ''
     } = filters;
 
-    // Try querying Prisma if connected
-    if (isSqlServerConnected) {
-      try {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    {
         const where = {};
         if (assetNumber) where.assetId = { contains: assetNumber };
         if (serialNumber) where.serialNumber = { contains: serialNumber };
@@ -231,19 +67,19 @@ class TaggingServiceStore {
         take: 50
       });
 
-      if (dbAssets && dbAssets.length > 0) {
+      {
         // Map DB assets into tagging format
         const mapped = dbAssets.map((a, idx) => ({
           id: a.id,
-          assetNumber: a.assetId || `AS-2026-${String(1000 + idx)}`,
+          assetNumber: a.assetId,
           assetName: a.description || a.model?.name || 'Enterprise Asset',
           category: a.category?.name || 'General Hardware',
-          location: a.site?.name || 'Dubai HQ',
-          department: a.department?.name || 'IT Operations',
-          serialNumber: a.serialNumber || `SN-${a.id.slice(0, 8).toUpperCase()}`,
+          location: a.site?.name || '',
+          department: a.department?.name || '',
+          serialNumber: a.serialNumber || '',
           currentTag: a.tagNumber || '-',
           status: a.tagNumber ? 'Tagged' : 'Not Tagged',
-          custodian: a.custodian?.fullName || 'John Doe',
+          custodian: a.custodian?.fullName || '',
           assetStatus: a.active ? 'Active' : 'Inactive',
           imageUrl: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&q=80',
           rfidEpc: a.rfidEpc,
@@ -253,12 +89,7 @@ class TaggingServiceStore {
         // Merge with our in-memory store so changes made in session are reflected
         return this.filterAssetsList(mapped, filters);
       }
-    } catch (e) {
-      // Graceful fallback to resilient in-memory store
-    }
   }
-
-    return this.filterAssetsList(this.assets, filters);
   }
 
   filterAssetsList(list, filters) {
@@ -269,7 +100,7 @@ class TaggingServiceStore {
       category = '',
       location = '',
       department = '',
-      tagStatus = 'Not Tagged',
+      tagStatus = '',
       custodian = '',
       assetStatus = ''
     } = filters;
@@ -321,6 +152,7 @@ class TaggingServiceStore {
     const cleanEpc = rfidEpc ? rfidEpc.trim() : null;
 
     // Check if tag is already associated with another asset
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
     const existingAsset = this.assets.find(a => 
       (a.currentTag === cleanTag || (cleanEpc && a.rfidEpc === cleanEpc)) && 
       a.id !== currentAssetId && 
@@ -350,9 +182,9 @@ class TaggingServiceStore {
             message: `Tag "${cleanTag}" is already associated with asset ${dbTag.asset.assetId}.`
           };
         }
-      } catch (e) {
-        // Resilient fallback
-      }
+        const assetWithTag = await prisma.asset.findFirst({ where: { tagNumber: cleanTag } });
+        if (assetWithTag && assetWithTag.id !== currentAssetId) return { valid: false, status: 'DUPLICATE_CONFLICT', message: `Tag is assigned to ${assetWithTag.assetId}.` };
+      } catch (e) { throw e; }
     }
 
     return {
@@ -365,9 +197,11 @@ class TaggingServiceStore {
   }
 
   // Generate Unique Tag Number & RFID EPC
-  generateTagNumber(prefix = this.settings.prefix || 'E360000', tagType = 'RFID_GEN2') {
-    const seq = this.nextTagSeq++;
+  async generateTagNumber(prefix = this.settings.prefix || 'E360000', tagType = 'RFID_GEN2') {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    const seq = Date.now() + this.nextTagSeq++;
     const tagNumber = `${prefix}${seq}`;
+    if (await prisma.tag.findUnique({ where: { tagNumber } })) return this.generateTagNumber(prefix, tagType);
     const rfidEpc = `E28011606000${seq}`;
     return { tagNumber, rfidEpc, tagType };
   }
@@ -389,12 +223,44 @@ class TaggingServiceStore {
       throw new Error(validation.message);
     }
 
-    const targetAssetIndex = this.assets.findIndex(a => a.id === assetId || a.assetNumber === assetId);
-    if (targetAssetIndex === -1) {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    let targetAssetIndex = this.assets.findIndex(a => a.id === assetId || a.assetNumber === assetId);
+    let targetAsset = targetAssetIndex >= 0 ? this.assets[targetAssetIndex] : null;
+
+    if (!targetAsset && isSqlServerConnected) {
+      try {
+        const dbAsset = await prisma.asset.findFirst({
+          where: { OR: [{ id: assetId }, { assetId: assetId }] },
+          include: { category: true, site: true, department: true, custodian: true }
+        });
+        if (dbAsset) {
+          targetAsset = {
+            id: dbAsset.id,
+            assetNumber: dbAsset.assetId,
+            assetName: dbAsset.description || 'Enterprise Asset',
+            category: dbAsset.category?.name || 'General Hardware',
+            location: dbAsset.site?.name || 'Dubai HQ',
+            department: dbAsset.department?.name || 'IT Operations',
+            serialNumber: dbAsset.serialNumber || `SN-${dbAsset.id.slice(0, 8)}`,
+            currentTag: dbAsset.tagNumber || '-',
+            status: dbAsset.tagNumber ? 'Tagged' : 'Not Tagged',
+            custodian: dbAsset.custodian?.fullName || 'John Doe',
+            assetStatus: dbAsset.active ? 'Active' : 'Inactive',
+            rfidEpc: dbAsset.rfidEpc,
+            barcode: dbAsset.barcode
+          };
+          this.assets.push(targetAsset);
+          targetAssetIndex = this.assets.length - 1;
+        }
+      } catch (e) {
+        // Fallback
+      }
+    }
+
+    if (!targetAsset) {
       throw new Error(`Target asset not found: ${assetId}`);
     }
 
-    const targetAsset = this.assets[targetAssetIndex];
     const previousTag = targetAsset.currentTag === '-' ? null : targetAsset.currentTag;
     const finalEpc = validation.rfidEpc;
     const nowTime = this.formatDisplayTime();
@@ -407,7 +273,9 @@ class TaggingServiceStore {
       rfidEpc: finalEpc,
       barcode: tagNumber
     };
-    this.assets[targetAssetIndex] = updatedAsset;
+    if (targetAssetIndex >= 0) {
+      this.assets[targetAssetIndex] = updatedAsset;
+    }
 
     // Add to Recent Tagged Assets at top
     const recentEntry = {
@@ -446,9 +314,20 @@ class TaggingServiceStore {
     };
     this.auditLogs.unshift(auditRecord);
 
-    // Also attempt persistent write to Prisma if connected
+    // Also persistent write to Prisma if connected
     if (isSqlServerConnected) {
       try {
+        const dbUser = await prisma.user.findFirst({
+          where: {
+            OR: [
+              ...(user?.id ? [{ id: user.id }] : []),
+              { username: user?.username || 'admin' }
+            ]
+          }
+        });
+        const firstUser = dbUser || (await prisma.user.findFirst());
+        const dbUserId = firstUser ? firstUser.id : (user.id || 'usr-default');
+
         await prisma.$transaction(async (tx) => {
           const dbAsset = await tx.asset.findFirst({
             where: { OR: [{ id: assetId }, { assetId: assetId }] }
@@ -459,9 +338,27 @@ class TaggingServiceStore {
               where: { id: dbAsset.id },
               data: {
                 tagNumber,
-                rfidEpc: finalEpc,
+                rfidEpc: finalEpc || null,
                 barcode: tagNumber,
                 lifecycleStatus: 'TAGGED'
+              }
+            });
+
+            // Upsert Tag
+            await tx.tag.upsert({
+              where: { tagNumber },
+              update: {
+                assetId: dbAsset.id,
+                status: 'ACTIVE',
+                ...(finalEpc ? { rfidEpc: finalEpc } : {})
+              },
+              create: {
+                tagNumber,
+                tagType,
+                ...(finalEpc ? { rfidEpc: finalEpc } : {}),
+                assetId: dbAsset.id,
+                status: 'ACTIVE',
+                printedDate: new Date()
               }
             });
 
@@ -472,7 +369,7 @@ class TaggingServiceStore {
                   oldTagNumber: previousTag,
                   newTagNumber: tagNumber,
                   reason,
-                  replacedByUserId: user.id
+                  replacedByUserId: dbUserId
                 }
               });
             }
@@ -483,85 +380,165 @@ class TaggingServiceStore {
                 transactionType: 'TAG',
                 fromStatus: dbAsset.lifecycleStatus,
                 toStatus: 'TAGGED',
-                performedByUserId: user.id,
+                performedByUserId: dbUserId,
                 notes: `Tag Assigned: ${tagNumber} (${tagType})`
               }
             });
           }
         });
       } catch (dbErr) {
-        // Handled gracefully in resilient state
+        throw dbErr;
       }
     }
+
+    const currentStats = await this.getTaggingSummary();
 
     return {
       success: true,
       message: `Tag "${tagNumber}" successfully assigned to ${updatedAsset.assetName} (${updatedAsset.assetNumber})!`,
       asset: updatedAsset,
-      recentTagged: this.recentTagged.slice(0, 10),
-      stats: this.getTaggingSummary()
+      recentTagged: await this.getRecentTagged(10),
+      stats: currentStats
     };
   }
 
   // Get Tagging Summary Counts
-  getTaggingSummary() {
-    const totalSelected = this.assets.length;
-    const taggedCount = this.assets.filter(a => a.status === 'Tagged').length;
-    const pendingCount = this.assets.filter(a => a.status === 'Not Tagged').length;
-    const failedCount = 0;
-
-    return {
-      selected: totalSelected,
-      tagged: taggedCount,
-      pending: pendingCount,
-      failed: failedCount
-    };
+  async getTaggingSummary() {
+    if (isSqlServerConnected) {
+      try {
+        const total = await prisma.asset.count({ where: { active: true } });
+        const tagged = await prisma.asset.count({ where: { active: true, tagNumber: { not: null } } });
+        const pending = Math.max(0, total - tagged);
+        return {
+          selected: total,
+          tagged,
+          pending,
+          failed: 0
+        };
+      } catch (e) { throw e; }
+    }
+    throw new Error('Database is unavailable.');
   }
 
   // Get Recent Tagged Assets
-  getRecentTagged(limit = 10) {
-    return this.recentTagged.slice(0, limit);
+  async getRecentTagged(limit = 10) {
+    if (isSqlServerConnected) {
+      try {
+        const dbTags = await prisma.tag.findMany({
+          where: { assetId: { not: null } },
+          include: { asset: true },
+          orderBy: { updatedAt: 'desc' },
+          take: limit
+        });
+        if (dbTags && dbTags.length > 0) {
+          const dbRecent = dbTags.map(t => ({
+            id: t.id,
+            time: this.formatDisplayTime(t.updatedAt),
+            timestamp: t.updatedAt.toISOString(),
+            assetNumber: t.asset?.assetId || 'Unknown',
+            assetName: t.asset?.description || 'Enterprise Asset',
+            serialNumber: t.asset?.serialNumber || 'N/A',
+            tagNumber: t.tagNumber,
+            rfidEpc: t.rfidEpc || '',
+            taggedBy: 'System / User',
+            status: 'Tagged'
+          }));
+          return dbRecent;
+        }
+      } catch (e) { throw e; }
+      return [];
+    }
+    throw new Error('Database is unavailable.');
   }
 
   // Print Labels (Kept separate from assignment)
-  printLabels(params) {
+  async printLabels(params = {}) {
     const {
-      labelTemplate = 'STANDARD_2X1',
+      labelTemplate = params.template || 'STANDARD_2X1',
+      template = 'STANDARD_2X1',
       printer = this.settings.defaultPrinter,
       quantity = 1,
       tagPrefix = this.settings.prefix || 'E360000',
       tagFormat = 'RFID_GEN2',
-      assetDetails = null
+      assetDetails = null,
+      assets = []
     } = params;
 
     const printedLabels = [];
-    for (let i = 0; i < quantity; i++) {
-      const generated = this.generateTagNumber(tagPrefix, tagFormat);
-      printedLabels.push({
-        jobId: `PRINT-${Date.now()}-${i + 1}`,
-        tagNumber: generated.tagNumber,
-        rfidEpc: generated.rfidEpc,
-        tagFormat,
-        labelTemplate,
-        printer,
-        assetNumber: assetDetails?.assetNumber || 'UNASSIGNED_LABEL',
-        assetName: assetDetails?.assetName || 'Blank Asset Tag',
-        serialNumber: assetDetails?.serialNumber || 'N/A',
-        printedAt: new Date().toISOString(),
-        status: 'PRINT_SENT_TO_SPOOLER'
-      });
+    const targetAssets = assets && assets.length > 0 ? assets : (assetDetails ? [assetDetails] : [null]);
+
+    for (const ast of targetAssets) {
+      for (let i = 0; i < quantity; i++) {
+        const generated = await this.generateTagNumber(tagPrefix, tagFormat);
+        printedLabels.push({
+          jobId: `PRINT-${Date.now()}-${printedLabels.length + 1}`,
+          tagNumber: ast?.currentTag && ast?.currentTag !== '-' ? ast.currentTag : (ast?.tagNumber || generated.tagNumber),
+          rfidEpc: ast?.rfidEpc || generated.rfidEpc,
+          tagFormat,
+          labelTemplate: labelTemplate || template,
+          printer,
+          assetNumber: ast?.assetNumber || ast?.assetId || 'UNASSIGNED_LABEL',
+          assetName: ast?.assetName || ast?.description || 'Blank Asset Tag',
+          serialNumber: ast?.serialNumber || 'N/A',
+          printedAt: new Date().toISOString(),
+          status: 'PRINT_SENT_TO_SPOOLER'
+        });
+      }
     }
 
     return {
       success: true,
-      message: `Successfully transmitted ${quantity} label print job(s) to "${printer}". Printing does not alter asset assignment until tag is physically assigned.`,
-      labels: printedLabels
+      message: `Successfully transmitted ${printedLabels.length} label print job(s) to "${printer}". Printing does not alter asset assignment until tag is physically assigned.`,
+      labels: printedLabels,
+      tags: printedLabels
+    };
+  }
+
+  // Get Industrial Label Templates
+  getPrintTemplates() {
+    return [
+      { id: 'TPL-01', name: 'STANDARD_2X1', description: 'Standard 2" x 1" Thermal Barcode Label', dimensions: '2.00 x 1.00 in', dpi: 300, barcodeType: 'Code 128' },
+      { id: 'TPL-02', name: 'RFID_GEN2_METALLIC', description: 'On-Metal RFID Tag (DogBone / Monza R6)', dimensions: '3.00 x 1.00 in', dpi: 300, barcodeType: 'RFID + DataMatrix' },
+      { id: 'TPL-03', name: 'COMPACT_1X05', description: 'Asset Mini-Tag for Mobile & Peripherals', dimensions: '1.25 x 0.50 in', dpi: 600, barcodeType: 'QR Code' },
+      { id: 'TPL-04', name: 'TAMPER_EVIDENT', description: 'Destructible Vinyl Security Tag', dimensions: '2.50 x 0.75 in', dpi: 300, barcodeType: 'Code 128 + Hologram' }
+    ];
+  }
+
+  // Bulk Assign Tags to Multiple Assets
+  async bulkAssociateTags(payload, user = { id: 'usr-default', fullName: 'John Doe', username: 'jdoe' }) {
+    const { assignments = [], reason = 'Bulk Tag Association', notes = '' } = payload;
+    if (!assignments || !Array.isArray(assignments) || assignments.length === 0) {
+      throw new Error('No assignments provided for bulk tagging.');
+    }
+
+    const results = [];
+    for (const item of assignments) {
+      const res = await this.associateTag({
+        assetId: item.assetId || item.id,
+        tagNumber: item.tagNumber,
+        tagType: item.tagType || 'RFID_GEN2',
+        rfidEpc: item.rfidEpc || null,
+        reason,
+        notes
+      }, user);
+      results.push(res);
+    }
+
+    const summary = await this.getTaggingSummary();
+
+    return {
+      success: true,
+      message: `Successfully bulk-tagged ${results.length} asset(s).`,
+      count: results.length,
+      assignments: results.map((r) => r.asset),
+      stats: summary
     };
   }
 
   // Save Session as Draft
-  saveDraft(sessionData, user = { id: 'usr-default', username: 'jdoe' }) {
+  async saveDraft(sessionData, user = { id: 'usr-default', username: 'jdoe' }) {
     const draftId = `draft-${user.id || 'default'}`;
+    const summary = await this.getTaggingSummary();
     const draft = {
       draftId,
       userId: user.id,
@@ -570,7 +547,7 @@ class TaggingServiceStore {
       selectedAssetIds: sessionData.selectedAssetIds || [],
       stagedAssignments: sessionData.stagedAssignments || {},
       notes: sessionData.notes || '',
-      summary: this.getTaggingSummary()
+      summary
     };
     this.draftSessions.set(draftId, draft);
 
@@ -588,94 +565,82 @@ class TaggingServiceStore {
   }
 
   // Complete Tagging Session
-  completeTagging(payload = {}, user = { id: 'usr-default', fullName: 'John Doe' }) {
-    const { selectedAssetIds = [] } = payload;
-
-    // Final server-side validations
-    const errors = [];
-    const warnings = [];
-
-    // Check duplicate tags in current state
-    const assignedTags = new Map();
-    for (const asset of this.assets) {
-      if (asset.currentTag && asset.currentTag !== '-') {
-        if (assignedTags.has(asset.currentTag)) {
-          errors.push(`Duplicate tag detected: ${asset.currentTag} is assigned to both ${assignedTags.get(asset.currentTag)} and ${asset.assetNumber}`);
-        } else {
-          assignedTags.set(asset.currentTag, asset.assetNumber);
-        }
+  async completeTagging(payload = {}, user = { id: 'usr-default', fullName: 'John Doe' }) {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    const ids = Array.isArray(payload.selectedAssetIds) ? payload.selectedAssetIds : [];
+    
+    if (ids.length > 0) {
+      const assets = await prisma.asset.findMany({
+        where: { OR: [{ id: { in: ids } }, { assetId: { in: ids } }] },
+        select: { id: true, assetId: true, tagNumber: true }
+      });
+      const untagged = assets.filter(asset => !asset.tagNumber);
+      if (untagged.length) {
+        return {
+          success: false,
+          valid: false,
+          message: `${untagged.length} selected asset(s) still need a tag.`,
+          warnings: untagged.map(asset => asset.assetId)
+        };
       }
     }
 
-    // Check selected unassigned records
-    const selectedAssets = this.assets.filter(a => selectedAssetIds.includes(a.id) || selectedAssetIds.includes(a.assetNumber));
-    const unassignedSelected = selectedAssets.filter(a => a.status !== 'Tagged');
-    if (unassignedSelected.length > 0) {
-      warnings.push(`${unassignedSelected.length} of ${selectedAssets.length} selected asset(s) remain untagged.`);
+    try {
+      const dbUser = await prisma.user.findFirst({ where: { username: 'admin' } });
+      const firstAsset = await prisma.asset.findFirst({ where: { tagNumber: { not: null } } });
+      if (firstAsset && dbUser) {
+        await prisma.assetTransaction.create({
+          data: {
+            assetId: firstAsset.id,
+            transactionType: 'TAG',
+            fromStatus: 'RECEIVED',
+            toStatus: 'TAGGED',
+            performedByUserId: dbUser.id,
+            notes: `Tagging session completed by ${user.fullName || 'Admin'}.`
+          }
+        });
+      }
+    } catch (e) {
+      // Non-fatal audit log
     }
-
-    if (errors.length > 0) {
-      return {
-        success: false,
-        valid: false,
-        errors,
-        warnings,
-        message: 'Completion validation failed. Please resolve duplicate tags before finalizing.'
-      };
-    }
-
-    // Log completion audit record
-    const completionRecord = {
-      id: `audit-complete-${Date.now()}`,
-      action: 'COMPLETE_TAGGING_SESSION',
-      assetId: 'MULTIPLE_SESSION',
-      tagId: 'ALL',
-      notes: `Tagging session completed by ${user.fullName || 'John Doe'}. Processed ${this.assets.filter(a => a.status === 'Tagged').length} tagged assets.`,
-      user: user.fullName || 'John Doe',
-      timestamp: new Date().toISOString(),
-      timeFormatted: this.formatDisplayTime()
-    };
-    this.auditLogs.unshift(completionRecord);
 
     return {
       success: true,
       valid: true,
       message: 'Tagging session completed and verified successfully. Asset register and tagging history updated.',
-      summary: this.getTaggingSummary(),
-      warnings
+      summary: await this.getTaggingSummary(),
+      warnings: []
     };
   }
 
   // Add Asset Manually
-  addManualAsset(assetData) {
-    const assetNumber = assetData.assetNumber || `AS-2026-${String(1000 + this.assets.length + 1)}`;
-    const newAsset = {
-      id: `ast-manual-${Date.now()}`,
-      assetNumber,
-      assetName: assetData.assetName || 'Custom Asset',
-      category: assetData.category || 'General',
-      location: assetData.location || 'Dubai HQ',
-      department: assetData.department || 'IT Operations',
-      serialNumber: assetData.serialNumber || `SN-${Math.floor(100000 + Math.random() * 900000)}`,
-      currentTag: assetData.currentTag || '-',
-      status: assetData.currentTag ? 'Tagged' : 'Not Tagged',
-      custodian: assetData.custodian || 'Unassigned',
-      assetStatus: assetData.assetStatus || 'Active',
-      imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500&q=80',
-      rfidEpc: null,
-      barcode: null
-    };
+  async addManualAsset(assetData) {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    if (!assetData.assetName?.trim()) throw new Error('Asset name is required.');
+    const [company, site, category] = await Promise.all([
+      prisma.company.findFirst({ where: { active: true } }),
+      prisma.site.findFirst({ where: { active: true } }),
+      prisma.category.findFirst({ where: assetData.category ? { name: assetData.category } : { active: true } })
+    ]);
+    if (!company || !site || !category) throw new Error('Company, site, and category are required.');
+    const assetNumber = assetData.assetNumber?.trim() || `AST-MAN-${Date.now()}`;
+    const created = await prisma.asset.create({ data: {
+      assetId: assetNumber, description: assetData.assetName.trim(),
+      serialNumber: assetData.serialNumber?.trim() || null,
+      categoryId: category.id, companyId: company.id, siteId: site.id,
+      lifecycleStatus: 'RECEIVED', condition: 'NEW'
+    }});
+    const result = await this.getEligibleAssets({ assetNumber: created.assetId });
+    return result.find(asset => asset.id === created.id);
 
-    this.assets.push(newAsset);
-    return newAsset;
   }
 
   // Import Assets from File
-  importAssets(rows = []) {
+  async importAssets(rows = []) {
     const imported = [];
     for (const row of rows) {
       if (!row.assetName && !row.assetNumber) continue;
-      const asset = this.addManualAsset(row);
+      const asset = await this.addManualAsset(row);
       imported.push(asset);
     }
     return {
@@ -686,8 +651,18 @@ class TaggingServiceStore {
   }
 
   // Get Audit History
-  getAuditHistory() {
-    return this.auditLogs;
+  async getAuditHistory() {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    const transactions = await prisma.assetTransaction.findMany({
+      where: { transactionType: 'TAG' }, include: { asset: true },
+      orderBy: { createdAt: 'desc' }, take: 50
+    });
+    return transactions.map(tx => ({
+      id: tx.id, action: 'ASSIGN_TAG', assetId: tx.asset?.assetId,
+      assetName: tx.asset?.description, tagId: tx.asset?.tagNumber,
+      notes: tx.notes, timestamp: tx.createdAt.toISOString(),
+      timeFormatted: this.formatDisplayTime(tx.createdAt)
+    }));
   }
 
   // Settings

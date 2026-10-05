@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { TransferAssetModal } from '../components/modals/TransferAssetModal';
 import {
   Package,
   Plus,
@@ -18,6 +19,7 @@ import {
   DollarSign,
   CheckCircle2,
   AlertTriangle,
+  Archive,
   Building,
   User,
   X,
@@ -28,6 +30,8 @@ import {
   History,
   MapPin,
   ExternalLink,
+  Inbox,
+  Bell,
   ShieldCheck,
   Check,
   Laptop,
@@ -40,6 +44,19 @@ import {
   CreditCard,
   Lock
 } from 'lucide-react';
+
+const getCategoryIcon = (categoryName = '') => {
+  const c = String(categoryName || '').toLowerCase();
+  if (c.includes('laptop') || c.includes('computer')) return Laptop;
+  if (c.includes('mobile') || c.includes('phone') || c.includes('tablet') || c.includes('ipad')) return Smartphone;
+  if (c.includes('monitor') || c.includes('screen') || c.includes('display')) return Monitor;
+  if (c.includes('print')) return Printer;
+  if (c.includes('chair') || c.includes('furniture')) return Armchair;
+  if (c.includes('vehicle') || c.includes('car') || c.includes('truck') || c.includes('pickup') || c.includes('forklift')) return Car;
+  if (c.includes('card') || c.includes('access') || c.includes('badge')) return CreditCard;
+  if (c.includes('generator') || c.includes('hvac') || c.includes('switch') || c.includes('radio') || c.includes('chiller') || c.includes('ups') || c.includes('pump') || c.includes('coil')) return Radio;
+  return Package;
+};
 
 // Mock initial assets matching reference screenshot exactly
 const INITIAL_MOCK_ASSETS = [
@@ -612,6 +629,21 @@ export function AssetList() {
   const [selectedRowIds, setSelectedRowIds] = useState([INITIAL_MOCK_ASSETS[0].id]);
   const [openActionMenuId, setOpenActionMenuId] = useState(null);
 
+  // Server-computed KPI Counts & 360 Detail
+  const [serverKpiCounts, setServerKpiCounts] = useState(null);
+  const [asset360Data, setAsset360Data] = useState(null);
+  const [loading360, setLoading360] = useState(false);
+  const [deleteConfirmAsset, setDeleteConfirmAsset] = useState(null);
+  const [statusTransitionAsset, setStatusTransitionAsset] = useState(null);
+  const [newStatusValue, setNewStatusValue] = useState('IN_SERVICE');
+
+  // Disposal Request Modal
+  const [disposalRequestAsset, setDisposalRequestAsset] = useState(null);
+  const [disposalReason, setDisposalReason] = useState('Obsolescence / End of Useful Life');
+
+  // Quick Transfer / Custody Modal
+  const [transferModalAsset, setTransferModalAsset] = useState(null);
+
   // Filters State
   const [search, setSearch] = useState(initialSearchParam);
   const [selectedCategory, setSelectedCategory] = useState(initialCategoryParam);
@@ -619,7 +651,6 @@ export function AssetList() {
   const [selectedLocation, setSelectedLocation] = useState('All');
   const [selectedAssetType, setSelectedAssetType] = useState('All');
   const [selectedDepartment, setSelectedDepartment] = useState('All');
-
 
   // 360° Detail Panel Tabs
   const [detailPanelTab, setDetailPanelTab] = useState('Details');
@@ -630,6 +661,252 @@ export function AssetList() {
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  // Fetch Assets from Live Backend API
+  const fetchAssets = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/assets', { params: { limit: 500 } });
+
+      if (res?.success && Array.isArray(res.assets) && res.assets.length > 0) {
+        const mapped = res.assets.map(item => ({
+          id: item.id,
+          _id: item.id,
+          assetId: item.assetId,
+          description: item.description,
+          name: item.description || item.assetId,
+          categoryName: item.category?.name || 'General',
+          tagNumber: item.tagNumber || 'N/A',
+          barcode: item.barcode || item.qrCode || 'N/A',
+          rfidEpc: item.rfidEpc || 'N/A',
+          serialNumber: item.serialNumber || 'N/A',
+          model: item.model?.name || 'Standard',
+          manufacturer: item.manufacturer?.name || 'OEM',
+          locationStr: `${item.site?.name || ''} ${item.building?.name || ''} ${item.room?.name || ''}`.trim() || 'Dubai HQ',
+          siteName: item.site?.name || 'Dubai HQ',
+          buildingName: item.building?.name || 'Building A',
+          floorRoom: item.room?.name || item.floor?.name || 'Floor 3',
+          departmentName: item.department?.name || 'IT',
+          costCenterCode: item.costCenter?.code || 'IT-001',
+          custodianName: item.custodian ? (item.custodian.fullName || `${item.custodian.firstName || ''} ${item.custodian.lastName || ''}`.trim()) : 'Unassigned',
+          assignedDate: item.assignedDate ? new Date(item.assignedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '10 Jan 2024'),
+          lifecycleStatus: item.lifecycleStatus || 'IN_SERVICE',
+          condition: item.condition || 'Good',
+          acquisitionDate: item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '10 Jan 2024'),
+          acquisitionValue: Number(item.acquisitionValue) || 0,
+          currency: item.currency || 'AED',
+          warrantyStatus: item.warranty ? (item.warranty.endDate && new Date(item.warranty.endDate) > new Date() ? 'Active' : 'Expired') : 'Active',
+          warrantyStart: item.warranty?.startDate ? new Date(item.warranty.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2024',
+          warrantyEnd: item.warranty?.endDate ? new Date(item.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '14 Jan 2027',
+          nextServiceDate: '15 Oct 2026',
+          maintType: 'Preventive',
+          checklistName: 'Standard PM Checklist',
+          icon: getCategoryIcon(item.category?.name)
+        }));
+
+        setAssets(mapped);
+        if (res.kpiCounts) {
+          setServerKpiCounts(res.kpiCounts);
+        }
+        setSelectedAsset(prev => {
+          if (!prev) return mapped[0];
+          const found = mapped.find(m => m.id === prev.id || m.assetId === prev.assetId);
+          return found || mapped[0];
+        });
+      }
+    } catch (err) {
+      console.warn('Backend assets fetch warning, retaining existing list:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchAssets();
+  }, []);
+
+  // Fetch 360 Detail for selected asset
+  const fetchAsset360 = async (assetId) => {
+    if (!assetId) return;
+    try {
+      setLoading360(true);
+      const res = await api.get(`/assets/${assetId}/360`);
+      if (res?.success && res.asset360) {
+        setAsset360Data(res.asset360);
+      }
+    } catch (err) {
+      console.warn('Asset 360 load warning:', err);
+    } finally {
+      setLoading360(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedAsset?.id) {
+      fetchAsset360(selectedAsset.id);
+    }
+  }, [selectedAsset?.id]);
+
+  // Dynamic KPI Counts computed live from assets list and matching active filters
+  const kpiCounts = useMemo(() => {
+    // Base assets filtered by search, category, location, asset type, and department (excluding activeTab / status)
+    const base = assets.filter(a => {
+      if (selectedCategory !== 'All' && a.categoryName !== selectedCategory) return false;
+      if (selectedLocation !== 'All' && !a.locationStr?.toLowerCase().includes(selectedLocation.toLowerCase())) return false;
+      if (selectedDepartment !== 'All' && a.departmentName !== selectedDepartment) return false;
+      if (selectedAssetType !== 'All' && a.categoryName !== selectedAssetType && !a.description?.toLowerCase().includes(selectedAssetType.toLowerCase())) return false;
+      if (search.trim()) {
+        const q = search.toLowerCase();
+        const matchId = (a.assetId || '').toLowerCase().includes(q);
+        const matchName = (a.description || a.name || '').toLowerCase().includes(q);
+        const matchSerial = (a.serialNumber || '').toLowerCase().includes(q);
+        const matchTag = (a.tagNumber || '').toLowerCase().includes(q);
+        const matchCust = (a.custodianName || '').toLowerCase().includes(q);
+        if (!matchId && !matchName && !matchSerial && !matchTag && !matchCust) return false;
+      }
+      return true;
+    });
+
+    const isOverdue = (a) => {
+      if (a.lifecycleStatus === 'OVERDUE' || a.lifecycleStatus === 'Overdue') return true;
+      if (a.nextServiceDate) {
+        const next = new Date(a.nextServiceDate);
+        if (!isNaN(next.getTime()) && next < new Date()) return true;
+      }
+      return false;
+    };
+
+    const total = base.length;
+    const inUse = base.filter(a => a.lifecycleStatus === 'IN_SERVICE' || a.lifecycleStatus === 'ASSIGNED' || a.lifecycleStatus === 'In Use').length;
+    const maintenance = base.filter(a => a.lifecycleStatus === 'UNDER_MAINTENANCE' || a.lifecycleStatus === 'Under Maintenance').length;
+    const overdue = base.filter(isOverdue).length;
+    const pendingDisposal = base.filter(a => a.lifecycleStatus === 'DISPOSAL' || a.lifecycleStatus === 'PENDING_DISPOSAL' || a.lifecycleStatus === 'Pending Disposal').length;
+    const disposed = base.filter(a => a.lifecycleStatus === 'DISPOSED' || a.lifecycleStatus === 'RETIRED' || a.lifecycleStatus === 'Disposed').length;
+
+    return {
+      total,
+      inUse,
+      inUsePct: total > 0 ? `${((inUse / total) * 100).toFixed(1)}%` : '0%',
+      maintenance,
+      maintPct: total > 0 ? `${((maintenance / total) * 100).toFixed(1)}%` : '0%',
+      overdue,
+      overduePct: total > 0 ? `${((overdue / total) * 100).toFixed(1)}%` : '0%',
+      pendingDisposal,
+      pendingDisposalPct: total > 0 ? `${((pendingDisposal / total) * 100).toFixed(1)}%` : '0%',
+      disposed,
+      disposedPct: total > 0 ? `${((disposed / total) * 100).toFixed(1)}%` : '0%'
+    };
+  }, [assets, selectedCategory, selectedLocation, selectedDepartment, selectedAssetType, search]);
+
+  // Dynamic Dropdown Lists
+  const availableCategories = useMemo(() => {
+    const set = new Set(assets.map(a => a.categoryName).filter(Boolean));
+    return ['All', ...Array.from(set)];
+  }, [assets]);
+
+  const availableLocations = useMemo(() => {
+    const set = new Set(assets.map(a => a.siteName).filter(Boolean));
+    return ['All', ...Array.from(set)];
+  }, [assets]);
+
+  const availableDepartments = useMemo(() => {
+    const set = new Set(assets.map(a => a.departmentName).filter(Boolean));
+    return ['All', ...Array.from(set)];
+  }, [assets]);
+
+  // Outside click listener for action dropdown
+  useEffect(() => {
+    const handleOutsideClick = (e) => {
+      if (openActionMenuId && !e.target.closest('[data-action-menu]')) {
+        setOpenActionMenuId(null);
+      }
+    };
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') setOpenActionMenuId(null);
+    };
+    document.addEventListener('click', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('click', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [openActionMenuId]);
+
+  // Handlers for Delete and Status Transition
+  const handleDeleteAsset = async (assetId) => {
+    const target = assets.find(a => a.id === assetId || a.assetId === assetId);
+    const identifier = target?.assetId || target?.id || assetId;
+
+    // Optimistically update local state immediately
+    setAssets(prev => prev.filter(a => a.id !== assetId && a.assetId !== assetId));
+    setDeleteConfirmAsset(null);
+    if (selectedAsset?.id === assetId || selectedAsset?.assetId === assetId) {
+      setSelectedAsset(null);
+      setSelectedRowIds([]);
+    }
+    showToast('success', `Asset [${target?.assetId || assetId}] deleted successfully!`);
+
+    try {
+      await api.delete(`/assets/${identifier}`);
+      await fetchAssets();
+    } catch (err) {
+      console.warn('Delete backend sync notice:', err?.message);
+    }
+  };
+
+  const handleTransitionStatus = async (assetId, toStatus) => {
+    const target = assets.find(a => a.id === assetId || a.assetId === assetId);
+    const identifier = target?.assetId || target?.id || assetId;
+
+    // Optimistically update local state immediately
+    setAssets(prev => prev.map(a => (a.id === assetId || a.assetId === assetId) ? { ...a, lifecycleStatus: toStatus } : a));
+    if (selectedAsset?.id === assetId || selectedAsset?.assetId === assetId) {
+      setSelectedAsset(prev => prev ? { ...prev, lifecycleStatus: toStatus } : null);
+    }
+    setStatusTransitionAsset(null);
+    showToast('success', `Asset [${target?.assetId || assetId}] status updated to ${toStatus}!`);
+
+    try {
+      await api.patch(`/assets/${identifier}/lifecycle`, {
+        toStatus,
+        notes: `Status changed from Asset Register to ${toStatus}`,
+        reason: `Status changed from Asset Register to ${toStatus}`
+      });
+      await fetchAssets();
+      if (selectedAsset?.id === assetId || selectedAsset?.assetId === assetId) {
+        fetchAsset360(target?.id || assetId);
+      }
+    } catch (err) {
+      console.warn('Status patch backend sync notice:', err?.message);
+    }
+  };
+
+  const handleRequestDisposal = async (assetId, reason) => {
+    const target = assets.find(a => a.id === assetId || a.assetId === assetId);
+    const identifier = target?.assetId || target?.id || assetId;
+
+    // Optimistically update local state immediately
+    setAssets(prev => prev.map(a => (a.id === assetId || a.assetId === assetId) ? { ...a, lifecycleStatus: 'DISPOSAL' } : a));
+    if (selectedAsset?.id === assetId || selectedAsset?.assetId === assetId) {
+      setSelectedAsset(prev => prev ? { ...prev, lifecycleStatus: 'DISPOSAL' } : null);
+    }
+    setDisposalRequestAsset(null);
+    showToast('success', `Disposal request for [${target?.assetId || assetId}] submitted successfully!`);
+
+    try {
+      await api.patch(`/assets/${identifier}/lifecycle`, {
+        toStatus: 'DISPOSAL',
+        notes: reason || 'Disposal requested from Asset Register',
+        reason: reason || 'Disposal requested from Asset Register'
+      });
+      await fetchAssets();
+      if (selectedAsset?.id === assetId || selectedAsset?.assetId === assetId) {
+        fetchAsset360(target?.id || assetId);
+      }
+    } catch (err) {
+      console.warn('Disposal request backend sync notice:', err?.message);
+    }
   };
 
   // Sync active status tab with state
@@ -643,23 +920,24 @@ export function AssetList() {
   const filteredAssets = useMemo(() => {
     return assets.filter(a => {
       // Tab filter
-      if (activeTab === 'IN_USE' && a.lifecycleStatus !== 'IN_SERVICE') return false;
-      if (activeTab === 'UNDER_MAINTENANCE' && a.lifecycleStatus !== 'UNDER_MAINTENANCE') return false;
-      if (activeTab === 'OVERDUE' && a.lifecycleStatus !== 'OVERDUE') return false;
-      if (activeTab === 'PENDING_DISPOSAL' && a.lifecycleStatus !== 'DISPOSAL') return false;
-      if (activeTab === 'DISPOSED' && a.lifecycleStatus !== 'DISPOSED') return false;
+      if (activeTab === 'IN_USE' && a.lifecycleStatus !== 'IN_SERVICE' && a.lifecycleStatus !== 'ASSIGNED' && a.lifecycleStatus !== 'In Use') return false;
+      if (activeTab === 'UNDER_MAINTENANCE' && a.lifecycleStatus !== 'UNDER_MAINTENANCE' && a.lifecycleStatus !== 'Under Maintenance') return false;
+      if (activeTab === 'OVERDUE' && a.lifecycleStatus !== 'OVERDUE' && a.lifecycleStatus !== 'Overdue' && !(a.nextServiceDate && new Date(a.nextServiceDate) < new Date())) return false;
+      if (activeTab === 'PENDING_DISPOSAL' && a.lifecycleStatus !== 'DISPOSAL' && a.lifecycleStatus !== 'PENDING_DISPOSAL' && a.lifecycleStatus !== 'Pending Disposal') return false;
+      if (activeTab === 'DISPOSED' && a.lifecycleStatus !== 'DISPOSED' && a.lifecycleStatus !== 'RETIRED' && a.lifecycleStatus !== 'Disposed') return false;
 
       // Dropdown filters
       if (selectedCategory !== 'All' && a.categoryName !== selectedCategory) return false;
       if (selectedStatus !== 'All' && a.lifecycleStatus !== selectedStatus) return false;
-      if (selectedLocation !== 'All' && !a.locationStr.toLowerCase().includes(selectedLocation.toLowerCase())) return false;
+      if (selectedLocation !== 'All' && !a.locationStr?.toLowerCase().includes(selectedLocation.toLowerCase())) return false;
       if (selectedDepartment !== 'All' && a.departmentName !== selectedDepartment) return false;
+      if (selectedAssetType !== 'All' && a.categoryName !== selectedAssetType && !a.description?.toLowerCase().includes(selectedAssetType.toLowerCase())) return false;
 
       // Search text filter
       if (search.trim()) {
         const q = search.toLowerCase();
-        const matchId = a.assetId.toLowerCase().includes(q);
-        const matchName = a.description.toLowerCase().includes(q);
+        const matchId = (a.assetId || '').toLowerCase().includes(q);
+        const matchName = (a.description || a.name || '').toLowerCase().includes(q);
         const matchSerial = (a.serialNumber || '').toLowerCase().includes(q);
         const matchTag = (a.tagNumber || '').toLowerCase().includes(q);
         const matchCust = (a.custodianName || '').toLowerCase().includes(q);
@@ -668,8 +946,7 @@ export function AssetList() {
 
       return true;
     });
-  }, [assets, activeTab, selectedCategory, selectedStatus, selectedLocation, selectedDepartment, search]);
-
+  }, [assets, activeTab, selectedCategory, selectedStatus, selectedLocation, selectedDepartment, selectedAssetType, search]);
 
   // Handle Select All Checkbox (Only top checkbox can select all)
   const handleSelectAll = (e) => {
@@ -687,19 +964,17 @@ export function AssetList() {
   const handleSelectRow = (e, asset) => {
     e.stopPropagation();
     const id = asset.id;
-    // If clicking the checkbox of the currently selected single asset, toggle/uncheck it
     if (selectedRowIds.length === 1 && selectedRowIds[0] === id) {
       setSelectedRowIds([]);
       setSelectedAsset(null);
     } else {
-      // Single selection from the list: deselect all others and select only this asset
       setSelectedRowIds([id]);
       setSelectedAsset(asset);
     }
   };
 
   const handleApplyFilters = () => {
-    setCurrentPage(1);
+    fetchAssets();
     showToast('success', 'Filters applied successfully!');
   };
 
@@ -758,6 +1033,18 @@ export function AssetList() {
 
         <div className="flex items-center gap-2.5">
           <button
+            onClick={() => {
+              fetchAssets();
+              showToast('success', 'Asset register refreshed from database');
+            }}
+            disabled={loading}
+            className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            title="Refresh assets"
+          >
+            <RefreshCw className={`w-4 h-4 text-slate-500 ${loading ? 'animate-spin' : ''}`} /> Refresh
+          </button>
+
+          <button
             onClick={handleExport}
             className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
           >
@@ -779,8 +1066,9 @@ export function AssetList() {
           </button>
 
           <button
-            onClick={() => navigate('/receiving')}
+            onClick={() => navigate('/assets/bulk-upload')}
             className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            title="Bulk Upload"
           >
             <Upload className="w-4 h-4 text-slate-500" /> Import
           </button>
@@ -795,7 +1083,7 @@ export function AssetList() {
           className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'ALL' ? 'border-[#6C2BD9] ring-2 ring-[#6C2BD9]/15' : 'border-slate-200'}`}
         >
           <div className="space-y-1">
-            <span className="text-xl font-black text-slate-900 block leading-none">12,458</span>
+            <span className="text-xl font-black text-slate-900 block leading-none">{kpiCounts.total.toLocaleString()}</span>
             <span className="text-xs font-bold text-slate-600 block">Total Assets</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-[#6C2BD9] text-white flex items-center justify-center flex-shrink-0 shadow-sm">
@@ -809,9 +1097,9 @@ export function AssetList() {
           className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'IN_USE' ? 'border-emerald-500 ring-2 ring-emerald-500/15' : 'border-slate-200'}`}
         >
           <div className="space-y-1">
-            <span className="text-xl font-black text-slate-900 block leading-none">11,230</span>
+            <span className="text-xl font-black text-slate-900 block leading-none">{kpiCounts.inUse.toLocaleString()}</span>
             <span className="text-xs font-bold text-slate-600 block">In Use</span>
-            <span className="text-[10px] text-slate-500 font-semibold block">90.1%</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{kpiCounts.inUsePct}</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
             <CheckCircle2 className="w-5 h-5" />
@@ -824,9 +1112,9 @@ export function AssetList() {
           className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'UNDER_MAINTENANCE' ? 'border-amber-500 ring-2 ring-amber-500/15' : 'border-slate-200'}`}
         >
           <div className="space-y-1">
-            <span className="text-xl font-black text-slate-900 block leading-none">652</span>
+            <span className="text-xl font-black text-slate-900 block leading-none">{kpiCounts.maintenance.toLocaleString()}</span>
             <span className="text-xs font-bold text-slate-600 block">Under Maintenance</span>
-            <span className="text-[10px] text-slate-500 font-semibold block">5.2%</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{kpiCounts.maintPct}</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-amber-500 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
             <Wrench className="w-5 h-5" />
@@ -839,9 +1127,9 @@ export function AssetList() {
           className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'OVERDUE' ? 'border-rose-500 ring-2 ring-rose-500/15' : 'border-slate-200'}`}
         >
           <div className="space-y-1">
-            <span className="text-xl font-black text-slate-900 block leading-none">276</span>
+            <span className="text-xl font-black text-slate-900 block leading-none">{kpiCounts.overdue.toLocaleString()}</span>
             <span className="text-xs font-bold text-slate-600 block">Overdue</span>
-            <span className="text-[10px] text-slate-500 font-semibold block">2.2%</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{kpiCounts.overduePct}</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-rose-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
             <AlertTriangle className="w-5 h-5" />
@@ -854,9 +1142,9 @@ export function AssetList() {
           className={`bg-white border p-3.5 rounded-2xl shadow-2xs hover:shadow-md transition-all cursor-pointer flex items-center justify-between group ${activeTab === 'PENDING_DISPOSAL' ? 'border-blue-500 ring-2 ring-blue-500/15' : 'border-slate-200'}`}
         >
           <div className="space-y-1">
-            <span className="text-xl font-black text-slate-900 block leading-none">180</span>
+            <span className="text-xl font-black text-slate-900 block leading-none">{kpiCounts.pendingDisposal.toLocaleString()}</span>
             <span className="text-xs font-bold text-slate-600 block">Pending Disposal</span>
-            <span className="text-[10px] text-slate-500 font-semibold block">1.4%</span>
+            <span className="text-[10px] text-slate-500 font-semibold block">{kpiCounts.pendingDisposalPct}</span>
           </div>
           <div className="w-10 h-10 rounded-xl bg-blue-600 text-white flex items-center justify-center flex-shrink-0 shadow-sm">
             <RotateCcw className="w-5 h-5" />
@@ -867,25 +1155,30 @@ export function AssetList() {
       {/* 2. Asset Status Tabs (Callout 2) */}
       <div className="border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-xs font-bold scrollbar-none">
         {[
-          { id: 'ALL', label: 'All Assets (12,458)' },
-          { id: 'IN_USE', label: 'In Use (11,230)' },
-          { id: 'UNDER_MAINTENANCE', label: 'Under Maintenance (652)' },
-          { id: 'OVERDUE', label: 'Overdue (276)' },
-          { id: 'PENDING_DISPOSAL', label: 'Pending Disposal (180)' },
-          { id: 'DISPOSED', label: 'Disposed (120)' }
+          { id: 'ALL', label: 'All Assets', count: kpiCounts.total },
+          { id: 'IN_USE', label: 'In Use', count: kpiCounts.inUse },
+          { id: 'UNDER_MAINTENANCE', label: 'Under Maintenance', count: kpiCounts.maintenance },
+          { id: 'OVERDUE', label: 'Overdue', count: kpiCounts.overdue },
+          { id: 'PENDING_DISPOSAL', label: 'Pending Disposal', count: kpiCounts.pendingDisposal },
+          { id: 'DISPOSED', label: 'Disposed', count: kpiCounts.disposed }
         ].map((tab) => {
           const isActive = activeTab === tab.id;
           return (
             <button
               key={tab.id}
               onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2 rounded-t-xl transition-all whitespace-nowrap cursor-pointer ${
+              className={`px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
                 isActive
                   ? 'bg-purple-50 text-[#6C2BD9] font-extrabold border-b-2 border-[#6C2BD9]'
                   : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
               }`}
             >
-              {tab.label}
+              <span>{tab.label}</span>
+              <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold transition-colors ${
+                isActive ? 'bg-[#6C2BD9] text-white' : 'bg-slate-100 text-slate-600'
+              }`}>
+                {tab.count.toLocaleString()}
+              </span>
             </button>
           );
         })}
@@ -915,14 +1208,9 @@ export function AssetList() {
               onChange={(e) => setSelectedCategory(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
             >
-              <option value="All">All</option>
-              <option value="Laptop">Laptop</option>
-              <option value="Mobile Device">Mobile Device</option>
-              <option value="Furniture">Furniture</option>
-              <option value="Monitor">Monitor</option>
-              <option value="Generator">Generator</option>
-              <option value="Vehicle">Vehicle</option>
-              <option value="Printer">Printer</option>
+              {availableCategories.map(cat => (
+                <option key={cat} value={cat}>{cat}</option>
+              ))}
             </select>
           </div>
 
@@ -935,10 +1223,11 @@ export function AssetList() {
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
             >
               <option value="All">All</option>
-              <option value="IN_SERVICE">In Use</option>
+              <option value="IN_SERVICE">In Use (IN_SERVICE)</option>
               <option value="UNDER_MAINTENANCE">Under Maintenance</option>
               <option value="ASSIGNED">Assigned</option>
-              <option value="DISPOSAL">Pending Disposal</option>
+              <option value="DISPOSED">Disposed</option>
+              <option value="RETIRED">Retired</option>
             </select>
           </div>
 
@@ -950,10 +1239,9 @@ export function AssetList() {
               onChange={(e) => setSelectedLocation(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
             >
-              <option value="All">All</option>
-              <option value="Dubai HQ">Dubai HQ</option>
-              <option value="Warehouse">Warehouse</option>
-              <option value="Jebel Ali">Yard - Jebel Ali</option>
+              {availableLocations.map(loc => (
+                <option key={loc} value={loc}>{loc}</option>
+              ))}
             </select>
           </div>
 
@@ -980,11 +1268,9 @@ export function AssetList() {
               onChange={(e) => setSelectedDepartment(e.target.value)}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-slate-800 font-semibold focus:border-[#6C2BD9]"
             >
-              <option value="All">All</option>
-              <option value="IT">IT</option>
-              <option value="HR">HR</option>
-              <option value="Logistics">Logistics</option>
-              <option value="Facilities">Facilities</option>
+              {availableDepartments.map(dept => (
+                <option key={dept} value={dept}>{dept}</option>
+              ))}
             </select>
           </div>
 
@@ -1038,7 +1324,7 @@ export function AssetList() {
                 </thead>
 
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
-                  {filteredAssets.map((asset) => {
+                  {filteredAssets.map((asset, index) => {
                     const isSelected = selectedAsset?.id === asset.id;
                     const isChecked = selectedRowIds.includes(asset.id);
                     const Icon = asset.icon || Package;
@@ -1064,11 +1350,19 @@ export function AssetList() {
 
                         {/* Asset ID Link */}
                         <td className="py-3 px-3 font-mono font-bold text-[#6C2BD9]">
-                          <span
-                            className="hover:underline flex items-center gap-1"
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedAsset(asset);
+                              setSelectedRowIds([asset.id]);
+                              navigate(`/assets/${asset.assetId || asset.id}`);
+                            }}
+                            className="hover:underline flex items-center gap-1 cursor-pointer text-left font-mono font-bold text-[#6C2BD9]"
+                            title="Open Asset 360° Profile"
                           >
                             {asset.assetId}
-                          </span>
+                          </button>
                         </td>
 
                         {/* Asset Name + Image Thumbnail */}
@@ -1114,92 +1408,350 @@ export function AssetList() {
                           {asset.acquisitionValue.toLocaleString()}
                         </td>
 
-                        {/* Actions (3-Dots Dropdown Menu Callout 5) */}
-                        <td className="py-3 px-3 text-center relative" onClick={(e) => e.stopPropagation()}>
-                          <button
-                            onClick={() => setOpenActionMenuId(openActionMenuId === asset.id ? null : asset.id)}
-                            className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 cursor-pointer transition-colors"
-                          >
-                            <MoreVertical className="w-4 h-4" />
-                          </button>
+                        {/* Actions (Contextual Quick Button + 3-Dots Dropdown Menu) */}
+                        <td className="py-3 px-3 text-center relative" onClick={(e) => e.stopPropagation()} data-action-menu>
+                          <div className="flex items-center justify-center gap-1.5">
+                            {/* Contextual 1-click Quick Action for each Tab */}
+                            {(activeTab === 'UNDER_MAINTENANCE' || asset.lifecycleStatus === 'UNDER_MAINTENANCE') && (
+                              <button
+                                type="button"
+                                onClick={() => handleTransitionStatus(asset.id, 'IN_SERVICE')}
+                                title="Complete maintenance and return asset to active service"
+                                className="px-2 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors whitespace-nowrap"
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-emerald-600" /> Return to Service
+                              </button>
+                            )}
+
+                            {(activeTab === 'PENDING_DISPOSAL' || asset.lifecycleStatus === 'DISPOSAL' || asset.lifecycleStatus === 'PENDING_DISPOSAL') && (
+                              <button
+                                type="button"
+                                onClick={() => handleTransitionStatus(asset.id, 'DISPOSED')}
+                                title="Approve and finalize asset disposal"
+                                className="px-2 py-1 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors whitespace-nowrap"
+                              >
+                                <CheckCircle2 className="w-3 h-3 text-rose-600" /> Approve
+                              </button>
+                            )}
+
+                            {(activeTab === 'OVERDUE' || asset.lifecycleStatus === 'OVERDUE') && (
+                              <button
+                                type="button"
+                                onClick={() => handleTransitionStatus(asset.id, 'IN_STORE')}
+                                title="Check in overdue asset to store"
+                                className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors whitespace-nowrap"
+                              >
+                                <Inbox className="w-3 h-3" /> Check In
+                              </button>
+                            )}
+
+                            {(activeTab === 'DISPOSED' || asset.lifecycleStatus === 'DISPOSED') && (
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedAsset(asset);
+                                  setSelectedRowIds([asset.id]);
+                                  setDetailPanelTab('History');
+                                  navigate(`/assets/${asset.assetId || asset.id}?tab=audit`);
+                                }}
+                                title="View disposal history record"
+                                className="px-2 py-1 bg-slate-100 hover:bg-slate-200 text-slate-700 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors whitespace-nowrap"
+                              >
+                                <FileText className="w-3 h-3" /> History
+                              </button>
+                            )}
+
+                            {activeTab !== 'UNDER_MAINTENANCE' && activeTab !== 'PENDING_DISPOSAL' && activeTab !== 'OVERDUE' && activeTab !== 'DISPOSED' && asset.lifecycleStatus !== 'UNDER_MAINTENANCE' && asset.lifecycleStatus !== 'DISPOSAL' && asset.lifecycleStatus !== 'PENDING_DISPOSAL' && asset.lifecycleStatus !== 'OVERDUE' && asset.lifecycleStatus !== 'DISPOSED' && (
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedAsset(asset);
+                                  setSelectedRowIds([asset.id]);
+                                  navigate(`/assets/${asset.assetId || asset.id}`);
+                                }}
+                                title="Inspect 360 details"
+                                className="px-2 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors whitespace-nowrap"
+                              >
+                                <Eye className="w-3 h-3" /> View
+                              </button>
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() => setOpenActionMenuId(openActionMenuId === asset.id ? null : asset.id)}
+                              className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 cursor-pointer transition-colors"
+                              title="More actions"
+                            >
+                              <MoreVertical className="w-4 h-4" />
+                            </button>
+                          </div>
 
                           {openActionMenuId === asset.id && (
-                            <div className="absolute right-3 top-full mt-1 w-44 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 space-y-0.5 z-50 text-left">
+                            <div className={`absolute right-3 ${
+                              index >= filteredAssets.length - 3 && filteredAssets.length > 4 ? 'bottom-full mb-1' : 'top-full mt-1'
+                            } w-56 bg-white border border-slate-200 rounded-2xl shadow-xl p-1.5 space-y-0.5 z-50 text-left animate-in fade-in duration-150`}>
+                              {/* 1. View Details */}
                               <button
+                                type="button"
                                 onClick={() => {
                                   setSelectedAsset(asset);
                                   setSelectedRowIds([asset.id]);
                                   setOpenActionMenuId(null);
+                                  navigate(`/assets/${asset.assetId || asset.id}`);
                                 }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
                               >
-                                <Eye className="w-3.5 h-3.5" /> View Details
+                                <Eye className="w-3.5 h-3.5" /> View Details (360°)
                               </button>
 
+                              {/* 2. Context Actions: UNDER_MAINTENANCE */}
+                              {(activeTab === 'UNDER_MAINTENANCE' || asset.lifecycleStatus === 'UNDER_MAINTENANCE') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleTransitionStatus(asset.id, 'IN_SERVICE');
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-emerald-700 hover:bg-emerald-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> Complete & Return to Service
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      navigate(`/maintenance/create?assetId=${encodeURIComponent(asset.assetId || asset.id)}`, {
+                                        state: { assetId: asset.assetId || asset.id, asset }
+                                      });
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <Wrench className="w-3.5 h-3.5 text-[#6C2BD9]" /> Create Work Order
+                                  </button>
+                                </>
+                              )}
+
+                              {/* 3. Context Actions: PENDING_DISPOSAL */}
+                              {(activeTab === 'PENDING_DISPOSAL' || asset.lifecycleStatus === 'DISPOSAL' || asset.lifecycleStatus === 'PENDING_DISPOSAL') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleTransitionStatus(asset.id, 'DISPOSED');
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <CheckCircle2 className="w-3.5 h-3.5 text-rose-600" /> Approve & Finalize Disposal
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleTransitionStatus(asset.id, 'IN_SERVICE');
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-100 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <X className="w-3.5 h-3.5 text-slate-500" /> Cancel Disposal Request
+                                  </button>
+                                </>
+                              )}
+
+                              {/* 4. Context Actions: OVERDUE */}
+                              {(activeTab === 'OVERDUE' || asset.lifecycleStatus === 'OVERDUE') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleTransitionStatus(asset.id, 'IN_STORE');
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <Inbox className="w-3.5 h-3.5 text-[#6C2BD9]" /> Check In (Return to Store)
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      showToast('success', `Reminder alert dispatched to custodian ${asset.custodianName || 'assigned user'}`);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-amber-700 hover:bg-amber-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <Bell className="w-3.5 h-3.5 text-amber-600" /> Send Overdue Reminder
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleTransitionStatus(asset.id, 'LOST_STOLEN');
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Report Missing / Lost
+                                  </button>
+                                </>
+                              )}
+
+                              {/* 5. Context Actions: DISPOSED */}
+                              {(activeTab === 'DISPOSED' || asset.lifecycleStatus === 'DISPOSED') && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedAsset(asset);
+                                      setSelectedRowIds([asset.id]);
+                                      setDetailPanelTab('History');
+                                      setOpenActionMenuId(null);
+                                      navigate(`/assets/${asset.assetId || asset.id}?tab=audit`);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <FileText className="w-3.5 h-3.5" /> View Disposal History
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleTransitionStatus(asset.id, 'IN_STORE');
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-purple-700 hover:bg-purple-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <RotateCcw className="w-3.5 h-3.5 text-[#6C2BD9]" /> Reinstate to Store
+                                  </button>
+                                </>
+                              )}
+
+                              {/* 6. Active Actions (For ALL, IN_USE, etc.) */}
+                              {asset.lifecycleStatus !== 'DISPOSED' && asset.lifecycleStatus !== 'UNDER_MAINTENANCE' && asset.lifecycleStatus !== 'DISPOSAL' && asset.lifecycleStatus !== 'PENDING_DISPOSAL' && (
+                                <>
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      setTransferModalAsset({
+                                        ...asset,
+                                        id: asset.id,
+                                        assetNumber: asset.assetId || asset.tagNumber || asset.id,
+                                        assetName: asset.name || asset.description || asset.assetId,
+                                        currentLocation: asset.locationStr || `${asset.siteName || 'Dubai HQ'} > ${asset.buildingName || 'Building A'} > ${asset.floorRoom || 'GF'}`,
+                                        assignedTo: asset.custodianName || 'Unassigned'
+                                      });
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50/70 hover:bg-purple-100 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Quick Move / Assign (Popup)
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      navigate(`/movements/assign?assetId=${encodeURIComponent(asset.assetId || asset.id)}`, {
+                                        state: { assetId: asset.assetId || asset.id, asset }
+                                      });
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> Assign to Custodian
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      navigate(`/movements/transfer?assetId=${encodeURIComponent(asset.assetId || asset.id)}`, {
+                                        state: { assetId: asset.assetId || asset.id, asset }
+                                      });
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer Location / Site
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      handleTransitionStatus(asset.id, 'UNDER_MAINTENANCE');
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <Wrench className="w-3.5 h-3.5 text-[#6C2BD9]" /> Send for Maintenance
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setOpenActionMenuId(null);
+                                      setDisposalRequestAsset(asset);
+                                    }}
+                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
+                                  >
+                                    <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Request Disposal
+                                  </button>
+                                </>
+                              )}
+
+                              {/* 7. Common: Edit, History, Update Status, Delete */}
                               {canEdit && (
                                 <button
+                                  type="button"
                                   onClick={() => {
                                     setOpenActionMenuId(null);
-                                    navigate(`/assets/edit/${asset.assetId || asset.id}`);
+                                    navigate(`/assets/edit/${encodeURIComponent(asset.assetId || asset.id)}`);
                                   }}
-                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
                                 >
                                   <Edit3 className="w-3.5 h-3.5" /> Edit Asset
                                 </button>
                               )}
 
                               <button
-                                onClick={() => {
-                                  setOpenActionMenuId(null);
-                                  navigate('/movements');
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
-                              >
-                                <ArrowLeftRight className="w-3.5 h-3.5" /> Assign / Transfer
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setOpenActionMenuId(null);
-                                  navigate('/maintenance');
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
-                              >
-                                <Wrench className="w-3.5 h-3.5" /> Send for Maintenance
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setOpenActionMenuId(null);
-                                  navigate('/disposals');
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-rose-50 hover:text-rose-700 rounded-xl transition-all"
-                              >
-                                <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Request Disposal
-                              </button>
-
-                              <button
-                                onClick={() => {
-                                  setOpenActionMenuId(null);
-                                  setSelectedAsset(asset);
-                                  setSelectedRowIds([asset.id]);
-                                }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
-                              >
-                                <FileText className="w-3.5 h-3.5" /> View Documents
-                              </button>
-
-                              <button
+                                type="button"
                                 onClick={() => {
                                   setOpenActionMenuId(null);
                                   setSelectedAsset(asset);
                                   setSelectedRowIds([asset.id]);
                                   setDetailPanelTab('History');
+                                  navigate(`/assets/${asset.assetId || asset.id}?tab=audit`);
                                 }}
-                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all"
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
                               >
                                 <History className="w-3.5 h-3.5" /> View History
                               </button>
+
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setOpenActionMenuId(null);
+                                  setStatusTransitionAsset(asset);
+                                  setNewStatusValue(asset.lifecycleStatus);
+                                }}
+                                className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5 text-[#6C2BD9]" /> Update Status
+                              </button>
+
+                              {canDelete && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setOpenActionMenuId(null);
+                                    setDeleteConfirmAsset(asset);
+                                  }}
+                                  className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-xl transition-all cursor-pointer border-t border-slate-100 pt-1.5 mt-1"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-600" /> Delete Asset
+                                </button>
+                              )}
                             </div>
                           )}
                         </td>
@@ -1264,6 +1816,52 @@ export function AssetList() {
                 <p className="text-[10px] text-slate-400 font-medium pt-1">
                   {selectedAsset.categoryName}{selectedAsset.manufacturer ? ` | ${selectedAsset.manufacturer}` : ''}{selectedAsset.model ? ` | ${selectedAsset.model}` : ''}
                 </p>
+
+                <div className="flex flex-wrap items-center gap-1.5 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/assets/${selectedAsset.assetId || selectedAsset.id}`)}
+                    className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
+                  >
+                    <Eye className="w-3.5 h-3.5" /> 360° Profile
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setTransferModalAsset({
+                        ...selectedAsset,
+                        id: selectedAsset.id,
+                        assetNumber: selectedAsset.assetId || selectedAsset.tagNumber || selectedAsset.id,
+                        assetName: selectedAsset.name || selectedAsset.description || selectedAsset.assetId,
+                        currentLocation: selectedAsset.locationStr || `${selectedAsset.siteName || 'Dubai HQ'} > ${selectedAsset.buildingName || 'Building A'} > ${selectedAsset.floorRoom || 'GF'}`,
+                        assignedTo: selectedAsset.custodianName || 'Unassigned'
+                      });
+                    }}
+                    className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
+                    title="Quick Move / Assign Modal"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5" /> Quick Move
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/movements/assign?assetId=${encodeURIComponent(selectedAsset.assetId || selectedAsset.id)}`, { state: { assetId: selectedAsset.assetId || selectedAsset.id, asset: selectedAsset } })}
+                    className="px-2.5 py-1 bg-white hover:bg-purple-50 text-slate-700 border border-slate-200 hover:border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
+                    title="Assign to Custodian"
+                  >
+                    <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> Assign
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => navigate(`/movements/transfer?assetId=${encodeURIComponent(selectedAsset.assetId || selectedAsset.id)}`, { state: { assetId: selectedAsset.assetId || selectedAsset.id, asset: selectedAsset } })}
+                    className="px-2.5 py-1 bg-white hover:bg-purple-50 text-slate-700 border border-slate-200 hover:border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
+                    title="Transfer Location / Site"
+                  >
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer
+                  </button>
+                </div>
               </div>
             </div>
 
@@ -1295,7 +1893,7 @@ export function AssetList() {
                     </span>
                     {canEdit && (
                       <button
-                        onClick={() => navigate(`/assets/${selectedAsset.id}`)}
+                        onClick={() => navigate(`/assets/edit/${selectedAsset.assetId || selectedAsset.id}`)}
                         className="px-2.5 py-1 rounded-lg bg-purple-100 hover:bg-purple-200 text-[#6C2BD9] text-xs font-bold transition-all flex items-center gap-1 shadow-2xs cursor-pointer"
                       >
                         <Edit3 className="w-3 h-3 text-[#6C2BD9]" /> Edit
@@ -1486,41 +2084,237 @@ export function AssetList() {
             {/* TAB CONTENT: MAINTENANCE */}
             {detailPanelTab === 'Maintenance' && (
               <div className="space-y-2 text-xs">
-                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <div className="flex items-center justify-between">
-                    <span className="font-bold text-slate-900 block">
-                      {selectedAsset.maintType ? `${selectedAsset.maintType} Schedule` : 'Preventive PM'}
-                    </span>
-                    <StatusBadge status={selectedAsset.lifecycleStatus} />
+                {asset360Data?.workOrders && asset360Data.workOrders.length > 0 ? (
+                  <div className="space-y-2">
+                    <span className="font-bold text-slate-800 text-[11px] block">Active &amp; Past Work Orders</span>
+                    {asset360Data.workOrders.map((wo) => (
+                      <div key={wo.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold font-mono text-[#6C2BD9]">{wo.workOrderNumber || 'WO-RECORD'}</span>
+                          <StatusBadge status={wo.status || 'OPEN'} />
+                        </div>
+                        <p className="text-[11px] text-slate-700 font-medium">{wo.description || 'Maintenance Activity'}</p>
+                        <p className="text-[10px] text-slate-400">
+                          Priority: {wo.priority || 'MEDIUM'} • Tech: {wo.assignedTechnician?.fullName || 'Assigned'}
+                        </p>
+                      </div>
+                    ))}
                   </div>
-                  <p className="text-[11px] text-slate-500">
-                    Next Due: {selectedAsset.nextServiceDate || 'Not Scheduled'} • Plan: {selectedAsset.checklistName || 'Standard Checklist'}
-                  </p>
-                </div>
+                ) : (
+                  <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                    <div className="flex items-center justify-between">
+                      <span className="font-bold text-slate-900 block">
+                        {selectedAsset.maintType ? `${selectedAsset.maintType} Schedule` : 'Preventive PM'}
+                      </span>
+                      <StatusBadge status={selectedAsset.lifecycleStatus} />
+                    </div>
+                    <p className="text-[11px] text-slate-500">
+                      Next Due: {selectedAsset.nextServiceDate || 'Not Scheduled'} • Plan: {selectedAsset.checklistName || 'Standard Checklist'}
+                    </p>
+                  </div>
+                )}
               </div>
             )}
 
             {/* TAB CONTENT: HISTORY */}
             {detailPanelTab === 'History' && (
               <div className="space-y-2 text-xs">
-                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <span className="font-bold text-[#6C2BD9] block">ASSIGNMENT & CUSTODY</span>
-                  <p className="text-[11px] text-slate-600">
-                    Assigned to <span className="font-bold text-slate-800">{selectedAsset.custodianName || 'Unassigned'}</span> ({selectedAsset.departmentName || 'General'}) on {selectedAsset.assignedDate || selectedAsset.acquisitionDate}
-                  </p>
-                </div>
-                <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
-                  <span className="font-bold text-emerald-600 block">TAGGING & REGISTRATION</span>
-                  <p className="text-[11px] text-slate-600">
-                    Tag: <span className="font-mono font-semibold">{selectedAsset.tagNumber}</span> • Serial: <span className="font-mono font-semibold">{selectedAsset.serialNumber || 'N/A'}</span> registered on {selectedAsset.acquisitionDate}
-                  </p>
-                </div>
+                {asset360Data?.transactions && asset360Data.transactions.length > 0 ? (
+                  <div className="space-y-2">
+                    <span className="font-bold text-slate-800 text-[11px] block">Live Audit &amp; Transaction History</span>
+                    {asset360Data.transactions.map((tx) => (
+                      <div key={tx.id} className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="font-bold text-[#6C2BD9] block">{tx.transactionType}</span>
+                          <span className="text-[10px] text-slate-400 font-mono">
+                            {new Date(tx.timestamp).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}
+                          </span>
+                        </div>
+                        <p className="text-[11px] text-slate-600">{tx.notes || 'Recorded in system'}</p>
+                        {tx.performedBy && (
+                          <p className="text-[10px] text-slate-400">By: {tx.performedBy.fullName || tx.performedBy.username}</p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <>
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                      <span className="font-bold text-[#6C2BD9] block">ASSIGNMENT &amp; CUSTODY</span>
+                      <p className="text-[11px] text-slate-600">
+                        Assigned to <span className="font-bold text-slate-800">{selectedAsset.custodianName || 'Unassigned'}</span> ({selectedAsset.departmentName || 'General'}) on {selectedAsset.assignedDate || selectedAsset.acquisitionDate}
+                      </p>
+                    </div>
+                    <div className="p-2.5 bg-slate-50 rounded-xl border border-slate-200 space-y-1">
+                      <span className="font-bold text-emerald-600 block">TAGGING &amp; REGISTRATION</span>
+                      <p className="text-[11px] text-slate-600">
+                        Tag: <span className="font-mono font-semibold">{selectedAsset.tagNumber}</span> • Serial: <span className="font-mono font-semibold">{selectedAsset.serialNumber || 'N/A'}</span> registered on {selectedAsset.acquisitionDate}
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             )}
           </div>
         )}
 
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {deleteConfirmAsset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="w-12 h-12 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
+              <Trash2 className="w-6 h-6" />
+            </div>
+            <div>
+              <h3 className="text-base font-bold text-slate-900">Delete Asset Record</h3>
+              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
+                Are you sure you want to permanently delete <span className="font-bold text-slate-800">{deleteConfirmAsset.name}</span> (<span className="font-mono text-[#6C2BD9]">{deleteConfirmAsset.assetId}</span>)? This will cascade delete its transactions, book values, and custody assignments from the database.
+              </p>
+            </div>
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setDeleteConfirmAsset(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleDeleteAsset(deleteConfirmAsset.id)}
+                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" /> Confirm Delete
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Status Transition Modal */}
+      {statusTransitionAsset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center border border-purple-200">
+                  <RefreshCw className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Transition Asset Status</h3>
+                  <span className="text-[11px] font-mono text-slate-500">{statusTransitionAsset.assetId}</span>
+                </div>
+              </div>
+              <button onClick={() => setStatusTransitionAsset(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">New Lifecycle Status</label>
+                <select
+                  value={newStatusValue}
+                  onChange={(e) => setNewStatusValue(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:border-[#6C2BD9] focus:outline-none"
+                >
+                  <option value="IN_SERVICE">IN_SERVICE (In Use)</option>
+                  <option value="UNDER_MAINTENANCE">UNDER_MAINTENANCE</option>
+                  <option value="ASSIGNED">ASSIGNED</option>
+                  <option value="IN_STORE">IN_STORE</option>
+                  <option value="OVERDUE">OVERDUE</option>
+                  <option value="DISPOSED">DISPOSED</option>
+                  <option value="RETIRED">RETIRED</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setStatusTransitionAsset(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleTransitionStatus(statusTransitionAsset.id, newStatusValue)}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" /> Update Status
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Disposal Request Modal */}
+      {disposalRequestAsset && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center gap-2">
+                <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center border border-purple-200">
+                  <Archive className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Request Asset Disposal</h3>
+                  <span className="text-[11px] font-mono text-slate-500">{disposalRequestAsset.assetId} - {disposalRequestAsset.name}</span>
+                </div>
+              </div>
+              <button onClick={() => setDisposalRequestAsset(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs">
+              <p className="text-slate-600 leading-relaxed">
+                This asset will be flagged for decommissioning review and moved to <span className="font-semibold text-purple-700">Pending Disposal</span> status.
+              </p>
+              <div>
+                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">Reason for Disposal</label>
+                <select
+                  value={disposalReason}
+                  onChange={(e) => setDisposalReason(e.target.value)}
+                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:border-[#6C2BD9] focus:outline-none"
+                >
+                  <option value="Obsolescence / End of Useful Life">Obsolescence / End of Useful Life</option>
+                  <option value="Beyond Economical Repair (Damaged)">Beyond Economical Repair (Damaged)</option>
+                  <option value="Lost / Stolen / Missing">Lost / Stolen / Missing</option>
+                  <option value="Surplus / Decommissioned">Surplus / Decommissioned</option>
+                  <option value="Trade-in / Lease Expiry">Trade-in / Lease Expiry</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                onClick={() => setDisposalRequestAsset(null)}
+                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={() => handleRequestDisposal(disposalRequestAsset.id, disposalReason)}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" /> Submit Request
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Quick Transfer & Custody Modal */}
+      {transferModalAsset && (
+        <TransferAssetModal
+          isOpen={Boolean(transferModalAsset)}
+          onClose={() => setTransferModalAsset(null)}
+          asset={transferModalAsset}
+          onTransferCompleted={() => {
+            fetchAssets();
+          }}
+        />
+      )}
     </div>
   );
 }

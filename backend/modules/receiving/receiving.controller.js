@@ -1,9 +1,11 @@
 import prisma from '../../config/prisma.js';
 import { ReceivingService } from './receiving.service.js';
+import { listPurchaseOrders, findPurchaseOrder, storePurchaseOrder, listSuppliers } from './receiving.live.js';
 
 export async function getReceipts(req, res, next) {
   try {
     const receipts = await prisma.receipt.findMany({
+      where: { status: { not: 'PURCHASE_ORDER' } },
       include: {
         company: true,
         site: true,
@@ -28,8 +30,9 @@ export async function getReceipts(req, res, next) {
 
 export async function getReceivingStats(req, res, next) {
   try {
-    const totalReceipts = await prisma.receipt.count();
+    const totalReceipts = await prisma.receipt.count({ where: { status: { not: 'PURCHASE_ORDER' } } });
     const receipts = await prisma.receipt.findMany({
+      where: { status: { not: 'PURCHASE_ORDER' } },
       include: { lineItems: true }
     });
 
@@ -58,18 +61,7 @@ export async function getReceivingStats(req, res, next) {
         stagedAssetsCount
       }
     });
-  } catch (err) {
-    // Graceful fallback stats
-    res.json({
-      success: true,
-      stats: {
-        totalReceipts: 1,
-        totalUnitsReceived: 13,
-        totalPoValuation: 24500,
-        stagedAssetsCount: 3
-      }
-    });
-  }
+  } catch (err) { next(err); }
 }
 
 export async function getReceiptById(req, res, next) {
@@ -107,7 +99,7 @@ export async function getReceiptById(req, res, next) {
 export async function getPurchaseOrders(req, res, next) {
   try {
     const { q } = req.query;
-    const orders = await ReceivingService.getPurchaseOrders(q);
+    const orders = await listPurchaseOrders(q);
     res.json({ success: true, purchaseOrders: orders });
   } catch (err) { next(err); }
 }
@@ -115,12 +107,19 @@ export async function getPurchaseOrders(req, res, next) {
 export async function getPurchaseOrderByNumber(req, res, next) {
   try {
     const { poNumber } = req.params;
-    const po = await ReceivingService.getPurchaseOrderByNumber(poNumber);
+    const po = await findPurchaseOrder(poNumber);
     if (!po) {
       return res.status(404).json({ success: false, message: `PO '${poNumber}' not found in ERP/Integration source.` });
     }
     res.json({ success: true, purchaseOrder: po });
   } catch (err) { next(err); }
+}
+
+export async function createPurchaseOrder(req, res, next) {
+  try {
+    const newPo = await storePurchaseOrder(req.body, req.user);
+    res.status(201).json({ success: true, purchaseOrder: newPo, message: 'Purchase Order created successfully.' });
+  } catch (err) { res.status(400).json({ success: false, message: err.message }); }
 }
 
 export async function validateSerialNumber(req, res, next) {
@@ -148,7 +147,7 @@ export async function getNonPoReasons(req, res, next) {
 
 export async function getSuppliers(req, res, next) {
   try {
-    const suppliers = await ReceivingService.getSuppliers();
+    const suppliers = await listSuppliers();
     res.json({ success: true, suppliers });
   } catch (err) { next(err); }
 }
@@ -207,7 +206,7 @@ export async function deleteDraft(req, res, next) {
 export async function getReceivingHistory(req, res, next) {
   try {
     const history = await ReceivingService.getHistory(req.query);
-    res.json({ success: true, history });
+    res.json({ success: true, history, receipts: history });
   } catch (err) { next(err); }
 }
 
@@ -215,7 +214,7 @@ export async function getReceivingHistoryById(req, res, next) {
   try {
     const detail = await ReceivingService.getHistoryDetail(req.params.id);
     if (!detail) return res.status(404).json({ success: false, message: 'Transaction history record not found.' });
-    res.json({ success: true, transaction: detail });
+    res.json({ success: true, transaction: detail, receipt: detail });
   } catch (err) { next(err); }
 }
 
@@ -335,6 +334,7 @@ export async function deleteReceipt(req, res, next) {
     });
 
     if (receipt) {
+      await prisma.receiptLineItem.deleteMany({ where: { receiptId: receipt.id } });
       await prisma.receipt.delete({ where: { id: receipt.id } });
     }
     await ReceivingService.deleteDraft(id);

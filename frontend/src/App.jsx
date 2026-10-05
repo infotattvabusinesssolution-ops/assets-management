@@ -68,7 +68,8 @@ import { SystemConfiguration } from './pages/admin/SystemConfiguration';
 const queryClient = new QueryClient();
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="p-8 text-sm text-slate-500">Loading account...</div>;
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 

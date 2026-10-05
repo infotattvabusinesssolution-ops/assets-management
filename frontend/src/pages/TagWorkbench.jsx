@@ -41,167 +41,16 @@ export function TagWorkbench() {
   const [currentStep, setCurrentStep] = useState(1);
 
   // -------------------------------------------------------------
-  // Data State Initialized with Exact Reference Dummy Data
+  // Asset data comes from the database
   // -------------------------------------------------------------
-  const [assets, setAssets] = useState([
-    {
-      id: 'ast-tag-001',
-      assetNumber: 'AS-2026-00121',
-      assetName: 'Dell OptiPlex 7020',
-      category: 'Desktop',
-      location: 'IT Store',
-      department: 'IT Store',
-      serialNumber: '7CD1234',
-      currentTag: '-',
-      status: 'Not Tagged',
-      custodian: 'Alex Murphy',
-      assetStatus: 'Active',
-      imageUrl: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=500&q=80'
-    },
-    {
-      id: 'ast-tag-002',
-      assetNumber: 'AS-2026-00122',
-      assetName: 'HP LaserJet Pro',
-      category: 'Printer',
-      location: 'Admin Block',
-      department: 'Admin Block',
-      serialNumber: 'CNB89001',
-      currentTag: '-',
-      status: 'Not Tagged',
-      custodian: 'Sarah Connor',
-      assetStatus: 'Active',
-      imageUrl: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=500&q=80'
-    },
-    {
-      id: 'ast-tag-003',
-      assetNumber: 'AS-2026-00123',
-      assetName: 'Samsung Monitor 27"',
-      category: 'Monitor',
-      location: 'Finance Dept',
-      department: 'Finance Dept',
-      serialNumber: 'SM27-3310',
-      currentTag: 'E36000009876',
-      status: 'Tagged',
-      custodian: 'Michael Scott',
-      assetStatus: 'Active',
-      imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=500&q=80'
-    },
-    {
-      id: 'ast-tag-004',
-      assetNumber: 'AS-2026-00124',
-      assetName: 'Lenovo ThinkPad',
-      category: 'Laptop',
-      location: 'Dubai HQ',
-      department: 'Dubai HQ',
-      serialNumber: 'PF9A2211',
-      currentTag: '-',
-      status: 'Not Tagged',
-      custodian: 'John Doe',
-      assetStatus: 'Active',
-      imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=500&q=80'
-    },
-    {
-      id: 'ast-tag-005',
-      assetNumber: 'AS-2026-00125',
-      assetName: 'iPad Air',
-      category: 'Tablet',
-      location: 'HR Dept',
-      department: 'HR Dept',
-      serialNumber: 'IPD-7782',
-      currentTag: '-',
-      status: 'Not Tagged',
-      custodian: 'Elena Vance',
-      assetStatus: 'Active',
-      imageUrl: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=500&q=80'
-    },
-    {
-      id: 'ast-tag-006',
-      assetNumber: 'AS-2026-00126',
-      assetName: 'Access Point',
-      category: 'Network',
-      location: 'Warehouse',
-      department: 'Warehouse',
-      serialNumber: 'AP-9981',
-      currentTag: '-',
-      status: 'Not Tagged',
-      custodian: 'David Miller',
-      assetStatus: 'Active',
-      imageUrl: 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=500&q=80'
-    }
-  ]);
+  const [assets, setAssets] = useState([]);
 
-  const [recentTagged, setRecentTagged] = useState([
-    {
-      id: 'rec-01',
-      time: '21 Aug 2026 11:20',
-      assetNumber: 'AS-2026-00120',
-      assetName: 'Dell Docking Station',
-      serialNumber: 'WD19S-2210',
-      tagNumber: 'E36000012341',
-      taggedBy: 'John Doe',
-      status: 'Tagged'
-    },
-    {
-      id: 'rec-02',
-      time: '21 Aug 2026 11:18',
-      assetNumber: 'AS-2026-00119',
-      assetName: 'Keyboard & Mouse',
-      serialNumber: 'KM7321W',
-      tagNumber: 'E36000012340',
-      taggedBy: 'John Doe',
-      status: 'Tagged'
-    },
-    {
-      id: 'rec-03',
-      time: '21 Aug 2026 11:15',
-      assetNumber: 'AS-2026-00118',
-      assetName: 'Office Chair',
-      serialNumber: 'CH-5567',
-      tagNumber: 'E36000012339',
-      taggedBy: 'John Doe',
-      status: 'Tagged'
-    },
-    {
-      id: 'rec-04',
-      time: '21 Aug 2026 11:12',
-      assetNumber: 'AS-2026-00117',
-      assetName: 'Meeting Room TV',
-      serialNumber: 'LG-7744',
-      tagNumber: 'E36000012338',
-      taggedBy: 'John Doe',
-      status: 'Tagged'
-    },
-    {
-      id: 'rec-05',
-      time: '21 Aug 2026 11:10',
-      assetNumber: 'AS-2026-00116',
-      assetName: 'Access Point',
-      serialNumber: 'AP-9881',
-      tagNumber: 'E36000012337',
-      taggedBy: 'John Doe',
-      status: 'Tagged'
-    }
-  ]);
+  const [recentTagged, setRecentTagged] = useState([]);
 
-  const [selectedAssetIds, setSelectedAssetIds] = useState(['ast-tag-002']); // Default row 2 checked like screenshot
-  const [activeAsset, setActiveAsset] = useState({
-    id: 'ast-tag-preview',
-    assetNumber: 'AS-2026-00125',
-    assetName: 'Dell Latitude 7450',
-    category: 'Laptop',
-    location: 'Dubai HQ',
-    serialNumber: 'DL7450-001',
-    currentTag: '-',
-    status: 'Not Tagged',
-    imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
-  });
+  const [selectedAssetIds, setSelectedAssetIds] = useState([]);
+  const [activeAsset, setActiveAsset] = useState(null);
 
-  const [summary, setSummary] = useState({
-    selected: 6,
-    tagged: 1,
-    pending: 5,
-    failed: 0
-  });
+  const [summary, setSummary] = useState({ selected: 0, tagged: 0, pending: 0, failed: 0 });
 
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -217,7 +66,7 @@ export function TagWorkbench() {
     category: 'All Categories',
     location: 'All Locations',
     department: 'All Departments',
-    tagStatus: 'Not Tagged', // default in screenshot
+    tagStatus: 'All Statuses',
     custodian: 'All Custodians',
     assetStatus: 'Active'
   });
@@ -227,12 +76,8 @@ export function TagWorkbench() {
   // -------------------------------------------------------------
   const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'print'
   const [scannedSerialInput, setScannedSerialInput] = useState('');
-  const [scannedTagInput, setScannedTagInput] = useState('E36000012345');
-  const [tagValidation, setTagValidation] = useState({
-    valid: true,
-    status: 'Valid Tag / Ready to Assign',
-    message: 'Tag ID verified and available for assignment.'
-  });
+  const [scannedTagInput, setScannedTagInput] = useState('');
+  const [tagValidation, setTagValidation] = useState({ valid: false, status: 'Awaiting Tag Scan', message: 'Scan or enter a tag.' });
 
   // -------------------------------------------------------------
   // Print Labels Panel State
@@ -264,7 +109,7 @@ export function TagWorkbench() {
     location: 'Dubai HQ',
     department: 'IT Operations',
     serialNumber: '',
-    custodian: 'John Doe'
+    custodian: ''
   });
 
   // -------------------------------------------------------------
@@ -302,10 +147,8 @@ export function TagWorkbench() {
         }
 
         // Set active asset to Dell Latitude 7450 or the first eligible asset to match screenshot preview
-        if (!activeAsset && list.length > 0) {
-          const matchPreview = list.find(a => a.assetNumber === 'AS-2026-00125') || list[0];
-          setActiveAsset(matchPreview);
-        }
+        setActiveAsset(prev => list.find(a => a.id === prev?.id) || list[0] || null);
+        setSelectedAssetIds(prev => prev.filter(id => list.some(a => a.id === id)));
       }
 
       if (recentRes.status === 'fulfilled' && recentRes.value?.success) {
@@ -316,7 +159,7 @@ export function TagWorkbench() {
         setSummary(prev => ({ ...prev, ...statsRes.value.stats }));
       }
     } catch (err) {
-      console.error('Error loading tagging data:', err);
+      showToast(err?.message || 'Could not load assets', 'error');
     } finally {
       setLoading(false);
     }
@@ -328,12 +171,8 @@ export function TagWorkbench() {
 
   // When active asset changes, auto-validate current tag
   useEffect(() => {
-    if (activeAsset) {
-      if (activeAsset.currentTag && activeAsset.currentTag !== '-') {
-        setScannedTagInput(activeAsset.currentTag);
-      }
-      validateTagCode(scannedTagInput, activeAsset.id);
-    }
+    setScannedTagInput('');
+    setTagValidation({ valid: false, status: 'Awaiting Tag Scan', message: 'Scan or enter a tag.' });
   }, [activeAsset]);
 
   // -------------------------------------------------------------
@@ -420,13 +259,7 @@ export function TagWorkbench() {
         showToast(`Generated new Tag ID: ${newCode}`);
       }
     } catch (err) {
-      // Fallback generator
-      const randomSeq = Math.floor(10000 + Math.random() * 90000);
-      const generated = `E360000${randomSeq}`;
-      setScannedTagInput(generated);
-      validateTagCode(generated, activeAsset?.id);
-      setCurrentStep(2);
-      showToast(`Generated new Tag ID: ${generated}`);
+      showToast(err?.message || 'Could not generate tag', 'error');
     }
   };
 
@@ -434,12 +267,7 @@ export function TagWorkbench() {
   // Simulated RFID Reader
   // -------------------------------------------------------------
   const handleReadFromRfidReader = () => {
-    const randomSeq = Math.floor(10000 + Math.random() * 90000);
-    const rfidTag = `E360000${randomSeq}`;
-    setScannedTagInput(rfidTag);
-    validateTagCode(rfidTag, activeAsset?.id);
-    setCurrentStep(2);
-    showToast(`RFID Reader captured EPC: E28011606000${randomSeq}`, 'success');
+    showToast('Scan a tag with your reader into the Tag ID field.', 'error');
   };
 
   // -------------------------------------------------------------

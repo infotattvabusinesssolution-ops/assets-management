@@ -7,7 +7,7 @@ import { TaggingService } from './tagging.service.js';
 export async function getAssets(req, res, next) {
   try {
     const assets = await TaggingService.getEligibleAssets(req.query);
-    const summary = TaggingService.getTaggingSummary();
+    const summary = await TaggingService.getTaggingSummary();
     res.json({
       success: true,
       assets,
@@ -57,7 +57,7 @@ export async function associateTag(req, res, next) {
 export async function getRecentTagged(req, res, next) {
   try {
     const limit = parseInt(req.query.limit) || 10;
-    const recent = TaggingService.getRecentTagged(limit);
+    const recent = await TaggingService.getRecentTagged(limit);
     res.json({
       success: true,
       recent
@@ -72,7 +72,7 @@ export async function getRecentTagged(req, res, next) {
  */
 export async function getTaggingStats(req, res, next) {
   try {
-    const summary = TaggingService.getTaggingSummary();
+    const summary = await TaggingService.getTaggingSummary();
     res.json({
       success: true,
       stats: summary
@@ -90,7 +90,7 @@ export async function generateTags(req, res, next) {
     const { prefix, tagType, count = 1 } = req.body;
     const tags = [];
     for (let i = 0; i < count; i++) {
-      tags.push(TaggingService.generateTagNumber(prefix, tagType));
+      tags.push(await TaggingService.generateTagNumber(prefix, tagType));
     }
     res.json({
       success: true,
@@ -107,10 +107,38 @@ export async function generateTags(req, res, next) {
  */
 export async function printLabels(req, res, next) {
   try {
-    const result = TaggingService.printLabels(req.body);
+    const result = await TaggingService.printLabels(req.body);
     res.json(result);
   } catch (err) {
     next(err);
+  }
+}
+
+/**
+ * Get Label Printing Templates
+ */
+export async function getPrintTemplates(req, res, next) {
+  try {
+    const templates = TaggingService.getPrintTemplates();
+    res.json({ success: true, templates });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/**
+ * Bulk Associate Tags to Multiple Assets
+ */
+export async function bulkAssociateTags(req, res, next) {
+  try {
+    const user = req.user || { id: 'usr-default', fullName: 'John Doe', username: 'jdoe' };
+    const result = await TaggingService.bulkAssociateTags(req.body, user);
+    res.json(result);
+  } catch (err) {
+    res.status(400).json({
+      success: false,
+      message: err.message || 'Failed to bulk associate tags'
+    });
   }
 }
 
@@ -120,7 +148,7 @@ export async function printLabels(req, res, next) {
 export async function saveDraft(req, res, next) {
   try {
     const user = req.user || { id: 'usr-default', username: 'jdoe' };
-    const result = TaggingService.saveDraft(req.body, user);
+    const result = await TaggingService.saveDraft(req.body, user);
     res.json(result);
   } catch (err) {
     next(err);
@@ -149,7 +177,7 @@ export async function getDraft(req, res, next) {
 export async function completeTagging(req, res, next) {
   try {
     const user = req.user || { id: 'usr-default', fullName: 'John Doe', username: 'jdoe' };
-    const result = TaggingService.completeTagging(req.body, user);
+    const result = await TaggingService.completeTagging(req.body, user);
     if (!result.success) {
       return res.status(400).json(result);
     }
@@ -164,12 +192,13 @@ export async function completeTagging(req, res, next) {
  */
 export async function addManualAsset(req, res, next) {
   try {
-    const asset = TaggingService.addManualAsset(req.body);
+    const asset = await TaggingService.addManualAsset(req.body);
+    const summary = await TaggingService.getTaggingSummary();
     res.json({
       success: true,
       message: 'Asset successfully added to tagging workspace',
       asset,
-      summary: TaggingService.getTaggingSummary()
+      summary
     });
   } catch (err) {
     next(err);
@@ -182,12 +211,13 @@ export async function addManualAsset(req, res, next) {
 export async function importAssets(req, res, next) {
   try {
     const { assets = [] } = req.body;
-    const result = TaggingService.importAssets(assets);
+    const result = await TaggingService.importAssets(assets);
+    const summary = await TaggingService.getTaggingSummary();
     res.json({
       success: true,
       message: `Successfully imported ${result.count} assets for tagging`,
       imported: result.assets,
-      summary: TaggingService.getTaggingSummary()
+      summary
     });
   } catch (err) {
     next(err);
@@ -199,7 +229,7 @@ export async function importAssets(req, res, next) {
  */
 export async function getTaggingAudit(req, res, next) {
   try {
-    const history = TaggingService.getAuditHistory();
+    const history = await TaggingService.getAuditHistory();
     res.json({
       success: true,
       history
@@ -275,15 +305,14 @@ export async function getTagHistory(req, res, next) {
   try {
     const history = await prisma.tagHistory.findMany({
       include: {
-        asset: true,
-        replacedBy: true
+        asset: true
       },
       orderBy: { createdAt: 'desc' },
       take: 50
     });
     res.json({ success: true, history });
   } catch (err) {
-    const history = TaggingService.getAuditHistory();
+    const history = await TaggingService.getAuditHistory();
     res.json({ success: true, history });
   }
 }
@@ -291,6 +320,12 @@ export async function getTagHistory(req, res, next) {
 export async function deleteTag(req, res, next) {
   try {
     const { id } = req.params;
+    const tag = await prisma.tag.findFirst({
+      where: { OR: [{ id }, { tagNumber: id }] }
+    });
+    if (tag) {
+      await prisma.tag.delete({ where: { id: tag.id } });
+    }
     res.json({ success: true, message: `Tag ${id} deleted successfully` });
   } catch (err) {
     next(err);

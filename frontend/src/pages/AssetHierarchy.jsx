@@ -28,260 +28,70 @@ import {
   Sparkles
 } from 'lucide-react';
 
-const INITIAL_TREE_DATA = [
-  {
-    id: 'AST-000100',
-    assetId: 'AST-000100',
-    name: 'Main Chiller Plant',
-    category: 'HVAC System',
-    type: 'System',
-    level: 1,
-    levelName: 'Parent System',
-    status: 'In Use',
-    condition: 'Good',
-    location: 'Dubai HQ, Plant Room',
-    custodian: 'Facilities Team',
-    model: 'Trane Centrifugal',
-    serialNumber: 'TRN-SYS-900',
-    manufacturer: 'Trane',
-    purchaseDate: '15 Jan 2021',
-    warrantyExpiry: '14 Jan 2028',
-    children: [
-      {
-        id: 'AST-000101',
-        assetId: 'AST-000101',
-        name: 'Chiller Unit - 1',
-        category: 'HVAC Equipment',
-        type: 'Equipment',
-        level: 2,
-        levelName: 'Child Asset',
-        status: 'In Use',
-        condition: 'Good',
-        location: 'Dubai HQ, Plant Room',
-        custodian: 'Facilities Team',
-        model: 'Trane RTAC 250',
-        serialNumber: 'TRN-250-001',
-        manufacturer: 'Trane',
-        purchaseDate: '12 Jan 2022',
-        warrantyExpiry: '11 Jan 2027',
-        parentAssetId: 'AST-000100',
-        parentAssetName: 'Main Chiller Plant',
-        children: [
-          {
-            id: 'AST-000101-01',
-            assetId: 'AST-000101-01',
-            name: 'Compressor',
-            category: 'HVAC Component',
-            type: 'Component',
-            level: 3,
-            levelName: 'Sub-Component',
-            status: 'In Use',
-            condition: 'Good',
-            location: 'Dubai HQ, Plant Room',
-            custodian: 'Facilities Team',
-            model: 'Copeland Scroll 15HP',
-            serialNumber: 'COP-15-881',
-            manufacturer: 'Copeland',
-            purchaseDate: '12 Jan 2022',
-            warrantyExpiry: '11 Jan 2027',
-            parentAssetId: 'AST-000101',
-            parentAssetName: 'Chiller Unit - 1'
-          },
-          {
-            id: 'AST-000101-02',
-            assetId: 'AST-000101-02',
-            name: 'Condenser',
-            category: 'HVAC Component',
-            type: 'Component',
-            level: 3,
-            levelName: 'Sub-Component',
-            status: 'In Use',
-            condition: 'Good',
-            location: 'Dubai HQ, Plant Room',
-            custodian: 'Facilities Team',
-            model: 'Trane Aluminum Coil',
-            serialNumber: 'TRN-CND-02',
-            manufacturer: 'Trane',
-            purchaseDate: '12 Jan 2022',
-            warrantyExpiry: '11 Jan 2027',
-            parentAssetId: 'AST-000101',
-            parentAssetName: 'Chiller Unit - 1'
-          },
-          {
-            id: 'AST-000101-03',
-            assetId: 'AST-000101-03',
-            name: 'Control Panel',
-            category: 'Electronics Component',
-            type: 'Component',
-            level: 3,
-            levelName: 'Sub-Component',
-            status: 'In Use',
-            condition: 'Good',
-            location: 'Dubai HQ, Plant Room',
-            custodian: 'Facilities Team',
-            model: 'Symbio 800 Controller',
-            serialNumber: 'SYM-800-441',
-            manufacturer: 'Trane',
-            purchaseDate: '12 Jan 2022',
-            warrantyExpiry: '11 Jan 2027',
-            parentAssetId: 'AST-000101',
-            parentAssetName: 'Chiller Unit - 1'
-          }
-        ]
-      },
-      {
-        id: 'AST-000102',
-        assetId: 'AST-000102',
-        name: 'Chiller Unit - 2',
-        category: 'HVAC Equipment',
-        type: 'Equipment',
-        level: 2,
-        levelName: 'Child Asset',
-        status: 'In Use',
-        condition: 'Good',
-        location: 'Dubai HQ, Plant Room',
-        custodian: 'Facilities Team',
-        model: 'Trane RTAC 250',
-        serialNumber: 'TRN-250-002',
-        manufacturer: 'Trane',
-        purchaseDate: '12 Jan 2022',
-        warrantyExpiry: '11 Jan 2027',
-        parentAssetId: 'AST-000100',
-        parentAssetName: 'Main Chiller Plant',
-        children: [
-          {
-            id: 'AST-000102-01',
-            assetId: 'AST-000102-01',
-            name: 'Compressor',
-            category: 'HVAC Component',
-            type: 'Component',
-            level: 3,
-            levelName: 'Sub-Component',
-            status: 'In Use',
-            condition: 'Good',
-            location: 'Dubai HQ, Plant Room',
-            custodian: 'Facilities Team',
-            model: 'Copeland Scroll 15HP',
-            serialNumber: 'COP-15-882',
-            manufacturer: 'Copeland',
-            purchaseDate: '12 Jan 2022',
-            warrantyExpiry: '11 Jan 2027',
-            parentAssetId: 'AST-000102',
-            parentAssetName: 'Chiller Unit - 2'
-          },
-          {
-            id: 'AST-000102-02',
-            assetId: 'AST-000102-02',
-            name: 'Condenser',
-            category: 'HVAC Component',
-            type: 'Component',
-            level: 3,
-            levelName: 'Sub-Component',
-            status: 'In Use',
-            condition: 'Good',
-            location: 'Dubai HQ, Plant Room',
-            custodian: 'Facilities Team',
-            model: 'Trane Aluminum Coil',
-            serialNumber: 'TRN-CND-03',
-            manufacturer: 'Trane',
-            purchaseDate: '12 Jan 2022',
-            warrantyExpiry: '11 Jan 2027',
-            parentAssetId: 'AST-000102',
-            parentAssetName: 'Chiller Unit - 2'
-          },
-          {
-            id: 'AST-000102-03',
-            assetId: 'AST-000102-03',
-            name: 'Control Panel',
-            category: 'Electronics Component',
-            type: 'Component',
-            level: 3,
-            levelName: 'Sub-Component',
-            status: 'In Use',
-            condition: 'Good',
-            location: 'Dubai HQ, Plant Room',
-            custodian: 'Facilities Team',
-            model: 'Symbio 800 Controller',
-            serialNumber: 'SYM-800-442',
-            manufacturer: 'Trane',
-            purchaseDate: '12 Jan 2022',
-            warrantyExpiry: '11 Jan 2027',
-            parentAssetId: 'AST-000102',
-            parentAssetName: 'Chiller Unit - 2'
-          }
-        ]
-      },
-      {
-        id: 'AST-000103',
-        assetId: 'AST-000103',
-        name: 'Cooling Tower',
-        category: 'HVAC Equipment',
-        type: 'Equipment',
-        level: 2,
-        levelName: 'Child Asset',
-        status: 'In Use',
-        condition: 'Good',
-        location: 'Dubai HQ, Rooftop',
-        custodian: 'Facilities Team',
-        model: 'BAC FXV 400',
-        serialNumber: 'BAC-400-99',
-        manufacturer: 'Baltimore Aircoil',
-        purchaseDate: '10 Feb 2021',
-        warrantyExpiry: '09 Feb 2028',
-        parentAssetId: 'AST-000100',
-        parentAssetName: 'Main Chiller Plant',
-        children: []
-      },
-      {
-        id: 'AST-000104',
-        assetId: 'AST-000104',
-        name: 'Pump Set',
-        category: 'Pumping Equipment',
-        type: 'Equipment',
-        level: 2,
-        levelName: 'Child Asset',
-        status: 'In Use',
-        condition: 'Good',
-        location: 'Dubai HQ, Basement 2',
-        custodian: 'Facilities Team',
-        model: 'Grundfos TPE 100',
-        serialNumber: 'GRN-100-11',
-        manufacturer: 'Grundfos',
-        purchaseDate: '10 Feb 2021',
-        warrantyExpiry: '09 Feb 2028',
-        parentAssetId: 'AST-000100',
-        parentAssetName: 'Main Chiller Plant',
-        children: []
-      }
-    ]
-  }
-];
-
 export function AssetHierarchy() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   // State
-  const [treeData, setTreeData] = useState(INITIAL_TREE_DATA);
-  const [expandedNodes, setExpandedNodes] = useState({
-    'AST-000100': true,
-    'AST-000101': true,
-    'AST-000102': true
-  });
-  const [selectedAssetId, setSelectedAssetId] = useState('AST-000101');
+  const [treeData, setTreeData] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [expandedNodes, setExpandedNodes] = useState({});
+  const [selectedAssetId, setSelectedAssetId] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('Details'); // Details, Child Assets, Related Documents, History
   const [activeModal, setActiveModal] = useState(null); // null, ADD_CHILD, REASSIGN_PARENT
   const [toast, setToast] = useState(null);
+  const [auditHistory, setAuditHistory] = useState([]);
+  const [documents, setDocuments] = useState([]);
+  const [loadError, setLoadError] = useState("");
 
   // Form states for modals
-  const [childFormData, setChildFormData] = useState({ childAssetId: '', childAssetName: '', category: 'HVAC Component' });
-  const [reassignData, setReassignData] = useState({ newParentAssetId: 'AST-000100' });
+  const [childFormData, setChildFormData] = useState({ childAssetId: '' });
+  const [reassignData, setReassignData] = useState({ newParentAssetId: '' });
 
   const showToast = (type, message) => {
     setToast({ type, message });
     setTimeout(() => setToast(null), 4000);
   };
+
+  // Fetch Hierarchy Tree from Backend
+  const fetchHierarchyTree = async () => {
+    try {
+      setLoading(true);
+      const res = await api.get('/assets/hierarchy/tree');
+      if (!res?.success || !Array.isArray(res.tree)) throw new Error('Invalid hierarchy response.');
+      setTreeData(res.tree);
+      setLoadError('');
+      const expanded = {};
+      res.tree.forEach(root => { expanded[root.assetId] = true; });
+      setExpandedNodes(prev => ({ ...expanded, ...prev }));
+      setSelectedAssetId(previous => {
+        const contains = nodes => nodes.some(n => n.assetId === previous || contains(n.children || []));
+        return contains(res.tree) ? previous : (res.tree[0]?.assetId || '');
+      });
+    } catch (err) {
+      setTreeData([]);
+      setSelectedAssetId('');
+      setLoadError(err?.response?.data?.message || err.message || 'Could not load hierarchy.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch Audit History from Backend
+  const fetchAuditHistory = async (assetId) => {
+    try {
+      const res = await api.get('/assets/hierarchy/history', { params: assetId ? { assetId } : {} });
+      setAuditHistory(Array.isArray(res?.history) ? res.history : []);
+    } catch (err) {
+      setAuditHistory([]);
+      showToast('error', err?.response?.data?.message || 'Could not load hierarchy history.');
+    }
+  };
+
+  useEffect(() => {
+    fetchHierarchyTree();
+  }, []);
 
   // Find selected asset recursively
   const selectedAsset = useMemo(() => {
@@ -295,8 +105,30 @@ export function AssetHierarchy() {
       }
       return null;
     };
-    return findNode(treeData) || INITIAL_TREE_DATA[0].children[0];
+    return findNode(treeData) || null;
   }, [treeData, selectedAssetId]);
+
+  const allNodes = useMemo(() => {
+    const flatten = nodes => nodes.flatMap(node => [node, ...flatten(node.children || [])]);
+    return flatten(treeData);
+  }, [treeData]);
+  const selectableParents = allNodes.filter(node =>
+    node.assetId !== selectedAsset?.assetId &&
+    !(selectedAsset?.children || []).some(child => {
+      const contains = current => current.assetId === node.assetId || (current.children || []).some(contains);
+      return contains(child);
+    })
+  );
+  useEffect(() => {
+    if (!selectedAsset?.id) { setDocuments([]); return; }
+    let cancelled = false;
+    api.get('/assets/' + selectedAsset.id + '/documents')
+      .then(res => { if (!cancelled) setDocuments(Array.isArray(res?.documents) ? res.documents : []); })
+      .catch(() => { if (!cancelled) setDocuments([]); });
+    return () => { cancelled = true; };
+  }, [selectedAsset?.id]);
+
+  useEffect(() => { if (selectedAsset?.id) fetchAuditHistory(selectedAsset.id); else setAuditHistory([]); }, [selectedAsset?.id]);
 
   // Expand / Collapse Node
   const toggleNode = (nodeId) => {
@@ -325,7 +157,7 @@ export function AssetHierarchy() {
   // Handle Add Child Submit
   const handleAddChildSubmit = async (e) => {
     e.preventDefault();
-    if (!childFormData.childAssetId || !childFormData.childAssetName) {
+    if (!childFormData.childAssetId) {
       showToast('error', 'Please fill in Child Asset ID and Asset Name.');
       return;
     }
@@ -336,53 +168,22 @@ export function AssetHierarchy() {
     }
 
     try {
-      await api.post('/assets/hierarchy/add-child', {
+      setLoading(true);
+      const res = await api.post('/assets/hierarchy/add-child', {
         parentAssetId: selectedAsset.assetId,
         childAssetId: childFormData.childAssetId
       });
+      showToast('success', res?.message || `Child asset ${childFormData.childAssetId} attached under ${selectedAsset.assetId}!`);
+      setActiveModal(null);
+      setChildFormData({ childAssetId: '' });
+      await fetchHierarchyTree();
+      await fetchAuditHistory(selectedAsset.id);
+      setExpandedNodes((prev) => ({ ...prev, [selectedAsset.assetId]: true }));
     } catch (err) {
-      // Fallback
+      showToast('error', err?.response?.data?.message || err?.message || 'Failed to attach child asset.');
+    } finally {
+      setLoading(false);
     }
-
-    const newChild = {
-      id: childFormData.childAssetId,
-      assetId: childFormData.childAssetId,
-      name: childFormData.childAssetName,
-      category: childFormData.category,
-      type: 'Component',
-      level: selectedAsset.level + 1,
-      levelName: 'Sub-Component',
-      status: 'In Use',
-      condition: 'Good',
-      location: selectedAsset.location,
-      custodian: selectedAsset.custodian,
-      model: 'Generic Component',
-      serialNumber: `${childFormData.childAssetId}-SN`,
-      manufacturer: 'OEM Supplier',
-      purchaseDate: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-      warrantyExpiry: '15 Sep 2028',
-      parentAssetId: selectedAsset.assetId,
-      parentAssetName: selectedAsset.name,
-      children: []
-    };
-
-    const attachChild = (nodes) => {
-      return nodes.map((node) => {
-        if (node.assetId === selectedAsset.assetId) {
-          return { ...node, children: [...(node.children || []), newChild] };
-        }
-        if (node.children && node.children.length > 0) {
-          return { ...node, children: attachChild(node.children) };
-        }
-        return node;
-      });
-    };
-
-    setTreeData((prev) => attachChild(prev));
-    setExpandedNodes((prev) => ({ ...prev, [selectedAsset.assetId]: true }));
-    setActiveModal(null);
-    setChildFormData({ childAssetId: '', childAssetName: '', category: 'HVAC Component' });
-    showToast('success', `Child asset ${newChild.assetId} (${newChild.name}) attached under ${selectedAsset.assetId}!`);
   };
 
   // Handle Reassign Parent Submit
@@ -390,27 +191,46 @@ export function AssetHierarchy() {
     e.preventDefault();
     const newParentId = reassignData.newParentAssetId;
 
+    if (!newParentId) return showToast('error', 'Select a parent asset.');
     if (newParentId === selectedAsset.assetId) {
       showToast('error', 'Validation Error: An asset cannot be assigned as its own parent.');
       return;
     }
 
-    if (newParentId.startsWith(selectedAsset.assetId)) {
-      showToast('error', `Circular Reference Error: Cannot assign ${selectedAsset.assetId} under its own sub-child node (${newParentId}).`);
-      return;
-    }
-
     try {
-      await api.post('/assets/hierarchy/assign-parent', {
+      setLoading(true);
+      const res = await api.post('/assets/hierarchy/assign-parent', {
         assetId: selectedAsset.assetId,
         parentAssetId: newParentId
       });
+      showToast('success', res?.message || `Successfully reassigned ${selectedAsset.assetId} under new parent ${newParentId}!`);
+      setActiveModal(null);
+      await fetchHierarchyTree();
+      await fetchAuditHistory(selectedAsset.id);
+      if (newParentId) {
+        setExpandedNodes((prev) => ({ ...prev, [newParentId]: true }));
+      }
     } catch (err) {
-      // Fallback
+      showToast('error', err?.response?.data?.message || err?.message || 'Failed to reassign parent asset.');
+    } finally {
+      setLoading(false);
     }
+  };
 
-    showToast('success', `Successfully reassigned ${selectedAsset.assetId} under new parent ${newParentId}! Physical location & custodian remain unchanged.`);
-    setActiveModal(null);
+  // Handle Detach from Parent
+  const handleRemoveParent = async () => {
+    if (!selectedAsset.parentAssetId) return;
+    try {
+      setLoading(true);
+      const res = await api.delete(`/assets/hierarchy/${selectedAsset.assetId}/remove-parent`);
+      showToast('success', res?.message || `Removed parent relationship for [${selectedAsset.assetId}].`);
+      await fetchHierarchyTree();
+      await fetchAuditHistory(selectedAsset.id);
+    } catch (err) {
+      showToast('error', err?.response?.data?.message || err?.message || 'Failed to detach from parent.');
+    } finally {
+      setLoading(false);
+    }
   };
 
   // Render Recursive Tree Node
@@ -420,17 +240,10 @@ export function AssetHierarchy() {
     const hasChildren = node.children && node.children.length > 0;
 
     if (searchQuery) {
-      const matchesSelf =
-        node.assetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        node.name.toLowerCase().includes(searchQuery.toLowerCase());
-      const matchesChild =
-        node.children &&
-        node.children.some(
-          (c) =>
-            c.assetId.toLowerCase().includes(searchQuery.toLowerCase()) ||
-            c.name.toLowerCase().includes(searchQuery.toLowerCase())
-        );
-      if (!matchesSelf && !matchesChild) return null;
+      const q = searchQuery.toLowerCase();
+      const matches = current => current.assetId.toLowerCase().includes(q) ||
+        current.name.toLowerCase().includes(q) || (current.children || []).some(matches);
+      if (!matches(node)) return null;
     }
 
     return (
@@ -475,7 +288,7 @@ export function AssetHierarchy() {
           )}
         </div>
 
-        {hasChildren && isExpanded && (
+        {hasChildren && (isExpanded || searchQuery) && (
           <div className="space-y-0.5 mt-0.5">
             {node.children.map((child) => renderTreeNode(child))}
           </div>
@@ -537,6 +350,7 @@ export function AssetHierarchy() {
           <button
             type="button"
             onClick={() => setActiveModal('ADD_CHILD')}
+            disabled={!selectedAsset}
             className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
           >
             <Plus className="w-4 h-4" /> Add Child Asset
@@ -544,26 +358,33 @@ export function AssetHierarchy() {
 
           <button
             type="button"
-            onClick={() => setActiveModal('REASSIGN_PARENT')}
+            onClick={() => { setReassignData({ newParentAssetId: '' }); setActiveModal('REASSIGN_PARENT'); }}
+            disabled={!selectedAsset}
             className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-slate-200 shadow-2xs transition-all cursor-pointer"
           >
             <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Reassign Parent
           </button>
 
+          {selectedAsset?.parentAssetId && (
+            <button
+              type="button"
+              onClick={handleRemoveParent}
+              className="px-3 py-2 bg-rose-50 hover:bg-rose-100 text-rose-700 font-extrabold rounded-xl text-xs flex items-center gap-1 border border-rose-200 shadow-2xs transition-all cursor-pointer"
+            >
+              <X className="w-3.5 h-3.5 text-rose-600" /> Detach Parent
+            </button>
+          )}
+
           <button
             type="button"
+            disabled={!selectedAsset}
             onClick={() => navigate(`/assets/${selectedAsset.id || selectedAsset.assetId}`)}
             className="px-3.5 py-2 bg-white hover:bg-slate-50 text-[#6C2BD9] font-extrabold rounded-xl text-xs flex items-center gap-1.5 border border-purple-200 shadow-2xs transition-all cursor-pointer"
           >
             <Eye className="w-4 h-4 text-[#6C2BD9]" /> View Asset 360°
           </button>
 
-          <button
-            type="button"
-            className="p-2 bg-white hover:bg-slate-50 border border-slate-200 rounded-xl text-slate-500 cursor-pointer shadow-2xs"
-          >
-            <MoreVertical className="w-4 h-4" />
-          </button>
+
         </div>
       </div>
 
@@ -597,6 +418,7 @@ export function AssetHierarchy() {
             {/* Tree Nodes List */}
             <div className="space-y-1 max-h-[520px] overflow-y-auto pr-1">
               {treeData.map((node) => renderTreeNode(node))}
+              {!treeData.length && <div className="p-5 text-center text-xs text-slate-500">{loadError || (loading ? "Loading assets..." : "No assets found.")}</div>}
             </div>
           </div>
 
@@ -606,7 +428,7 @@ export function AssetHierarchy() {
         </div>
 
         {/* Right Column: Selected Asset Details (8 cols) */}
-        <div className="md:col-span-8 space-y-4">
+        {selectedAsset ? <div className="md:col-span-8 space-y-4">
           {/* Header Card matching Screenshot */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4 border-b border-slate-100 pb-4">
@@ -821,29 +643,13 @@ export function AssetHierarchy() {
             {/* Tab 3: Related Documents */}
             {activeTab === 'Related' && (
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-1 text-xs">
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <FileText className="w-6 h-6 text-[#6C2BD9]" />
-                  <div>
-                    <span className="font-extrabold text-slate-900 block">{selectedAsset.assetId}_Manual_Spec.pdf</span>
-                    <span className="text-[10px] text-slate-400">Technical Spec (2.4 MB)</span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <FileText className="w-6 h-6 text-[#6C2BD9]" />
-                  <div>
-                    <span className="font-extrabold text-slate-900 block">Electrical_Schematics.pdf</span>
-                    <span className="text-[10px] text-slate-400 font-mono">Drawing v3.1 (1.1 MB)</span>
-                  </div>
-                </div>
-
-                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
-                  <FileText className="w-6 h-6 text-emerald-600" />
-                  <div>
-                    <span className="font-extrabold text-slate-900 block">Warranty_Certificate.pdf</span>
-                    <span className="text-[10px] text-slate-400">OEM Warranty (450 KB)</span>
-                  </div>
-                </div>
+                {documents.length ? documents.map(doc => (
+                  <a key={doc.id} href={doc.url} target="_blank" rel="noreferrer" className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 hover:border-purple-300">
+                    <FileText className="w-6 h-6 text-[#6C2BD9]" />
+                    <span className="font-extrabold text-slate-900 block break-all">{doc.name}</span>
+                    <span className="text-[10px] text-slate-400">{doc.type} {doc.size && '(' + doc.size + ')'}</span>
+                  </a>
+                )) : <div className="col-span-3 p-5 text-center text-slate-500">No documents attached to this asset.</div>}
               </div>
             )}
 
@@ -862,39 +668,40 @@ export function AssetHierarchy() {
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
-                      <tr>
-                        <td className="p-3 font-mono text-slate-500">16 Sep 2026 10:15 AM</td>
-                        <td className="p-3 text-slate-400 font-mono">None (Root)</td>
-                        <td className="p-3 font-mono text-[#6C2BD9] font-bold">AST-000100</td>
-                        <td className="p-3 text-slate-700">John Doe</td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 rounded-full bg-blue-100 text-blue-800 text-[10px] font-extrabold">
-                            Parent Assigned
-                          </span>
-                        </td>
-                      </tr>
-                      <tr>
-                        <td className="p-3 font-mono text-slate-500">12 Jan 2022 09:00 AM</td>
-                        <td className="p-3 text-slate-400 font-mono">-</td>
-                        <td className="p-3 font-mono text-slate-700 font-bold">Created</td>
-                        <td className="p-3 text-slate-700">System Admin</td>
-                        <td className="p-3">
-                          <span className="px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 text-[10px] font-extrabold">
-                            Asset Registered
-                          </span>
-                        </td>
-                      </tr>
+                      {auditHistory.filter(item => item.entityId === selectedAsset.id || item.entityId === selectedAsset.assetId).length > 0 ? (
+                        auditHistory.filter(item => item.entityId === selectedAsset.id || item.entityId === selectedAsset.assetId).map((item, idx) => (
+                          <tr key={item.id || idx}>
+                            <td className="p-3 font-mono text-slate-500">{item.timestamp}</td>
+                            <td className="p-3 text-slate-500 font-mono">{allNodes.find(node => node.id === item.previousParent)?.assetId || item.previousParent || "None"}</td>
+                            <td className="p-3 font-mono text-[#6C2BD9] font-bold truncate max-w-xs">{item.newParent || "None"}</td>
+                            <td className="p-3 text-slate-700">{item.user}</td>
+                            <td className="p-3">
+                              <span
+                                className={`px-2 py-0.5 rounded-full text-[10px] font-extrabold ${
+                                  item.action.includes('ADD')
+                                    ? 'bg-emerald-100 text-emerald-800'
+                                    : item.action.includes('REMOVE')
+                                    ? 'bg-rose-100 text-rose-800'
+                                    : 'bg-blue-100 text-blue-800'
+                                }`}
+                              >
+                                {item.action.replace('ASSET_HIERARCHY_', '').replace(/_/g, ' ')}
+                              </span>
+                            </td>
+                          </tr>
+                        ))
+                      ) : <tr><td colSpan={5} className="p-5 text-center text-slate-500">No hierarchy changes recorded for this asset.</td></tr>}
                     </tbody>
                   </table>
                 </div>
               </div>
             )}
           </div>
-        </div>
+        </div> : <div className="md:col-span-8 bg-white border border-slate-200 rounded-2xl p-8 text-center text-slate-500 text-xs">{loadError || "Select an asset to view details."}</div>}
       </div>
 
       {/* Modals */}
-      {activeModal === 'ADD_CHILD' && (
+      {activeModal === 'ADD_CHILD' && selectedAsset && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleAddChildSubmit}
@@ -921,39 +728,9 @@ export function AssetHierarchy() {
 
               <div>
                 <label className="block text-slate-700 font-bold mb-1">Child Asset ID *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. AST-000101-04"
-                  value={childFormData.childAssetId}
-                  onChange={(e) => setChildFormData({ ...childFormData, childAssetId: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Child Asset Name *</label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Expansion Valve"
-                  value={childFormData.childAssetName}
-                  onChange={(e) => setChildFormData({ ...childFormData, childAssetName: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-900 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20"
-                />
-              </div>
-
-              <div>
-                <label className="block text-slate-700 font-bold mb-1">Category</label>
-                <select
-                  value={childFormData.category}
-                  onChange={(e) => setChildFormData({ ...childFormData, category: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-slate-800 cursor-pointer"
-                >
-                  <option value="HVAC Component">HVAC Component</option>
-                  <option value="Electronics Component">Electronics Component</option>
-                  <option value="Mechanical Assembly">Mechanical Assembly</option>
-                  <option value="Pumping Component">Pumping Component</option>
+                <select required value={childFormData.childAssetId} onChange={e => setChildFormData({ childAssetId: e.target.value })} className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-mono font-bold text-slate-900">
+                  <option value="">Select an existing asset</option>
+                  {selectableParents.map(asset => <option key={asset.id} value={asset.assetId}>{asset.assetId} - {asset.name}</option>)}
                 </select>
               </div>
 
@@ -981,7 +758,7 @@ export function AssetHierarchy() {
         </div>
       )}
 
-      {activeModal === 'REASSIGN_PARENT' && (
+      {activeModal === 'REASSIGN_PARENT' && selectedAsset && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <form
             onSubmit={handleReassignParentSubmit}
@@ -1013,11 +790,8 @@ export function AssetHierarchy() {
                   onChange={(e) => setReassignData({ newParentAssetId: e.target.value })}
                   className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-bold text-slate-800 cursor-pointer"
                 >
-                  <option value="AST-000100">AST-000100 (Main Chiller Plant)</option>
-                  <option value="AST-000101">AST-000101 (Chiller Unit - 1)</option>
-                  <option value="AST-000102">AST-000102 (Chiller Unit - 2)</option>
-                  <option value="AST-000103">AST-000103 (Cooling Tower)</option>
-                  <option value="AST-000104">AST-000104 (Pump Set)</option>
+                  <option value="">Select an asset</option>
+                  {selectableParents.map(asset => <option key={asset.id} value={asset.assetId}>{asset.assetId} - {asset.name}</option>)}
                 </select>
               </div>
 
