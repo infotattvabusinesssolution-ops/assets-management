@@ -25,7 +25,9 @@ pnpm-debug.log*
 lerna-debug.log*
 
 # Uploads & Temp files
-uploads/
+/uploads/
+backend/uploads/
+!backend/modules/uploads/
 tmp/
 temp/
 .cache/
