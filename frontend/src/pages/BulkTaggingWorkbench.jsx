@@ -44,118 +44,15 @@ export function BulkTaggingWorkbench() {
     custodian: 'All Custodians'
   });
 
-  // Assets State Initialized to Match Reference Image Exact Data
-  const [assets, setAssets] = useState([
-    {
-      id: 'ast-bulk-001',
-      assetNumber: 'AS-2026-00121',
-      assetName: 'Dell OptiPlex 7020',
-      category: 'Desktop',
-      location: 'IT Store',
-      serialNumber: '7CD1234',
-      currentTag: '-',
-      status: 'Not Tagged',
-      imageUrl: 'https://images.unsplash.com/photo-1593640408182-31c70c8268f5?w=400&q=80'
-    },
-    {
-      id: 'ast-bulk-002',
-      assetNumber: 'AS-2026-00122',
-      assetName: 'HP LaserJet Pro',
-      category: 'Printer',
-      location: 'Admin Block',
-      serialNumber: 'CNB89001',
-      currentTag: '-',
-      status: 'Not Tagged',
-      imageUrl: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=400&q=80'
-    },
-    {
-      id: 'ast-bulk-003',
-      assetNumber: 'AS-2026-00123',
-      assetName: 'Samsung Monitor 27"',
-      category: 'Monitor',
-      location: 'Finance Dept',
-      serialNumber: 'SM27-3310',
-      currentTag: '-',
-      status: 'Not Tagged',
-      imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&q=80'
-    },
-    {
-      id: 'ast-bulk-004',
-      assetNumber: 'AS-2026-00124',
-      assetName: 'Lenovo ThinkPad',
-      category: 'Laptop',
-      location: 'Dubai HQ',
-      serialNumber: 'PF9A2211',
-      currentTag: '-',
-      status: 'Not Tagged',
-      imageUrl: 'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
-    },
-    {
-      id: 'ast-bulk-005',
-      assetNumber: 'AS-2026-00125',
-      assetName: 'iPad Air',
-      category: 'Tablet',
-      location: 'HR Dept',
-      serialNumber: 'IPD-7782',
-      currentTag: '-',
-      status: 'Not Tagged',
-      imageUrl: 'https://images.unsplash.com/photo-1544244015-0df4b3ffc6b0?w=400&q=80'
-    },
-    {
-      id: 'ast-bulk-006',
-      assetNumber: 'AS-2026-00126',
-      assetName: 'Access Point',
-      category: 'Network',
-      location: 'Warehouse',
-      serialNumber: 'AP-9981',
-      currentTag: '-',
-      status: 'Not Tagged',
-      imageUrl: 'https://images.unsplash.com/photo-1544652478-6653e09f18a2?w=400&q=80'
-    }
-  ]);
-
-  // Selected Asset IDs (First 3 checked by default matching screenshot)
-  const [selectedAssetIds, setSelectedAssetIds] = useState([
-    'ast-bulk-001',
-    'ast-bulk-002',
-    'ast-bulk-003'
-  ]);
+  const [assets, setAssets] = useState([]);
+  const [selectedAssetIds, setSelectedAssetIds] = useState([]);
 
   // Tagging Method State
   const [rightPanelTab, setRightPanelTab] = useState('Tag Assignment'); // 'Tag Assignment' | 'Tag Generation'
   const [taggingMethod, setTaggingMethod] = useState('Scan Tags'); // 'Scan Tags' | 'Auto Generate Tags' | 'Import Tag File'
-  const [scannedTagInput, setScannedTagInput] = useState('E36000012345');
+  const [scannedTagInput, setScannedTagInput] = useState('');
 
-  // Tagging Progress Data (Matching exact screenshot table)
-  const [taggingProgressList, setTaggingProgressList] = useState([
-    {
-      id: 'prog-01',
-      itemIndex: 1,
-      assetNumber: 'AS-2026-00121',
-      assetName: 'Dell OptiPlex 7020',
-      tagNumber: 'E36000012345',
-      assignedTime: '21 Aug 2026 11:20',
-      status: 'Tagged'
-    },
-    {
-      id: 'prog-02',
-      itemIndex: 2,
-      assetNumber: 'AS-2026-00122',
-      assetName: 'HP LaserJet Pro',
-      tagNumber: 'E36000012346',
-      assignedTime: '21 Aug 2026 11:21',
-      status: 'Tagged'
-    },
-    {
-      id: 'prog-03',
-      itemIndex: 3,
-      assetNumber: 'AS-2026-00123',
-      assetName: 'Samsung Monitor 27"',
-      tagNumber: 'E36000012347',
-      assignedTime: '21 Aug 2026 11:22',
-      status: 'Tagged'
-    }
-  ]);
+  const [taggingProgressList, setTaggingProgressList] = useState([]);
 
   // Modals & Toast State
   const [showAddManualModal, setShowAddManualModal] = useState(false);
@@ -168,15 +65,12 @@ export function BulkTaggingWorkbench() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Summary Metrics Derived State
-  const totalSelectedCount = 12; // Matching reference screenshot header & summary
-  const taggedCount = taggingProgressList.length; // 3
-  const pendingCount = totalSelectedCount - taggedCount; // 9
+  const totalSelectedCount = selectedAssetIds.length;
+  const taggedCount = assets.filter(a => selectedAssetIds.includes(a.id) && a.status === 'Tagged').length;
+  const pendingCount = Math.max(0, totalSelectedCount - taggedCount);
   const failedCount = 0;
-  const progressPercent = Math.round((taggedCount / totalSelectedCount) * 100); // 25%
-
-  // Next asset preview target
-  const nextAssetToTag = assets[0];
+  const progressPercent = totalSelectedCount ? Math.round((taggedCount / totalSelectedCount) * 100) : 0;
+  const nextAssetToTag = assets.find(a => selectedAssetIds.includes(a.id) && a.status !== 'Tagged');
 
   // Selection Handlers
   const handleCheckboxToggle = (assetId) => {
@@ -222,11 +116,10 @@ export function BulkTaggingWorkbench() {
         if (filters.tagStatus && filters.tagStatus !== 'All') queryParams.set('tagStatus', filters.tagStatus);
 
         const res = await api.get(`/tagging/assets?${queryParams.toString()}`);
-        if (res && res.assets && res.assets.length > 0) {
-          setAssets(res.assets);
-        }
+        setAssets(Array.isArray(res?.assets) ? res.assets : []);
       } catch (e) {
-        // Fallback to initial dummy list if offline
+        setAssets([]);
+        showToast(e.message || 'Could not load assets', 'error');
       }
     }
     loadAssets();
@@ -239,46 +132,34 @@ export function BulkTaggingWorkbench() {
       return;
     }
 
+    if (!nextAssetToTag) {
+      showToast('Select an untagged asset first.', 'error');
+      return;
+    }
     setSubmitting(true);
     try {
-      const nextSeqNum = 12345 + taggingProgressList.length;
-      const tagCode = scannedTagInput || `E360000${nextSeqNum}`;
-      const now = new Date();
-      const timeStr = `${now.getDate()} Aug ${now.getFullYear()} ${now.getHours()}:${String(now.getMinutes()).padStart(2, '0')}`;
-
-      const target = nextAssetToTag || assets[0];
-      if (target) {
-        try {
-          await api.post('/tagging/associate', {
-            assetId: target.id,
-            tagNumber: tagCode,
-            tagType: 'RFID_GEN2',
-            reason: 'Bulk Tagging Session Assignment'
-          });
-        } catch (apiErr) {
-          console.warn('API sync warning:', apiErr.message);
-        }
-      }
-
-      const newProgressItem = {
-        id: `prog-0${taggingProgressList.length + 1}`,
-        itemIndex: taggingProgressList.length + 1,
-        assetNumber: target ? target.assetNumber : `AS-2026-0012${taggingProgressList.length + 1}`,
-        assetName: target ? target.assetName : 'Assigned Asset',
+      const tagCode = scannedTagInput.trim();
+      await api.post('/tagging/associate', {
+        assetId: nextAssetToTag.id,
         tagNumber: tagCode,
-        assignedTime: timeStr,
+        tagType: 'RFID_GEN2',
+        reason: 'Bulk Tagging Session Assignment'
+      });
+      setAssets(prev => prev.map(a => a.id === nextAssetToTag.id ? { ...a, currentTag: tagCode, status: 'Tagged' } : a));
+      setTaggingProgressList(prev => [{
+        id: nextAssetToTag.id,
+        itemIndex: prev.length + 1,
+        assetNumber: nextAssetToTag.assetNumber,
+        assetName: nextAssetToTag.assetName,
+        tagNumber: tagCode,
+        assignedTime: new Date().toLocaleString(),
         status: 'Tagged'
-      };
-
-      setTaggingProgressList((prev) => [...prev, newProgressItem]);
-      showToast(`Tag ${tagCode} assigned successfully!`);
-
-      // Increment scanned input for continuous scanning
-      const nextCode = `E360000${nextSeqNum + 1}`;
-      setScannedTagInput(nextCode);
+      }, ...prev]);
+      setScannedTagInput('');
       setCurrentStep(2);
+      showToast(`Tag ${tagCode} assigned successfully.`);
     } catch (err) {
-      showToast('Failed to assign tag', 'error');
+      showToast(err.message || 'Failed to assign tag', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -295,7 +176,7 @@ export function BulkTaggingWorkbench() {
       await api.post('/tagging/draft', { selectedAssetIds });
       showToast('Bulk tagging draft saved successfully.');
     } catch (e) {
-      showToast('Draft session saved.');
+      showToast(e.message || 'Could not save draft.', 'error');
     }
   };
 

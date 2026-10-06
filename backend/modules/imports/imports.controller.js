@@ -108,6 +108,7 @@ export async function validateBulkImport(req, res, next) {
         custodian,
         acquisitionValue: Number(rawCost) || 0,
         currency,
+        condition: row.condition || 'Good',
         remarks
       });
     }
@@ -187,7 +188,11 @@ export async function submitBulkImport(req, res, next) {
         }
         let assetId = String(row.assetId || row.AssetID || '').trim() || `AST-BLK-${Date.now()}-${row.row || i + 1}`;
         if (!desc || !row.category) throw new Error('Asset name and category are required.');
-        const tagNumber = row.tagNumber || `TAG-${assetId}`;
+        let tagNumber = row.tagNumber || `TAG-${assetId}`;
+        const existingTag = await prisma.asset.findFirst({ where: { tagNumber } });
+        if (existingTag) {
+          tagNumber = `TAG-${assetId}-${Date.now().toString().slice(-4)}`;
+        }
         const rawAcq = row.acquisitionValue || row.acquisitionCost || row['Acquisition Value'] || 0;
         const acqValue = typeof rawAcq === 'string' ? parseFloat(rawAcq.replace(/[^0-9.-]+/g, '')) || 0 : Number(rawAcq) || 0;
         const currency = row.currency || 'USD';

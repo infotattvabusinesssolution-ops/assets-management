@@ -1,3 +1,4 @@
+import { api } from '../../services/api';
 import React, { useState, useMemo } from 'react';
 import {
   GitBranch,
@@ -22,178 +23,23 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-export const INITIAL_BUSINESS_UNITS = [
-  {
-    id: 1,
-    name: 'UAE Operations',
-    code: 'UAE-OPS',
-    company: 'Asset360 Holdings',
-    parentUnit: '-',
-    type: 'Operations',
-    departmentsCount: 5,
-    locationsCount: 12,
-    status: 'Active',
-    createdOn: '10 Jan 2025',
-    createdBy: 'System',
-    description: 'Primary operating business unit for UAE region'
-  },
-  {
-    id: 2,
-    name: 'KSA Operations',
-    code: 'KSA-OPS',
-    company: 'Asset360 Holdings',
-    parentUnit: '-',
-    type: 'Operations',
-    departmentsCount: 4,
-    locationsCount: 8,
-    status: 'Active',
-    createdOn: '12 Jan 2025',
-    createdBy: 'System',
-    description: 'Saudi Arabia operations node'
-  },
-  {
-    id: 3,
-    name: 'Qatar Operations',
-    code: 'QAT-OPS',
-    company: 'Asset360 Holdings',
-    parentUnit: '-',
-    type: 'Operations',
-    departmentsCount: 3,
-    locationsCount: 5,
-    status: 'Active',
-    createdOn: '14 Jan 2025',
-    createdBy: 'John Doe',
-    description: 'Qatar regional operational hub'
-  },
-  {
-    id: 4,
-    name: 'IT Solutions',
-    code: 'IT-SOL',
-    company: 'Wavelogix FZC',
-    parentUnit: '-',
-    type: 'Service',
-    departmentsCount: 4,
-    locationsCount: 6,
-    status: 'Active',
-    createdOn: '16 Jan 2025',
-    createdBy: 'Sarah Ahmed',
-    description: 'Enterprise IT software & RFID solutions'
-  },
-  {
-    id: 5,
-    name: 'Environmental Services',
-    code: 'ENV-SERV',
-    company: 'd.code Solutions LLC',
-    parentUnit: '-',
-    type: 'Service',
-    departmentsCount: 6,
-    locationsCount: 10,
-    status: 'Active',
-    createdOn: '18 Jan 2025',
-    createdBy: 'Ramesh Kumar',
-    description: 'Environmental asset & waste logistics'
-  },
-  {
-    id: 6,
-    name: 'Trading & Logistics',
-    code: 'TRD-LOG',
-    company: 'Wavelogix FZC',
-    parentUnit: '-',
-    type: 'Trading',
-    departmentsCount: 3,
-    locationsCount: 4,
-    status: 'Inactive',
-    createdOn: '20 Jan 2025',
-    createdBy: 'Priya Nair',
-    description: 'Hardware import & distribution wing'
-  },
-  {
-    id: 7,
-    name: 'Support & Projects',
-    code: 'SUP-PRJ',
-    company: 'd.code Solutions LLC',
-    parentUnit: '-',
-    type: 'Support',
-    departmentsCount: 4,
-    locationsCount: 6,
-    status: 'Active',
-    createdOn: '22 Jan 2025',
-    createdBy: 'John Doe',
-    description: 'Customer project delivery & SLA support'
-  },
-  {
-    id: 8,
-    name: 'Digital ID',
-    code: 'DIG-ID',
-    company: 'Digital ID Solutions FZ LLC',
-    parentUnit: '-',
-    type: 'Solutions',
-    departmentsCount: 2,
-    locationsCount: 3,
-    status: 'Active',
-    createdOn: '25 Jan 2025',
-    createdBy: 'Sarah Ahmed',
-    description: 'Smart cards, biometrics & asset tags'
-  },
-  {
-    id: 9,
-    name: 'Regional Holding BU',
-    code: 'REG-HLD',
-    company: 'Asset360 Holdings',
-    parentUnit: '-',
-    type: 'Operations',
-    departmentsCount: 2,
-    locationsCount: 4,
-    status: 'Active',
-    createdOn: '28 Jan 2025',
-    createdBy: 'System',
-    description: 'Corporate oversight unit'
-  },
-  {
-    id: 10,
-    name: 'Infrastructure Services',
-    code: 'INF-SRV',
-    company: 'Wavelogix FZC',
-    parentUnit: '-',
-    type: 'Service',
-    departmentsCount: 3,
-    locationsCount: 5,
-    status: 'Active',
-    createdOn: '01 Feb 2025',
-    createdBy: 'Ramesh Kumar',
-    description: 'Data center & network asset management'
-  },
-  {
-    id: 11,
-    name: 'Telecom Solutions',
-    code: 'TEL-SOL',
-    company: 'd.code Solutions LLC',
-    parentUnit: '-',
-    type: 'Solutions',
-    departmentsCount: 2,
-    locationsCount: 3,
-    status: 'Active',
-    createdOn: '05 Feb 2025',
-    createdBy: 'Priya Nair',
-    description: 'Cell tower & mobile hardware division'
-  },
-  {
-    id: 12,
-    name: 'Special Projects',
-    code: 'SPC-PRJ',
-    company: 'Digital ID Solutions FZ LLC',
-    parentUnit: '-',
-    type: 'Support',
-    departmentsCount: 1,
-    locationsCount: 2,
-    status: 'Active',
-    createdOn: '10 Feb 2025',
-    createdBy: 'John Doe',
-    description: 'Government contract delivery unit'
-  }
-];
+export const INITIAL_BUSINESS_UNITS = [];
 
 export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
+  React.useEffect(() => {
+    const fetchBusinessUnitsFromDb = async () => {
+      try {
+        const res = await api.get('/admin/organization/business-units').catch(() => null);
+        if (res && (res.businessUnits || Array.isArray(res))) {
+          const list = res.businessUnits || res;
+          setBusinessUnits(list);
+        }
+      } catch (e) {
+        console.error('Failed to load business units from DB:', e);
+      }
+    };
+    fetchBusinessUnitsFromDb();
+  }, []);
   const [units, setUnits] = useState(INITIAL_BUSINESS_UNITS);
   const [selectedUnitIds, setSelectedUnitIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');

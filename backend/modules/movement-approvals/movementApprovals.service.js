@@ -816,6 +816,84 @@ export class MovementApprovalsService {
 
     let filtered = [...movementApprovalsStore];
 
+    if (isSqlServerConnected) {
+      try {
+        const dbTransfers = await prisma.assetTransfer.findMany({
+          include: {
+            asset: {
+              include: { category: true, site: true, building: true, floor: true, room: true, department: true }
+            },
+            fromCustodian: true,
+            toCustodian: true,
+            requestedBy: true,
+            approvedBy: true
+          },
+          orderBy: { createdAt: 'desc' }
+        });
+
+        if (dbTransfers && dbTransfers.length > 0) {
+          filtered = dbTransfers.map((t) => {
+            const isPending = t.status === 'PENDING' || t.status === 'PENDING_APPROVAL' || t.status === 'DRAFT';
+            return {
+              id: t.id,
+              requestNumber: t.transferNumber,
+              requestType: t.transferType || 'Transfer',
+              transferType: t.transferType || 'Location Transfer',
+              status: isPending ? 'Pending' : (t.status === 'COMPLETED' ? 'Approved' : t.status),
+              currentStage: isPending ? 'Level 2 - Department Head' : 'Completed',
+              currentLevelNum: isPending ? 2 : 3,
+              totalLevels: 3,
+              assetNo: t.asset?.assetId || t.assetId,
+              assetName: t.asset?.description || t.asset?.assetId || 'Asset',
+              assetCategory: t.asset?.category?.name || 'IT Hardware',
+              serialNumber: t.asset?.serialNumber || 'N/A',
+              fromLocation: t.asset?.site?.name ? `${t.asset.site.name} > ${t.asset.building?.name || ''}`.trim() : 'Dubai HQ Campus',
+              fromLocationFull: t.asset?.site?.name ? `${t.asset.site.name} > ${t.asset.building?.name || ''} > ${t.asset.room?.name || ''}`.trim() : 'Dubai HQ Campus',
+              toLocation: t.toSiteId || 'Abu Dhabi Operations Hub',
+              toLocationFull: t.toSiteId || 'Abu Dhabi Operations Hub',
+              site: t.asset?.site?.name || 'Dubai HQ Campus',
+              department: t.asset?.department?.name || 'Information Technology',
+              requestedBy: t.requestedBy?.fullName || 'Sara Ali',
+              requestedByRole: 'Asset Administrator',
+              requestedByEmail: t.requestedBy?.email || 'admin@infotatwaa.com',
+              newCustodian: t.toCustodian ? t.toCustodian.fullName : 'Unassigned',
+              newCustodianDept: 'Operations',
+              requestDate: new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              requestTime: '10:24',
+              effectiveDate: new Date(t.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              reason: t.reason || 'Operational Movement',
+              remarks: t.reason || 'Asset relocation requested.',
+              isOverdue: false,
+              slaDueDate: 'In 2 days',
+              supportingDocuments: [],
+              assets: [
+                {
+                  id: t.asset?.id || t.assetId,
+                  assetNo: t.asset?.assetId || t.assetId,
+                  name: t.asset?.description || t.asset?.assetId,
+                  category: t.asset?.category?.name || 'Equipment',
+                  serialNumber: t.asset?.serialNumber || 'N/A',
+                  model: 'Standard',
+                  manufacturer: 'OEM',
+                  condition: t.asset?.condition || 'Good',
+                  currentStatus: t.asset?.lifecycleStatus || 'In Service',
+                  currentLocation: t.asset?.site?.name || 'Dubai HQ Campus',
+                  currentCustodian: t.fromCustodian ? t.fromCustodian.fullName : 'Unassigned'
+                }
+              ],
+              workflowStages: [
+                { level: 1, title: 'Direct Supervisor', approverName: 'Department Supervisor', status: 'Approved', timestamp: 'Yesterday' },
+                { level: 2, title: 'Department Head', approverName: 'Operations Lead', status: isPending ? 'Pending' : 'Approved', timestamp: 'Today' },
+                { level: 3, title: 'Asset Controller', approverName: 'John Doe', status: isPending ? 'Upcoming' : 'Approved', timestamp: '-' }
+              ]
+            };
+          });
+        }
+      } catch (err) {
+        console.warn('Prisma getApprovals error, using store:', err.message);
+      }
+    }
+
     // Status filter
     if (status && status !== 'All' && status !== 'ALL') {
       filtered = filtered.filter(r => r.status.toLowerCase() === status.toLowerCase());

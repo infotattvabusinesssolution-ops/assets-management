@@ -35,180 +35,7 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 
-// Initial Mock Assets for Ground Floor matching screenshot #16
-const MOCK_ASSETS = [
-  {
-    id: 'AS-2026-00121',
-    assetNumber: 'AS-2026-00121',
-    name: 'Dell OptiPlex 7020',
-    category: 'IT Equipment',
-    serialNumber: '7CD1234',
-    tagNumber: 'E36000012345',
-    currentLocation: 'IT Store - Ground Floor',
-    detectedZone: 'IT Store - GF',
-    zoneKey: 'IT Store',
-    status: 'In Location',
-    trackingStatus: 'In Location', // 'In Location' | 'Moving' | 'Out of Zone' | 'Offline'
-    lastSeen: '10 Sep 2026 11:42 AM',
-    assignedTo: 'IT Department',
-    icon: 'desktop',
-    coords: { x: 32, y: 22 }, // x, y percentages on floor plan map
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  },
-  {
-    id: 'AS-2026-00122',
-    assetNumber: 'AS-2026-00122',
-    name: 'HP LaserJet Pro',
-    category: 'Printer',
-    serialNumber: 'HPLJ9921',
-    tagNumber: 'E36000012346',
-    currentLocation: 'Finance - Ground Floor',
-    detectedZone: 'Finance - GF',
-    zoneKey: 'Finance',
-    status: 'Moving',
-    trackingStatus: 'Moving',
-    lastSeen: '10 Sep 2026 11:40 AM',
-    assignedTo: 'Finance Dept',
-    icon: 'printer',
-    coords: { x: 71, y: 44 },
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  },
-  {
-    id: 'AS-2026-00125',
-    assetNumber: 'AS-2026-00125',
-    name: 'iPad Air',
-    category: 'Tablet',
-    serialNumber: 'DMQX90812',
-    tagNumber: 'E36000012349',
-    currentLocation: 'Meeting Room 2 - Ground Floor',
-    detectedZone: 'Meeting Room 2 - GF',
-    zoneKey: 'Meeting Room 2',
-    status: 'In Location',
-    trackingStatus: 'In Location',
-    lastSeen: '10 Sep 2026 11:35 AM',
-    assignedTo: 'Executive Mgmt',
-    icon: 'tablet',
-    coords: { x: 28, y: 74 },
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  },
-  {
-    id: 'AS-2026-00160',
-    assetNumber: 'AS-2026-00160',
-    name: 'Fire Extinguisher',
-    category: 'Safety Equipment',
-    serialNumber: 'FE-CO2-0044',
-    tagNumber: 'E36000012380',
-    currentLocation: 'Server Room - Ground Floor',
-    detectedZone: 'Server Room - GF',
-    zoneKey: 'Server Room',
-    status: 'Out of Zone',
-    trackingStatus: 'Out of Zone',
-    lastSeen: '10 Sep 2026 11:15 AM',
-    assignedTo: 'HSE & Safety',
-    icon: 'fire',
-    coords: { x: 48, y: 74 },
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  },
-  {
-    id: 'AS-2026-00178',
-    assetNumber: 'AS-2026-00178',
-    name: 'Laptop - Lenovo',
-    category: 'IT Equipment',
-    serialNumber: 'LEN-X1-9920',
-    tagNumber: 'E36000012399',
-    currentLocation: 'Pantry - Ground Floor',
-    detectedZone: 'Pantry - GF',
-    zoneKey: 'Pantry',
-    status: 'In Location',
-    trackingStatus: 'In Location',
-    lastSeen: '09 Sep 2026 04:12 PM',
-    assignedTo: 'IT Department',
-    icon: 'laptop',
-    coords: { x: 74, y: 74 },
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  },
-  {
-    id: 'AS-2026-00190',
-    assetNumber: 'AS-2026-00190',
-    name: 'Dell UltraSharp 27 Monitor',
-    category: 'IT Equipment',
-    serialNumber: 'DEL-US-9912',
-    tagNumber: 'E36000012420',
-    currentLocation: 'Admin - Ground Floor',
-    detectedZone: 'Admin - GF',
-    zoneKey: 'Admin',
-    status: 'In Location',
-    trackingStatus: 'In Location',
-    lastSeen: '10 Sep 2026 11:44 AM',
-    assignedTo: 'Admin Dept',
-    icon: 'desktop',
-    coords: { x: 48, y: 22 },
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  },
-  {
-    id: 'AS-2026-00195',
-    assetNumber: 'AS-2026-00195',
-    name: 'Polycom Conference Hub',
-    category: 'AV Equipment',
-    serialNumber: 'POL-CH-771',
-    tagNumber: 'E36000012430',
-    currentLocation: 'Meeting Room 1 - Ground Floor',
-    detectedZone: 'Meeting Room 1 - GF',
-    zoneKey: 'Meeting Room 1',
-    status: 'In Location',
-    trackingStatus: 'In Location',
-    lastSeen: '10 Sep 2026 11:30 AM',
-    assignedTo: 'Operations',
-    icon: 'desktop',
-    coords: { x: 74, y: 22 },
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  },
-  {
-    id: 'AS-2026-00201',
-    assetNumber: 'AS-2026-00201',
-    name: 'Visitor Kiosk Tablet',
-    category: 'Tablet',
-    serialNumber: 'TAB-KSK-001',
-    tagNumber: 'E36000012440',
-    currentLocation: 'Reception - Ground Floor',
-    detectedZone: 'Reception - GF',
-    zoneKey: 'Reception',
-    status: 'In Location',
-    trackingStatus: 'In Location',
-    lastSeen: '10 Sep 2026 11:45 AM',
-    assignedTo: 'Security',
-    icon: 'tablet',
-    coords: { x: 28, y: 50 },
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  },
-  {
-    id: 'AS-2026-00208',
-    assetNumber: 'AS-2026-00208',
-    name: 'HP Z4 Workstation',
-    category: 'IT Equipment',
-    serialNumber: 'HP-Z4-1188',
-    tagNumber: 'E36000012450',
-    currentLocation: 'HR - Ground Floor',
-    detectedZone: 'HR - GF',
-    zoneKey: 'HR',
-    status: 'In Location',
-    trackingStatus: 'In Location',
-    lastSeen: '10 Sep 2026 11:40 AM',
-    assignedTo: 'HR Dept',
-    icon: 'desktop',
-    coords: { x: 58, y: 52 },
-    building: 'Main Building',
-    floor: 'Ground Floor'
-  }
-];
+const MOCK_ASSETS = [];
 
 // Room Zones Data for Ground Floor matching screenshot #16
 const MOCK_ZONES = [
@@ -236,6 +63,48 @@ const FLOORS_LIST = [
 ];
 
 export function LocationMap() {
+  const [loading, setLoading] = useState(true);
+
+  React.useEffect(() => {
+    const fetchLiveMapAssets = async () => {
+      try {
+        setLoading(true);
+        const res = await api.get('/assets?limit=100').catch(() => null);
+        if (res && (res.assets || Array.isArray(res))) {
+          const raw = res.assets || res;
+          const mapped = raw.map((a, idx) => ({
+            id: a.assetId || a.id,
+            assetNumber: a.assetId || a.id,
+            name: a.description || a.name || 'Enterprise Asset',
+            category: a.category?.name || 'IT Equipment',
+            serialNumber: a.serialNumber || 'N/A',
+            tagNumber: a.tag?.tagNumber || a.rfidTag || `E360000${idx}`,
+            currentLocation: `${a.site?.name || 'Dubai HQ'} - ${a.building?.name || 'Block A'} - ${a.floor?.name || 'Ground Floor'}`,
+            detectedZone: a.room?.name || 'IT Store',
+            zoneKey: a.room?.name || 'IT Store',
+            status: a.lifecycleStatus === 'IN_SERVICE' ? 'In Location' : 'Moving',
+            trackingStatus: a.lifecycleStatus === 'IN_SERVICE' ? 'In Location' : 'Moving',
+            lastSeen: 'Recently',
+            assignedTo: a.department?.name || 'IT Department',
+            icon: (a.category?.name || '').toLowerCase().includes('laptop') ? 'laptop' :
+                  (a.category?.name || '').toLowerCase().includes('printer') ? 'printer' :
+                  (a.category?.name || '').toLowerCase().includes('tablet') ? 'tablet' :
+                  (a.category?.name || '').toLowerCase().includes('server') ? 'server' : 'desktop',
+            coords: { x: 20 + ((idx * 17) % 65), y: 15 + ((idx * 23) % 65) },
+            building: a.building?.name || 'Main Building',
+            floor: a.floor?.name || 'Ground Floor'
+          }));
+          setAssets(mapped);
+          if (mapped.length > 0) setSelectedAssetId(mapped[0].id);
+        }
+      } catch (e) {
+        console.error('Failed to load assets for map:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchLiveMapAssets();
+  }, []);
   const navigate = useNavigate();
 
   // Top Filter States (Items 1-4 in screenshot)
@@ -260,8 +129,8 @@ export function LocationMap() {
   });
 
   // Assets and Selection State
-  const [assets, setAssets] = useState(MOCK_ASSETS);
-  const [selectedAssetId, setSelectedAssetId] = useState('AS-2026-00121');
+  const [assets, setAssets] = useState([]);
+  const [selectedAssetId, setSelectedAssetId] = useState(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [showTooltipPopup, setShowTooltipPopup] = useState(true);
 
@@ -280,17 +149,17 @@ export function LocationMap() {
   };
 
   // Currently selected asset
-  const selectedAsset = assets.find(a => a.id === selectedAssetId) || assets[0];
+  const selectedAsset = assets.find(a => a.id === selectedAssetId) || (assets.length > 0 ? assets[0] : null);
 
   // Filtering assets
   const filteredAssets = assets.filter(a => {
-    const q = searchQuery.toLowerCase();
+    const q = (searchQuery || '').toLowerCase();
     return !q || (
-      a.id.toLowerCase().includes(q) ||
-      a.name.toLowerCase().includes(q) ||
-      a.serialNumber.toLowerCase().includes(q) ||
-      a.tagNumber.toLowerCase().includes(q) ||
-      a.category.toLowerCase().includes(q)
+      (a.id || '').toLowerCase().includes(q) ||
+      (a.name || '').toLowerCase().includes(q) ||
+      (a.serialNumber || '').toLowerCase().includes(q) ||
+      (a.tagNumber || '').toLowerCase().includes(q) ||
+      (a.category || '').toLowerCase().includes(q)
     );
   });
 
@@ -309,6 +178,7 @@ export function LocationMap() {
 
   // Status badge styling helper matching screenshot #16
   const getStatusBadge = (status) => {
+    if (!status) return null;
     switch (status) {
       case 'In Location':
         return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300">In Location</span>;
@@ -319,18 +189,20 @@ export function LocationMap() {
       case 'Offline':
         return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-slate-200 text-slate-700 border border-slate-300">Offline</span>;
       default:
-        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700">In Location</span>;
+        return <span className="px-2.5 py-0.5 rounded-full text-[10px] font-extrabold bg-emerald-100 text-emerald-700 border border-emerald-300">{status}</span>;
     }
   };
 
   // Handle marker selection
   const handleMarkerClick = (asset) => {
+    if (!asset) return;
     setSelectedAssetId(asset.id);
     setShowTooltipPopup(true);
   };
 
   // Handle Locate action
   const handleLocateAsset = (asset) => {
+    if (!asset) return;
     showToast(`🎯 RTLS Signal locate ping sent for ${asset.name} (${asset.tagNumber}). Reader RSSI -54 dBm.`);
   };
 
@@ -733,8 +605,8 @@ export function LocationMap() {
                       key={asset.id}
                       onClick={() => handleMarkerClick(asset)}
                       style={{
-                        left: `${asset.coords.x}%`,
-                        top: `${asset.coords.y}%`
+                        left: `${asset.coords?.x ?? 50}%`,
+                        top: `${asset.coords?.y ?? 50}%`
                       }}
                       className="absolute -translate-x-1/2 -translate-y-1/2 cursor-pointer z-30 group"
                     >
@@ -888,35 +760,46 @@ export function LocationMap() {
               {/* (10) Scrollable Assets List or Zones List Panel */}
               <div className="flex-1 max-h-[195px] overflow-y-auto space-y-1.5 pr-1.5 scrollbar-thin shrink-0">
                 {rightPanelTab === 'Assets' ? (
-                  filteredAssets.map((a) => {
-                    const isSelected = a.id === selectedAssetId;
-                    return (
-                      <div
-                        key={a.id}
-                        onClick={() => handleMarkerClick(a)}
-                        className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
-                          isSelected
-                            ? 'bg-purple-50/80 border-[#6C2BD9] shadow-2xs ring-1 ring-purple-300'
-                            : 'bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/80'
-                        }`}
-                      >
-                        <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
-                          <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
-                            {renderAssetIcon(a.icon)}
+                  loading ? (
+                    <div className="flex items-center justify-center gap-2 text-xs text-slate-400 py-6">
+                      <div className="w-3.5 h-3.5 border-2 border-[#6C2BD9] border-t-transparent rounded-full animate-spin" />
+                      <span>Loading assets...</span>
+                    </div>
+                  ) : filteredAssets.length === 0 ? (
+                    <div className="text-center text-xs text-slate-400 py-6">
+                      No assets found
+                    </div>
+                  ) : (
+                    filteredAssets.map((a) => {
+                      const isSelected = a.id === selectedAssetId;
+                      return (
+                        <div
+                          key={a.id}
+                          onClick={() => handleMarkerClick(a)}
+                          className={`p-2 rounded-xl border transition-all cursor-pointer flex items-center justify-between gap-1.5 ${
+                            isSelected
+                              ? 'bg-purple-50/80 border-[#6C2BD9] shadow-2xs ring-1 ring-purple-300'
+                              : 'bg-white border-slate-200/80 hover:border-slate-300 hover:bg-slate-50/80'
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 overflow-hidden min-w-0 flex-1">
+                            <div className="w-8 h-8 rounded-lg bg-slate-100 border border-slate-200 flex items-center justify-center shrink-0">
+                              {renderAssetIcon(a.icon)}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                              <span className="font-extrabold text-[11px] text-[#6C2BD9] block truncate leading-tight">{a.id}</span>
+                              <p className="text-[11px] font-bold text-slate-800 truncate leading-tight">{a.name}</p>
+                              <p className="text-[9.5px] text-slate-400 font-medium truncate mt-0.5">{a.detectedZone}</p>
+                            </div>
                           </div>
-                          <div className="min-w-0 flex-1">
-                            <span className="font-extrabold text-[11px] text-[#6C2BD9] block truncate leading-tight">{a.id}</span>
-                            <p className="text-[11px] font-bold text-slate-800 truncate leading-tight">{a.name}</p>
-                            <p className="text-[9.5px] text-slate-400 font-medium truncate mt-0.5">{a.detectedZone}</p>
-                          </div>
-                        </div>
 
-                        <div className="shrink-0">
-                          {getStatusBadge(a.trackingStatus)}
+                          <div className="shrink-0">
+                            {getStatusBadge(a.trackingStatus)}
+                          </div>
                         </div>
-                      </div>
-                    );
-                  })
+                      );
+                    })
+                  )
                 ) : (
                   /* Zones List Tab */
                   MOCK_ZONES.map((z) => (
@@ -945,77 +828,85 @@ export function LocationMap() {
             <div className="pt-2 border-t border-slate-200 shrink-0 space-y-1.5">
               <div className="flex items-center justify-between">
                 <h3 className="text-xs font-bold text-slate-900">Asset Details</h3>
-                {getStatusBadge(selectedAsset.trackingStatus)}
+                {selectedAsset ? getStatusBadge(selectedAsset.trackingStatus) : null}
               </div>
 
-              {/* Asset Header preview */}
-              <div className="flex items-center gap-2.5 p-1.5 bg-slate-50 rounded-xl border border-slate-200">
-                <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
-                  {renderAssetIcon(selectedAsset.icon)}
-                </div>
-                <div className="min-w-0 flex-1">
-                  <span className="font-extrabold text-[11px] text-[#6C2BD9] block leading-tight">{selectedAsset.id}</span>
-                  <span className="font-bold text-[11px] text-slate-800 truncate block leading-tight">{selectedAsset.name}</span>
-                </div>
-              </div>
+              {selectedAsset ? (
+                <>
+                  {/* Asset Header preview */}
+                  <div className="flex items-center gap-2.5 p-1.5 bg-slate-50 rounded-xl border border-slate-200">
+                    <div className="w-8 h-8 rounded-lg bg-white border border-slate-200 flex items-center justify-center shrink-0">
+                      {renderAssetIcon(selectedAsset.icon)}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <span className="font-extrabold text-[11px] text-[#6C2BD9] block leading-tight">{selectedAsset.id}</span>
+                      <span className="font-bold text-[11px] text-slate-800 truncate block leading-tight">{selectedAsset.name}</span>
+                    </div>
+                  </div>
 
-              {/* Metadata Table matching Screenshot #16 */}
-              <div className="space-y-1 text-[10.5px] font-medium text-slate-600 bg-white p-2 rounded-xl border border-slate-100 shadow-2xs">
-                <div className="flex justify-between py-0.5 border-b border-slate-50">
-                  <span className="text-slate-400">Asset Number</span>
-                  <span className="font-bold text-slate-800">{selectedAsset.assetNumber}</span>
-                </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-50">
-                  <span className="text-slate-400">Asset Name</span>
-                  <span className="font-bold text-slate-800 truncate max-w-[140px] text-right">{selectedAsset.name}</span>
-                </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-50">
-                  <span className="text-slate-400">Serial Number</span>
-                  <span className="font-bold text-slate-800">{selectedAsset.serialNumber}</span>
-                </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-50">
-                  <span className="text-slate-400">Tag Number (EPC)</span>
-                  <span className="font-mono font-bold text-[#6C2BD9]">{selectedAsset.tagNumber}</span>
-                </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-50">
-                  <span className="text-slate-400">Category</span>
-                  <span className="font-bold text-slate-800">{selectedAsset.category}</span>
-                </div>
-                <div className="flex justify-between py-0.5 border-b border-slate-50">
-                  <span className="text-slate-400">Current Location</span>
-                  <span className="font-bold text-slate-800 text-right truncate max-w-[130px]">{selectedAsset.currentLocation}</span>
-                </div>
-                <div className="flex justify-between py-0.5">
-                  <span className="text-slate-400">Last Seen</span>
-                  <span className="font-bold text-slate-800">{selectedAsset.lastSeen}</span>
-                </div>
-              </div>
+                  {/* Metadata Table matching Screenshot #16 */}
+                  <div className="space-y-1 text-[10.5px] font-medium text-slate-600 bg-white p-2 rounded-xl border border-slate-100 shadow-2xs">
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Asset Number</span>
+                      <span className="font-bold text-slate-800">{selectedAsset.assetNumber}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Asset Name</span>
+                      <span className="font-bold text-slate-800 truncate max-w-[140px] text-right">{selectedAsset.name}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Serial Number</span>
+                      <span className="font-bold text-slate-800">{selectedAsset.serialNumber || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Tag Number (EPC)</span>
+                      <span className="font-mono font-bold text-[#6C2BD9]">{selectedAsset.tagNumber || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Category</span>
+                      <span className="font-bold text-slate-800">{selectedAsset.category || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5 border-b border-slate-50">
+                      <span className="text-slate-400">Current Location</span>
+                      <span className="font-bold text-slate-800 text-right truncate max-w-[130px]">{selectedAsset.currentLocation || 'N/A'}</span>
+                    </div>
+                    <div className="flex justify-between py-0.5">
+                      <span className="text-slate-400">Last Seen</span>
+                      <span className="font-bold text-slate-800">{selectedAsset.lastSeen || 'Recently'}</span>
+                    </div>
+                  </div>
 
-              {/* (12) Bottom Action Buttons matching Screenshot #16 */}
-              <div className="pt-1 flex items-center justify-between gap-1.5">
-                <button
-                  onClick={() => handleLocateAsset(selectedAsset)}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Crosshair className="w-3 h-3 shrink-0" />
-                  <span>Locate</span>
-                </button>
+                  {/* (12) Bottom Action Buttons matching Screenshot #16 */}
+                  <div className="pt-1 flex items-center justify-between gap-1.5">
+                    <button
+                      onClick={() => handleLocateAsset(selectedAsset)}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      <Crosshair className="w-3 h-3 shrink-0" />
+                      <span>Locate</span>
+                    </button>
 
-                <button
-                  onClick={() => setShowHistoryModal(true)}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <Clock className="w-3 h-3 shrink-0" />
-                  <span>View History</span>
-                </button>
+                    <button
+                      onClick={() => setShowHistoryModal(true)}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      <Clock className="w-3 h-3 shrink-0" />
+                      <span>View History</span>
+                    </button>
 
-                <button
-                  onClick={() => showToast(`More Actions dropdown opened for ${selectedAsset.id}`)}
-                  className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
-                >
-                  <span>••• More Actions &gt;</span>
-                </button>
-              </div>
+                    <button
+                      onClick={() => showToast(`More Actions dropdown opened for ${selectedAsset.id}`)}
+                      className="flex-1 flex items-center justify-center gap-1 py-1.5 px-1 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-[10px] font-bold transition-all cursor-pointer whitespace-nowrap"
+                    >
+                      <span>••• More Actions &gt;</span>
+                    </button>
+                  </div>
+                </>
+              ) : (
+                <div className="p-4 text-center text-xs text-slate-400 bg-slate-50 rounded-xl border border-dashed border-slate-200">
+                  {loading ? 'Loading assets...' : 'No asset selected'}
+                </div>
+              )}
 
             </div>
 
@@ -1097,7 +988,7 @@ export function LocationMap() {
       )}
 
       {/* Location History Modal (Triggered by 🕒 View History button) */}
-      {showHistoryModal && (
+      {showHistoryModal && selectedAsset && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 space-y-4 shadow-2xl border border-slate-200 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1112,7 +1003,7 @@ export function LocationMap() {
 
             <div className="space-y-2 text-xs font-medium text-slate-700 max-h-80 overflow-y-auto pr-1">
               {[
-                { time: selectedAsset.lastSeen, loc: selectedAsset.currentLocation, source: 'RFID Reader R-101 (IT Store)', type: 'RTLS Event' },
+                { time: selectedAsset.lastSeen || 'Recently', loc: selectedAsset.currentLocation || '-', source: 'RFID Reader R-101 (IT Store)', type: 'RTLS Event' },
                 { time: '10 Sep 2026 10:15 AM', loc: 'Reception - Ground Floor', source: 'Portal Gateway 2', type: 'RTLS Event' },
                 { time: '01 Sep 2026 09:00 AM', loc: 'Central Receiving Dock', source: 'Handheld RFID Scanner', type: 'Check-In' },
                 { time: '15 Aug 2026 02:00 PM', loc: 'Warehouse Storage A', source: 'System Import', type: 'Initial Register' }

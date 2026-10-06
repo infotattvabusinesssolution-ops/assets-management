@@ -60,491 +60,29 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-// Seeded Discovered Devices matching Screenshot #19 exact rows
-const FALLBACK_DEVICES = [
-  {
-    id: 'DEV-001',
-    ipAddress: '192.168.1.10',
-    hostname: 'DESKTOP-001',
-    macAddress: '00:1A:2B:3C:4D:5E',
-    deviceType: 'Computer',
-    manufacturer: 'Dell',
-    model: 'OptiPlex 7020',
-    serialNumber: '7CD1234',
-    status: 'Matched',
-    matchScore: 98,
-    operatingSystem: 'Windows 11 Pro 23H2',
-    domain: 'ASSET360',
-    lastSeen: '10 Sep 2026 10:24 AM',
-    firstDiscovered: '05 Sep 2026 08:15 AM',
-    location: 'Dubai HQ - IT Department',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'WMI/WinRM & SNMP',
-    matchedAssetId: 'AS-2026-00121',
-    matchedAssetName: 'Dell OptiPlex 7020 Desktop',
-    hardware: {
-      cpu: 'Intel Core i5-12500 (3.0 GHz)',
-      ram: '16 GB',
-      storage: '512 GB SSD',
-      bios: 'Dell 1.18.0',
-      systemUuid: '4C4C4544-0050-3410-804C-C7004F323334',
-      chassis: 'Desktop',
-      assetTagEtched: 'N/A'
-    },
-    network: {
-      ipSubnet: '192.168.1.10 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1, 8.8.8.8',
-      switchPort: 'SW-CORE-01 (Gi1/0/10)',
-      vlan: '10 (IT Network)',
-      dhcpServer: '192.168.1.1',
-      speed: '1000 Mbps Full Duplex'
-    },
-    software: [
-      { name: 'Google Chrome', version: '128.0.6613.120', publisher: 'Google LLC', installDate: '2026-01-10' },
-      { name: 'Microsoft 365 Apps for Enterprise', version: '16.0.17830.20138', publisher: 'Microsoft Corporation', installDate: '2025-11-01' },
-      { name: 'Slack Workplace', version: '4.38.125', publisher: 'Slack Technologies LLC', installDate: '2025-12-14' },
-      { name: 'Zoom Workplace', version: '6.0.2', publisher: 'Zoom Video Communications', installDate: '2026-02-05' },
-      { name: 'CrowdStrike Falcon Sensor', version: '7.14.18504.0', publisher: 'CrowdStrike, Inc.', installDate: '2025-09-20' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:24 AM', job: 'HQ Network Scan', event: 'Scanned active; verified software inventory and IP 192.168.1.10', status: 'Success' },
-      { timestamp: '09 Sep 2026 10:24 AM', job: 'HQ Network Scan', event: 'Scanned active; all network interfaces confirmed', status: 'Success' },
-      { timestamp: '05 Sep 2026 08:15 AM', job: 'Initial Sweep', event: 'Initial device detection and automatic asset matching', status: 'Created' }
-    ]
-  },
-  {
-    id: 'DEV-002',
-    ipAddress: '192.168.1.11',
-    hostname: 'MONITOR-245',
-    macAddress: '00:1A:2B:3C:4D:6F',
-    deviceType: 'Monitor',
-    manufacturer: 'Dell',
-    model: 'P2422H',
-    serialNumber: 'CN0D4F2',
-    status: 'Matched',
-    matchScore: 96,
-    operatingSystem: 'Embedded Firmware v1.4',
-    domain: 'N/A (Peripherals)',
-    lastSeen: '10 Sep 2026 10:23 AM',
-    firstDiscovered: '05 Sep 2026 08:20 AM',
-    location: 'Dubai HQ - IT Department',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'DDC/CI & USB Passthrough',
-    matchedAssetId: 'AS-2026-00122',
-    matchedAssetName: 'Dell P2422H 24" Monitor',
-    hardware: {
-      cpu: 'ARM Cortex-M3 Controller',
-      ram: '256 MB Flash ROM',
-      storage: 'Internal ROM',
-      bios: 'v1.4 DisplayPort 1.2 EDID',
-      systemUuid: 'N/A',
-      chassis: '24-inch Flat Panel Display',
-      assetTagEtched: 'N/A'
-    },
-    network: {
-      ipSubnet: '192.168.1.11 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'SW-CORE-01 (Gi1/0/11)',
-      vlan: '10 (IT Network)',
-      dhcpServer: '192.168.1.1',
-      speed: 'USB-C Passthrough'
-    },
-    software: [
-      { name: 'Dell Display Manager', version: '2.2.0.0010', publisher: 'Dell Inc.', installDate: '2025-08-10' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:23 AM', job: 'HQ Network Scan', event: 'EDID query verified serial CN0D4F2', status: 'Success' }
-    ]
-  },
-  {
-    id: 'DEV-003',
-    ipAddress: '192.168.1.20',
-    hostname: 'PRN-HQ-01',
-    macAddress: '00:1A:2B:3C:4D:7A',
-    deviceType: 'Printer',
-    manufacturer: 'HP',
-    model: 'LaserJet Pro',
-    serialNumber: 'VNB3K91',
-    status: 'New',
-    matchScore: 0,
-    operatingSystem: 'HP FutureSmart 4.11',
-    domain: 'ASSET360',
-    lastSeen: '10 Sep 2026 10:20 AM',
-    firstDiscovered: '10 Sep 2026 10:20 AM',
-    location: 'Dubai HQ - Copy Room',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'SNMP v2c / JetDirect',
-    matchedAssetId: null,
-    matchedAssetName: null,
-    hardware: {
-      cpu: 'HP Custom 1200MHz RISC',
-      ram: '256 MB DDR3',
-      storage: '4 GB eMMC',
-      bios: 'FS 4.11.0.1',
-      systemUuid: 'HP-M404N-VNB3K91',
-      chassis: 'Monochrome Workgroup Printer',
-      assetTagEtched: 'N/A'
-    },
-    network: {
-      ipSubnet: '192.168.1.20 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'SW-CORE-01 (Gi1/0/20)',
-      vlan: '20 (Printers & IoT)',
-      dhcpServer: 'Static Assignment',
-      speed: '1000 Mbps Full Duplex'
-    },
-    software: [
-      { name: 'HP JetDirect Firmware', version: '4.11.0.1', publisher: 'HP Inc.', installDate: '2025-06-01' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:20 AM', job: 'HQ Network Scan', event: 'New printer detected on network; unlinked', status: 'New' }
-    ]
-  },
-  {
-    id: 'DEV-004',
-    ipAddress: '192.168.1.30',
-    hostname: 'SW-CORE-01',
-    macAddress: '00:1A:2B:3C:4D:8B',
-    deviceType: 'Network Device',
-    manufacturer: 'Cisco',
-    model: 'C9300',
-    serialNumber: 'FD02456',
-    status: 'Matched',
-    matchScore: 100,
-    operatingSystem: 'Cisco IOS-XE 17.09.03a',
-    domain: 'N/A (Cisco Domain)',
-    lastSeen: '10 Sep 2026 10:18 AM',
-    firstDiscovered: '01 Jan 2026 09:00 AM',
-    location: 'Dubai HQ - Server Room',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'SSH & SNMP v3',
-    matchedAssetId: 'AS-2026-00042',
-    matchedAssetName: 'Cisco Catalyst 9300 Switch',
-    hardware: {
-      cpu: 'x86 4-core 1.8GHz',
-      ram: '16 GB DRAM',
-      storage: '16 GB Flash',
-      bios: 'Cisco ROMMON 17.6',
-      systemUuid: 'CISCO-CAT9300-FD02456',
-      chassis: '1RU Managed Switch 48x PoE+',
-      assetTagEtched: 'AS-2026-00042'
-    },
-    network: {
-      ipSubnet: '192.168.1.30 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'Uplink Te1/1/1',
-      vlan: '1 (Management)',
-      dhcpServer: 'Static Assignment',
-      speed: '48x 1G + 4x 10G SFP+'
-    },
-    software: [
-      { name: 'Cisco IOS-XE Enterprise', version: '17.9.3a', publisher: 'Cisco Systems', installDate: '2025-05-15' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:18 AM', job: 'HQ Network Scan', event: '48 PoE ports online; health nominal', status: 'Success' }
-    ]
-  },
-  {
-    id: 'DEV-005',
-    ipAddress: '192.168.1.45',
-    hostname: 'LAPTOP-078',
-    macAddress: '00:1A:2B:3C:4D:9C',
-    deviceType: 'Computer',
-    manufacturer: 'Lenovo',
-    model: 'ThinkPad T14',
-    serialNumber: 'PF34K2',
-    status: 'Review',
-    matchScore: 68,
-    operatingSystem: 'Windows 11 Pro 64-bit',
-    domain: 'ASSET360',
-    lastSeen: '10 Sep 2026 10:15 AM',
-    firstDiscovered: '10 Sep 2026 09:00 AM',
-    location: 'Dubai HQ - Floor 2',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'WMI & ARP Sweep',
-    matchedAssetId: null,
-    matchedAssetName: null,
-    hardware: {
-      cpu: 'AMD Ryzen 7 PRO 6850U (8 Cores)',
-      ram: '32 GB LPDDR5',
-      storage: '1 TB NVMe SSD',
-      bios: 'Lenovo N3MET14W (1.14)',
-      systemUuid: 'LENOVO-T14-PF34K2',
-      chassis: '14-inch Laptop',
-      assetTagEtched: 'Unverified'
-    },
-    network: {
-      ipSubnet: '192.168.1.45 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'AP-01 (Wi-Fi 6 SSID: Corp-Secure)',
-      vlan: '15 (Wireless Users)',
-      dhcpServer: '192.168.1.1',
-      speed: 'Wi-Fi 6 (866 Mbps)'
-    },
-    software: [
-      { name: 'Windows 11 Pro', version: '22H2', publisher: 'Microsoft', installDate: '2026-02-01' },
-      { name: 'Lenovo Vantage Commercial', version: '10.24', publisher: 'Lenovo', installDate: '2026-02-01' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:15 AM', job: 'HQ Network Scan', event: 'Suggested match collision with AST-2024-9912', status: 'Review' }
-    ]
-  },
-  {
-    id: 'DEV-006',
-    ipAddress: '192.168.1.50',
-    hostname: 'AP-01',
-    macAddress: '00:1A:2B:3C:4D:AA',
-    deviceType: 'Network Device',
-    manufacturer: 'Aruba',
-    model: 'AP-515',
-    serialNumber: 'CN7G@@',
-    status: 'Matched',
-    matchScore: 99,
-    operatingSystem: 'ArubaOS 8.10.0.6',
-    domain: 'N/A (Mobility Conductor)',
-    lastSeen: '10 Sep 2026 10:14 AM',
-    firstDiscovered: '15 Feb 2026 11:30 AM',
-    location: 'Dubai HQ - Floor 1 Hallway',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'SNMP v2c / LLDP',
-    matchedAssetId: 'AS-2026-00088',
-    matchedAssetName: 'Aruba AP-515 Access Point',
-    hardware: {
-      cpu: 'Qualcomm IPQ8074 Quad-core ARM',
-      ram: '1 GB DDR4',
-      storage: '512 MB Flash',
-      bios: 'Aruba Boot 2.0',
-      systemUuid: 'ARUBA-AP515-CN7G',
-      chassis: 'Wi-Fi 6 Ceiling AP',
-      assetTagEtched: 'AS-2026-00088'
-    },
-    network: {
-      ipSubnet: '192.168.1.50 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'SW-CORE-01 (Gi1/0/18)',
-      vlan: '30 (AP Management)',
-      dhcpServer: 'Static Assignment',
-      speed: '2.5 Gbps mGig PoE+'
-    },
-    software: [
-      { name: 'ArubaOS Firmware', version: '8.10.0.6', publisher: 'HPE Aruba', installDate: '2026-01-15' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:14 AM', job: 'HQ Network Scan', event: '28 active Wi-Fi clients connected', status: 'Success' }
-    ]
-  },
-  {
-    id: 'DEV-007',
-    ipAddress: '192.168.1.60',
-    hostname: 'SRV-FILE-01',
-    macAddress: '00:1A:2B:3C:4D:BB',
-    deviceType: 'Server',
-    manufacturer: 'HPE',
-    model: 'ProLiant DL380',
-    serialNumber: '2M3K91',
-    status: 'Matched',
-    matchScore: 100,
-    operatingSystem: 'Windows Server 2022 Datacenter',
-    domain: 'ASSET360',
-    lastSeen: '10 Sep 2026 10:10 AM',
-    firstDiscovered: '10 Jan 2026 08:00 AM',
-    location: 'Dubai HQ - Server Room Rack 02',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'WMI & iLO5 SNMP',
-    matchedAssetId: 'AS-2026-00005',
-    matchedAssetName: 'HPE ProLiant DL380 Gen10 Server',
-    hardware: {
-      cpu: '2x Intel Xeon Gold 6248R (48 Cores)',
-      ram: '128 GB ECC DDR4',
-      storage: '8x 1.92TB NVMe SSD RAID 10',
-      bios: 'HPE System ROM U30 (01/2024)',
-      systemUuid: 'HPE-DL380-2M3K91',
-      chassis: '2RU Rackmount Server',
-      assetTagEtched: 'AS-2026-00005'
-    },
-    network: {
-      ipSubnet: '192.168.1.60 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1, 192.168.1.2',
-      switchPort: 'SW-CORE-01 (Te1/1/2)',
-      vlan: '50 (Server VLAN)',
-      dhcpServer: 'Static Assignment',
-      speed: '2x 10Gbps LACP Bonded'
-    },
-    software: [
-      { name: 'Windows Server 2022', version: '21H2', publisher: 'Microsoft', installDate: '2026-01-12' },
-      { name: 'Veeam Backup Agent', version: '12.1', publisher: 'Veeam', installDate: '2026-01-15' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:10 AM', job: 'HQ Network Scan', event: 'RAID Array healthy; 0 disk warnings', status: 'Success' }
-    ]
-  },
-  {
-    id: 'DEV-008',
-    ipAddress: '192.168.1.75',
-    hostname: 'iPad-01',
-    macAddress: '00:1A:2B:3C:4D:CC',
-    deviceType: 'Mobile Device',
-    manufacturer: 'Apple',
-    model: 'iPad Air',
-    serialNumber: 'DLX9Q2',
-    status: 'New',
-    matchScore: 0,
-    operatingSystem: 'iPadOS 17.5',
-    domain: 'N/A',
-    lastSeen: '10 Sep 2026 10:08 AM',
-    firstDiscovered: '10 Sep 2026 10:08 AM',
-    location: 'Dubai HQ - Executive Suite',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'Bonjour / mDNS & ARP',
-    matchedAssetId: null,
-    matchedAssetName: null,
-    hardware: {
-      cpu: 'Apple M1 (8-core CPU, 8-core GPU)',
-      ram: '8 GB Unified Memory',
-      storage: '256 GB NVMe',
-      bios: 'Apple iBoot 17.5',
-      systemUuid: 'APPLE-IPAD-DLX9Q2',
-      chassis: 'Tablet',
-      assetTagEtched: 'Unassigned'
-    },
-    network: {
-      ipSubnet: '192.168.1.75 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'AP-01 (Wi-Fi SSID: Corp-Executive)',
-      vlan: '15 (Wireless Users)',
-      dhcpServer: '192.168.1.1',
-      speed: 'Wi-Fi 6 (433 Mbps)'
-    },
-    software: [
-      { name: 'iPadOS', version: '17.5.1', publisher: 'Apple Inc.', installDate: '2026-03-01' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:08 AM', job: 'HQ Network Scan', event: 'Unregistered iPad Air joined wireless network', status: 'New' }
-    ]
-  },
-  {
-    id: 'DEV-009',
-    ipAddress: '192.168.1.90',
-    hostname: 'TV-LOBBY',
-    macAddress: '00:1A:2B:3C:4D:DD',
-    deviceType: 'Display',
-    manufacturer: 'Samsung',
-    model: 'QE55Q60',
-    serialNumber: 'TV8901',
-    status: 'Review',
-    matchScore: 55,
-    operatingSystem: 'Tizen OS 6.5',
-    domain: 'N/A',
-    lastSeen: '10 Sep 2026 10:05 AM',
-    firstDiscovered: '09 Sep 2026 04:00 PM',
-    location: 'Dubai HQ - Reception Lobby',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'UPnP / SSDP & ARP',
-    matchedAssetId: null,
-    matchedAssetName: null,
-    hardware: {
-      cpu: 'Samsung Quantum Processor Lite 4K',
-      ram: '2 GB',
-      storage: '8 GB Flash Storage',
-      bios: 'Tizen Firmware 1402',
-      systemUuid: 'SAMSUNG-QE55-TV8901',
-      chassis: '55-inch Commercial Display Panel',
-      assetTagEtched: 'Pending Verification'
-    },
-    network: {
-      ipSubnet: '192.168.1.90 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '8.8.8.8',
-      switchPort: 'SW-CORE-01 (Gi1/0/9)',
-      vlan: '20 (Printers & IoT)',
-      dhcpServer: '192.168.1.1',
-      speed: '100 Mbps Fast Ethernet'
-    },
-    software: [
-      { name: 'Samsung MagicINFO Player', version: '9.0', publisher: 'Samsung Electronics', installDate: '2026-02-10' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:05 AM', job: 'HQ Network Scan', event: 'Device ping responded; SSDP payload received', status: 'Review' }
-    ]
-  },
-  {
-    id: 'DEV-010',
-    ipAddress: '192.168.1.100',
-    hostname: 'POS-02',
-    macAddress: '00:1A:2B:3C:4D:EE',
-    deviceType: 'POS Device',
-    manufacturer: 'Zebra',
-    model: 'TC52',
-    serialNumber: 'ZB55231',
-    status: 'New',
-    matchScore: 0,
-    operatingSystem: 'Android 11 Enterprise',
-    domain: 'RETAIL.CORP',
-    lastSeen: '10 Sep 2026 10:01 AM',
-    firstDiscovered: '10 Sep 2026 10:01 AM',
-    location: 'Dubai HQ - Retail Kiosk',
-    discoveryJob: 'HQ Network Scan',
-    discoverySource: 'WMI & Ping Sweep',
-    matchedAssetId: null,
-    matchedAssetName: null,
-    hardware: {
-      cpu: 'Qualcomm Snapdragon 660 Octa-Core 2.2GHz',
-      ram: '4 GB LPDDR4',
-      storage: '32 GB eMMC',
-      bios: 'Zebra BSP 11.2',
-      systemUuid: 'ZEBRA-TC52-ZB55231',
-      chassis: 'Rugged Mobile Touch Computer',
-      assetTagEtched: 'Unassigned'
-    },
-    network: {
-      ipSubnet: '192.168.1.100 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'AP-01 (Wi-Fi 6 SSID: Retail-POS)',
-      vlan: '40 (POS & Payment)',
-      dhcpServer: '192.168.1.1',
-      speed: 'Wi-Fi 5 (433 Mbps)'
-    },
-    software: [
-      { name: 'Zebra DataWedge Suite', version: '11.0', publisher: 'Zebra Technologies', installDate: '2026-01-05' }
-    ],
-    history: [
-      { timestamp: '10 Sep 2026 10:01 AM', job: 'HQ Network Scan', event: 'Newly detected mobile barcode scanner POS unit', status: 'New' }
-    ]
-  }
-];
-
 export function DiscoveredDevicesWorkbench() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Primary Data State
-  const [devices, setDevices] = useState(FALLBACK_DEVICES);
+  const [devices, setDevices] = useState([]);
   const [loading, setLoading] = useState(false);
 
-  // KPIs matching Screenshot #19 exact values: 245 total, 198 matched (81%), 32 new (13%), 15 review (6%)
   const kpis = useMemo(() => {
+    const total = devices.length;
+    const matched = devices.filter(d => d.status === 'Matched').length;
+    const newCount = devices.filter(d => d.status === 'New').length;
+    const review = devices.filter(d => d.status === 'Review').length;
     return {
-      total: 245,
-      matched: 198,
-      matchedPct: 81,
-      newCount: 32,
-      newPct: 13,
-      review: 15,
-      reviewPct: 6
+      total, matched, newCount, review,
+      matchedPct: total ? Math.round(matched / total * 100) : 0,
+      newPct: total ? Math.round(newCount / total * 100) : 0,
+      reviewPct: total ? Math.round(review / total * 100) : 0
     };
-  }, []);
+  }, [devices]);
 
   // Selected Device for lower split view
-  const [selectedDevice, setSelectedDevice] = useState(FALLBACK_DEVICES[0]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
   const [detailTab, setDetailTab] = useState('hardware'); // 'hardware' | 'software' | 'network' | 'match' | 'history'
 
   // Table Selection State
@@ -567,6 +105,26 @@ export function DiscoveredDevicesWorkbench() {
     setToastMessage({ msg, type });
     setTimeout(() => setToastMessage(null), 3500);
   };
+
+  useEffect(() => {
+    let alive = true;
+    setLoading(true);
+    api.get('/discovery/devices?limit=2000')
+      .then(result => {
+        if (!alive) return;
+        const list = Array.isArray(result?.devices) ? result.devices : [];
+        setDevices(list);
+        setSelectedDevice(previous => list.find(d => d.id === previous?.id) || list[0] || null);
+      })
+      .catch(error => {
+        if (!alive) return;
+        setDevices([]);
+        setSelectedDevice(null);
+        showToast(error.message || 'Could not load discovered devices.', 'error');
+      })
+      .finally(() => { if (alive) setLoading(false); });
+    return () => { alive = false; };
+  }, []);
 
   // ---------------------------------------------------------------------------
   // 8 MODALS STATES (Prompt Image 8 Modals)
@@ -1382,7 +940,7 @@ export function DiscoveredDevicesWorkbench() {
                     <span>Create Asset</span>
                   </button>
                   <button
-                    onClick={() => navigate(`/assets/${selectedDevice.matchedAssetId || 'AS-2026-00121'}`)}
+                    onClick={() => navigate(`/assets/${selectedDevice.matchedAssetId || ''}`)}
                     className="px-3 py-1.5 bg-white hover:bg-purple-50 text-[#6C2BD9] border border-purple-200 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-colors cursor-pointer"
                   >
                     <span>View in Asset 360°</span>
@@ -1484,7 +1042,7 @@ export function DiscoveredDevicesWorkbench() {
                   </div>
                   <div>
                     <span className="text-slate-400 block text-[11px]">Asset ID</span>
-                    <span className="font-mono font-bold text-[#6C2BD9]">{selectedDevice.matchedAssetId || 'AS-2026-00121'}</span>
+                    <span className="font-mono font-bold text-[#6C2BD9]">{selectedDevice.matchedAssetId || ''}</span>
                   </div>
                 </div>
               </div>
@@ -1527,7 +1085,7 @@ export function DiscoveredDevicesWorkbench() {
                       <Cpu className="w-4 h-4 text-[#6C2BD9]" />
                       CPU
                     </span>
-                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.cpu || 'Intel Core i5-12500 (3.0 GHz)'}</span>
+                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.cpu || '-' }</span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
@@ -1535,7 +1093,7 @@ export function DiscoveredDevicesWorkbench() {
                       <HardDrive className="w-4 h-4 text-[#6C2BD9]" />
                       RAM
                     </span>
-                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.ram || '16 GB'}</span>
+                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.ram || '-' }</span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
@@ -1543,7 +1101,7 @@ export function DiscoveredDevicesWorkbench() {
                       <Database className="w-4 h-4 text-[#6C2BD9]" />
                       Storage
                     </span>
-                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.storage || '512 GB SSD'}</span>
+                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.storage || '-' }</span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
@@ -1551,7 +1109,7 @@ export function DiscoveredDevicesWorkbench() {
                       <FileText className="w-4 h-4 text-[#6C2BD9]" />
                       BIOS Version
                     </span>
-                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.bios || 'Dell 1.18.0'}</span>
+                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.bios || '-' }</span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
@@ -1559,7 +1117,7 @@ export function DiscoveredDevicesWorkbench() {
                       <Key className="w-4 h-4 text-[#6C2BD9]" />
                       System UUID
                     </span>
-                    <span className="font-mono text-[11px] text-slate-700">{selectedDevice.hardware?.systemUuid || '4C4C4544-0050-3410-804C-C7004F323334'}</span>
+                    <span className="font-mono text-[11px] text-slate-700">{selectedDevice.hardware?.systemUuid || '-' }</span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
@@ -1567,7 +1125,7 @@ export function DiscoveredDevicesWorkbench() {
                       <Monitor className="w-4 h-4 text-[#6C2BD9]" />
                       Chassis Type
                     </span>
-                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.chassis || 'Desktop'}</span>
+                    <span className="font-bold text-slate-900">{selectedDevice.hardware?.chassis || '-' }</span>
                   </div>
 
                   <div className="flex items-center justify-between p-2 bg-slate-50 rounded-xl">
@@ -2102,7 +1660,7 @@ export function DiscoveredDevicesWorkbench() {
                   <div className="grid grid-cols-2 gap-3 text-xs">
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                       <span className="text-slate-400 block font-semibold">Processor (CPU)</span>
-                      <span className="font-extrabold text-slate-900">{(modalDevice || selectedDevice)?.hardware?.cpu || 'Intel Core i5-12500 (3.0 GHz)'}</span>
+                      <span className="font-extrabold text-slate-900">{(modalDevice || selectedDevice)?.hardware?.cpu || '-' }</span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                       <span className="text-slate-400 block font-semibold">System Memory (RAM)</span>
@@ -2114,15 +1672,15 @@ export function DiscoveredDevicesWorkbench() {
                     </div>
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                       <span className="text-slate-400 block font-semibold">BIOS Firmware</span>
-                      <span className="font-extrabold text-slate-900">{(modalDevice || selectedDevice)?.hardware?.bios || 'Dell 1.18.0'}</span>
+                      <span className="font-extrabold text-slate-900">{(modalDevice || selectedDevice)?.hardware?.bios || '-' }</span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                       <span className="text-slate-400 block font-semibold">System UUID</span>
-                      <span className="font-mono text-slate-700">{(modalDevice || selectedDevice)?.hardware?.systemUuid || '4C4C4544-0050-3410-804C-C7004F323334'}</span>
+                      <span className="font-mono text-slate-700">{(modalDevice || selectedDevice)?.hardware?.systemUuid || '-' }</span>
                     </div>
                     <div className="p-3 bg-slate-50 rounded-xl border border-slate-200">
                       <span className="text-slate-400 block font-semibold">Chassis Type</span>
-                      <span className="font-extrabold text-slate-900">{(modalDevice || selectedDevice)?.hardware?.chassis || 'Desktop'}</span>
+                      <span className="font-extrabold text-slate-900">{(modalDevice || selectedDevice)?.hardware?.chassis || '-' }</span>
                     </div>
                   </div>
                 </div>

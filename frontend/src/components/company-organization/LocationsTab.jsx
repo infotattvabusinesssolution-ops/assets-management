@@ -1,3 +1,4 @@
+import { api } from '../../services/api';
 import React, { useState, useMemo } from 'react';
 import {
   MapPin,
@@ -23,221 +24,37 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-export const INITIAL_LOCATIONS = [
-  {
-    id: 1,
-    name: 'Dubai HQ',
-    code: 'DXB-HQ',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    city: 'Dubai',
-    country: 'UAE',
-    locationType: 'Head Office',
-    status: 'Active',
-    createdOn: '10 Jan 2025',
-    address: 'Emaar Square, Building 4, Downtown Dubai, UAE',
-    costCenter: 'CC-1001'
-  },
-  {
-    id: 2,
-    name: 'Jebel Ali Warehouse',
-    code: 'DXB-WH1',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    city: 'Jebel Ali',
-    country: 'UAE',
-    locationType: 'Warehouse',
-    status: 'Active',
-    createdOn: '10 Jan 2025',
-    address: 'Gate 4, Jebel Ali Freezone (JAFZA), Dubai, UAE',
-    costCenter: 'CC-2001'
-  },
-  {
-    id: 3,
-    name: 'Abu Dhabi Office',
-    code: 'AUH-OF1',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    city: 'Abu Dhabi',
-    country: 'UAE',
-    locationType: 'Office',
-    status: 'Active',
-    createdOn: '11 Jan 2025',
-    address: 'Al Khatem Tower, ADGM Square, Al Maryah Island, Abu Dhabi, UAE',
-    costCenter: 'CC-1002'
-  },
-  {
-    id: 4,
-    name: 'Sharjah Warehouse',
-    code: 'SHJ-WH1',
-    company: 'Wavelogix FZC',
-    businessUnit: 'Operations',
-    city: 'Sharjah',
-    country: 'UAE',
-    locationType: 'Warehouse',
-    status: 'Active',
-    createdOn: '12 Jan 2025',
-    address: 'SAIF Zone, Warehouse Area C, Sharjah, UAE',
-    costCenter: 'CC-2003'
-  },
-  {
-    id: 5,
-    name: 'Riyadh Office',
-    code: 'RUH-OF1',
-    company: 'd.code Solutions LLC',
-    businessUnit: 'Sales',
-    city: 'Riyadh',
-    country: 'KSA',
-    locationType: 'Office',
-    status: 'Active',
-    createdOn: '12 Jan 2025',
-    address: 'King Fahd Road, Al Olaya District, Riyadh, KSA',
-    costCenter: 'CC-3001'
-  },
-  {
-    id: 6,
-    name: 'Doha Office',
-    code: 'DOH-OF1',
-    company: 'Digital ID Solutions',
-    businessUnit: 'Sales',
-    city: 'Doha',
-    country: 'Qatar',
-    locationType: 'Office',
-    status: 'Inactive',
-    createdOn: '13 Jan 2025',
-    address: 'West Bay Commercial Tower, Doha, Qatar',
-    costCenter: 'CC-3002'
-  },
-  {
-    id: 7,
-    name: 'Muscat Service Center',
-    code: 'MCT-SVC',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Support',
-    city: 'Muscat',
-    country: 'Oman',
-    locationType: 'Service Center',
-    status: 'Active',
-    createdOn: '14 Jan 2025',
-    address: 'Ruwi Commercial District, Muscat, Oman',
-    costCenter: 'CC-1004'
-  },
-  {
-    id: 8,
-    name: 'Dammam Warehouse',
-    code: 'DMM-WH1',
-    company: 'Wavelogix FZC',
-    businessUnit: 'Operations',
-    city: 'Dammam',
-    country: 'KSA',
-    locationType: 'Warehouse',
-    status: 'Active',
-    createdOn: '15 Jan 2025',
-    address: '2nd Industrial City, Dammam, KSA',
-    costCenter: 'CC-2002'
-  },
-  {
-    id: 9,
-    name: 'Fujairah Site',
-    code: 'FUJ-ST1',
-    company: 'Green Arabia LLC',
-    businessUnit: 'Operations',
-    city: 'Fujairah',
-    country: 'UAE',
-    locationType: 'Site',
-    status: 'Active',
-    createdOn: '16 Jan 2025',
-    address: 'Port of Fujairah Energy Park, Fujairah, UAE',
-    costCenter: 'CC-2004'
-  },
-  {
-    id: 10,
-    name: 'Al Ain Office',
-    code: 'AAN-OF1',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Administration',
-    city: 'Al Ain',
-    country: 'UAE',
-    locationType: 'Office',
-    status: 'Active',
-    createdOn: '17 Jan 2025',
-    address: 'Town Centre Commercial Mall, Al Ain, UAE',
-    costCenter: 'CC-1005'
-  },
-  {
-    id: 11,
-    name: 'Jeddah Branch',
-    code: 'JED-BR1',
-    company: 'd.code Solutions LLC',
-    businessUnit: 'Sales',
-    city: 'Jeddah',
-    country: 'KSA',
-    locationType: 'Office',
-    status: 'Active',
-    createdOn: '18 Jan 2025',
-    address: 'Al Corniche Road, Al Hamra District, Jeddah, KSA',
-    costCenter: 'CC-3003'
-  },
-  {
-    id: 12,
-    name: 'Manama Tech Hub',
-    code: 'BAH-HUB',
-    company: 'Digital ID Solutions',
-    businessUnit: 'Corporate Services',
-    city: 'Manama',
-    country: 'Bahrain',
-    locationType: 'Office',
-    status: 'Active',
-    createdOn: '19 Jan 2025',
-    address: 'Bahrain Financial Harbour, Manama, Bahrain',
-    costCenter: 'CC-1006'
-  },
-  {
-    id: 13,
-    name: 'Kuwait City Logistics Hub',
-    code: 'KWT-HUB',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    city: 'Kuwait City',
-    country: 'Kuwait',
-    locationType: 'Warehouse',
-    status: 'Active',
-    createdOn: '20 Jan 2025',
-    address: 'Shuwaikh Industrial Area, Kuwait City, Kuwait',
-    costCenter: 'CC-2005'
-  },
-  {
-    id: 14,
-    name: 'Ras Al Khaimah Site',
-    code: 'RAK-ST1',
-    company: 'Wavelogix FZC',
-    businessUnit: 'Operations',
-    city: 'Ras Al Khaimah',
-    country: 'UAE',
-    locationType: 'Site',
-    status: 'Active',
-    createdOn: '21 Jan 2025',
-    address: 'RAK Maritime City, Ras Al Khaimah, UAE',
-    costCenter: 'CC-2006'
-  },
-  {
-    id: 15,
-    name: 'Sohar Depot',
-    code: 'SOH-DEP',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    city: 'Sohar',
-    country: 'Oman',
-    locationType: 'Warehouse',
-    status: 'Active',
-    createdOn: '22 Jan 2025',
-    address: 'Sohar Freezone Area 2, Sohar, Oman',
-    costCenter: 'CC-2007'
-  }
-];
+export const INITIAL_LOCATIONS = [];
 
 export function LocationsTab({ triggerToast, onSwitchTab }) {
-  const [locations, setLocations] = useState(INITIAL_LOCATIONS);
+  React.useEffect(() => {
+    const fetchLocationsFromDb = async () => {
+      try {
+        const res = await api.get('/admin/organization/locations').catch(() => null);
+        if (res && (res.locations || Array.isArray(res))) {
+          const list = res.locations || res;
+          const mapped = list.map(loc => ({
+            id: loc.id,
+            name: loc.name,
+            code: loc.code,
+            type: loc.type || 'Office',
+            company: loc.company?.name || 'Asset360 Holdings',
+            city: loc.city || 'Dubai',
+            country: loc.country || 'UAE',
+            buildingsCount: loc._count?.buildings || 0,
+            assetsCount: loc._count?.assets || 0,
+            status: loc.active ? 'Active' : 'Inactive',
+            address: loc.address || 'Business Bay, Dubai'
+          }));
+          setLocations(mapped);
+        }
+      } catch (e) {
+        console.error('Failed to load locations from DB:', e);
+      }
+    };
+    fetchLocationsFromDb();
+  }, []);
+  const [locations, setLocations] = useState([]);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('All Companies');

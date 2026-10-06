@@ -48,269 +48,7 @@ import { DiscoveryJobs } from './DiscoveryJobs';
 import { DiscoveredDevices } from './DiscoveredDevices';
 import { DiscoverySettings } from './DiscoverySettings';
 
-// Seeded Discovered Devices matching screenshot #17
-const SEED_DEVICES = [
-  {
-    id: 'DEV-001',
-    ipAddress: '192.168.1.10',
-    hostname: 'DESKTOP-001',
-    macAddress: '00:1A:2B:3C:4D:5E',
-    deviceType: 'Computer',
-    manufacturer: 'Dell',
-    model: 'OptiPlex 7020',
-    serialNumber: '7CD1234',
-    status: 'Matched',
-    matchScore: 100,
-    os: 'Windows 11 Pro',
-    domain: 'ASSET360',
-    lastSeen: '10 Sep 2026 10:24 AM',
-    location: 'Dubai HQ - IT Department',
-    matchedAsset: {
-      assetTag: 'AS-2026-00121',
-      name: 'Dell OptiPlex 7020',
-      serialNumber: '7CD1234',
-      macAddress: '00:1A:2B:3C:4D:5E',
-      manufacturer: 'Dell',
-      model: 'OptiPlex 7020',
-      assignedUser: 'John Doe (IT)',
-      location: 'Dubai HQ - Floor 1',
-      status: 'Active'
-    },
-    hardware: {
-      cpu: 'Intel Core i7-12700 @ 2.10GHz',
-      ram: '16 GB DDR4',
-      storage: '512 GB NVMe SSD',
-      biosUuid: '7CD1234-DEL-OPT7020',
-      arch: 'x64-based PC'
-    },
-    network: {
-      ipSubnet: '192.168.1.10 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'SW-CORE-01 (Gi1/0/10)',
-      vlan: 'VLAN 10 (IT Net)',
-      dhcpServer: '192.168.1.1'
-    },
-    software: [
-      { id: 1, name: 'Microsoft Windows 11 Pro', version: '23H2', publisher: 'Microsoft' },
-      { id: 2, name: 'Microsoft Office 365', version: '16.0', publisher: 'Microsoft' },
-      { id: 3, name: 'Google Chrome', version: '128.0', publisher: 'Google LLC' },
-      { id: 4, name: 'Adobe Acrobat Reader', version: '24.2', publisher: 'Adobe' },
-      { id: 5, name: 'Microsoft Teams', version: '1.7', publisher: 'Microsoft' }
-    ]
-  },
-  {
-    id: 'DEV-002',
-    ipAddress: '192.168.1.11',
-    hostname: 'MONITOR-245',
-    macAddress: '00:1A:2B:3C:4D:6F',
-    deviceType: 'Monitor',
-    manufacturer: 'Dell',
-    model: 'P2422H',
-    serialNumber: 'CN004F2',
-    status: 'Matched',
-    matchScore: 98,
-    os: 'Firmware v1.0.4',
-    domain: 'N/A',
-    lastSeen: '10 Sep 2026 10:24 AM',
-    location: 'Dubai HQ - GF',
-    matchedAsset: {
-      assetTag: 'AS-2026-00122',
-      name: 'Dell P2422H Monitor',
-      serialNumber: 'CN004F2',
-      macAddress: '00:1A:2B:3C:4D:6F',
-      manufacturer: 'Dell',
-      model: 'P2422H',
-      assignedUser: 'Jane Smith (HR)',
-      location: 'Dubai HQ - Ground Floor',
-      status: 'Active'
-    },
-    hardware: {
-      cpu: 'Embedded Scaler IC',
-      ram: '256 MB Flash',
-      storage: 'Internal ROM',
-      biosUuid: 'CN004F2-MON-245',
-      arch: 'Embedded'
-    },
-    network: {
-      ipSubnet: '192.168.1.11 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'SW-CORE-01 (Gi1/0/11)',
-      vlan: 'VLAN 10',
-      dhcpServer: '192.168.1.1'
-    },
-    software: [
-      { id: 1, name: 'Dell Display Manager', version: '2.1.0', publisher: 'Dell Inc.' },
-      { id: 2, name: 'DisplayPort MST Firmware', version: '1.0.4', publisher: 'Dell Inc.' }
-    ]
-  },
-  {
-    id: 'DEV-003',
-    ipAddress: '192.168.1.20',
-    hostname: 'PRN-HQ-01',
-    macAddress: '00:1A:2B:3C:4D:7A',
-    deviceType: 'Printer',
-    manufacturer: 'HP',
-    model: 'LaserJet Pro',
-    serialNumber: 'VNB3K91',
-    status: 'New',
-    matchScore: 0,
-    os: 'FutureSmart 5 Firmware',
-    domain: 'ASSET360',
-    lastSeen: '10 Sep 2026 10:20 AM',
-    location: 'Dubai HQ - Finance Room',
-    matchedAsset: null,
-    hardware: {
-      cpu: 'HP Custom RISC 1.2GHz',
-      ram: '512 MB',
-      storage: '4 GB eMMC Flash',
-      biosUuid: 'VNB3K91-HP-LJPRO',
-      arch: 'ARM'
-    },
-    network: {
-      ipSubnet: '192.168.1.20 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'SW-CORE-01 (Gi1/0/20)',
-      vlan: 'VLAN 20 (Printers)',
-      dhcpServer: '192.168.1.1'
-    },
-    software: [
-      { id: 1, name: 'HP Web Jetadmin Agent', version: '10.5', publisher: 'HP Inc.' },
-      { id: 2, name: 'Embedded Web Server', version: '3.1', publisher: 'HP Inc.' }
-    ]
-  },
-  {
-    id: 'DEV-004',
-    ipAddress: '192.168.1.30',
-    hostname: 'SW-CORE-01',
-    macAddress: '00:1A:2B:3C:4D:8B',
-    deviceType: 'Network Device',
-    manufacturer: 'Cisco',
-    model: 'C9300',
-    serialNumber: 'FD02456',
-    status: 'Matched',
-    matchScore: 99,
-    os: 'Cisco IOS-XE 17.6',
-    domain: 'INFRA.ASSET360',
-    lastSeen: '10 Sep 2026 10:24 AM',
-    location: 'Data Center Rack 02',
-    matchedAsset: {
-      assetTag: 'AS-2026-00185',
-      name: 'Cisco Core Switch 9300',
-      serialNumber: 'FD02456',
-      macAddress: '00:1A:2B:3C:4D:8B',
-      manufacturer: 'Cisco',
-      model: 'C9300-48U',
-      assignedUser: 'IT Infrastructure',
-      location: 'Data Center',
-      status: 'In Production'
-    },
-    hardware: {
-      cpu: 'x86 4-Core 1.8GHz',
-      ram: '16 GB DDR4',
-      storage: '120 GB SSD',
-      biosUuid: 'FD02456-CISCO-C9300',
-      arch: 'x86_64'
-    },
-    network: {
-      ipSubnet: '192.168.1.30 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'Core Te1/1/1',
-      vlan: 'VLAN 1 (Mgmt)',
-      dhcpServer: 'Static'
-    },
-    software: [
-      { id: 1, name: 'Cisco DNA Center Agent', version: '2.3.5', publisher: 'Cisco Systems' },
-      { id: 2, name: 'SNMPv3 Service Engine', version: '3.0', publisher: 'Cisco Systems' }
-    ]
-  },
-  {
-    id: 'DEV-005',
-    ipAddress: '192.168.1.45',
-    hostname: 'LAPTOP-078',
-    macAddress: '00:1A:2B:3C:4D:9C',
-    deviceType: 'Computer',
-    manufacturer: 'Lenovo',
-    model: 'ThinkPad T14',
-    serialNumber: 'PF34K2',
-    status: 'New',
-    matchScore: 0,
-    os: 'Windows 11 Pro',
-    domain: 'ASSET360',
-    lastSeen: '10 Sep 2026 10:15 AM',
-    location: 'Dubai HQ - Floor 3',
-    matchedAsset: null,
-    hardware: {
-      cpu: 'Intel Core i5-1240P @ 1.70GHz',
-      ram: '16 GB DDR4',
-      storage: '512 GB PCIe NVMe SSD',
-      biosUuid: 'PF34K2-LEN-T14',
-      arch: 'x64-based PC'
-    },
-    network: {
-      ipSubnet: '192.168.1.45 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'AP-01 Wireless',
-      vlan: 'VLAN 10',
-      dhcpServer: '192.168.1.1'
-    },
-    software: [
-      { id: 1, name: 'Microsoft Windows 11 Pro', version: '23H2', publisher: 'Microsoft' },
-      { id: 2, name: 'Lenovo Commercial Vantage', version: '10.23', publisher: 'Lenovo' },
-      { id: 3, name: 'Google Chrome', version: '128.0', publisher: 'Google LLC' }
-    ]
-  },
-  {
-    id: 'DEV-006',
-    ipAddress: '192.168.1.50',
-    hostname: 'AP-01',
-    macAddress: '00:1A:2B:3C:4D:AA',
-    deviceType: 'Network Device',
-    manufacturer: 'Aruba',
-    model: 'AP-515',
-    serialNumber: 'CN7G4Q',
-    status: 'Review',
-    matchScore: 65,
-    os: 'ArubaOS 8.10.0',
-    domain: 'INFRA.ASSET360',
-    lastSeen: '10 Sep 2026 10:24 AM',
-    location: 'Dubai HQ - Ceiling Corridor',
-    matchedAsset: {
-      assetTag: 'AS-2026-00088',
-      name: 'Aruba AP-515 Access Point',
-      serialNumber: 'CN7G4Q',
-      macAddress: '00:1A:2B:3C:4D:AA',
-      manufacturer: 'Aruba',
-      model: 'AP-515-US',
-      assignedUser: 'Network Operations',
-      location: 'Dubai HQ - Main Hall',
-      status: 'Active'
-    },
-    hardware: {
-      cpu: 'Qualcomm IPQ8074 Quad-Core',
-      ram: '1 GB DDR4',
-      storage: '512 MB NAND Flash',
-      biosUuid: 'CN7G4Q-ARUBA-AP515',
-      arch: 'ARM64'
-    },
-    network: {
-      ipSubnet: '192.168.1.50 / 255.255.255.0',
-      gateway: '192.168.1.1',
-      dns: '192.168.1.1',
-      switchPort: 'SW-CORE-01 (Gi1/0/5)',
-      vlan: 'VLAN 1 (Mgmt)',
-      dhcpServer: 'Static'
-    },
-    software: [
-      { id: 1, name: 'Aruba Instant AP Engine', version: '8.10.0', publisher: 'HPE Aruba' },
-      { id: 2, name: 'AirWave Management Client', version: '8.2.1', publisher: 'HPE Aruba' }
-    ]
-  }
-];
+const SEED_DEVICES = [];
 
 export function DiscoveryWorkbench({ defaultTab }) {
   const navigate = useNavigate();
@@ -324,6 +62,12 @@ export function DiscoveryWorkbench({ defaultTab }) {
   const [profile, setProfile] = useState('Default (All Devices)');
   const [credentials, setCredentials] = useState('Use Saved Credentials');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
+  const [credentialForm, setCredentialForm] = useState({
+    username: '',
+    passwordValue: '',
+    domainIpAddress: '',
+    snmpCommunity: ''
+  });
 
   // Summary Metrics State matching Screenshot #17
   const [summary] = useState({
@@ -353,9 +97,9 @@ export function DiscoveryWorkbench({ defaultTab }) {
   const [scanProgress, setScanProgress] = useState(100);
 
   // Table Data State
-  const [devices, setDevices] = useState(SEED_DEVICES);
-  const [selectedDevice, setSelectedDevice] = useState(SEED_DEVICES[0]);
-  const [selectedIds, setSelectedIds] = useState(['DEV-001']);
+  const [devices, setDevices] = useState([]);
+  const [selectedDevice, setSelectedDevice] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [detailTab, setDetailTab] = useState('software'); // software | hardware | network | match
 
   // Table Filters
@@ -608,27 +352,86 @@ export function DiscoveryWorkbench({ defaultTab }) {
                       </select>
                     </div>
 
-                    {/* Credentials */}
-                    <div>
-                      <label className="block text-slate-500 mb-1">Credentials (optional)</label>
-                      <div className="flex items-center gap-2">
-                        <select
-                          value={credentials}
-                          onChange={(e) => setCredentials(e.target.value)}
-                          className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
-                        >
-                          <option value="Use Saved Credentials">Use Saved Credentials</option>
-                          <option value="Domain Admin">Domain Admin</option>
-                          <option value="SNMP v3 Auth">SNMP v3 Auth</option>
-                        </select>
-                        <button
-                          onClick={() => setIsSettingsOpen(true)}
-                          className="p-2 border border-slate-200 rounded-xl hover:bg-slate-100 text-purple-700 transition-colors shrink-0"
-                          title="Credentials key settings"
-                        >
-                          <Key className="w-4 h-4" />
-                        </button>
-                      </div>
+                    {/* Dynamic Credentials Section */}
+                    <div className="pt-2 border-t border-slate-100">
+                      <h3 className="text-xs font-bold text-slate-700 mb-2">Required Credentials</h3>
+                      
+                      {discoveryType === 'SNMP Sweep' && (
+                        <div>
+                          <label className="block text-slate-500 mb-1">SNMP Community String</label>
+                          <input
+                            type="password"
+                            placeholder="e.g. public"
+                            value={credentialForm.snmpCommunity}
+                            onChange={(e) => setCredentialForm({...credentialForm, snmpCommunity: e.target.value})}
+                            className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                          />
+                        </div>
+                      )}
+
+                      {discoveryType === 'Active Directory Sync' && (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-slate-500 mb-1">Domain Controller IP</label>
+                            <input
+                              type="text"
+                              placeholder="192.168.1.10"
+                              value={credentialForm.domainIpAddress}
+                              onChange={(e) => setCredentialForm({...credentialForm, domainIpAddress: e.target.value})}
+                              className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 mb-1">Admin Username</label>
+                            <input
+                              type="text"
+                              placeholder="administrator@domain.local"
+                              value={credentialForm.username}
+                              onChange={(e) => setCredentialForm({...credentialForm, username: e.target.value})}
+                              className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 mb-1">Admin Password</label>
+                            <input
+                              type="password"
+                              value={credentialForm.passwordValue}
+                              onChange={(e) => setCredentialForm({...credentialForm, passwordValue: e.target.value})}
+                              className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {discoveryType === 'WMI/WinRM Agentless' && (
+                        <div className="space-y-2">
+                          <div>
+                            <label className="block text-slate-500 mb-1">Windows Username</label>
+                            <input
+                              type="text"
+                              placeholder="Administrator"
+                              value={credentialForm.username}
+                              onChange={(e) => setCredentialForm({...credentialForm, username: e.target.value})}
+                              className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-slate-500 mb-1">Windows Password</label>
+                            <input
+                              type="password"
+                              value={credentialForm.passwordValue}
+                              onChange={(e) => setCredentialForm({...credentialForm, passwordValue: e.target.value})}
+                              className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
+                            />
+                          </div>
+                        </div>
+                      )}
+
+                      {discoveryType === 'IP Range Scan' && (
+                        <div className="text-xs text-slate-500 italic py-2">
+                          No credentials required for standard ping sweeps.
+                        </div>
+                      )}
                     </div>
 
                     {/* More Options Accordion */}

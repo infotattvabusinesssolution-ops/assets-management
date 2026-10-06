@@ -1,3 +1,4 @@
+import { api } from '../../services/api';
 import React, { useState, useMemo } from 'react';
 import {
   Building2,
@@ -21,123 +22,38 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-export const INITIAL_COMPANIES = [
-  {
-    id: 1,
-    name: 'Asset360 Holdings',
-    code: 'A360',
-    type: 'Holding',
-    region: 'UAE',
-    businessUnitsCount: 5,
-    locationsCount: 12,
-    status: 'Active',
-    createdOn: '10 Jan 2025',
-    createdBy: 'System',
-    parentCompany: 'None',
-    description: 'Parent holding entity for regional enterprise software operations'
-  },
-  {
-    id: 2,
-    name: 'Wavelogix FZC',
-    code: 'WLF',
-    type: 'Operating',
-    region: 'UAE',
-    businessUnitsCount: 3,
-    locationsCount: 8,
-    status: 'Active',
-    createdOn: '12 Jan 2025',
-    createdBy: 'John Doe',
-    parentCompany: 'Asset360 Holdings',
-    description: 'Hardware, RFID & IoT sensor tracking operations'
-  },
-  {
-    id: 3,
-    name: 'd.code Solutions LLC',
-    code: 'DCS',
-    type: 'Operating',
-    region: 'UAE',
-    businessUnitsCount: 2,
-    locationsCount: 5,
-    status: 'Active',
-    createdOn: '15 Jan 2025',
-    createdBy: 'Sarah Ahmed',
-    parentCompany: 'Asset360 Holdings',
-    description: 'Software development & integration entity'
-  },
-  {
-    id: 4,
-    name: 'Digital ID Solutions FZ LLC',
-    code: 'DIS',
-    type: 'Operating',
-    region: 'UAE',
-    businessUnitsCount: 2,
-    locationsCount: 4,
-    status: 'Active',
-    createdOn: '18 Jan 2025',
-    createdBy: 'Ramesh Kumar',
-    parentCompany: 'Asset360 Holdings',
-    description: 'Digital identity & smart tagging solutions'
-  },
-  {
-    id: 5,
-    name: 'Aasaan Environmental Services',
-    code: 'AES',
-    type: 'Operating',
-    region: 'KSA',
-    businessUnitsCount: 3,
-    locationsCount: 7,
-    status: 'Active',
-    createdOn: '22 Jan 2025',
-    createdBy: 'Priya Nair',
-    parentCompany: 'Asset360 Holdings',
-    description: 'Environmental monitoring & waste asset logistics'
-  },
-  {
-    id: 6,
-    name: 'CodeIQ Technologies',
-    code: 'CIQ',
-    type: 'Operating',
-    region: 'Qatar',
-    businessUnitsCount: 1,
-    locationsCount: 3,
-    status: 'Inactive',
-    createdOn: '25 Jan 2025',
-    createdBy: 'John Doe',
-    parentCompany: 'Asset360 Holdings',
-    description: 'Software testing & Quality Assurance partner'
-  },
-  {
-    id: 7,
-    name: 'Middle East Operations',
-    code: 'MEO',
-    type: 'Region',
-    region: 'UAE',
-    businessUnitsCount: 0,
-    locationsCount: 0,
-    status: 'Active',
-    createdOn: '28 Jan 2025',
-    createdBy: 'System',
-    parentCompany: 'Asset360 Holdings',
-    description: 'Regional management node'
-  },
-  {
-    id: 8,
-    name: 'International Ventures',
-    code: 'INV',
-    type: 'Region',
-    region: 'Other',
-    businessUnitsCount: 0,
-    locationsCount: 0,
-    status: 'Active',
-    createdOn: '01 Feb 2025',
-    createdBy: 'System',
-    parentCompany: 'Asset360 Holdings',
-    description: 'Global expansion management entity'
-  }
-];
+export const INITIAL_COMPANIES = [];
 
 export function CompaniesTab({ triggerToast, onSwitchTab }) {
-  const [companies, setCompanies] = useState(INITIAL_COMPANIES);
+  React.useEffect(() => {
+    const fetchCompaniesFromDb = async () => {
+      try {
+        const res = await api.get('/admin/organization/companies').catch(() => null);
+        if (res && (res.companies || Array.isArray(res))) {
+          const list = res.companies || res;
+          const mapped = list.map(c => ({
+            id: c.id,
+            name: c.name,
+            code: c.code,
+            type: c.type || 'Operating',
+            region: c.region || 'UAE',
+            businessUnitsCount: c._count?.businessUnits || c.businessUnitsCount || 0,
+            locationsCount: c._count?.sites || c.locationsCount || 0,
+            status: c.active ? 'Active' : 'Inactive',
+            createdOn: new Date(c.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            createdBy: c.createdBy || 'System Admin',
+            parentCompany: c.parentCompany || 'Asset360 Holdings',
+            description: c.description || ''
+          }));
+          setCompanies(mapped);
+        }
+      } catch (e) {
+        console.error('Failed to load companies from DB:', e);
+      }
+    };
+    fetchCompaniesFromDb();
+  }, []);
+  const [companies, setCompanies] = useState([]);
   const [selectedCompanyIds, setSelectedCompanyIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');

@@ -25,7 +25,8 @@ import {
   Building,
   User,
   Tag,
-  ChevronDown
+  ChevronDown,
+  X
 } from 'lucide-react';
 import clsx from 'clsx';
 
@@ -49,183 +50,9 @@ export function ReceivingHistory() {
 
   const [savedView, setSavedView] = useState('All Receives');
 
-  // Receive Transactions Main List (10 rows matching exact screenshot data)
-  const [transactions, setTransactions] = useState([
-    {
-      id: 'rcv-01',
-      receiveNumber: 'RCV-2026-00125',
-      receiveDate: '21 Aug 2026',
-      receiveTime: '21 Aug 2026 10:45',
-      poNumber: 'PO-2026-00456',
-      supplier: 'Dell Technologies',
-      receiveType: 'With PO',
-      itemsCount: 25,
-      taggedCount: 25,
-      status: 'Completed',
-      receivedBy: 'John Doe',
-      location: 'IT Store - Dubai HQ',
-      remarks: 'Laptops and accessories for IT dept.',
-      items: [
-        { id: 'item-01', idx: 1, assetName: 'Dell Latitude 7450', serialNumber: 'DL7450-001', tagNumber: 'E36000012345', tagStatus: 'Tagged' },
-        { id: 'item-02', idx: 2, assetName: 'Dell Latitude 7450', serialNumber: 'DL7450-002', tagNumber: 'E36000012346', tagStatus: 'Tagged' },
-        { id: 'item-03', idx: 3, assetName: 'Dell Docking Station', serialNumber: 'WD19S-2210', tagNumber: 'E36000012347', tagStatus: 'Tagged' },
-        { id: 'item-04', idx: 4, assetName: 'Dell Monitor 27"', serialNumber: 'SM27-3310', tagNumber: 'E36000012348', tagStatus: 'Tagged' },
-        { id: 'item-05', idx: 5, assetName: 'Dell Keyboard', serialNumber: 'KM7321W', tagNumber: 'E36000012349', tagStatus: 'Tagged' }
-      ]
-    },
-    {
-      id: 'rcv-02',
-      receiveNumber: 'RCV-2026-00124',
-      receiveDate: '20 Aug 2026',
-      receiveTime: '20 Aug 2026 14:15',
-      poNumber: 'PO-2026-00451',
-      supplier: 'HP Middle East',
-      receiveType: 'With PO',
-      itemsCount: 40,
-      taggedCount: 38,
-      status: 'Partial',
-      receivedBy: 'Sara Ahmed',
-      location: 'Admin Block',
-      remarks: 'Printers intake',
-      items: [
-        { id: 'item-06', idx: 1, assetName: 'HP LaserJet Pro', serialNumber: 'CNB89001', tagNumber: 'E36000012350', tagStatus: 'Tagged' }
-      ]
-    },
-    {
-      id: 'rcv-03',
-      receiveNumber: 'RCV-2026-00123',
-      receiveDate: '18 Aug 2026',
-      receiveTime: '18 Aug 2026 09:30',
-      poNumber: '-',
-      supplier: 'Local Purchase',
-      receiveType: 'Without PO',
-      itemsCount: 12,
-      taggedCount: 12,
-      status: 'Completed',
-      receivedBy: 'Ahmed Khan',
-      location: 'Finance Dept',
-      remarks: 'Urgent office accessories',
-      items: [
-        { id: 'item-07', idx: 1, assetName: 'Office Ergonomic Chair', serialNumber: 'CH-5567', tagNumber: 'E36000012351', tagStatus: 'Tagged' }
-      ]
-    },
-    {
-      id: 'rcv-04',
-      receiveNumber: 'RCV-2026-00122',
-      receiveDate: '17 Aug 2026',
-      receiveTime: '17 Aug 2026 16:00',
-      poNumber: 'PO-2026-00448',
-      supplier: 'Lenovo FZCO',
-      receiveType: 'With PO',
-      itemsCount: 30,
-      taggedCount: 0,
-      status: 'Pending Tagging',
-      receivedBy: 'Priya Nair',
-      location: 'Dubai HQ',
-      remarks: 'ThinkPads received',
-      items: []
-    },
-    {
-      id: 'rcv-05',
-      receiveNumber: 'RCV-2026-00121',
-      receiveDate: '15 Aug 2026',
-      receiveTime: '15 Aug 2026 11:10',
-      poNumber: '-',
-      supplier: 'Internal Transfer',
-      receiveType: 'Without PO',
-      itemsCount: 8,
-      taggedCount: 8,
-      status: 'Completed',
-      receivedBy: 'John Doe',
-      location: 'IT Store',
-      remarks: 'Transferred from Abu Dhabi branch',
-      items: []
-    },
-    {
-      id: 'rcv-06',
-      receiveNumber: 'RCV-2026-00120',
-      receiveDate: '14 Aug 2026',
-      receiveTime: '14 Aug 2026 13:45',
-      poNumber: 'PO-2026-00440',
-      supplier: 'Apple Inc.',
-      receiveType: 'With PO',
-      itemsCount: 15,
-      taggedCount: 15,
-      status: 'Completed',
-      receivedBy: 'Omar Ali',
-      location: 'HR Dept',
-      remarks: 'MacBooks for executive suite',
-      items: []
-    },
-    {
-      id: 'rcv-07',
-      receiveNumber: 'RCV-2026-00119',
-      receiveDate: '12 Aug 2026',
-      receiveTime: '12 Aug 2026 10:00',
-      poNumber: 'PO-2026-00439',
-      supplier: 'Samsung Gulf',
-      receiveType: 'With PO',
-      itemsCount: 22,
-      taggedCount: 20,
-      status: 'Partial',
-      receivedBy: 'Sara Ahmed',
-      location: 'Warehouse',
-      remarks: 'Monitors batch 2',
-      items: []
-    },
-    {
-      id: 'rcv-08',
-      receiveNumber: 'RCV-2026-00118',
-      receiveDate: '10 Aug 2026',
-      receiveTime: '10 Aug 2026 15:20',
-      poNumber: '-',
-      supplier: 'Asset Return',
-      receiveType: 'Without PO',
-      itemsCount: 6,
-      taggedCount: 6,
-      status: 'Completed',
-      receivedBy: 'Khalid Hassan',
-      location: 'IT Store',
-      remarks: 'Employee exit hardware return',
-      items: []
-    },
-    {
-      id: 'rcv-09',
-      receiveNumber: 'RCV-2026-00117',
-      receiveDate: '08 Aug 2026',
-      receiveTime: '08 Aug 2026 12:15',
-      poNumber: 'PO-2026-00432',
-      supplier: 'Zebra Technologies',
-      receiveType: 'With PO',
-      itemsCount: 18,
-      taggedCount: 18,
-      status: 'Completed',
-      receivedBy: 'Priya Nair',
-      location: 'Warehouse Dock',
-      remarks: 'RFID printers and handhelds',
-      items: []
-    },
-    {
-      id: 'rcv-10',
-      receiveNumber: 'RCV-2026-00116',
-      receiveDate: '05 Aug 2026',
-      receiveTime: '05 Aug 2026 09:00',
-      poNumber: '-',
-      supplier: 'Project Allocation',
-      receiveType: 'Without PO',
-      itemsCount: 10,
-      taggedCount: 0,
-      status: 'Pending Tagging',
-      receivedBy: 'Ahmed Khan',
-      location: 'Site B',
-      remarks: 'Temporary site intake',
-      items: []
-    }
-  ]);
-
-  // Active Selected Transaction for Right Column Detail Panels
-  const [selectedTxId, setSelectedTxId] = useState('rcv-01');
-  const [selectedRowIds, setSelectedRowIds] = useState(['rcv-01']);
+  const [transactions, setTransactions] = useState([]);
+  const [selectedTxId, setSelectedTxId] = useState(null);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
 
   // Pagination & Toast state
   const [currentPage, setCurrentPage] = useState(1);
@@ -254,37 +81,38 @@ export function ReceivingHistory() {
         if (filters.toDate) queryParams.set('toDate', filters.toDate);
 
         const res = await api.get(`/receiving/history?${queryParams.toString()}`);
-        if (res && (res.history || res.receipts)) {
-          const list = res.history || res.receipts;
-          if (Array.isArray(list) && list.length > 0) {
-            const mapped = list.map((r, idx) => ({
-              id: r.id || `rcv-${idx}`,
-              receiveNumber: r.receiptNumber,
-              receiveDate: r.receivedDate ? new Date(r.receivedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '21 Aug 2026',
-              receiveTime: r.receivedDate ? new Date(r.receivedDate).toLocaleString('en-GB') : '21 Aug 2026 10:45',
-              poNumber: r.poNumber || '-',
-              supplier: r.vendorName || 'Generic Supplier',
-              receiveType: r.mode === 'WITHOUT_PO' || r.poNumber === 'NON-PO' ? 'Without PO' : 'With PO',
-              itemsCount: r.summary?.unitsReceived || r.lineItems?.length || 1,
-              taggedCount: r.summary?.unitsTagged || r.lineItems?.length || 1,
-              status: r.status === 'PENDING_APPROVAL' ? 'Partial' : 'Completed',
-              receivedBy: r.receivedBy || 'System User',
-              location: r.receivingLocation || 'IT Store - Dubai HQ',
-              remarks: r.remarks || 'Standard Intake',
-              items: (r.lineItems || []).map((l, lIdx) => ({
-                id: l.id || `item-${lIdx}`,
-                idx: lIdx + 1,
-                assetName: l.description || 'Received Asset',
-                serialNumber: l.serialNumbers || 'N/A',
-                tagNumber: l.createdAssetIds ? `TAG-${l.createdAssetIds.slice(0, 6)}` : 'TAG-AUTO',
-                tagStatus: 'Tagged'
-              }))
-            }));
-            setTransactions(mapped);
-          }
-        }
+        const list = res?.history || res?.receipts || [];
+        const mapped = list.map((r) => ({
+          id: r.id,
+          receiveNumber: r.receiptNumber,
+          receiveDate: r.receivedDate ? new Date(r.receivedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+          receiveTime: r.receivedDate ? new Date(r.receivedDate).toLocaleString('en-GB') : '-',
+          poNumber: r.poNumber === 'NON-PO' ? '-' : (r.poNumber || '-'),
+          supplier: r.vendorName || '-',
+          receiveType: r.mode === 'WITHOUT_PO' ? 'Without PO' : 'With PO',
+          itemsCount: r.summary?.unitsReceived ?? 0,
+          taggedCount: r.summary?.unitsTagged ?? 0,
+          status: r.status || '-',
+          receivedBy: r.receivedBy || '-',
+          location: r.receivingLocation || '-',
+          remarks: r.remarks || '-',
+          items: (r.lineItems || []).map((l, i) => ({
+            id: l.id,
+            assetId: l.createdAssetIds,
+            idx: i + 1,
+            assetName: l.description || '-',
+            serialNumber: l.serialNumbers || '-',
+            tagNumber: l.tagNumber || '-',
+            tagStatus: l.tagNumber ? 'Tagged' : 'Pending'
+          }))
+        }));
+        setTransactions(mapped);
+        setSelectedTxId(previous => mapped.some(t => t.id === previous) ? previous : (mapped[0]?.id || null));
+        setSelectedRowIds(previous => previous.filter(id => mapped.some(t => t.id === id)));
       } catch (err) {
-        // Fallback to static demo items if offline
+        setTransactions([]);
+        setSelectedTxId(null);
+        showToast(err.message || 'Could not load receipt history.', 'error');
       }
     }
     fetchHistory();
@@ -334,15 +162,33 @@ export function ReceivingHistory() {
   };
 
   const handleExport = () => {
-    showToast('Exporting Receive History to Excel / CSV...');
+    const columns = ['Receive Number', 'Receive Date', 'PO Number', 'Supplier', 'Type', 'Items', 'Tagged', 'Status', 'Received By'];
+    const quote = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
+    const rows = transactions.map(t => [t.receiveNumber, t.receiveDate, t.poNumber, t.supplier, t.receiveType, t.itemsCount, t.taggedCount, t.status, t.receivedBy]);
+    const blob = new Blob([[columns, ...rows].map(row => row.map(quote).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'receiving-history.csv';
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   const handleReprintTags = () => {
-    showToast(`Reprinting tags for receive transaction ${activeTx.receiveNumber}`);
+    if (!activeTx) return;
+    navigate(`/receiving/print-tags?assetId=${encodeURIComponent(activeTx.items[0]?.assetId || '')}`);
   };
 
   const handleGenerateReport = () => {
-    showToast(`Generated Goods Receipt Note report for ${activeTx.receiveNumber}`);
+    if (!activeTx) return;
+    const content = [activeTx.receiveNumber, `Date: ${activeTx.receiveTime}`, `PO: ${activeTx.poNumber}`, `Supplier: ${activeTx.supplier}`, `Location: ${activeTx.location}`, `Items received: ${activeTx.itemsCount}`, ...activeTx.items.map(item => `${item.assetName} | ${item.serialNumber} | ${item.tagNumber}`)].join('\n');
+    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${activeTx.receiveNumber}.txt`;
+    link.click();
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -643,13 +489,13 @@ export function ReceivingHistory() {
             {/* Header & Table Actions */}
             <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className="text-sm font-bold text-[#5B21B6]">
-                Receive Transactions (45)
+                Receive Transactions ({transactions.length})
               </h3>
 
               <div className="flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => showToast(`Viewing transaction ${activeTx.receiveNumber}`)}
+                  onClick={() => activeTx && setSelectedTxId(activeTx.id)}
                   className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
                 >
                   <Eye className="w-3.5 h-3.5 text-[#6C2BD9]" />
@@ -684,7 +530,7 @@ export function ReceivingHistory() {
                     <th className="py-2.5 px-3 w-10 text-center whitespace-nowrap">
                       <input
                         type="checkbox"
-                        checked={selectedRowIds.length === transactions.length}
+                        checked={transactions.length > 0 && selectedRowIds.length === transactions.length}
                         onChange={handleSelectAllToggle}
                         className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                       />
@@ -703,6 +549,7 @@ export function ReceivingHistory() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-sans">
+                  {transactions.length === 0 && <tr><td colSpan="12" className="p-8 text-center text-slate-500">No receiving records found.</td></tr>}
                   {transactions.map((tx, idx) => {
                     const isSelected = selectedRowIds.includes(tx.id);
                     const isActive = selectedTxId === tx.id;
@@ -759,17 +606,17 @@ export function ReceivingHistory() {
                           {tx.taggedCount}
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
-                          {tx.status === 'Completed' && (
+                          {(tx.status === 'COMPLETED' || tx.status === 'Completed') && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200 whitespace-nowrap">
                               Completed
                             </span>
                           )}
-                          {tx.status === 'Partial' && (
+                          {(tx.status === 'PARTIAL' || tx.status === 'Partial') && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/90 text-amber-800 border border-amber-200 whitespace-nowrap">
                               Partial
                             </span>
                           )}
-                          {tx.status === 'Pending Tagging' && (
+                          {(tx.status === 'PENDING_TAGGING' || tx.status === 'Pending Tagging') && (
                             <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100/90 text-rose-800 border border-rose-200 whitespace-nowrap">
                               Pending Tagging
                             </span>
@@ -810,6 +657,7 @@ export function ReceivingHistory() {
         {/* RIGHT COLUMN (Span 4): Receive Details, Items, Summary   */}
         {/* ========================================================= */}
         <div className="xl:col-span-4 space-y-5">
+          {activeTx ? <>
           {/* Card 1: Receive Details */}
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
@@ -878,7 +726,7 @@ export function ReceivingHistory() {
               Items Received ({activeTx.itemsCount})
             </h3>
 
-            <div className="overflow-auto max-h-[300px]">
+            <div data-receipt-items className="overflow-auto max-h-[300px]">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
                   <tr className="border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
@@ -927,7 +775,7 @@ export function ReceivingHistory() {
             <div className="text-center pt-1 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => showToast(`Displaying all ${activeTx.itemsCount} items for ${activeTx.receiveNumber}`)}
+                onClick={() => document.querySelector('[data-receipt-items]')?.scrollIntoView({ behavior: 'smooth' })}
                 className="text-xs font-bold text-[#6C2BD9] hover:underline cursor-pointer"
               >
                 View All {activeTx.itemsCount} Items
@@ -996,6 +844,7 @@ export function ReceivingHistory() {
               </div>
             </div>
           </div>
+          </> : <div className="bg-white border border-slate-200 rounded-2xl p-6 text-sm text-slate-500">No receipt selected.</div>}
         </div>
       </div>
     </div>

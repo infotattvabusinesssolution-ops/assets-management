@@ -5,10 +5,10 @@ import { api } from '../../services/api';
 export function ReturnAssetModal({ isOpen, onClose, asset, onReturnCompleted }) {
   const [loading, setLoading] = useState(false);
   const [formData, setFormData] = useState({
-    returnDestination: 'Dubai HQ > Central Store',
+    returnDestination: 'Central Storage / Store',
     condition: 'Good',
-    accessoriesReturned: 'Charger, Bag, Power Cord',
-    notes: 'Employee project completion return',
+    accessoriesReturned: '',
+    notes: '',
     createMaintenanceRequest: false
   });
 

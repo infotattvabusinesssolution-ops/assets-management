@@ -33,42 +33,6 @@ import {
 } from 'lucide-react';
 import { ValidationDetailsModal } from '../components/modals/ValidationDetailsModal';
 
-// 32 Seed Devices matching Screenshot 23
-const INITIAL_DEVICES = [
-  { id: 'IMP-001', hostname: 'PRN-HQ-01', ipAddress: '192.168.1.20', macAddress: '00:1A:2B:3C:4D:7A', deviceType: 'Printer', manufacturer: 'HP', model: 'LaserJet Pro', serialNumber: 'VNB3K91', assetAction: 'Create New', targetLocation: 'Dubai HQ - IT', remarks: '-' },
-  { id: 'IMP-002', hostname: 'LAPTOP-078', ipAddress: '192.168.1.45', macAddress: '00:1A:2B:3C:4D:9C', deviceType: 'Computer', manufacturer: 'Lenovo', model: 'ThinkPad T14', serialNumber: 'PF34K2', assetAction: 'Create New', targetLocation: 'Dubai HQ - Finance', remarks: '-' },
-  { id: 'IMP-003', hostname: 'AP-01', ipAddress: '192.168.1.50', macAddress: '00:1A:2B:3C:4D:AA', deviceType: 'Network Device', manufacturer: 'Aruba', model: 'AP-515', serialNumber: 'CN7GOQ', assetAction: 'Create New', targetLocation: 'Dubai HQ - IT', remarks: '-' },
-  { id: 'IMP-004', hostname: 'MONITOR-245', ipAddress: '192.168.1.11', macAddress: '00:1A:2B:3C:4D:6F', deviceType: 'Monitor', manufacturer: 'Dell', model: 'P2422H', serialNumber: 'CN0D4F2', assetAction: 'Create New', targetLocation: 'Dubai HQ - IT', remarks: '-' },
-  { id: 'IMP-005', hostname: 'DESKTOP-001', ipAddress: '192.168.1.10', macAddress: '00:1A:2B:3C:4D:5E', deviceType: 'Computer', manufacturer: 'Dell', model: 'OptiPlex 7020', serialNumber: '7CD1234', assetAction: 'Match Existing', targetLocation: 'Dubai HQ - IT', remarks: 'Matches AS-2024-0015', matchedAssetId: 'AS-2024-0015' },
-  { id: 'IMP-006', hostname: 'SW-CORE-01', ipAddress: '192.168.1.30', macAddress: '00:1A:2B:3C:4D:8B', deviceType: 'Network Device', manufacturer: 'Cisco', model: 'C9300', serialNumber: 'FD02456', assetAction: 'Create New', targetLocation: 'Dubai HQ - IT', remarks: '-' },
-  { id: 'IMP-007', hostname: 'iPad-01', ipAddress: '192.168.1.75', macAddress: '00:1A:2B:3C:4D:CC', deviceType: 'Mobile Device', manufacturer: 'Apple', model: 'iPad Air', serialNumber: 'DLX9Q2', assetAction: 'Create New', targetLocation: 'Dubai HQ - Operations', remarks: '-' },
-  { id: 'IMP-008', hostname: 'TV-LOBBY', ipAddress: '192.168.1.90', macAddress: '00:1A:2B:3C:4D:DD', deviceType: 'Display', manufacturer: 'Samsung', model: 'QE55Q60', serialNumber: 'TV8901', assetAction: 'Create New', targetLocation: 'Dubai HQ - Facilities', remarks: '-' },
-  { id: 'IMP-009', hostname: 'POS-02', ipAddress: '192.168.1.100', macAddress: '00:1A:2B:3C:4D:EE', deviceType: 'POS Device', manufacturer: 'Zebra', model: 'TC52', serialNumber: 'ZB55231', assetAction: 'Create New', targetLocation: 'Dubai HQ - Retail', remarks: '-' },
-  { id: 'IMP-010', hostname: 'SRV-FILE-01', ipAddress: '192.168.1.60', macAddress: '00:1A:2B:3C:4D:BB', deviceType: 'Server', manufacturer: 'HPE', model: 'ProLiant DL380', serialNumber: '2M3K91', assetAction: 'Create New', targetLocation: 'Dubai HQ - IT', remarks: '-' },
-  { id: 'IMP-011', hostname: 'DESKTOP-002', ipAddress: '192.168.1.12', macAddress: '00:1A:2B:3C:4D:5F', deviceType: 'Computer', manufacturer: 'Dell', model: 'Latitude 5430', serialNumber: '8CD5678', assetAction: 'Match Existing', targetLocation: 'Dubai HQ - Finance', remarks: 'Matches AS-2024-0022', matchedAssetId: 'AS-2024-0022' },
-  { id: 'IMP-012', hostname: 'SW-ACC-02', ipAddress: '192.168.1.32', macAddress: '00:1A:2B:3C:4D:8C', deviceType: 'Network Device', manufacturer: 'Cisco', model: 'Catalyst 2960', serialNumber: 'FD99102', assetAction: 'Match Existing', targetLocation: 'Dubai HQ - IT', remarks: 'Matches AS-2023-0104', matchedAssetId: 'AS-2023-0104' },
-  { id: 'IMP-013', hostname: 'PRN-FIN-02', ipAddress: '192.168.1.22', macAddress: '00:1A:2B:3C:4D:7B', deviceType: 'Printer', manufacturer: 'HP', model: 'LaserJet Enterprise', serialNumber: 'VNB7742', assetAction: 'Match Existing', targetLocation: 'Dubai HQ - Finance', remarks: 'Matches AS-2024-0089', matchedAssetId: 'AS-2024-0089' },
-  { id: 'IMP-014', hostname: 'LAPTOP-079', ipAddress: '192.168.1.46', macAddress: '00:1A:2B:3C:4D:9D', deviceType: 'Computer', manufacturer: 'Lenovo', model: 'ThinkPad X1', serialNumber: 'PF9081', assetAction: 'Create New', targetLocation: 'Dubai HQ - HR', remarks: '-' },
-  { id: 'IMP-015', hostname: 'MONITOR-246', ipAddress: '192.168.1.13', macAddress: '00:1A:2B:3C:4D:70', deviceType: 'Monitor', manufacturer: 'Dell', model: 'U2723QE', serialNumber: 'CN8840', assetAction: 'Create New', targetLocation: 'Dubai HQ - Engineering', remarks: '-' },
-  { id: 'IMP-016', hostname: 'AP-02', ipAddress: '192.168.1.51', macAddress: '00:1A:2B:3C:4D:AB', deviceType: 'Network Device', manufacturer: 'Aruba', model: 'AP-515', serialNumber: 'CN9011', assetAction: 'Create New', targetLocation: 'Dubai HQ - Operations', remarks: '-' },
-  { id: 'IMP-017', hostname: 'iPad-02', ipAddress: '192.168.1.76', macAddress: '00:1A:2B:3C:4D:CD', deviceType: 'Mobile Device', manufacturer: 'Apple', model: 'iPad Pro', serialNumber: 'DLX881', assetAction: 'Create New', targetLocation: 'Dubai HQ - Retail', remarks: '-' },
-  { id: 'IMP-018', hostname: 'SRV-BACKUP-01', ipAddress: '192.168.1.61', macAddress: '00:1A:2B:3C:4D:BC', deviceType: 'Server', manufacturer: 'Dell', model: 'PowerEdge R750', serialNumber: '7DP9012', assetAction: 'Create New', targetLocation: 'Dubai HQ - IT', remarks: '-' },
-  { id: 'IMP-019', hostname: 'TV-CONF-01', ipAddress: '192.168.1.91', macAddress: '00:1A:2B:3C:4D:DE', deviceType: 'Display', manufacturer: 'LG', model: 'OLED65C3', serialNumber: 'LG7721', assetAction: 'Create New', targetLocation: 'Dubai HQ - Facilities', remarks: '-' },
-  { id: 'IMP-020', hostname: 'POS-03', ipAddress: '192.168.1.101', macAddress: '00:1A:2B:3C:4D:EF', deviceType: 'POS Device', manufacturer: 'Zebra', model: 'TC52', serialNumber: 'ZB9001', assetAction: 'Create New', targetLocation: 'Dubai HQ - Retail', remarks: '-' },
-  { id: 'IMP-021', hostname: 'LAPTOP-080', ipAddress: '192.168.1.47', macAddress: '00:1A:2B:3C:4D:9E', deviceType: 'Computer', manufacturer: 'Apple', model: 'MacBook Pro 16', serialNumber: 'C02G890', assetAction: 'Create New', targetLocation: 'Dubai HQ - Engineering', remarks: '-' },
-  { id: 'IMP-022', hostname: 'LAPTOP-081', ipAddress: '192.168.1.48', macAddress: '00:1A:2B:3C:4D:9F', deviceType: 'Computer', manufacturer: 'Dell', model: 'Latitude 7430', serialNumber: '6DF7781', assetAction: 'Create New', targetLocation: 'Dubai HQ - Legal', remarks: '-' },
-  { id: 'IMP-023', hostname: 'MONITOR-247', ipAddress: '192.168.1.14', macAddress: '00:1A:2B:3C:4D:71', deviceType: 'Monitor', manufacturer: 'HP', model: 'E24 G4', serialNumber: '3CQ119', assetAction: 'Create New', targetLocation: 'Dubai HQ - Marketing', remarks: '-' },
-  { id: 'IMP-024', hostname: 'MONITOR-248', ipAddress: '192.168.1.15', macAddress: '00:1A:2B:3C:4D:72', deviceType: 'Monitor', manufacturer: 'Samsung', model: 'S24R350', serialNumber: 'SM8890', assetAction: 'Create New', targetLocation: 'Dubai HQ - Finance', remarks: '-' },
-  { id: 'IMP-025', hostname: 'PRN-WRH-01', ipAddress: '192.168.1.23', macAddress: '00:1A:2B:3C:4D:7C', deviceType: 'Printer', manufacturer: 'Zebra', model: 'ZT411 Industrial', serialNumber: 'ZB4412', assetAction: 'Create New', targetLocation: 'Dubai HQ - Warehouse', remarks: '-' },
-  { id: 'IMP-026', hostname: 'SW-DIST-01', ipAddress: '192.168.1.33', macAddress: '00:1A:2B:3C:4D:8D', deviceType: 'Network Device', manufacturer: 'Cisco', model: 'Catalyst 9200', serialNumber: 'FD88219', assetAction: 'Create New', targetLocation: 'Dubai HQ - IT', remarks: '-' },
-  { id: 'IMP-027', hostname: 'AP-03', ipAddress: '192.168.1.52', macAddress: '00:1A:2B:3C:4D:AC', deviceType: 'Network Device', manufacturer: 'Aruba', model: 'AP-515', serialNumber: 'CN6601', assetAction: 'Create New', targetLocation: 'Dubai HQ - Warehouse', remarks: '-' },
-  { id: 'IMP-028', hostname: 'iPhone-EXEC-01', ipAddress: '192.168.1.77', macAddress: '00:1A:2B:3C:4D:CE', deviceType: 'Mobile Device', manufacturer: 'Apple', model: 'iPhone 15 Pro', serialNumber: 'F2L8891', assetAction: 'Create New', targetLocation: 'Dubai HQ - Management', remarks: '-' },
-  { id: 'IMP-029', hostname: 'SRV-DB-01', ipAddress: '192.168.1.62', macAddress: '00:1A:2B:3C:4D:BD', deviceType: 'Server', manufacturer: 'Dell', model: 'PowerEdge R650', serialNumber: '8DK1190', assetAction: 'Create New', targetLocation: 'Dubai HQ - IT', remarks: '-' },
-  { id: 'IMP-030', hostname: 'DESKTOP-003', ipAddress: '192.168.1.16', macAddress: '00:1A:2B:3C:4D:60', deviceType: 'Computer', manufacturer: 'HP', model: 'EliteDesk 800', serialNumber: '4CE9012', assetAction: 'Create New', targetLocation: 'Dubai HQ - HR', remarks: '-' },
-  { id: 'IMP-031', hostname: 'DESKTOP-004', ipAddress: '192.168.1.17', macAddress: '00:1A:2B:3C:4D:61', deviceType: 'Computer', manufacturer: 'Dell', model: 'OptiPlex 5090', serialNumber: '9CD4410', assetAction: 'Create New', targetLocation: 'Dubai HQ - Legal', remarks: '-' },
-  { id: 'IMP-032', hostname: 'DESKTOP-005', ipAddress: '192.168.1.18', macAddress: '00:1A:2B:3C:4D:62', deviceType: 'Computer', manufacturer: 'Lenovo', model: 'ThinkCentre M90q', serialNumber: 'MJ09112', assetAction: 'Create New', targetLocation: 'Dubai HQ - Operations', remarks: '-' }
-];
-
 export function ImportToAsset360() {
   const navigate = useNavigate();
 
@@ -76,15 +40,15 @@ export function ImportToAsset360() {
   const [currentStep, setCurrentStep] = useState(1);
 
   // Candidate Devices
-  const [devices, setDevices] = useState(INITIAL_DEVICES);
-  const [selectedIds, setSelectedIds] = useState(INITIAL_DEVICES.map(d => d.id));
+  const [devices, setDevices] = useState([]);
+  const [selectedIds, setSelectedIds] = useState([]);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('New / Unregistered');
   const [deviceTypeFilter, setDeviceTypeFilter] = useState('All Types');
   const [locationFilter, setLocationFilter] = useState('All Locations');
-  const [discoveryJobFilter, setDiscoveryJobFilter] = useState('HQ Network Scan');
+  const [discoveryJobFilter, setDiscoveryJobFilter] = useState('All Jobs');
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -101,11 +65,11 @@ export function ImportToAsset360() {
 
   // Step 2: Field Mappings & Master Data Defaults
   const [defaultBusinessValues, setDefaultBusinessValues] = useState({
-    company: 'Asset360 Corporation',
-    businessUnit: 'Information Technology',
-    department: 'IT Infrastructure',
-    costCenter: 'CC-IT-101',
-    custodian: 'Unassigned / Store Inventory'
+    company: '',
+    businessUnit: '',
+    department: '',
+    costCenter: '',
+    custodian: ''
   });
 
   // Modals & Execution
@@ -122,12 +86,13 @@ export function ImportToAsset360() {
   const loadCandidates = async () => {
     try {
       const res = await api.get('/discovery/import/candidates');
-      if (res && res.candidates && res.candidates.length > 0) {
-        setDevices(res.candidates);
-        setSelectedIds(res.candidates.map(c => c.id));
-      }
+      const list = Array.isArray(res?.candidates) ? res.candidates : [];
+      setDevices(list);
+      setSelectedIds(list.map(candidate => candidate.id));
     } catch (err) {
-      console.warn('Backend import candidates fallback:', err);
+      setDevices([]);
+      setSelectedIds([]);
+      console.error('Could not load import candidates:', err);
     }
   };
 
@@ -913,7 +878,7 @@ export function ImportToAsset360() {
                   <div className="flex items-center gap-2">
                     <h2 className="text-base font-extrabold text-slate-900">Import Batch Completed Successfully</h2>
                     <span className="font-mono text-xs font-bold text-[#6C2BD9] bg-white px-2 py-0.5 rounded-md border border-purple-100 shadow-2xs">
-                      {batchResult?.batchId || 'IMP-2026-0891'}
+                      {batchResult?.batchId || '-'}
                     </span>
                   </div>
                   <p className="text-xs text-slate-600 mt-0.5">

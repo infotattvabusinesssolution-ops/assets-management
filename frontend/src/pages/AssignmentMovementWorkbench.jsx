@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import {
   Package,
@@ -37,247 +37,15 @@ import { TransferAssetModal } from '../components/modals/TransferAssetModal';
 import { BulkTransferModal } from '../components/modals/BulkTransferModal';
 import { ReturnAssetModal } from '../components/modals/ReturnAssetModal';
 
-const DEFAULT_ASSETS = [
-  {
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell Latitude 5440',
-    assetType: 'IT Equipment',
-    currentLocation: 'Dubai HQ > Block A > GF',
-    fullLocation: 'Dubai HQ > Block A > Ground Floor > Reception',
-    assignedTo: 'Ahmed Khan',
-    department: 'IT Department',
-    status: 'Assigned',
-    lastMoved: '10 Sep 2026',
-    lastMovedDate: '10 Sep 2026 10:24',
-    serialNumber: '7F3K2D4',
-    tagEpc: 'E28011606000002053A1B4C0',
-    category: 'Computers',
-    model: 'Latitude 5440',
-    manufacturer: 'Dell',
-    assignedDate: '15 Aug 2026',
-    warrantyExpiry: '15 Aug 2029',
-    remarks: 'Company issued laptop',
-    site: 'Dubai HQ',
-    building: 'Block A'
-  },
-  {
-    assetNumber: 'AS-000124',
-    assetName: 'Monitor - Samsung',
-    assetType: 'IT Equipment',
-    currentLocation: 'Dubai HQ > Block A > GF',
-    fullLocation: 'Dubai HQ > Block A > Ground Floor > Office 102',
-    assignedTo: 'Sara Ali',
-    department: 'IT Department',
-    status: 'Assigned',
-    lastMoved: '09 Sep 2026',
-    lastMovedDate: '09 Sep 2026 14:15',
-    serialNumber: 'SAMS8787',
-    tagEpc: 'E28011606000002053A1B4C1',
-    category: 'Monitors',
-    model: 'Odyssey G7',
-    manufacturer: 'Samsung',
-    assignedDate: '10 Aug 2026',
-    warrantyExpiry: '10 Aug 2028',
-    remarks: 'Dual monitor setup',
-    site: 'Dubai HQ',
-    building: 'Block A'
-  },
-  {
-    assetNumber: 'AS-000125',
-    assetName: 'Printer - HP',
-    assetType: 'IT Equipment',
-    currentLocation: 'Dubai HQ > Block B > 1F',
-    fullLocation: 'Dubai HQ > Block B > 1st Floor > Print Room',
-    assignedTo: 'Unassigned',
-    department: 'Operations',
-    status: 'Unassigned',
-    lastMoved: '-',
-    lastMovedDate: '-',
-    serialNumber: 'CNB47892',
-    tagEpc: 'E28011606000002053A1B4C2',
-    category: 'Printers',
-    model: 'LaserJet Pro M404n',
-    manufacturer: 'HP',
-    assignedDate: '-',
-    warrantyExpiry: '20 Dec 2027',
-    remarks: 'Shared network printer',
-    site: 'Dubai HQ',
-    building: 'Block B'
-  },
-  {
-    assetNumber: 'AS-000126',
-    assetName: 'Access Point - Cisco',
-    assetType: 'Network Device',
-    currentLocation: 'Dubai HQ > Block B > 1F',
-    fullLocation: 'Dubai HQ > Block B > 1st Floor > Hallway West',
-    assignedTo: 'IT Team',
-    department: 'IT Department',
-    status: 'Assigned',
-    lastMoved: '08 Sep 2026',
-    lastMovedDate: '08 Sep 2026 14:05',
-    serialNumber: 'FCH9384',
-    tagEpc: 'E28011606000002053A1B4C3',
-    category: 'Networking',
-    model: 'Catalyst 9120',
-    manufacturer: 'Cisco',
-    assignedDate: '01 Jun 2026',
-    warrantyExpiry: '01 Jun 2029',
-    remarks: 'Ceiling mounted AP',
-    site: 'Dubai HQ',
-    building: 'Block B'
-  },
-  {
-    assetNumber: 'AS-000127',
-    assetName: 'Chair - Office',
-    assetType: 'Furniture',
-    currentLocation: 'Dubai HQ > Block A > 2F',
-    fullLocation: 'Dubai HQ > Block A > 2nd Floor > Design Studio',
-    assignedTo: 'Fatima Noor',
-    department: 'Human Resources',
-    status: 'Assigned',
-    lastMoved: '07 Sep 2026',
-    lastMovedDate: '07 Sep 2026 09:15',
-    serialNumber: 'HM-9982',
-    tagEpc: '-',
-    category: 'Furniture',
-    model: 'Ergonomic Mesh Chair',
-    manufacturer: 'Herman Miller',
-    assignedDate: '07 Sep 2026',
-    warrantyExpiry: '07 Sep 2031',
-    remarks: 'Ergonomic task chair',
-    site: 'Dubai HQ',
-    building: 'Block A'
-  },
-  {
-    assetNumber: 'AS-000128',
-    assetName: 'Meeting Table',
-    assetType: 'Furniture',
-    currentLocation: 'Dubai HQ > Block A > 2F',
-    fullLocation: 'Dubai HQ > Block A > 2nd Floor > Conf Room B',
-    assignedTo: 'Unassigned',
-    department: 'Facilities',
-    status: 'Unassigned',
-    lastMoved: '-',
-    lastMovedDate: '-',
-    serialNumber: 'IK-7782',
-    tagEpc: '-',
-    category: 'Furniture',
-    model: 'Conference Table 10P',
-    manufacturer: 'IKEA',
-    assignedDate: '-',
-    warrantyExpiry: '15 Mar 2028',
-    remarks: '10 seater conference table',
-    site: 'Dubai HQ',
-    building: 'Block A'
-  },
-  {
-    assetNumber: 'AS-000129',
-    assetName: 'iPad - Admin',
-    assetType: 'Mobile Device',
-    currentLocation: 'Dubai HQ > Block C > GF',
-    fullLocation: 'Dubai HQ > Block C > Ground Floor > Admin Office',
-    assignedTo: 'Rashid Mohammed',
-    department: 'Finance',
-    status: 'Assigned',
-    lastMoved: '10 Sep 2026',
-    lastMovedDate: '10 Sep 2026 11:30',
-    serialNumber: 'DMPX9823',
-    tagEpc: 'E28011606000002053A1B4C4',
-    category: 'Tablets',
-    model: 'iPad Air 5',
-    manufacturer: 'Apple',
-    assignedDate: '05 Jan 2026',
-    warrantyExpiry: '05 Jan 2028',
-    remarks: 'Executive tablet',
-    site: 'Dubai HQ',
-    building: 'Block C'
-  },
-  {
-    assetNumber: 'AS-000130',
-    assetName: 'Projector - Epson',
-    assetType: 'IT Equipment',
-    currentLocation: 'Dubai HQ > Block C > 1F',
-    fullLocation: 'Dubai HQ > Block C > 1st Floor > Auditorium',
-    assignedTo: 'Conference Room',
-    department: 'Facilities',
-    status: 'Assigned',
-    lastMoved: '06 Sep 2026',
-    lastMovedDate: '06 Sep 2026 11:20',
-    serialNumber: 'EPS84920',
-    tagEpc: 'E28011606000002053A1B4C5',
-    category: 'AV Equipment',
-    model: 'EB-2250U',
-    manufacturer: 'Epson',
-    assignedDate: '12 Feb 2026',
-    warrantyExpiry: '12 Feb 2029',
-    remarks: '4K ceiling projector',
-    site: 'Dubai HQ',
-    building: 'Block C'
-  },
-  {
-    assetNumber: 'AS-000131',
-    assetName: 'Fire Extinguisher',
-    assetType: 'Safety Equipment',
-    currentLocation: 'Dubai HQ > Block A > GF',
-    fullLocation: 'Dubai HQ > Block A > Ground Floor > Safety Station 1',
-    assignedTo: 'Facilities Team',
-    department: 'Health & Safety',
-    status: 'Assigned',
-    lastMoved: '05 Sep 2026',
-    lastMovedDate: '05 Sep 2026 08:00',
-    serialNumber: 'FE-99823',
-    tagEpc: 'E28011606000002053A1B4C6',
-    category: 'Safety Equipment',
-    model: 'CO2 5kg',
-    manufacturer: 'Kidde',
-    assignedDate: '01 Jan 2026',
-    warrantyExpiry: '01 Jan 2030',
-    remarks: 'Inspected monthly',
-    site: 'Dubai HQ',
-    building: 'Block A'
-  },
-  {
-    assetNumber: 'AS-000132',
-    assetName: 'Switch - Cisco',
-    assetType: 'Network Device',
-    currentLocation: 'Dubai HQ > Block B > Server Room',
-    fullLocation: 'Dubai HQ > Block B > Basement > Server Room Rack 4',
-    assignedTo: 'IT Team',
-    department: 'IT Department',
-    status: 'Assigned',
-    lastMoved: '04 Sep 2026',
-    lastMovedDate: '04 Sep 2026 17:10',
-    serialNumber: 'FCH9385',
-    tagEpc: 'E28011606000002053A1B4C7',
-    category: 'Networking',
-    model: 'Catalyst 9300',
-    manufacturer: 'Cisco',
-    assignedDate: '10 Nov 2025',
-    warrantyExpiry: '10 Nov 2028',
-    remarks: 'Core switch rack 4',
-    site: 'Dubai HQ',
-    building: 'Block B'
-  }
-];
+const DEFAULT_ASSETS = [];
 
-const DEFAULT_RECENT_MOVEMENTS = [
-  { id: 'M-101', dateTime: '10 Sep 2026 10:24', assetNo: 'AS-000123', assetName: 'Laptop - Dell Latitude 5440', action: 'Assigned', from: '-', to: '-', by: 'Ahmed Khan', status: 'Completed' },
-  { id: 'M-102', dateTime: '10 Sep 2026 09:15', assetNo: 'AS-000127', assetName: 'Chair - Office', action: 'Transferred', from: 'Block A > GF', to: 'Block A > 2F', by: 'Fatima Noor', status: 'Completed' },
-  { id: 'M-103', dateTime: '09 Sep 2026 16:40', assetNo: 'AS-000125', assetName: 'Printer - HP', action: 'Assigned', from: '-', to: '-', by: 'Omar Saleh', status: 'Completed' },
-  { id: 'M-104', dateTime: '09 Sep 2026 11:20', assetNo: 'AS-000130', assetName: 'Projector - Epson', action: 'Transferred', from: 'Block C > 1F', to: 'Conference Room', by: 'Layla Hassan', status: 'Completed' },
-  { id: 'M-105', dateTime: '08 Sep 2026 14:05', assetNo: 'AS-000126', assetName: 'Access Point - Cisco', action: 'Assigned', from: '-', to: '-', by: 'IT Team', status: 'Completed' }
-];
+const DEFAULT_RECENT_MOVEMENTS = [];
 
-const DEFAULT_PENDING_APPROVALS = [
-  { requestId: 'REQ-00045', assetNo: 'AS-000128', assetName: 'Meeting Table', requestType: 'Transfer', requestedBy: 'Sara Ali', date: '10 Sep 2026', status: 'Pending', fromLocation: 'Block A > GF', toLocation: 'Block A > 2F', newCustodian: 'Sara Ali' },
-  { requestId: 'REQ-00044', assetNo: 'AS-000132', assetName: 'Switch - Cisco', requestType: 'Transfer', requestedBy: 'Omar Saleh', date: '09 Sep 2026', status: 'Pending', fromLocation: 'Block B > 1F', toLocation: 'Server Room', newCustodian: 'IT Team' },
-  { requestId: 'REQ-00043', assetNo: 'AS-000125', assetName: 'Printer - HP', requestType: 'Assignment', requestedBy: 'IT Team', date: '09 Sep 2026', status: 'Pending', fromLocation: 'Warehouse', toLocation: 'Block B > 1F', newCustodian: 'IT Team' },
-  { requestId: 'REQ-00042', assetNo: 'AS-000129', assetName: 'iPad - Admin', requestType: 'Transfer', requestedBy: 'Rashid Mohammed', date: '08 Sep 2026', status: 'Pending', fromLocation: 'Block C > 1F', toLocation: 'Block C > GF', newCustodian: 'Rashid Mohammed' },
-  { requestId: 'REQ-00041', assetNo: 'AS-000127', assetName: 'Chair - Office', requestType: 'Transfer', requestedBy: 'Fatima Noor', date: '08 Sep 2026', status: 'Pending', fromLocation: 'Block A > GF', toLocation: 'Block A > 2F', newCustodian: 'Fatima Noor' }
-];
+const DEFAULT_PENDING_APPROVALS = [];
 
 export function AssignmentMovementWorkbench({ defaultTab }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
   const activeTabParam = searchParams.get('tab');
 
@@ -293,21 +61,21 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [modalAsset, setModalAsset] = useState(null);
 
-  // KPI Metrics State (Matching Screenshot 25)
+  // KPI Metrics State (Dynamic from live database)
   const [kpis, setKpis] = useState({
-    totalAssets: 1248,
-    assignedAssets: 1102,
-    assignedPercentage: 88,
-    unassignedAssets: 146,
-    unassignedPercentage: 12,
-    pendingTransfers: 12,
-    transfersThisMonth: 78
+    totalAssets: 0,
+    assignedAssets: 0,
+    assignedPercentage: 0,
+    unassignedAssets: 0,
+    unassignedPercentage: 0,
+    pendingTransfers: 0,
+    transfersThisMonth: 0
   });
 
   // Assets Data State
-  const [assets, setAssets] = useState(DEFAULT_ASSETS);
-  const [selectedAsset, setSelectedAsset] = useState(DEFAULT_ASSETS[0]);
-  const [selectedIds, setSelectedIds] = useState(['AS-000123']);
+  const [assets, setAssets] = useState([]);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [selectedIds, setSelectedIds] = useState([]);
   const [assetDetailTab, setAssetDetailTab] = useState('details'); // details | assignment | history | related
 
   // Filters State
@@ -330,41 +98,118 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
   const [pendingApprovals, setPendingApprovals] = useState(DEFAULT_PENDING_APPROVALS);
 
   useEffect(() => {
+    const targetAssetId = searchParams.get('assetId') || location.state?.assetId;
+    if (activeTabParam === 'transfer' && targetAssetId) {
+      navigate(`/movements/transfer?tab=transfer&assetId=${encodeURIComponent(targetAssetId)}`, {
+        replace: true,
+        state: location.state
+      });
+      return;
+    }
+
     if (defaultTab) {
       setActiveTab(defaultTab);
     } else if (activeTabParam) {
       setActiveTab(activeTabParam);
     }
-  }, [defaultTab, activeTabParam]);
+  }, [defaultTab, activeTabParam, searchParams, location.state, navigate]);
 
   useEffect(() => {
     loadData();
-  }, [activeTab]);
+  }, [activeTab, location.search]);
 
   const loadData = async () => {
     try {
       const [kpiRes, assetsRes, recentRes, approvalsRes] = await Promise.all([
         api.get('/movements/kpis').catch(() => null),
-        api.get('/movements/assets').catch(() => null),
+        api.get('/movements/assets', { params: { limit: 200 } }).catch(() => null),
         api.get('/movements/recent').catch(() => null),
         api.get('/movements/approvals').catch(() => null)
       ]);
 
-      if (kpiRes) {
+      if (assetsRes && assetsRes.assets && assetsRes.assets.length > 0) {
+        const liveAssets = assetsRes.assets;
+        setAssets(liveAssets);
+
+        const total = liveAssets.length;
+        const assigned = liveAssets.filter(a => a.custodian || (a.assignedTo && a.assignedTo !== 'Unassigned')).length;
+        const unassigned = total - assigned;
+        const pct = total > 0 ? Math.round((assigned / total) * 100) : 0;
+
         setKpis({
-          totalAssets: kpiRes.totalAssets ?? 1248,
-          assignedAssets: kpiRes.assignedAssets ?? 1102,
-          assignedPercentage: kpiRes.assignedPercentage ?? 88,
-          unassignedAssets: kpiRes.unassignedAssets ?? 146,
-          unassignedPercentage: kpiRes.unassignedPercentage ?? 12,
-          pendingTransfers: kpiRes.pendingTransfers ?? 12,
-          transfersThisMonth: kpiRes.transfersThisMonth ?? 78
+          totalAssets: kpiRes?.totalAssets ?? total,
+          assignedAssets: kpiRes?.assignedAssets ?? assigned,
+          assignedPercentage: kpiRes?.assignedPercentage ?? pct,
+          unassignedAssets: kpiRes?.unassignedAssets ?? unassigned,
+          unassignedPercentage: kpiRes?.unassignedPercentage ?? (100 - pct),
+          pendingTransfers: kpiRes?.pendingTransfers ?? 0,
+          transfersThisMonth: kpiRes?.transfersThisMonth ?? 0
+        });
+      } else if (kpiRes) {
+        setKpis({
+          totalAssets: kpiRes.totalAssets ?? 0,
+          assignedAssets: kpiRes.assignedAssets ?? 0,
+          assignedPercentage: kpiRes.assignedPercentage ?? 0,
+          unassignedAssets: kpiRes.unassignedAssets ?? 0,
+          unassignedPercentage: kpiRes.unassignedPercentage ?? 0,
+          pendingTransfers: kpiRes.pendingTransfers ?? 0,
+          transfersThisMonth: kpiRes.transfersThisMonth ?? 0
         });
       }
 
       if (assetsRes && assetsRes.assets && assetsRes.assets.length > 0) {
         setAssets(assetsRes.assets);
-        setSelectedAsset(assetsRes.assets[0]);
+        const targetAssetId = searchParams.get('assetId') || location.state?.assetId;
+        if (targetAssetId) {
+          const match = assetsRes.assets.find(a => 
+            a.id === targetAssetId || 
+            a.assetNumber === targetAssetId ||
+            String(a.id).toLowerCase() === String(targetAssetId).toLowerCase() ||
+            String(a.assetNumber).toLowerCase() === String(targetAssetId).toLowerCase()
+          );
+          if (match) {
+            setSelectedAsset(match);
+            setSelectedIds([match.assetNumber || match.id]);
+          } else {
+            const fetched = await api.get(`/movements/assets/${encodeURIComponent(targetAssetId)}`).catch(() => null);
+            const target = fetched?.asset || fetched?.data?.asset || null;
+            setSelectedAsset(target);
+            setSelectedIds(target ? [target.assetNumber || target.id] : []);
+            if (target) setAssets(prev => [target, ...prev]);
+          }
+        } else {
+          setSelectedAsset(assetsRes.assets[0]);
+          setSelectedIds([assetsRes.assets[0].assetNumber || assetsRes.assets[0].id]);
+        }
+      } else {
+        const fallback = await api.get('/assets', { params: { limit: 100 } }).catch(() => null);
+        if (fallback?.assets && fallback.assets.length > 0) {
+          const mapped = fallback.assets.map(a => {
+            const locParts = [a.site?.name, a.building?.name, a.floor?.name, a.room?.name].filter(Boolean);
+            return {
+              id: a.id,
+              assetNumber: a.assetId || a.tagNumber || `AST-${a.id.slice(0, 6)}`,
+              assetName: a.description || a.name || a.assetId,
+              assetType: a.category?.name || 'General',
+              currentLocation: locParts.join(' > ') || 'Dubai HQ',
+              fullLocation: locParts.join(' > ') || 'Dubai HQ',
+              site: a.site?.name || 'Dubai HQ',
+              building: a.building?.name || 'Block A',
+              assignedTo: a.custodian ? (a.custodian.fullName || a.custodian.firstName) : 'Unassigned',
+              department: a.department?.name || 'General',
+              status: a.custodian ? 'Assigned' : 'Unassigned',
+              serialNumber: a.serialNumber || 'N/A',
+              tagEpc: a.tagNumber || a.rfidEpc || 'N/A',
+              model: a.model?.name || 'Standard',
+              manufacturer: a.manufacturer?.name || 'OEM'
+            };
+          });
+          setAssets(mapped);
+          const targetAssetId = searchParams.get('assetId') || location.state?.assetId;
+          const target = targetAssetId && mapped.find(a => a.id === targetAssetId || a.assetNumber === targetAssetId);
+          setSelectedAsset(target || mapped[0]);
+          setSelectedIds([(target || mapped[0]).assetNumber || (target || mapped[0]).id]);
+        }
       }
 
       if (recentRes && recentRes.recent) {
@@ -1260,17 +1105,25 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                 <h2 className="text-sm font-bold text-slate-900">Asset Movement &amp; Inter-Site Transfer</h2>
                 <p className="text-slate-500 text-xs">Initiate guided relocations, site-to-site dispatches, and in-transit tracking.</p>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setModalAsset(selectedAsset || assets[0]);
-                  setIsTransferModalOpen(true);
-                }}
-                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <Plus className="w-4 h-4" />
-                Initiate New Transfer
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const target = selectedAsset || assets[0];
+                    if (target) {
+                      navigate(`/movements/transfer?tab=transfer&assetId=${encodeURIComponent(target.assetNumber || target.id)}`, {
+                        state: { assetId: target.assetNumber || target.id, id: target.id, asset: target }
+                      });
+                    } else {
+                      navigate('/movements/transfer');
+                    }
+                  }}
+                  className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-semibold rounded-xl shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Plus className="w-4 h-4" />
+                  Initiate New Transfer
+                </button>
+              </div>
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

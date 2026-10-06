@@ -161,7 +161,7 @@ export async function saveDraft(req, res, next) {
 export async function getDraft(req, res, next) {
   try {
     const user = req.user || { id: 'usr-default', username: 'jdoe' };
-    const draft = TaggingService.getDraft(user);
+    const draft = await TaggingService.getDraft(user);
     res.json({
       success: true,
       draft

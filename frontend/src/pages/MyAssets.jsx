@@ -38,336 +38,20 @@ import {
   Sparkles
 } from 'lucide-react';
 
-// Exact 10 Assets Data from Reference Screenshot
-const INITIAL_MY_ASSETS = [
-  {
-    id: 'AST-000128',
-    name: 'Dell Latitude 7450',
-    category: 'Laptop',
-    tagRfid: 'RFID-981245',
-    rfidEpc: 'E28011700000001A2B3C',
-    barcode: 'QR-000128',
-    serialNumber: 'DL7450-92118',
-    manufacturer: 'Dell',
-    model: 'Latitude 7450',
-    location: 'Dubai HQ Floor 3 / Room 312',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 3 / Room 312',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '10 Jan 2024',
-    custodian: 'John Doe (You)',
-    image: '/laptop.png',
-    icon: Laptop,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '15 Jan 2024',
-    warrantyEnd: '14 Jan 2027',
-    nextServiceDate: '15 Oct 2026',
-    maintType: 'Preventive',
-    checklist: 'Laptop PM Checklist',
-    documents: [
-      { name: 'Purchase Invoice.pdf', size: '320 KB' },
-      { name: 'Warranty.pdf', size: '450 KB' },
-      { name: 'Asset Photo.jpg', size: '1.2 MB' }
-    ]
-  },
-  {
-    id: 'AST-000131',
-    name: 'iPhone 15 Pro',
-    category: 'Mobile Device',
-    tagRfid: 'QR-000131',
-    rfidEpc: 'E28011700000001A9900',
-    barcode: 'QR-000131',
-    serialNumber: 'IP15P-88192',
-    manufacturer: 'Apple',
-    model: 'iPhone 15 Pro',
-    location: 'Dubai HQ Floor 3',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 3',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '12 Jan 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: Smartphone,
-    ackRequired: true,
-    warrantyStatus: 'Active',
-    warrantyStart: '12 Jan 2024',
-    warrantyEnd: '11 Jan 2026',
-    nextServiceDate: '20 Nov 2026',
-    maintType: 'Inspection',
-    checklist: 'Mobile Security Audit',
-    documents: [{ name: 'Mobile_Agreement.pdf', size: '210 KB' }]
-  },
-  {
-    id: 'AST-000145',
-    name: 'Ergonomic Chair',
-    category: 'Furniture',
-    tagRfid: 'QR-000145',
-    rfidEpc: 'E28011700000001A7722',
-    barcode: 'QR-000145',
-    serialNumber: 'CH-2024-991',
-    manufacturer: 'Herman Miller',
-    model: 'Aeron Chair',
-    location: 'Dubai HQ Floor 3',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 3',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '18 Jan 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: Package,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '18 Jan 2024',
-    warrantyEnd: '17 Jan 2034',
-    nextServiceDate: '01 Dec 2026',
-    maintType: 'General Check',
-    checklist: 'Furniture PM Checklist',
-    documents: []
-  },
-  {
-    id: 'AST-000156',
-    name: '27" Monitor',
-    category: 'Monitor',
-    tagRfid: 'RFID-981156',
-    rfidEpc: 'E28011700000001A4455',
-    barcode: 'QR-000156',
-    serialNumber: 'MON27-55123',
-    manufacturer: 'Dell',
-    model: 'U2723QE',
-    location: 'Dubai HQ Floor 3',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 3',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '18 Jan 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: Monitor,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '18 Jan 2024',
-    warrantyEnd: '17 Jan 2027',
-    nextServiceDate: '15 Oct 2026',
-    maintType: 'Preventive',
-    checklist: 'Display Diagnostics',
-    documents: [{ name: 'Monitor_Manual.pdf', size: '850 KB' }]
-  },
-  {
-    id: 'AST-000167',
-    name: 'Logitech Keyboard',
-    category: 'Accessory',
-    tagRfid: 'QR-000167',
-    rfidEpc: 'E28011700000001A3344',
-    barcode: 'QR-000167',
-    serialNumber: 'MXK-00912',
-    manufacturer: 'Logitech',
-    model: 'MX Keys',
-    location: 'Dubai HQ Floor 3',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 3',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '20 Jan 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: Package,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '20 Jan 2024',
-    warrantyEnd: '19 Jan 2026',
-    nextServiceDate: 'N/A',
-    maintType: 'N/A',
-    checklist: 'N/A',
-    documents: []
-  },
-  {
-    id: 'AST-000168',
-    name: 'Logitech Mouse',
-    category: 'Accessory',
-    tagRfid: 'QR-000168',
-    rfidEpc: 'E28011700000001A3355',
-    barcode: 'QR-000168',
-    serialNumber: 'MXM-11029',
-    manufacturer: 'Logitech',
-    model: 'MX Master 3S',
-    location: 'Dubai HQ Floor 3',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 3',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '20 Jan 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: Package,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '20 Jan 2024',
-    warrantyEnd: '19 Jan 2026',
-    nextServiceDate: 'N/A',
-    maintType: 'N/A',
-    checklist: 'N/A',
-    documents: []
-  },
-  {
-    id: 'AST-000201',
-    name: 'Surface Pro 9',
-    category: 'Tablet',
-    tagRfid: 'RFID-98201',
-    rfidEpc: 'E28011700000001A8899',
-    barcode: 'QR-000201',
-    serialNumber: 'SF9-90123',
-    manufacturer: 'Microsoft',
-    model: 'Surface Pro 9',
-    location: 'Dubai HQ Floor 3',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 3',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'Under Maintenance',
-    condition: 'Fair',
-    assignedDate: '05 Sep 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: Smartphone,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '05 Sep 2024',
-    warrantyEnd: '04 Sep 2026',
-    nextServiceDate: '18 Sep 2026',
-    maintType: 'Screen Calibration',
-    checklist: 'Tablet Repair Diagnostics',
-    documents: [{ name: 'WorkOrder_WO-9912.pdf', size: '510 KB' }]
-  },
-  {
-    id: 'AST-000212',
-    name: 'Samsung Monitor',
-    category: 'Monitor',
-    tagRfid: 'QR-000212',
-    rfidEpc: 'E28011700000001A7788',
-    barcode: 'QR-000212',
-    serialNumber: 'SAM34-00129',
-    manufacturer: 'Samsung',
-    model: 'Odyssey G7',
-    location: 'Dubai HQ Meeting Room 1',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 1 / Room 102',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '12 Mar 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: Tv,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '12 Mar 2024',
-    warrantyEnd: '11 Mar 2027',
-    nextServiceDate: '15 Nov 2026',
-    maintType: 'Preventive',
-    checklist: 'AV Equipment Protocol',
-    documents: []
-  },
-  {
-    id: 'AST-000221',
-    name: 'HP LaserJet M404',
-    category: 'Printer',
-    tagRfid: 'RFID-98221',
-    rfidEpc: 'E28011700000001A6677',
-    barcode: 'QR-000221',
-    serialNumber: 'HPM404-1192',
-    manufacturer: 'HP',
-    model: 'LaserJet M404',
-    location: 'Dubai HQ Print Room',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'Floor 3 / Room 315',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '15 Feb 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: Printer,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '15 Feb 2024',
-    warrantyEnd: '14 Feb 2026',
-    nextServiceDate: '01 Oct 2026',
-    maintType: 'Toner Replacement',
-    checklist: 'Printer PM Protocol',
-    documents: [{ name: 'Return_Form_RET-001.pdf', size: '290 KB' }]
-  },
-  {
-    id: 'AST-000230',
-    name: 'Access Card',
-    category: 'Access Control',
-    tagRfid: 'QR-000230',
-    rfidEpc: 'E28011700000001A5566',
-    barcode: 'QR-000230',
-    serialNumber: 'CARD-88129',
-    manufacturer: 'HID Global',
-    model: 'iCLASS SE',
-    location: 'Dubai HQ',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floorRoom: 'All Access',
-    department: 'IT',
-    costCenter: 'IT-001',
-    status: 'In Use',
-    condition: 'Good',
-    assignedDate: '10 Jan 2024',
-    custodian: 'John Doe (You)',
-    image: null,
-    icon: CreditCard,
-    ackRequired: false,
-    warrantyStatus: 'Active',
-    warrantyStart: '10 Jan 2024',
-    warrantyEnd: '09 Jan 2029',
-    nextServiceDate: 'N/A',
-    maintType: 'N/A',
-    checklist: 'N/A',
-    documents: []
-  }
-];
+const INITIAL_MY_ASSETS = [];
 
 export function MyAssets() {
   const navigate = useNavigate();
   const { user } = useAuth();
 
   // Active States
-  const [assets, setAssets] = useState(INITIAL_MY_ASSETS);
+  const [assets, setAssets] = useState([]);
   const [activeKpi, setActiveKpi] = useState('ALL'); // ALL, IN_USE, MAINTENANCE, OVERDUE, PENDING_RETURN
   const [activeTab, setActiveTab] = useState('ASSIGNED'); // ASSIGNED, MAINTENANCE, PENDING_RETURN, RETURNED, REQUESTED, HISTORY
-  const [selectedAsset, setSelectedAsset] = useState(INITIAL_MY_ASSETS[0]);
-  const [selectedRowIds, setSelectedRowIds] = useState([INITIAL_MY_ASSETS[0].id]);
+  const [selectedAsset, setSelectedAsset] = useState(null);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [drawerTab, setDrawerTab] = useState('details'); // details, location, maintenance, history
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   // Server-computed KPI & Tab Counts
   const [serverKpiCounts, setServerKpiCounts] = useState(null);
@@ -433,50 +117,66 @@ export function MyAssets() {
         }
       });
 
+      let rawList = [];
       if (res?.success && Array.isArray(res.assets) && res.assets.length > 0) {
-        const mappedAssets = res.assets.map((item, idx) => ({
-          id: item.assetId || item.id,
-          dbId: item.id,
-          name: item.description || item.assetId,
-          category: item.category?.name || 'Equipment',
-          tagRfid: item.tagNumber || item.barcode || 'N/A',
-          rfidEpc: item.rfidEpc || 'N/A',
-          barcode: item.barcode || item.qrCode || 'N/A',
-          serialNumber: item.serialNumber || 'SN-UNKNOWN',
-          manufacturer: item.manufacturer?.name || 'Generic',
-          model: item.model?.name || 'Standard Model',
-          location: `${item.site?.name || 'Dubai HQ'} ${item.building?.name || ''} ${item.room?.name || ''}`.trim(),
-          site: item.site?.name || 'Dubai HQ',
-          building: item.building?.name || 'Building A',
-          floorRoom: `${item.floor?.name || 'Floor 3'} / ${item.room?.name || 'Room 312'}`,
-          department: item.department?.name || 'IT',
-          costCenter: item.costCenter?.code || 'IT-001',
-          status: item.lifecycleStatus === 'IN_SERVICE' ? 'In Use' :
-                  item.lifecycleStatus === 'UNDER_MAINTENANCE' ? 'Under Maintenance' :
-                  item.lifecycleStatus === 'PENDING_RETURN' ? 'Pending Return' :
-                  item.lifecycleStatus === 'RETURNED' ? 'Returned' : item.lifecycleStatus,
-          condition: item.condition || 'Good',
-          assignedDate: item.assignedDate ? new Date(item.assignedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '10 Jan 2024',
-          custodian: item.custodian ? `${item.custodian.fullName} (You)` : 'You',
-          image: null,
-          icon: Package,
-          ackRequired: !item.custodyAssignments?.[0]?.acknowledged,
-          warrantyStatus: 'Active',
-          warrantyStart: '15 Jan 2024',
-          warrantyEnd: '14 Jan 2027',
-          nextServiceDate: '15 Oct 2026',
-          maintType: 'Preventive',
-          checklist: 'Equipment Checklist',
-          documents: [
-            { name: 'Warranty_Doc.pdf', size: '320 KB' },
-            { name: 'Assignment_Agreement.pdf', size: '450 KB' }
-          ]
-        }));
-        setAssets(mappedAssets);
-        if (mappedAssets[0] && !selectedAsset) {
-          setSelectedAsset(mappedAssets[0]);
-          setSelectedRowIds([mappedAssets[0].id]);
+        rawList = res.assets;
+      } else {
+        const fallbackRes = await api.get('/assets', { params: { limit: 100 } }).catch(() => null);
+        if (fallbackRes?.assets && fallbackRes.assets.length > 0) {
+          rawList = fallbackRes.assets;
         }
+      }
+
+      if (rawList.length > 0) {
+        const mappedAssets = rawList.map((item) => {
+          const locParts = [
+            item.site?.name,
+            item.building?.name,
+            item.floor?.name,
+            item.room?.name
+          ].filter(Boolean);
+
+          return {
+            ...item,
+            id: item.assetId || item.id,
+            dbId: item.id,
+            name: item.description || item.assetId,
+            category: item.category?.name || 'Equipment',
+            tagRfid: item.tagNumber || item.barcode || 'N/A',
+            rfidEpc: item.rfidEpc || 'N/A',
+            barcode: item.barcode || item.qrCode || 'N/A',
+            serialNumber: item.serialNumber || 'SN-UNKNOWN',
+            manufacturer: item.manufacturer?.name || 'Generic',
+            model: item.model?.name || 'Standard Model',
+            location: locParts.join(' > ') || item.site?.name || 'Unassigned',
+            site: item.site?.name || '',
+            building: item.building?.name || '',
+            floorRoom: [item.floor?.name, item.room?.name].filter(Boolean).join(' / ') || '',
+            department: item.department?.name || '',
+            costCenter: item.costCenter?.code || '',
+            status: item.lifecycleStatus === 'IN_SERVICE' ? 'In Use' :
+                    item.lifecycleStatus === 'UNDER_MAINTENANCE' ? 'Under Maintenance' :
+                    item.lifecycleStatus === 'PENDING_RETURN' ? 'Pending Return' :
+                    item.lifecycleStatus === 'RETURNED' ? 'Returned' : (item.lifecycleStatus || 'In Use'),
+            condition: item.condition || 'Good',
+            assignedDate: item.assignedDate ? new Date(item.assignedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+            custodian: item.custodian ? `${item.custodian.fullName} (You)` : 'You',
+            image: null,
+            icon: Package,
+            ackRequired: false,
+            warrantyStatus: item.warranty ? 'Active' : 'Standard',
+            warrantyStart: item.warranty?.startDate ? new Date(item.warranty.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+            warrantyEnd: item.warranty?.endDate ? new Date(item.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+            nextServiceDate: '15 Oct 2026',
+            maintType: 'Preventive',
+            checklist: 'Standard PM Checklist',
+            documents: []
+          };
+        });
+
+        setAssets(mappedAssets);
+        setSelectedAsset(prev => prev || mappedAssets[0]);
+        setSelectedRowIds(prev => (prev && prev.length) ? prev : [mappedAssets[0].id]);
       }
       if (res?.kpiCounts) setServerKpiCounts(res.kpiCounts);
       if (res?.tabCounts) setServerTabCounts(res.tabCounts);

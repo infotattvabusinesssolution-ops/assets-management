@@ -1,28 +1,67 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, ArrowRight, Building2, MapPin, User, Calendar, AlertCircle, ShieldCheck, Truck } from 'lucide-react';
 import { api } from '../../services/api';
 
 export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted }) {
   const [loading, setLoading] = useState(false);
+  const [submitError, setSubmitError] = useState('');
+  const [sitesList, setSitesList] = useState([]);
+  const [custodiansList, setCustodiansList] = useState([]);
+
   const [formData, setFormData] = useState({
-    transferType: 'Location Transfer', // Location Transfer, Department Transfer, Custodian Transfer, Site-to-Site
-    destinationSite: 'Dubai HQ',
-    destinationBuilding: 'Block B',
-    destinationFloor: '1st Floor',
-    destinationRoom: 'Finance Office 202',
-    destinationDepartment: 'Finance',
-    newCustodian: 'Sara Ali',
+    transferType: 'Location Transfer',
+    destinationSite: '',
+    destinationBuilding: '',
+    destinationFloor: '',
+    destinationRoom: '',
+    destinationDepartment: '',
+    newCustodian: '',
     effectiveDate: new Date().toISOString().slice(0, 10),
-    reason: 'Department reallocation',
+    reason: '',
     condition: 'Good',
     requireDispatch: false,
     requireApproval: false
   });
 
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/custody-transfers/locations/hierarchy')
+        .then(res => {
+          if (res?.sites?.length) {
+            setSitesList(res.sites);
+            setFormData(prev => ({
+              ...prev,
+              destinationSite: prev.destinationSite || res.sites[0].name
+            }));
+          }
+        })
+        .catch(err => console.warn('Hierarchy fetch in TransferAssetModal:', err));
+
+      api.get('/custody-transfers/master-references')
+        .then(res => {
+          if (res?.custodians?.length) {
+            setCustodiansList(res.custodians);
+          }
+        })
+        .catch(err => console.warn('Master references in TransferAssetModal:', err));
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    if (asset) {
+      setFormData(prev => ({
+        ...prev,
+        destinationDepartment: asset.department || prev.destinationDepartment,
+        condition: asset.condition || 'Good'
+      }));
+    }
+  }, [asset]);
+
   if (!isOpen || !asset) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    setSubmitError('');
     setLoading(true);
     try {
       const payload = {
@@ -31,23 +70,13 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
       };
 
       const res = await api.post('/movements/transfers/workflow', payload);
+      if (!res?.success) throw new Error(res?.message || 'Transfer failed');
       if (onTransferCompleted) {
         onTransferCompleted(res);
       }
       onClose();
     } catch (err) {
-      console.warn('Transfer API fallback:', err);
-      if (onTransferCompleted) {
-        onTransferCompleted({
-          success: true,
-          asset: {
-            ...asset,
-            currentLocation: `${formData.destinationSite} > ${formData.destinationBuilding} > ${formData.destinationFloor}`,
-            assignedTo: formData.newCustodian
-          }
-        });
-      }
-      onClose();
+      setSubmitError(err?.message || 'Transfer could not be saved');
     } finally {
       setLoading(false);
     }
@@ -75,6 +104,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs max-h-[80vh] overflow-y-auto">
+          {submitError && <p role="alert" className="text-red-700 bg-red-50 border border-red-200 rounded-lg p-2">{submitError}</p>}
           
           {/* Current Asset Info Summary */}
           <div className="p-3 bg-slate-50 rounded-xl border border-slate-200/80 flex items-center justify-between">
@@ -118,39 +148,38 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
                 onChange={e => setFormData({ ...formData, destinationSite: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-hidden"
               >
-                <option value="Dubai HQ">Dubai HQ</option>
-                <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
-                <option value="Sharjah Warehouse">Sharjah Warehouse</option>
+                <option value="">Select Destination Site</option>
+                {sitesList.map(s => (
+                  <option key={s.id} value={s.name}>{s.name}</option>
+                ))}
+                {sitesList.length === 0 && (
+                  <option value="Dubai HQ Campus">Dubai HQ Campus</option>
+                )}
               </select>
             </div>
 
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Building *</label>
-              <select
+              <input
+                type="text"
                 value={formData.destinationBuilding}
                 onChange={e => setFormData({ ...formData, destinationBuilding: e.target.value })}
+                placeholder="e.g. Executive Tower A"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-hidden"
-              >
-                <option value="Block A">Block A</option>
-                <option value="Block B">Block B</option>
-                <option value="Block C">Block C</option>
-              </select>
+              />
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Floor *</label>
-              <select
+              <input
+                type="text"
                 value={formData.destinationFloor}
                 onChange={e => setFormData({ ...formData, destinationFloor: e.target.value })}
+                placeholder="e.g. Floor 2"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-hidden"
-              >
-                <option value="Ground Floor">Ground Floor</option>
-                <option value="1st Floor">1st Floor</option>
-                <option value="2nd Floor">2nd Floor</option>
-                <option value="3rd Floor">3rd Floor</option>
-              </select>
+              />
             </div>
 
             <div>
@@ -159,6 +188,7 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
                 type="text"
                 value={formData.destinationRoom}
                 onChange={e => setFormData({ ...formData, destinationRoom: e.target.value })}
+                placeholder="e.g. Room 204"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
               />
             </div>
@@ -173,13 +203,10 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
                 onChange={e => setFormData({ ...formData, newCustodian: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-hidden"
               >
-                <option value="Ahmed Khan">Ahmed Khan</option>
-                <option value="Sara Ali">Sara Ali</option>
-                <option value="Fatima Noor">Fatima Noor</option>
-                <option value="Rashid Mohammed">Rashid Mohammed</option>
-                <option value="Omar Saleh">Omar Saleh</option>
-                <option value="IT Team">IT Team</option>
-                <option value="Facilities Team">Facilities Team</option>
+                <option value="">Select Custodian</option>
+                {custodiansList.map(c => (
+                  <option key={c.id} value={c.name || c.fullName}>{c.name || c.fullName}</option>
+                ))}
                 <option value="Unassigned">Unassigned (Return to Stock)</option>
               </select>
             </div>

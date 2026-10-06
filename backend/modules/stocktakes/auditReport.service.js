@@ -244,41 +244,86 @@ for (let i = 6; i <= 600; i++) {
  * Get Consolidated Audit Report Summary
  */
 export async function getReportSummary({ auditId = 'AUD-2026-0008', company = '', location = '', status = '' } = {}) {
-  // If querying SQL Server via Prisma, we can load campaign details if connected
-  let auditInfo = { ...DEFAULT_AUDIT_INFO };
-  let kpis = { ...DEFAULT_KPIS };
-
-  if (isSqlServerConnected && isSqlServerConnected()) {
-    try {
-      const dbCampaign = await prisma.stocktakeCampaign.findFirst({
-        where: {
-          OR: [
-            { campaignNumber: auditId },
-            { id: auditId }
-          ]
-        },
-        include: {
-          site: true,
-          building: true
-        }
-      });
-
-      if (dbCampaign) {
-        auditInfo.auditId = dbCampaign.campaignNumber || dbCampaign.id;
-        auditInfo.auditName = dbCampaign.title;
-        auditInfo.status = dbCampaign.status === 'COMPLETED' ? 'Completed' : 'In Progress';
-        auditInfo.location = dbCampaign.site?.name || 'All Locations';
-        kpis.totalAssets = dbCampaign.totalExpected || 600;
-        kpis.verified = dbCampaign.totalVerified || 390;
+  try {
+    const dbCampaign = await prisma.stocktakeCampaign.findFirst({
+      where: {
+        OR: [
+          { campaignNumber: auditId },
+          { id: auditId }
+        ]
+      },
+      include: {
+        expectedAssets: true,
+        observations: true,
+        exceptions: true
       }
-    } catch (err) {
-      console.warn('[AuditReportService] Prisma query failed, using stored snapshot:', err.message);
+    });
+
+    if (dbCampaign) {
+      const totalExpected = dbCampaign.expectedAssets.length || dbCampaign.totalExpected || 50;
+      const verified = dbCampaign.expectedAssets.filter(e => e.status === 'VERIFIED').length;
+      const relocated = dbCampaign.expectedAssets.filter(e => e.status === 'RELOCATED').length;
+      const missing = dbCampaign.expectedAssets.filter(e => e.status === 'MISSING').length;
+      const pending = totalExpected - (verified + relocated + missing);
+
+      const auditInfo = {
+        auditId: dbCampaign.campaignNumber || dbCampaign.id,
+        auditName: dbCampaign.title,
+        auditType: 'Physical Verification & RFID Census',
+        company: 'Infotatwaa Enterprise Corp',
+        location: dbCampaign.site?.name || 'Dubai HQ Campus',
+        period: '01 Sep 2026 - 15 Sep 2026',
+        status: dbCampaign.status === 'COMPLETED' ? 'Completed' : 'In Progress',
+        createdBy: 'Administrator',
+        createdOn: '25 Aug 2026 @ 10:30',
+        completedOn: dbCampaign.endDate ? new Date(dbCampaign.endDate).toLocaleDateString('en-GB') : '-'
+      };
+
+      const kpis = {
+        totalAssets: totalExpected,
+        verified,
+        verifiedPct: totalExpected > 0 ? Math.round((verified / totalExpected) * 100) : 0,
+        pending: Math.max(0, pending),
+        pendingPct: totalExpected > 0 ? Math.round((Math.max(0, pending) / totalExpected) * 100) : 0,
+        notFound: missing,
+        notFoundPct: totalExpected > 0 ? Math.round((missing / totalExpected) * 100) : 0,
+        wrongLocation: relocated,
+        wrongLocationPct: totalExpected > 0 ? Math.round((relocated / totalExpected) * 100) : 0,
+        wrongCustodian: 0,
+        wrongCustodianPct: 0,
+        unregistered: 0,
+        unregisteredPct: 0,
+        damaged: 0,
+        damagedPct: 0,
+        totalExceptions: relocated + missing
+      };
+
+      const donut = [
+        { label: 'Verified', count: verified, pct: kpis.verifiedPct, color: '#10B981' },
+        { label: 'Pending', count: kpis.pending, pct: kpis.pendingPct, color: '#3B82F6' },
+        { label: 'Not Found', count: missing, pct: kpis.notFoundPct, color: '#EF4444' },
+        { label: 'Wrong Location', count: relocated, pct: kpis.wrongLocationPct, color: '#F97316' }
+      ];
+
+      return {
+        auditInfo,
+        kpis,
+        donut,
+        donutChart: donut,
+        trend: VERIFICATION_TREND_DATA,
+        trendData: VERIFICATION_TREND_DATA,
+        locationResults: [
+          { location: 'Dubai HQ', verified, notFound: missing, wrongLocation: relocated, others: 0, total: totalExpected }
+        ]
+      };
     }
+  } catch (err) {
+    console.warn('Prisma getReportSummary failed:', err.message);
   }
 
   return {
-    auditInfo,
-    kpis,
+    auditInfo: DEFAULT_AUDIT_INFO,
+    kpis: DEFAULT_KPIS,
     donut: VERIFICATION_RESULTS_DONUT,
     donutChart: VERIFICATION_RESULTS_DONUT,
     trend: VERIFICATION_TREND_DATA,
@@ -287,61 +332,98 @@ export async function getReportSummary({ auditId = 'AUD-2026-0008', company = ''
   };
 }
 
-/**
- * Get Filtered & Paginated Detailed Results
- */
 export async function getReportAssets({
   auditId = 'AUD-2026-0008',
   tab = 'ALL',
   search = '',
   page = 1,
-  limit = 5
+  limit = 10
 } = {}) {
-  let list = [...SEEDED_REPORT_ASSETS];
+  try {
+    const campaign = await prisma.stocktakeCampaign.findFirst({
+      where: { OR: [{ campaignNumber: auditId }, { id: auditId }] }
+    });
 
-  // Tab Filtering
-  const cleanTab = (tab || 'ALL').toUpperCase();
-  if (cleanTab === 'EXCEPTIONS') {
-    list = list.filter(a => ['MOVED', 'NOT_FOUND', 'WRONG_LOCATION', 'WRONG_CUSTODIAN', 'UNREGISTERED', 'DAMAGED'].includes(a.statusCode));
-  } else if (cleanTab === 'NOT_FOUND') {
-    list = list.filter(a => a.statusCode === 'NOT_FOUND');
-  } else if (cleanTab === 'MOVED' || cleanTab === 'WRONG_LOCATION') {
-    list = list.filter(a => a.statusCode === 'MOVED' || a.statusCode === 'WRONG_LOCATION');
-  } else if (cleanTab === 'DAMAGED') {
-    list = list.filter(a => a.statusCode === 'DAMAGED');
-  } else if (cleanTab === 'UNREGISTERED') {
-    list = list.filter(a => a.statusCode === 'UNREGISTERED');
+    if (campaign) {
+      const expected = await prisma.stocktakeExpectedAsset.findMany({
+        where: { campaignId: campaign.id },
+        include: {
+          campaign: true
+        }
+      });
+
+      const assetIds = expected.map(e => e.assetId);
+      const dbAssets = await prisma.asset.findMany({
+        where: { id: { in: assetIds } },
+        include: { site: true, room: true, custodian: true, category: true }
+      });
+      const assetMap = Object.fromEntries(dbAssets.map(a => [a.id, a]));
+
+      let rows = expected.map((exp, idx) => {
+        const a = assetMap[exp.assetId] || {};
+        const isVerified = exp.status === 'VERIFIED';
+        const isRelocated = exp.status === 'RELOCATED';
+        const isMissing = exp.status === 'MISSING';
+        return {
+          index: idx + 1,
+          id: exp.id,
+          assetNo: a.assetId || `AS-000${idx + 1}`,
+          assetName: a.description || 'Enterprise Asset',
+          assetType: a.category?.name || 'IT Equipment',
+          systemLocation: a.site?.name ? `${a.site.name} > ${a.room?.name || 'Main Room'}` : 'Dubai HQ',
+          verifiedLocation: isRelocated ? 'Dubai HQ > Executive Suite 205' : (a.site?.name || 'Dubai HQ'),
+          systemCustodian: a.custodian?.fullName || 'Sara Ali',
+          verifiedCustodian: a.custodian?.fullName || 'Sara Ali',
+          status: isVerified ? 'Verified' : isRelocated ? 'Wrong Location' : isMissing ? 'Not Found' : 'Pending',
+          statusCode: exp.status,
+          verifiedDate: isVerified ? '10 Sep 2026 10:24' : '-',
+          verifiedBy: isVerified ? 'System Auditor' : '-',
+          remarks: isRelocated ? 'Found in Executive Suite' : isMissing ? 'Not located during physical scan' : '-',
+          evidencePhoto: null,
+          tagEpc: a.rfidEpc || '',
+          serialNumber: a.serialNumber || ''
+        };
+      });
+
+      const cleanTab = (tab || 'ALL').toUpperCase();
+      if (cleanTab === 'EXCEPTIONS') {
+        rows = rows.filter(a => ['RELOCATED', 'NOT_FOUND', 'WRONG_LOCATION', 'MISSING', 'DAMAGED'].includes(a.statusCode));
+      } else if (cleanTab === 'NOT_FOUND') {
+        rows = rows.filter(a => a.statusCode === 'NOT_FOUND' || a.statusCode === 'MISSING');
+      } else if (cleanTab === 'MOVED' || cleanTab === 'WRONG_LOCATION') {
+        rows = rows.filter(a => a.statusCode === 'RELOCATED' || a.statusCode === 'WRONG_LOCATION');
+      }
+
+      if (search) {
+        const q = search.toLowerCase();
+        rows = rows.filter(a =>
+          a.assetNo.toLowerCase().includes(q) ||
+          a.assetName.toLowerCase().includes(q) ||
+          a.systemLocation.toLowerCase().includes(q) ||
+          a.systemCustodian.toLowerCase().includes(q)
+        );
+      }
+
+      const total = rows.length;
+      const pageNum = Math.max(1, parseInt(page, 10) || 1);
+      const pageSize = Math.max(1, parseInt(limit, 10) || 10);
+      const start = (pageNum - 1) * pageSize;
+      const paginatedRows = rows.slice(start, start + pageSize);
+
+      return {
+        total,
+        totalCount: total,
+        page: pageNum,
+        limit: pageSize,
+        totalPages: Math.ceil(total / pageSize) || 1,
+        rows: paginatedRows
+      };
+    }
+  } catch (err) {
+    console.warn('Prisma getReportAssets failed:', err.message);
   }
 
-  // Text search
-  if (search) {
-    const q = search.toLowerCase();
-    list = list.filter(a =>
-      a.assetNo.toLowerCase().includes(q) ||
-      a.assetName.toLowerCase().includes(q) ||
-      a.systemLocation.toLowerCase().includes(q) ||
-      a.verifiedLocation.toLowerCase().includes(q) ||
-      a.systemCustodian.toLowerCase().includes(q) ||
-      a.verifiedCustodian.toLowerCase().includes(q) ||
-      (a.remarks && a.remarks.toLowerCase().includes(q))
-    );
-  }
-
-  const total = list.length;
-  const pageNum = Math.max(1, parseInt(page, 10) || 1);
-  const pageSize = Math.max(1, parseInt(limit, 10) || 5);
-  const startIndex = (pageNum - 1) * pageSize;
-  const endIndex = startIndex + pageSize;
-  const paginatedRows = list.slice(startIndex, endIndex);
-
-  return {
-    total,
-    totalCount: total,
-    page: pageNum,
-    limit: pageSize,
-    totalPages: Math.ceil(total / pageSize),
-    rows: paginatedRows
-  };
+  return { total: 0, totalCount: 0, page: 1, limit: 10, totalPages: 1, rows: [] };
 }
 
 /**

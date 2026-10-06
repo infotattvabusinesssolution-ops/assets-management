@@ -46,38 +46,25 @@ import clsx from 'clsx';
 // ---------------------------------------------------------------------------
 // Seed Data (Matches Reference Screenshot AUD-2026-0008 1-to-1)
 // ---------------------------------------------------------------------------
-const DEFAULT_AUDIT_INFO = {
-  auditId: 'AUD-2026-0008',
-  auditName: 'HQ Annual IT Asset Audit 2026',
-  auditType: 'Physical Verification',
-  company: 'Dubai HQ',
-  location: 'All Locations',
-  period: '01 Sep 2026 - 15 Sep 2026',
-  status: 'Completed',
-  createdBy: 'John Doe',
-  createdOn: '25 Aug 2026 @ 10:30',
-  completedOn: '15 Sep 2026 @ 16:20'
-};
-
+const DEFAULT_AUDIT_INFO = null;
 const DEFAULT_KPIS = {
-  totalAssets: 600,
-  verified: 390,
-  verifiedPct: 65,
-  pending: 180,
-  pendingPct: 30,
-  notFound: 12,
-  notFoundPct: 2,
-  wrongLocation: 10,
-  wrongLocationPct: 2,
-  wrongCustodian: 5,
-  wrongCustodianPct: 1,
-  unregistered: 2,
+  totalAssets: 0,
+  verified: 0,
+  verifiedPct: 0,
+  pending: 0,
+  pendingPct: 0,
+  notFound: 0,
+  notFoundPct: 0,
+  wrongLocation: 0,
+  wrongLocationPct: 0,
+  wrongCustodian: 0,
+  wrongCustodianPct: 0,
+  unregistered: 0,
   unregisteredPct: 0,
-  damaged: 1,
+  damaged: 0,
   damagedPct: 0,
-  totalExceptions: 30
+  totalExceptions: 0
 };
-
 const DONUT_DATA = [
   { label: 'Verified', count: 390, pct: 65, color: '#10B981' },
   { label: 'Pending', count: 180, pct: 30, color: '#3B82F6' },
@@ -109,98 +96,7 @@ const LOCATION_DATA = [
   { location: 'Others', verified: 60, wrongLocation: 12, notFound: 4, wrongCustodian: 2, others: 6 }
 ];
 
-const SEEDED_SAMPLE_ASSETS = [
-  {
-    index: 1,
-    assetNo: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    assetType: 'IT Equipment',
-    systemLocation: 'Block B > 1F > IT-101',
-    verifiedLocation: 'Block B > 1F > IT-101',
-    systemCustodian: 'Sara Ali',
-    verifiedCustodian: 'Sara Ali',
-    status: 'Verified',
-    verifiedDate: '10 Sep 2026 10:24',
-    verifiedBy: 'John Doe',
-    remarks: '-',
-    evidencePhoto: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=400&auto=format&fit=crop&q=60',
-    tagEpc: 'E28011606000002053A1B4B9',
-    serialNumber: '75K3D23',
-    discrepancyType: 'None (Matched)'
-  },
-  {
-    index: 2,
-    assetNo: 'AS-000124',
-    assetName: 'Monitor - Samsung',
-    assetType: 'IT Equipment',
-    systemLocation: 'Block B > 1F > IT-101',
-    verifiedLocation: 'Block B > 2F > IT-201',
-    systemCustodian: 'Sara Ali',
-    verifiedCustodian: 'Omar Saleh',
-    status: 'Moved',
-    verifiedDate: '10 Sep 2026 11:05',
-    verifiedBy: 'John Doe',
-    remarks: 'Moved to IT-201',
-    evidencePhoto: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=400&auto=format&fit=crop&q=60',
-    tagEpc: 'E28011606000002053A1B4C0',
-    serialNumber: '75K3D24',
-    discrepancyType: 'Location & Custodian Variance'
-  },
-  {
-    index: 3,
-    assetNo: 'AS-000125',
-    assetName: 'Printer - HP',
-    assetType: 'IT Equipment',
-    systemLocation: 'Block B > 2F > IT-201',
-    verifiedLocation: 'Block B > 2F > IT-201',
-    systemCustodian: 'Layla Hassan',
-    verifiedCustodian: 'Layla Hassan',
-    status: 'Verified',
-    verifiedDate: '10 Sep 2026 09:50',
-    verifiedBy: 'John Doe',
-    remarks: '-',
-    evidencePhoto: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=400&auto=format&fit=crop&q=60',
-    tagEpc: 'E28011606000002053A1B4C1',
-    serialNumber: 'CNB1L78912',
-    discrepancyType: 'None (Matched)'
-  },
-  {
-    index: 4,
-    assetNo: 'AS-000126',
-    assetName: 'Chair - Office',
-    assetType: 'Furniture',
-    systemLocation: 'Block B > 2F > IT-201',
-    verifiedLocation: '-',
-    systemCustodian: 'Omar Saleh',
-    verifiedCustodian: '-',
-    status: 'Not Found',
-    verifiedDate: '-',
-    verifiedBy: '-',
-    remarks: 'Asset not located',
-    evidencePhoto: null,
-    tagEpc: 'E28011606000002053A1B4C2',
-    serialNumber: 'HM-991204',
-    discrepancyType: 'Missing / Unlocated'
-  },
-  {
-    index: 5,
-    assetNo: 'AS-000127',
-    assetName: 'Meeting Table',
-    assetType: 'Furniture',
-    systemLocation: 'Block B > 2F > IT-201',
-    verifiedLocation: 'Block C > GF > CONF-01',
-    systemCustodian: 'Omar Saleh',
-    verifiedCustodian: 'Omar Saleh',
-    status: 'Wrong Location',
-    verifiedDate: '10 Sep 2026 09:30',
-    verifiedBy: 'John Doe',
-    remarks: 'Found in CONF-01',
-    evidencePhoto: 'https://images.unsplash.com/photo-1517502884422-41eaead166d4?w=400&auto=format&fit=crop&q=60',
-    tagEpc: 'E28011606000002053A1B4C3',
-    serialNumber: 'FR-441099',
-    discrepancyType: 'Location Variance (Moved)'
-  }
-];
+const SEEDED_SAMPLE_ASSETS = [];
 
 export function AuditReport() {
   const navigate = useNavigate();
@@ -226,7 +122,7 @@ export function AuditReport() {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
-  const [totalRecords, setTotalRecords] = useState(600);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [assets, setAssets] = useState(SEEDED_SAMPLE_ASSETS);
   const [loading, setLoading] = useState(false);
 

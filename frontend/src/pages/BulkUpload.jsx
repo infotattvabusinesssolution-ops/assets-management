@@ -77,17 +77,112 @@ export function BulkUpload() {
 
   const totalPages = Math.ceil(filteredRecords.length / perPage) || 1;
 
-  // Handle Download Excel Template
-  const handleDownloadTemplate = () => {
-    const csvContent = 'Asset ID,Asset Name,Category,Serial Number,Location,Custodian,Acquisition Value,Currency,Status,Condition\n';
-    const encodedUri = encodeURI(csvContent);
+  // Handle Download Formatted Excel Template (.xlsx) with Real Sample Data & Guide Sheet
+  const handleDownloadExcelTemplate = async () => {
+    try {
+      const workbook = new ExcelJS.Workbook();
+      workbook.creator = 'Asset360 Enterprise';
+      workbook.created = new Date();
+
+      // Sheet 1: Assets Import Template
+      const sheet = workbook.addWorksheet('Asset Upload Template', {
+        views: [{ state: 'frozen', ySplit: 1 }]
+      });
+
+      sheet.columns = [
+        { header: 'Asset Name', key: 'name', width: 36 },
+        { header: 'Category', key: 'category', width: 22 },
+        { header: 'Serial Number', key: 'serialNumber', width: 22 },
+        { header: 'Location', key: 'location', width: 24 },
+        { header: 'Custodian', key: 'custodian', width: 20 },
+        { header: 'Acquisition Value', key: 'acquisitionValue', width: 18 },
+        { header: 'Currency', key: 'currency', width: 12 },
+        { header: 'Status', key: 'status', width: 16 },
+        { header: 'Condition', key: 'condition', width: 14 },
+        { header: 'Asset ID', key: 'assetId', width: 22 }
+      ];
+
+      // Format Header Row (Brand Purple, Bold, Centered)
+      const headerRow = sheet.getRow(1);
+      headerRow.height = 28;
+      headerRow.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11, name: 'Segoe UI' };
+      headerRow.fill = {
+        type: 'pattern',
+        pattern: 'solid',
+        fgColor: { argb: 'FF6C2BD9' }
+      };
+      headerRow.alignment = { vertical: 'middle', horizontal: 'center' };
+
+      // Sheet 2: Reference Guide & Allowed Values
+      const guideSheet = workbook.addWorksheet('Instructions & Master Data');
+      guideSheet.columns = [
+        { header: 'Field Name', key: 'field', width: 22 },
+        { header: 'Requirement', key: 'req', width: 24 },
+        { header: 'Allowed Values & Guidelines', key: 'guide', width: 55 },
+        { header: 'Sample Entry', key: 'example', width: 32 }
+      ];
+
+      const guideHeader = guideSheet.getRow(1);
+      guideHeader.height = 26;
+      guideHeader.font = { bold: true, color: { argb: 'FFFFFFFF' }, size: 11 };
+      guideHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
+      guideHeader.alignment = { vertical: 'middle' };
+
+      const guideData = [
+        { field: 'Asset Name', req: 'REQUIRED', guide: 'Descriptive title of the item or equipment.', example: 'Dell Latitude 5540 15-inch Laptop' },
+        { field: 'Category', req: 'REQUIRED', guide: 'Must match system: Laptop, Monitor, Printer, IT Infrastructure, Furniture, Mobile Device, Tablet, HVAC Equipment.', example: 'Laptop' },
+        { field: 'Serial Number', req: 'REQUIRED for IT / Server / Mobile', guide: 'Unique manufacturer serial number.', example: 'SN-DL5540-88120' },
+        { field: 'Location', req: 'RECOMMENDED', guide: 'Campus/Site name. Default: Dubai HQ Campus.', example: 'Dubai HQ Campus' },
+        { field: 'Custodian', req: 'OPTIONAL', guide: 'Assigned employee name (e.g. John Doe, Jane Smith, David Miller, Facilities Team).', example: 'John Doe' },
+        { field: 'Acquisition Value', req: 'RECOMMENDED', guide: 'Numeric purchase cost without symbols.', example: '1450.00' },
+        { field: 'Currency', req: 'OPTIONAL', guide: 'Currency code. Defaults to USD (or AED, EUR, GBP).', example: 'USD' },
+        { field: 'Status', req: 'OPTIONAL', guide: 'In Service, In Store, Under Maintenance. Defaults to In Service.', example: 'In Service' },
+        { field: 'Condition', req: 'OPTIONAL', guide: 'New, Excellent, Good, Fair, Damaged. Defaults to Good.', example: 'Good' },
+        { field: 'Asset ID', req: 'OPTIONAL', guide: 'Leave blank to auto-generate unique ID (AST-YYYY-XXXXX).', example: '(Leave blank)' }
+      ];
+
+      guideData.forEach(row => {
+        const added = guideSheet.addRow(row);
+        added.height = 20;
+        added.font = { size: 10 };
+        added.alignment = { vertical: 'middle' };
+      });
+
+      const buffer = await workbook.xlsx.writeBuffer();
+      const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'Asset360_Bulk_Upload_Template.xlsx';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+
+      showToast('success', 'Downloaded formatted Excel (.xlsx) template with column guide!');
+    } catch (err) {
+      console.error('Error generating Excel template:', err);
+      showToast('error', 'Could not generate Excel template. Downloading CSV template fallback.');
+      handleDownloadCsvTemplate();
+    }
+  };
+
+  // Handle Download Clean UTF-8 CSV Template with Sample Data
+  const handleDownloadCsvTemplate = () => {
+    const headers = ['Asset Name', 'Category', 'Serial Number', 'Location', 'Custodian', 'Acquisition Value', 'Currency', 'Status', 'Condition', 'Asset ID'];
+    const cell = value => '"' + String(value ?? '').replace(/"/g, '""') + '"';
+    const csvContent = '\uFEFF' + [headers].map(row => row.map(cell).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Asset360_Bulk_Upload_Template.csv`);
+    link.href = url;
+    link.download = 'Asset360_Bulk_Upload_Template.csv';
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    showToast('success', 'Downloaded Asset360 Bulk Upload CSV template!');
+    URL.revokeObjectURL(url);
+
+    showToast('success', 'Downloaded CSV template !');
   };
 
   // Handle Download Error Report CSV
@@ -96,14 +191,16 @@ export function BulkUpload() {
     const headers = ['Row Number', 'Status', 'Asset ID', 'Asset Name', 'Category', 'Serial Number', 'Remarks / Error Reason'];
     const rows = errorRows.map(r => [r.row, r.status, r.assetId, r.name, r.category, r.serialNumber, r.remarks]);
     const cell = value => '"' + String(value ?? '').replace(/"/g, '""') + '"';
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers, ...rows].map(row => row.map(cell).join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map(cell).join(',')).join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `Asset360_Bulk_Upload_Error_Report.csv`);
+    link.href = url;
+    link.download = `Asset360_Bulk_Upload_Error_Report.csv`;
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(url);
     showToast('success', 'Downloaded Error Report CSV for unresolved records!');
   };
 
@@ -155,19 +252,24 @@ export function BulkUpload() {
         const index = headers.findIndex(h => names.includes(h));
         return index < 0 ? '' : (values[index] || '');
       };
-      const parsed = rows.filter(values => values.some(Boolean)).map((values, index) => ({
-        row: index + 2,
-        assetId: field(values, 'assetid'),
-        name: field(values, 'assetname', 'name', 'description'),
-        category: field(values, 'category'),
-        serialNumber: field(values, 'serialnumber'),
-        location: field(values, 'location', 'site'),
-        custodian: field(values, 'custodian'),
-        acquisitionValue: field(values, 'acquisitionvalue', 'acquisitioncost', 'cost'),
-        currency: field(values, 'currency'),
-        status: 'Unvalidated',
-        remarks: 'Awaiting server validation'
-      }));
+      const parsed = rows.filter(values => values.some(Boolean)).map((values, index) => {
+        const userAssetId = field(values, 'assetid', 'id', 'tag');
+        const autoId = userAssetId || `AST-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
+        return {
+          row: index + 2,
+          assetId: autoId,
+          name: field(values, 'assetname', 'name', 'description', 'assetdescription', 'itemname'),
+          category: field(values, 'category', 'assetcategory', 'type'),
+          serialNumber: field(values, 'serialnumber', 'serialno', 'sn', 'serial'),
+          location: field(values, 'location', 'site', 'facility', 'campus') || 'Dubai HQ Campus',
+          custodian: field(values, 'custodian', 'assignedto', 'owner', 'employee'),
+          acquisitionValue: field(values, 'acquisitionvalue', 'acquisitioncost', 'cost', 'price', 'value'),
+          currency: field(values, 'currency', 'curr') || 'USD',
+          status: 'Unvalidated',
+          condition: field(values, 'condition', 'assetcondition') || 'Good',
+          remarks: 'Awaiting server validation'
+        };
+      });
       if (!parsed.length) throw new Error('The file has no asset rows.');
       setSelectedFile({ name: file.name, size: (file.size / 1024).toFixed(1) + ' KB' });
       setRecords(parsed);
@@ -378,28 +480,32 @@ export function BulkUpload() {
               <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">1</div>
               <h3 className="font-extrabold text-slate-900 text-sm">Download Template</h3>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Download the CSV template with the required column headings.</p>
+            <p className="text-xs text-slate-500 mt-2">Download formatted template with column guide.</p>
           </div>
 
-          <div className="space-y-2.5 pt-1">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-emerald-600 text-white font-black text-sm flex items-center justify-center shrink-0 shadow-xs">
-                X
-              </div>
-              <button
-                type="button"
-                onClick={handleDownloadTemplate}
-                className="w-full py-2.5 bg-white hover:bg-slate-50 text-slate-800 font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-300 shadow-2xs transition-all cursor-pointer"
-              >
-                <Download className="w-4 h-4 text-emerald-600" /> Download Excel Template
-              </button>
-            </div>
+          <div className="space-y-2 pt-1">
+            <button
+              type="button"
+              onClick={handleDownloadExcelTemplate}
+              className="w-full py-2.5 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center justify-center gap-2 shadow-xs transition-all cursor-pointer"
+            >
+              <Download className="w-4 h-4" /> Download Excel (.xlsx)
+            </button>
+
+            <button
+              type="button"
+              onClick={handleDownloadCsvTemplate}
+              className="w-full py-2 bg-white hover:bg-slate-50 text-slate-700 font-bold rounded-xl text-xs flex items-center justify-center gap-2 border border-slate-300 shadow-2xs transition-all cursor-pointer"
+            >
+              <FileSpreadsheet className="w-3.5 h-3.5 text-slate-500" /> Download CSV (.csv)
+            </button>
+
             <button
               type="button"
               onClick={() => setActiveModal('TEMPLATE_GUIDE')}
-              className="text-[11px] text-[#6C2BD9] hover:underline font-bold flex items-center gap-1 cursor-pointer pt-1"
+              className="text-[11px] text-[#6C2BD9] hover:underline font-bold flex items-center justify-center gap-1 cursor-pointer pt-1"
             >
-              <Download className="w-3.5 h-3.5" /> View Template Guide
+              <HelpCircle className="w-3.5 h-3.5" /> View Template Guide &amp; Master Values
             </button>
           </div>
         </div>
@@ -411,7 +517,7 @@ export function BulkUpload() {
               <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">2</div>
               <h3 className="font-extrabold text-slate-900 text-sm">Upload File</h3>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Upload your completed Excel or CSV file.</p>
+            <p className="text-xs text-slate-500 mt-2">Upload your completed spreadsheet.</p>
           </div>
 
           <div className="space-y-2 pt-1">
@@ -429,43 +535,47 @@ export function BulkUpload() {
                   className="absolute inset-0 opacity-0 cursor-pointer"
                 />
                 <Upload className="w-5 h-5 text-[#6C2BD9]" />
-                <p className="text-[10px] font-bold text-slate-800 leading-tight">Drag and drop your file here or</p>
-                <span className="px-2.5 py-0.5 bg-white border border-slate-300 rounded-md text-[10px] font-extrabold text-slate-700 inline-block shadow-2xs">Choose File</span>
+                <p className="text-[10px] font-bold text-slate-800 leading-tight">Drag &amp; drop file or</p>
+                <span className="px-2 py-0.5 bg-white border border-slate-300 rounded-md text-[10px] font-extrabold text-slate-700 inline-block shadow-2xs">Browse</span>
               </div>
 
               {/* Uploaded File Card */}
               {selectedFile ? (
-                <div className="border border-slate-200 bg-white rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
+                <div className="border border-emerald-200 bg-emerald-50/50 rounded-xl p-2.5 flex items-center justify-between gap-2 text-xs">
                   <div className="flex items-center gap-2 truncate">
                     <div className="w-8 h-8 rounded-lg bg-emerald-600 text-white font-black text-xs flex items-center justify-center shrink-0">
-                      X
+                      <FileSpreadsheet className="w-4 h-4" />
                     </div>
                     <div className="truncate">
                       <span className="font-extrabold text-slate-900 block truncate text-[11px]">{selectedFile.name}</span>
-                      <span className="text-[10px] text-slate-400 font-mono block">{selectedFile.size}</span>
+                      <span className="text-[10px] text-slate-500 font-mono block">{selectedFile.size}</span>
                     </div>
                   </div>
                   <button type="button" onClick={() => { setSelectedFile(null); setRecords([]); setIsValidated(false); }} className="p-1 text-slate-400 hover:text-rose-600 cursor-pointer"><X className="w-3.5 h-3.5" /></button>
                 </div>
               ) : (
-                <div className="border border-slate-200 bg-slate-50/50 rounded-xl p-2.5 flex items-center justify-center text-[10px] text-slate-400 font-medium">
-                  No file selected
+                <div className="border border-slate-200 bg-slate-50/50 rounded-xl p-2 flex flex-col items-center justify-center text-center">
+                  <span className="text-[10px] text-slate-400 font-medium">No file selected</span>
                 </div>
               )}
             </div>
 
-            <p className="text-[9px] text-slate-400 text-center">Supported formats: .xlsx, .csv (Max size: 10 MB)</p>
+            <div className="flex items-center justify-between text-[9px] text-slate-400 px-1">
+              <span>Formats: .xlsx, .csv (Max 10 MB)</span>
+            </div>
           </div>
         </div>
 
         {/* Card 3: Validate Data */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between space-y-3">
+        <div className={`bg-white border rounded-xl p-4 shadow-sm flex flex-col justify-between space-y-3 transition-all ${
+          selectedFile && !isValidated ? 'border-[#6C2BD9] ring-2 ring-purple-100' : 'border-slate-200'
+        }`}>
           <div>
             <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
               <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">3</div>
               <h3 className="font-extrabold text-slate-900 text-sm">Validate Data</h3>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Check data for errors, duplicates and master data validation.</p>
+            <p className="text-xs text-slate-500 mt-2">Check data against master catalog, sites, and serial numbers.</p>
           </div>
 
           <div className="pt-3">
@@ -479,19 +589,21 @@ export function BulkUpload() {
                   : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
               }`}
             >
-              <Search className="w-4 h-4" /> {isValidating ? 'Validating Data...' : 'Validate File'}
+              <Search className="w-4 h-4" /> {isValidating ? 'Validating Data...' : `Validate File (${records.length} Rows)`}
             </button>
           </div>
         </div>
 
         {/* Card 4: Submit */}
-        <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-sm flex flex-col justify-between space-y-3">
+        <div className={`bg-white border rounded-xl p-4 shadow-sm flex flex-col justify-between space-y-3 transition-all ${
+          isValidated ? 'border-emerald-500 ring-2 ring-emerald-100' : 'border-slate-200'
+        }`}>
           <div>
             <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
               <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center shrink-0">4</div>
               <h3 className="font-extrabold text-slate-900 text-sm">Submit</h3>
             </div>
-            <p className="text-xs text-slate-500 mt-2">Submit valid records to create or update assets.</p>
+            <p className="text-xs text-slate-500 mt-2">Submit valid records into database &amp; asset register.</p>
           </div>
 
           <div className="pt-3">
@@ -501,11 +613,11 @@ export function BulkUpload() {
               onClick={handleSubmitUpload}
               className={`w-full py-2.5 rounded-xl font-extrabold text-xs flex items-center justify-center gap-2 transition-all cursor-pointer ${
                 isValidated
-                  ? 'bg-slate-100 hover:bg-slate-200 text-slate-700 border border-slate-300'
+                  ? 'bg-emerald-600 hover:bg-emerald-700 text-white shadow-md shadow-emerald-600/20'
                   : 'bg-slate-100 text-slate-400 border border-slate-200 cursor-not-allowed'
               }`}
             >
-              <Upload className="w-4 h-4 text-slate-500" /> {isSubmitting ? 'Processing Upload...' : 'Submit Upload'}
+              <Upload className="w-4 h-4" /> {isSubmitting ? 'Processing Upload...' : `Submit (${records.filter(r => r.status === 'Valid' || r.status === 'Warning').length} Valid)`}
             </button>
           </div>
         </div>
@@ -752,35 +864,99 @@ export function BulkUpload() {
       {/* Template Guide Modal */}
       {activeModal === 'TEMPLATE_GUIDE' && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 text-xs">
+          <div className="bg-white border border-slate-200 rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 text-xs max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <HelpCircle className="w-5 h-5 text-[#6C2BD9]" /> Bulk Upload Template Guide &amp; Validation Rules
+                <HelpCircle className="w-5 h-5 text-[#6C2BD9]" /> Bulk Upload Template Guide &amp; Master Values
               </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
+              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="space-y-3 text-slate-700">
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                <span className="font-extrabold text-slate-900 block">Mandatory Fields:</span>
-                <p className="text-[11px] text-slate-600">Asset ID, Asset Name, Category, Serial Number (for serialized categories), Location.</p>
+            <div className="space-y-3.5 text-slate-700">
+              <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl space-y-1 text-purple-950">
+                <span className="font-extrabold block text-xs">💡 Quick Tips for Normal Users:</span>
+                <ul className="list-disc list-inside space-y-1 text-[11px] text-purple-900">
+                  <li><strong>Asset ID:</strong> You can leave this blank! The system will automatically generate a standard unique ID (e.g. <code>AST-2026-XXXXX</code>).</li>
+                  <li><strong>Location:</strong> If left empty, it defaults automatically to <code>Dubai HQ Campus</code>.</li>
+                  <li><strong>Serial Number:</strong> Required for IT hardware (Laptops, Servers, Mobile Devices). If non-serialized, you can leave it blank.</li>
+                </ul>
               </div>
 
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1">
-                <span className="font-extrabold text-slate-900 block">Uniqueness Rules:</span>
-                <p className="text-[11px] text-slate-600">Asset ID, Serial Number, Barcode, and RFID EPC must be unique across all existing enterprise assets.</p>
+              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-1.5">
+                <span className="font-extrabold text-slate-900 block text-xs">Supported System Categories:</span>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-1.5 text-[11px]">
+                  <span className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">💻 Laptop</span>
+                  <span className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">🖥️ Monitor</span>
+                  <span className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">🖨️ Printer</span>
+                  <span className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">📱 Mobile Device</span>
+                  <span className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">📟 Tablet</span>
+                  <span className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">🖧 IT Infrastructure</span>
+                  <span className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">🪑 Furniture</span>
+                  <span className="p-1.5 bg-white border border-slate-200 rounded-lg font-bold text-slate-800">❄️ HVAC Equipment</span>
+                </div>
               </div>
 
-              <div className="p-3 bg-purple-50 border border-purple-100 rounded-xl space-y-1 text-purple-950">
-                <span className="font-extrabold block">Master Data Cross-References:</span>
-                <p className="text-[11px] text-purple-900">Categories, Companies, Sites, Buildings, Rooms, and Custodians must match exact names in Master Data. Unrecognized custodians will raise a Warning and leave custody unassigned.</p>
+              <div className="border border-slate-200 rounded-xl overflow-hidden">
+                <table className="w-full text-left text-[11px]">
+                  <thead className="bg-slate-100 font-extrabold text-slate-900 border-b border-slate-200">
+                    <tr>
+                      <th className="p-2.5">Column Name</th>
+                      <th className="p-2.5">Required?</th>
+                      <th className="p-2.5">Description &amp; Example</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    <tr>
+                      <td className="p-2.5 font-bold">Asset Name</td>
+                      <td className="p-2.5 font-extrabold text-rose-600">Yes</td>
+                      <td className="p-2.5 text-slate-600">Descriptive item title (e.g. <em>Dell Latitude 5540 15&quot;</em>)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold">Category</td>
+                      <td className="p-2.5 font-extrabold text-rose-600">Yes</td>
+                      <td className="p-2.5 text-slate-600">Must match system category (e.g. <em>Laptop, Monitor, Printer</em>)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold">Serial Number</td>
+                      <td className="p-2.5 font-bold text-amber-700">Conditional</td>
+                      <td className="p-2.5 text-slate-600">Required for Laptop/Server/Mobile (e.g. <em>SN-DL5540-88120</em>)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold">Location</td>
+                      <td className="p-2.5 text-slate-500">Optional</td>
+                      <td className="p-2.5 text-slate-600">Defaults to <em>Dubai HQ Campus</em></td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold">Custodian</td>
+                      <td className="p-2.5 text-slate-500">Optional</td>
+                      <td className="p-2.5 text-slate-600">Assigned employee (e.g. <em>John Doe, Jane Smith</em>)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold">Acquisition Value</td>
+                      <td className="p-2.5 text-slate-500">Optional</td>
+                      <td className="p-2.5 text-slate-600">Purchase cost number (e.g. <em>1450.00</em>)</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold">Status</td>
+                      <td className="p-2.5 text-slate-500">Optional</td>
+                      <td className="p-2.5 text-slate-600"><em>In Service</em>, <em>In Store</em>, <em>Under Maintenance</em></td>
+                    </tr>
+                  </tbody>
+                </table>
               </div>
             </div>
 
-            <div className="flex justify-end pt-2 border-t border-slate-100">
-              <button onClick={() => setActiveModal(null)} className="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl cursor-pointer">Close Guide</button>
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => { setActiveModal(null); handleDownloadExcelTemplate(); }}
+                className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white font-extrabold rounded-xl text-xs flex items-center gap-1.5 cursor-pointer shadow-xs"
+              >
+                <Download className="w-3.5 h-3.5" /> Download Excel Template
+              </button>
+              <button onClick={() => setActiveModal(null)} className="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl cursor-pointer text-xs">Close</button>
             </div>
           </div>
         </div>

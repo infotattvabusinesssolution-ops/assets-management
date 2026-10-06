@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import {
@@ -33,13 +33,33 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   const location = useLocation();
 
   // Active view tab: 'form' | 'approvals' | 'transit' | 'history'
-  const [activeTab, setActiveTab] = useState(defaultTab);
+  const getInitialTab = () => {
+    const searchParams = new URLSearchParams(location.search);
+    const searchTab = searchParams.get('tab');
+    const hasTargetAsset = searchParams.get('assetId') || searchParams.get('id') || location.state?.assetId || location.state?.asset;
+    if (hasTargetAsset) return 'form';
+    if (searchTab === 'transfer' || searchTab === 'form') return 'form';
+    if (searchTab === 'approvals') return 'approvals';
+    if (searchTab === 'transit') return 'transit';
+    if (searchTab === 'history') return 'history';
+    return defaultTab || 'form';
+  };
+
+  const [activeTab, setActiveTab] = useState(getInitialTab);
 
   useEffect(() => {
-    if (defaultTab) {
+    const searchParams = new URLSearchParams(location.search);
+    const searchTab = searchParams.get('tab');
+    const hasTargetAsset = searchParams.get('assetId') || searchParams.get('id') || location.state?.assetId || location.state?.asset;
+    if (hasTargetAsset) {
+      setActiveTab('form');
+    } else if (searchTab) {
+      if (searchTab === 'transfer' || searchTab === 'form') setActiveTab('form');
+      else if (['approvals', 'transit', 'history'].includes(searchTab)) setActiveTab(searchTab);
+    } else if (defaultTab) {
       setActiveTab(defaultTab);
     }
-  }, [defaultTab]);
+  }, [defaultTab, location.search, location.state]);
 
   // Loading & notification state
   const [loading, setLoading] = useState(false);
@@ -50,191 +70,104 @@ export default function TransferMovement({ defaultTab = 'form' }) {
     setTimeout(() => setToast(null), 4000);
   };
 
+  const formatAssetForTransfer = (raw) => {
+    if (!raw) return null;
+    const locParts = [
+      raw.siteName || raw.site?.name,
+      raw.buildingName || raw.building?.name,
+      raw.floorRoom || raw.floorName || raw.floor?.name,
+      raw.roomName || raw.room?.name
+    ].filter(Boolean);
+
+    const rawId = raw.id || raw.assetId;
+    const assetNum = raw.assetId || raw.assetNumber || raw.tagNumber || rawId;
+
+    return {
+      id: rawId,
+      assetNumber: assetNum,
+      assetName: raw.name || raw.assetName || raw.description || 'Asset',
+      type: raw.categoryName || raw.category?.name || raw.type || 'Equipment',
+      category: raw.categoryName || raw.category?.name || 'Equipment',
+      serialNumber: raw.serialNumber || 'N/A',
+      barcode: raw.barcode || raw.tagNumber || 'N/A',
+      rfidEpc: raw.rfidEpc || raw.tagNumber || 'N/A',
+      currentLocation: raw.locationStr || (locParts.length > 0 ? locParts.join(' > ') : (raw.currentLocationFormatted || 'Unassigned Location')),
+      siteId: raw.siteId || raw.site?.id || '',
+      siteName: raw.siteName || raw.site?.name || '',
+      buildingId: raw.buildingId || raw.building?.id || '',
+      buildingName: raw.buildingName || raw.building?.name || '',
+      floorId: raw.floorId || raw.floor?.id || '',
+      floorName: raw.floorName || raw.floorRoom || raw.floor?.name || '',
+      roomId: raw.roomId || raw.room?.id || '',
+      roomName: raw.roomName || raw.room?.name || '',
+      currentCustodian: raw.custodianName || (raw.custodian ? (raw.custodian.fullName || raw.custodian.firstName) : (raw.currentCustodian || 'Unassigned')),
+      department: raw.departmentName || raw.department?.name || '',
+      status: raw.lifecycleStatus || raw.status || 'In Service',
+      imageUrl: raw.imageUrl || 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&auto=format&fit=crop&q=60',
+      isEligible: raw.lifecycleStatus !== 'DISPOSED' && raw.lifecycleStatus !== 'Disposed' && raw.status !== 'Disposed',
+      reason: (raw.lifecycleStatus === 'DISPOSED' || raw.lifecycleStatus === 'Disposed' || raw.status === 'Disposed') ? 'Asset is disposed' : null
+    };
+  };
+
   // ---------------------------------------------------------------------------
-  // 1. Master Data & Hierarchy Stores
+  // 1. Master Data & Hierarchy Stores (Loaded dynamically from database)
   // ---------------------------------------------------------------------------
   const [hierarchy, setHierarchy] = useState({
-    sites: [
-      { id: 'SITE-DXB-01', code: 'DXB-HQ', name: 'Dubai HQ' },
-      { id: 'SITE-AUH-01', code: 'AUH-BR', name: 'Abu Dhabi Branch' },
-      { id: 'SITE-RUH-01', code: 'RUH-DC', name: 'Riyadh DC' }
-    ],
-    buildings: [
-      { id: 'BLD-DXB-A', siteId: 'SITE-DXB-01', name: 'Block A' },
-      { id: 'BLD-DXB-B', siteId: 'SITE-DXB-01', name: 'Block B' },
-      { id: 'BLD-DXB-C', siteId: 'SITE-DXB-01', name: 'Block C' },
-      { id: 'BLD-AUH-1', siteId: 'SITE-AUH-01', name: 'Main Tower' },
-      { id: 'BLD-RUH-1', siteId: 'SITE-RUH-01', name: 'Data Center Building' }
-    ],
-    floors: [
-      { id: 'FLR-A-GF', buildingId: 'BLD-DXB-A', name: 'Ground Floor' },
-      { id: 'FLR-A-1F', buildingId: 'BLD-DXB-A', name: '1st Floor' },
-      { id: 'FLR-A-2F', buildingId: 'BLD-DXB-A', name: '2nd Floor' },
-      { id: 'FLR-B-GF', buildingId: 'BLD-DXB-B', name: 'Ground Floor' },
-      { id: 'FLR-B-1F', buildingId: 'BLD-DXB-B', name: '1st Floor' },
-      { id: 'FLR-B-2F', buildingId: 'BLD-DXB-B', name: '2nd Floor' },
-      { id: 'FLR-C-GF', buildingId: 'BLD-DXB-C', name: 'Ground Floor' },
-      { id: 'FLR-C-1F', buildingId: 'BLD-DXB-C', name: '1st Floor' }
-    ],
-    rooms: [
-      { id: 'ROOM-IT-101', floorId: 'FLR-A-GF', name: 'IT-101' },
-      { id: 'ROOM-IT-102', floorId: 'FLR-A-GF', name: 'IT-102' },
-      { id: 'ROOM-CONF-A', floorId: 'FLR-A-1F', name: 'Conf Room Alpha' },
-      { id: 'ROOM-IT-201', floorId: 'FLR-B-1F', name: 'IT-201' },
-      { id: 'ROOM-FIN-01', floorId: 'FLR-B-1F', name: 'Finance' },
-      { id: 'ROOM-OPS-02', floorId: 'FLR-B-2F', name: 'Operations Lab' },
-      { id: 'ROOM-HR-001', floorId: 'FLR-C-GF', name: 'HR-001' },
-      { id: 'ROOM-HR-002', floorId: 'FLR-C-1F', name: 'HR-002' }
-    ]
+    sites: [],
+    buildings: [],
+    floors: [],
+    rooms: []
   });
 
-  const [departments, setDepartments] = useState([
-    { id: 'DEP-IT', name: 'IT Department' },
-    { id: 'DEP-FIN', name: 'Finance' },
-    { id: 'DEP-HR', name: 'Human Resources' },
-    { id: 'DEP-OPS', name: 'Operations' },
-    { id: 'DEP-ENG', name: 'Engineering' }
-  ]);
+  const [departments, setDepartments] = useState([]);
+  const [custodians, setCustodians] = useState([]);
 
-  const [custodians, setCustodians] = useState([
-    { id: 'CUST-00456', name: 'Omar Saleh (EMP-00456)', email: 'omar.saleh@asset360.com' },
-    { id: 'CUST-00101', name: 'Ahmed Khan', email: 'ahmed.khan@asset360.com' },
-    { id: 'CUST-00102', name: 'Sara Ali', email: 'sara.ali@asset360.com' },
-    { id: 'CUST-00200', name: 'IT Team', email: 'it.team@asset360.com' },
-    { id: 'CUST-00305', name: 'Zayd Al-Mansoor', email: 'zayd.m@asset360.com' }
-  ]);
-
-  // Initial Seed Assets Matching Screenshot Exactly
-  const defaultInitialAssets = [
-    {
-      id: 'AST-000123',
-      assetNumber: 'AS-000123',
-      assetName: 'Laptop - Dell Latitude 5440',
-      type: 'IT Equipment',
-      serialNumber: '75K3D24',
-      barcode: 'BC-AS-000123',
-      rfidEpc: 'E28011606000002053A1B4C0',
-      currentLocation: 'Dubai HQ > Block A > GF > IT-101',
-      siteName: 'Dubai HQ',
-      buildingName: 'Block A',
-      floorName: 'Ground Floor',
-      roomName: 'IT-101',
-      currentCustodian: 'Ahmed Khan',
-      status: 'Assigned',
-      imageUrl: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&auto=format&fit=crop&q=60',
-      isEligible: true
-    },
-    {
-      id: 'AST-000124',
-      assetNumber: 'AS-000124',
-      assetName: 'Monitor - Samsung',
-      type: 'IT Equipment',
-      serialNumber: 'SAMS8787',
-      barcode: 'BC-AS-000124',
-      rfidEpc: 'E28011606000002053A1B4C1',
-      currentLocation: 'Dubai HQ > Block A > GF > IT-101',
-      siteName: 'Dubai HQ',
-      buildingName: 'Block A',
-      floorName: 'Ground Floor',
-      roomName: 'IT-101',
-      currentCustodian: 'Ahmed Khan',
-      status: 'Assigned',
-      imageUrl: 'https://images.unsplash.com/photo-1527443224154-c4a3942d3acf?w=200&auto=format&fit=crop&q=60',
-      isEligible: true
-    },
-    {
-      id: 'AST-000125',
-      assetNumber: 'AS-000125',
-      assetName: 'Printer - HP',
-      type: 'IT Equipment',
-      serialNumber: 'HP LaserJet 404',
-      barcode: 'BC-AS-000125',
-      rfidEpc: 'E28011606000002053A1B4C2',
-      currentLocation: 'Dubai HQ > Block B > 1F > Finance',
-      siteName: 'Dubai HQ',
-      buildingName: 'Block B',
-      floorName: '1st Floor',
-      roomName: 'Finance',
-      currentCustodian: 'Sara Ali',
-      status: 'Assigned',
-      imageUrl: 'https://images.unsplash.com/photo-1612815154858-60aa4c59eaa6?w=200&auto=format&fit=crop&q=60',
-      isEligible: true
-    },
-    {
-      id: 'AST-000126',
-      assetNumber: 'AS-000126',
-      assetName: 'Access Point - Cisco',
-      type: 'Network Device',
-      serialNumber: 'CSCO-AP-9921',
-      barcode: 'BC-AS-000126',
-      rfidEpc: 'E28011606000002053A1B4C3',
-      currentLocation: 'Dubai HQ > Block B > 2F > IT-201',
-      siteName: 'Dubai HQ',
-      buildingName: 'Block B',
-      floorName: '2nd Floor',
-      roomName: 'IT-201',
-      currentCustodian: 'IT Team',
-      status: 'Unassigned',
-      imageUrl: 'https://images.unsplash.com/photo-1544197150-b99a580bb7a8?w=200&auto=format&fit=crop&q=60',
-      isEligible: true
-    },
-    {
-      id: 'AST-000127',
-      assetNumber: 'AS-000127',
-      assetName: 'Chair - Office',
-      type: 'Furniture',
-      serialNumber: 'HM-AERON-091',
-      barcode: 'BC-AS-000127',
-      rfidEpc: 'E28011606000002053A1B4C4',
-      currentLocation: 'Dubai HQ > Block C > GF > HR-001',
-      siteName: 'Dubai HQ',
-      buildingName: 'Block C',
-      floorName: 'Ground Floor',
-      roomName: 'HR-001',
-      currentCustodian: '-',
-      status: 'Unassigned',
-      imageUrl: 'https://images.unsplash.com/photo-1580481077197-20ff694c9f13?w=200&auto=format&fit=crop&q=60',
-      isEligible: true
-    }
-  ];
-
-  const [assetsList, setAssetsList] = useState(defaultInitialAssets);
+  const [assetsList, setAssetsList] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
-  // By default, AS-000123 and AS-000124 are checked matching the screenshot
-  const [selectedAssetIds, setSelectedAssetIds] = useState(['AST-000123', 'AST-000124']);
+  const [selectedAssetIds, setSelectedAssetIds] = useState([]);
 
   // Handle preselected asset passed from Asset Register or other pages
   useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const targetAssetId = searchParams.get('assetId') || searchParams.get('id') || location.state?.assetId || location.state?.asset?.assetId || location.state?.asset?.id;
     const passedAsset = location.state?.asset;
-    const passedAssetId = location.state?.assetId || (new URLSearchParams(location.search)).get('assetId');
 
     if (passedAsset) {
-      const formatted = {
-        id: passedAsset.id || passedAsset.assetId,
-        assetNumber: passedAsset.assetId || passedAsset.tagNumber || 'AS-000128',
-        assetName: passedAsset.name || passedAsset.description || 'Asset',
-        type: passedAsset.categoryName || 'General',
-        serialNumber: passedAsset.serialNumber || 'N/A',
-        barcode: passedAsset.barcode || passedAsset.tagNumber || 'N/A',
-        rfidEpc: passedAsset.rfidEpc || 'N/A',
-        currentLocation: passedAsset.locationStr || 'Dubai HQ',
-        siteName: passedAsset.siteName || 'Dubai HQ',
-        buildingName: passedAsset.buildingName || 'Building A',
-        floorName: passedAsset.floorRoom || 'Floor 3',
-        roomName: passedAsset.floorRoom || '',
-        currentCustodian: passedAsset.custodianName || 'Unassigned',
-        status: passedAsset.lifecycleStatus || 'In Service',
-        imageUrl: passedAsset.imageUrl || 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&auto=format&fit=crop&q=60',
-        isEligible: true
-      };
-
-      setAssetsList(prev => {
-        const exists = prev.some(a => a.id === formatted.id || a.assetNumber === formatted.assetNumber);
-        return exists ? prev : [formatted, ...prev];
-      });
-      setSelectedAssetIds([formatted.id]);
-    } else if (passedAssetId) {
-      setSelectedAssetIds([passedAssetId]);
+      const formatted = formatAssetForTransfer(passedAsset);
+      if (formatted) {
+        setAssetsList(prev => {
+          const matchIdx = prev.findIndex(a => a.id === formatted.id || a.assetNumber === formatted.assetNumber);
+          if (matchIdx >= 0) {
+            const next = [...prev];
+            next[matchIdx] = { ...next[matchIdx], ...formatted };
+            return next;
+          }
+          return [formatted, ...prev];
+        });
+        setSelectedAssetIds([formatted.id, formatted.assetNumber].filter(Boolean));
+      }
+    } else if (targetAssetId) {
+      setSelectedAssetIds([targetAssetId]);
+      api.get(`/assets/${encodeURIComponent(targetAssetId)}/360`)
+        .then(res => {
+          const raw = res?.asset360?.asset || res?.asset;
+          if (raw) {
+            const formatted = formatAssetForTransfer(raw);
+            setAssetsList(prev => {
+              const matchIdx = prev.findIndex(a => a.id === formatted.id || a.assetNumber === formatted.assetNumber);
+              if (matchIdx >= 0) {
+                const next = [...prev];
+                next[matchIdx] = { ...next[matchIdx], ...formatted };
+                return next;
+              }
+              return [formatted, ...prev];
+            });
+            setSelectedAssetIds([formatted.id, formatted.assetNumber].filter(Boolean));
+          }
+        })
+        .catch(err => {
+          console.warn('Could not fetch target asset details for transfer:', err);
+        });
     }
   }, [location.state, location.search]);
 
@@ -259,71 +192,114 @@ export default function TransferMovement({ defaultTab = 'form' }) {
       ]);
 
       if (hRes.status === 'fulfilled' && hRes.value.success) {
-        setHierarchy({
-          sites: hRes.value.sites || hierarchy.sites,
-          buildings: hRes.value.buildings || hierarchy.buildings,
-          floors: hRes.value.floors || hierarchy.floors,
-          rooms: hRes.value.rooms || hierarchy.rooms
-        });
+        const sites = hRes.value.sites || [];
+        const buildings = hRes.value.buildings || [];
+        const floors = hRes.value.floors || [];
+        const rooms = hRes.value.rooms || [];
+        setHierarchy({ sites, buildings, floors, rooms });
+
+        if (sites.length > 0) {
+          setDestSiteId(prev => prev || sites[0].id);
+          const relB = buildings.filter(b => b.siteId === sites[0].id);
+          if (relB.length > 0) {
+            setDestBuildingId(prev => prev || relB[0].id);
+            const relF = floors.filter(f => f.buildingId === relB[0].id);
+            if (relF.length > 0) {
+              setDestFloorId(prev => prev || relF[0].id);
+              const relR = rooms.filter(r => r.floorId === relF[0].id);
+              if (relR.length > 0) setDestRoomId(prev => prev || relR[0].id);
+            }
+          }
+        }
       }
 
       if (rRes.status === 'fulfilled' && rRes.value.success) {
-        if (rRes.value.departments) setDepartments(rRes.value.departments);
-        if (rRes.value.custodians) setCustodians(rRes.value.custodians);
+        if (rRes.value.departments && rRes.value.departments.length > 0) {
+          setDepartments(rRes.value.departments);
+          setDepartment(prev => prev || rRes.value.departments[0].name || rRes.value.departments[0].id);
+        }
+        if (rRes.value.custodians && rRes.value.custodians.length > 0) {
+          setCustodians(rRes.value.custodians);
+          setNewCustodian(prev => prev || rRes.value.custodians[0].name || rRes.value.custodians[0].fullName || '');
+        }
       }
 
+      let rawAssets = [];
       if (aRes.status === 'fulfilled' && aRes.value.assets && aRes.value.assets.length > 0) {
-        const formatted = aRes.value.assets.map(a => ({
-          id: a.id,
-          assetNumber: a.assetNumber,
-          assetName: a.assetName,
-          type: a.type,
-          serialNumber: a.serialNumber,
-          barcode: a.barcode,
-          rfidEpc: a.rfidEpc,
-          currentLocation: a.currentLocationFormatted,
-          siteName: a.siteName,
-          buildingName: a.buildingName,
-          floorName: a.floorName,
-          roomName: a.roomName,
-          currentCustodian: a.currentCustodian,
-          status: a.status,
-          imageUrl: a.imageUrl,
-          isEligible: a.isEligibleForTransfer,
-          reason: a.ineligibilityReason
-        }));
+        rawAssets = aRes.value.assets;
+      } else {
+        const fallback = await api.get('/assets', { params: { limit: 100 } }).catch(() => null);
+        if (fallback?.assets && fallback.assets.length > 0) {
+          rawAssets = fallback.assets;
+        }
+      }
 
+      if (rawAssets.length > 0) {
+        const backendFormatted = rawAssets.map(a => formatAssetForTransfer(a));
+
+        const searchParams = new URLSearchParams(location.search);
+        const targetId = searchParams.get('assetId') || searchParams.get('id') || location.state?.assetId || location.state?.asset?.assetId || location.state?.asset?.id;
         const passed = location.state?.asset;
-        if (passed) {
-          const passedId = passed.id || passed.assetId;
-          const exists = formatted.some(a => a.id === passedId || a.assetNumber === passed.assetId);
-          if (!exists) {
-            const formattedPassed = {
-              id: passed.id || passed.assetId,
-              assetNumber: passed.assetId || passed.tagNumber || 'AS-000128',
-              assetName: passed.name || passed.description || 'Asset',
-              type: passed.categoryName || 'General',
-              serialNumber: passed.serialNumber || 'N/A',
-              barcode: passed.barcode || passed.tagNumber || 'N/A',
-              rfidEpc: passed.rfidEpc || 'N/A',
-              currentLocation: passed.locationStr || 'Dubai HQ',
-              siteName: passed.siteName || 'Dubai HQ',
-              buildingName: passed.buildingName || 'Building A',
-              floorName: passed.floorRoom || 'Floor 3',
-              roomName: passed.floorRoom || '',
-              currentCustodian: passed.custodianName || 'Unassigned',
-              status: passed.lifecycleStatus || 'In Service',
-              imageUrl: passed.imageUrl || 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&auto=format&fit=crop&q=60',
-              isEligible: true
-            };
-            setAssetsList([formattedPassed, ...formatted]);
-            setSelectedAssetIds([formattedPassed.id]);
+
+        let targetObj = passed ? formatAssetForTransfer(passed) : null;
+        if (!targetObj && targetId) {
+          targetObj = backendFormatted.find(a => 
+            a.id === targetId || 
+            a.assetNumber === targetId ||
+            String(a.id).toLowerCase() === String(targetId).toLowerCase() ||
+            String(a.assetNumber).toLowerCase() === String(targetId).toLowerCase()
+          );
+
+          if (!targetObj) {
+            try {
+              const res = await api.get(`/assets/${encodeURIComponent(targetId)}/360`);
+              const raw = res?.asset360?.asset || res?.asset;
+              if (raw) {
+                targetObj = formatAssetForTransfer(raw);
+              }
+            } catch (err) {
+              console.warn('Target asset fetch in fetchInitialData note:', err);
+            }
+          }
+        }
+
+        if (targetObj) {
+          const matchIdx = backendFormatted.findIndex(a => 
+            a.id === targetObj.id || 
+            a.assetNumber === targetObj.assetNumber
+          );
+          let mergedList = [...backendFormatted];
+          if (matchIdx >= 0) {
+            const existing = mergedList.splice(matchIdx, 1)[0];
+            mergedList.unshift({ ...existing, ...targetObj });
           } else {
-            setAssetsList(formatted);
-            setSelectedAssetIds([passedId]);
+            mergedList.unshift(targetObj);
+          }
+          setAssetsList(mergedList);
+          setSelectedAssetIds([targetObj.id, targetObj.assetNumber].filter(Boolean));
+          if (targetObj.department) setDepartment(targetObj.department);
+          if (targetObj.currentCustodian && targetObj.currentCustodian !== 'Unassigned') {
+            setNewCustodian(targetObj.currentCustodian);
+          }
+          if (targetObj.siteId && sites.length > 1) {
+            const alternateSite = sites.find(s => s.id !== targetObj.siteId) || sites[0];
+            setDestSiteId(alternateSite.id);
+            const altB = buildings.filter(b => b.siteId === alternateSite.id);
+            if (altB.length > 0) {
+              setDestBuildingId(altB[0].id);
+              const altF = floors.filter(f => f.buildingId === altB[0].id);
+              if (altF.length > 0) {
+                setDestFloorId(altF[0].id);
+                const altR = rooms.filter(r => r.floorId === altF[0].id);
+                if (altR.length > 0) setDestRoomId(altR[0].id);
+              }
+            }
           }
         } else {
-          setAssetsList(formatted);
+          setAssetsList(backendFormatted);
+          if (!targetId) {
+            setSelectedAssetIds([]);
+          }
         }
       }
 
@@ -345,31 +321,28 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   // 2. Form State matching Section 2, 3, 4
   // ---------------------------------------------------------------------------
   const [transferType, setTransferType] = useState('Location Transfer');
-  const [transferDate, setTransferDate] = useState('2026-09-10');
-  const [effectiveDate, setEffectiveDate] = useState('2026-09-10');
+  const [transferDate, setTransferDate] = useState(() => new Date().toISOString().split('T')[0]);
+  const [effectiveDate, setEffectiveDate] = useState(() => new Date().toISOString().split('T')[0]);
 
   // Destination Hierarchy (Dependent Dropdowns)
-  const [destSiteId, setDestSiteId] = useState('SITE-DXB-01');
-  const [destBuildingId, setDestBuildingId] = useState('BLD-DXB-B');
-  const [destFloorId, setDestFloorId] = useState('FLR-B-1F');
-  const [destRoomId, setDestRoomId] = useState('ROOM-IT-201');
+  const [destSiteId, setDestSiteId] = useState('');
+  const [destBuildingId, setDestBuildingId] = useState('');
+  const [destFloorId, setDestFloorId] = useState('');
+  const [destRoomId, setDestRoomId] = useState('');
 
   // Department, Custodian, Reason
-  const [department, setDepartment] = useState('IT Department');
-  const [newCustodian, setNewCustodian] = useState('Omar Saleh (EMP-00456)');
+  const [department, setDepartment] = useState('');
+  const [newCustodian, setNewCustodian] = useState('');
   const [movementReason, setMovementReason] = useState('Department Restructure');
 
   // Section 3: Additional Information
   const [conditionAtTransfer, setConditionAtTransfer] = useState('Good');
-  const [accessoriesIncluded, setAccessoriesIncluded] = useState('Charger, Power Cable, Docking Station');
-  const [remarks, setRemarks] = useState('Transfer to new IT floor as per department move.');
-  const [referenceNo, setReferenceNo] = useState('IT-MOVE-2026-001');
+  const [accessoriesIncluded, setAccessoriesIncluded] = useState('');
+  const [remarks, setRemarks] = useState('');
+  const [referenceNo, setReferenceNo] = useState(() => `TRF-${new Date().getFullYear()}-${Math.floor(1000 + Math.random() * 9000)}`);
 
   // Section 4: Supporting Documents
-  const [documents, setDocuments] = useState([
-    { id: 'doc-1', name: 'handover_photo.jpg', size: '2.3 MB', type: 'image/jpeg' },
-    { id: 'doc-2', name: 'transfer_note.pdf', size: '450 KB', type: 'application/pdf' }
-  ]);
+  const [documents, setDocuments] = useState([]);
 
   // Modals state
   const [showScanModal, setShowScanModal] = useState(false);
@@ -382,14 +355,17 @@ export default function TransferMovement({ defaultTab = 'form' }) {
 
   // Filtered Dependent Dropdowns
   const filteredBuildings = useMemo(() => {
+    if (!destSiteId) return hierarchy.buildings;
     return hierarchy.buildings.filter(b => b.siteId === destSiteId);
   }, [hierarchy.buildings, destSiteId]);
 
   const filteredFloors = useMemo(() => {
+    if (!destBuildingId) return hierarchy.floors;
     return hierarchy.floors.filter(f => f.buildingId === destBuildingId);
   }, [hierarchy.floors, destBuildingId]);
 
   const filteredRooms = useMemo(() => {
+    if (!destFloorId) return hierarchy.rooms;
     return hierarchy.rooms.filter(r => r.floorId === destFloorId);
   }, [hierarchy.rooms, destFloorId]);
 
@@ -400,35 +376,45 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   const destRoomObj = hierarchy.rooms.find(r => r.id === destRoomId);
 
   const destLocationFormatted = [
-    destSiteObj?.name || 'Dubai HQ',
-    destBuildingObj?.name || 'Block B',
-    destFloorObj?.name || '1st Floor',
-    destRoomObj?.name || 'IT-201'
-  ].join(' > ');
+    destSiteObj?.name,
+    destBuildingObj?.name,
+    destFloorObj?.name,
+    destRoomObj?.name
+  ].filter(Boolean).join(' > ') || 'Destination location not selected';
+
+  const isAssetSelected = useCallback((asset) => {
+    if (!asset || !selectedAssetIds || selectedAssetIds.length === 0) return false;
+    return selectedAssetIds.some(id => 
+      id === asset.id || 
+      id === asset.assetNumber ||
+      (asset.id && String(id).toLowerCase() === String(asset.id).toLowerCase()) ||
+      (asset.assetNumber && String(id).toLowerCase() === String(asset.assetNumber).toLowerCase())
+    );
+  }, [selectedAssetIds]);
 
   // Selected Assets Objects
   const selectedAssets = useMemo(() => {
-    return assetsList.filter(a => selectedAssetIds.includes(a.id));
-  }, [assetsList, selectedAssetIds]);
+    return assetsList.filter(a => isAssetSelected(a));
+  }, [assetsList, isAssetSelected]);
 
   // Read-only From Location: derived from the first selected asset
   const fromLocation = useMemo(() => {
     if (selectedAssets.length === 0) {
       return {
-        site: 'Dubai HQ',
-        building: 'Block A',
-        floor: 'Ground Floor',
-        room: 'IT-101',
-        formatted: 'Dubai HQ > Block A > GF > IT-101'
+        site: 'No asset selected',
+        building: '-',
+        floor: '-',
+        room: '-',
+        formatted: 'Select an asset from the list above'
       };
     }
     const first = selectedAssets[0];
     return {
-      site: first.siteName || 'Dubai HQ',
-      building: first.buildingName || 'Block A',
-      floor: first.floorName || 'Ground Floor',
-      room: first.roomName || 'IT-101',
-      formatted: first.currentLocation
+      site: first.siteName || '-',
+      building: first.buildingName || '-',
+      floor: first.floorName || '-',
+      room: first.roomName || '-',
+      formatted: first.currentLocation || '-'
     };
   }, [selectedAssets]);
 
@@ -441,16 +427,21 @@ export default function TransferMovement({ defaultTab = 'form' }) {
       return;
     }
 
-    if (selectedAssetIds.includes(asset.id)) {
-      setSelectedAssetIds(selectedAssetIds.filter(id => id !== asset.id));
+    if (isAssetSelected(asset)) {
+      setSelectedAssetIds(prev => prev.filter(id => 
+        id !== asset.id && 
+        id !== asset.assetNumber &&
+        String(id).toLowerCase() !== String(asset.id).toLowerCase() &&
+        String(id).toLowerCase() !== String(asset.assetNumber).toLowerCase()
+      ));
     } else {
-      setSelectedAssetIds([...selectedAssetIds, asset.id]);
+      setSelectedAssetIds(prev => [...prev, asset.id || asset.assetNumber]);
     }
   };
 
   const handleSelectAll = (e) => {
     if (e.target.checked) {
-      const eligibleIds = assetsList.filter(a => a.isEligible).map(a => a.id);
+      const eligibleIds = assetsList.filter(a => a.isEligible).map(a => a.id || a.assetNumber);
       setSelectedAssetIds(eligibleIds);
     } else {
       setSelectedAssetIds([]);
@@ -458,7 +449,9 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   };
 
   const handleRemoveSelectedAsset = (id) => {
-    setSelectedAssetIds(selectedAssetIds.filter(item => item !== id));
+    setSelectedAssetIds(prev => prev.filter(item => 
+      item !== id && String(item).toLowerCase() !== String(id).toLowerCase()
+    ));
   };
 
   const handleClearAllSelected = () => {
@@ -530,13 +523,13 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   // 6. Save as Draft & Submit Transfer
   // ---------------------------------------------------------------------------
   const handleSaveDraft = async () => {
-    if (selectedAssetIds.length === 0) {
+    if (selectedAssets.length === 0) {
       showToast('Please select at least one asset to save draft.', 'error');
       return;
     }
 
     const payload = {
-      assetIds: selectedAssetIds,
+      assetIds: selectedAssets.map(a => a.id),
       transferType,
       transferDate,
       effectiveDate,
@@ -572,7 +565,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   };
 
   const handleSubmitTransfer = async () => {
-    if (selectedAssetIds.length === 0) {
+    if (selectedAssets.length === 0) {
       showToast('Please select at least one asset.', 'error');
       return;
     }
@@ -583,7 +576,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
     }
 
     const payload = {
-      assetIds: selectedAssetIds,
+      assetIds: selectedAssets.map(a => a.id),
       transferType,
       transferDate,
       effectiveDate,
@@ -797,6 +790,36 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                   <p className="text-xs text-gray-500">Search and select one or more assets to transfer</p>
                 </div>
 
+                {/* Prominent Active Asset Banner when an asset is preselected */}
+                {selectedAssets.length > 0 && (
+                  <div className="mb-4 bg-purple-50/90 border-2 border-purple-200 rounded-xl p-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-2xs">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-[#6C2BD9] text-white flex items-center justify-center font-bold text-sm shrink-0">
+                        <ArrowLeftRight className="w-5 h-5" />
+                      </div>
+                      <div>
+                        <div className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono font-bold text-purple-950 text-sm">{selectedAssets[0].assetNumber}</span>
+                          <span className="text-xs text-slate-700 font-semibold">• {selectedAssets[0].assetName}</span>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800">
+                            {selectedAssets[0].status}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-500 mt-1 flex flex-wrap items-center gap-2">
+                          <span>From Origin: <strong className="text-slate-800 font-semibold">{selectedAssets[0].currentLocation}</strong></span>
+                          <span>•</span>
+                          <span>Current Custodian: <strong className="text-slate-800 font-semibold">{selectedAssets[0].currentCustodian}</strong></span>
+                        </div>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0 self-end sm:self-center">
+                      <span className="text-xs font-bold text-purple-700 bg-white px-3 py-1.5 rounded-lg border border-purple-200 shadow-2xs">
+                        ✓ Selected for Transfer
+                      </span>
+                    </div>
+                  </div>
+                )}
+
                 {/* Search & Scan Bar */}
                 <div className="flex items-center gap-3 mb-4">
                   <div className="relative flex-1">
@@ -832,7 +855,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                           <input
                             type="checkbox"
                             onChange={handleSelectAll}
-                            checked={selectedAssetIds.length > 0 && selectedAssetIds.length === assetsList.filter(a => a.isEligible).length}
+                            checked={selectedAssets.length > 0 && selectedAssets.length === assetsList.filter(a => a.isEligible).length}
                             className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
                           />
                         </th>
@@ -853,7 +876,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                           a.serialNumber?.toLowerCase().includes(searchQuery.toLowerCase())
                         )
                         .map((asset) => {
-                          const isSelected = selectedAssetIds.includes(asset.id);
+                          const isSelected = isAssetSelected(asset);
                           return (
                             <tr
                               key={asset.id}
@@ -896,7 +919,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
 
                 {/* Table Footer */}
                 <div className="flex items-center justify-between p-3 border-t border-gray-100 text-xs text-gray-500">
-                  <span className="font-medium text-gray-700">{selectedAssetIds.length} assets selected ({assetsList.length} total)</span>
+                  <span className="font-medium text-gray-700">{selectedAssets.length} assets selected ({assetsList.length} total)</span>
                   <span className="text-gray-400">Scroll down to view all records</span>
                 </div>
               </div>
@@ -1182,7 +1205,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                   {/* Assets Count */}
                   <div className="flex items-center gap-2">
                     <span className="w-7 h-7 rounded-full bg-[#6C2BD9] text-white font-bold flex items-center justify-center text-xs">
-                      {selectedAssetIds.length}
+                      {selectedAssets.length}
                     </span>
                     <div>
                       <span className="font-bold text-gray-900 block">Assets Selected</span>

@@ -45,113 +45,9 @@ import {
 } from 'lucide-react';
 import { api } from '../services/api';
 
-// Initial Mock Geofence Zones matching screenshot #17
-const INITIAL_ZONES = [
-  {
-    id: 'GZ-001',
-    name: 'IT Store',
-    type: 'Inclusion', // 'Inclusion' | 'Exclusion'
-    color: 'emerald',
-    borderColor: '#10b981',
-    fillColor: 'rgba(16, 185, 129, 0.12)',
-    assetCount: 12,
-    active: true,
-    description: 'Expected boundary for all IT equipment storage'
-  },
-  {
-    id: 'GZ-002',
-    name: 'Finance',
-    type: 'Inclusion',
-    color: 'amber',
-    borderColor: '#f59e0b',
-    fillColor: 'rgba(245, 158, 11, 0.12)',
-    assetCount: 8,
-    active: true,
-    description: 'Permitted zone for finance department hardware'
-  },
-  {
-    id: 'GZ-003',
-    name: 'Main Corridor',
-    type: 'Inclusion',
-    color: 'blue',
-    borderColor: '#3b82f6',
-    fillColor: 'rgba(59, 130, 246, 0.12)',
-    assetCount: 0,
-    active: true,
-    description: 'Transit corridor for mobile cart and handheld scanners'
-  },
-  {
-    id: 'GZ-004',
-    name: 'Restricted Area',
-    type: 'Exclusion',
-    color: 'rose',
-    borderColor: '#ef4444',
-    fillColor: 'rgba(239, 68, 68, 0.15)',
-    assetCount: 0,
-    active: true,
-    description: 'No unauthorized asset entry permitted in executive suite'
-  },
-  {
-    id: 'GZ-005',
-    name: 'Loading Bay',
-    type: 'Inclusion',
-    color: 'purple',
-    borderColor: '#8b5cf6',
-    fillColor: 'rgba(139, 92, 246, 0.12)',
-    assetCount: 5,
-    active: true,
-    description: 'Dispatch area for receiving and shipping tagging'
-  }
-];
+const INITIAL_ZONES = [];
 
-// Initial Mock Geofence Rules matching screenshot #17
-const INITIAL_RULES = [
-  {
-    id: 1,
-    zoneName: 'IT Store',
-    ruleType: 'Inclusion',
-    scope: 'IT Equipment',
-    condition: 'Asset leaves zone',
-    notification: 'Email, In-App',
-    status: 'Active'
-  },
-  {
-    id: 2,
-    zoneName: 'Restricted Area',
-    ruleType: 'Exclusion',
-    scope: 'All Assets',
-    condition: 'Asset enters zone',
-    notification: 'Email, SMS',
-    status: 'Active'
-  },
-  {
-    id: 3,
-    zoneName: 'Finance',
-    ruleType: 'Inclusion',
-    scope: 'Finance Assets',
-    condition: 'Asset leaves zone',
-    notification: 'In-App',
-    status: 'Active'
-  },
-  {
-    id: 4,
-    zoneName: 'High Value Assets',
-    ruleType: 'Inclusion',
-    scope: 'Value > AED 10,000',
-    condition: 'Asset leaves zone',
-    notification: 'Email, SMS',
-    status: 'Active'
-  },
-  {
-    id: 5,
-    zoneName: 'After Hours',
-    ruleType: 'Inclusion',
-    scope: 'All Assets',
-    condition: 'Asset movement outside 7 PM - 6 AM',
-    notification: 'Email, In-App',
-    status: 'Active'
-  }
-];
+const INITIAL_RULES = [];
 
 // Initial Violation Alerts matching screenshot #17
 const INITIAL_ALERTS = [
@@ -217,6 +113,26 @@ const MOCK_MAP_ASSETS = [
 ];
 
 export function Geofencing() {
+  React.useEffect(() => {
+    const fetchLiveRtls = async () => {
+      try {
+        const [dashRes, alertsRes] = await Promise.all([
+          api.get('/rtls/dashboard').catch(() => null),
+          api.get('/rtls/alerts').catch(() => null)
+        ]);
+        if (dashRes && dashRes.summary) {
+          if (dashRes.summary.zones) setZones(dashRes.summary.zones);
+        }
+        if (alertsRes && (alertsRes.alerts || Array.isArray(alertsRes))) {
+          const list = alertsRes.alerts || alertsRes;
+          setAlerts(list);
+        }
+      } catch (err) {
+        console.error('Failed to load live RTLS data:', err);
+      }
+    };
+    fetchLiveRtls();
+  }, []);
   const navigate = useNavigate();
 
   // Top Location Selectors
@@ -236,9 +152,9 @@ export function Geofencing() {
   const [bottomTab, setBottomTab] = useState('Geofence Rules'); // 'Geofence Rules' | 'Alerts & Events'
 
   // State Datasets
-  const [zones, setZones] = useState(INITIAL_ZONES);
-  const [rules, setRules] = useState(INITIAL_RULES);
-  const [alerts, setAlerts] = useState(INITIAL_ALERTS);
+  const [zones, setZones] = useState([]);
+  const [rules, setRules] = useState([]);
+  const [alerts, setAlerts] = useState([]);
   const [selectedZoneId, setSelectedZoneId] = useState('GZ-001');
 
   // Layers Popover Toggle

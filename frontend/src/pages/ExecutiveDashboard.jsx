@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { api } from '../services/api';
 import {
   Package,
   CheckCircle2,
@@ -149,6 +150,21 @@ const ALERTS = [
 ];
 
 export function ExecutiveDashboard() {
+  const [dbKpis, setDbKpis] = useState(null);
+
+  React.useEffect(() => {
+    const fetchDashboardKpis = async () => {
+      try {
+        const res = await api.get('/reports/dashboard').catch(() => null);
+        if (res && res.kpis) {
+          setDbKpis(res.kpis);
+        }
+      } catch (err) {
+        console.error('Failed to fetch dashboard data:', err);
+      }
+    };
+    fetchDashboardKpis();
+  }, []);
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -237,7 +253,7 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-[#6C2BD9] transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-black block leading-none">12,458</span>
+            <span className="text-2xl font-black text-black block leading-none">{dbKpis ? dbKpis.totalAssets.toLocaleString() : "..."}</span>
             <span className="text-xs font-extrabold text-black block">Total Assets</span>
             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-emerald-50 text-black text-[10px] font-extrabold border border-emerald-200">
               ↑ +3.2%
@@ -254,9 +270,9 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-emerald-300 transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-black block leading-none">11,230</span>
+            <span className="text-2xl font-black text-black block leading-none">{dbKpis ? dbKpis.activeAssets.toLocaleString() : "..."}</span>
             <span className="text-xs font-extrabold text-black block">In Use</span>
-            <span className="text-[11px] font-bold text-black block">90.1%</span>
+            <span className="text-[11px] font-bold text-black block">{dbKpis && dbKpis.totalAssets ? `${Math.round((dbKpis.activeAssets / dbKpis.totalAssets) * 100)}%` : "0%"}</span>
           </div>
           <div className="w-11 h-11 rounded-2xl bg-emerald-600 text-white flex items-center justify-center flex-shrink-0 shadow-md group-hover:scale-105 transition-transform">
             <CheckCircle2 className="w-5 h-5" />
@@ -269,7 +285,7 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-amber-300 transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-black block leading-none">652</span>
+            <span className="text-2xl font-black text-black block leading-none">{dbKpis ? dbKpis.underMaintenance.toLocaleString() : "..."}</span>
             <span className="text-xs font-extrabold text-black block">Under Maintenance</span>
             <span className="text-[11px] font-bold text-black block">5.2%</span>
           </div>
@@ -284,7 +300,7 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-rose-300 transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-black block leading-none">276</span>
+            <span className="text-2xl font-black text-black block leading-none">{dbKpis ? dbKpis.maintenanceOverdue.toLocaleString() : "..."}</span>
             <span className="text-xs font-extrabold text-black block">Overdue</span>
             <span className="text-[11px] font-bold text-black block">2.2%</span>
           </div>
@@ -299,7 +315,7 @@ export function ExecutiveDashboard() {
           className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs hover:shadow-md hover:border-blue-300 transition-all cursor-pointer flex items-center justify-between group"
         >
           <div className="space-y-1">
-            <span className="text-2xl font-black text-black block leading-none">180</span>
+            <span className="text-2xl font-black text-black block leading-none">{dbKpis ? dbKpis.disposedAssets.toLocaleString() : "..."}</span>
             <span className="text-xs font-extrabold text-black block">Pending Disposal</span>
             <span className="text-[11px] font-bold text-black block">1.4%</span>
           </div>

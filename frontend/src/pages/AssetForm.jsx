@@ -161,90 +161,91 @@ export function AssetForm() {
   const [formData, setFormData] = useState({
     // 1. Basic Information
     idGeneration: 'AUTO', // AUTO or MANUAL
-    assetId: 'AST-0001256',
-    assetName: 'Dell Latitude 7450',
+    assetId: '',
+    assetName: '',
     assetType: 'IT Equipment',
-    category: 'Laptop',
-    subcategory: 'Business Laptop',
-    manufacturer: 'Dell',
-    model: 'Latitude 7450',
-    serialNumber: 'DL7450-92118',
+    category: '',
+    categoryId: '',
+    subcategory: '',
+    manufacturer: '',
+    model: '',
+    serialNumber: '',
     quantity: '1',
-    description: 'Dell Latitude 7450 laptop for IT department use.',
-    image: '/laptop.png',
+    description: '',
+    image: '',
 
     // 2. Classification (Grid View)
-    assetGroup: 'IT Assets',
-    assetClass: 'IT Equipment',
+    assetGroup: '',
+    assetClass: '',
     criticality: 'Medium',
     status: 'New',
     condition: 'New',
 
     // 3. Product Details
-    brand: 'Dell',
-    modelNumber: '7450',
-    assetTagBarcode: 'AST-0001256',
+    brand: '',
+    modelNumber: '',
+    assetTagBarcode: '',
     rfidEpc: '',
     tid: '',
 
     // 4. Location & Ownership
-    company: 'Dubai HQ',
-    businessUnit: 'Enterprise Solutions',
-    department: 'IT',
-    costCenter: 'IT-001',
-    site: 'Dubai HQ',
-    building: 'Building A',
-    floor: 'Floor 3',
-    room: 'Room 312',
-    zoneArea: 'Office Zone',
+    company: '',
+    businessUnit: '',
+    department: '',
+    costCenter: '',
+    site: '',
+    building: '',
+    floor: '',
+    room: '',
+    zoneArea: '',
     storageArea: '',
-    custodian: 'John Doe',
+    custodian: '',
     alternateCustodian: '',
-    expectedUser: 'John Doe',
+    expectedUser: '',
 
     // 5. Financial Information
-    acquisitionDate: '2024-01-10',
-    acquisitionCost: '4,500.00',
-    purchaseDate: '2026-01-15',
-    purchaseCost: '5,800.00',
+    acquisitionDate: '',
+    acquisitionCost: '',
+    purchaseDate: '',
+    purchaseCost: '',
     currency: 'AED',
-    supplier: 'Dell Technologies',
-    vendorSupplier: 'Dell UAE',
-    poInvoiceNo: 'PO-2024-00123',
+    supplier: '',
+    vendorSupplier: '',
+    poInvoiceNo: '',
     assetBook: 'Corporate Book',
     depreciationMethod: 'Straight Line',
-    usefulLifeYears: '4',
-    residualValue: '580.00',
+    usefulLifeYears: '5',
+    residualValue: '',
 
     // 6. Warranty & Contract
-    underWarranty: true,
-    provider: 'Dell',
-    warrantyType: 'Standard',
-    warrantyStartDate: '2024-01-15',
-    warrantyEndDate: '2027-01-14',
-    coverage: 'Parts & Labour',
-    contractReference: 'CNT-2026-001',
-    warrantyDoc: 'Warranty.pdf (245 KB)',
+    underWarranty: false,
+    provider: '',
+    warrantyType: '',
+    warrantyStartDate: '',
+    warrantyEndDate: '',
+    coverage: '',
+    contractReference: '',
+    warrantyDoc: '',
 
     // 7. Maintenance Setup
-    enablePm: true,
-    maintenanceType: 'Preventive',
-    frequency: 'Quarterly',
-    intervalDays: '90',
-    firstDueDate: '2026-04-15',
-    checklist: 'Laptop PM Checklist',
-    nextDueDate: '15 Jul 2026',
+    enablePm: false,
+    maintenanceType: '',
+    frequency: '',
+    intervalDays: '',
+    firstDueDate: '',
+    checklist: '',
+    nextDueDate: '',
 
     // 8. Auto Discovery
-    linkToDiscovered: true,
-    discoverySource: 'Network Scan',
-    hostname: 'WKSTN-00328',
-    ipAddress: '10.20.1.84',
-    macAddress: '00:1A:2B:3C:4D:5E',
-    discoveredSerial: 'DL7450-92118',
-    firstSeen: '2026-09-01',
-    lastSeen: '2026-09-12',
-    matchedDiscovery: true,
+    linkToDiscovered: false,
+    discoverySource: '',
+    hostname: '',
+    ipAddress: '',
+    macAddress: '',
+    discoveredSerial: '',
+    firstSeen: '',
+    lastSeen: '',
+    matchedDiscovery: false,
 
     // 9. Additional Information
     project: '',
@@ -256,17 +257,12 @@ export function AssetForm() {
     tagStatus: 'Available',
 
     // Documents
-    documents: [
-      { name: 'Purchase Invoice.pdf', size: '320 KB' },
-      { name: 'Warranty.pdf', size: '450 KB' },
-      { name: 'Specification Sheet.pdf', size: '1.2 MB' },
-      { name: 'Other Document.pdf', size: '300 KB' }
-    ],
+    documents: [],
 
     // Approval Workflow
-    approvalRequired: 'Yes',
+    approvalRequired: 'No',
     approvalStatus: 'Draft',
-    nextApprover: 'Asset Manager',
+    nextApprover: '',
     approvalRemarks: '',
 
     // Custom Fields
@@ -517,42 +513,42 @@ export function AssetForm() {
     setLoading(true);
     try {
       const payload = {
-        assetId: formData.assetId,
-        assetName: formData.assetName,
-        description: formData.description || formData.assetName,
-        category: formData.category,
-        categoryId: formData.categoryId,
-        manufacturer: formData.manufacturer || formData.brand,
-        model: formData.model || formData.modelNumber,
-        serialNumber: formData.serialNumber,
-        tagNumber: formData.assetTagBarcode || formData.assetId,
-        barcode: formData.assetTagBarcode || formData.assetId,
-        rfidEpc: formData.rfidEpc || undefined,
-        company: formData.company,
-        site: formData.site,
-        building: formData.building,
-        floor: formData.floor,
-        room: formData.room,
-        department: formData.department,
-        costCenter: formData.costCenter,
-        custodian: formData.custodian,
-        acquisitionCost: formData.acquisitionCost || formData.purchaseCost,
+        assetId: formData.assetId || undefined,
+        assetName: formData.assetName?.trim() || undefined,
+        description: formData.description?.trim() || formData.assetName?.trim() || undefined,
+        category: formData.category || undefined,
+        categoryId: formData.categoryId || undefined,
+        manufacturer: formData.manufacturer?.trim() || formData.brand?.trim() || undefined,
+        model: formData.model?.trim() || formData.modelNumber?.trim() || undefined,
+        serialNumber: formData.serialNumber?.trim() || undefined,
+        tagNumber: formData.assetTagBarcode?.trim() || formData.assetId || undefined,
+        barcode: formData.assetTagBarcode?.trim() || formData.assetId || undefined,
+        rfidEpc: formData.rfidEpc?.trim() || undefined,
+        company: formData.company || undefined,
+        site: formData.site || undefined,
+        building: formData.building || undefined,
+        floor: formData.floor || undefined,
+        room: formData.room || undefined,
+        department: formData.department || undefined,
+        costCenter: formData.costCenter || undefined,
+        custodian: formData.custodian?.trim() || undefined,
+        acquisitionCost: formData.acquisitionCost || formData.purchaseCost || undefined,
         currency: formData.currency || 'USD',
         condition: formData.condition || 'NEW',
         criticality: formData.criticality || 'MEDIUM',
         lifecycleStatus: targetStatus === 'SUBMITTED' ? 'IN_SERVICE' : 'RECEIVED',
-        poInvoiceNo: formData.poInvoiceNo,
-        supplier: formData.supplier || formData.vendorSupplier,
-        purchaseDate: formData.purchaseDate || formData.acquisitionDate,
-        inServiceDate: formData.inServiceDate || formData.purchaseDate || formData.acquisitionDate,
-        underWarranty: formData.underWarranty,
-        warrantyStartDate: formData.warrantyStartDate,
-        warrantyEndDate: formData.warrantyEndDate,
-        coverage: formData.coverage,
-        provider: formData.provider || formData.manufacturer,
-        notes: formData.notes || formData.remarks,
-        documents: formData.documents,
-        imageUrl: formData.assetImage || formData.imageUrl
+        poInvoiceNo: formData.poInvoiceNo?.trim() || undefined,
+        supplier: formData.supplier?.trim() || formData.vendorSupplier?.trim() || undefined,
+        purchaseDate: formData.purchaseDate || formData.acquisitionDate || undefined,
+        inServiceDate: formData.inServiceDate || formData.purchaseDate || formData.acquisitionDate || undefined,
+        underWarranty: Boolean(formData.underWarranty),
+        warrantyStartDate: formData.underWarranty ? (formData.warrantyStartDate || undefined) : undefined,
+        warrantyEndDate: formData.underWarranty ? (formData.warrantyEndDate || undefined) : undefined,
+        coverage: formData.underWarranty ? (formData.coverage || undefined) : undefined,
+        provider: formData.underWarranty ? (formData.provider?.trim() || formData.manufacturer?.trim() || undefined) : undefined,
+        notes: formData.notes?.trim() || formData.remarks?.trim() || undefined,
+        documents: formData.documents && formData.documents.length > 0 ? formData.documents : undefined,
+        imageUrl: formData.assetImage || formData.imageUrl || undefined
       };
 
       const res = await api.post('/assets', payload);
@@ -657,10 +653,17 @@ export function AssetForm() {
           <label className="font-bold text-slate-700 block mb-1">Category *</label>
           <select
             value={formData.category}
-            onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+            onChange={(e) => {
+              const selectedCat = categories.find(c => c.name === e.target.value);
+              setFormData({
+                ...formData,
+                category: e.target.value,
+                categoryId: selectedCat?.id || ''
+              });
+            }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="Laptop">Laptop</option>
+            <option value="">Select Category</option>
             {categories.map(c => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
@@ -674,6 +677,7 @@ export function AssetForm() {
             onChange={(e) => setFormData({ ...formData, subcategory: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
+            <option value="">Select Subcategory (Optional)</option>
             <option value="Business Laptop">Business Laptop</option>
             <option value="Workstation">Workstation</option>
             <option value="Standard Ultrabook">Standard Ultrabook</option>
@@ -681,31 +685,34 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Manufacturer *</label>
+          <label className="font-bold text-slate-700 block mb-1">Manufacturer</label>
           <input
             type="text"
             value={formData.manufacturer}
             onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+            placeholder="e.g. Dell, HP, Apple (optional)"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           />
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Model *</label>
+          <label className="font-bold text-slate-700 block mb-1">Model</label>
           <input
             type="text"
             value={formData.model}
             onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+            placeholder="e.g. Latitude 5420 (optional)"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           />
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Serial Number *</label>
+          <label className="font-bold text-slate-700 block mb-1">Serial Number</label>
           <input
             type="text"
             value={formData.serialNumber}
             onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
+            placeholder="e.g. SN-892118 (optional)"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none"
           />
         </div>
@@ -914,12 +921,13 @@ export function AssetForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Company *</label>
+          <label className="font-bold text-slate-700 block mb-1">Company</label>
           <select
             value={formData.company}
             onChange={(e) => setFormData({ ...formData, company: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
+            <option value="">Select Company (Optional)</option>
             <option value="Dubai HQ">Dubai HQ</option>
             <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
             <option value="Sharjah Hub">Sharjah Hub</option>
@@ -927,13 +935,13 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Site *</label>
+          <label className="font-bold text-slate-700 block mb-1">Site</label>
           <select
             value={formData.site}
             onChange={(e) => setFormData({ ...formData, site: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="Dubai HQ">Dubai HQ</option>
+            <option value="">Select Site (Optional)</option>
             {sites.map(s => (
               <option key={s.id} value={s.name}>{s.name}</option>
             ))}
@@ -947,6 +955,7 @@ export function AssetForm() {
             onChange={(e) => setFormData({ ...formData, building: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
+            <option value="">Select Building (Optional)</option>
             <option value="Building A">Building A</option>
             <option value="Building B">Building B</option>
             <option value="Headquarters Tower">Headquarters Tower</option>
@@ -958,20 +967,20 @@ export function AssetForm() {
           <input
             type="text"
             value={formData.floor}
-            placeholder="Floor 3, Room 312"
+            placeholder="Floor 3, Room 312 (optional)"
             onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           />
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Department *</label>
+          <label className="font-bold text-slate-700 block mb-1">Department</label>
           <select
             value={formData.department}
             onChange={(e) => setFormData({ ...formData, department: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="IT">IT</option>
+            <option value="">Select Department (Optional)</option>
             {departments.map(d => (
               <option key={d.id} value={d.name}>{d.name}</option>
             ))}
@@ -985,7 +994,7 @@ export function AssetForm() {
             onChange={(e) => setFormData({ ...formData, costCenter: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="IT-001">IT-001</option>
+            <option value="">Select Cost Center (Optional)</option>
             {costCenters.map(cc => (
               <option key={cc.id} value={cc.code || cc.name}>{cc.code} - {cc.name}</option>
             ))}
@@ -998,6 +1007,7 @@ export function AssetForm() {
             <input
               type="text"
               value={formData.custodian}
+              placeholder="e.g. EMP-1002 or Full Name (optional)"
               onChange={(e) => setFormData({ ...formData, custodian: e.target.value })}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
             />
@@ -1011,6 +1021,7 @@ export function AssetForm() {
             <input
               type="text"
               value={formData.expectedUser}
+              placeholder="e.g. EMP-1002 (optional)"
               onChange={(e) => setFormData({ ...formData, expectedUser: e.target.value })}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
             />
@@ -2149,13 +2160,16 @@ export function AssetForm() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Company *</label>
+                    <label className="font-bold text-slate-700 block mb-1">Company</label>
                     <select
                       value={formData.company}
                       onChange={(e) => setFormData({ ...formData, company: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
+                      <option value="">Select Company (Optional)</option>
                       <option value="Dubai HQ">Dubai HQ</option>
+                      <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
+                      <option value="Sharjah Hub">Sharjah Hub</option>
                     </select>
                   </div>
                   <div>
@@ -2165,6 +2179,7 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, businessUnit: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
+                      <option value="">Select Business Unit (Optional)</option>
                       <option value="Enterprise Solutions">Enterprise Solutions</option>
                     </select>
                   </div>
@@ -2178,7 +2193,10 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
-                      <option value="IT">IT</option>
+                      <option value="">Select Department (Optional)</option>
+                      {departments.map(d => (
+                        <option key={d.id} value={d.name}>{d.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -2188,20 +2206,26 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, costCenter: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
-                      <option value="IT-001">IT-001</option>
+                      <option value="">Select Cost Center (Optional)</option>
+                      {costCenters.map(cc => (
+                        <option key={cc.id} value={cc.code || cc.name}>{cc.code} - {cc.name}</option>
+                      ))}
                     </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Site *</label>
+                    <label className="font-bold text-slate-700 block mb-1">Site</label>
                     <select
                       value={formData.site}
                       onChange={(e) => setFormData({ ...formData, site: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
-                      <option value="Dubai HQ">Dubai HQ</option>
+                      <option value="">Select Site (Optional)</option>
+                      {sites.map(s => (
+                        <option key={s.id} value={s.name}>{s.name}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
@@ -2211,7 +2235,10 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, building: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
+                      <option value="">Select Building (Optional)</option>
                       <option value="Building A">Building A</option>
+                      <option value="Building B">Building B</option>
+                      <option value="Headquarters Tower">Headquarters Tower</option>
                     </select>
                   </div>
                 </div>
@@ -2224,6 +2251,9 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
+                      <option value="">Select Floor (Optional)</option>
+                      <option value="Floor 1">Floor 1</option>
+                      <option value="Floor 2">Floor 2</option>
                       <option value="Floor 3">Floor 3</option>
                     </select>
                   </div>
@@ -2234,6 +2264,9 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, room: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
+                      <option value="">Select Room (Optional)</option>
+                      <option value="Room 101">Room 101</option>
+                      <option value="Room 205">Room 205</option>
                       <option value="Room 312">Room 312</option>
                     </select>
                   </div>
@@ -2247,7 +2280,9 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, zoneArea: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
+                      <option value="">Select Zone (Optional)</option>
                       <option value="Office Zone">Office Zone</option>
+                      <option value="Warehouse Zone">Warehouse Zone</option>
                     </select>
                   </div>
                   <div>
@@ -2257,18 +2292,19 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, storageArea: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
-                      <option value="">Select</option>
+                      <option value="">Select Storage Area (Optional)</option>
                     </select>
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Custodian / Owner *</label>
+                    <label className="font-bold text-slate-700 block mb-1">Custodian / Owner</label>
                     <div className="relative">
                       <input
                         type="text"
                         value={formData.custodian}
+                        placeholder="e.g. EMP-1002 or Full Name (optional)"
                         onChange={(e) => setFormData({ ...formData, custodian: e.target.value })}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                       />

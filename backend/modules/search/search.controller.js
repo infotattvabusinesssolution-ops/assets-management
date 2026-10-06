@@ -13,11 +13,11 @@ export async function globalSearch(req, res, next) {
       prisma.asset.findMany({
         where: {
           OR: [
-            { assetId: { contains: queryStr, mode: 'insensitive' } },
-            { tagNumber: { contains: queryStr, mode: 'insensitive' } },
-            { serialNumber: { contains: queryStr, mode: 'insensitive' } },
-            { description: { contains: queryStr, mode: 'insensitive' } },
-            { hostname: { contains: queryStr, mode: 'insensitive' } }
+            { assetId: { contains: queryStr } },
+            { tagNumber: { contains: queryStr } },
+            { serialNumber: { contains: queryStr } },
+            { description: { contains: queryStr } },
+            { hostname: { contains: queryStr } }
           ]
         },
         take: 10
@@ -25,8 +25,8 @@ export async function globalSearch(req, res, next) {
       prisma.maintenanceWorkOrder.findMany({
         where: {
           OR: [
-            { workOrderNumber: { contains: queryStr, mode: 'insensitive' } },
-            { description: { contains: queryStr, mode: 'insensitive' } }
+            { workOrderNumber: { contains: queryStr } },
+            { description: { contains: queryStr } }
           ]
         },
         take: 5
@@ -34,8 +34,8 @@ export async function globalSearch(req, res, next) {
       prisma.stocktakeCampaign.findMany({
         where: {
           OR: [
-            { campaignNumber: { contains: queryStr, mode: 'insensitive' } },
-            { title: { contains: queryStr, mode: 'insensitive' } }
+            { campaignNumber: { contains: queryStr } },
+            { title: { contains: queryStr } }
           ]
         },
         take: 5
@@ -43,9 +43,9 @@ export async function globalSearch(req, res, next) {
       prisma.employee.findMany({
         where: {
           OR: [
-            { fullName: { contains: queryStr, mode: 'insensitive' } },
-            { employeeCode: { contains: queryStr, mode: 'insensitive' } },
-            { email: { contains: queryStr, mode: 'insensitive' } }
+            { fullName: { contains: queryStr } },
+            { employeeCode: { contains: queryStr } },
+            { email: { contains: queryStr } }
           ]
         },
         take: 5

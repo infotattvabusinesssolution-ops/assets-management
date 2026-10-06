@@ -51,11 +51,11 @@ export async function getMaintenanceSummary(req, res, next) {
       }
     }
 
-    const mttrHours = mttrCount > 0 ? (totalMttrHours / mttrCount).toFixed(1) : 4.2;
-    const mtbfDays = totalWorkOrders > 0 ? (120 / (totalWorkOrders || 1)).toFixed(1) : 45.0;
+    const mttrHours = mttrCount > 0 ? (totalMttrHours / mttrCount).toFixed(1) : 0;
+    const mtbfDays = totalWorkOrders > 0 ? (120 / (totalWorkOrders || 1)).toFixed(1) : 0;
     const pmComplianceRate = schedules.length > 0
       ? Math.round(((schedules.length - overdueSchedulesCount) / schedules.length) * 100)
-      : 100;
+      : 0;
 
     res.json({
       success: true,
@@ -529,7 +529,7 @@ export async function getSchedules(req, res, next) {
 
 export async function createSchedule(req, res, next) {
   try {
-    const { title, assetId, frequencyMonths, nextDueDate, scheduleType = 'CALENDAR' } = req.body;
+    const { title, assetId, frequencyMonths, nextDueDate } = req.body;
 
     if (!title || !assetId || !nextDueDate) {
       return res.status(400).json({ success: false, message: 'Title, asset, and next due date are required.' });
@@ -537,7 +537,7 @@ export async function createSchedule(req, res, next) {
 
     const schedule = await prisma.maintenanceSchedule.create({
       data: {
-        title: `[${scheduleType}] ${title}`,
+        title: title.trim(),
         assetId,
         frequencyMonths: parseInt(frequencyMonths) || 6,
         nextDueDate: new Date(nextDueDate)
@@ -547,3 +547,27 @@ export async function createSchedule(req, res, next) {
   } catch (err) { next(err); }
 }
 
+
+export async function updateSchedule(req, res, next) {
+  try {
+    const current = await prisma.maintenanceSchedule.findUnique({ where: { id: req.params.id } });
+    if (!current) return res.status(404).json({ success: false, message: 'Schedule not found.' });
+    const { title, assetId, frequencyMonths, nextDueDate, active } = req.body;
+    const months = frequencyMonths === undefined ? current.frequencyMonths : Number(frequencyMonths);
+    if (!Number.isInteger(months) || months < 1) return res.status(400).json({ success: false, message: 'Frequency must be a positive number of months.' });
+    const due = nextDueDate === undefined ? current.nextDueDate : new Date(nextDueDate);
+    if (Number.isNaN(due.getTime())) return res.status(400).json({ success: false, message: 'A valid due date is required.' });
+    const schedule = await prisma.maintenanceSchedule.update({
+      where: { id: req.params.id },
+      data: {
+        title: title === undefined ? current.title : String(title).trim(),
+        assetId: assetId === undefined ? current.assetId : assetId,
+        frequencyMonths: months,
+        nextDueDate: due,
+        active: active === undefined ? current.active : Boolean(active)
+      },
+      include: { asset: { include: { site: true, room: true, category: true } } }
+    });
+    res.json({ success: true, schedule });
+  } catch (err) { next(err); }
+}

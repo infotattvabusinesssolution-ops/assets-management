@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import {
   Printer,
@@ -25,6 +25,7 @@ import clsx from 'clsx';
 
 export function PrintTagsWorkbench() {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
 
   // Stepper State (1: Select Assets, 2: Configure & Preview, 3: Generate & Print)
   const [currentStep, setCurrentStep] = useState(1);
@@ -44,89 +45,8 @@ export function PrintTagsWorkbench() {
     custodian: 'All Custodians'
   });
 
-  // Search Results Assets State (Matching screenshot exact data)
-  const [searchResults, setSearchResults] = useState([
-    {
-      id: 'ast-print-001',
-      assetNumber: 'AS-2026-00121',
-      assetName: 'Dell OptiPlex 7020',
-      category: 'Desktop',
-      location: 'IT Store',
-      serialNumber: '7CD1234',
-      currentTag: '-',
-      printStatus: 'Not Printed'
-    },
-    {
-      id: 'ast-print-002',
-      assetNumber: 'AS-2026-00122',
-      assetName: 'HP LaserJet Pro',
-      category: 'Printer',
-      location: 'Admin Block',
-      serialNumber: 'CNB89001',
-      currentTag: '-',
-      printStatus: 'Not Printed'
-    },
-    {
-      id: 'ast-print-003',
-      assetNumber: 'AS-2026-00123',
-      assetName: 'Samsung Monitor 27"',
-      category: 'Monitor',
-      location: 'Finance Dept',
-      serialNumber: 'SM27-3310',
-      currentTag: 'E36000009876',
-      printStatus: 'Printed'
-    },
-    {
-      id: 'ast-print-004',
-      assetNumber: 'AS-2026-00124',
-      assetName: 'Lenovo ThinkPad',
-      category: 'Laptop',
-      location: 'Dubai HQ',
-      serialNumber: 'PF9A2211',
-      currentTag: '-',
-      printStatus: 'Not Printed'
-    },
-    {
-      id: 'ast-print-005',
-      assetNumber: 'AS-2026-00125',
-      assetName: 'iPad Air',
-      category: 'Tablet',
-      location: 'HR Dept',
-      serialNumber: 'IPD-7782',
-      currentTag: '-',
-      printStatus: 'Not Printed'
-    },
-    {
-      id: 'ast-print-006',
-      assetNumber: 'AS-2026-00126',
-      assetName: 'Access Point',
-      category: 'Network',
-      location: 'Warehouse',
-      serialNumber: 'AP-9981',
-      currentTag: '-',
-      printStatus: 'Not Printed'
-    }
-  ]);
-
-  // Selected Assets Row List (First 2 assets checked in screenshot)
-  const [selectedForPrinting, setSelectedForPrinting] = useState([
-    {
-      id: 'ast-print-001',
-      assetNumber: 'AS-2026-00121',
-      assetName: 'Dell OptiPlex 7020',
-      serialNumber: '7CD1234',
-      tagNumber: '-',
-      printStatus: 'Ready to Print'
-    },
-    {
-      id: 'ast-print-002',
-      assetNumber: 'AS-2026-00122',
-      assetName: 'HP LaserJet Pro',
-      serialNumber: 'CNB89001',
-      tagNumber: '-',
-      printStatus: 'Ready to Print'
-    }
-  ]);
+  const [searchResults, setSearchResults] = useState([]);
+  const [selectedForPrinting, setSelectedForPrinting] = useState([]);
 
   // Print Options Checkbox State
   const [printOptions, setPrintOptions] = useState({
@@ -240,21 +160,31 @@ export function PrintTagsWorkbench() {
         if (filters.department && filters.department !== 'All Departments') queryParams.set('department', filters.department);
 
         const res = await api.get(`/tagging/assets?${queryParams.toString()}`);
-        if (res && res.assets && res.assets.length > 0) {
-          const mapped = res.assets.map((a) => ({
+        {
+          const mapped = (res?.assets || []).map((a) => ({
             id: a.id,
             assetNumber: a.assetNumber || a.assetId,
             assetName: a.assetName || a.description,
-            category: a.category || 'General',
-            location: a.location || 'Dubai HQ',
-            serialNumber: a.serialNumber || 'N/A',
+            category: a.category || '',
+            location: a.location || '',
+            serialNumber: a.serialNumber || '',
             currentTag: a.currentTag || a.tagNumber || '-',
             printStatus: a.currentTag && a.currentTag !== '-' ? 'Printed' : 'Not Printed'
           }));
           setSearchResults(mapped);
+          const requestedId = searchParams.get('assetId');
+          if (requestedId) {
+            const requestedAsset = mapped.find(a => a.id === requestedId || a.assetNumber === requestedId);
+            if (requestedAsset) setSelectedForPrinting([{
+              id: requestedAsset.id, assetNumber: requestedAsset.assetNumber,
+              assetName: requestedAsset.assetName, serialNumber: requestedAsset.serialNumber,
+              tagNumber: requestedAsset.currentTag, printStatus: 'Ready to Print'
+            }]);
+          }
         }
       } catch (err) {
-        // Fallback to static dummy list
+        setSearchResults([]);
+        showToast(err.message || 'Could not load assets', 'error');
       }
     }
     loadAssets();
@@ -274,23 +204,31 @@ export function PrintTagsWorkbench() {
 
     setPrinting(true);
     try {
-      await api.post('/tagging/print', {
+      const result = await api.post('/tagging/print', {
         template: templateInfo.name,
         quantity: printOptions.numberOfCopies,
         assets: selectedForPrinting
       });
+      const labels = result.labels || [];
+      if (!labels.length) throw new Error('No labels were prepared.');
+      const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) throw new Error('Allow popups to print labels.');
+      printWindow.document.write(`<html><head><title>Asset labels</title><style>body{font-family:Arial,sans-serif}.label{display:inline-block;width:48mm;height:23mm;border:1px solid #555;margin:4mm;padding:2mm;break-inside:avoid}.id{font-size:14px;font-weight:bold}.tag{font-family:monospace;font-size:11px}</style></head><body>${labels.map(label => `<div class="label"><div class="id">${escapeHtml(label.assetNumber)}</div><div>${escapeHtml(label.assetName)}</div><div class="tag">${escapeHtml(label.tagNumber)}</div><div>${escapeHtml(label.serialNumber)}</div></div>`).join('')}</body></html>`);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
       setCurrentStep(3);
-      showToast(`Sent ${selectedForPrinting.length} label(s) to Zebra ZT411 Printer spooler!`);
+      showToast(`Prepared ${labels.length} label(s) for printing.`);
     } catch (e) {
-      setCurrentStep(3);
-      showToast(`Sent ${selectedForPrinting.length} label(s) to printer spooler!`);
+      showToast(e.message || 'Could not prepare labels.', 'error');
     } finally {
       setPrinting(false);
     }
   };
 
   const handleSaveDraft = async () => {
-    showToast('Print session saved as draft.');
+    showToast('Print drafts are not supported yet.', 'error');
   };
 
   return (

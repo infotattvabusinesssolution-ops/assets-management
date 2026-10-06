@@ -1,3 +1,4 @@
+import { api } from '../../services/api';
 import React, { useState, useMemo } from 'react';
 import {
   Network,
@@ -23,179 +24,37 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-export const INITIAL_DEPARTMENTS = [
-  {
-    id: 1,
-    name: 'Information Technology',
-    code: 'IT',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    departmentHead: 'Ramesh Kumar',
-    location: 'Dubai HQ',
-    costCenter: 'CC-1001',
-    status: 'Active',
-    createdOn: '10 Jan 2025',
-    createdBy: 'System',
-    description: 'IT infrastructure, cloud systems, and software engineering'
-  },
-  {
-    id: 2,
-    name: 'Finance',
-    code: 'FIN',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    departmentHead: 'Sarah Ahmed',
-    location: 'Dubai HQ',
-    costCenter: 'CC-1002',
-    status: 'Active',
-    createdOn: '10 Jan 2025',
-    createdBy: 'System',
-    description: 'Financial accounting, budgeting, and audit reporting'
-  },
-  {
-    id: 3,
-    name: 'Human Resources',
-    code: 'HR',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    departmentHead: 'Priya Nair',
-    location: 'Dubai HQ',
-    costCenter: 'CC-1003',
-    status: 'Active',
-    createdOn: '11 Jan 2025',
-    createdBy: 'John Doe',
-    description: 'Talent management, payroll, and organizational policies'
-  },
-  {
-    id: 4,
-    name: 'Operations',
-    code: 'OPS',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    departmentHead: 'Ahmed Al Marri',
-    location: 'Jebel Ali',
-    costCenter: 'CC-2001',
-    status: 'Active',
-    createdOn: '12 Jan 2025',
-    createdBy: 'System',
-    description: 'Enterprise asset operations and field logistics'
-  },
-  {
-    id: 5,
-    name: 'Maintenance',
-    code: 'MNT',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    departmentHead: 'Khalid Hassan',
-    location: 'Jebel Ali',
-    costCenter: 'CC-2002',
-    status: 'Active',
-    createdOn: '12 Jan 2025',
-    createdBy: 'Sarah Ahmed',
-    description: 'Preventive and corrective maintenance work order management'
-  },
-  {
-    id: 6,
-    name: 'Procurement',
-    code: 'PRC',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    departmentHead: 'Lina George',
-    location: 'Dubai HQ',
-    costCenter: 'CC-1004',
-    status: 'Active',
-    createdOn: '13 Jan 2025',
-    createdBy: 'Ramesh Kumar',
-    description: 'Vendor sourcing, asset purchasing, and SLA management'
-  },
-  {
-    id: 7,
-    name: 'Sales & Business Development',
-    code: 'SBD',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Commercial',
-    departmentHead: 'Omar Rahman',
-    location: 'Dubai HQ',
-    costCenter: 'CC-3001',
-    status: 'Active',
-    createdOn: '14 Jan 2025',
-    createdBy: 'John Doe',
-    description: 'Commercial client relationship & revenue development'
-  },
-  {
-    id: 8,
-    name: 'Logistics',
-    code: 'LOG',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    departmentHead: 'Fatima Saeed',
-    location: 'Sharjah',
-    costCenter: 'CC-2003',
-    status: 'Active',
-    createdOn: '15 Jan 2025',
-    createdBy: 'Priya Nair',
-    description: 'Warehouse storage, transfers, and asset dispatch'
-  },
-  {
-    id: 9,
-    name: 'Health, Safety & Environment',
-    code: 'HSE',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    departmentHead: 'Mohammed Ali',
-    location: 'Dubai HQ',
-    costCenter: 'CC-1005',
-    status: 'Inactive',
-    createdOn: '16 Jan 2025',
-    createdBy: 'System',
-    description: 'Occupational safety and regulatory compliance audits'
-  },
-  {
-    id: 10,
-    name: 'Quality Assurance',
-    code: 'QA',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    departmentHead: 'Saeed Al Hashmi',
-    location: 'Abu Dhabi',
-    costCenter: 'CC-2004',
-    status: 'Active',
-    createdOn: '17 Jan 2025',
-    createdBy: 'Sarah Ahmed',
-    description: 'Quality inspection and asset verification standards'
-  },
-  {
-    id: 11,
-    name: 'Customer Support',
-    code: 'SUP',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Commercial',
-    departmentHead: 'Michael Brown',
-    location: 'Dubai HQ',
-    costCenter: 'CC-3002',
-    status: 'Active',
-    createdOn: '18 Jan 2025',
-    createdBy: 'John Doe',
-    description: 'Helpdesk & SLA support for asset clients'
-  },
-  {
-    id: 12,
-    name: 'Research & Development',
-    code: 'RND',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    departmentHead: 'Priya Nair',
-    location: 'Dubai HQ',
-    costCenter: 'CC-1006',
-    status: 'Active',
-    createdOn: '20 Jan 2025',
-    createdBy: 'System',
-    description: 'IoT asset tracking tech research & prototyping'
-  }
-];
+export const INITIAL_DEPARTMENTS = [];
 
 export function DepartmentsTab({ triggerToast, onSwitchTab }) {
-  const [departments, setDepartments] = useState(INITIAL_DEPARTMENTS);
+  React.useEffect(() => {
+    const fetchDepartmentsFromDb = async () => {
+      try {
+        const res = await api.get('/admin/organization/departments').catch(() => null);
+        if (res && (res.departments || Array.isArray(res))) {
+          const list = res.departments || res;
+          const mapped = list.map(d => ({
+            id: d.id,
+            name: d.name,
+            code: d.code,
+            company: d.company?.name || 'Asset360 Holdings',
+            businessUnit: 'Corporate Services',
+            headOfDepartment: d.headOfDepartment || 'Unassigned',
+            employeesCount: d._count?.employees || 0,
+            assetsCount: d._count?.assets || 0,
+            status: d.active ? 'Active' : 'Inactive',
+            costCenter: d.costCenter?.code || 'CC-1001',
+            createdOn: new Date(d.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
+          }));
+          setDepartments(mapped);
+        }
+      } catch (e) {
+        console.error('Failed to load departments from DB:', e);
+      }
+    };
+    fetchDepartmentsFromDb();
+  }, []);
+  const [departments, setDepartments] = useState([]);
   const [selectedDeptIds, setSelectedDeptIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('All Companies');

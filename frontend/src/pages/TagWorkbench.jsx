@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
+import ExcelJS from 'exceljs';
 import {
   Search,
   Tag,
@@ -34,6 +35,7 @@ import clsx from 'clsx';
 
 export function TagWorkbench() {
   const navigate = useNavigate();
+  const importFileRef = useRef(null);
 
   // -------------------------------------------------------------
   // Workflow Stepper State (1: Select Assets, 2: Tagging, 3: Verify & Update, 4: Complete)
@@ -100,13 +102,15 @@ export function TagWorkbench() {
   const [showCompleteModal, setShowCompleteModal] = useState(false);
   const [showAuditModal, setShowAuditModal] = useState(false);
   const [auditLogs, setAuditLogs] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [sites, setSites] = useState([]);
 
   // Manual Asset Form
   const [manualForm, setManualForm] = useState({
     assetNumber: '',
     assetName: '',
-    category: 'Desktop',
-    location: 'Dubai HQ',
+    category: '',
+    location: '',
     department: 'IT Operations',
     serialNumber: '',
     custodian: ''
@@ -146,7 +150,7 @@ export function TagWorkbench() {
           setSummary(assetsRes.value.summary);
         }
 
-        // Set active asset to Dell Latitude 7450 or the first eligible asset to match screenshot preview
+        // Keep the selected database asset if it remains in the result.
         setActiveAsset(prev => list.find(a => a.id === prev?.id) || list[0] || null);
         setSelectedAssetIds(prev => prev.filter(id => list.some(a => a.id === id)));
       }
@@ -167,6 +171,12 @@ export function TagWorkbench() {
 
   useEffect(() => {
     fetchTaggingData();
+    Promise.all([api.get('/master-data/categories'), api.get('/master-data/sites')])
+      .then(([categoryRes, siteRes]) => {
+        setCategories(categoryRes.categories || []);
+        setSites(siteRes.sites || []);
+      })
+      .catch(err => showToast(err?.message || 'Could not load categories and sites', 'error'));
   }, []);
 
   // When active asset changes, auto-validate current tag
@@ -174,6 +184,59 @@ export function TagWorkbench() {
     setScannedTagInput('');
     setTagValidation({ valid: false, status: 'Awaiting Tag Scan', message: 'Scan or enter a tag.' });
   }, [activeAsset]);
+
+  const handleImportFile = async (file) => {
+    if (!file) return;
+    try {
+      let table;
+      if (/\.xlsx$/i.test(file.name)) {
+        const workbook = new ExcelJS.Workbook();
+        await workbook.xlsx.load(await file.arrayBuffer());
+        table = workbook.worksheets[0]?.getSheetValues().filter(Boolean).map(row => row.slice(1).map(cell => String(cell?.text ?? cell ?? '').trim())) || [];
+      } else if (/\.csv$/i.test(file.name)) {
+        table = (await file.text()).replace(/^\uFEFF/, '').split(/\r?\n/).filter(Boolean).map(line => {
+          const fields = [];
+          let field = '';
+          let quoted = false;
+          for (let i = 0; i < line.length; i++) {
+            if (line[i] === '"') {
+              if (quoted && line[i + 1] === '"') { field += '"'; i++; } else quoted = !quoted;
+            } else if (line[i] === ',' && !quoted) { fields.push(field.trim()); field = ''; }
+            else field += line[i];
+          }
+          fields.push(field.trim());
+          return fields;
+        });
+      } else throw new Error('Choose a CSV or XLSX file.');
+      const header = (table.shift() || []).map(value => value.toLowerCase().replace(/[^a-z0-9]/g, ''));
+      const get = (row, key) => row[header.indexOf(key)] || '';
+      const assets = table.map(row => ({
+        assetNumber: get(row, 'assetnumber'), assetName: get(row, 'assetname'),
+        category: get(row, 'category'), location: get(row, 'location'),
+        serialNumber: get(row, 'serialnumber')
+      })).filter(row => row.assetName);
+      if (!assets.length) throw new Error('No assets found. Use the template column names.');
+      const result = await api.post('/tagging/import', { assets });
+      if (!result?.success) throw new Error(result?.message || 'Import failed.');
+      setShowImportModal(false);
+      await fetchTaggingData();
+      showToast(`${result.count} asset(s) imported into the database.`);
+    } catch (error) {
+      showToast(error.message || 'Could not import assets.', 'error');
+    } finally {
+      if (importFileRef.current) importFileRef.current.value = '';
+    }
+  };
+
+  const downloadImportTemplate = () => {
+    const blob = new Blob(['Asset Number,Asset Name,Category,Location,Serial Number\n'], { type: 'text/csv;charset=utf-8' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'tagging-import-template.csv';
+    link.click();
+    URL.revokeObjectURL(url);
+  };
 
   // -------------------------------------------------------------
   // Filter Handlers
@@ -407,19 +470,24 @@ export function TagWorkbench() {
   // Print Label Action (Isolated from Tag Assignment)
   // -------------------------------------------------------------
   const handlePrintLabel = async () => {
+    if (!activeAsset) { showToast('Select an asset first.', 'error'); return; }
     setSubmitting(true);
     try {
-      const res = await api.post('/tagging/print', {
-        ...printConfig,
-        assetDetails: activeAsset
+      const result = await api.post('/tagging/print', {
+        ...printConfig, assets: [{ id: activeAsset.id }]
       });
-
-      if (res && res.success) {
-        setPrintSuccessModal(res);
-        showToast(`Transmitted ${printConfig.quantity} label(s) to ${printConfig.printer}`);
-      }
+      const labels = result?.labels || [];
+      if (!labels.length) throw new Error('No labels were prepared.');
+      const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) throw new Error('Allow popups to print labels.');
+      printWindow.document.write(`<html><head><title>Asset labels</title><style>body{font-family:Arial,sans-serif}.label{display:inline-block;width:48mm;height:23mm;border:1px solid #555;margin:4mm;padding:2mm}.id{font-size:14px;font-weight:bold}.tag{font-family:monospace;font-size:11px}</style></head><body>${labels.map(label => `<div class="label"><div class="id">${escapeHtml(label.assetNumber)}</div><div>${escapeHtml(label.assetName)}</div><div class="tag">${escapeHtml(label.tagNumber)}</div><div>${escapeHtml(label.serialNumber)}</div></div>`).join('')}</body></html>`);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+      showToast(`${labels.length} label(s) prepared for printing.`);
     } catch (err) {
-      showToast('Print request failed', 'error');
+      showToast(err.message || 'Print request failed.', 'error');
     } finally {
       setSubmitting(false);
     }
@@ -473,16 +541,16 @@ export function TagWorkbench() {
         setManualForm({
           assetNumber: '',
           assetName: '',
-          category: 'Desktop',
-          location: 'Dubai HQ',
+          category: '',
+          location: '',
           department: 'IT Operations',
           serialNumber: '',
-          custodian: 'John Doe'
+          custodian: ''
         });
         fetchTaggingData();
       }
     } catch (err) {
-      showToast('Failed to add manual asset', 'error');
+      showToast(err?.message || 'Failed to add manual asset', 'error');
     }
   };
 
@@ -736,9 +804,8 @@ export function TagWorkbench() {
                 <option value="IT Store">IT Store</option>
                 <option value="Admin Block">Admin Block</option>
                 <option value="Finance Dept">Finance Dept</option>
-                <option value="Dubai HQ">Dubai HQ</option>
-                <option value="HR Dept">HR Dept</option>
-                <option value="Warehouse">Warehouse</option>
+                <option value="">Select site</option>
+                    {sites.map(site => <option key={site.id} value={site.name}>{site.name}</option>)}
               </select>
             </div>
           </div>
@@ -755,11 +822,8 @@ export function TagWorkbench() {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 focus:border-[#6C2BD9] transition-all cursor-pointer"
               >
                 <option value="All Categories">All Categories</option>
-                <option value="Desktop">Desktop</option>
-                <option value="Printer">Printer</option>
-                <option value="Monitor">Monitor</option>
-                <option value="Laptop">Laptop</option>
-                <option value="Tablet">Tablet</option>
+                <option value="">Select category</option>
+                    {categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
                 <option value="Network">Network</option>
               </select>
             </div>
@@ -1672,19 +1736,12 @@ export function TagWorkbench() {
             </div>
 
             <div className="space-y-4 pt-4">
-              <div className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-[#6C2BD9] transition-all bg-slate-50/50 cursor-pointer">
+              <div onDragOver={event => event.preventDefault()} onDrop={event => { event.preventDefault(); handleImportFile(event.dataTransfer.files?.[0]); }} className="border-2 border-dashed border-slate-200 rounded-2xl p-6 text-center hover:border-[#6C2BD9] transition-all bg-slate-50/50 cursor-pointer">
                 <Upload className="w-8 h-8 text-[#6C2BD9] mx-auto mb-2" />
                 <p className="text-xs font-bold text-slate-700">Drag and drop your CSV or Excel file</p>
-                <p className="text-[11px] text-slate-400 mt-1">Supports .csv, .xlsx, .xls</p>
-                <button
-                  type="button"
-                  onClick={() => {
-                    showToast('Sample CSV batch imported: 2 assets staged.');
-                    setShowImportModal(false);
-                    fetchTaggingData();
-                  }}
-                  className="mt-3 px-4 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs hover:bg-slate-50 cursor-pointer"
-                >
+                <p className="text-[11px] text-slate-400 mt-1">Supports .csv, .xlsx</p>
+                <input ref={importFileRef} type="file" accept=".csv,.xlsx" className="hidden" onChange={event => handleImportFile(event.target.files?.[0])} />
+                <button type="button" onClick={() => importFileRef.current?.click()} className="mt-3 px-4 py-1.5 rounded-xl bg-white border border-slate-200 text-slate-700 text-xs font-semibold shadow-2xs hover:bg-slate-50 cursor-pointer">
                   Select File from Computer
                 </button>
               </div>
@@ -1693,11 +1750,11 @@ export function TagWorkbench() {
                 <span>Need formatting reference?</span>
                 <button
                   type="button"
-                  onClick={() => showToast('Template CSV downloaded')}
+                  onClick={downloadImportTemplate}
                   className="text-[#6C2BD9] hover:underline font-semibold flex items-center gap-1 cursor-pointer"
                 >
                   <Download className="w-3.5 h-3.5" />
-                  <span>Download Sample Template</span>
+                  <span>Download Template</span>
                 </button>
               </div>
             </div>

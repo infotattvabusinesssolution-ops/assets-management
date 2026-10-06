@@ -5,7 +5,7 @@
  * Updates Asset Master ONLY upon confirmed receipt and maintains an immutable audit log in Movement History.
  */
 import prisma from '../../config/prisma.js';
-import { isSqlServerConnected } from '../../config/db.js';
+import { isSqlServerConnected, isDbConnected } from '../../config/db.js';
 
 // ---------------------------------------------------------------------------
 // 1. In-Memory Store & Seed Data (Matches Screenshot & Realistic Enterprise Data)
@@ -288,35 +288,7 @@ let transfersStore = [
 ];
 
 // Movement History Store (Immutable Audit Trail)
-let movementHistoryStore = [
-  {
-    id: 'MOV-HIST-0001',
-    movementId: 'MOV-2026-0001',
-    transferNumber: 'TRF-2026-0001',
-    assetId: 'AST-000125',
-    assetNumber: 'AS-000125',
-    assetName: 'Printer - HP',
-    serialNumber: 'HP LaserJet 404',
-    rfidEpc: 'E28011606000002053A1B4C2',
-    movementType: 'Location Transfer',
-    fromLocation: 'Dubai HQ > Block A > GF > IT-101',
-    toLocation: 'Dubai HQ > Block B > 1F > IT-201',
-    previousCustodian: 'Ahmed Khan',
-    newCustodian: 'Omar Saleh (EMP-00456)',
-    department: 'IT Department',
-    reason: 'Department Restructure',
-    condition: 'Good',
-    accessories: 'Power Cable, Stand',
-    referenceNo: 'IT-MOVE-2026-000',
-    requestedBy: 'John Doe',
-    approvedBy: 'Jane Smith',
-    dispatcher: 'Logistics Desk',
-    receiver: 'Omar Saleh',
-    timestamp: '2026-09-01T11:45:00Z',
-    status: 'COMPLETED',
-    documentsCount: 1
-  }
-];
+let movementHistoryStore = [];
 
 // ---------------------------------------------------------------------------
 // 2. Service Implementations
@@ -326,7 +298,8 @@ let movementHistoryStore = [
  * Fetch hierarchical location structure
  */
 export async function getLocationHierarchy() {
-  if (isSqlServerConnected) {
+  const isConnected = isSqlServerConnected || isDbConnected();
+  if (isConnected) {
     try {
       const [sites, buildings, floors, rooms] = await Promise.all([
         prisma.site.findMany({ where: { active: true } }),
@@ -351,7 +324,8 @@ export async function getLocationHierarchy() {
  * Fetch all available departments and custodians
  */
 export async function getMasterReferences() {
-  if (isSqlServerConnected) {
+  const isConnected = isSqlServerConnected || isDbConnected();
+  if (isConnected) {
     try {
       const [departments, employees] = await Promise.all([
         prisma.department.findMany({ where: { active: true } }),
@@ -389,8 +363,9 @@ export async function searchEligibleAssets({ query = '', scanType = 'ALL' }) {
   const q = (query || '').trim().toLowerCase();
   
   let list = assetsStore;
+  const isConnected = isSqlServerConnected || isDbConnected();
 
-  if (isSqlServerConnected) {
+  if (isConnected) {
     try {
       const dbAssets = await prisma.asset.findMany({
         where: {
@@ -398,7 +373,7 @@ export async function searchEligibleAssets({ query = '', scanType = 'ALL' }) {
           ...(q ? {
             OR: [
               { assetId: { contains: q } },
-              { name: { contains: q } },
+              { description: { contains: q } },
               { serialNumber: { contains: q } },
               { barcode: { contains: q } },
               { tagNumber: { contains: q } }
@@ -414,10 +389,10 @@ export async function searchEligibleAssets({ query = '', scanType = 'ALL' }) {
           department: true,
           custodian: true
         },
-        take: 50
+        take: 100
       });
 
-      if (dbAssets.length) {
+      if (dbAssets && dbAssets.length > 0) {
         list = dbAssets.map(a => {
           const locParts = [
             a.site?.name,
@@ -432,12 +407,12 @@ export async function searchEligibleAssets({ query = '', scanType = 'ALL' }) {
           return {
             id: a.id,
             assetNumber: a.assetId || a.tagNumber || `AST-${a.id.slice(0, 6)}`,
-            assetName: a.name || 'Unnamed Asset',
+            assetName: a.description || a.assetId || 'Unnamed Asset',
             type: a.category?.name || 'Equipment',
             category: a.category?.name || 'General',
             serialNumber: a.serialNumber || 'N/A',
             barcode: a.barcode || a.assetId || 'N/A',
-            rfidEpc: a.tagNumber || 'N/A',
+            rfidEpc: a.tagNumber || a.rfidEpc || 'N/A',
             currentLocationFormatted: locParts.join(' > ') || 'Unassigned Location',
             siteId: a.siteId,
             siteName: a.site?.name || '',
@@ -447,13 +422,13 @@ export async function searchEligibleAssets({ query = '', scanType = 'ALL' }) {
             floorName: a.floor?.name || '',
             roomId: a.roomId,
             roomName: a.room?.name || '',
-            currentCustodian: a.custodian ? a.custodian.fullName : '-',
+            currentCustodian: a.custodian ? (a.custodian.fullName || a.custodian.firstName) : '-',
             custodianId: a.custodianId,
             department: a.department?.name || '-',
             departmentId: a.departmentId,
             status: a.custodian ? 'Assigned' : 'Unassigned',
             condition: a.condition || 'Good',
-            imageUrl: 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&auto=format&fit=crop&q=60',
+            imageUrl: a.imageUrl || 'https://images.unsplash.com/photo-1593642632823-8f785ba67e45?w=200&auto=format&fit=crop&q=60',
             isEligibleForTransfer: !isDisposed && !isTransferring,
             ineligibilityReason: isDisposed
               ? 'Asset is marked as Disposed and cannot be moved.'
@@ -517,24 +492,63 @@ export async function scanAsset(code) {
  * Get all transfers with optional status filter
  */
 export async function getTransfers({ status = 'ALL', search = '' }) {
+  const isConnected = isSqlServerConnected || isDbConnected();
+  if (isConnected) {
+    try {
+      const dbTransfers = await prisma.assetTransfer.findMany({
+        where: {
+          ...(status && status !== 'ALL' ? { status } : {})
+        },
+        include: {
+          asset: {
+            include: { category: true, site: true, building: true, floor: true, room: true, department: true }
+          },
+          fromCustodian: true,
+          toCustodian: true,
+          requestedBy: true,
+          approvedBy: true,
+          receivedBy: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (dbTransfers && dbTransfers.length > 0) {
+        let results = dbTransfers.map(t => ({
+          id: t.id,
+          transferNumber: t.transferNumber,
+          assetCount: 1,
+          assetSummary: t.asset?.description || t.asset?.assetId || 'Equipment',
+          transferType: t.transferType,
+          fromSite: t.fromSiteId || 'Dubai HQ Campus',
+          toSite: t.toSiteId || 'Abu Dhabi Operations Hub',
+          toCustodian: t.toCustodian ? t.toCustodian.fullName : 'Unassigned',
+          department: t.asset?.department?.name || 'Information Technology',
+          reason: t.reason || '',
+          status: t.status,
+          requestedBy: t.requestedBy?.fullName || 'System Admin',
+          requestedAt: t.createdAt.toISOString(),
+          assets: [t.asset].filter(Boolean)
+        }));
+
+        if (search) {
+          const s = search.toLowerCase();
+          results = results.filter(t =>
+            t.transferNumber.toLowerCase().includes(s) ||
+            (t.reason && t.reason.toLowerCase().includes(s)) ||
+            (t.toCustodian && t.toCustodian.toLowerCase().includes(s))
+          );
+        }
+
+        return results;
+      }
+    } catch (err) {
+      console.warn('[TransferMovementService] Error fetching transfers from DB:', err.message);
+    }
+  }
+
   let list = [...transfersStore];
-
-  if (status && status !== 'ALL') {
-    list = list.filter(t => t.status === status);
-  }
-
-  if (search) {
-    const s = search.toLowerCase();
-    list = list.filter(t =>
-      t.transferNumber.toLowerCase().includes(s) ||
-      t.reason.toLowerCase().includes(s) ||
-      (t.referenceNo && t.referenceNo.toLowerCase().includes(s)) ||
-      (t.toLocationFormatted && t.toLocationFormatted.toLowerCase().includes(s)) ||
-      (t.toCustodian && t.toCustodian.toLowerCase().includes(s))
-    );
-  }
-
-  return list.sort((a, b) => new Date(b.requestedAt || b.transferDate) - new Date(a.requestedAt || a.transferDate));
+  if (status && status !== 'ALL') list = list.filter(t => t.status === status);
+  return list;
 }
 
 /**
@@ -826,30 +840,91 @@ export async function updateTransferStatus(transferId, actionPayload, user = {})
  * Get Movement History (Immutable Audit Log)
  */
 export async function getMovementHistory({ assetId = '', transferId = '', search = '' }) {
+  const isConnected = isSqlServerConnected || isDbConnected();
+  if (isConnected) {
+    try {
+      const dbTransfers = await prisma.assetTransfer.findMany({
+        where: {
+          ...(assetId ? {
+            OR: [
+              { assetId },
+              { asset: { assetId } },
+              { asset: { tagNumber: assetId } }
+            ]
+          } : {}),
+          ...(transferId ? {
+            transferNumber: { contains: transferId }
+          } : {})
+        },
+        include: {
+          asset: {
+            include: { category: true, site: true, building: true, floor: true, room: true, department: true }
+          },
+          fromCustodian: true,
+          toCustodian: true,
+          requestedBy: true,
+          approvedBy: true,
+          receivedBy: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+
+      if (dbTransfers && dbTransfers.length > 0) {
+        let results = dbTransfers.map(t => {
+          const fromLoc = t.asset?.site?.name ? `${t.asset.site.name} > ${t.asset.building?.name || ''} > ${t.asset.room?.name || ''}`.trim() : 'Dubai HQ Campus';
+          const toLoc = t.toSiteId || 'Abu Dhabi Operations Hub';
+          return {
+            id: t.id,
+            movementId: t.transferNumber,
+            transferNumber: t.transferNumber,
+            assetId: t.asset?.assetId || t.assetId,
+            assetNumber: t.asset?.assetId || t.assetId,
+            assetName: t.asset?.description || t.asset?.assetId || 'Asset',
+            serialNumber: t.asset?.serialNumber || 'N/A',
+            rfidEpc: t.asset?.rfidEpc || 'N/A',
+            movementType: t.transferType || 'Location Transfer',
+            fromLocation: fromLoc,
+            toLocation: toLoc,
+            previousCustodian: t.fromCustodian ? t.fromCustodian.fullName : 'Unassigned',
+            newCustodian: t.toCustodian ? t.toCustodian.fullName : 'Unassigned',
+            department: t.asset?.department?.name || 'Information Technology',
+            reason: t.reason || 'Operational Movement',
+            condition: t.asset?.condition || 'Good',
+            accessories: 'N/A',
+            referenceNo: t.transferNumber,
+            requestedBy: t.requestedBy?.fullName || 'System Admin',
+            approvedBy: t.approvedBy?.fullName || 'Asset Administrator',
+            dispatcher: 'Logistics Team',
+            receiver: t.receivedBy?.fullName || t.toCustodian?.fullName || 'Logistics Team',
+            timestamp: t.createdAt.toISOString(),
+            status: t.status || 'COMPLETED',
+            documentsCount: 0
+          };
+        });
+
+        if (search) {
+          const s = search.toLowerCase();
+          results = results.filter(m =>
+            m.movementId.toLowerCase().includes(s) ||
+            m.transferNumber.toLowerCase().includes(s) ||
+            m.assetNumber.toLowerCase().includes(s) ||
+            m.assetName.toLowerCase().includes(s) ||
+            m.fromLocation.toLowerCase().includes(s) ||
+            m.toLocation.toLowerCase().includes(s) ||
+            m.previousCustodian.toLowerCase().includes(s) ||
+            m.newCustodian.toLowerCase().includes(s) ||
+            m.reason.toLowerCase().includes(s)
+          );
+        }
+
+        return results;
+      }
+    } catch (err) {
+      console.warn('[TransferMovementService] Error fetching movement history from DB:', err.message);
+    }
+  }
+
   let list = [...movementHistoryStore];
-
-  if (assetId) {
-    list = list.filter(m => m.assetId === assetId || m.assetNumber === assetId);
-  }
-
-  if (transferId) {
-    list = list.filter(m => m.transferNumber === transferId || m.movementId.includes(transferId));
-  }
-
-  if (search) {
-    const s = search.toLowerCase();
-    list = list.filter(m =>
-      m.movementId.toLowerCase().includes(s) ||
-      m.transferNumber.toLowerCase().includes(s) ||
-      m.assetNumber.toLowerCase().includes(s) ||
-      m.assetName.toLowerCase().includes(s) ||
-      m.fromLocation.toLowerCase().includes(s) ||
-      m.toLocation.toLowerCase().includes(s) ||
-      m.previousCustodian.toLowerCase().includes(s) ||
-      m.newCustodian.toLowerCase().includes(s) ||
-      m.reason.toLowerCase().includes(s)
-    );
-  }
-
+  if (assetId) list = list.filter(m => m.assetId === assetId || m.assetNumber === assetId);
   return list;
 }

@@ -202,30 +202,30 @@ export async function askAssistant(req, res, next) {
 
     if (isLaptopQuery) {
       searchConditions.push(
-        { category: { name: { contains: 'laptop', mode: 'insensitive' } } },
-        { category: { name: { contains: 'computer', mode: 'insensitive' } } },
-        { category: { name: { contains: 'it', mode: 'insensitive' } } },
-        { description: { contains: 'laptop', mode: 'insensitive' } },
-        { description: { contains: 'notebook', mode: 'insensitive' } },
-        { description: { contains: 'macbook', mode: 'insensitive' } },
-        { description: { contains: 'dell', mode: 'insensitive' } },
-        { description: { contains: 'hp', mode: 'insensitive' } },
-        { description: { contains: 'lenovo', mode: 'insensitive' } },
-        { description: { contains: 'thinkpad', mode: 'insensitive' } },
-        { description: { contains: 'latitude', mode: 'insensitive' } },
-        { description: { contains: 'elitebook', mode: 'insensitive' } },
-        { description: { contains: 'probook', mode: 'insensitive' } }
+        { category: { name: { contains: 'laptop' } } },
+        { category: { name: { contains: 'computer' } } },
+        { category: { name: { contains: 'it' } } },
+        { description: { contains: 'laptop' } },
+        { description: { contains: 'notebook' } },
+        { description: { contains: 'macbook' } },
+        { description: { contains: 'dell' } },
+        { description: { contains: 'hp' } },
+        { description: { contains: 'lenovo' } },
+        { description: { contains: 'thinkpad' } },
+        { description: { contains: 'latitude' } },
+        { description: { contains: 'elitebook' } },
+        { description: { contains: 'probook' } }
       );
     }
 
     for (const kw of keywords) {
       searchConditions.push(
-        { assetId: { contains: kw, mode: 'insensitive' } },
-        { serialNumber: { contains: kw, mode: 'insensitive' } },
-        { description: { contains: kw, mode: 'insensitive' } },
-        { barcode: { contains: kw, mode: 'insensitive' } },
-        { rfidEpc: { contains: kw, mode: 'insensitive' } },
-        { category: { name: { contains: kw, mode: 'insensitive' } } }
+        { assetId: { contains: kw } },
+        { serialNumber: { contains: kw } },
+        { description: { contains: kw } },
+        { barcode: { contains: kw } },
+        { rfidEpc: { contains: kw } },
+        { category: { name: { contains: kw } } }
       );
     }
 

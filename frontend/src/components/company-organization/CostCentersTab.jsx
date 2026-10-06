@@ -1,3 +1,4 @@
+import { api } from '../../services/api';
 import React, { useState, useMemo } from 'react';
 import {
   Coins,
@@ -22,281 +23,35 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-export const INITIAL_COST_CENTERS = [
-  {
-    id: 1,
-    code: '1000',
-    name: 'Corporate Services',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate',
-    department: 'Finance',
-    location: 'Dubai HQ',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'System',
-    createdOn: '10 Jan 2025',
-    description: 'Central corporate financial services'
-  },
-  {
-    id: 2,
-    code: '1100',
-    name: 'Human Resources',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate',
-    department: 'Human Resources',
-    location: 'Dubai HQ',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'System',
-    createdOn: '10 Jan 2025',
-    description: 'HR policy and recruitment'
-  },
-  {
-    id: 3,
-    code: '1200',
-    name: 'IT & Infrastructure',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate',
-    department: 'IT',
-    location: 'Dubai HQ',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'System',
-    createdOn: '11 Jan 2025',
-    description: 'Enterprise IT infrastructure & hardware'
-  },
-  {
-    id: 4,
-    code: '2000',
-    name: 'Operations - UAE',
-    company: 'Wavelogix FZC',
-    businessUnit: 'Operations',
-    department: 'Operations',
-    location: 'Jebel Ali Warehouse',
-    type: 'Operational',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'Ramesh Kumar',
-    createdOn: '12 Jan 2025',
-    description: 'UAE logistical operations and storage'
-  },
-  {
-    id: 5,
-    code: '2100',
-    name: 'Operations - KSA',
-    company: 'd.code Solutions LLC',
-    businessUnit: 'Operations',
-    department: 'Operations',
-    location: 'Riyadh Office',
-    type: 'Operational',
-    status: 'Active',
-    currency: 'SAR',
-    createdBy: 'Sarah Ahmed',
-    createdOn: '12 Jan 2025',
-    description: 'KSA regional operations and transfers'
-  },
-  {
-    id: 6,
-    code: '3000',
-    name: 'Sales & Marketing',
-    company: 'Digital ID Solutions',
-    businessUnit: 'Sales',
-    department: 'Sales',
-    location: 'Dubai HQ',
-    type: 'Revenue',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'John Doe',
-    createdOn: '13 Jan 2025',
-    description: 'Commercial client acquisition and campaigns'
-  },
-  {
-    id: 7,
-    code: '3100',
-    name: 'Customer Support',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Support',
-    department: 'Customer Support',
-    location: 'Dubai HQ',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'Priya Nair',
-    createdOn: '14 Jan 2025',
-    description: 'Asset helpdesk and client support'
-  },
-  {
-    id: 8,
-    code: '4000',
-    name: 'R&D',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Innovation',
-    department: 'Research & Development',
-    location: 'Dubai HQ',
-    type: 'Capital',
-    status: 'Inactive',
-    currency: 'AED',
-    createdBy: 'System',
-    createdOn: '15 Jan 2025',
-    description: 'IoT tag research & prototype labs'
-  },
-  {
-    id: 9,
-    code: '5000',
-    name: 'Facilities Management',
-    company: 'Green Arabia LLC',
-    businessUnit: 'Administration',
-    department: 'Facilities',
-    location: 'Fujairah Site',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'Mohammed Ali',
-    createdOn: '16 Jan 2025',
-    description: 'Physical site maintenance and utilities'
-  },
-  {
-    id: 10,
-    code: '6000',
-    name: 'Regional Office - Qatar',
-    company: 'Digital ID Solutions',
-    businessUnit: 'Operations',
-    department: 'Administration',
-    location: 'Doha Office',
-    type: 'Operational',
-    status: 'Active',
-    currency: 'QAR',
-    createdBy: 'Sarah Ahmed',
-    createdOn: '17 Jan 2025',
-    description: 'Qatar regional operational administration'
-  },
-  {
-    id: 11,
-    code: '6100',
-    name: 'Logistics & Transfers',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    department: 'Logistics',
-    location: 'Sharjah Warehouse',
-    type: 'Operational',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'Ramesh Kumar',
-    createdOn: '18 Jan 2025',
-    description: 'Inter-warehouse transfers and freight'
-  },
-  {
-    id: 12,
-    code: '7000',
-    name: 'Quality Assurance',
-    company: 'Wavelogix FZC',
-    businessUnit: 'Operations',
-    department: 'Quality Assurance',
-    location: 'Abu Dhabi Office',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'System',
-    createdOn: '19 Jan 2025',
-    description: 'Quality inspection & tag calibration'
-  },
-  {
-    id: 13,
-    code: '7100',
-    name: 'Procurement & Sourcing',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate',
-    department: 'Procurement',
-    location: 'Dubai HQ',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'John Doe',
-    createdOn: '20 Jan 2025',
-    description: 'Vendor procurement and purchase orders'
-  },
-  {
-    id: 14,
-    code: '8000',
-    name: 'HSE & Audit',
-    company: 'Green Arabia LLC',
-    businessUnit: 'Corporate',
-    department: 'HSE',
-    location: 'Fujairah Site',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'Priya Nair',
-    createdOn: '21 Jan 2025',
-    description: 'Safety compliance & regulatory audits'
-  },
-  {
-    id: 15,
-    code: '8100',
-    name: 'Legal & Compliance',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate',
-    department: 'Legal',
-    location: 'Dubai HQ',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'System',
-    createdOn: '22 Jan 2025',
-    description: 'Corporate governance and contracts'
-  },
-  {
-    id: 16,
-    code: '9000',
-    name: 'Branch Operations - Oman',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    department: 'Operations',
-    location: 'Muscat Service Center',
-    type: 'Operational',
-    status: 'Active',
-    currency: 'OMR',
-    createdBy: 'Sarah Ahmed',
-    createdOn: '23 Jan 2025',
-    description: 'Oman service operations and support'
-  },
-  {
-    id: 17,
-    code: '9100',
-    name: 'Fleet & Transport',
-    company: 'Wavelogix FZC',
-    businessUnit: 'Operations',
-    department: 'Logistics',
-    location: 'Dammam Warehouse',
-    type: 'Operational',
-    status: 'Active',
-    currency: 'SAR',
-    createdBy: 'Ramesh Kumar',
-    createdOn: '24 Jan 2025',
-    description: 'Transport fleet maintenance & fuel'
-  },
-  {
-    id: 18,
-    code: '9200',
-    name: 'Security & Access Control',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Administration',
-    department: 'Security',
-    location: 'Dubai HQ',
-    type: 'Support',
-    status: 'Active',
-    currency: 'AED',
-    createdBy: 'John Doe',
-    createdOn: '25 Jan 2025',
-    description: 'Physical security & RFID barrier access'
-  }
-];
+export const INITIAL_COST_CENTERS = [];
 
 export function CostCentersTab({ triggerToast, onSwitchTab }) {
-  const [costCenters, setCostCenters] = useState(INITIAL_COST_CENTERS);
+  React.useEffect(() => {
+    const fetchCostCentersFromDb = async () => {
+      try {
+        const res = await api.get('/admin/organization/cost-centers').catch(() => null);
+        if (res && (res.costCenters || Array.isArray(res))) {
+          const list = res.costCenters || res;
+          const mapped = list.map(cc => ({
+            id: cc.id,
+            name: cc.name,
+            code: cc.code,
+            company: cc.company?.name || 'Asset360 Holdings',
+            department: cc.department?.name || 'IT Operations',
+            manager: cc.manager || 'Corporate Finance',
+            budgetAmount: cc.budgetAmount || 500000,
+            currency: 'AED',
+            status: cc.active ? 'Active' : 'Inactive'
+          }));
+          setCostCenters(mapped);
+        }
+      } catch (e) {
+        console.error('Failed to load cost centers from DB:', e);
+      }
+    };
+    fetchCostCentersFromDb();
+  }, []);
+  const [costCenters, setCostCenters] = useState([]);
   const [selectedCcIds, setSelectedCcIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('All Companies');

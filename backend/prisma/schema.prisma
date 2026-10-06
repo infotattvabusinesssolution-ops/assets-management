@@ -1478,3 +1478,20 @@ model RtlsAlert {
   @@index([status, createdAt])
   @@map("rtls_alerts")
 }
+
+// ------------------------------------------------------
+// DISCOVERY SETTINGS
+// ------------------------------------------------------
+
+model DiscoveryCredential {
+  id               String   @id @default(uuid())
+  credentialName   String
+  credentialType   String   // e.g., "WMI", "SNMP", "Active Directory"
+  username         String?
+  passwordValue    String   // Encrypted
+  domainIpAddress  String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@map("discovery_credentials")
+}

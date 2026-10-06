@@ -47,271 +47,16 @@ import {
   Shield
 } from 'lucide-react';
 
-// EXACT MOCK DATA FROM SCREENSHOT 31 FOR ACCURATE UI REPRODUCTION
-const EXACT_MOCK_WORK_ORDERS = [
-  {
-    id: 'wo-24',
-    _id: 'wo-24',
-    workOrderNumber: 'WO-2026-00024',
-    assetId: {
-      assetId: 'AS-000123',
-      description: 'Laptop - Dell 5440',
-      categoryId: 'IT',
-      category: { name: 'IT Equipment' },
-      site: { name: 'Dubai HQ' },
-      building: { name: 'Main' },
-      room: { name: 'IT-101' },
-      custodian: { fullName: 'Ramesh Kumar' }
-    },
-    workType: 'Preventive',
-    priority: 'Medium',
-    scheduledDate: '2026-09-10',
-    completionTargetDate: '2026-09-10',
-    status: 'Scheduled',
-    assignedTechnicianId: 'Ramesh Kumar',
-    assignedTechnician: { fullName: 'Ramesh Kumar' },
-    description: 'Annual laptop hardware maintenance, thermal paste renewal and OS patch update.',
-    cost: 0
-  },
-  {
-    id: 'wo-23',
-    _id: 'wo-23',
-    workOrderNumber: 'WO-2026-00023',
-    assetId: {
-      assetId: 'AS-00087',
-      description: 'AC Unit - Office',
-      categoryId: 'HVAC',
-      category: { name: 'HVAC Equipment' },
-      manufacturer: { name: 'Daikin' },
-      model: { name: 'FTKM50' },
-      serialNumber: 'DAIK2023556',
-      site: { name: 'Dubai HQ' },
-      building: { name: 'Block B' },
-      floor: { name: '2F' },
-      room: { name: 'IT-201' },
-      custodian: { fullName: 'Facilities Team' }
-    },
-    workType: 'Corrective',
-    priority: 'High',
-    scheduledDate: '2026-09-09',
-    completionTargetDate: '2026-09-09',
-    status: 'In Progress',
-    assignedTechnicianId: 'Ahmed Ali',
-    assignedTechnician: { fullName: 'Ahmed Ali' },
-    description: 'AC not cooling. Requires inspection and filter replacement.',
-    cost: 0
-  },
-  {
-    id: 'wo-22',
-    _id: 'wo-22',
-    workOrderNumber: 'WO-2026-00022',
-    assetId: {
-      assetId: 'AS-000065',
-      description: 'Generator 250 KVA',
-      categoryId: 'POWER',
-      category: { name: 'Power Equipment' },
-      site: { name: 'Dubai HQ' },
-      building: { name: 'Power House' },
-      room: { name: 'GEN-01' },
-      custodian: { fullName: 'Suresh Nair' }
-    },
-    workType: 'Preventive',
-    priority: 'Medium',
-    scheduledDate: '2026-09-08',
-    completionTargetDate: '2026-09-08',
-    status: 'Completed',
-    assignedTechnicianId: 'Suresh Nair',
-    assignedTechnician: { fullName: 'Suresh Nair' },
-    description: 'Quarterly diesel generator load test, oil filter replacement and battery voltage check.',
-    cost: 450
-  },
-  {
-    id: 'wo-21',
-    _id: 'wo-21',
-    workOrderNumber: 'WO-2026-00021',
-    assetId: {
-      assetId: 'AS-000143',
-      description: 'Printer - HP',
-      categoryId: 'IT',
-      category: { name: 'IT Hardware' },
-      site: { name: 'Dubai HQ' },
-      building: { name: 'Block A' },
-      room: { name: 'PRN-02' }
-    },
-    workType: 'Corrective',
-    priority: 'Low',
-    scheduledDate: '2026-09-07',
-    completionTargetDate: '2026-09-07',
-    status: 'Open',
-    assignedTechnicianId: '-',
-    assignedTechnician: null,
-    description: 'Paper jam error code 13.20. Requires roller cleaning and tray alignment.',
-    cost: 0
-  },
-  {
-    id: 'wo-20',
-    _id: 'wo-20',
-    workOrderNumber: 'WO-2026-00020',
-    assetId: {
-      assetId: 'AS-000078',
-      description: 'Elevator - Lift 01',
-      categoryId: 'FACILITIES',
-      category: { name: 'Building Facilities' },
-      site: { name: 'Dubai HQ' },
-      building: { name: 'Main Tower' },
-      room: { name: 'LIFT-SHAFT-1' }
-    },
-    workType: 'Inspection',
-    priority: 'High',
-    scheduledDate: '2026-09-06',
-    completionTargetDate: '2026-09-06',
-    status: 'Overdue',
-    assignedTechnicianId: 'Sameer Khan',
-    assignedTechnician: { fullName: 'Sameer Khan' },
-    description: 'Monthly statutory safety certification inspection and brake lining clearance test.',
-    cost: 0
-  },
-  {
-    id: 'wo-19',
-    _id: 'wo-19',
-    workOrderNumber: 'WO-2026-00019',
-    assetId: {
-      assetId: 'AS-000112',
-      description: 'Fire Extinguisher',
-      categoryId: 'SAFETY',
-      category: { name: 'Safety Equipment' },
-      site: { name: 'Dubai HQ' },
-      building: { name: 'Block B' },
-      room: { name: 'HALLWAY-2F' }
-    },
-    workType: 'Inspection',
-    priority: 'Medium',
-    scheduledDate: '2026-09-05',
-    completionTargetDate: '2026-09-05',
-    status: 'Completed',
-    assignedTechnicianId: 'Ramesh Kumar',
-    assignedTechnician: { fullName: 'Ramesh Kumar' },
-    description: 'Annual pressure gauge audit, seal inspection and hydro testing verification.',
-    cost: 120
-  },
-  {
-    id: 'wo-18',
-    _id: 'wo-18',
-    workOrderNumber: 'WO-2026-00018',
-    assetId: {
-      assetId: 'AS-000101',
-      description: 'UPS System',
-      categoryId: 'POWER',
-      category: { name: 'Power Equipment' },
-      site: { name: 'Dubai HQ' },
-      building: { name: 'Block B' },
-      room: { name: 'SERVER-ROOM-1' }
-    },
-    workType: 'Preventive',
-    priority: 'Medium',
-    scheduledDate: '2026-09-04',
-    completionTargetDate: '2026-09-04',
-    status: 'In Progress',
-    assignedTechnicianId: 'Ahmed Ali',
-    assignedTechnician: { fullName: 'Ahmed Ali' },
-    description: 'Biannual battery bank impedance check and inverter bypass test.',
-    cost: 300
-  },
-  {
-    id: 'wo-17',
-    _id: 'wo-17',
-    workOrderNumber: 'WO-2026-00017',
-    assetId: {
-      assetId: 'AS-000099',
-      description: 'Access Control Panel',
-      categoryId: 'SECURITY',
-      category: { name: 'Security Equipment' },
-      site: { name: 'Dubai HQ' },
-      building: { name: 'Gate House' },
-      room: { name: 'SECURITY-CTR' }
-    },
-    workType: 'Corrective',
-    priority: 'Low',
-    scheduledDate: '2026-09-03',
-    completionTargetDate: '2026-09-03',
-    status: 'Cancelled',
-    assignedTechnicianId: '-',
-    assignedTechnician: null,
-    description: 'Door strike power failure false alarm. System self-reset.',
-    cost: 0
-  }
-];
-
-const EXACT_MOCK_HISTORY = [
-  {
-    date: '09 Sep 2026',
-    workOrderNumber: 'WO-2026-00023',
-    workType: 'Corrective',
-    description: 'AC not cooling. Inspection and filter replacement.',
-    performedBy: 'Ahmed Ali',
-    status: 'In Progress',
-    cost: '-'
-  },
-  {
-    date: '15 Jun 2026',
-    workOrderNumber: 'WO-2026-00011',
-    workType: 'Preventive',
-    description: 'Quarterly servicing',
-    performedBy: 'Suresh Nair',
-    status: 'Completed',
-    cost: '250'
-  },
-  {
-    date: '12 Mar 2026',
-    workOrderNumber: 'WO-2026-00007',
-    workType: 'Preventive',
-    description: 'Clean filters and check gas level',
-    performedBy: 'Ramesh Kumar',
-    status: 'Completed',
-    cost: '200'
-  },
-  {
-    date: '10 Dec 2025',
-    workOrderNumber: 'WO-2025-00123',
-    workType: 'Corrective',
-    description: 'Replaced compressor',
-    performedBy: 'Ahmed Ali',
-    status: 'Completed',
-    cost: '1,200'
-  },
-  {
-    date: '14 Sep 2025',
-    workOrderNumber: 'WO-2025-00098',
-    workType: 'Inspection',
-    description: 'General inspection',
-    performedBy: 'Suresh Nair',
-    status: 'Completed',
-    cost: '150'
-  }
-];
+const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "-";
 
 export function MaintenanceManager() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
 
   // Primary Workspace Data
-  const [summary, setSummary] = useState({
-    totalWorkOrders: 24,
-    openCount: 4,
-    assignedCount: 5,
-    inProgressCount: 6,
-    onHoldCount: 2,
-    completedCount: 7,
-    overdueSchedulesCount: 1,
-    totalMaintenanceCost: 2450,
-    totalPartsCost: 1100,
-    totalLaborHours: 38,
-    mtbfDays: 45.0,
-    mttrHours: 4.2,
-    pmComplianceRate: 95
-  });
+  const [summary, setSummary] = useState({});
 
-  const [workOrders, setWorkOrders] = useState(EXACT_MOCK_WORK_ORDERS);
+  const [workOrders, setWorkOrders] = useState([]);
   const [schedules, setSchedules] = useState([]);
   const [assets, setAssets] = useState([]);
   const [employees, setEmployees] = useState([]);
@@ -321,7 +66,7 @@ export function MaintenanceManager() {
   const [toast, setToast] = useState(null);
 
   // Selected Work Order & Asset Drill-down State
-  const [selectedWoId, setSelectedWoId] = useState('wo-23');
+  const [selectedWoId, setSelectedWoId] = useState(null);
   const [bottomTab, setBottomTab] = useState('HISTORY'); // HISTORY | SCHEDULED | PARTS | TIMELOGS | ATTACHMENTS | NOTES
 
   // Filters State
@@ -372,28 +117,28 @@ export function MaintenanceManager() {
   });
 
   const [timeLogForm, setTimeLogForm] = useState({
-    technician: 'Ahmed Ali',
+    technician: '',
     workDate: new Date().toISOString().split('T')[0],
     startTime: '09:00',
     endTime: '12:00',
     hoursWorked: 3,
-    activity: 'Diagnostics and filter replacement',
-    remarks: 'Replaced air intake filter, tested thermostat logic.'
+    activity: '',
+    remarks: ''
   });
 
   const [partForm, setPartForm] = useState({
-    partName: 'HVAC Air Filter 24x24',
-    partNumber: 'PRT-HVAC-87',
+    partName: '',
+    partNumber: '',
     quantity: 1,
     unitCost: 150
   });
 
   const [closeForm, setCloseForm] = useState({
-    workPerformed: 'Replaced filter and refilled gas level.',
-    failureCode: 'FC-HVAC-02',
-    rootCause: 'Dust accumulation in primary filter',
-    downtimeHours: 2.5,
-    completionComments: 'AC unit cooling restored to 18°C setpoint.',
+    workPerformed: '',
+    failureCode: '',
+    rootCause: '',
+    downtimeHours: 0,
+    completionComments: '',
     supervisorVerification: true
   });
 
@@ -402,29 +147,29 @@ export function MaintenanceManager() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Fetch real backend data if available, merging with exact mock defaults
+  // Fetch maintenance records linked to the Asset Register
   const loadMaintenanceData = async () => {
     try {
       const [sumRes, woRes, schRes, assRes, empRes, catRes] = await Promise.all([
-        api.get('/maintenance/summary').catch(() => null),
-        api.get('/maintenance/work-orders').catch(() => null),
-        api.get('/maintenance/schedules').catch(() => null),
-        api.get('/assets?limit=300').catch(() => null),
-        api.get('/master-data/employees').catch(() => null),
-        api.get('/master-data/categories').catch(() => null)
+        api.get('/maintenance/summary'),
+        api.get('/maintenance/work-orders'),
+        api.get('/maintenance/schedules'),
+        api.get('/assets?limit=2000'),
+        api.get('/master-data/employees').catch(() => ({ employees: [] })),
+        api.get('/master-data/categories').catch(() => ({ categories: [] }))
       ]);
 
       if (sumRes?.success) setSummary(sumRes.summary);
-      if (woRes?.success && woRes.workOrders?.length > 0) {
-        setWorkOrders(woRes.workOrders);
-        if (!selectedWoId) setSelectedWoId(woRes.workOrders[0]._id || woRes.workOrders[0].id);
+      if (woRes?.success) {
+        setWorkOrders(woRes.workOrders || []);
+        setSelectedWoId(current => woRes.workOrders?.some(w => w.id === current) ? current : woRes.workOrders?.[0]?.id || null);
       }
       if (schRes?.success) setSchedules(schRes.schedules || []);
       if (assRes?.success) setAssets(assRes.assets || []);
       if (empRes?.success) setEmployees(empRes.employees || []);
       if (catRes?.success) setCategories(catRes.categories || []);
     } catch (err) {
-      console.warn('Backend sync note:', err.message);
+      showToast('error', err.message || 'Could not load maintenance records.');
     }
   };
 
@@ -434,22 +179,22 @@ export function MaintenanceManager() {
 
   // Selected Work Order reference object
   const selectedWo = useMemo(() => {
-    return workOrders.find(w => (w._id || w.id) === selectedWoId) || workOrders[1] || workOrders[0];
+    return workOrders.find(w => (w._id || w.id) === selectedWoId) || workOrders[0] || null;
   }, [workOrders, selectedWoId]);
 
   // Selected Asset reference object
   const selectedAsset = useMemo(() => {
     if (!selectedWo) return null;
-    return typeof selectedWo.assetId === 'object' && selectedWo.assetId !== null ? selectedWo.assetId : null;
-  }, [selectedWo]);
+    return selectedWo.asset || assets.find(a => a.id === selectedWo.assetId) || null;
+  }, [selectedWo, assets]);
 
   // Filtering Logic
   const filteredWorkOrders = useMemo(() => {
     return workOrders.filter(w => {
-      const assetObj = typeof w.assetId === 'object' && w.assetId !== null ? w.assetId : {};
+      const assetObj = w.asset || assets.find(a => a.id === w.assetId) || {};
       const assetNo = assetObj.assetId || '';
       const assetName = assetObj.description || '';
-      const techObj = typeof w.assignedTechnicianId === 'object' && w.assignedTechnicianId !== null ? w.assignedTechnicianId : {};
+      const techObj = w.assignedTechnician || {};
       const techName = techObj.fullName || (typeof w.assignedTechnicianId === 'string' ? w.assignedTechnicianId : '');
       const s = searchQuery.toLowerCase().trim();
 
@@ -465,9 +210,11 @@ export function MaintenanceManager() {
       const matchesType = typeFilter === 'ALL' || w.workType === typeFilter;
       const matchesPriority = priorityFilter === 'ALL' || w.priority === priorityFilter;
 
-      return matchesSearch && matchesStatus && matchesType && matchesPriority;
+      const matchesCategory = categoryFilter === 'ALL' || assetObj.categoryId === categoryFilter;
+      const matchesLocation = locationFilter === 'ALL' || assetObj.siteId === locationFilter;
+      return matchesSearch && matchesStatus && matchesType && matchesPriority && matchesCategory && matchesLocation;
     });
-  }, [workOrders, searchQuery, statusFilter, typeFilter, priorityFilter]);
+  }, [workOrders, assets, searchQuery, statusFilter, typeFilter, categoryFilter, locationFilter, priorityFilter]);
 
   const totalRecords = filteredWorkOrders.length;
   const paginatedWorkOrders = useMemo(() => {
@@ -491,8 +238,7 @@ export function MaintenanceManager() {
         loadMaintenanceData();
       }
     } catch (err) {
-      showToast('success', 'Work order created successfully (mock mode)');
-      setShowCreateWoModal(false);
+      showToast('error', err.message || 'Could not create work order.');
     } finally {
       setActionLoading(false);
     }
@@ -516,8 +262,7 @@ export function MaintenanceManager() {
         loadMaintenanceData();
       }
     } catch (err) {
-      showToast('success', `Status transition updated to ${statusForm.targetStatus}`);
-      setShowUpdateStatusModal(false);
+      showToast('error', err.message || 'Could not update work order.');
     } finally {
       setActionLoading(false);
     }
@@ -535,8 +280,7 @@ export function MaintenanceManager() {
       setShowCloseWoModal(false);
       loadMaintenanceData();
     } catch (err) {
-      showToast('success', `Work Order ${selectedWo.workOrderNumber} closed and moved to History.`);
-      setShowCloseWoModal(false);
+      showToast('error', err.message || 'Could not close work order.');
     } finally {
       setActionLoading(false);
     }
@@ -615,7 +359,7 @@ export function MaintenanceManager() {
 
         <div className="flex items-center gap-2 flex-wrap">
           <button
-            onClick={() => navigate('/maintenance/create')}
+            onClick={() => setShowCreateWoModal(true)}
             className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
           >
             <Plus className="w-4 h-4" /> Create Work Order
@@ -666,12 +410,12 @@ export function MaintenanceManager() {
               className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
-              <option value="Scheduled">Scheduled</option>
-              <option value="In Progress">In Progress</option>
-              <option value="Completed">Completed</option>
-              <option value="Open">Open</option>
-              <option value="Overdue">Overdue</option>
-              <option value="Cancelled">Cancelled</option>
+              <option value="ASSIGNED">Assigned</option>
+              <option value="IN_PROGRESS">In Progress</option>
+              <option value="COMPLETED">Completed</option>
+              <option value="OPEN">Open</option>
+              <option value="ON_HOLD">Overdue</option>
+              <option value="CANCELLED">Cancelled</option>
             </select>
           </div>
 
@@ -684,9 +428,9 @@ export function MaintenanceManager() {
               className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
-              <option value="Preventive">Preventive</option>
-              <option value="Corrective">Corrective</option>
-              <option value="Inspection">Inspection</option>
+              <option value="PREVENTIVE">Preventive</option>
+              <option value="CORRECTIVE">Corrective</option>
+              <option value="INSPECTION">Inspection</option>
             </select>
           </div>
 
@@ -699,9 +443,7 @@ export function MaintenanceManager() {
               className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
-              <option value="HVAC">HVAC Equipment</option>
-              <option value="IT">IT Hardware</option>
-              <option value="POWER">Power Equipment</option>
+              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </select>
           </div>
 
@@ -714,8 +456,7 @@ export function MaintenanceManager() {
               className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
             >
               <option value="ALL">All</option>
-              <option value="Dubai HQ">Dubai HQ</option>
-              <option value="Block B">Block B &gt; 2F &gt; IT-201</option>
+              {Array.from(new Map(assets.filter(a => a.site).map(a => [a.siteId, a.site])).entries()).map(([id, site]) => <option key={id} value={id}>{site.name}</option>)}
             </select>
           </div>
 
@@ -726,7 +467,7 @@ export function MaintenanceManager() {
               <input
                 type="text"
                 readOnly
-                value="01 Jan 2026 - 31 Dec 2026"
+                value="All dates"
                 className="w-full bg-white border border-slate-300 rounded-lg pl-2.5 pr-7 py-1.5 text-[11px] text-slate-800 font-medium cursor-pointer"
               />
               <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -770,7 +511,8 @@ export function MaintenanceManager() {
               Work Order List ({totalRecords})
             </h3>
           </div>
-          <div className="border border-slate-200 rounded-lg overflow-hidden">
+
+          <div className="border border-slate-200 rounded-lg overflow-hidden">
             <div className="overflow-auto max-h-[540px]">
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-700 font-bold text-[11px] border-b border-slate-200">
@@ -793,7 +535,7 @@ export function MaintenanceManager() {
                   {paginatedWorkOrders.map((wo) => {
                     const woId = wo._id || wo.id;
                     const isSelected = selectedWoId === woId;
-                    const assetObj = typeof wo.assetId === 'object' && wo.assetId !== null ? wo.assetId : {};
+                    const assetObj = wo.asset || assets.find(a => a.id === wo.assetId) || {};
                     const techName = wo.assignedTechnician?.fullName || (typeof wo.assignedTechnicianId === 'string' ? wo.assignedTechnicianId : '-');
 
                     return (
@@ -811,10 +553,10 @@ export function MaintenanceManager() {
                           {wo.workOrderNumber}
                         </td>
                         <td className="p-2.5 font-mono text-[#6C2BD9]">
-                          {assetObj.assetId || 'AS-00087'}
+                          {assetObj.assetId || '-'}
                         </td>
                         <td className="p-2.5 font-bold text-slate-900">
-                          {assetObj.description || 'AC Unit - Office'}
+                          {assetObj.description || '-'}
                         </td>
                         <td className="p-2.5 text-slate-800">
                           {wo.workType}
@@ -825,7 +567,7 @@ export function MaintenanceManager() {
                           </span>
                         </td>
                         <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
-                          {wo.scheduledDate}
+                          {formatDate(wo.scheduledDate)}
                         </td>
                         <td className="p-2.5">
                           <span className={`px-2 py-0.5 rounded text-[10px] border ${getStatusBadgeStyle(wo.status)}`}>
@@ -868,29 +610,29 @@ export function MaintenanceManager() {
           <div className="space-y-2 text-xs">
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">WO Number</span>
-              <span className="col-span-7 font-mono font-bold text-slate-900">: WO-2026-00023</span>
+              <span className="col-span-7 font-mono font-bold text-slate-900">: {selectedWo?.workOrderNumber || "-"}</span>
             </div>
             
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Asset No.</span>
-              <span className="col-span-7 font-mono font-bold text-[#6C2BD9]">: AS-00087</span>
+              <span className="col-span-7 font-mono font-bold text-[#6C2BD9]">: {selectedAsset?.assetId || "-"}</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Asset Name</span>
-              <span className="col-span-7 font-bold text-slate-900">: AC Unit - Office</span>
+              <span className="col-span-7 font-bold text-slate-900">: {selectedAsset?.description || "-"}</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Maintenance Type</span>
-              <span className="col-span-7 text-slate-900 font-medium">: Corrective</span>
+              <span className="col-span-7 text-slate-900 font-medium">: {selectedWo?.workType || "-"}</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5 items-center">
               <span className="col-span-5 text-slate-500 font-semibold">Priority</span>
               <span className="col-span-7">
                 : <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-pink-100 text-pink-700 border-pink-200 inline-block">
-                  High
+                  {selectedWo?.priority || "-"}
                 </span>
               </span>
             </div>
@@ -899,34 +641,34 @@ export function MaintenanceManager() {
               <span className="col-span-5 text-slate-500 font-semibold">Status</span>
               <span className="col-span-7">
                 : <span className="px-2 py-0.5 rounded text-[10px] border bg-purple-100 text-purple-900 border-purple-300 font-bold inline-block">
-                  In Progress
+                  {selectedWo?.status || "-"}
                 </span>
               </span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Scheduled Date</span>
-              <span className="col-span-7 font-mono text-slate-800">: 09 Sep 2026</span>
+              <span className="col-span-7 font-mono text-slate-800">: {formatDate(selectedWo?.scheduledDate)}</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Due Date</span>
-              <span className="col-span-7 font-mono text-slate-800">: 09 Sep 2026</span>
+              <span className="col-span-7 font-mono text-slate-800">: {formatDate(selectedWo?.scheduledDate)}</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Assigned To</span>
-              <span className="col-span-7 font-bold text-slate-900">: Ahmed Ali</span>
+              <span className="col-span-7 font-bold text-slate-900">: {selectedWo?.assignedTechnician?.fullName || "-"}</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Location</span>
-              <span className="col-span-7 text-slate-800">: Block B &gt; 2F &gt; IT-201</span>
+              <span className="col-span-7 text-slate-800">: {[selectedAsset?.site?.name, selectedAsset?.building?.name, selectedAsset?.room?.name].filter(Boolean).join(" > ") || "-"}</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Description</span>
-              <span className="col-span-7 text-slate-700 italic">: AC not cooling. Requires inspection and filter replacement.</span>
+              <span className="col-span-7 text-slate-700 italic">: {selectedWo?.description || "-"}</span>
             </div>
 
             {/* ACTION BUTTONS MATCHING SCREENSHOT 31 */}
@@ -1051,10 +793,10 @@ export function MaintenanceManager() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {EXACT_MOCK_HISTORY.map((h, idx) => (
-                      <tr key={idx} className="hover:bg-slate-50">
+                    {workOrders.filter(w => w.assetId === selectedAsset?.id).map((h) => (
+                      <tr key={h.id} className="hover:bg-slate-50">
                         <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
-                          {h.date}
+                          {formatDate(h.completedDate || h.createdAt)}
                         </td>
                         <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">
                           {h.workOrderNumber}
@@ -1066,7 +808,7 @@ export function MaintenanceManager() {
                           {h.description}
                         </td>
                         <td className="p-2.5 text-slate-800">
-                          {h.performedBy}
+                          {h.assignedTechnician?.fullName || "-"}
                         </td>
                         <td className="p-2.5">
                           <span className={`px-2 py-0.5 rounded text-[10px] ${getStatusBadgeStyle(h.status)}`}>
@@ -1074,7 +816,7 @@ export function MaintenanceManager() {
                           </span>
                         </td>
                         <td className="p-2.5 text-right font-mono font-bold text-slate-900">
-                          {h.cost}
+                          {Number(h.cost || 0).toLocaleString()}
                         </td>
                         <td className="p-2.5 text-center">
                           <button className="p-1 text-slate-500 hover:text-slate-900">
@@ -1087,54 +829,17 @@ export function MaintenanceManager() {
                 </table>
               </div>
               <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span className="font-medium text-slate-600">Showing {EXACT_MOCK_HISTORY.length} records</span>
+                <span className="font-medium text-slate-600">Showing {workOrders.filter(w => w.assetId === selectedAsset?.id).length} records</span>
                 <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>
           )}
 
-          {/* TAB 2: SCHEDULED MAINTENANCE */}
-          {bottomTab === 'SCHEDULED' && (
-            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
-              <div className="flex justify-between font-bold text-slate-900">
-                <span>Preventive Maintenance Plan - AC Unit Office</span>
-                <span className="text-[#6C2BD9]">Next Due: 15 Dec 2026</span>
-              </div>
-              <p className="text-slate-600">Frequency: Quarterly (Every 3 Months) | SLA Response: 4 Hours</p>
-            </div>
-          )}
-
-          {/* TAB 3: PARTS & CONSUMABLES */}
-          {bottomTab === 'PARTS' && (
-            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-2">
-              <div className="flex justify-between font-bold text-slate-900">
-                <span>Air Intake Filter 24x24</span>
-                <span className="text-[#6C2BD9] font-mono">150 AED (1 Qty)</span>
-              </div>
-            </div>
-          )}
-
-          {/* TAB 4: TIME LOGS */}
-          {bottomTab === 'TIMELOGS' && (
-            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs space-y-1">
-              <p className="font-bold text-slate-900">Ahmed Ali - 3.0 Hours Worked</p>
-              <p className="text-slate-600">09 Sep 2026 (09:00 - 12:00) • Filter replacement & pressure calibration</p>
-            </div>
-          )}
-
-          {/* TAB 5: ATTACHMENTS */}
-          {bottomTab === 'ATTACHMENTS' && (
-            <div className="p-6 bg-slate-50 rounded-lg border border-slate-200 text-center text-slate-500 text-xs">
-              Service report PDF &amp; inspection photo attached.
-            </div>
-          )}
-
-          {/* TAB 6: NOTES */}
-          {bottomTab === 'NOTES' && (
-            <div className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs text-slate-700 italic">
-              AC unit reported low cooling performance. Inspected filters and gas pressure. Filter replacement completed.
-            </div>
-          )}
+          {bottomTab === 'SCHEDULED' && <div className="space-y-2">{schedules.filter(item => item.assetId === selectedAsset?.id).map(item => <div key={item.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs flex justify-between"><span>{item.title}</span><span>Due {formatDate(item.nextDueDate)} · Every {item.frequencyMonths} months</span></div>)}{!schedules.some(item => item.assetId === selectedAsset?.id) && <p className="text-slate-500">No scheduled maintenance for this asset.</p>}</div>}
+          {bottomTab === 'PARTS' && <div className="space-y-2">{(selectedWo?.partsUsed || []).map(part => <div key={part.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs flex justify-between"><span>{part.partName}</span><span>{part.quantity} × {Number(part.unitCost || 0).toLocaleString()} AED</span></div>)}{!selectedWo?.partsUsed?.length && <p className="text-slate-500">No parts recorded.</p>}</div>}
+          {bottomTab === 'TIMELOGS' && <div className="space-y-2">{(selectedWo?.timeLogs || []).map(log => <div key={log.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs">{log.technician || 'Technician'} · {Number(log.hoursWorked || 0)} hours · {formatDate(log.workDate)}</div>)}{!selectedWo?.timeLogs?.length && <p className="text-slate-500">No time logs recorded.</p>}</div>}
+          {bottomTab === 'ATTACHMENTS' && <div className="p-4 text-slate-500 text-xs">{selectedWo?.photoUrls || 'No attachments recorded.'}</div>}
+          {bottomTab === 'NOTES' && <div className="p-4 text-slate-700 text-xs">{selectedWo?.notes || 'No notes recorded.'}</div>}
         </div>
 
         {/* LOWER RIGHT: ASSET INFORMATION PANEL MATCHING SCREENSHOT 31 */}
@@ -1152,12 +857,12 @@ export function MaintenanceManager() {
               
               <div className="flex-1 min-w-0">
                 <div className="flex items-center justify-between">
-                  <span className="font-mono font-bold text-[#6C2BD9]">AS-00087</span>
+                  <span className="font-mono font-bold text-[#6C2BD9]">{selectedAsset?.assetId || "-"}</span>
                   <span className="px-2 py-0.5 bg-emerald-100 text-emerald-800 border border-emerald-300 rounded text-[10px] font-bold">
-                    Active
+                    {selectedAsset?.lifecycleStatus || "-"}
                   </span>
                 </div>
-                <h4 className="font-bold text-slate-900 truncate mt-0.5">AC Unit - Office</h4>
+                <h4 className="font-bold text-slate-900 truncate mt-0.5">{selectedAsset?.description || "-"}</h4>
               </div>
             </div>
 
@@ -1165,32 +870,32 @@ export function MaintenanceManager() {
             <div className="space-y-1.5 text-xs">
               <div className="grid grid-cols-12 gap-1 py-0.5">
                 <span className="col-span-5 text-slate-500 font-semibold">Category</span>
-                <span className="col-span-7 font-medium text-slate-900">: HVAC Equipment</span>
+                <span className="col-span-7 font-medium text-slate-900">: {selectedAsset?.category?.name || "-"}</span>
               </div>
 
               <div className="grid grid-cols-12 gap-1 py-0.5">
                 <span className="col-span-5 text-slate-500 font-semibold">Brand</span>
-                <span className="col-span-7 font-medium text-slate-900">: Daikin</span>
+                <span className="col-span-7 font-medium text-slate-900">: {selectedAsset?.manufacturer?.name || "-"}</span>
               </div>
 
               <div className="grid grid-cols-12 gap-1 py-0.5">
                 <span className="col-span-5 text-slate-500 font-semibold">Model</span>
-                <span className="col-span-7 font-mono font-medium text-slate-900">: FTKM50</span>
+                <span className="col-span-7 font-mono font-medium text-slate-900">: {selectedAsset?.model?.name || "-"}</span>
               </div>
 
               <div className="grid grid-cols-12 gap-1 py-0.5">
                 <span className="col-span-5 text-slate-500 font-semibold">Serial No.</span>
-                <span className="col-span-7 font-mono font-medium text-slate-900">: DAIK2023556</span>
+                <span className="col-span-7 font-mono font-medium text-slate-900">: {selectedAsset?.serialNumber || "-"}</span>
               </div>
 
               <div className="grid grid-cols-12 gap-1 py-0.5">
                 <span className="col-span-5 text-slate-500 font-semibold">Location</span>
-                <span className="col-span-7 font-medium text-slate-900">: Block B &gt; 2F &gt; IT-201</span>
+                <span className="col-span-7 font-medium text-slate-900">: {[selectedAsset?.site?.name, selectedAsset?.building?.name, selectedAsset?.room?.name].filter(Boolean).join(" > ") || "-"}</span>
               </div>
 
               <div className="grid grid-cols-12 gap-1 py-0.5">
                 <span className="col-span-5 text-slate-500 font-semibold">Custodian</span>
-                <span className="col-span-7 font-medium text-slate-900">: Facilities Team</span>
+                <span className="col-span-7 font-medium text-slate-900">: {selectedAsset?.custodian?.fullName || "-"}</span>
               </div>
             </div>
           </div>
@@ -1216,12 +921,10 @@ export function MaintenanceManager() {
             <form onSubmit={handleCreateWoSubmit} className="space-y-3">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700">Select Asset</label>
-                <input
-                  type="text"
-                  required
-                  defaultValue="AS-00087 - AC Unit - Office"
-                  className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium"
-                />
+                <select required value={woForm.assetId} onChange={e => setWoForm({ ...woForm, assetId: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium">
+                  <option value="">Select an asset</option>
+                  {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.assetId} - {asset.description}</option>)}
+                </select>
               </div>
 
               <div className="space-y-1">
@@ -1229,7 +932,8 @@ export function MaintenanceManager() {
                 <textarea
                   required
                   rows={2}
-                  defaultValue="AC not cooling. Requires inspection and filter replacement."
+                  value={woForm.description}
+                  onChange={e => setWoForm({ ...woForm, description: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium"
                 />
               </div>
@@ -1258,7 +962,7 @@ export function MaintenanceManager() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Update Status - WO-2026-00023</h3>
+              <h3 className="text-sm font-bold text-slate-900">Update Status - {selectedWo?.workOrderNumber || ""}</h3>
               <button onClick={() => setShowUpdateStatusModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-4 h-4" />
               </button>
@@ -1273,10 +977,10 @@ export function MaintenanceManager() {
                   onChange={(e) => setStatusForm({ ...statusForm, targetStatus: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium"
                 >
-                  <option value="In Progress">In Progress</option>
-                  <option value="Completed">Completed</option>
-                  <option value="Verified">Verified</option>
-                  <option value="Closed">Closed</option>
+                  <option value="IN_PROGRESS">In Progress</option>
+                  <option value="COMPLETED">Completed</option>
+                  <option value="VERIFIED">Verified</option>
+                  <option value="CLOSED">Closed</option>
                 </select>
               </div>
 
@@ -1304,7 +1008,7 @@ export function MaintenanceManager() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Close Work Order - WO-2026-00023</h3>
+              <h3 className="text-sm font-bold text-slate-900">Close Work Order - {selectedWo?.workOrderNumber || ""}</h3>
               <button onClick={() => setShowCloseWoModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-4 h-4" />
               </button>
@@ -1316,7 +1020,8 @@ export function MaintenanceManager() {
                 <textarea
                   required
                   rows={2}
-                  defaultValue="Replaced filter and refilled gas level. AC unit cooling restored."
+                  value={closeForm.workPerformed}
+                  onChange={e => setCloseForm({ ...closeForm, workPerformed: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium"
                 />
               </div>

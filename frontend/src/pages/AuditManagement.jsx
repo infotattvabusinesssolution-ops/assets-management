@@ -26,335 +26,32 @@ import {
   Paperclip
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../services/api';
 
-// Pre-seeded 12 Audits matching Screenshot 28 exact records
-const SEED_AUDITS = [
-  {
-    id: 'AUD-2026-0008',
-    auditId: 'AUD-2026-0008',
-    auditName: 'HQ Annual IT Asset Audit 2026',
-    auditType: 'Physical Verification',
-    company: 'Dubai HQ',
-    location: 'Block B',
-    plannedStart: '01 Sep 2026',
-    plannedEnd: '15 Sep 2026',
-    status: 'In Progress',
-    progress: 65,
-    description: 'Annual physical verification of all IT assets at Dubai HQ - Block B including laptops, desktops, monitors and peripherals.',
-    createdBy: 'John Doe',
-    createdOn: '25 Aug 2026 10:30',
-    lastUpdated: '10 Sep 2026 14:20',
-    totalExpected: 600,
-    scopeType: 'By Location',
-    assetsIncluded: 'IT Equipment, Office Equipment',
-    assetCategories: 'Laptops, Desktops, Monitors, Printers, Peripherals',
-    locationScope: ['Dubai HQ > Block B > 1F - IT-101', 'Dubai HQ > Block B > 2F - IT-201'],
-    verificationMethod: 'Barcode / RFID / Manual Entry',
-    allowUnregistered: 'Yes',
-    capturePhotos: 'Yes',
-    remarksMandatory: 'For Exceptions',
-    autoSync: 'Yes (Online/Offline)',
-    auditInstructions: 'Ensure all assets are verified. Capture condition and actual location. Report discrepancies.',
-    assignedUsers: [
-      { id: 1, name: 'Ahmed Khan', role: 'Auditor', location: 'Block B - 1F', status: 'Active' },
-      { id: 2, name: 'Sara Ali', role: 'Auditor', location: 'Block B - 2F', status: 'Active' },
-      { id: 3, name: 'Omar Saleh', role: 'Supervisor', location: 'All Locations', status: 'Active' }
-    ],
-    timeline: [
-      { time: '25 Aug 2026 10:30', title: 'Audit Created', author: 'by John Doe', type: 'created' },
-      { time: '28 Aug 2026 09:15', title: 'Approved', author: 'by Operations Manager', type: 'approved' },
-      { time: '01 Sep 2026 08:00', title: 'Audit Started', author: '', type: 'started' },
-      { time: 'Current Status', title: 'In Progress', author: '65% completed', type: 'progress' },
-      { time: '15 Sep 2026 17:00', title: 'Planned End Date', author: '', type: 'planned' }
-    ],
-    approvals: [
-      { step: 1, role: 'IT Asset Manager', approver: 'Farhan Zaidi', status: 'Approved', date: '26 Aug 2026' },
-      { step: 2, role: 'Operations Director', approver: 'John Doe', status: 'Approved', date: '28 Aug 2026' }
-    ],
-    exceptions: 12,
-    attachments: 3
-  },
-  {
-    id: 'AUD-2026-0007',
-    auditId: 'AUD-2026-0007',
-    auditName: 'Warehouse Assets Audit',
-    auditType: 'Physical Verification',
-    company: 'Jebel Ali',
-    location: 'Main Warehouse',
-    plannedStart: '10 Sep 2026',
-    plannedEnd: '20 Sep 2026',
-    status: 'Not Started',
-    progress: 0,
-    description: 'Comprehensive annual inventory physical audit for Jebel Ali central distribution warehouse.',
-    createdBy: 'Rashid Mohammed',
-    createdOn: '01 Sep 2026 11:00',
-    lastUpdated: '05 Sep 2026 09:30',
-    totalExpected: 1450,
-    scopeType: 'By Location',
-    assetsIncluded: 'Warehouse Racks, Forklifts, Pallet Jacks, Scanners',
-    assetCategories: 'Heavy Equipment, IT Peripherals, Logistics',
-    locationScope: ['Jebel Ali > Main Warehouse > Racks A-Z'],
-    verificationMethod: 'Barcode / RFID',
-    allowUnregistered: 'Yes',
-    capturePhotos: 'Yes',
-    remarksMandatory: 'Always',
-    autoSync: 'Yes (Online/Offline)',
-    auditInstructions: 'Scan barcode tags on all racking units and material handling equipment.',
-    assignedUsers: [
-      { id: 1, name: 'Rashid Mohammed', role: 'Auditor', location: 'Zone A', status: 'Active' },
-      { id: 2, name: 'Layla Hassan', role: 'Auditor', location: 'Zone B', status: 'Active' }
-    ],
-    timeline: [
-      { time: '01 Sep 2026 11:00', title: 'Audit Created', author: 'by Rashid Mohammed', type: 'created' },
-      { time: '05 Sep 2026 09:30', title: 'Approved', author: 'by Logistics Manager', type: 'approved' },
-      { time: '10 Sep 2026 08:00', title: 'Planned Start Date', author: '', type: 'planned' }
-    ],
-    approvals: [
-      { step: 1, role: 'Logistics Manager', approver: 'Hamad Al Nuaimi', status: 'Approved', date: '05 Sep 2026' }
-    ],
-    exceptions: 0,
-    attachments: 2
-  },
-  {
-    id: 'AUD-2026-0006',
-    auditId: 'AUD-2026-0006',
-    auditName: 'Office Equipment Audit',
-    auditType: 'Physical Verification',
-    company: 'Abu Dhabi',
-    location: 'Head Office',
-    plannedStart: '05 Sep 2026',
-    plannedEnd: '12 Sep 2026',
-    status: 'In Progress',
-    progress: 40,
-    description: 'Mid-year verification of office furniture, AV conference room systems, and administrative assets.',
-    createdBy: 'Fatima Noor',
-    createdOn: '01 Sep 2026 14:00',
-    lastUpdated: '08 Sep 2026 16:45',
-    totalExpected: 380,
-    scopeType: 'By Department',
-    assetsIncluded: 'Furniture, AV Systems, Printers',
-    assetCategories: 'Chairs, Executive Desks, TVs, Projectors',
-    locationScope: ['Abu Dhabi > Head Office > Floors 1-5'],
-    verificationMethod: 'Manual / Barcode',
-    allowUnregistered: 'No',
-    capturePhotos: 'Yes',
-    remarksMandatory: 'For Exceptions',
-    autoSync: 'Yes',
-    auditInstructions: 'Verify serial tag tags on conference tables and display panels.',
-    assignedUsers: [
-      { id: 1, name: 'Fatima Noor', role: 'Auditor', location: 'Floors 1-3', status: 'Active' }
-    ],
-    timeline: [
-      { time: '01 Sep 2026 14:00', title: 'Audit Created', author: 'by Fatima Noor', type: 'created' },
-      { time: '05 Sep 2026 08:00', title: 'Audit Started', author: '', type: 'started' }
-    ],
-    approvals: [
-      { step: 1, role: 'Facilities Manager', approver: 'Khalid Al Mansoori', status: 'Approved', date: '03 Sep 2026' }
-    ],
-    exceptions: 4,
-    attachments: 1
-  },
-  {
-    id: 'AUD-2026-0005',
-    auditId: 'AUD-2026-0005',
-    auditName: 'Vehicle Assets Audit',
-    auditType: 'Cycle Count',
-    company: 'Dubai HQ',
-    location: 'Fleet',
-    plannedStart: '01 Aug 2026',
-    plannedEnd: '10 Aug 2026',
-    status: 'Completed',
-    progress: 100,
-    description: 'Quarterly fleet vehicle registration and odometer verification audit.',
-    createdBy: 'Omar Saleh',
-    createdOn: '25 Jul 2026 09:00',
-    lastUpdated: '10 Aug 2026 17:00',
-    totalExpected: 45,
-    scopeType: 'By Category',
-    assetsIncluded: 'Fleet Vehicles, Vans, Trucks',
-    assetCategories: 'Commercial Vehicles, Passenger Cars',
-    locationScope: ['Dubai HQ > Fleet Parking Lot'],
-    verificationMethod: 'Odometer Check & GPS RFID Tag Scan',
-    allowUnregistered: 'No',
-    capturePhotos: 'Yes',
-    remarksMandatory: 'Always',
-    autoSync: 'Yes',
-    auditInstructions: 'Record exact mileage and check valid vehicle registration cards.',
-    assignedUsers: [
-      { id: 1, name: 'Omar Saleh', role: 'Auditor', location: 'Fleet Yard', status: 'Active' }
-    ],
-    timeline: [
-      { time: '25 Jul 2026 09:00', title: 'Audit Created', author: 'by Omar Saleh', type: 'created' },
-      { time: '01 Aug 2026 08:00', title: 'Audit Started', author: '', type: 'started' },
-      { time: '10 Aug 2026 17:00', title: 'Audit Completed', author: '100% reconciled', type: 'completed' }
-    ],
-    approvals: [
-      { step: 1, role: 'Fleet Manager', approver: 'Sari Nader', status: 'Approved', date: '28 Jul 2026' }
-    ],
-    exceptions: 1,
-    attachments: 4
-  },
-  {
-    id: 'AUD-2026-0004',
-    auditId: 'AUD-2026-0004',
-    auditName: 'IT Accessories Audit',
-    auditType: 'Sample Count',
-    company: 'Sharjah',
-    location: 'Office',
-    plannedStart: '15 Aug 2026',
-    plannedEnd: '18 Aug 2026',
-    status: 'In Progress',
-    progress: 80,
-    description: 'Random sampling of loose IT accessories, docking stations, and monitors in Sharjah branch.',
-    createdBy: 'Sara Ali',
-    createdOn: '10 Aug 2026 10:15',
-    lastUpdated: '17 Aug 2026 12:00',
-    totalExpected: 210,
-    scopeType: 'Sample Count',
-    assetsIncluded: 'Docking Stations, Keyboards, Monitors',
-    assetCategories: 'Peripherals',
-    locationScope: ['Sharjah > Branch Office > IT Store'],
-    verificationMethod: 'Barcode Scan',
-    allowUnregistered: 'Yes',
-    capturePhotos: 'No',
-    remarksMandatory: 'For Exceptions',
-    autoSync: 'Yes',
-    auditInstructions: 'Audit 20% random sample across all workstations.',
-    assignedUsers: [
-      { id: 1, name: 'Sara Ali', role: 'Auditor', location: 'Sharjah IT Store', status: 'Active' }
-    ],
-    timeline: [
-      { time: '10 Aug 2026 10:15', title: 'Audit Created', author: 'by Sara Ali', type: 'created' },
-      { time: '15 Aug 2026 09:00', title: 'Audit Started', author: '', type: 'started' }
-    ],
-    approvals: [],
-    exceptions: 2,
-    attachments: 1
-  },
-  {
-    id: 'AUD-2026-0003',
-    auditId: 'AUD-2026-0003',
-    auditName: 'Tools & Equipment Audit',
-    auditType: 'Physical Verification',
-    company: 'Dubai HQ',
-    location: 'Service Center',
-    plannedStart: '01 Jul 2026',
-    plannedEnd: '07 Jul 2026',
-    status: 'Completed',
-    progress: 100,
-    description: 'Physical audit of specialized maintenance tools, diagnostic instruments, and calibration kits.',
-    createdBy: 'Ahmed Khan',
-    createdOn: '25 Jun 2026 14:00',
-    lastUpdated: '07 Jul 2026 18:00',
-    totalExpected: 310,
-    scopeType: 'By Location',
-    assetsIncluded: 'Diagnostic Tools, Power Tools, Multimeters',
-    assetCategories: 'Maintenance Tools',
-    locationScope: ['Dubai HQ > Service Center > Tool Room'],
-    verificationMethod: 'RFID Handheld Scanner',
-    allowUnregistered: 'No',
-    capturePhotos: 'Yes',
-    remarksMandatory: 'For Exceptions',
-    autoSync: 'Yes',
-    auditInstructions: 'Check calibration expiry sticker on every instrument.',
-    assignedUsers: [
-      { id: 1, name: 'Ahmed Khan', role: 'Auditor', location: 'Service Center', status: 'Active' }
-    ],
-    timeline: [
-      { time: '25 Jun 2026 14:00', title: 'Audit Created', author: 'by Ahmed Khan', type: 'created' },
-      { time: '01 Jul 2026 08:30', title: 'Audit Started', author: '', type: 'started' },
-      { time: '07 Jul 2026 18:00', title: 'Audit Completed', author: '100% verified', type: 'completed' }
-    ],
-    approvals: [
-      { step: 1, role: 'Maintenance Lead', approver: 'Tariq Ziad', status: 'Approved', date: '28 Jun 2026' }
-    ],
-    exceptions: 0,
-    attachments: 2
-  },
-  {
-    id: 'AUD-2026-0002',
-    auditId: 'AUD-2026-0002',
-    auditName: 'Q2 Cycle Count',
-    auditType: 'Cycle Count',
-    company: 'All Entities',
-    location: 'Multiple',
-    plannedStart: '01 Jun 2026',
-    plannedEnd: '30 Jun 2026',
-    status: 'Completed',
-    progress: 100,
-    description: 'Quarterly group-wide mandatory cycle count for high probability variance asset categories.',
-    createdBy: 'John Doe',
-    createdOn: '15 May 2026 08:30',
-    lastUpdated: '30 Jun 2026 19:30',
-    totalExpected: 2200,
-    scopeType: 'Group Wide',
-    assetsIncluded: 'Laptops, Smartphones, Tablets',
-    assetCategories: 'Mobile Computing',
-    locationScope: ['All Entities & Branches'],
-    verificationMethod: 'Agent Auto-Discovery & Tag Scan',
-    allowUnregistered: 'Yes',
-    capturePhotos: 'No',
-    remarksMandatory: 'For Exceptions',
-    autoSync: 'Yes',
-    auditInstructions: 'Ensure mobile assets match current custodian AD login records.',
-    assignedUsers: [
-      { id: 1, name: 'John Doe', role: 'Supervisor', location: 'All Entities', status: 'Active' },
-      { id: 2, name: 'Sara Ali', role: 'Auditor', location: 'Dubai HQ', status: 'Active' }
-    ],
-    timeline: [
-      { time: '15 May 2026 08:30', title: 'Audit Created', author: 'by John Doe', type: 'created' },
-      { time: '01 Jun 2026 08:00', title: 'Audit Started', author: '', type: 'started' },
-      { time: '30 Jun 2026 19:30', title: 'Audit Completed', author: 'Fully Reconciled', type: 'completed' }
-    ],
-    approvals: [
-      { step: 1, role: 'Internal Audit Manager', approver: 'Salim Al Maktoum', status: 'Approved', date: '25 May 2026' }
-    ],
-    exceptions: 8,
-    attachments: 5
-  },
-  {
-    id: 'AUD-2026-0001',
-    auditId: 'AUD-2026-0001',
-    auditName: 'High Value Assets Audit',
-    auditType: 'Physical Verification',
-    company: 'Dubai HQ',
-    location: 'Main Building',
-    plannedStart: '01 May 2026',
-    plannedEnd: '15 May 2026',
-    status: 'Completed',
-    progress: 100,
-    description: 'Annual physical verification of high-value capital assets exceeding $10,000 threshold.',
-    createdBy: 'Farhan Zaidi',
-    createdOn: '20 Apr 2026 11:00',
-    lastUpdated: '15 May 2026 16:00',
-    totalExpected: 180,
-    scopeType: 'By Financial Value',
-    assetsIncluded: 'Datacenter Servers, SAN Storage, Core Switches, Generators',
-    assetCategories: 'Datacenter Infrastructure',
-    locationScope: ['Dubai HQ > Main Building > Server Room 1 & 2'],
-    verificationMethod: 'Dual RFID & Manual Sign-off',
-    allowUnregistered: 'No',
-    capturePhotos: 'Yes',
-    remarksMandatory: 'Always',
-    autoSync: 'Yes',
-    auditInstructions: 'Verify asset serial number and financial asset tag plate.',
-    assignedUsers: [
-      { id: 1, name: 'Farhan Zaidi', role: 'Auditor', location: 'Server Rooms', status: 'Active' }
-    ],
-    timeline: [
-      { time: '20 Apr 2026 11:00', title: 'Audit Created', author: 'by Farhan Zaidi', type: 'created' },
-      { time: '01 May 2026 08:00', title: 'Audit Started', author: '', type: 'started' },
-      { time: '15 May 2026 16:00', title: 'Audit Completed', author: '100% verified', type: 'completed' }
-    ],
-    approvals: [
-      { step: 1, role: 'Chief Financial Officer', approver: 'Adnan Zaid', status: 'Approved', date: '28 Apr 2026' }
-    ],
-    exceptions: 0,
-    attachments: 3
-  }
-];
+const SEED_AUDITS = [];
 
 export function AuditManagement() {
+  const [audits, setAudits] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  React.useEffect(() => {
+    const fetchAudits = async () => {
+      setLoading(true);
+      try {
+        const res = await api.get('/stocktakes/audits').catch(() => null);
+        if (res && res.audits) {
+          setAudits(res.audits);
+        } else if (res && res.campaigns) {
+          setAudits(res.campaigns);
+        }
+      } catch (e) {
+        console.error('Failed to load audits:', e);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchAudits();
+  }, []);
   const navigate = useNavigate();
 
   // Selected Audit State
@@ -375,12 +72,12 @@ export function AuditManagement() {
 
   // Selected Audit Object
   const selectedAudit = useMemo(() => {
-    return SEED_AUDITS.find(a => a.auditId === selectedAuditId) || SEED_AUDITS[0];
+    return audits.find(a => a.auditId === selectedAuditId) || audits[0] || null;
   }, [selectedAuditId]);
 
   // Filtered List
   const filteredAudits = useMemo(() => {
-    return SEED_AUDITS.filter(a => {
+    return audits.filter(a => {
       const matchSearch =
         !filterSearch ||
         a.auditId.toLowerCase().includes(filterSearch.toLowerCase()) ||
@@ -579,7 +276,7 @@ export function AuditManagement() {
           <div className="col-span-12 lg:col-span-8 bg-white rounded-xl border border-slate-200 shadow-xs overflow-hidden">
             <div className="p-4 border-b border-slate-100 flex items-center justify-between">
               <h2 className="text-sm font-bold text-slate-900">
-                Audit List ({SEED_AUDITS.length})
+                Audit List ({audits.length})
               </h2>
             </div>
 

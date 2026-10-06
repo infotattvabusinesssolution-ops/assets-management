@@ -240,8 +240,8 @@ export async function createAsset(req, res, next) {
     const rawDept = req.body.departmentId || req.body.department;
     const rawCostCenter = req.body.costCenterId || req.body.costCenter;
     const rawCustodian = req.body.custodianId || req.body.custodian;
-    const rawMfr = req.body.manufacturerId || req.body.manufacturer || req.body.brand || 'Dell';
-    const rawModel = req.body.modelId || req.body.model || req.body.modelNumber || 'Standard Model';
+    const rawMfr = req.body.manufacturerId || req.body.manufacturer || req.body.brand || null;
+    const rawModel = req.body.modelId || req.body.model || req.body.modelNumber || null;
 
     // 1. Resolve or auto-create Category
     let category = await prisma.category.findFirst({
@@ -449,7 +449,7 @@ export async function createAsset(req, res, next) {
           barcode,
           qrCode: req.body.qrCode || barcode,
           rfidEpc: req.body.rfidEpc || null,
-          serialNumber: req.body.serialNumber || `SN-${assetId}`,
+          serialNumber: req.body.serialNumber || null,
           lifecycleStatus,
           condition: req.body.condition || 'NEW',
           criticality: req.body.criticality || 'MEDIUM',
@@ -457,8 +457,8 @@ export async function createAsset(req, res, next) {
           currency: req.body.currency || 'USD',
           poNumber: req.body.poNumber || req.body.poInvoiceNo || null,
           supplierName: req.body.supplierName || req.body.supplier || req.body.vendorSupplier || null,
-          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : new Date(),
-          inServiceDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : new Date(),
+          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : null,
+          inServiceDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : null,
           hostname: req.body.hostname || null,
           macAddress: req.body.macAddress || null,
           ipAddress: req.body.ipAddress || null,
@@ -467,23 +467,29 @@ export async function createAsset(req, res, next) {
         }
       });
 
-      const childOperations = [
-        // 1. Initial Corporate Book Value
-        tx.assetBookValue.create({
-          data: {
-            assetId: newAsset.id,
-            bookType: 'CORPORATE',
-            capitalizationDate: new Date(),
-            capitalizationValue: acqValue,
-            usefulLifeMonths: parseInt(req.body.usefulLifeYears, 10) * 12 || 60,
-            depreciationMethod: req.body.depreciationMethod === 'Straight Line' ? 'STRAIGHT_LINE' : 'STRAIGHT_LINE',
-            residualValue: parseFloat(req.body.residualValue) || 0,
-            accumulatedDepreciation: 0,
-            netBookValue: acqValue
-          }
-        }),
+      const childOperations = [];
 
-        // 2. Initial Asset Transaction Log
+      // 1. Initial Corporate Book Value (only if capitalized value is provided)
+      if (acqValue > 0) {
+        childOperations.push(
+          tx.assetBookValue.create({
+            data: {
+              assetId: newAsset.id,
+              bookType: 'CORPORATE',
+              capitalizationDate: new Date(),
+              capitalizationValue: acqValue,
+              usefulLifeMonths: parseInt(req.body.usefulLifeYears, 10) * 12 || 60,
+              depreciationMethod: req.body.depreciationMethod === 'Straight Line' ? 'STRAIGHT_LINE' : 'STRAIGHT_LINE',
+              residualValue: parseFloat(req.body.residualValue) || 0,
+              accumulatedDepreciation: 0,
+              netBookValue: acqValue
+            }
+          })
+        );
+      }
+
+      // 2. Initial Asset Transaction Log
+      childOperations.push(
         tx.assetTransaction.create({
           data: {
             assetId: newAsset.id,
@@ -505,7 +511,7 @@ export async function createAsset(req, res, next) {
             afterState: JSON.stringify({ assetId: newAsset.assetId, description: newAsset.description, status: newAsset.lifecycleStatus }).slice(0, 250)
           }
         })
-      ];
+      );
 
       // 4. Custody Assignment if Custodian is specified
       if (custodianId && finalUserId) {
@@ -1489,8 +1495,11 @@ export async function getAssetHierarchyTree(req, res, next) {
         company: true,
         site: true,
         building: true,
+        floor: true,
         room: true,
         custodian: true,
+        department: true,
+        costCenter: true,
         manufacturer: true,
         model: true,
         warranty: true
@@ -1518,13 +1527,14 @@ export async function getAssetHierarchyTree(req, res, next) {
     // Index all assets by id and assetId
     const nodeMap = new Map();
     allAssets.forEach((a) => {
-      const locationParts = [a.site?.name, a.building?.name, a.room?.name].filter(Boolean);
+      const locationParts = [a.site?.name, a.building?.name, a.floor?.name, a.room?.name].filter(Boolean);
       const node = {
         id: a.id,
         dbId: a.id,
         assetId: a.assetId,
         name: a.description || a.assetId,
         category: a.category?.name || '-',
+        categoryId: a.categoryId,
         type: '-',
         level: 1,
         levelName: 'Parent System',
@@ -1532,7 +1542,27 @@ export async function getAssetHierarchyTree(req, res, next) {
         condition: formatCondition(a.condition),
         criticality: a.criticality || 'MEDIUM',
         location: locationParts.length > 0 ? locationParts.join(', ') : '-',
-        custodian: a.custodian?.fullName || '-',
+        custodian: a.custodian?.fullName || 'Unassigned',
+        custodianId: a.custodianId,
+        custodianCode: a.custodian?.employeeCode || null,
+        custodianEmail: a.custodian?.email || null,
+        department: a.department?.name || '-',
+        departmentId: a.departmentId,
+        costCenter: a.costCenter?.name || a.costCenter?.code || '-',
+        costCenterId: a.costCenterId,
+        siteName: a.site?.name || '-',
+        siteId: a.siteId,
+        buildingName: a.building?.name || '-',
+        buildingId: a.buildingId,
+        floorName: a.floor?.name || '-',
+        floorId: a.floorId,
+        roomName: a.room?.name || '-',
+        roomId: a.roomId,
+        tagNumber: a.tagNumber || '-',
+        barcode: a.barcode || a.tagNumber || '-',
+        rfidEpc: a.rfidEpc || '-',
+        supplierName: a.supplierName || '-',
+        poNumber: a.poNumber || '-',
         model: a.model?.name || '-',
         serialNumber: a.serialNumber || '-',
         manufacturer: a.manufacturer?.name || '-',
@@ -1540,6 +1570,7 @@ export async function getAssetHierarchyTree(req, res, next) {
           ? new Date(a.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })
           : '-',
         warrantyExpiry: a.warranty?.endDate ? new Date(a.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+        warrantyProvider: a.warranty?.providerName || '-',
         parentAssetId: null,
         parentAssetName: null,
         rawParentId: a.parentAssetId,
@@ -1843,6 +1874,303 @@ export async function addChildAsset(req, res, next) {
       success: true,
       message: `Child asset ${child.assetId} successfully attached under parent ${parent.assetId}.`,
       asset: updatedChild
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createChildAsset(req, res, next) {
+  try {
+    const {
+      parentAssetId,
+      name,
+      description,
+      categoryId: rawCategory,
+      serialNumber,
+      tagNumber: rawTag,
+      barcode: rawBarcode,
+      rfidEpc,
+      manufacturer: rawMfr,
+      model: rawModel,
+      condition = 'NEW',
+      criticality = 'MEDIUM',
+      acquisitionValue: rawVal,
+      currency = 'USD',
+      purchaseDate,
+      warrantyExpiry,
+      inheritLocation = true,
+      inheritCustodian = true,
+      siteId: customSiteId,
+      buildingId: customBuildingId,
+      floorId: customFloorId,
+      roomId: customRoomId,
+      departmentId: customDeptId,
+      costCenterId: customCostCenterId,
+      custodianId: customCustodianId,
+      supplierName: rawSupplier,
+      poNumber: rawPoNumber,
+      warrantyProvider: rawWarrantyProvider,
+      warrantyCoverage: rawWarrantyCoverage
+    } = req.body;
+
+    if (!parentAssetId) {
+      return res.status(400).json({ success: false, message: 'Parent Asset ID is required.' });
+    }
+
+    const assetTitle = (name || description || '').trim();
+    if (!assetTitle) {
+      return res.status(400).json({ success: false, message: 'Child Asset Name / Description is required.' });
+    }
+
+    // 1. Find Parent Asset
+    const parent = await prisma.asset.findFirst({
+      where: { OR: [{ id: parentAssetId }, { assetId: parentAssetId }] },
+      include: {
+        category: true,
+        site: true,
+        building: true,
+        floor: true,
+        room: true,
+        department: true,
+        costCenter: true,
+        custodian: true,
+        company: true
+      }
+    });
+
+    if (!parent) {
+      return res.status(404).json({
+        success: false,
+        message: `Parent asset [${parentAssetId}] not found in database.`
+      });
+    }
+
+    // 2. Resolve User for audit & createdBy
+    let finalUserId = req.user?.id;
+    const userInDb = await prisma.user.findFirst({
+      where: {
+        OR: [
+          ...(finalUserId ? [{ id: finalUserId }] : []),
+          { username: req.user?.username || 'admin' }
+        ]
+      }
+    });
+    finalUserId = userInDb ? userInDb.id : (await prisma.user.findFirst())?.id || null;
+
+    // 3. Resolve Category
+    const categoryQuery = rawCategory || parent.categoryId;
+    let category = null;
+    if (categoryQuery) {
+      category = await prisma.category.findFirst({
+        where: {
+          OR: [
+            { id: categoryQuery },
+            { code: categoryQuery },
+            { name: categoryQuery }
+          ]
+        }
+      });
+    }
+    if (!category) {
+      category = await prisma.category.findFirst({ where: { active: true } });
+    }
+    if (!category) {
+      category = await prisma.category.create({
+        data: {
+          code: 'CAT-CHILD',
+          name: 'Components & Accessories'
+        }
+      });
+    }
+    const categoryId = category.id;
+
+    // 4. Resolve Manufacturer & Model
+    let manufacturerId = null;
+    if (rawMfr) {
+      let mfr = await prisma.manufacturer.findFirst({
+        where: { OR: [{ id: rawMfr }, { name: rawMfr }] }
+      });
+      if (!mfr) {
+        mfr = await prisma.manufacturer.create({ data: { name: rawMfr } });
+      }
+      manufacturerId = mfr.id;
+    }
+
+    let modelId = null;
+    if (rawModel) {
+      let mdl = await prisma.assetModel.findFirst({
+        where: { OR: [{ id: rawModel }, { name: rawModel }, { modelNumber: rawModel }] }
+      });
+      if (!mdl) {
+        mdl = await prisma.assetModel.create({
+          data: {
+            name: rawModel,
+            modelNumber: rawModel,
+            manufacturerId,
+            categoryId
+          }
+        });
+      }
+      modelId = mdl.id;
+    }
+
+    // 5. Generate Unique Child Asset ID
+    const count = await prisma.asset.count();
+    let assetId = `AST-${new Date().getFullYear()}-${String(count + 1001).padStart(4, '0')}`;
+    const existing = await prisma.asset.findUnique({ where: { assetId } });
+    if (existing) {
+      assetId = `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 89999 + 10000)}`;
+    }
+
+    const tagNumber = rawTag || `TAG-${assetId}`;
+    const barcode = rawBarcode || tagNumber;
+
+    // 6. Resolve Location & Custody (Inherit or Custom)
+    const companyId = parent.companyId || (await prisma.company.findFirst())?.id;
+    const siteId = inheritLocation ? parent.siteId : (customSiteId || parent.siteId);
+    const buildingId = inheritLocation ? parent.buildingId : (customBuildingId || parent.buildingId);
+    const floorId = inheritLocation ? parent.floorId : (customFloorId || parent.floorId);
+    const roomId = inheritLocation ? parent.roomId : (customRoomId || parent.roomId);
+
+    let departmentId = inheritCustodian ? parent.departmentId : (customDeptId || parent.departmentId);
+    let costCenterId = inheritCustodian ? parent.costCenterId : (customCostCenterId || parent.costCenterId);
+    let custodianId = inheritCustodian ? parent.custodianId : (customCustodianId || parent.custodianId);
+
+    // If explicit custodian employee selected, auto-link their department / cost center if empty
+    if (!inheritCustodian && customCustodianId) {
+      const emp = await prisma.employee.findUnique({ where: { id: customCustodianId } });
+      if (emp) {
+        custodianId = emp.id;
+        if (!customDeptId && emp.departmentId) departmentId = emp.departmentId;
+        if (!customCostCenterId && emp.costCenterId) costCenterId = emp.costCenterId;
+      }
+    }
+
+    // 7. Parse financial values safely
+    const acqValue = typeof rawVal === 'string' ? parseFloat(rawVal.replace(/[^0-9.-]+/g, '')) || 0 : Number(rawVal) || 0;
+
+    // 8. Create child asset in Transaction
+    const newChild = await prisma.$transaction(async (tx) => {
+      const created = await tx.asset.create({
+        data: {
+          assetId,
+          description: assetTitle,
+          parentAssetId: parent.id,
+          categoryId,
+          companyId,
+          siteId,
+          buildingId,
+          floorId,
+          roomId,
+          departmentId,
+          costCenterId,
+          custodianId,
+          manufacturerId,
+          modelId,
+          tagNumber,
+          barcode,
+          qrCode: barcode,
+          rfidEpc: rfidEpc || null,
+          serialNumber: serialNumber || null,
+          supplierName: rawSupplier || null,
+          poNumber: rawPoNumber || null,
+          lifecycleStatus: 'IN_SERVICE',
+          condition: (['NEW', 'GOOD', 'FAIR', 'DAMAGED', 'RETIRED'].includes(String(condition).toUpperCase())) ? String(condition).toUpperCase() : 'NEW',
+          criticality: (['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(String(criticality).toUpperCase())) ? String(criticality).toUpperCase() : 'MEDIUM',
+          acquisitionValue: acqValue,
+          currency: currency || parent.currency || 'USD',
+          purchaseDate: purchaseDate ? new Date(purchaseDate) : (parent.purchaseDate || new Date()),
+          createdByUserId: finalUserId,
+          updatedByUserId: finalUserId
+        },
+        include: {
+          parentAsset: true,
+          category: true,
+          custodian: true,
+          department: true,
+          costCenter: true,
+          site: true,
+          building: true,
+          floor: true,
+          room: true,
+          warranty: true
+        }
+      });
+
+      if (custodianId) {
+        await tx.custodyAssignment.create({
+          data: {
+            assetId: created.id,
+            custodianId,
+            issuedByUserId: finalUserId,
+            issuedDate: new Date(),
+            active: true,
+            acknowledged: false,
+            conditionAtIssue: created.condition
+          }
+        });
+      }
+
+      if (warrantyExpiry) {
+        await tx.warranty.create({
+          data: {
+            assetId: created.id,
+            startDate: purchaseDate ? new Date(purchaseDate) : (parent.purchaseDate || new Date()),
+            endDate: new Date(warrantyExpiry),
+            providerName: rawWarrantyProvider || rawMfr || 'OEM Supplier',
+            warrantyNumber: `WAR-${created.assetId}`,
+            terms: rawWarrantyCoverage || 'Parts & Labor',
+            coverageType: 'FULL'
+          }
+        });
+      }
+
+      if (acqValue > 0) {
+        await tx.assetBookValue.create({
+          data: {
+            assetId: created.id,
+            bookType: 'CORPORATE',
+            capitalizationDate: new Date(),
+            capitalizationValue: acqValue,
+            usefulLifeMonths: 60,
+            depreciationMethod: 'STRAIGHT_LINE',
+            residualValue: 0,
+            accumulatedDepreciation: 0,
+            netBookValue: acqValue
+          }
+        });
+      }
+
+      await tx.assetTransaction.create({
+        data: {
+          assetId: created.id,
+          transactionType: 'HIERARCHY_ATTACH_CHILD',
+          fromStatus: 'NEW',
+          toStatus: 'IN_SERVICE',
+          performedByUserId: finalUserId || 'usr-default',
+          notes: `Created and linked as child asset under parent [${parent.assetId}] (${parent.description})`
+        }
+      });
+
+      await tx.auditEvent.create({
+        data: {
+          userId: finalUserId,
+          action: 'ASSET_HIERARCHY_ADD_CHILD',
+          entityType: 'Asset',
+          entityId: created.id,
+          beforeState: JSON.stringify({ parentAssetId: null }),
+          afterState: JSON.stringify({ parentAssetId: parent.id, parentAssetIdCode: parent.assetId, name: assetTitle })
+        }
+      });
+
+      return created;
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `Child asset [${newChild.assetId}] successfully created and linked under parent [${parent.assetId}].`,
+      asset: newChild
     });
   } catch (err) {
     next(err);

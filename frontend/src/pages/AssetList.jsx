@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
 import { TransferAssetModal } from '../components/modals/TransferAssetModal';
+import { AssignCustodianModal } from '../components/modals/AssignCustodianModal';
 import {
   Package,
   Plus,
@@ -58,553 +59,7 @@ const getCategoryIcon = (categoryName = '') => {
   return Package;
 };
 
-// Mock initial assets matching reference screenshot exactly
-const INITIAL_MOCK_ASSETS = [
-  {
-    id: 'ast-001',
-    _id: 'ast-001',
-    assetId: 'AST-000128',
-    description: 'Dell Latitude 7450',
-    name: 'Dell Latitude 7450',
-    categoryName: 'Laptop',
-    tagNumber: 'RFID-981245',
-    barcode: 'QR-000128',
-    rfidEpc: 'E28011700000001A2B3C',
-    serialNumber: 'DL7450-92118',
-    model: 'Latitude 7450',
-    manufacturer: 'Dell',
-    locationStr: 'Dubai HQ Floor 3 / Room 312',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Floor 3 / Room 312',
-    departmentName: 'IT',
-    costCenterCode: 'IT-001',
-    custodianName: 'John Doe',
-    assignedDate: '10 Jan 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '10 Jan 2024',
-    acquisitionValue: 4500,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '15 Jan 2024',
-    warrantyEnd: '14 Jan 2027',
-    nextServiceDate: '15 Oct 2026',
-    maintType: 'Preventive',
-    checklistName: 'Laptop PM Checklist',
-    icon: Laptop
-  },
-  {
-    id: 'ast-002',
-    _id: 'ast-002',
-    assetId: 'AST-000131',
-    description: 'iPhone 15 Pro',
-    name: 'iPhone 15 Pro',
-    categoryName: 'Mobile Device',
-    tagNumber: 'QR-000131',
-    barcode: 'QR-000131',
-    rfidEpc: 'E28011700000001A999C',
-    serialNumber: 'IP15P-88201',
-    model: '15 Pro 256GB',
-    manufacturer: 'Apple',
-    locationStr: 'Dubai HQ Floor 3',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building B',
-    floorRoom: 'Floor 3',
-    departmentName: 'Executive',
-    costCenterCode: 'EXEC-001',
-    custodianName: 'Ahmed Khan',
-    assignedDate: '12 Jan 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '12 Jan 2024',
-    acquisitionValue: 4000,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '12 Jan 2024',
-    warrantyEnd: '11 Jan 2026',
-    nextServiceDate: '20 Nov 2026',
-    maintType: 'Inspection',
-    checklistName: 'Mobile Security Audit',
-    icon: Smartphone
-  },
-  {
-    id: 'ast-003',
-    _id: 'ast-003',
-    assetId: 'AST-000145',
-    description: 'Ergonomic Chair',
-    name: 'Ergonomic Chair',
-    categoryName: 'Furniture',
-    tagNumber: 'QR-000145',
-    barcode: 'QR-000145',
-    rfidEpc: 'E28011700000001A888C',
-    serialNumber: 'HM-AER-4401',
-    model: 'Aeron Size B',
-    manufacturer: 'Herman Miller',
-    locationStr: 'Dubai HQ Floor 3',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Floor 3 / Zone B',
-    departmentName: 'HR',
-    costCenterCode: 'HR-002',
-    custodianName: 'Sarah Ali',
-    assignedDate: '18 Jan 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '18 Jan 2024',
-    acquisitionValue: 1200,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '18 Jan 2024',
-    warrantyEnd: '17 Jan 2034',
-    nextServiceDate: '01 Dec 2026',
-    maintType: 'Inspection',
-    checklistName: 'Furniture Safety Check',
-    icon: Armchair
-  },
-  {
-    id: 'ast-004',
-    _id: 'ast-004',
-    assetId: 'AST-000156',
-    description: '27" Monitor',
-    name: '27" Monitor',
-    categoryName: 'Monitor',
-    tagNumber: 'RFID-981156',
-    barcode: 'QR-000156',
-    rfidEpc: 'E28011700000001A777C',
-    serialNumber: 'DELL-U2723-990',
-    model: 'UltraSharp U2723QE',
-    manufacturer: 'Dell',
-    locationStr: 'Dubai HQ Floor 3',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Floor 3 / Desk 312',
-    departmentName: 'IT',
-    costCenterCode: 'IT-001',
-    custodianName: 'John Doe',
-    assignedDate: '18 Jan 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '18 Jan 2024',
-    acquisitionValue: 1800,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '18 Jan 2024',
-    warrantyEnd: '17 Jan 2027',
-    nextServiceDate: '15 Oct 2026',
-    maintType: 'Preventive',
-    checklistName: 'Monitor Display Diagnostic',
-    icon: Monitor
-  },
-  {
-    id: 'ast-005',
-    _id: 'ast-005',
-    assetId: 'AST-000201',
-    description: 'Generator 100 KVA',
-    name: 'Generator 100 KVA',
-    categoryName: 'Generator',
-    tagNumber: 'RFID-98201',
-    barcode: 'QR-000201',
-    rfidEpc: 'E28011700000001A666C',
-    serialNumber: 'CAT-100KVA-551',
-    model: 'C4.4 DE110E',
-    manufacturer: 'Caterpillar',
-    locationStr: 'Warehouse',
-    siteName: 'Dubai HQ',
-    buildingName: 'Utility Yard',
-    floorRoom: 'Ground / Bay 01',
-    departmentName: 'Facilities',
-    costCenterCode: 'FAC-001',
-    custodianName: 'Robert Chen',
-    assignedDate: '05 Sep 2024',
-    lifecycleStatus: 'UNDER_MAINTENANCE',
-    condition: 'Fair',
-    acquisitionDate: '05 Sep 2024',
-    acquisitionValue: 85000,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '05 Sep 2024',
-    warrantyEnd: '04 Sep 2027',
-    nextServiceDate: '18 Sep 2026',
-    maintType: 'Overhaul',
-    checklistName: 'Diesel Engine Overhaul',
-    icon: Radio
-  },
-  {
-    id: 'ast-006',
-    _id: 'ast-006',
-    assetId: 'AST-000212',
-    description: 'Forklift - Toyota',
-    name: 'Forklift - Toyota',
-    categoryName: 'Vehicle',
-    tagNumber: 'RFID-00212',
-    barcode: 'QR-000212',
-    rfidEpc: 'E28011700000001A555C',
-    serialNumber: 'TOY-FL8-22091',
-    model: '8FBE20 2-Ton',
-    manufacturer: 'Toyota',
-    locationStr: 'Yard - Jebel Ali',
-    siteName: 'Jebel Ali Site',
-    buildingName: 'Logistics Hub',
-    floorRoom: 'Outdoor Staging Yard',
-    departmentName: 'Logistics',
-    costCenterCode: 'LOG-003',
-    custodianName: 'David Miller',
-    assignedDate: '12 Mar 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '12 Mar 2024',
-    acquisitionValue: 120000,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '12 Mar 2024',
-    warrantyEnd: '11 Mar 2027',
-    nextServiceDate: '30 Oct 2026',
-    maintType: 'Preventive',
-    checklistName: 'Heavy Vehicle Safety PM',
-    icon: Car
-  },
-  {
-    id: 'ast-007',
-    _id: 'ast-007',
-    assetId: 'AST-000221',
-    description: 'HP LaserJet M404',
-    name: 'HP LaserJet M404',
-    categoryName: 'Printer',
-    tagNumber: 'QR-00221',
-    barcode: 'QR-000221',
-    rfidEpc: 'E28011700000001A444C',
-    serialNumber: 'VNB3B09912',
-    model: 'LaserJet Pro M404dn',
-    manufacturer: 'HP',
-    locationStr: 'Print Room',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Floor 3 / Room 301',
-    departmentName: 'Administration',
-    costCenterCode: 'ADMIN-001',
-    custodianName: 'Elena Rostova',
-    assignedDate: '15 Feb 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '15 Feb 2024',
-    acquisitionValue: 1500,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '15 Feb 2024',
-    warrantyEnd: '14 Feb 2026',
-    nextServiceDate: '12 Nov 2026',
-    maintType: 'Preventive',
-    checklistName: 'Print Head & Roller Cleaning',
-    icon: Printer
-  },
-  {
-    id: 'ast-008',
-    _id: 'ast-008',
-    assetId: 'AST-000230',
-    description: 'Access Card',
-    name: 'Access Card',
-    categoryName: 'Access Control',
-    tagNumber: 'QR-002230',
-    barcode: 'QR-002230',
-    rfidEpc: 'E28011700000001A333C',
-    serialNumber: 'HID-iCLASS-900',
-    model: 'iCLASS Seos 8K',
-    manufacturer: 'HID Global',
-    locationStr: 'Dubai HQ',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Security Reception',
-    departmentName: 'Security',
-    costCenterCode: 'SEC-001',
-    custodianName: 'John Doe',
-    assignedDate: '10 Jan 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '10 Jan 2024',
-    acquisitionValue: 150,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '10 Jan 2024',
-    warrantyEnd: '09 Jan 2029',
-    nextServiceDate: '01 Jan 2027',
-    maintType: 'Audit',
-    checklistName: 'Badge Certificate Renewal',
-    icon: CreditCard
-  },
-  {
-    id: 'ast-009',
-    _id: 'ast-009',
-    assetId: 'AST-000245',
-    description: 'Lenovo ThinkPad P1 Gen 6',
-    name: 'Lenovo ThinkPad P1',
-    categoryName: 'Laptop',
-    tagNumber: 'RFID-981246',
-    barcode: 'QR-000245',
-    rfidEpc: 'E28011700000001B111C',
-    serialNumber: 'LNV-P1-9021',
-    model: 'ThinkPad P1 Gen 6',
-    manufacturer: 'Lenovo',
-    locationStr: 'Dubai HQ Floor 4 / Room 402',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Floor 4 / Room 402',
-    departmentName: 'Engineering',
-    costCenterCode: 'ENG-001',
-    custodianName: 'Tariq Al-Mansoor',
-    assignedDate: '22 Feb 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '22 Feb 2024',
-    acquisitionValue: 8200,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '22 Feb 2024',
-    warrantyEnd: '21 Feb 2027',
-    nextServiceDate: '01 Nov 2026',
-    maintType: 'Preventive',
-    checklistName: 'Workstation Thermal Audit',
-    icon: Laptop
-  },
-  {
-    id: 'ast-010',
-    _id: 'ast-010',
-    assetId: 'AST-000258',
-    description: 'iPad Air M2 11"',
-    name: 'iPad Air M2',
-    categoryName: 'Mobile Device',
-    tagNumber: 'QR-000258',
-    barcode: 'QR-000258',
-    rfidEpc: 'E28011700000001B222C',
-    serialNumber: 'IPAD-M2-771',
-    model: 'iPad Air 11" 128GB',
-    manufacturer: 'Apple',
-    locationStr: 'Abu Dhabi Branch',
-    siteName: 'Abu Dhabi Branch',
-    buildingName: 'Main Tower',
-    floorRoom: 'Floor 2',
-    departmentName: 'Sales',
-    costCenterCode: 'SALES-002',
-    custodianName: 'Zayd Hassan',
-    assignedDate: '01 Mar 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '01 Mar 2024',
-    acquisitionValue: 2900,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '01 Mar 2024',
-    warrantyEnd: '28 Feb 2026',
-    nextServiceDate: '15 Dec 2026',
-    maintType: 'Inspection',
-    checklistName: 'Tablet Security Check',
-    icon: Smartphone
-  },
-  {
-    id: 'ast-011',
-    _id: 'ast-011',
-    assetId: 'AST-000270',
-    description: 'Cisco Catalyst 9300 Switch',
-    name: 'Cisco Switch 48-Port',
-    categoryName: 'IT Equipment',
-    tagNumber: 'RFID-983001',
-    barcode: 'QR-000270',
-    rfidEpc: 'E28011700000001B333C',
-    serialNumber: 'FOC2419L0P1',
-    model: 'Catalyst C9300-48P',
-    manufacturer: 'Cisco',
-    locationStr: 'Dubai HQ Server Room',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Basement / Rack 04',
-    departmentName: 'IT',
-    costCenterCode: 'IT-001',
-    custodianName: 'John Doe',
-    assignedDate: '15 Jan 2023',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '15 Jan 2023',
-    acquisitionValue: 18500,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '15 Jan 2023',
-    warrantyEnd: '14 Jan 2028',
-    nextServiceDate: '10 Nov 2026',
-    maintType: 'Preventive',
-    checklistName: 'Network Switch PM',
-    icon: Radio
-  },
-  {
-    id: 'ast-012',
-    _id: 'ast-012',
-    assetId: 'AST-000288',
-    description: 'Zebra ZT411 Industrial RFID Printer',
-    name: 'Zebra RFID Printer',
-    categoryName: 'Printer',
-    tagNumber: 'RFID-98411',
-    barcode: 'QR-000288',
-    rfidEpc: 'E28011700000001B444C',
-    serialNumber: 'ZBR-ZT411-9921',
-    model: 'ZT411 300dpi RFID',
-    manufacturer: 'Zebra Technologies',
-    locationStr: 'Warehouse Staging Area',
-    siteName: 'Sharjah Warehouse',
-    buildingName: 'Logistics Hub',
-    floorRoom: 'Ground / Printing Zone',
-    departmentName: 'Logistics',
-    costCenterCode: 'LOG-001',
-    custodianName: 'David Miller',
-    assignedDate: '05 Apr 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '05 Apr 2024',
-    acquisitionValue: 9800,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '05 Apr 2024',
-    warrantyEnd: '04 Apr 2026',
-    nextServiceDate: '25 Oct 2026',
-    maintType: 'Preventive',
-    checklistName: 'Thermal Printhead Alignment',
-    icon: Printer
-  },
-  {
-    id: 'ast-013',
-    _id: 'ast-013',
-    assetId: 'AST-000295',
-    description: 'Precision Industrial Air Conditioner 5-Ton',
-    name: 'HVAC Chiller Unit 5T',
-    categoryName: 'Facilities',
-    tagNumber: 'RFID-98501',
-    barcode: 'QR-000295',
-    rfidEpc: 'E28011700000001B555C',
-    serialNumber: 'TRN-5T-88210',
-    model: 'IntelliPak 5-Ton',
-    manufacturer: 'Trane',
-    locationStr: 'Dubai HQ Rooftop',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Roof / Bay 02',
-    departmentName: 'Facilities',
-    costCenterCode: 'FAC-001',
-    custodianName: 'Robert Chen',
-    assignedDate: '10 Aug 2023',
-    lifecycleStatus: 'UNDER_MAINTENANCE',
-    condition: 'Fair',
-    acquisitionDate: '10 Aug 2023',
-    acquisitionValue: 42000,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '10 Aug 2023',
-    warrantyEnd: '09 Aug 2026',
-    nextServiceDate: '28 Sep 2026',
-    maintType: 'Corrective',
-    checklistName: 'Compressor & Gas Refill',
-    icon: Radio
-  },
-  {
-    id: 'ast-014',
-    _id: 'ast-014',
-    assetId: 'AST-000310',
-    description: 'Toyota Hilux Double Cab Pickup',
-    name: 'Toyota Hilux Crew Cab',
-    categoryName: 'Vehicle',
-    tagNumber: 'RFID-00310',
-    barcode: 'QR-000310',
-    rfidEpc: 'E28011700000001B666C',
-    serialNumber: 'HLX-2024-4X4',
-    model: 'Hilux 4x4 2.8L',
-    manufacturer: 'Toyota',
-    locationStr: 'Yard - Jebel Ali',
-    siteName: 'Jebel Ali Site',
-    buildingName: 'Fleet Depot',
-    floorRoom: 'Parking Bay 12',
-    departmentName: 'Operations',
-    costCenterCode: 'OPS-004',
-    custodianName: 'Sultan Al-Rumaithi',
-    assignedDate: '14 May 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '14 May 2024',
-    acquisitionValue: 115000,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '14 May 2024',
-    warrantyEnd: '13 May 2027',
-    nextServiceDate: '14 Nov 2026',
-    maintType: 'Preventive',
-    checklistName: 'Fleet 10,000km Service',
-    icon: Car
-  },
-  {
-    id: 'ast-015',
-    _id: 'ast-015',
-    assetId: 'AST-000325',
-    description: 'Poly Studio X50 Video Bar System',
-    name: 'Poly Studio X50 Conference',
-    categoryName: 'IT Equipment',
-    tagNumber: 'QR-000325',
-    barcode: 'QR-000325',
-    rfidEpc: 'E28011700000001B777C',
-    serialNumber: 'POLY-X50-449',
-    model: 'Studio X50 TC8',
-    manufacturer: 'Poly',
-    locationStr: 'Dubai HQ Executive Boardroom',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building B',
-    floorRoom: 'Floor 4 / Boardroom 1',
-    departmentName: 'Executive',
-    costCenterCode: 'EXEC-001',
-    custodianName: 'Ahmed Khan',
-    assignedDate: '01 Jun 2024',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '01 Jun 2024',
-    acquisitionValue: 14500,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '01 Jun 2024',
-    warrantyEnd: '31 May 2026',
-    nextServiceDate: '01 Dec 2026',
-    maintType: 'Inspection',
-    checklistName: 'AV Firmware & Mic Calibration',
-    icon: Monitor
-  },
-  {
-    id: 'ast-016',
-    _id: 'ast-016',
-    assetId: 'AST-000340',
-    description: 'Schneider Galaxy 300 10kVA UPS System',
-    name: 'Schneider 10kVA UPS',
-    categoryName: 'Generator',
-    tagNumber: 'RFID-98340',
-    barcode: 'QR-000340',
-    rfidEpc: 'E28011700000001B888C',
-    serialNumber: 'SCH-UPS10K-901',
-    model: 'Galaxy 300 10kVA 400V',
-    manufacturer: 'Schneider Electric',
-    locationStr: 'Dubai HQ Server Room',
-    siteName: 'Dubai HQ',
-    buildingName: 'Building A',
-    floorRoom: 'Basement / UPS Bay',
-    departmentName: 'IT',
-    costCenterCode: 'IT-001',
-    custodianName: 'John Doe',
-    assignedDate: '10 Oct 2023',
-    lifecycleStatus: 'IN_SERVICE',
-    condition: 'Good',
-    acquisitionDate: '10 Oct 2023',
-    acquisitionValue: 34000,
-    currency: 'AED',
-    warrantyStatus: 'Active',
-    warrantyStart: '10 Oct 2023',
-    warrantyEnd: '09 Oct 2028',
-    nextServiceDate: '10 Oct 2026',
-    maintType: 'Preventive',
-    checklistName: 'Battery Bank Voltage Test',
-    icon: Radio
-  }
-];
+const INITIAL_MOCK_ASSETS = [];
 
 export function AssetList() {
   const navigate = useNavigate();
@@ -622,11 +77,11 @@ export function AssetList() {
   const initialSearchParam = searchParams.get('search') || (searchParams.get('filter') === 'my' ? 'assigned' : '');
 
   // Core Assets & Pagination State
-  const [assets, setAssets] = useState(INITIAL_MOCK_ASSETS);
-  const [loading, setLoading] = useState(false);
-  const [selectedAsset, setSelectedAsset] = useState(INITIAL_MOCK_ASSETS[0]);
+  const [assets, setAssets] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [selectedAsset, setSelectedAsset] = useState(null);
   const [activeTab, setActiveTab] = useState('ALL');
-  const [selectedRowIds, setSelectedRowIds] = useState([INITIAL_MOCK_ASSETS[0].id]);
+  const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [openActionMenuId, setOpenActionMenuId] = useState(null);
 
   // Server-computed KPI Counts & 360 Detail
@@ -643,6 +98,7 @@ export function AssetList() {
 
   // Quick Transfer / Custody Modal
   const [transferModalAsset, setTransferModalAsset] = useState(null);
+  const [assignModalAsset, setAssignModalAsset] = useState(null);
 
   // Filters State
   const [search, setSearch] = useState(initialSearchParam);
@@ -670,40 +126,67 @@ export function AssetList() {
       const res = await api.get('/assets', { params: { limit: 500 } });
 
       if (res?.success && Array.isArray(res.assets) && res.assets.length > 0) {
-        const mapped = res.assets.map(item => ({
-          id: item.id,
-          _id: item.id,
-          assetId: item.assetId,
-          description: item.description,
-          name: item.description || item.assetId,
-          categoryName: item.category?.name || 'General',
-          tagNumber: item.tagNumber || 'N/A',
-          barcode: item.barcode || item.qrCode || 'N/A',
-          rfidEpc: item.rfidEpc || 'N/A',
-          serialNumber: item.serialNumber || 'N/A',
-          model: item.model?.name || 'Standard',
-          manufacturer: item.manufacturer?.name || 'OEM',
-          locationStr: `${item.site?.name || ''} ${item.building?.name || ''} ${item.room?.name || ''}`.trim() || 'Dubai HQ',
-          siteName: item.site?.name || 'Dubai HQ',
-          buildingName: item.building?.name || 'Building A',
-          floorRoom: item.room?.name || item.floor?.name || 'Floor 3',
-          departmentName: item.department?.name || 'IT',
-          costCenterCode: item.costCenter?.code || 'IT-001',
-          custodianName: item.custodian ? (item.custodian.fullName || `${item.custodian.firstName || ''} ${item.custodian.lastName || ''}`.trim()) : 'Unassigned',
-          assignedDate: item.assignedDate ? new Date(item.assignedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '10 Jan 2024'),
-          lifecycleStatus: item.lifecycleStatus || 'IN_SERVICE',
-          condition: item.condition || 'Good',
-          acquisitionDate: item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '10 Jan 2024'),
-          acquisitionValue: Number(item.acquisitionValue) || 0,
-          currency: item.currency || 'AED',
-          warrantyStatus: item.warranty ? (item.warranty.endDate && new Date(item.warranty.endDate) > new Date() ? 'Active' : 'Expired') : 'Active',
-          warrantyStart: item.warranty?.startDate ? new Date(item.warranty.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2024',
-          warrantyEnd: item.warranty?.endDate ? new Date(item.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '14 Jan 2027',
-          nextServiceDate: '15 Oct 2026',
-          maintType: 'Preventive',
-          checklistName: 'Standard PM Checklist',
-          icon: getCategoryIcon(item.category?.name)
-        }));
+        const mapped = res.assets.map(item => {
+          const locParts = [
+            item.site?.name,
+            item.building?.name,
+            item.floor?.name,
+            item.room?.name
+          ].filter(Boolean);
+
+          return {
+            ...item,
+            id: item.id,
+            _id: item.id,
+            assetId: item.assetId,
+            description: item.description,
+            name: item.description || item.assetId,
+            categoryName: item.category?.name || 'General',
+            categoryId: item.categoryId || item.category?.id || '',
+            tagNumber: item.tagNumber || item.barcode || 'N/A',
+            barcode: item.barcode || item.qrCode || item.tagNumber || 'N/A',
+            rfidEpc: item.rfidEpc || 'N/A',
+            serialNumber: item.serialNumber || 'N/A',
+            model: item.model?.name || item.model?.modelNumber || 'Standard',
+            manufacturer: item.manufacturer?.name || 'OEM',
+            locationStr: locParts.join(' > ') || item.site?.name || 'Unassigned Location',
+            siteId: item.siteId || item.site?.id || '',
+            siteName: item.site?.name || '',
+            buildingId: item.buildingId || item.building?.id || '',
+            buildingName: item.building?.name || '',
+            floorId: item.floorId || item.floor?.id || '',
+            floorName: item.floor?.name || '',
+            roomId: item.roomId || item.room?.id || '',
+            roomName: item.room?.name || '',
+            floorRoom: [item.floor?.name, item.room?.name].filter(Boolean).join(' / ') || item.room?.name || item.floor?.name || '',
+            departmentId: item.departmentId || item.department?.id || '',
+            departmentName: item.department?.name || '',
+            costCenterId: item.costCenterId || item.costCenter?.id || '',
+            costCenterCode: item.costCenter?.code || '',
+            custodianId: item.custodianId || item.custodian?.id || '',
+            custodianName: item.custodian ? (item.custodian.fullName || `${item.custodian.firstName || ''} ${item.custodian.lastName || ''}`.trim()) : 'Unassigned',
+            assignedDate: item.assignedDate ? new Date(item.assignedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+            lifecycleStatus: item.lifecycleStatus || 'IN_SERVICE',
+            condition: item.condition || 'Good',
+            acquisitionDate: item.purchaseDate ? new Date(item.purchaseDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
+            acquisitionValue: Number(item.acquisitionValue) || 0,
+            currency: item.currency || 'AED',
+            warrantyStatus: item.warranty ? (item.warranty.endDate && new Date(item.warranty.endDate) > new Date() ? 'Active' : 'Expired') : 'Active',
+            warrantyStart: item.warranty?.startDate ? new Date(item.warranty.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+            warrantyEnd: item.warranty?.endDate ? new Date(item.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
+            nextServiceDate: '15 Oct 2026',
+            maintType: 'Preventive',
+            checklistName: 'Standard PM Checklist',
+            icon: getCategoryIcon(item.category?.name),
+            category: item.category,
+            site: item.site,
+            building: item.building,
+            floor: item.floor,
+            room: item.room,
+            department: item.department,
+            custodian: item.custodian
+          };
+        });
 
         setAssets(mapped);
         if (res.kpiCounts) {
@@ -864,6 +347,11 @@ export function AssetList() {
     if (selectedAsset?.id === assetId || selectedAsset?.assetId === assetId) {
       setSelectedAsset(prev => prev ? { ...prev, lifecycleStatus: toStatus } : null);
     }
+    if (toStatus === 'UNDER_MAINTENANCE') {
+      setActiveTab('UNDER_MAINTENANCE');
+    } else if (toStatus === 'IN_STORE' || toStatus === 'STORE') {
+      setActiveTab('ALL');
+    }
     setStatusTransitionAsset(null);
     showToast('success', `Asset [${target?.assetId || assetId}] status updated to ${toStatus}!`);
 
@@ -891,6 +379,7 @@ export function AssetList() {
     if (selectedAsset?.id === assetId || selectedAsset?.assetId === assetId) {
       setSelectedAsset(prev => prev ? { ...prev, lifecycleStatus: 'DISPOSAL' } : null);
     }
+    setActiveTab('PENDING_DISPOSAL');
     setDisposalRequestAsset(null);
     showToast('success', `Disposal request for [${target?.assetId || assetId}] submitted successfully!`);
 
@@ -1479,7 +968,10 @@ export function AssetList() {
 
                             <button
                               type="button"
-                              onClick={() => setOpenActionMenuId(openActionMenuId === asset.id ? null : asset.id)}
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setOpenActionMenuId(openActionMenuId === asset.id ? null : asset.id);
+                              }}
                               className="p-1 rounded-lg hover:bg-slate-200 text-slate-500 cursor-pointer transition-colors"
                               title="More actions"
                             >
@@ -1638,10 +1130,7 @@ export function AssetList() {
                                       e.stopPropagation();
                                       e.preventDefault();
                                       setOpenActionMenuId(null);
-                                      const assetKey = asset.assetId || asset.id;
-                                      navigate(`/movements/assign?assetId=${encodeURIComponent(assetKey)}`, {
-                                        state: { assetId: assetKey, asset }
-                                      });
+                                      setAssignModalAsset(asset);
                                     }}
                                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
                                   >
@@ -1654,34 +1143,11 @@ export function AssetList() {
                                       e.stopPropagation();
                                       e.preventDefault();
                                       setOpenActionMenuId(null);
-                                      const assetKey = asset.assetId || asset.id;
-                                      navigate(`/movements/transfer?assetId=${encodeURIComponent(assetKey)}`, {
-                                        state: { assetId: assetKey, asset }
-                                      });
+                                      setTransferModalAsset(asset);
                                     }}
                                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
                                   >
                                     <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer Location / Site
-                                  </button>
-
-                                  <button
-                                    type="button"
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      e.preventDefault();
-                                      setOpenActionMenuId(null);
-                                      setTransferModalAsset({
-                                        ...asset,
-                                        id: asset.id,
-                                        assetNumber: asset.assetId || asset.tagNumber || asset.id,
-                                        assetName: asset.name || asset.description || asset.assetId,
-                                        currentLocation: asset.locationStr || `${asset.siteName || 'Dubai HQ'} > ${asset.buildingName || 'Building A'} > ${asset.floorRoom || 'GF'}`,
-                                        assignedTo: asset.custodianName || 'Unassigned'
-                                      });
-                                    }}
-                                    className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-purple-700 bg-purple-50/70 hover:bg-purple-100 rounded-xl transition-all cursor-pointer"
-                                  >
-                                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Quick Move / Assign (Popup Modal)
                                   </button>
 
                                   {asset.lifecycleStatus !== 'UNDER_MAINTENANCE' && (
@@ -1834,35 +1300,19 @@ export function AssetList() {
                 </p>
 
                 <div className="flex flex-wrap items-center gap-1.5 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/assets/${selectedAsset.assetId || selectedAsset.id}`)}
+                  <Link
+                    to={`/assets/${encodeURIComponent(selectedAsset?.assetId || selectedAsset?.id || '')}`}
                     className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
                   >
                     <Eye className="w-3.5 h-3.5" /> 360° Profile
-                  </button>
+                  </Link>
 
                   <button
                     type="button"
-                    onClick={() => {
-                      setTransferModalAsset({
-                        ...selectedAsset,
-                        id: selectedAsset.id,
-                        assetNumber: selectedAsset.assetId || selectedAsset.tagNumber || selectedAsset.id,
-                        assetName: selectedAsset.name || selectedAsset.description || selectedAsset.assetId,
-                        currentLocation: selectedAsset.locationStr || `${selectedAsset.siteName || 'Dubai HQ'} > ${selectedAsset.buildingName || 'Building A'} > ${selectedAsset.floorRoom || 'GF'}`,
-                        assignedTo: selectedAsset.custodianName || 'Unassigned'
-                      });
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setAssignModalAsset(selectedAsset);
                     }}
-                    className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
-                    title="Quick Move / Assign Modal"
-                  >
-                    <ArrowLeftRight className="w-3.5 h-3.5" /> Quick Move
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => navigate(`/movements/assign?assetId=${encodeURIComponent(selectedAsset.assetId || selectedAsset.id)}`, { state: { assetId: selectedAsset.assetId || selectedAsset.id, asset: selectedAsset } })}
                     className="px-2.5 py-1 bg-white hover:bg-purple-50 text-slate-700 border border-slate-200 hover:border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
                     title="Assign to Custodian"
                   >
@@ -1871,11 +1321,14 @@ export function AssetList() {
 
                   <button
                     type="button"
-                    onClick={() => navigate(`/movements/transfer?assetId=${encodeURIComponent(selectedAsset.assetId || selectedAsset.id)}`, { state: { assetId: selectedAsset.assetId || selectedAsset.id, asset: selectedAsset } })}
-                    className="px-2.5 py-1 bg-white hover:bg-purple-50 text-slate-700 border border-slate-200 hover:border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      setTransferModalAsset(selectedAsset);
+                    }}
+                    className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
                     title="Transfer Location / Site"
                   >
-                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer
+                    <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer Location / Site
                   </button>
                 </div>
               </div>
@@ -2327,6 +1780,24 @@ export function AssetList() {
           onClose={() => setTransferModalAsset(null)}
           asset={transferModalAsset}
           onTransferCompleted={() => {
+            showToast('success', 'Asset transfer processed successfully!');
+            fetchAssets();
+          }}
+        />
+      )}
+
+      {/* Quick Assign Custodian Modal */}
+      {assignModalAsset && (
+        <AssignCustodianModal
+          isOpen={Boolean(assignModalAsset)}
+          onClose={() => setAssignModalAsset(null)}
+          asset={assignModalAsset}
+          onAssigned={(updated) => {
+            showToast('success', `Asset ${updated.assetId || updated.name} assigned to ${updated.custodianName || 'custodian'} successfully!`);
+            setAssets(prev => prev.map(a => (a.id === updated.id || a.assetId === updated.assetId) ? { ...a, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: 'ASSIGNED' } : a));
+            if (selectedAsset && (selectedAsset.id === updated.id || selectedAsset.assetId === updated.assetId)) {
+              setSelectedAsset(prev => ({ ...prev, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: 'ASSIGNED' }));
+            }
             fetchAssets();
           }}
         />

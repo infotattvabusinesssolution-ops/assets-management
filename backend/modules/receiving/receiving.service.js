@@ -401,6 +401,9 @@ export class ReceivingService {
           include: { company: true, site: true, lineItems: true },
           orderBy: { createdAt: 'desc' }
         });
+        const ids = dbReceipts.flatMap(r => r.lineItems.map(l => l.createdAssetIds)).filter(Boolean);
+        const receiptAssets = ids.length ? await prisma.asset.findMany({ where: { id: { in: ids } }, select: { id: true, tagNumber: true } }) : [];
+        const tagsByAsset = new Map(receiptAssets.map(a => [a.id, a.tagNumber]));
         if (dbReceipts && dbReceipts.length > 0) {
           const dbRecords = dbReceipts.map((r) => ({
             id: r.id,
@@ -408,17 +411,17 @@ export class ReceivingService {
             mode: r.poNumber === 'NON-PO' ? 'WITHOUT_PO' : 'WITH_PO',
             poNumber: r.poNumber,
             vendorName: r.vendorName,
-            receivingLocation: r.site?.name || 'Main IT Store',
-            receivedBy: r.receivedByUserId || 'System',
-            receivedDate: r.receivedDate ? r.receivedDate.toISOString() : new Date().toISOString(),
+            receivingLocation: r.site?.name || '',
+            receivedBy: r.receivedByUserId || '',
+            receivedDate: r.receivedDate?.toISOString() || null,
             status: r.status,
-            remarks: `Receipt ${r.receiptNumber}`,
-            lineItems: r.lineItems || [],
+            remarks: '',
+            lineItems: r.lineItems.map(l => ({ ...l, tagNumber: tagsByAsset.get(l.createdAssetIds) || null })),
             scannedAssets: [],
             summary: {
               poItems: r.lineItems?.length || 0,
               unitsReceived: r.lineItems?.reduce((acc, l) => acc + (l.quantity || 1), 0) || 0,
-              unitsTagged: r.lineItems?.length || 0,
+              unitsTagged: r.lineItems?.filter(l => tagsByAsset.get(l.createdAssetIds)).length || 0,
               unitsPending: 0
             }
           }));

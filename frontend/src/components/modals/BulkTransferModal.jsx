@@ -1,31 +1,88 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, Layers, ArrowRight, Building2, MapPin, AlertCircle } from 'lucide-react';
 import { api } from '../../services/api';
 
 export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTransferCompleted }) {
   const [loading, setLoading] = useState(false);
+  const [hierarchy, setHierarchy] = useState({ sites: [], buildings: [], floors: [], rooms: [] });
+  const [custodians, setCustodians] = useState([]);
+  
   const [formData, setFormData] = useState({
-    destinationSite: 'Dubai HQ',
-    destinationBuilding: 'Block B',
-    destinationFloor: '1st Floor',
-    destinationRoom: 'Shared Operations Suite',
-    newCustodian: 'Operations Team',
-    reason: 'Bulk department relocation',
+    destinationSiteId: '',
+    destinationSite: '',
+    destinationBuildingId: '',
+    destinationBuilding: '',
+    destinationFloorId: '',
+    destinationFloor: '',
+    destinationRoom: '',
+    newCustodian: '',
+    reason: 'Department asset relocation',
     requireDispatch: false
   });
 
+  useEffect(() => {
+    if (!isOpen) return;
+    let isMounted = true;
+    Promise.allSettled([
+      api.get('/custody-transfers/locations/hierarchy'),
+      api.get('/custody-transfers/master-references')
+    ]).then(([hRes, rRes]) => {
+      if (!isMounted) return;
+      if (hRes.status === 'fulfilled' && hRes.value?.success) {
+        const sites = hRes.value.sites || [];
+        const buildings = hRes.value.buildings || [];
+        const floors = hRes.value.floors || [];
+        const rooms = hRes.value.rooms || [];
+        setHierarchy({ sites, buildings, floors, rooms });
+
+        if (sites.length > 0) {
+          const firstSite = sites[0];
+          const relB = buildings.filter(b => b.siteId === firstSite.id);
+          const firstB = relB[0];
+          const relF = firstB ? floors.filter(f => f.buildingId === firstB.id) : [];
+          const firstF = relF[0];
+
+          setFormData(prev => ({
+            ...prev,
+            destinationSiteId: firstSite.id,
+            destinationSite: firstSite.name,
+            destinationBuildingId: firstB?.id || '',
+            destinationBuilding: firstB?.name || '',
+            destinationFloorId: firstF?.id || '',
+            destinationFloor: firstF?.name || ''
+          }));
+        }
+      }
+      if (rRes.status === 'fulfilled' && rRes.value?.success) {
+        setCustodians(rRes.value.custodians || []);
+      }
+    }).catch(err => console.warn('Bulk transfer options fetch note:', err));
+
+    return () => { isMounted = false; };
+  }, [isOpen]);
+
   if (!isOpen) return null;
+
+  const filteredBuildings = formData.destinationSiteId
+    ? hierarchy.buildings.filter(b => b.siteId === formData.destinationSiteId)
+    : hierarchy.buildings;
+
+  const filteredFloors = formData.destinationBuildingId
+    ? hierarchy.floors.filter(f => f.buildingId === formData.destinationBuildingId)
+    : hierarchy.floors;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
       const payload = {
-        assetIds: selectedAssets.map(a => a.assetNumber || a.id),
+        assetIds: selectedAssets.map(a => a.assetNumber || a.assetId || a.id),
         transferType: 'Bulk Transfer',
         ...formData
       };
-      const res = await api.post('/movements/transfers/workflow', payload);
+      const res = await api.post('/custody-transfers/transfers/workflow', payload).catch(() =>
+        api.post('/movements/transfers/workflow', payload)
+      );
       if (onTransferCompleted) onTransferCompleted(res);
       onClose();
     } catch (err) {
@@ -63,7 +120,7 @@ export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTran
           <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100 flex items-center justify-between">
             <span className="font-semibold text-purple-900">{selectedAssets.length} Assets Selected for Transfer</span>
             <span className="text-[11px] font-mono bg-white px-2 py-0.5 rounded text-[#6C2BD9] font-bold border border-purple-200">
-              Bulk Mode
+              Live Database Batch
             </span>
           </div>
 
@@ -71,41 +128,77 @@ export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTran
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Destination Site *</label>
               <select
-                value={formData.destinationSite}
-                onChange={e => setFormData({ ...formData, destinationSite: e.target.value })}
+                value={formData.destinationSiteId}
+                onChange={e => {
+                  const sId = e.target.value;
+                  const s = hierarchy.sites.find(x => x.id === sId);
+                  const relB = hierarchy.buildings.filter(b => b.siteId === sId);
+                  setFormData(prev => ({
+                    ...prev,
+                    destinationSiteId: sId,
+                    destinationSite: s?.name || '',
+                    destinationBuildingId: relB[0]?.id || '',
+                    destinationBuilding: relB[0]?.name || ''
+                  }));
+                }}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
               >
-                <option value="Dubai HQ">Dubai HQ</option>
-                <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
-                <option value="Sharjah Warehouse">Sharjah Warehouse</option>
+                {hierarchy.sites.length > 0 ? (
+                  hierarchy.sites.map(s => (
+                    <option key={s.id} value={s.id}>{s.name}</option>
+                  ))
+                ) : (
+                  <option value="">No sites available</option>
+                )}
               </select>
             </div>
 
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Building *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Building</label>
               <select
-                value={formData.destinationBuilding}
-                onChange={e => setFormData({ ...formData, destinationBuilding: e.target.value })}
+                value={formData.destinationBuildingId}
+                onChange={e => {
+                  const bId = e.target.value;
+                  const b = hierarchy.buildings.find(x => x.id === bId);
+                  const relF = hierarchy.floors.filter(f => f.buildingId === bId);
+                  setFormData(prev => ({
+                    ...prev,
+                    destinationBuildingId: bId,
+                    destinationBuilding: b?.name || '',
+                    destinationFloorId: relF[0]?.id || '',
+                    destinationFloor: relF[0]?.name || ''
+                  }));
+                }}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
               >
-                <option value="Block A">Block A</option>
-                <option value="Block B">Block B</option>
-                <option value="Block C">Block C</option>
+                <option value="">Select Building</option>
+                {filteredBuildings.map(b => (
+                  <option key={b.id} value={b.id}>{b.name}</option>
+                ))}
               </select>
             </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Floor *</label>
+              <label className="block font-semibold text-slate-700 mb-1">Floor</label>
               <select
-                value={formData.destinationFloor}
-                onChange={e => setFormData({ ...formData, destinationFloor: e.target.value })}
+                value={formData.destinationFloorId}
+                onChange={e => {
+                  const fId = e.target.value;
+                  const f = hierarchy.floors.find(x => x.id === fId);
+                  setFormData(prev => ({
+                    ...prev,
+                    destinationFloorId: fId,
+                    destinationFloor: f?.name || ''
+                  }));
+                }}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
               >
-                <option value="Ground Floor">Ground Floor</option>
-                <option value="1st Floor">1st Floor</option>
-                <option value="2nd Floor">2nd Floor</option>
+                <option value="">Select Floor</option>
+                {filteredFloors.map(f => (
+                  <option key={f.id} value={f.id}>{f.name}</option>
+                ))}
               </select>
             </div>
 
@@ -115,6 +208,7 @@ export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTran
                 type="text"
                 value={formData.destinationRoom}
                 onChange={e => setFormData({ ...formData, destinationRoom: e.target.value })}
+                placeholder="e.g. Server Room or Desk 12"
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
               />
             </div>
@@ -122,24 +216,32 @@ export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTran
 
           <div>
             <label className="block font-semibold text-slate-700 mb-1">New Custodian (Optional)</label>
-            <input
-              type="text"
+            <select
               value={formData.newCustodian}
               onChange={e => setFormData({ ...formData, newCustodian: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
-              placeholder="Leave blank to keep existing custodians"
-            />
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
+            >
+              <option value="">Leave blank (keep existing custodians)</option>
+              {custodians.map(c => (
+                <option key={c.id} value={c.name}>{c.name} {c.code ? `(${c.code})` : ''}</option>
+              ))}
+            </select>
           </div>
 
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Movement Reason *</label>
-            <input
-              type="text"
+            <select
               value={formData.reason}
               onChange={e => setFormData({ ...formData, reason: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
+              className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
               required
-            />
+            >
+              <option>Department Asset Relocation</option>
+              <option>Office Restructure</option>
+              <option>Inter-Site Transfer</option>
+              <option>Periodic Audit Realignment</option>
+              <option>Store / Inventory Return</option>
+            </select>
           </div>
 
           <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">

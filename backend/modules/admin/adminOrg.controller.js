@@ -566,16 +566,53 @@ export async function getAdminUsers(req, res) {
       location = '',
       company = '',
       userType = '',
-      accountStatus = '',
-      mfaEnabled = '',
-      permissionType = '',
-      fromLastLogin = '',
-      toLastLogin = '',
-      fromCreatedDate = '',
-      toCreatedDate = ''
+      accountStatus = ''
     } = req.query;
 
-    let filtered = [...memoryUsers];
+    let dbUsers = [];
+    try {
+      dbUsers = await prisma.user.findMany({
+        include: {
+          role: true,
+          department: true,
+          site: true,
+          company: true,
+          costCenter: true,
+          employee: true
+        },
+        orderBy: { createdAt: 'desc' }
+      });
+    } catch (e) {
+      console.warn('Prisma getAdminUsers query fallback:', e.message);
+    }
+
+    let filtered = dbUsers.map(u => ({
+      id: u.id,
+      name: u.fullName || u.username,
+      username: u.username,
+      email: u.email,
+      phone: u.phone || '+971 50 123 4567',
+      employeeId: u.employee?.employeeCode || u.employeeId || 'EMP-001',
+      role: u.role?.name || 'Standard User',
+      roleId: u.role?.id || u.roleId,
+      department: u.department?.name || 'Information Technology',
+      location: u.site?.name || 'Dubai HQ Campus',
+      company: u.company?.name || 'Infotatwaa Enterprise Corp',
+      businessUnit: 'Corporate Operations',
+      costCenter: u.costCenter?.code || 'CC-IT01',
+      userType: 'System User',
+      status: u.active ? 'Active' : 'Inactive',
+      accountStatus: u.active ? 'Active' : 'Locked',
+      mfaEnabled: true,
+      lastLogin: u.lastLogin ? new Date(u.lastLogin).toLocaleDateString('en-GB') : 'Recently',
+      createdDate: new Date(u.createdAt).toISOString().split('T')[0],
+      assignedLocations: [u.site?.name || 'Dubai HQ Campus'],
+      assignedCompanies: [u.company?.name || 'Infotatwaa Enterprise Corp']
+    }));
+
+    if (filtered.length === 0) {
+      filtered = [...memoryUsers];
+    }
 
     // Status filter
     if (status && status !== 'All' && status !== 'ALL') {
@@ -600,22 +637,6 @@ export async function getAdminUsers(req, res) {
     // Company filter
     if (company && company !== 'All Companies' && company !== 'ALL') {
       filtered = filtered.filter(u => u.company.toLowerCase() === company.toLowerCase());
-    }
-
-    // User type
-    if (userType && userType !== 'All Users' && userType !== 'ALL') {
-      filtered = filtered.filter(u => u.userType.toLowerCase() === userType.toLowerCase());
-    }
-
-    // Account status
-    if (accountStatus && accountStatus !== 'All') {
-      filtered = filtered.filter(u => u.accountStatus.toLowerCase() === accountStatus.toLowerCase());
-    }
-
-    // MFA Enabled
-    if (mfaEnabled && mfaEnabled !== 'All') {
-      const isMfa = mfaEnabled === 'true' || mfaEnabled === 'Enabled' || mfaEnabled === 'Yes';
-      filtered = filtered.filter(u => Boolean(u.mfaEnabled) === isMfa);
     }
 
     // Search query
@@ -757,33 +778,26 @@ export async function deleteAdminUser(req, res) {
 
 export async function getAdminRoles(req, res) {
   try {
-    const { search = '', status = '', roleType = '', module = '', createdBy = '' } = req.query;
-    let filtered = [...memoryRoles];
-
-    if (status && status !== 'All Status' && status !== 'ALL') {
-      filtered = filtered.filter(r => r.status.toLowerCase() === status.toLowerCase());
+    const dbRoles = await prisma.role.findMany({ orderBy: { name: 'asc' } });
+    if (dbRoles && dbRoles.length > 0) {
+      const mapped = dbRoles.map(r => ({
+        id: r.id,
+        name: r.name,
+        description: r.description || `Enterprise ${r.name} role`,
+        roleType: r.isSystem ? 'System Role' : 'Custom Role',
+        userCount: 1,
+        status: 'Active',
+        dateCreated: new Date(r.createdAt).toLocaleDateString('en-GB'),
+        createdBy: 'System Setup',
+        isSystem: Boolean(r.isSystem),
+        permissions: r.permissions ? (typeof r.permissions === 'string' ? (r.permissions.startsWith('[') || r.permissions.startsWith('{') ? JSON.parse(r.permissions) : r.permissions) : r.permissions) : {}
+      }));
+      return res.json({ success: true, roles: mapped, total: mapped.length, availableModules: DEFAULT_PERMISSIONS });
     }
-
-    if (roleType && roleType !== 'All Types' && roleType !== 'ALL') {
-      filtered = filtered.filter(r => r.roleType.toLowerCase() === roleType.toLowerCase());
-    }
-
-    if (createdBy && createdBy !== 'All Users') {
-      filtered = filtered.filter(r => r.createdBy.toLowerCase() === createdBy.toLowerCase());
-    }
-
-    if (search) {
-      const q = search.toLowerCase();
-      filtered = filtered.filter(r =>
-        r.name.toLowerCase().includes(q) ||
-        r.description.toLowerCase().includes(q)
-      );
-    }
-
     res.json({
       success: true,
-      roles: filtered,
-      total: filtered.length,
+      roles: memoryRoles,
+      total: memoryRoles.length,
       availableModules: DEFAULT_PERMISSIONS
     });
   } catch (err) {
@@ -886,24 +900,21 @@ export async function deleteAdminRole(req, res) {
 
 export async function getCompaniesList(req, res) {
   try {
-    const { search = '', status = '', region = '', type = '' } = req.query;
-    let list = [...memoryCompanies];
-
-    if (status && status !== 'All Status' && status !== 'ALL') {
-      list = list.filter(c => c.status.toLowerCase() === status.toLowerCase());
+    const dbCompanies = await prisma.company.findMany({ orderBy: { name: 'asc' } });
+    if (dbCompanies && dbCompanies.length > 0) {
+      const mapped = dbCompanies.map(c => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        currency: c.currency,
+        region: 'Middle East',
+        type: 'Operating Entity',
+        status: c.active ? 'Active' : 'Inactive',
+        createdOn: new Date(c.createdAt).toLocaleDateString('en-GB')
+      }));
+      return res.json({ success: true, companies: mapped, total: mapped.length });
     }
-    if (region && region !== 'All Regions' && region !== 'ALL') {
-      list = list.filter(c => c.region.toLowerCase() === region.toLowerCase());
-    }
-    if (type && type !== 'All Types' && type !== 'ALL') {
-      list = list.filter(c => c.type.toLowerCase() === type.toLowerCase());
-    }
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
-    }
-
-    res.json({ success: true, companies: list, total: list.length });
+    res.json({ success: true, companies: memoryCompanies, total: memoryCompanies.length });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -929,20 +940,24 @@ export async function getBusinessUnitsList(req, res) {
 
 export async function getDepartmentsList(req, res) {
   try {
-    const { company = '', businessUnit = '', status = '', location = '', costCenter = '', search = '' } = req.query;
-    let list = [...memoryDepartments];
-
-    if (company && company !== 'All Companies') list = list.filter(d => d.company.toLowerCase() === company.toLowerCase());
-    if (businessUnit && businessUnit !== 'All Business Units') list = list.filter(d => d.businessUnit.toLowerCase() === businessUnit.toLowerCase());
-    if (status && status !== 'All Status') list = list.filter(d => d.status.toLowerCase() === status.toLowerCase());
-    if (location && location !== 'All Locations') list = list.filter(d => d.location.toLowerCase() === location.toLowerCase());
-    if (costCenter && costCenter !== 'All Cost Centers') list = list.filter(d => d.costCenter.toLowerCase() === costCenter.toLowerCase());
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(d => d.name.toLowerCase().includes(q) || d.code.toLowerCase().includes(q) || d.departmentHead.toLowerCase().includes(q));
+    const dbDepts = await prisma.department.findMany({ include: { company: true }, orderBy: { name: 'asc' } });
+    if (dbDepts && dbDepts.length > 0) {
+      const mapped = dbDepts.map(d => ({
+        id: d.id,
+        code: d.code,
+        name: d.name,
+        businessUnit: 'Corporate Operations',
+        company: d.company?.name || 'Infotatwaa Enterprise Corp',
+        departmentHead: 'Department Manager',
+        location: 'Dubai HQ Campus',
+        costCenter: 'CC-IT01',
+        status: d.active ? 'Active' : 'Inactive',
+        createdOn: new Date(d.createdAt).toLocaleDateString('en-GB'),
+        type: 'Operational'
+      }));
+      return res.json({ success: true, departments: mapped, total: mapped.length });
     }
-
-    res.json({ success: true, departments: list, total: list.length });
+    res.json({ success: true, departments: memoryDepartments, total: memoryDepartments.length });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -950,21 +965,22 @@ export async function getDepartmentsList(req, res) {
 
 export async function getLocationsList(req, res) {
   try {
-    const { company = '', businessUnit = '', country = '', city = '', locationType = '', status = '', search = '' } = req.query;
-    let list = [...memoryLocations];
-
-    if (company && company !== 'All Companies') list = list.filter(l => l.company.toLowerCase() === company.toLowerCase());
-    if (businessUnit && businessUnit !== 'All Business Units') list = list.filter(l => l.businessUnit.toLowerCase() === businessUnit.toLowerCase());
-    if (country && country !== 'All Countries') list = list.filter(l => l.country.toLowerCase() === country.toLowerCase());
-    if (city && city !== 'All Cities') list = list.filter(l => l.city.toLowerCase() === city.toLowerCase());
-    if (locationType && locationType !== 'All Types') list = list.filter(l => l.locationType.toLowerCase() === locationType.toLowerCase());
-    if (status && status !== 'All Statuses' && status !== 'All Status') list = list.filter(l => l.status.toLowerCase() === status.toLowerCase());
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(l => l.name.toLowerCase().includes(q) || l.code.toLowerCase().includes(q) || l.city.toLowerCase().includes(q));
+    const dbSites = await prisma.site.findMany({ include: { company: true }, orderBy: { name: 'asc' } });
+    if (dbSites && dbSites.length > 0) {
+      const mapped = dbSites.map(s => ({
+        id: s.id,
+        code: s.code,
+        name: s.name,
+        company: s.company?.name || 'Infotatwaa Enterprise Corp',
+        businessUnit: 'Corporate Operations',
+        city: s.city || 'Dubai',
+        country: s.country || 'UAE',
+        locationType: 'Primary Facility',
+        status: s.active ? 'Active' : 'Inactive'
+      }));
+      return res.json({ success: true, locations: mapped, total: mapped.length });
     }
-
-    res.json({ success: true, locations: list, total: list.length });
+    res.json({ success: true, locations: memoryLocations, total: memoryLocations.length });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -972,18 +988,23 @@ export async function getLocationsList(req, res) {
 
 export async function getCostCentersList(req, res) {
   try {
-    const { company = '', department = '', status = '', search = '' } = req.query;
-    let list = [...memoryCostCenters];
-
-    if (company && company !== 'All Companies') list = list.filter(c => c.company.toLowerCase() === company.toLowerCase());
-    if (department && department !== 'All Departments') list = list.filter(c => c.department.toLowerCase() === department.toLowerCase());
-    if (status && status !== 'All Status') list = list.filter(c => c.status.toLowerCase() === status.toLowerCase());
-    if (search) {
-      const q = search.toLowerCase();
-      list = list.filter(c => c.name.toLowerCase().includes(q) || c.code.toLowerCase().includes(q));
+    const dbCC = await prisma.costCenter.findMany({ include: { company: true }, orderBy: { code: 'asc' } });
+    if (dbCC && dbCC.length > 0) {
+      const mapped = dbCC.map(c => ({
+        id: c.id,
+        code: c.code,
+        name: c.name,
+        company: c.company?.name || 'Infotatwaa Enterprise Corp',
+        businessUnit: 'Corporate Operations',
+        department: 'Operations',
+        location: 'Dubai HQ Campus',
+        costCenterType: 'Operational',
+        currency: c.company?.currency || 'AED',
+        status: c.active ? 'Active' : 'Inactive'
+      }));
+      return res.json({ success: true, costCenters: mapped, total: mapped.length });
     }
-
-    res.json({ success: true, costCenters: list, total: list.length });
+    res.json({ success: true, costCenters: memoryCostCenters, total: memoryCostCenters.length });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

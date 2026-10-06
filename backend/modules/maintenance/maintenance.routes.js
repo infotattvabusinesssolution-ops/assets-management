@@ -9,7 +9,8 @@ import {
   closeWorkOrder,
   getAssetMaintenanceHistory,
   getSchedules, 
-  createSchedule 
+  createSchedule,
+  updateSchedule
 } from './maintenance.controller.js';
 import {
   getServiceProviders,
@@ -39,6 +40,7 @@ router.get('/assets/:assetId/history', getAssetMaintenanceHistory);
 
 router.get('/schedules', getSchedules);
 router.post('/schedules', createSchedule);
+router.put('/schedules/:id', updateSchedule);
 
 // Service Provider Routes
 router.get('/service-providers', getServiceProviders);

@@ -64,7 +64,7 @@ class TaggingServiceStore {
           department: true,
           custodian: true
         },
-        take: 50
+        orderBy: { createdAt: 'desc' }
       });
 
       {
@@ -81,7 +81,7 @@ class TaggingServiceStore {
           status: a.tagNumber ? 'Tagged' : 'Not Tagged',
           custodian: a.custodian?.fullName || '',
           assetStatus: a.active ? 'Active' : 'Inactive',
-          imageUrl: 'https://images.unsplash.com/photo-1496181133206-80ce9b88a853?w=500&q=80',
+          imageUrl: a.imageUrl || null,
           rfidEpc: a.rfidEpc,
           barcode: a.barcode
         }));
@@ -453,45 +453,44 @@ class TaggingServiceStore {
 
   // Print Labels (Kept separate from assignment)
   async printLabels(params = {}) {
-    const {
-      labelTemplate = params.template || 'STANDARD_2X1',
-      template = 'STANDARD_2X1',
-      printer = this.settings.defaultPrinter,
-      quantity = 1,
-      tagPrefix = this.settings.prefix || 'E360000',
-      tagFormat = 'RFID_GEN2',
-      assetDetails = null,
-      assets = []
-    } = params;
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    const assets = Array.isArray(params.assets) ? params.assets : [];
+    const quantity = Math.max(1, Math.min(100, Number(params.quantity) || 1));
+    if (!assets.length) throw new Error('Choose at least one asset to print.');
 
-    const printedLabels = [];
-    const targetAssets = assets && assets.length > 0 ? assets : (assetDetails ? [assetDetails] : [null]);
+    const labels = [];
+    for (const selected of assets) {
+      const id = selected.id || selected.assetId || selected.assetNumber;
+      const asset = await prisma.asset.findFirst({ where: { OR: [{ id }, { assetId: id }] } });
+      if (!asset) throw new Error(`Asset ${id} was not found in the database.`);
 
-    for (const ast of targetAssets) {
-      for (let i = 0; i < quantity; i++) {
-        const generated = await this.generateTagNumber(tagPrefix, tagFormat);
-        printedLabels.push({
-          jobId: `PRINT-${Date.now()}-${printedLabels.length + 1}`,
-          tagNumber: ast?.currentTag && ast?.currentTag !== '-' ? ast.currentTag : (ast?.tagNumber || generated.tagNumber),
-          rfidEpc: ast?.rfidEpc || generated.rfidEpc,
-          tagFormat,
-          labelTemplate: labelTemplate || template,
-          printer,
-          assetNumber: ast?.assetNumber || ast?.assetId || 'UNASSIGNED_LABEL',
-          assetName: ast?.assetName || ast?.description || 'Blank Asset Tag',
-          serialNumber: ast?.serialNumber || 'N/A',
-          printedAt: new Date().toISOString(),
-          status: 'PRINT_SENT_TO_SPOOLER'
+      let tagNumber = asset.tagNumber;
+      let rfidEpc = asset.rfidEpc;
+      if (!tagNumber) {
+        const generated = await this.generateTagNumber(params.tagPrefix || this.settings.prefix, params.tagFormat || 'RFID_GEN2');
+        tagNumber = generated.tagNumber;
+        rfidEpc = generated.rfidEpc;
+        await prisma.tag.create({ data: {
+          tagNumber, rfidEpc, tagType: params.tagFormat || 'RFID_GEN2',
+          status: 'UNASSIGNED', printedDate: new Date()
+        } });
+      } else {
+        await prisma.tag.upsert({
+          where: { tagNumber },
+          update: { printedDate: new Date() },
+          create: { tagNumber, assetId: asset.id, tagType: rfidEpc ? 'RFID_GEN2' : 'BARCODE_128', status: 'ACTIVE', printedDate: new Date() }
+        });
+      }
+
+      for (let copy = 0; copy < quantity; copy++) {
+        labels.push({
+          assetId: asset.id, assetNumber: asset.assetId, assetName: asset.description,
+          serialNumber: asset.serialNumber || '', tagNumber, rfidEpc: rfidEpc || '',
+          copy: copy + 1, template: params.template || this.settings.labelTemplate
         });
       }
     }
-
-    return {
-      success: true,
-      message: `Successfully transmitted ${printedLabels.length} label print job(s) to "${printer}". Printing does not alter asset assignment until tag is physically assigned.`,
-      labels: printedLabels,
-      tags: printedLabels
-    };
+    return { success: true, labels, tags: labels, message: `${labels.length} label(s) prepared for browser printing.` };
   }
 
   // Get Industrial Label Templates
@@ -535,33 +534,31 @@ class TaggingServiceStore {
     };
   }
 
-  // Save Session as Draft
-  async saveDraft(sessionData, user = { id: 'usr-default', username: 'jdoe' }) {
+  // Save tagging drafts in SQL Server so they survive API restarts.
+  async saveDraft(sessionData, user = {}) {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
     const draftId = `draft-${user.id || 'default'}`;
-    const summary = await this.getTaggingSummary();
     const draft = {
-      draftId,
-      userId: user.id,
-      savedAt: new Date().toISOString(),
-      savedTime: this.formatDisplayTime(),
+      draftId, userId: user.id || null, savedAt: new Date().toISOString(),
       selectedAssetIds: sessionData.selectedAssetIds || [],
       stagedAssignments: sessionData.stagedAssignments || {},
-      notes: sessionData.notes || '',
-      summary
+      notes: sessionData.notes || ''
     };
-    this.draftSessions.set(draftId, draft);
-
-    return {
-      success: true,
-      message: 'Tagging session draft saved successfully. You can safely continue this session later.',
-      draft
-    };
+    const dbUser = user.id ? await prisma.user.findUnique({ where: { id: user.id } }) : null;
+    await prisma.auditEvent.create({ data: {
+      userId: dbUser?.id || null, action: 'SAVE_DRAFT', entityType: 'TAGGING_DRAFT',
+      entityId: draftId, afterState: JSON.stringify(draft)
+    } });
+    return { success: true, draft, message: 'Tagging draft saved.' };
   }
 
-  // Get Latest Draft Session
-  getDraft(user = { id: 'usr-default' }) {
-    const draftId = `draft-${user.id || 'default'}`;
-    return this.draftSessions.get(draftId) || null;
+  async getDraft(user = {}) {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    const row = await prisma.auditEvent.findFirst({
+      where: { entityType: 'TAGGING_DRAFT', entityId: `draft-${user.id || 'default'}` },
+      orderBy: { timestamp: 'desc' }
+    });
+    return row?.afterState ? JSON.parse(row.afterState) : null;
   }
 
   // Complete Tagging Session
@@ -585,25 +582,6 @@ class TaggingServiceStore {
       }
     }
 
-    try {
-      const dbUser = await prisma.user.findFirst({ where: { username: 'admin' } });
-      const firstAsset = await prisma.asset.findFirst({ where: { tagNumber: { not: null } } });
-      if (firstAsset && dbUser) {
-        await prisma.assetTransaction.create({
-          data: {
-            assetId: firstAsset.id,
-            transactionType: 'TAG',
-            fromStatus: 'RECEIVED',
-            toStatus: 'TAGGED',
-            performedByUserId: dbUser.id,
-            notes: `Tagging session completed by ${user.fullName || 'Admin'}.`
-          }
-        });
-      }
-    } catch (e) {
-      // Non-fatal audit log
-    }
-
     return {
       success: true,
       valid: true,
@@ -619,10 +597,10 @@ class TaggingServiceStore {
     if (!assetData.assetName?.trim()) throw new Error('Asset name is required.');
     const [company, site, category] = await Promise.all([
       prisma.company.findFirst({ where: { active: true } }),
-      prisma.site.findFirst({ where: { active: true } }),
+      prisma.site.findFirst({ where: assetData.location ? { name: assetData.location } : { active: true } }),
       prisma.category.findFirst({ where: assetData.category ? { name: assetData.category } : { active: true } })
     ]);
-    if (!company || !site || !category) throw new Error('Company, site, and category are required.');
+    if (!company || !site || !category) throw new Error('Select a valid site and category.');
     const assetNumber = assetData.assetNumber?.trim() || `AST-MAN-${Date.now()}`;
     const created = await prisma.asset.create({ data: {
       assetId: assetNumber, description: assetData.assetName.trim(),

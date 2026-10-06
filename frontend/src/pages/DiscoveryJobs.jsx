@@ -35,283 +35,9 @@ import {
   MoreHorizontal
 } from 'lucide-react';
 
-// Seeded Discovery Jobs matching Screenshot #18
-const SEED_JOBS = [
-  {
-    id: 'JOB-2026-0001',
-    jobNum: 1,
-    jobName: 'HQ Network Scan',
-    discoveryType: 'IP Range Scan',
-    ipRange: '192.168.1.0/24',
-    profile: 'Default',
-    schedule: 'Manual',
-    startedOn: '10 Sep 2026 10:24 AM',
-    completedOn: '10 Sep 2026 10:38 AM',
-    devicesFound: 245,
-    status: 'Completed',
-    createdBy: 'John Doe',
-    createdOn: '10 Sep 2026 10:15 AM',
-    duration: '14 minutes',
-    matchedAssets: 198,
-    newAssets: 32,
-    requiresReview: 15,
-    stages: [
-      { name: 'Initializing Discovery', time: '10:24:01 AM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '10:24:30 AM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '10:26:12 AM', status: 'Completed' },
-      { name: 'Collecting Device Details', time: '10:32:05 AM', status: 'Completed' },
-      { name: 'Matching with Asset Database', time: '10:36:20 AM', status: 'Completed' },
-      { name: 'Generating Report', time: '10:38:14 AM', status: 'Completed' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0002',
-    jobNum: 2,
-    jobName: 'Branch Office Scan',
-    discoveryType: 'IP Range Scan',
-    ipRange: '10.10.5.0/24',
-    profile: 'Branch Profile',
-    schedule: 'Daily (2 AM)',
-    startedOn: '10 Sep 2026 02:00 AM',
-    completedOn: '10 Sep 2026 02:12 AM',
-    devicesFound: 68,
-    status: 'Completed',
-    createdBy: 'System',
-    createdOn: '01 Sep 2026 09:00 AM',
-    duration: '12 minutes',
-    matchedAssets: 60,
-    newAssets: 5,
-    requiresReview: 3,
-    stages: [
-      { name: 'Initializing Discovery', time: '02:00:01 AM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '02:02:15 AM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '02:05:00 AM', status: 'Completed' },
-      { name: 'Collecting Device Details', time: '02:08:40 AM', status: 'Completed' },
-      { name: 'Matching with Asset Database', time: '02:11:00 AM', status: 'Completed' },
-      { name: 'Generating Report', time: '02:12:00 AM', status: 'Completed' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0003',
-    jobNum: 3,
-    jobName: 'Data Center',
-    discoveryType: 'SNMP Scan',
-    ipRange: '10.1.0.0/16',
-    profile: 'DataCenter',
-    schedule: 'Weekly (Sun)',
-    startedOn: '09 Sep 2026 11:00 PM',
-    completedOn: '10 Sep 2026 12:05 AM',
-    devicesFound: 312,
-    status: 'Completed',
-    createdBy: 'Ahmed',
-    createdOn: '01 Sep 2026 10:00 AM',
-    duration: '65 minutes',
-    matchedAssets: 290,
-    newAssets: 15,
-    requiresReview: 7,
-    stages: [
-      { name: 'Initializing Discovery', time: '11:00:05 PM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '11:15:00 PM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '11:35:00 PM', status: 'Completed' },
-      { name: 'Collecting Device Details', time: '11:50:00 PM', status: 'Completed' },
-      { name: 'Matching with Asset Database', time: '12:02:00 AM', status: 'Completed' },
-      { name: 'Generating Report', time: '12:05:00 AM', status: 'Completed' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0004',
-    jobNum: 4,
-    jobName: 'WMI - Windows',
-    discoveryType: 'WMI Scan',
-    ipRange: '192.168.10.0/24',
-    profile: 'Windows Profile',
-    schedule: 'Manual',
-    startedOn: '09 Sep 2026 04:15 PM',
-    completedOn: '09 Sep 2026 04:32 PM',
-    devicesFound: 54,
-    status: 'Failed',
-    createdBy: 'John Doe',
-    createdOn: '09 Sep 2026 04:00 PM',
-    duration: '17 minutes',
-    matchedAssets: 40,
-    newAssets: 8,
-    requiresReview: 6,
-    stages: [
-      { name: 'Initializing Discovery', time: '04:15:01 PM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '04:18:20 PM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '04:25:00 PM', status: 'Failed' },
-      { name: 'Collecting Device Details', time: '--', status: 'Pending' },
-      { name: 'Matching with Asset Database', time: '--', status: 'Pending' },
-      { name: 'Generating Report', time: '--', status: 'Pending' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0005',
-    jobNum: 5,
-    jobName: 'Remote Sites',
-    discoveryType: 'Agent Based',
-    ipRange: 'Multiple Sites',
-    profile: 'Remote Profile',
-    schedule: 'Monthly',
-    startedOn: '08 Sep 2026 01:00 AM',
-    completedOn: '08 Sep 2026 01:45 AM',
-    devicesFound: 126,
-    status: 'Completed',
-    createdBy: 'System',
-    createdOn: '01 Sep 2026 08:00 AM',
-    duration: '45 minutes',
-    matchedAssets: 110,
-    newAssets: 12,
-    requiresReview: 4,
-    stages: [
-      { name: 'Initializing Discovery', time: '01:00:02 AM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '01:10:00 AM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '01:25:00 AM', status: 'Completed' },
-      { name: 'Collecting Device Details', time: '01:38:00 AM', status: 'Completed' },
-      { name: 'Matching with Asset Database', time: '01:43:00 AM', status: 'Completed' },
-      { name: 'Generating Report', time: '01:45:00 AM', status: 'Completed' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0006',
-    jobNum: 6,
-    jobName: 'Ad-hoc Scan',
-    discoveryType: 'IP Range Scan',
-    ipRange: '172.16.0.0/24',
-    profile: 'Quick Scan',
-    schedule: 'Manual',
-    startedOn: '08 Sep 2026 11:20 AM',
-    completedOn: '-',
-    devicesFound: '-',
-    status: 'Running',
-    createdBy: 'John Doe',
-    createdOn: '08 Sep 2026 11:15 AM',
-    duration: 'In Progress (15m)',
-    matchedAssets: 0,
-    newAssets: 0,
-    requiresReview: 0,
-    stages: [
-      { name: 'Initializing Discovery', time: '11:20:01 AM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '11:24:00 AM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '11:30:00 AM', status: 'Running' },
-      { name: 'Collecting Device Details', time: '--', status: 'Pending' },
-      { name: 'Matching with Asset Database', time: '--', status: 'Pending' },
-      { name: 'Generating Report', time: '--', status: 'Pending' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0007',
-    jobNum: 7,
-    jobName: 'MDM Import',
-    discoveryType: 'MDM Integration',
-    ipRange: 'Intune',
-    profile: 'MDM Profile',
-    schedule: 'Daily (6 AM)',
-    startedOn: '08 Sep 2026 06:00 AM',
-    completedOn: '08 Sep 2026 06:08 AM',
-    devicesFound: 89,
-    status: 'Completed',
-    createdBy: 'System',
-    createdOn: '01 Sep 2026 08:00 AM',
-    duration: '8 minutes',
-    matchedAssets: 80,
-    newAssets: 7,
-    requiresReview: 2,
-    stages: [
-      { name: 'Initializing Discovery', time: '06:00:01 AM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '06:02:00 AM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '06:04:00 AM', status: 'Completed' },
-      { name: 'Collecting Device Details', time: '06:06:00 AM', status: 'Completed' },
-      { name: 'Matching with Asset Database', time: '06:07:30 AM', status: 'Completed' },
-      { name: 'Generating Report', time: '06:08:00 AM', status: 'Completed' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0008',
-    jobNum: 8,
-    jobName: 'Test Scan',
-    discoveryType: 'SSH Scan',
-    ipRange: '192.168.50.0/24',
-    profile: 'Linux Profile',
-    schedule: 'Manual',
-    startedOn: '07 Sep 2026 02:10 PM',
-    completedOn: '07 Sep 2026 02:28 PM',
-    devicesFound: 36,
-    status: 'Completed',
-    createdBy: 'Riyaz',
-    createdOn: '07 Sep 2026 02:00 PM',
-    duration: '18 minutes',
-    matchedAssets: 30,
-    newAssets: 4,
-    requiresReview: 2,
-    stages: [
-      { name: 'Initializing Discovery', time: '02:10:01 PM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '02:14:00 PM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '02:18:00 PM', status: 'Completed' },
-      { name: 'Collecting Device Details', time: '02:23:00 PM', status: 'Completed' },
-      { name: 'Matching with Asset Database', time: '02:26:00 PM', status: 'Completed' },
-      { name: 'Generating Report', time: '02:28:00 PM', status: 'Completed' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0009',
-    jobNum: 9,
-    jobName: 'Printer Scan',
-    discoveryType: 'SNMP Scan',
-    ipRange: '192.168.20.0/24',
-    profile: 'Printers',
-    schedule: 'Weekly (Mon)',
-    startedOn: '07 Sep 2026 01:00 AM',
-    completedOn: '07 Sep 2026 01:12 AM',
-    devicesFound: 18,
-    status: 'Completed',
-    createdBy: 'System',
-    createdOn: '01 Sep 2026 08:00 AM',
-    duration: '12 minutes',
-    matchedAssets: 15,
-    newAssets: 2,
-    requiresReview: 1,
-    stages: [
-      { name: 'Initializing Discovery', time: '01:00:01 AM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '01:03:00 AM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '01:06:00 AM', status: 'Completed' },
-      { name: 'Collecting Device Details', time: '01:09:00 AM', status: 'Completed' },
-      { name: 'Matching with Asset Database', time: '01:11:00 AM', status: 'Completed' },
-      { name: 'Generating Report', time: '01:12:00 AM', status: 'Completed' }
-    ]
-  },
-  {
-    id: 'JOB-2026-0010',
-    jobNum: 10,
-    jobName: 'Guest Network',
-    discoveryType: 'IP Range Scan',
-    ipRange: '192.168.100.0/24',
-    profile: 'Guest Profile',
-    schedule: 'Manual',
-    startedOn: '06 Sep 2026 03:40 PM',
-    completedOn: '06 Sep 2026 03:55 PM',
-    devicesFound: 22,
-    status: 'Failed',
-    createdBy: 'John Doe',
-    createdOn: '06 Sep 2026 03:30 PM',
-    duration: '15 minutes',
-    matchedAssets: 10,
-    newAssets: 8,
-    requiresReview: 4,
-    stages: [
-      { name: 'Initializing Discovery', time: '03:40:01 PM', status: 'Completed' },
-      { name: 'Scanning IP Range', time: '03:45:00 PM', status: 'Completed' },
-      { name: 'Identifying Devices', time: '03:50:00 PM', status: 'Failed' },
-      { name: 'Collecting Device Details', time: '--', status: 'Pending' },
-      { name: 'Matching with Asset Database', time: '--', status: 'Pending' },
-      { name: 'Generating Report', time: '--', status: 'Pending' }
-    ]
-  }
-];
-
 export function DiscoveryJobs({ onNavigateToDevices }) {
-  const [jobs, setJobs] = useState(SEED_JOBS);
-  const [selectedJobId, setSelectedJobId] = useState('JOB-2026-0001');
+  const [jobs, setJobs] = useState([]);
+  const [selectedJobId, setSelectedJobId] = useState(null);
 
   // Filter Bar States matching Screenshot #18
   const [searchQuery, setSearchQuery] = useState('');
@@ -329,9 +55,9 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
   const [isEditJobModalOpen, setIsEditJobModalOpen] = useState(false);
   const [useSameConfig, setUseSameConfig] = useState(true);
   const [editJobForm, setEditJobForm] = useState({
-    jobName: 'HQ Network Scan',
+    jobName: '',
     discoveryType: 'IP Range Scan',
-    ipRange: '192.168.1.0/24',
+    ipRange: '',
     profile: 'Default',
     schedule: 'Manual'
   });
@@ -341,15 +67,24 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  // Stats calculation matching Screenshot #18
-  const stats = useMemo(() => {
-    const total = 12;
-    const completed = 8;
-    const running = 2;
-    const failed = 1;
-    const scheduled = 1;
-    return { total, completed, running, failed, scheduled };
+  useEffect(() => {
+    let alive = true;
+    api.get('/discovery/jobs').then(result => {
+      if (!alive) return;
+      const list = Array.isArray(result?.jobs) ? result.jobs : [];
+      setJobs(list);
+      setSelectedJobId(previous => list.some(job => job.id === previous) ? previous : list[0]?.id || null);
+    }).catch(error => { if (alive) { setJobs([]); showToast(error.message || 'Could not load discovery jobs.'); } });
+    return () => { alive = false; };
   }, []);
+
+  const stats = useMemo(() => ({
+    total: jobs.length,
+    completed: jobs.filter(job => job.status === 'Completed').length,
+    running: jobs.filter(job => job.status === 'Running').length,
+    failed: jobs.filter(job => job.status === 'Failed').length,
+    scheduled: jobs.filter(job => job.status === 'Scheduled').length
+  }), [jobs]);
 
   // Filter logic
   const filteredJobs = useMemo(() => {
@@ -384,7 +119,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
       case 'Scheduled':
         return <span className="px-3 py-1 rounded-full text-xs font-bold bg-amber-100 text-amber-800 border border-amber-300">Scheduled</span>;
       default:
-        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">Completed</span>;
+        return <span className="px-3 py-1 rounded-full text-xs font-bold bg-slate-200 text-slate-700">{status || 'Unknown'}</span>;
     }
   };
 
@@ -419,7 +154,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
         </div>
 
         <button
-          onClick={() => showToast('Opening New Discovery Job configuration modal...')}
+          onClick={() => setIsNewJobOpen(true)}
           className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-[#6C2BD9] text-white text-xs font-bold hover:bg-purple-700 transition-all cursor-pointer shadow-2xs"
         >
           <Plus className="w-4 h-4" />
@@ -616,7 +351,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredJobs.map((job) => {
-                  const isSelected = selectedJob.id === job.id;
+                  const isSelected = selectedJob?.id === job.id;
                   return (
                     <tr
                       key={job.id}

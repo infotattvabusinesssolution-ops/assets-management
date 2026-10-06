@@ -230,7 +230,64 @@ export const AVAILABLE_LOCATIONS_TREE = [
  * Get all audits with multi-parameter filtering
  */
 export async function getAudits({ search = '', status = 'ALL', auditType = 'ALL', entity = 'ALL', location = 'ALL' }) {
-  let list = [...auditsStore];
+  let list = [];
+  try {
+    const dbCampaigns = await prisma.stocktakeCampaign.findMany({
+      include: {
+        site: true,
+        building: true,
+        floor: true,
+        expectedAssets: true
+      },
+      orderBy: { createdAt: 'desc' }
+    });
+
+    if (dbCampaigns && dbCampaigns.length > 0) {
+      list = dbCampaigns.map(c => {
+        const totalExp = c.expectedAssets.length || c.totalExpected || 0;
+        const totalVer = c.expectedAssets.filter(e => e.status === 'VERIFIED').length || c.totalVerified || 0;
+        const totalMis = c.expectedAssets.filter(e => e.status === 'MISSING').length || c.totalMissing || 0;
+        const progress = totalExp > 0 ? Math.round((totalVer / totalExp) * 100) : 0;
+
+        return {
+          id: c.id,
+          auditId: c.campaignNumber || c.id,
+          referenceNo: c.campaignNumber || c.id,
+          auditName: c.title,
+          auditType: c.mode === 'FULL_CENSUS' ? 'Physical Verification' : 'Cycle Count',
+          samplingMethod: c.mode === 'FULL_CENSUS' ? 'Full Count (All Assets)' : 'Cycle Count Sampling',
+          verificationMethod: 'Barcode / RFID / Manual Entry',
+          description: c.title,
+          auditObjective: 'Verify asset existence, physical location and condition.',
+          company: 'Infotatwaa Enterprise Corp',
+          companyId: c.companyId,
+          businessUnit: 'Information Technology',
+          currency: 'AED',
+          status: c.status === 'COMPLETED' ? 'Completed' : c.status === 'IN_PROGRESS' ? 'In Progress' : 'Draft',
+          statusCode: c.status,
+          progress,
+          plannedStartDate: c.startDate ? new Date(c.startDate).toISOString().split('T')[0] : '2026-09-01',
+          plannedEndDate: c.endDate ? new Date(c.endDate).toISOString().split('T')[0] : '2026-09-15',
+          formattedStartDate: c.startDate ? new Date(c.startDate).toLocaleDateString('en-GB') : '01 Sep 2026',
+          formattedEndDate: c.endDate ? new Date(c.endDate).toLocaleDateString('en-GB') : '15 Sep 2026',
+          estimatedAssets: totalExp,
+          totalExpected: totalExp,
+          totalVerified: totalVer,
+          totalPending: Math.max(0, totalExp - totalVer - totalMis),
+          totalNotFound: totalMis,
+          totalDiscrepancies: c.totalRelocated || 0,
+          location: c.site?.name || 'Dubai HQ Campus',
+          createdAt: c.createdAt
+        };
+      });
+    }
+  } catch (err) {
+    console.warn('Prisma getAudits failed:', err.message);
+  }
+
+  if (list.length === 0) {
+    list = [...auditsStore];
+  }
 
   if (search) {
     const q = search.toLowerCase();
@@ -246,25 +303,65 @@ export async function getAudits({ search = '', status = 'ALL', auditType = 'ALL'
     list = list.filter(a => a.status.toLowerCase() === status.toLowerCase() || a.statusCode === status);
   }
 
-  if (auditType && auditType !== 'ALL') {
-    list = list.filter(a => a.auditType.toLowerCase() === auditType.toLowerCase());
-  }
-
-  if (entity && entity !== 'ALL') {
-    list = list.filter(a => a.company.toLowerCase() === entity.toLowerCase());
-  }
-
-  return list.sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  return list;
 }
 
 /**
  * Get single audit by ID with all details
  */
 export async function getAuditById(id) {
-  const audit = auditsStore.find(a => a.id === id || a.auditId === id || a.referenceNo === id);
-  if (!audit) {
-    throw new Error(`Audit campaign ${id} not found.`);
+  try {
+    const c = await prisma.stocktakeCampaign.findFirst({
+      where: {
+        OR: [
+          { id },
+          { campaignNumber: id }
+        ]
+      },
+      include: {
+        site: true,
+        building: true,
+        floor: true,
+        expectedAssets: true
+      }
+    });
+
+    if (c) {
+      const totalExp = c.expectedAssets.length || c.totalExpected || 0;
+      const totalVer = c.expectedAssets.filter(e => e.status === 'VERIFIED').length || c.totalVerified || 0;
+      const totalMis = c.expectedAssets.filter(e => e.status === 'MISSING').length || c.totalMissing || 0;
+
+      return {
+        id: c.id,
+        auditId: c.campaignNumber || c.id,
+        referenceNo: c.campaignNumber || c.id,
+        auditName: c.title,
+        auditType: c.mode === 'FULL_CENSUS' ? 'Physical Verification' : 'Cycle Count',
+        samplingMethod: 'Full Count (All Assets)',
+        verificationMethod: 'Barcode / RFID / Manual Entry',
+        description: c.title,
+        auditObjective: 'Verify asset existence, physical location and condition.',
+        company: 'Infotatwaa Enterprise Corp',
+        status: c.status === 'COMPLETED' ? 'Completed' : c.status === 'IN_PROGRESS' ? 'In Progress' : 'Draft',
+        statusCode: c.status,
+        progress: totalExp > 0 ? Math.round((totalVer / totalExp) * 100) : 0,
+        estimatedAssets: totalExp,
+        totalExpected: totalExp,
+        totalVerified: totalVer,
+        totalPending: Math.max(0, totalExp - totalVer - totalMis),
+        totalNotFound: totalMis,
+        totalDiscrepancies: c.totalRelocated || 0,
+        location: c.site?.name || 'Dubai HQ Campus',
+        formattedStartDate: c.startDate ? new Date(c.startDate).toLocaleDateString('en-GB') : '01 Sep 2026',
+        formattedEndDate: c.endDate ? new Date(c.endDate).toLocaleDateString('en-GB') : '15 Sep 2026'
+      };
+    }
+  } catch (err) {
+    console.warn('Prisma getAuditById failed:', err.message);
   }
+
+  const audit = auditsStore.find(a => a.id === id || a.auditId === id || a.referenceNo === id);
+  if (!audit) throw new Error(`Audit campaign ${id} not found.`);
   return audit;
 }
 

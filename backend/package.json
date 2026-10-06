@@ -9,6 +9,7 @@
     "db:push": "prisma db push",
     "postinstall": "prisma generate",
     "seed": "node scripts/seed.js",
+    "seed:working": "node scripts/seed-working-data.js",
     "test": "node --test tests/**/*.test.js"
   },
   "dependencies": {

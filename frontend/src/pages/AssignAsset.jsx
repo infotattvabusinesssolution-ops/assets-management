@@ -28,152 +28,255 @@ import {
 import { api } from '../services/api';
 import clsx from 'clsx';
 
-// Pre-seeded available assets matching Screenshot 26
-const INITIAL_ASSETS = [
-  {
-    id: 'AS-000123',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell Latitude 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    type: 'IT Equipment',
-    category: 'Computers',
-    model: 'Latitude 5440',
-    brand: 'Dell',
-    currentLocation: 'Dubai HQ > Block A > GF',
-    site: 'Dubai HQ',
-    building: 'Block A',
-    floor: 'Ground Floor',
-    room: 'IT-101',
-    status: 'Available',
-    image: '/laptop.png'
-  },
-  {
-    id: 'AS-000124',
-    assetNumber: 'AS-000124',
-    assetName: 'Monitor - Samsung',
-    serialNumber: 'SAMS8787',
-    tagEpc: 'E28011606000002053A1B4C1',
-    type: 'IT Equipment',
-    category: 'Monitors',
-    model: 'Odyssey G7',
-    brand: 'Samsung',
-    currentLocation: 'Dubai HQ > Block A > GF',
-    site: 'Dubai HQ',
-    building: 'Block A',
-    floor: 'Ground Floor',
-    room: 'GF-Workstation 4',
-    status: 'Available',
-    image: null
-  },
-  {
-    id: 'AS-000125',
-    assetNumber: 'AS-000125',
-    assetName: 'Printer - HP',
-    serialNumber: 'CNB47892',
-    tagEpc: '-',
-    type: 'IT Equipment',
-    category: 'Printers',
-    model: 'LaserJet Pro M404n',
-    brand: 'HP',
-    currentLocation: 'Dubai HQ > Block B > 1F',
-    site: 'Dubai HQ',
-    building: 'Block B',
-    floor: '1st Floor',
-    room: 'Print Room B',
-    status: 'Available',
-    image: null
-  },
-  {
-    id: 'AS-000126',
-    assetNumber: 'AS-000126',
-    assetName: 'Access Point - Cisco',
-    serialNumber: 'FCH9384',
-    tagEpc: 'E28011606000002053A1B4C2',
-    type: 'Network Device',
-    category: 'Networking',
-    model: 'Catalyst 9120',
-    brand: 'Cisco',
-    currentLocation: 'Dubai HQ > Block B > 1F',
-    site: 'Dubai HQ',
-    building: 'Block B',
-    floor: '1st Floor',
-    room: 'Comms Closet 1',
-    status: 'Available',
-    image: null
-  },
-  {
-    id: 'AS-000127',
-    assetNumber: 'AS-000127',
-    assetName: 'Chair - Office',
-    serialNumber: '-',
-    tagEpc: '-',
-    type: 'Furniture',
-    category: 'Furniture',
-    model: 'Ergonomic Mesh Chair',
-    brand: 'Herman Miller',
-    currentLocation: 'Dubai HQ > Block A > 2F',
-    site: 'Dubai HQ',
-    building: 'Block A',
-    floor: '2nd Floor',
-    room: 'Design Studio',
-    status: 'Available',
-    image: null
-  }
-];
+
 
 export function AssignAsset() {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchParams] = useSearchParams();
-  const preselectedAssetId = searchParams.get('assetId') || location.state?.assetId || 'AS-000123';
+  const preselectedAssetId = searchParams.get('assetId') || location.state?.assetId || '';
 
   // Stepper state (1: Select Asset, 2: Assignment Details, 3: Review & Confirm, 4: Completion)
-  const [currentStep, setCurrentStep] = useState(1);
+  const [currentStep, setCurrentStep] = useState(preselectedAssetId ? 2 : 1);
 
   // Asset Search & Selection State
   const [assetSearch, setAssetSearch] = useState('');
-  const [assetsList, setAssetsList] = useState(INITIAL_ASSETS);
+  const [assetsList, setAssetsList] = useState([]);
   const [selectedAssetId, setSelectedAssetId] = useState(preselectedAssetId);
   const [currentPage, setCurrentPage] = useState(1);
+  const [loading, setLoading] = useState(false);
 
-  // Pre-select asset if navigated from Asset Register
+  // Master References State (Loaded dynamically from database)
+  const [employeesList, setEmployeesList] = useState([]);
+  const [departmentsList, setDepartmentsList] = useState([]);
+  const [locationsList, setLocationsList] = useState([]);
+
+  // Fetch live assets and master references from database API
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        setLoading(true);
+        const [assetsRes, empRes, refRes, hierRes] = await Promise.allSettled([
+          api.get('/assets', { params: { limit: 100 } }),
+          api.get('/master-data/employees'),
+          api.get('/custody-transfers/master-references'),
+          api.get('/custody-transfers/locations/hierarchy')
+        ]);
+
+        if (empRes.status === 'fulfilled' && empRes.value?.employees?.length) {
+          setEmployeesList(empRes.value.employees);
+        } else if (refRes.status === 'fulfilled' && refRes.value?.custodians?.length) {
+          setEmployeesList(refRes.value.custodians.map(c => ({
+            id: c.id,
+            employeeCode: c.code,
+            fullName: c.name || c.fullName,
+            department: c.department
+          })));
+        }
+
+        if (refRes.status === 'fulfilled' && refRes.value?.departments?.length) {
+          setDepartmentsList(refRes.value.departments);
+        }
+
+        if (hierRes.status === 'fulfilled' && hierRes.value?.sites?.length) {
+          setLocationsList(hierRes.value.sites);
+        }
+
+        if (assetsRes.status === 'fulfilled' && assetsRes.value?.assets?.length) {
+          const mapped = assetsRes.value.assets.map(a => {
+            const locParts = [
+              a.site?.name,
+              a.building?.name,
+              a.floor?.name,
+              a.room?.name
+            ].filter(Boolean);
+
+            return {
+              id: a.id,
+              assetNumber: a.assetId || a.tagNumber || `AST-${a.id.slice(0, 6)}`,
+              assetName: a.description || a.name || a.assetId || 'Asset',
+              serialNumber: a.serialNumber || 'N/A',
+              tagEpc: a.tagNumber || a.rfidEpc || 'N/A',
+              type: a.category?.name || 'IT Equipment',
+              category: a.category?.name || 'General',
+              model: a.model?.name || 'Standard',
+              brand: a.manufacturer?.name || 'OEM',
+              currentLocation: locParts.join(' > ') || (a.site?.name || 'Unassigned'),
+              site: a.site?.name || '',
+              building: a.building?.name || '',
+              floor: a.floor?.name || '',
+              room: a.room?.name || '',
+              status: a.custodian ? 'Assigned' : 'Available',
+              image: a.imageUrl || null
+            };
+          });
+
+          setAssetsList(prev => {
+            const passed = location.state?.asset;
+            if (passed) {
+              const formattedPassed = {
+                id: passed.id || passed.assetId,
+                assetNumber: passed.assetId || passed.tagNumber || 'Asset',
+                assetName: passed.name || passed.description || 'Asset',
+                serialNumber: passed.serialNumber || 'N/A',
+                tagEpc: passed.rfidEpc || passed.tagNumber || 'N/A',
+                type: passed.categoryName || 'IT Equipment',
+                category: passed.categoryName || 'General',
+                model: passed.model || 'Standard',
+                brand: passed.manufacturer || 'OEM',
+                currentLocation: passed.locationStr || (passed.site?.name || 'Unassigned'),
+                site: passed.siteName || passed.site?.name || '',
+                building: passed.buildingName || passed.building?.name || '',
+                floor: passed.floorRoom || passed.floorName || passed.floor?.name || '',
+                room: passed.roomName || passed.room?.name || '',
+                status: passed.lifecycleStatus || 'Available',
+                image: passed.imageUrl || null
+              };
+              const existsIdx = mapped.findIndex(m => m.id === formattedPassed.id || m.assetNumber === formattedPassed.assetNumber);
+              if (existsIdx >= 0) {
+                mapped[existsIdx] = { ...mapped[existsIdx], ...formattedPassed };
+                return mapped;
+              }
+              return [formattedPassed, ...mapped];
+            }
+            return mapped;
+          });
+
+          if (!preselectedAssetId && mapped.length > 0) {
+            setSelectedAssetId(mapped[0].id);
+          }
+        }
+      } catch (err) {
+        console.warn('Failed to fetch initial data for assignment:', err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInitialData();
+  }, []);
+
+  // Pre-select asset if navigated from Asset Register & pre-fill form fields
   useEffect(() => {
     const passed = location.state?.asset;
     const passedId = location.state?.assetId || searchParams.get('assetId');
     if (passed) {
+      const locParts = [
+        passed.siteName || passed.site?.name,
+        passed.buildingName || passed.building?.name,
+        passed.floorRoom || passed.floorName || passed.floor?.name,
+        passed.roomName || passed.room?.name
+      ].filter(Boolean);
+
       const formatted = {
         id: passed.id || passed.assetId,
-        assetNumber: passed.assetId || passed.tagNumber || 'AS-000128',
+        assetNumber: passed.assetId || passed.tagNumber || 'Asset',
         assetName: passed.name || passed.description || 'Asset',
         serialNumber: passed.serialNumber || 'N/A',
         tagEpc: passed.rfidEpc || passed.tagNumber || 'N/A',
-        type: passed.categoryName || 'IT Equipment',
-        category: passed.categoryName || 'General',
+        type: passed.categoryName || passed.category?.name || 'IT Equipment',
+        category: passed.categoryName || passed.category?.name || 'General',
         model: passed.model || 'Standard',
         brand: passed.manufacturer || 'OEM',
-        currentLocation: passed.locationStr || 'Dubai HQ',
-        site: passed.siteName || 'Dubai HQ',
-        building: passed.buildingName || 'Block A',
-        floor: passed.floorRoom || 'Ground Floor',
-        room: passed.floorRoom || 'IT-101',
+        currentLocation: locParts.join(' > ') || passed.locationStr || 'Unassigned',
+        site: passed.siteName || passed.site?.name || '',
+        building: passed.buildingName || passed.building?.name || '',
+        floor: passed.floorRoom || passed.floorName || passed.floor?.name || '',
+        room: passed.roomName || passed.room?.name || '',
         status: passed.lifecycleStatus || 'Available',
         image: passed.imageUrl || null
       };
+
       setAssetsList(prev => {
-        const exists = prev.some(a => a.id === formatted.id || a.assetNumber === formatted.assetNumber);
-        return exists ? prev : [formatted, ...prev];
+        const matchIdx = prev.findIndex(a => a.id === formatted.id || a.assetNumber === formatted.assetNumber);
+        if (matchIdx >= 0) {
+          const next = [...prev];
+          next[matchIdx] = { ...next[matchIdx], ...formatted };
+          return next;
+        }
+        return [formatted, ...prev];
       });
       setSelectedAssetId(formatted.id);
+      setCurrentStep(2); // Pre-fill and open Assignment Details tab directly
+      const currentCust = (passed.custodianName && passed.custodianName !== 'Unassigned')
+        ? passed.custodianName
+        : (passed.custodian ? (passed.custodian.fullName || passed.custodian.firstName) : '');
       setFormData(prev => ({
         ...prev,
-        location: passed.siteName || prev.location,
-        building: passed.buildingName || prev.building,
-        floor: passed.floorRoom || prev.floor,
-        room: passed.floorRoom || prev.room
+        location: formatted.site || prev.location,
+        building: formatted.building || prev.building,
+        floor: formatted.floor || prev.floor,
+        room: formatted.room || prev.room,
+        department: passed.departmentName || passed.department?.name || prev.department,
+        assignedTo: currentCust || prev.assignedTo,
+        assignedToName: currentCust || prev.assignedToName
       }));
+      if (currentCust) {
+        setTypedSignature(currentCust);
+        setAcknowledgedBy(currentCust);
+      }
     } else if (passedId) {
       setSelectedAssetId(passedId);
+      setCurrentStep(2);
+      api.get(`/assets/${encodeURIComponent(passedId)}/360`)
+        .then(res => {
+          const raw = res?.asset360?.asset || res?.asset;
+          if (raw) {
+            const locParts = [
+              raw.site?.name,
+              raw.building?.name,
+              raw.floor?.name,
+              raw.room?.name
+            ].filter(Boolean);
+
+            const formatted = {
+              id: raw.id || raw.assetId,
+              assetNumber: raw.assetId || raw.tagNumber || 'Asset',
+              assetName: raw.description || raw.name || 'Asset',
+              serialNumber: raw.serialNumber || 'N/A',
+              tagEpc: raw.rfidEpc || raw.tagNumber || 'N/A',
+              type: raw.category?.name || 'IT Equipment',
+              category: raw.category?.name || 'General',
+              model: raw.model?.name || 'Standard',
+              brand: raw.manufacturer?.name || 'OEM',
+              currentLocation: locParts.join(' > ') || 'Unassigned',
+              site: raw.site?.name || '',
+              building: raw.building?.name || '',
+              floor: raw.floor?.name || '',
+              room: raw.room?.name || '',
+              status: raw.lifecycleStatus || 'Available',
+              image: raw.imageUrl || null
+            };
+
+            setAssetsList(prev => {
+              const matchIdx = prev.findIndex(a => a.id === formatted.id || a.assetNumber === formatted.assetNumber);
+              if (matchIdx >= 0) {
+                const next = [...prev];
+                next[matchIdx] = { ...next[matchIdx], ...formatted };
+                return next;
+              }
+              return [formatted, ...prev];
+            });
+            setSelectedAssetId(formatted.id);
+
+            const cName = raw.custodian?.fullName || raw.custodian?.firstName || '';
+            setFormData(prev => ({
+              ...prev,
+              location: formatted.site || prev.location,
+              building: formatted.building || prev.building,
+              floor: formatted.floor || prev.floor,
+              room: formatted.room || prev.room,
+              department: raw.department?.name || prev.department,
+              assignedTo: cName || prev.assignedTo,
+              assignedToName: cName || prev.assignedToName
+            }));
+            if (cName) {
+              setTypedSignature(cName);
+              setAcknowledgedBy(cName);
+            }
+          }
+        })
+        .catch(err => console.warn('Could not fetch asset 360 for assignment form:', err));
     }
   }, [location.state, searchParams]);
 
@@ -181,33 +284,34 @@ export function AssignAsset() {
   const [isScanModalOpen, setIsScanModalOpen] = useState(false);
   const [scanInput, setScanInput] = useState('');
 
-  // Assignment Details Form State (Matching Screenshot 26)
+  // Assignment Details Form State (Dynamic)
   const [formData, setFormData] = useState({
     assignmentType: 'Employee',
-    assignedTo: 'Ahmed Khan (EMP-00123)',
-    assignedToName: 'Ahmed Khan',
-    department: 'IT Department',
-    location: 'Dubai HQ',
-    building: 'Block A',
-    floor: 'Ground Floor',
-    room: 'IT-101',
-    assignmentDate: '2026-09-10',
+    assignedTo: '',
+    assignedToId: '',
+    assignedToName: '',
+    department: '',
+    location: '',
+    building: '',
+    floor: '',
+    room: '',
+    assignmentDate: new Date().toISOString().split('T')[0],
     expectedReturnDate: '',
     assignmentPurpose: 'Regular Use',
     conditionAtIssue: 'Good',
-    accessoriesIncluded: 'Charger, Carrying Case',
-    remarks: 'Assigned for project deployment',
+    accessoriesIncluded: '',
+    remarks: '',
     evidenceFile: null
   });
 
   // Acknowledgement State
   const [requireAcknowledgement, setRequireAcknowledgement] = useState(true);
   const [ackMethod, setAckMethod] = useState('digital_signature'); // 'digital_signature' | 'photo_capture'
-  const [sigMode, setSigMode] = useState('draw'); // 'draw' | 'type'
-  const [typedSignature, setTypedSignature] = useState('Ahmed Khan');
+  const [sigMode, setSigMode] = useState('type'); // 'draw' | 'type'
+  const [typedSignature, setTypedSignature] = useState('');
   const [isConfirmedCheckbox, setIsConfirmedCheckbox] = useState(true);
-  const [acknowledgedBy, setAcknowledgedBy] = useState('Ahmed Khan');
-  const [ackDateTime, setAckDateTime] = useState('10 Sep 2026 11:24');
+  const [acknowledgedBy, setAcknowledgedBy] = useState('');
+  const [ackDateTime, setAckDateTime] = useState(() => new Date().toLocaleString());
 
   // Interactive HTML5 Signature Canvas
   const canvasRef = useRef(null);
@@ -219,58 +323,11 @@ export function AssignAsset() {
   const [notification, setNotification] = useState(null);
   const [completionResult, setCompletionResult] = useState(null);
 
-  // Derive Selected Asset
-  const selectedAsset = assetsList.find(a => a.id === selectedAssetId) || assetsList[0];
-
-  // Initialize canvas with realistic cursive signature on first render if draw mode
-  useEffect(() => {
-    if (sigMode === 'draw' && canvasRef.current && !hasDrawn) {
-      const canvas = canvasRef.current;
-      const ctx = canvas.getContext('2d');
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-      // Draw stylized cursive "Ahmed Khan"
-      ctx.strokeStyle = '#0f172a';
-      ctx.lineWidth = 2.2;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-
-      ctx.beginPath();
-      // 'A'
-      ctx.moveTo(35, 75);
-      ctx.bezierCurveTo(45, 25, 55, 20, 60, 22);
-      ctx.bezierCurveTo(65, 30, 45, 80, 40, 78);
-      ctx.bezierCurveTo(48, 55, 70, 52, 75, 52);
-      // 'h'
-      ctx.bezierCurveTo(80, 20, 85, 25, 85, 75);
-      ctx.bezierCurveTo(87, 50, 100, 48, 102, 75);
-      // 'm'
-      ctx.bezierCurveTo(106, 52, 116, 52, 117, 74);
-      ctx.bezierCurveTo(120, 52, 130, 52, 132, 75);
-      // 'e'
-      ctx.bezierCurveTo(138, 55, 148, 55, 146, 75);
-      // 'd'
-      ctx.bezierCurveTo(152, 52, 162, 52, 160, 75);
-      ctx.bezierCurveTo(162, 20, 163, 20, 163, 75);
-      // Space to 'K'
-      ctx.moveTo(180, 30);
-      ctx.lineTo(180, 75);
-      ctx.moveTo(198, 40);
-      ctx.lineTo(182, 55);
-      ctx.lineTo(202, 75);
-      // 'h'
-      ctx.bezierCurveTo(208, 20, 212, 20, 212, 75);
-      ctx.bezierCurveTo(215, 52, 225, 50, 226, 75);
-      // 'a'
-      ctx.bezierCurveTo(232, 55, 242, 55, 240, 75);
-      // 'n'
-      ctx.bezierCurveTo(244, 52, 254, 52, 256, 75);
-      // Underline flourish
-      ctx.moveTo(30, 84);
-      ctx.bezierCurveTo(120, 82, 210, 86, 280, 80);
-      ctx.stroke();
-    }
-  }, [sigMode, hasDrawn]);
+  // Derive Selected Asset: robust match by UUID id OR human-readable assetNumber (or from preselection params)
+  const selectedAsset = assetsList.find(a => 
+    (selectedAssetId && (a.id === selectedAssetId || a.assetNumber === selectedAssetId || String(a.id).toLowerCase() === String(selectedAssetId).toLowerCase() || String(a.assetNumber).toLowerCase() === String(selectedAssetId).toLowerCase())) ||
+    (preselectedAssetId && (a.id === preselectedAssetId || a.assetNumber === preselectedAssetId || String(a.id).toLowerCase() === String(preselectedAssetId).toLowerCase() || String(a.assetNumber).toLowerCase() === String(preselectedAssetId).toLowerCase()))
+  ) || (assetsList.length > 0 ? assetsList[0] : {});
 
   // Handle canvas drawing
   const startDrawing = (e) => {
@@ -402,7 +459,8 @@ export function AssignAsset() {
       }
 
       const payload = {
-        assetId: selectedAsset.id,
+        assetId: selectedAsset.id || selectedAsset.assetNumber,
+        custodianId: formData.assignedToId || null,
         ...formData,
         acknowledgedBy,
         ackDateTime,
@@ -410,16 +468,12 @@ export function AssignAsset() {
         isDraft: false
       };
 
-      const res = await api.post('/movements/assign', payload).catch(() => ({
-        success: true,
-        assignmentId: `ASN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-        assignedDate: '10 Sep 2026'
-      }));
+      const res = await api.post('/movements/assign', payload);
 
       setCompletionResult({
-        assignmentId: res.assignmentId || `ASN-2026-8492`,
+        assignmentId: res.assignmentId || res.assignment?.id || `ASN-2026-${Math.floor(1000 + Math.random() * 9000)}`,
         asset: selectedAsset,
-        assignedTo: formData.assignedTo,
+        assignedTo: formData.assignedToName || formData.assignedTo,
         department: formData.department,
         location: `${formData.location} > ${formData.building} > ${formData.floor} > ${formData.room}`,
         date: formData.assignmentDate,
@@ -430,7 +484,7 @@ export function AssignAsset() {
     } catch (err) {
       setNotification({
         type: 'error',
-        message: err.message || 'Failed to submit assignment.'
+        message: err.response?.data?.message || err.message || 'Failed to submit assignment.'
       });
     } finally {
       setIsSubmitting(false);
@@ -515,7 +569,7 @@ export function AssignAsset() {
 
             {/* Step 2 */}
             <div
-              onClick={() => currentStep >= 2 && setCurrentStep(2)}
+              onClick={() => setCurrentStep(2)}
               className="flex items-center gap-3 cursor-pointer group"
             >
               <div
@@ -544,7 +598,7 @@ export function AssignAsset() {
 
             {/* Step 3 */}
             <div
-              onClick={() => currentStep >= 3 && setCurrentStep(3)}
+              onClick={() => setCurrentStep(3)}
               className="flex items-center gap-3 cursor-pointer group"
             >
               <div
@@ -810,19 +864,48 @@ export function AssignAsset() {
                         Assigned To <span className="text-rose-500">*</span>
                       </label>
                       <div className="relative">
-                        <input
-                          type="text"
-                          value={formData.assignedTo}
-                          onChange={(e) => setFormData({ ...formData, assignedTo: e.target.value })}
-                          className="w-full pl-3 pr-9 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
-                        />
-                        <button
-                          type="button"
-                          className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
-                          title="Search Employee"
-                        >
-                          <Search className="w-3.5 h-3.5" />
-                        </button>
+                        {employeesList.length > 0 ? (
+                          <select
+                            value={formData.assignedTo}
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              const emp = employeesList.find(x => (x.fullName || x.name) === val || `${x.fullName || x.name} (${x.employeeCode || x.code || 'EMP'})` === val || x.id === val);
+                              setFormData(prev => ({
+                                ...prev,
+                                assignedTo: val,
+                                assignedToId: emp?.id || '',
+                                assignedToName: emp?.fullName || emp?.name || val,
+                                department: emp?.department?.name || prev.department
+                              }));
+                              setTypedSignature(emp?.fullName || emp?.name || val);
+                              setAcknowledgedBy(emp?.fullName || emp?.name || val);
+                            }}
+                            className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                          >
+                            <option value="">Select Employee / Custodian</option>
+                            {employeesList.map(e => {
+                              const label = `${e.fullName || e.name} (${e.employeeCode || e.code || 'EMP'})`;
+                              return (
+                                <option key={e.id} value={e.fullName || e.name}>
+                                  {label}
+                                </option>
+                              );
+                            })}
+                          </select>
+                        ) : (
+                          <input
+                            type="text"
+                            value={formData.assignedTo}
+                            placeholder="Enter custodian name..."
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              setFormData(prev => ({ ...prev, assignedTo: val, assignedToName: val }));
+                              setTypedSignature(val);
+                              setAcknowledgedBy(val);
+                            }}
+                            className="w-full pl-3 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                          />
+                        )}
                       </div>
                     </div>
 
@@ -836,30 +919,49 @@ export function AssignAsset() {
                         onChange={(e) => setFormData({ ...formData, department: e.target.value })}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
-                        <option value="IT Department">IT Department</option>
-                        <option value="Finance">Finance</option>
-                        <option value="Operations">Operations</option>
-                        <option value="Human Resources">Human Resources</option>
-                        <option value="Engineering">Engineering</option>
-                        <option value="Facilities">Facilities</option>
+                        <option value="">Select Department</option>
+                        {departmentsList.map(d => (
+                          <option key={d.id} value={d.name}>{d.name}</option>
+                        ))}
+                        {departmentsList.length === 0 && (
+                          <>
+                            <option value="Information Technology">Information Technology</option>
+                            <option value="Facilities & Infrastructure">Facilities & Infrastructure</option>
+                            <option value="Finance">Finance</option>
+                            <option value="Operations">Operations</option>
+                          </>
+                        )}
                       </select>
                     </div>
 
                     {/* Location */}
                     <div>
                       <label className="block font-semibold text-slate-700 mb-1">
-                        Location <span className="text-rose-500">*</span>
+                        Location / Site <span className="text-rose-500">*</span>
                       </label>
-                      <select
-                        value={formData.location}
-                        onChange={(e) => setFormData({ ...formData, location: e.target.value })}
-                        className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
-                      >
-                        <option value="Dubai HQ">Dubai HQ</option>
-                        <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
-                        <option value="Riyadh DC">Riyadh DC</option>
-                        <option value="Sharjah Hub">Sharjah Hub</option>
-                      </select>
+                      {locationsList.length > 0 ? (
+                        <select
+                          value={formData.location}
+                          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                        >
+                          <option value="">Select Site</option>
+                          {locationsList.map(loc => (
+                            <option key={loc.id} value={loc.name}>{loc.name}</option>
+                          ))}
+                          {formData.location && !locationsList.some(l => l.name === formData.location) && (
+                            <option value={formData.location}>{formData.location}</option>
+                          )}
+                        </select>
+                      ) : (
+                        <input
+                          type="text"
+                          value={formData.location}
+                          onChange={(e) => setFormData({ ...formData, location: e.target.value })}
+                          placeholder="e.g. Dubai HQ Campus"
+                          className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                        />
+                      )}
                     </div>
 
                     {/* Building */}
@@ -867,16 +969,13 @@ export function AssignAsset() {
                       <label className="block font-semibold text-slate-700 mb-1">
                         Building
                       </label>
-                      <select
+                      <input
+                        type="text"
                         value={formData.building}
                         onChange={(e) => setFormData({ ...formData, building: e.target.value })}
+                        placeholder="e.g. Executive Tower A"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
-                      >
-                        <option value="Block A">Block A</option>
-                        <option value="Block B">Block B</option>
-                        <option value="Block C">Block C</option>
-                        <option value="Warehouse">Warehouse</option>
-                      </select>
+                      />
                     </div>
 
                     {/* Floor */}
@@ -884,16 +983,13 @@ export function AssignAsset() {
                       <label className="block font-semibold text-slate-700 mb-1">
                         Floor
                       </label>
-                      <select
+                      <input
+                        type="text"
                         value={formData.floor}
                         onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
+                        placeholder="e.g. Floor 2"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
-                      >
-                        <option value="Ground Floor">Ground Floor</option>
-                        <option value="1st Floor">1st Floor</option>
-                        <option value="2nd Floor">2nd Floor</option>
-                        <option value="3rd Floor">3rd Floor</option>
-                      </select>
+                      />
                     </div>
 
                     {/* Room / Zone */}
@@ -905,6 +1001,7 @@ export function AssignAsset() {
                         type="text"
                         value={formData.room}
                         onChange={(e) => setFormData({ ...formData, room: e.target.value })}
+                        placeholder="e.g. Room 204"
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       />
                     </div>
@@ -916,12 +1013,11 @@ export function AssignAsset() {
                       </label>
                       <div className="relative">
                         <input
-                          type="text"
-                          value="10 Sep 2026"
-                          readOnly
-                          className="w-full pl-3 pr-9 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none cursor-default"
+                          type="date"
+                          value={typeof formData.assignmentDate === 'function' ? formData.assignmentDate() : formData.assignmentDate}
+                          onChange={(e) => setFormData({ ...formData, assignmentDate: e.target.value })}
+                          className="w-full pl-3 pr-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                         />
-                        <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
                       </div>
                     </div>
                   </div>

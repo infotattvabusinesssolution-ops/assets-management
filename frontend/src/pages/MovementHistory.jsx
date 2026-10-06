@@ -30,413 +30,38 @@ import {
 import { api } from '../services/api';
 import clsx from 'clsx';
 
-// Pre-seeded 24 Movement History records with exact top 10 matching Screenshot 27
-const SEED_MOVEMENTS = [
-  {
-    movementId: 'MOV-2026-0012',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Location Transfer',
-    fromLocation: 'Block A > GF / IT-101',
-    toLocation: 'Block B > 1F / IT-201',
-    fromCustodian: 'Ahmed Khan',
-    toCustodian: 'Sara Ali',
-    movementDate: '10 Sep 2026',
-    movementTime: '10:24',
-    status: 'Completed',
-    requestedBy: 'Sara Ali',
-    approvedBy: 'John Doe (System Admin)',
-    dispatchedBy: 'Logistics Team',
-    receivedBy: 'Sara Ali',
-    reason: 'Department transfer from IT Operations to Finance Systems',
-    condition: 'Good',
-    accessories: '65W USB-C Charger, Targus Carrying Bag',
-    site: 'Dubai HQ',
-    department: 'Finance',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Block A', floor: 'Ground Floor', room: 'IT-101' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block B', floor: '1st Floor', room: 'IT-201' },
-    timeline: [
-      { stage: 'Requested', time: '10 Sep 2026 08:30', user: 'Sara Ali', status: 'Completed', note: 'Transfer request submitted via portal' },
-      { stage: 'Approved', time: '10 Sep 2026 09:10', user: 'John Doe (System Admin)', status: 'Completed', note: 'Standard approval granted' },
-      { stage: 'Dispatched', time: '10 Sep 2026 09:45', user: 'Internal Courier', status: 'Completed', note: 'Handed over with gate pass #GP-9421' },
-      { stage: 'In Transit', time: '10 Sep 2026 10:00', user: 'Courier Transit', status: 'Completed', note: 'En route between Block A and Block B' },
-      { stage: 'Received', time: '10 Sep 2026 10:20', user: 'Sara Ali', status: 'Completed', note: 'Inspected and accepted in good order' },
-      { stage: 'Completed', time: '10 Sep 2026 10:24', user: 'Asset360 Automated Workflow', status: 'Completed', note: 'Master Asset Register effective location updated' }
-    ],
-    workflow: [
-      { level: 'Level 1: Department Manager', approver: 'Farhan Zaidi', decision: 'Approved', timestamp: '10 Sep 2026 08:45', comments: 'Budget and headcount transfer approved' },
-      { level: 'Level 2: Asset Administrator', approver: 'John Doe', decision: 'Approved', timestamp: '10 Sep 2026 09:10', comments: 'Serial #75K3D24 verified in Asset Master' }
-    ],
-    documents: [
-      { name: 'movement_cancel_form.pdf', size: '320 KB', type: 'PDF Document', date: '10 Sep 2026' },
-      { name: 'handover_ack_signed.pdf', size: '480 KB', type: 'Signed Receipt', date: '10 Sep 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0011',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Custodian Transfer',
-    fromLocation: '-',
-    toLocation: '-',
-    fromCustodian: 'Sara Ali',
-    toCustodian: 'Omar Saleh',
-    movementDate: '15 Aug 2026',
-    movementTime: '14:10',
-    status: 'Completed',
-    requestedBy: 'Omar Saleh',
-    approvedBy: 'IT Manager',
-    receivedBy: 'Omar Saleh',
-    reason: 'Temporary custody handover for project auditing',
-    condition: 'Good',
-    accessories: 'Charger',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Block A', floor: 'Ground Floor', room: 'IT-101' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block A', floor: 'Ground Floor', room: 'IT-101' },
-    timeline: [
-      { stage: 'Requested', time: '15 Aug 2026 13:00', user: 'Omar Saleh', status: 'Completed', note: 'Custody reassignment requested' },
-      { stage: 'Approved', time: '15 Aug 2026 13:35', user: 'IT Manager', status: 'Completed', note: 'Approved for audit task' },
-      { stage: 'Completed', time: '15 Aug 2026 14:10', user: 'Omar Saleh', status: 'Completed', note: 'Digital signature verified' }
-    ],
-    workflow: [
-      { level: 'Line Manager Approval', approver: 'Tariq Mansoor', decision: 'Approved', timestamp: '15 Aug 2026 13:35', comments: 'Temporary assignment approved' }
-    ],
-    documents: [
-      { name: 'custodian_handover_form.pdf', size: '185 KB', type: 'PDF Document', date: '15 Aug 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0010',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Location Transfer',
-    fromLocation: 'Block C > 2F / IT-301',
-    toLocation: 'Block A > GF / IT-101',
-    fromCustodian: 'Omar Saleh',
-    toCustodian: 'Omar Saleh',
-    movementDate: '01 Jul 2026',
-    movementTime: '09:30',
-    status: 'Completed',
-    requestedBy: 'Omar Saleh',
-    approvedBy: 'Facilities Manager',
-    receivedBy: 'Omar Saleh',
-    reason: 'Desk relocation to Ground Floor Helpdesk Area',
-    condition: 'Good',
-    accessories: 'Charger, Bag',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Block C', floor: '2nd Floor', room: 'IT-301' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block A', floor: 'Ground Floor', room: 'IT-101' },
-    timeline: [
-      { stage: 'Requested', time: '01 Jul 2026 08:45', user: 'Omar Saleh', status: 'Completed', note: 'Desk shift requested' },
-      { stage: 'Approved', time: '01 Jul 2026 09:00', user: 'Facilities Manager', status: 'Completed', note: 'Approved' },
-      { stage: 'Completed', time: '01 Jul 2026 09:30', user: 'Omar Saleh', status: 'Completed', note: 'Relocated to Workstation GF-12' }
-    ],
-    workflow: [
-      { level: 'Facilities Approval', approver: 'Hamad Sultan', decision: 'Approved', timestamp: '01 Jul 2026 09:00', comments: 'Space allocated' }
-    ],
-    documents: [
-      { name: 'internal_relocation_pass.pdf', size: '210 KB', type: 'PDF Document', date: '01 Jul 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0009',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Assignment',
-    fromLocation: '-',
-    toLocation: '-',
-    fromCustodian: '-',
-    toCustodian: 'Omar Saleh',
-    movementDate: '15 Jun 2026',
-    movementTime: '11:15',
-    status: 'Completed',
-    requestedBy: 'HR Operations',
-    approvedBy: 'IT Manager',
-    receivedBy: 'Omar Saleh',
-    reason: 'Employee onboard asset issuance',
-    condition: 'Good',
-    accessories: 'Charger, Mouse, Backpack',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Block C', floor: '2nd Floor', room: 'IT-301' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block C', floor: '2nd Floor', room: 'IT-301' },
-    timeline: [
-      { stage: 'Requested', time: '15 Jun 2026 09:30', user: 'HR Team', status: 'Completed', note: 'New hire equipment allocation' },
-      { stage: 'Approved', time: '15 Jun 2026 10:15', user: 'IT Manager', status: 'Completed', note: 'Approved' },
-      { stage: 'Completed', time: '15 Jun 2026 11:15', user: 'Omar Saleh', status: 'Completed', note: 'Handover form signed' }
-    ],
-    workflow: [
-      { level: 'HR & IT Approval', approver: 'Amina Al-Nuaimi', decision: 'Approved', timestamp: '15 Jun 2026 10:15', comments: 'Standard employee issue' }
-    ],
-    documents: [
-      { name: 'employee_handover_signed.pdf', size: '390 KB', type: 'PDF Document', date: '15 Jun 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0008',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Location Transfer',
-    fromLocation: 'Store - Main',
-    toLocation: 'Block C > 2F / IT-301',
-    fromCustodian: '-',
-    toCustodian: 'Omar Saleh',
-    movementDate: '12 May 2026',
-    movementTime: '16:40',
-    status: 'Completed',
-    requestedBy: 'IT Asset Team',
-    approvedBy: 'Store Supervisor',
-    receivedBy: 'Omar Saleh',
-    reason: 'Transferred from warehouse staging to operational department pool',
-    condition: 'Good',
-    accessories: 'Charger',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Warehouse', floor: 'Ground Floor', room: 'Store - Main' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block C', floor: '2nd Floor', room: 'IT-301' },
-    timeline: [
-      { stage: 'Requested', time: '12 May 2026 14:00', user: 'Store Keeper', status: 'Completed', note: 'Release from storage' },
-      { stage: 'Approved', time: '12 May 2026 15:10', user: 'Store Supervisor', status: 'Completed', note: 'Approved' },
-      { stage: 'Completed', time: '12 May 2026 16:40', user: 'Omar Saleh', status: 'Completed', note: 'Staging complete' }
-    ],
-    workflow: [
-      { level: 'Warehouse Dispatch', approver: 'Bilal Qureshi', decision: 'Approved', timestamp: '12 May 2026 15:10', comments: 'Issued from buffer stock' }
-    ],
-    documents: [
-      { name: 'warehouse_issue_slip.pdf', size: '175 KB', type: 'PDF Document', date: '12 May 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0007',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Maintenance Return',
-    fromLocation: 'Service Center',
-    toLocation: 'Block C > 2F / IT-301',
-    fromCustodian: '-',
-    toCustodian: 'Omar Saleh',
-    movementDate: '25 Apr 2026',
-    movementTime: '11:00',
-    status: 'Completed',
-    requestedBy: 'Dell Authorized Service',
-    approvedBy: 'IT Support Lead',
-    receivedBy: 'Omar Saleh',
-    reason: 'Returned from keyboard replacement and diagnostic under warranty',
-    condition: 'Excellent',
-    accessories: 'Charger',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'External', building: 'Dell Service Center', floor: 'GF', room: 'Service Lab' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block C', floor: '2nd Floor', room: 'IT-301' },
-    timeline: [
-      { stage: 'Service Complete', time: '25 Apr 2026 09:30', user: 'Dell Technician', status: 'Completed', note: 'Repaired and QA passed' },
-      { stage: 'Dispatched', time: '25 Apr 2026 10:15', user: 'Courier', status: 'Completed', note: 'Delivered to HQ' },
-      { stage: 'Completed', time: '25 Apr 2026 11:00', user: 'Omar Saleh', status: 'Completed', note: 'Reintegrated into active pool' }
-    ],
-    workflow: [
-      { level: 'Service Acceptance', approver: 'Rashid Mohammed', decision: 'Approved', timestamp: '25 Apr 2026 10:45', comments: 'Diagnostic report verified' }
-    ],
-    documents: [
-      { name: 'service_job_card_signed.pdf', size: '410 KB', type: 'PDF Document', date: '25 Apr 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0006',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Sent for Maintenance',
-    fromLocation: 'Block C > 2F / IT-301',
-    toLocation: 'Service Center',
-    fromCustodian: 'Omar Saleh',
-    toCustodian: '-',
-    movementDate: '10 Apr 2026',
-    movementTime: '09:20',
-    status: 'Completed',
-    requestedBy: 'IT Helpdesk',
-    approvedBy: 'Facilities / IT Manager',
-    receivedBy: 'Dell Authorized Service',
-    reason: 'Warranty repair: keyboard key stickiness diagnostic',
-    condition: 'Fair',
-    accessories: 'Laptop only (no charger)',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Block C', floor: '2nd Floor', room: 'IT-301' },
-    destHierarchy: { site: 'External', building: 'Dell Service Center', floor: 'GF', room: 'Service Lab' },
-    timeline: [
-      { stage: 'Incident Raised', time: '10 Apr 2026 08:30', user: 'Omar Saleh', status: 'Completed', note: 'Ticket #INC-4920 opened' },
-      { stage: 'Approved for RMA', time: '10 Apr 2026 08:55', user: 'IT Lead', status: 'Completed', note: 'Dell dispatch generated' },
-      { stage: 'Completed', time: '10 Apr 2026 09:20', user: 'Logistics Courier', status: 'Completed', note: 'Dispatched to vendor' }
-    ],
-    workflow: [
-      { level: 'RMA Approval', approver: 'Rashid Mohammed', decision: 'Approved', timestamp: '10 Apr 2026 08:55', comments: 'Covered under ProSupport' }
-    ],
-    documents: [
-      { name: 'rma_dispatch_order.pdf', size: '280 KB', type: 'PDF Document', date: '10 Apr 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0005',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Custodian Transfer',
-    fromLocation: '-',
-    toLocation: '-',
-    fromCustodian: 'Ahmed Khan',
-    toCustodian: 'Omar Saleh',
-    movementDate: '05 Mar 2026',
-    movementTime: '15:45',
-    status: 'Completed',
-    requestedBy: 'Ahmed Khan',
-    approvedBy: 'IT Team Lead',
-    receivedBy: 'Omar Saleh',
-    reason: 'Inter-team duty rotation custody handover',
-    condition: 'Good',
-    accessories: 'Charger, Bag',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Block B', floor: '1st Floor', room: 'IT-201' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block C', floor: '2nd Floor', room: 'IT-301' },
-    timeline: [
-      { stage: 'Handover Initiated', time: '05 Mar 2026 15:00', user: 'Ahmed Khan', status: 'Completed', note: 'Duty rotation transfer' },
-      { stage: 'Completed', time: '05 Mar 2026 15:45', user: 'Omar Saleh', status: 'Completed', note: 'Custody accepted' }
-    ],
-    workflow: [
-      { level: 'Team Lead Approval', approver: 'Farhan Zaidi', decision: 'Approved', timestamp: '05 Mar 2026 15:20', comments: 'Approved' }
-    ],
-    documents: [
-      { name: 'custody_shift_slip.pdf', size: '190 KB', type: 'PDF Document', date: '05 Mar 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0004',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Location Transfer',
-    fromLocation: 'Block B > 1F / IT-201',
-    toLocation: 'Block C > 2F / IT-301',
-    fromCustodian: 'Ahmed Khan',
-    toCustodian: 'Ahmed Khan',
-    movementDate: '12 Jan 2026',
-    movementTime: '10:15',
-    status: 'Completed',
-    requestedBy: 'Ahmed Khan',
-    approvedBy: 'Facilities Manager',
-    receivedBy: 'Ahmed Khan',
-    reason: 'Department team seat shifting to Block C expansion',
-    condition: 'Good',
-    accessories: 'Charger, Bag',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Block B', floor: '1st Floor', room: 'IT-201' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block C', floor: '2nd Floor', room: 'IT-301' },
-    timeline: [
-      { stage: 'Requested', time: '12 Jan 2026 09:00', user: 'Ahmed Khan', status: 'Completed', note: 'Floor seat move' },
-      { stage: 'Completed', time: '12 Jan 2026 10:15', user: 'Ahmed Khan', status: 'Completed', note: 'Relocated' }
-    ],
-    workflow: [
-      { level: 'Facilities Approval', approver: 'Hamad Sultan', decision: 'Approved', timestamp: '12 Jan 2026 09:30', comments: 'Seat updated' }
-    ],
-    documents: [
-      { name: 'internal_movement_record.pdf', size: '160 KB', type: 'PDF Document', date: '12 Jan 2026' }
-    ],
-    bulkAssets: []
-  },
-  {
-    movementId: 'MOV-2026-0003',
-    assetNumber: 'AS-000123',
-    assetName: 'Laptop - Dell 5440',
-    serialNumber: '75K3D24',
-    tagEpc: 'E28011606000002053A1B4C0',
-    movementType: 'Assignment',
-    fromLocation: '-',
-    toLocation: '-',
-    fromCustodian: '-',
-    toCustodian: 'Ahmed Khan',
-    movementDate: '05 Jan 2026',
-    movementTime: '08:30',
-    status: 'Completed',
-    requestedBy: 'HR Onboarding',
-    approvedBy: 'System Administrator',
-    receivedBy: 'Ahmed Khan',
-    reason: 'Initial assignment to developer on joining date',
-    condition: 'New',
-    accessories: 'Charger, Backpack, Mouse, Headset',
-    site: 'Dubai HQ',
-    department: 'IT Department',
-    sourceHierarchy: { site: 'Dubai HQ', building: 'Block A', floor: 'Ground Floor', room: 'Store - Main' },
-    destHierarchy: { site: 'Dubai HQ', building: 'Block B', floor: '1st Floor', room: 'IT-201' },
-    timeline: [
-      { stage: 'Requested', time: '05 Jan 2026 08:00', user: 'HR Onboarding', status: 'Completed', note: 'Issued on joining' },
-      { stage: 'Completed', time: '05 Jan 2026 08:30', user: 'Ahmed Khan', status: 'Completed', note: 'Handover form signed' }
-    ],
-    workflow: [
-      { level: 'Administrator Approval', approver: 'John Doe', decision: 'Approved', timestamp: '05 Jan 2026 08:15', comments: 'Asset released' }
-    ],
-    documents: [
-      { name: 'initial_issue_slip.pdf', size: '295 KB', type: 'PDF Document', date: '05 Jan 2026' }
-    ],
-    bulkAssets: []
-  }
-];
+const SEED_MOVEMENTS = [];
 
 export function MovementHistory() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
   // Selected Movement & Drawer Tab
-  const [selectedMovementId, setSelectedMovementId] = useState('MOV-2026-0012');
+  const [selectedMovementId, setSelectedMovementId] = useState(null);
   const [drawerTab, setDrawerTab] = useState('overview'); // overview | details | assets | workflow | documents
 
   // Filter States
-  const [filterSearch, setFilterSearch] = useState(searchParams.get('search') || 'AS-000123');
+  const [filterSearch, setFilterSearch] = useState(searchParams.get('search') || '');
   const [filterAssetType, setFilterAssetType] = useState('All');
   const [filterMovementType, setFilterMovementType] = useState('All');
-  const [filterFromDate, setFilterFromDate] = useState('01 Jan 2025');
-  const [filterToDate, setFilterToDate] = useState('10 Sep 2026');
+  const [filterFromDate, setFilterFromDate] = useState('');
+  const [filterToDate, setFilterToDate] = useState('');
   const [filterSite, setFilterSite] = useState('All Sites');
   const [filterDepartment, setFilterDepartment] = useState('All Departments');
   const [filterCustodian, setFilterCustodian] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
 
   // Server Data & Pagination State
-  const [movements, setMovements] = useState(SEED_MOVEMENTS);
-  const [totalRecords, setTotalRecords] = useState(24);
+  const [movements, setMovements] = useState([]);
+  const [totalRecords, setTotalRecords] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [kpis, setKpis] = useState({
-    totalMovements: 24,
-    completed: 20,
-    inTransit: 2,
-    pendingReceipt: 1,
-    cancelledRejected: 1
+    totalMovements: 0,
+    completed: 0,
+    inTransit: 0,
+    pendingReceipt: 0,
+    cancelledRejected: 0
   });
 
   const [isLoading, setIsLoading] = useState(false);
@@ -496,7 +121,7 @@ export function MovementHistory() {
 
   // Find currently selected movement
   const selectedMovement = useMemo(() => {
-    return movements.find(m => m.movementId === selectedMovementId) || movements[0] || SEED_MOVEMENTS[0];
+    return movements.find(m => m.movementId === selectedMovementId) || movements[0] || null;
   }, [movements, selectedMovementId]);
 
   // Handle Export CSV
@@ -1349,7 +974,7 @@ export function MovementHistory() {
             </div>
 
             <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 text-xs">
-              {SEED_MOVEMENTS.map((ev, i) => (
+              {(selectedMovement?.timeline || movements || []).map((ev, i) => (
                 <div key={i} className="relative">
                   <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
                   <div className="flex items-baseline justify-between text-xs mb-1">
