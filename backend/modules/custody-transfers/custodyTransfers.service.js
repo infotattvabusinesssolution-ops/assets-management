@@ -331,17 +331,18 @@ export class CustodyTransfersService {
     // Update Asset Master directly
     const previousCustodian = asset.assignedTo;
     const previousLocation = asset.currentLocation;
+    const isUnassigning = !custodianId && (assignedTo === 'Unassigned' || !assignedTo || assignedTo === '__unassign__');
 
-    asset.status = 'Assigned';
-    asset.assignedTo = assignedTo;
-    asset.department = department || asset.department;
+    asset.status = isUnassigning ? 'Available' : 'Assigned';
+    asset.assignedTo = isUnassigning ? 'Unassigned' : assignedTo;
+    asset.department = isUnassigning ? '' : (department || asset.department);
     asset.site = location;
     asset.building = building;
     asset.floor = floor;
     asset.room = room;
     asset.currentLocation = `${location} > ${building} > ${floor}`;
     asset.fullLocation = `${location} > ${building} > ${floor} > ${room}`;
-    asset.assignedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
+    asset.assignedDate = isUnassigning ? null : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     asset.lastMoved = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     asset.lastMovedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
 
@@ -351,7 +352,7 @@ export class CustodyTransfersService {
       dateTime: asset.lastMoved,
       assetNo: asset.assetNumber,
       assetName: asset.assetName,
-      action: 'Assigned',
+      action: isUnassigning ? 'Unassigned' : 'Assigned',
       from: previousLocation,
       to: asset.currentLocation,
       by: user?.name || assignedTo || 'Ahmed Khan',
@@ -363,19 +364,19 @@ export class CustodyTransfersService {
       movementId: `MOV-${Date.now().toString().slice(-6)}`,
       assetNumber: asset.assetNumber,
       assetName: asset.assetName,
-      movementType: 'Custodian Assignment',
+      movementType: isUnassigning ? 'Custody Return' : 'Custodian Assignment',
       fromLocation: previousLocation,
       toLocation: asset.fullLocation,
       previousCustodian,
-      newCustodian: assignedTo,
+      newCustodian: isUnassigning ? 'Unassigned' : assignedTo,
       movementDate: asset.lastMoved,
       requestedBy: user?.name || 'System Admin',
       approvedBy: 'Auto-Approved (Direct Issue)',
-      receivedBy: assignedTo,
+      receivedBy: isUnassigning ? 'Store Inventory' : assignedTo,
       reason: assignmentPurpose,
       condition: conditionAtIssue,
       status: 'Completed',
-      remarks: remarks || accessoriesIncluded || 'Assigned'
+      remarks: remarks || accessoriesIncluded || (isUnassigning ? 'Unassigned to store' : 'Assigned')
     });
 
     // Persist to Prisma DB
@@ -389,8 +390,8 @@ export class CustodyTransfersService {
         }
       });
       if (dbAsset) {
-        let employeeId = custodianId || null;
-        if (!employeeId && assignedTo) {
+        let employeeId = isUnassigning ? null : (custodianId || null);
+        if (!isUnassigning && !employeeId && assignedTo) {
           const emp = await prisma.employee.findFirst({
             where: {
               OR: [
@@ -428,19 +429,6 @@ export class CustodyTransfersService {
           if (rm) roomId = rm.id;
         }
 
-        await prisma.asset.update({
-          where: { id: dbAsset.id },
-          data: {
-            lifecycleStatus: 'ASSIGNED',
-            ...(employeeId ? { custodianId: employeeId } : {}),
-            ...(siteId ? { siteId } : {}),
-            ...(buildingId ? { buildingId } : {}),
-            ...(roomId ? { roomId } : {}),
-            assignedDate: new Date(),
-            condition: conditionAtIssue || dbAsset.condition || 'GOOD'
-          }
-        });
-
         // Resolve valid user in DB for foreign key constraint
         let validUserId = null;
         if (user?.id) {
@@ -452,32 +440,89 @@ export class CustodyTransfersService {
           if (defaultUser) validUserId = defaultUser.id;
         }
 
-        if (employeeId && validUserId) {
-          await prisma.custodyAssignment.create({
+        if (isUnassigning || !employeeId) {
+          // Close any active custody assignments
+          await prisma.custodyAssignment.updateMany({
+            where: { assetId: dbAsset.id, active: true },
             data: {
-              assetId: dbAsset.id,
-              custodianId: employeeId,
-              issuedDate: new Date(),
-              conditionAtIssue: conditionAtIssue || 'Good',
-              issuedByUserId: validUserId,
-              acknowledged: true,
-              acknowledgementDate: new Date(),
-              active: true
+              active: false,
+              actualReturnDate: new Date(),
+              conditionAtReturn: conditionAtIssue || 'Good'
             }
-          }).catch(e => console.warn('Could not create custody record in DB:', e.message));
-        }
+          }).catch(e => console.warn('Could not close active custody records:', e.message));
 
-        if (validUserId) {
-          await prisma.assetTransaction.create({
+          await prisma.asset.update({
+            where: { id: dbAsset.id },
             data: {
-              assetId: dbAsset.id,
-              transactionType: 'ASSIGN',
-              fromStatus: dbAsset.lifecycleStatus || 'AVAILABLE',
-              toStatus: 'ASSIGNED',
-              performedByUserId: validUserId,
-              notes: remarks || `Assigned to custodian (${assignedTo || employeeId})`
+              lifecycleStatus: 'AVAILABLE',
+              custodianId: null,
+              ...(siteId ? { siteId } : {}),
+              ...(buildingId ? { buildingId } : {}),
+              ...(roomId ? { roomId } : {}),
+              condition: conditionAtIssue || dbAsset.condition || 'GOOD'
             }
-          }).catch(e => console.warn('Could not record asset transaction in DB:', e.message));
+          });
+
+          if (validUserId) {
+            await prisma.assetTransaction.create({
+              data: {
+                assetId: dbAsset.id,
+                transactionType: 'UNASSIGN',
+                fromStatus: dbAsset.lifecycleStatus || 'ASSIGNED',
+                toStatus: 'AVAILABLE',
+                performedByUserId: validUserId,
+                notes: remarks || 'Custodian unassigned - returned to inventory store'
+              }
+            }).catch(e => console.warn('Could not record unassign transaction:', e.message));
+          }
+        } else {
+          // Re-assignment: Close prior active custody assignments first
+          await prisma.custodyAssignment.updateMany({
+            where: { assetId: dbAsset.id, active: true },
+            data: {
+              active: false,
+              actualReturnDate: new Date()
+            }
+          }).catch(e => console.warn('Could not close prior custody records:', e.message));
+
+          await prisma.asset.update({
+            where: { id: dbAsset.id },
+            data: {
+              lifecycleStatus: 'ASSIGNED',
+              custodianId: employeeId,
+              ...(siteId ? { siteId } : {}),
+              ...(buildingId ? { buildingId } : {}),
+              ...(roomId ? { roomId } : {}),
+              assignedDate: new Date(),
+              condition: conditionAtIssue || dbAsset.condition || 'GOOD'
+            }
+          });
+
+          if (validUserId) {
+            await prisma.custodyAssignment.create({
+              data: {
+                assetId: dbAsset.id,
+                custodianId: employeeId,
+                issuedDate: new Date(),
+                conditionAtIssue: conditionAtIssue || 'Good',
+                issuedByUserId: validUserId,
+                acknowledged: true,
+                acknowledgementDate: new Date(),
+                active: true
+              }
+            }).catch(e => console.warn('Could not create custody record in DB:', e.message));
+
+            await prisma.assetTransaction.create({
+              data: {
+                assetId: dbAsset.id,
+                transactionType: 'ASSIGN',
+                fromStatus: dbAsset.lifecycleStatus || 'AVAILABLE',
+                toStatus: 'ASSIGNED',
+                performedByUserId: validUserId,
+                notes: remarks || `Assigned to custodian (${assignedTo || employeeId})`
+              }
+            }).catch(e => console.warn('Could not record asset transaction in DB:', e.message));
+          }
         }
       }
     } catch (dbErr) {

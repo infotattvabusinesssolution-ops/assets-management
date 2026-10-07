@@ -89,7 +89,8 @@ export async function getAssets(req, res, next) {
           custodian: true,
           manufacturer: true,
           model: true,
-          warranty: true
+          warranty: true,
+          schedules: { where: { active: true }, orderBy: { nextDueDate: 'asc' } }
         },
         orderBy: { [sortBy]: sortOrder.toLowerCase() },
         skip,
@@ -177,8 +178,10 @@ export async function getAsset360(req, res, next) {
       stocktakeObservations,
       mapPosition,
       discoveryMatch,
+      schedules,
       warranty,
-      auditEvents
+      auditEvents,
+      attachments
     ] = await Promise.all([
       prisma.assetBookValue.findMany({ where: { assetId: asset.id } }),
       prisma.assetTransaction.findMany({
@@ -201,30 +204,45 @@ export async function getAsset360(req, res, next) {
         include: { floorMap: true }
       }),
       prisma.discoveryMatch.findFirst({
-        where: { matchedAssetId: asset.id },
+        where: { matchedAssetId: asset.id, status: { not: 'REJECTED' } },
         include: { observation: true }
       }),
+      prisma.maintenanceSchedule.findMany({ where: { assetId: asset.id, active: true }, orderBy: { nextDueDate: 'asc' } }),
       prisma.warranty.findUnique({ where: { assetId: asset.id } }),
       prisma.auditEvent.findMany({
         where: { entityId: asset.id },
         include: { user: true },
         orderBy: { timestamp: 'desc' },
         take: 50
-      })
+      }),
+      prisma.attachment.findMany({ where: {
+        entityType: { in: ['Asset', 'ASSET'] }, entityId: { in: [asset.id, asset.assetId] }
+      }, orderBy: { createdAt: 'desc' } })
     ]);
 
     res.json({
       success: true,
       asset360: {
-        asset,
+        asset: { ...asset, imageUrl: attachments.find(file => file.fileType === 'ASSET_IMAGE')?.url || null },
         bookValues,
         transactions,
         workOrders,
         stocktakeObservations,
         mapPosition,
-        discoveryMatch,
+        discoveryMatch: discoveryMatch ? {
+          ...discoveryMatch,
+          ...discoveryMatch.observation,
+          operatingSystem: [discoveryMatch.observation.osFamily, discoveryMatch.observation.osVersion].filter(Boolean).join(' '),
+          cpu: discoveryMatch.observation.cpuInfo,
+          ram: discoveryMatch.observation.ramGb == null ? null : `${discoveryMatch.observation.ramGb} GB`,
+          storage: discoveryMatch.observation.storageGb == null ? null : `${discoveryMatch.observation.storageGb} GB`
+        } : null,
+        schedules,
         warranty,
-        auditEvents
+        auditEvents,
+        documents: attachments.filter(file => file.fileType !== 'ASSET_IMAGE').map(file => ({
+          id: file.id, name: file.fileName, size: file.fileSize, url: file.url, type: file.fileType
+        }))
       }
     });
   } catch (err) {
@@ -234,6 +252,28 @@ export async function getAsset360(req, res, next) {
 
 export async function createAsset(req, res, next) {
   try {
+    const discoveryId = req.body.discoveryId || null;
+    const hasManualDiscovery = !discoveryId && Boolean(req.body.manualDiscovery) &&
+      ['hostname', 'ipAddress', 'macAddress', 'discoveredSerial'].some(key => String(req.body[key] || '').trim());
+    let observation = null;
+    if (discoveryId) {
+      observation = await prisma.discoveryObservation.findUnique({ where: { id: discoveryId }, include: { matches: true } });
+      if (!observation) return res.status(400).json({ success: false, message: 'Selected discovered device was not found.' });
+      const linkedAsset = await prisma.asset.findFirst({ where: { discoveryId } });
+      if (linkedAsset || observation.matches.some(match => match.status === 'CONFIRMED' && match.matchedAssetId)) {
+        return res.status(409).json({ success: false, message: 'This discovered device is already linked to an asset.' });
+      }
+    }
+    const maintenance = req.body.maintenance;
+    if (maintenance?.enabled) {
+      const due = new Date(maintenance.nextDueDate);
+      if (!maintenance.nextDueDate || Number.isNaN(due.getTime())) {
+        return res.status(400).json({ success: false, message: 'A valid first maintenance due date is required.' });
+      }
+      if (maintenance.frequency === 'Custom' && (!Number.isInteger(Number(maintenance.intervalMonths)) || Number(maintenance.intervalMonths) < 1)) {
+        return res.status(400).json({ success: false, message: 'A positive maintenance interval in months is required.' });
+      }
+    }
     const rawCategory = req.body.categoryId || req.body.category || 'Laptop';
     const rawCompany = req.body.companyId || req.body.company;
     const rawSite = req.body.siteId || req.body.site;
@@ -449,7 +489,7 @@ export async function createAsset(req, res, next) {
           barcode,
           qrCode: req.body.qrCode || barcode,
           rfidEpc: req.body.rfidEpc || null,
-          serialNumber: req.body.serialNumber || null,
+          serialNumber: req.body.serialNumber || req.body.discoveredSerial || observation?.serialNumber || null,
           lifecycleStatus,
           condition: req.body.condition || 'NEW',
           criticality: req.body.criticality || 'MEDIUM',
@@ -459,15 +499,66 @@ export async function createAsset(req, res, next) {
           supplierName: req.body.supplierName || req.body.supplier || req.body.vendorSupplier || null,
           purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : null,
           inServiceDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : null,
-          hostname: req.body.hostname || null,
-          macAddress: req.body.macAddress || null,
-          ipAddress: req.body.ipAddress || null,
+          hostname: req.body.hostname || observation?.hostname || null,
+          macAddress: req.body.macAddress || observation?.macAddress || null,
+          ipAddress: req.body.ipAddress || observation?.ipAddress || null,
+          discoveryId,
           createdByUserId: finalUserId,
           updatedByUserId: finalUserId
         }
       });
 
       const childOperations = [];
+
+      if (observation || hasManualDiscovery) {
+        const linkedObservation = observation || await tx.discoveryObservation.create({ data: {
+          discoverySource: 'MANUAL_ENTRY',
+          hostname: req.body.hostname || null,
+          ipAddress: req.body.ipAddress || null,
+          macAddress: req.body.macAddress || null,
+          serialNumber: req.body.discoveredSerial || req.body.serialNumber || null,
+          firstSeen: req.body.firstSeen ? new Date(req.body.firstSeen) : new Date(),
+          lastSeen: req.body.lastSeen ? new Date(req.body.lastSeen) : new Date()
+        } });
+        if (!observation) await tx.asset.update({ where: { id: newAsset.id }, data: { discoveryId: linkedObservation.id } });
+        await tx.discoveryMatch.deleteMany({ where: { observationId: linkedObservation.id, status: { not: 'CONFIRMED' } } });
+        await tx.discoveryMatch.create({ data: {
+          observationId: linkedObservation.id, matchedAssetId: newAsset.id,
+          confidenceScore: observation ? 100 : 0,
+          matchRule: observation ? 'USER_SELECTED' : 'MANUAL_ENTRY', status: 'CONFIRMED',
+          reviewedByUserId: finalUserId, reviewedAt: new Date()
+        } });
+      }
+
+      if (maintenance?.enabled) {
+        const frequencyMonths = maintenance.frequency === 'Monthly' ? 1
+          : maintenance.frequency === 'Quarterly' ? 3
+          : maintenance.frequency === 'Yearly' ? 12
+          : maintenance.frequency === 'Custom' ? Number(maintenance.intervalMonths) : 6;
+        await tx.maintenanceSchedule.create({ data: {
+          assetId: newAsset.id,
+          title: maintenance.checklist || `${maintenance.type || 'Preventive'} Maintenance`,
+          frequencyMonths,
+          nextDueDate: new Date(maintenance.nextDueDate)
+        } });
+      }
+
+      if (req.body.imageUrl) {
+        await tx.attachment.create({ data: {
+          entityType: 'Asset', entityId: newAsset.id, fileName: `${assetId}-image`,
+          fileType: 'ASSET_IMAGE', storageKey: req.body.imageUrl, url: req.body.imageUrl,
+          uploadedByUserId: finalUserId
+        } });
+      }
+      for (const doc of Array.isArray(req.body.documents) ? req.body.documents : []) {
+        if (!doc?.url) continue;
+        await tx.attachment.create({ data: {
+          entityType: 'Asset', entityId: newAsset.id, fileName: doc.name || 'Document',
+          fileType: doc.type || 'Document', storageKey: doc.publicId || doc.url, url: doc.url,
+          fileSize: Number.isFinite(Number(doc.size)) ? Number(doc.size) : null,
+          uploadedByUserId: finalUserId
+        } });
+      }
 
       // 1. Initial Corporate Book Value (only if capitalized value is provided)
       if (acqValue > 0) {
@@ -558,6 +649,70 @@ export async function createAsset(req, res, next) {
   }
 }
 
+export async function transferAssetLocation(req, res, next) {
+  try {
+    const { siteId, buildingId, floorId, roomId, reason } = req.body;
+    if (!siteId || !String(reason || '').trim()) {
+      return res.status(400).json({ success: false, message: 'Destination site and transfer reason are required.' });
+    }
+    const asset = await prisma.asset.findFirst({
+      where: { AND: [{ OR: [{ id: req.params.id }, { assetId: req.params.id }] }, req.dataScopeFilter || {}] }
+    });
+    if (!asset) return res.status(404).json({ success: false, message: 'Asset not found.' });
+    if (['DISPOSED', 'IN_TRANSIT', 'PENDING_DISPOSAL'].includes(asset.lifecycleStatus)) {
+      return res.status(409).json({ success: false, message: `Asset cannot be transferred while ${asset.lifecycleStatus.toLowerCase().replaceAll('_', ' ')}.` });
+    }
+    const [site, building, floor, room, user] = await Promise.all([
+      prisma.site.findFirst({ where: { id: siteId, active: true } }),
+      buildingId ? prisma.building.findFirst({ where: { id: buildingId, siteId, active: true } }) : null,
+      floorId ? prisma.floor.findFirst({ where: { id: floorId, active: true } }) : null,
+      roomId ? prisma.room.findFirst({ where: { id: roomId, active: true } }) : null,
+      prisma.user.findFirst({ where: { id: req.user?.id || '' } })
+    ]);
+    if (!site || (buildingId && !building) || (floorId && (!floor || floor.buildingId !== buildingId)) ||
+        (roomId && (!room || room.floorId !== floorId))) {
+      return res.status(400).json({ success: false, message: 'Select a valid destination location.' });
+    }
+    if (site.companyId !== asset.companyId) {
+      return res.status(400).json({ success: false, message: 'Choose a site within the asset company.' });
+    }
+    if ((floorId && !buildingId) || (roomId && !floorId)) {
+      return res.status(400).json({ success: false, message: 'Select the building and floor for this room.' });
+    }
+    const requester = user || await prisma.user.findFirst();
+    if (!requester) return res.status(503).json({ success: false, message: 'No user account is available to record the transfer.' });
+    const unchanged = asset.siteId === siteId && asset.buildingId === (buildingId || null) &&
+      asset.floorId === (floorId || null) && asset.roomId === (roomId || null);
+    if (unchanged) return res.status(400).json({ success: false, message: 'Choose a destination different from the current location.' });
+
+    const transferNumber = `TRF-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
+    const result = await prisma.$transaction(async tx => {
+      const transfer = await tx.assetTransfer.create({ data: {
+        transferNumber, assetId: asset.id, transferType: 'LOCATION_TRANSFER',
+        fromCompanyId: asset.companyId, fromSiteId: asset.siteId, fromRoomId: asset.roomId,
+        fromCustodianId: asset.custodianId, toCompanyId: site.companyId,
+        toSiteId: siteId, toRoomId: roomId || null, toCustodianId: asset.custodianId,
+        status: 'COMPLETED', reason: String(reason).trim(), requestedByUserId: requester.id,
+        approvedByUserId: requester.id, receivedByUserId: requester.id,
+        dispatchDate: new Date(), receiveDate: new Date()
+      } });
+      const updatedAsset = await tx.asset.update({ where: { id: asset.id }, data: {
+        siteId, buildingId: buildingId || null,
+        floorId: floorId || null, roomId: roomId || null,
+        zoneId: null, updatedByUserId: requester.id
+      }, include: { site: true, building: true, floor: true, room: true } });
+      await tx.assetMapPosition.updateMany({ where: { assetId: asset.id, active: true }, data: { active: false } });
+      await tx.assetTransaction.create({ data: {
+        assetId: asset.id, transactionType: 'LOCATION_TRANSFER',
+        fromStatus: asset.lifecycleStatus, toStatus: asset.lifecycleStatus,
+        performedByUserId: requester.id, notes: `${transferNumber}: ${String(reason).trim()}`
+      } });
+      return { transfer, asset: updatedAsset };
+    });
+    res.status(201).json({ success: true, ...result, message: 'Location transfer completed.' });
+  } catch (err) { next(err); }
+}
+
 export async function updateAsset(req, res, next) {
   try {
     const { id } = req.params;
@@ -638,9 +793,48 @@ export async function updateAsset(req, res, next) {
       buildingId,
       floorId,
       roomId,
+      discoveryId: selectedDiscoveryId,
+      warrantyDetails,
+      maintenanceDetails,
+      bookDetails,
+      manualDiscoveryDetails,
+      imageUrl,
+      documents,
       notes,
       isDraft
     } = req.body;
+
+    if (warrantyDetails?.enabled && (!warrantyDetails.startDate || !warrantyDetails.endDate ||
+      Number.isNaN(Date.parse(warrantyDetails.startDate)) || Number.isNaN(Date.parse(warrantyDetails.endDate)))) {
+      return res.status(400).json({ success: false, message: 'Warranty start and end dates are required.' });
+    }
+    if (maintenanceDetails?.enabled && (!maintenanceDetails.nextDueDate ||
+      Number.isNaN(Date.parse(maintenanceDetails.nextDueDate)) ||
+      !Number.isInteger(Number(maintenanceDetails.frequencyMonths)) || Number(maintenanceDetails.frequencyMonths) < 1)) {
+      return res.status(400).json({ success: false, message: 'A valid maintenance due date and frequency are required.' });
+    }
+    if (warrantyDetails?.enabled && new Date(warrantyDetails.endDate) < new Date(warrantyDetails.startDate)) {
+      return res.status(400).json({ success: false, message: 'Warranty end date must be after its start date.' });
+    }
+    if (bookDetails && (!Number.isInteger(Number(bookDetails.usefulLifeMonths)) ||
+      Number(bookDetails.usefulLifeMonths) < 1 || !Number.isFinite(Number(bookDetails.residualValue)) ||
+      Number(bookDetails.residualValue) < 0)) {
+      return res.status(400).json({ success: false, message: 'Enter a valid useful life and residual value.' });
+    }
+    if (manualDiscoveryDetails && ['ramGb', 'storageGb'].some(key =>
+      manualDiscoveryDetails[key] !== '' && manualDiscoveryDetails[key] != null &&
+      (!Number.isInteger(Number(manualDiscoveryDetails[key])) || Number(manualDiscoveryDetails[key]) < 0))) {
+      return res.status(400).json({ success: false, message: 'RAM and storage must be non-negative whole numbers.' });
+    }
+    if (selectedDiscoveryId) {
+      const selectedObservation = await prisma.discoveryObservation.findUnique({ where: { id: selectedDiscoveryId } });
+      if (!selectedObservation) return res.status(400).json({ success: false, message: 'Selected discovered device was not found.' });
+      const occupiedMatch = await prisma.discoveryMatch.findFirst({ where: {
+        observationId: selectedDiscoveryId, status: 'CONFIRMED',
+        matchedAssetId: { not: oldAsset.id }
+      } });
+      if (occupiedMatch) return res.status(409).json({ success: false, message: 'This discovered device is linked to another asset.' });
+    }
 
     // Uniqueness validation for Serial Number, Tag, RFID EPC if changed
     if (serialNumber && serialNumber !== oldAsset.serialNumber) {
@@ -766,7 +960,7 @@ export async function updateAsset(req, res, next) {
     if (hostname !== undefined) updateData.hostname = hostname;
     if (ipAddress !== undefined) updateData.ipAddress = ipAddress;
     if (macAddress !== undefined) updateData.macAddress = macAddress;
-    if (healthScore !== undefined) updateData.healthScore = parseInt(healthScore, 10) || oldAsset.healthScore;
+    if (healthScore !== undefined) updateData.healthScore = Number.isFinite(Number(healthScore)) ? Number(healthScore) : oldAsset.healthScore;
 
     // Relational lookups: Category
     const rawCategory = categoryId || category;
@@ -828,6 +1022,7 @@ export async function updateAsset(req, res, next) {
     if (buildingId !== undefined) updateData.buildingId = buildingId || null;
     if (floorId !== undefined) updateData.floorId = floorId || null;
     if (roomId !== undefined) updateData.roomId = roomId || null;
+    if (selectedDiscoveryId !== undefined) updateData.discoveryId = selectedDiscoveryId || null;
 
     updateData.updatedByUserId = finalUserId;
 
@@ -843,7 +1038,8 @@ export async function updateAsset(req, res, next) {
       }
     });
 
-    const updatedAsset = await prisma.asset.update({
+    const updatedAsset = await prisma.$transaction(async tx => {
+    const savedAsset = await tx.asset.update({
       where: { id: oldAsset.id },
       data: updateData,
       include: {
@@ -859,13 +1055,123 @@ export async function updateAsset(req, res, next) {
       }
     });
 
+    if (selectedDiscoveryId !== undefined && selectedDiscoveryId !== oldAsset.discoveryId) {
+      await tx.discoveryMatch.updateMany({ where: { matchedAssetId: oldAsset.id, status: 'CONFIRMED' },
+        data: { matchedAssetId: null, status: 'REJECTED' } });
+      if (selectedDiscoveryId) {
+        const existingMatch = await tx.discoveryMatch.findFirst({ where: {
+          observationId: selectedDiscoveryId, matchedAssetId: oldAsset.id
+        } });
+        const matchData = { status: 'CONFIRMED', confidenceScore: 100,
+          matchRule: 'USER_SELECTED', reviewedByUserId: finalUserId, reviewedAt: new Date() };
+        if (existingMatch) await tx.discoveryMatch.update({ where: { id: existingMatch.id }, data: matchData });
+        else await tx.discoveryMatch.create({ data: {
+          observationId: selectedDiscoveryId, matchedAssetId: oldAsset.id, ...matchData
+        } });
+      }
+    }
+
+    if (warrantyDetails) {
+      if (!warrantyDetails.enabled) {
+        await tx.warranty.deleteMany({ where: { assetId: oldAsset.id } });
+      } else {
+        const warrantyData = {
+          startDate: new Date(warrantyDetails.startDate), endDate: new Date(warrantyDetails.endDate),
+          providerName: warrantyDetails.providerName || null,
+          warrantyNumber: warrantyDetails.warrantyNumber || null, terms: warrantyDetails.terms || null
+        };
+        await tx.warranty.upsert({ where: { assetId: oldAsset.id },
+          create: { assetId: oldAsset.id, ...warrantyData }, update: warrantyData });
+      }
+    }
+    if (maintenanceDetails) {
+      const schedule = await tx.maintenanceSchedule.findFirst({
+        where: { assetId: oldAsset.id, active: true }, orderBy: { createdAt: 'asc' }
+      });
+      if (!maintenanceDetails.enabled) {
+        await tx.maintenanceSchedule.updateMany({ where: { assetId: oldAsset.id, active: true }, data: { active: false } });
+      } else {
+        const scheduleData = { title: maintenanceDetails.title || 'Preventive Maintenance',
+          frequencyMonths: Number(maintenanceDetails.frequencyMonths),
+          nextDueDate: new Date(maintenanceDetails.nextDueDate), active: true };
+        if (schedule) await tx.maintenanceSchedule.update({ where: { id: schedule.id }, data: scheduleData });
+        else await tx.maintenanceSchedule.create({ data: { assetId: oldAsset.id, ...scheduleData } });
+      }
+    }
+    if (bookDetails || rawAcq !== undefined) {
+      const book = await tx.assetBookValue.findUnique({
+        where: { assetId_bookType: { assetId: oldAsset.id, bookType: 'CORPORATE' } }
+      });
+      if (book?.isLocked) throw new Error('The corporate book is locked and cannot be edited.');
+      if (bookDetails && !book && Number(savedAsset.acquisitionValue) <= 0) {
+        throw new Error('Enter an acquisition cost before setting up the corporate book.');
+      }
+      const bookData = {
+        ...(bookDetails ? { usefulLifeMonths: Number(bookDetails.usefulLifeMonths),
+          residualValue: Number(bookDetails.residualValue),
+          depreciationMethod: bookDetails.depreciationMethod || 'STRAIGHT_LINE' } : {}),
+        ...(rawAcq !== undefined ? {
+          capitalizationValue: savedAsset.acquisitionValue,
+          netBookValue: Math.max(0, Number(savedAsset.acquisitionValue) - Number(book?.accumulatedDepreciation || 0))
+        } : {})
+      };
+      if (book) await tx.assetBookValue.update({ where: { id: book.id }, data: bookData });
+      else if (Number(savedAsset.acquisitionValue) > 0) await tx.assetBookValue.create({ data: {
+        assetId: oldAsset.id, bookType: 'CORPORATE',
+        capitalizationValue: savedAsset.acquisitionValue, netBookValue: savedAsset.acquisitionValue,
+        usefulLifeMonths: 60,
+        ...bookData
+      } });
+    }
+    if (manualDiscoveryDetails && !selectedDiscoveryId) {
+      const match = await tx.discoveryMatch.findFirst({
+        where: { matchedAssetId: oldAsset.id }, include: { observation: true }
+      });
+      if (match && match.observation.discoverySource !== 'MANUAL_ENTRY') {
+        throw new Error('Linked auto discovery details cannot be edited here.');
+      }
+      const detail = manualDiscoveryDetails;
+      const observationData = {
+        hostname: detail.hostname || null, ipAddress: detail.ipAddress || null,
+        macAddress: detail.macAddress || null, cpuInfo: detail.cpuInfo || null,
+        ramGb: detail.ramGb === '' ? null : Number(detail.ramGb),
+        storageGb: detail.storageGb === '' ? null : Number(detail.storageGb),
+        osFamily: detail.osFamily || null
+      };
+      if (match) await tx.discoveryObservation.update({ where: { id: match.observationId }, data: observationData });
+      else {
+        const observation = await tx.discoveryObservation.create({ data: {
+          discoverySource: 'MANUAL_ENTRY', serialNumber: savedAsset.serialNumber, ...observationData
+        } });
+        await tx.discoveryMatch.create({ data: {
+          observationId: observation.id, matchedAssetId: oldAsset.id, confidenceScore: 0,
+          matchRule: 'MANUAL_ENTRY', status: 'CONFIRMED',
+          reviewedByUserId: finalUserId, reviewedAt: new Date()
+        } });
+        await tx.asset.update({ where: { id: oldAsset.id }, data: { discoveryId: observation.id } });
+      }
+    }
+    if (imageUrl) await tx.attachment.create({ data: {
+      entityType: 'Asset', entityId: oldAsset.id, fileName: `${oldAsset.assetId}-image`,
+      fileType: 'ASSET_IMAGE', storageKey: imageUrl, url: imageUrl, uploadedByUserId: finalUserId
+    } });
+    for (const doc of Array.isArray(documents) ? documents : []) {
+      if (!doc?.url) continue;
+      await tx.attachment.create({ data: {
+        entityType: 'Asset', entityId: oldAsset.id, fileName: doc.name || 'Document',
+        fileType: doc.type || 'Document', storageKey: doc.publicId || doc.url,
+        url: doc.url, fileSize: Number.isFinite(Number(doc.size)) ? Number(doc.size) : null,
+        uploadedByUserId: finalUserId
+      } });
+    }
+
     // Write Asset Transaction record
-    await prisma.assetTransaction.create({
+    await tx.assetTransaction.create({
       data: {
         assetId: oldAsset.id,
         transactionType: isDraft ? 'DRAFT_SAVED' : 'MASTER_EDIT',
         fromStatus: oldAsset.lifecycleStatus,
-        toStatus: updatedAsset.lifecycleStatus,
+        toStatus: savedAsset.lifecycleStatus,
         performedByUserId: finalUserId || 'usr-default',
         notes: notes || (isDraft
           ? `Draft changes saved for asset [${oldAsset.assetId}].`
@@ -880,18 +1186,20 @@ export async function updateAsset(req, res, next) {
 
     const afterDiff = changedFields.length > 0
       ? JSON.stringify(changedFields.reduce((acc, f) => { acc[f.field] = f.new; return acc; }, {}))
-      : JSON.stringify({ assetId: updatedAsset.assetId, description: updatedAsset.description, status: updatedAsset.lifecycleStatus });
+      : JSON.stringify({ assetId: savedAsset.assetId, description: savedAsset.description, status: savedAsset.lifecycleStatus });
 
-    await prisma.auditEvent.create({
+    await tx.auditEvent.create({
       data: {
         userId: finalUserId,
         action: isDraft ? 'ASSET_DRAFT_SAVE' : 'ASSET_EDIT_UPDATE',
         entityType: 'Asset',
-        entityId: updatedAsset.id,
+        entityId: savedAsset.id,
         beforeState: beforeDiff.slice(0, 240),
         afterState: afterDiff.slice(0, 240)
       }
     });
+    return savedAsset;
+    }, { timeout: 15000 });
 
     res.json({
       success: true,
@@ -1047,6 +1355,7 @@ export async function getMyAssets(req, res, next) {
           custodian: true,
           manufacturer: true,
           model: true,
+          schedules: { where: { active: true }, orderBy: { nextDueDate: 'asc' } },
           custodyAssignments: {
             where: { active: true },
             take: 1

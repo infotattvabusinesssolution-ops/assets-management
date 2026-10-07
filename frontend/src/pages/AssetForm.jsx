@@ -102,6 +102,8 @@ export function AssetForm() {
   const [costCenters, setCostCenters] = useState([]);
   const [manufacturers, setManufacturers] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [discoveredDevices, setDiscoveredDevices] = useState([]);
+  const [loadingDevices, setLoadingDevices] = useState(false);
 
   // Dynamic Tag Generation & Real-time Validation State
   const [generatingTag, setGeneratingTag] = useState(false);
@@ -155,6 +157,16 @@ export function AssetForm() {
       assetId: generatedId,
       assetTagBarcode: generatedId
     }));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    setLoadingDevices(true);
+    api.get('/discovery/devices', { params: { limit: 2000 } })
+      .then(res => { if (active) setDiscoveredDevices((res?.devices || []).filter(device => !device.linkedAssetId)); })
+      .catch(() => { if (active) setDiscoveredDevices([]); })
+      .finally(() => { if (active) setLoadingDevices(false); });
+    return () => { active = false; };
   }, []);
 
   // Shared Form State across both form designs
@@ -229,15 +241,16 @@ export function AssetForm() {
 
     // 7. Maintenance Setup
     enablePm: false,
-    maintenanceType: '',
-    frequency: '',
-    intervalDays: '',
+    maintenanceType: 'Preventive',
+    frequency: 'Quarterly',
+    intervalMonths: '',
     firstDueDate: '',
     checklist: '',
     nextDueDate: '',
 
     // 8. Auto Discovery
     linkToDiscovered: false,
+    discoveryId: '',
     discoverySource: '',
     hostname: '',
     ipAddress: '',
@@ -512,6 +525,14 @@ export function AssetForm() {
   const handleSubmit = async (targetStatus) => {
     setLoading(true);
     try {
+      if (formData.enablePm && !formData.firstDueDate) {
+        showToast('error', 'Choose a first due date for preventive maintenance.');
+        return;
+      }
+      if (formData.linkToDiscovered && !formData.discoveryId) {
+        showToast('error', 'Choose a discovered device or switch to manual discovery details.');
+        return;
+      }
       const payload = {
         assetId: formData.assetId || undefined,
         assetName: formData.assetName?.trim() || undefined,
@@ -520,7 +541,7 @@ export function AssetForm() {
         categoryId: formData.categoryId || undefined,
         manufacturer: formData.manufacturer?.trim() || formData.brand?.trim() || undefined,
         model: formData.model?.trim() || formData.modelNumber?.trim() || undefined,
-        serialNumber: formData.serialNumber?.trim() || undefined,
+        serialNumber: formData.serialNumber?.trim() || formData.discoveredSerial?.trim() || undefined,
         tagNumber: formData.assetTagBarcode?.trim() || formData.assetId || undefined,
         barcode: formData.assetTagBarcode?.trim() || formData.assetId || undefined,
         rfidEpc: formData.rfidEpc?.trim() || undefined,
@@ -548,7 +569,24 @@ export function AssetForm() {
         provider: formData.underWarranty ? (formData.provider?.trim() || formData.manufacturer?.trim() || undefined) : undefined,
         notes: formData.notes?.trim() || formData.remarks?.trim() || undefined,
         documents: formData.documents && formData.documents.length > 0 ? formData.documents : undefined,
-        imageUrl: formData.assetImage || formData.imageUrl || undefined
+        imageUrl: formData.assetImage || formData.imageUrl || undefined,
+        hostname: formData.hostname?.trim() || undefined,
+        ipAddress: formData.ipAddress?.trim() || undefined,
+        macAddress: formData.macAddress?.trim() || undefined,
+        discoveredSerial: formData.discoveredSerial?.trim() || undefined,
+        discoveryId: formData.linkToDiscovered ? formData.discoveryId : undefined,
+        manualDiscovery: !formData.linkToDiscovered,
+        discoverySource: formData.linkToDiscovered ? formData.discoverySource : 'MANUAL_ENTRY',
+        firstSeen: !formData.linkToDiscovered ? formData.firstSeen || undefined : undefined,
+        lastSeen: !formData.linkToDiscovered ? formData.lastSeen || undefined : undefined,
+        maintenance: formData.enablePm ? {
+          enabled: true,
+          type: formData.maintenanceType || 'Preventive',
+          frequency: formData.frequency || 'Quarterly',
+          intervalMonths: formData.intervalMonths || undefined,
+          nextDueDate: formData.firstDueDate,
+          checklist: formData.checklist || undefined
+        } : undefined
       };
 
       const res = await api.post('/assets', payload);
@@ -567,6 +605,52 @@ export function AssetForm() {
       setLoading(false);
     }
   };
+
+  const selectDiscoveredDevice = (id) => {
+    const device = discoveredDevices.find(item => item.id === id);
+    setFormData(prev => ({
+      ...prev,
+      discoveryId: id,
+      matchedDiscovery: Boolean(device),
+      discoverySource: device?.discoverySource || '',
+      hostname: device?.hostname || prev.hostname,
+      ipAddress: device?.ipAddress || prev.ipAddress,
+      macAddress: device?.macAddress || prev.macAddress,
+      discoveredSerial: device?.serialNumber || prev.discoveredSerial,
+      serialNumber: prev.serialNumber || device?.serialNumber || '',
+      manufacturer: prev.manufacturer || device?.manufacturer || '',
+      model: prev.model || device?.model || '',
+      firstSeen: device?.firstSeen?.slice(0, 10) || '',
+      lastSeen: device?.lastSeen?.slice(0, 10) || ''
+    }));
+  };
+
+  const renderMaintenanceDiscovery = () => (
+    <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
+        <h3 className="font-extrabold text-slate-900 flex items-center gap-2"><Wrench className="w-4 h-4 text-[#6C2BD9]" /> Preventive Maintenance</h3>
+        <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.enablePm} onChange={e => setFormData(prev => ({ ...prev, enablePm: e.target.checked }))} /> Enable maintenance schedule</label>
+        {formData.enablePm && <div className="grid grid-cols-2 gap-3">
+          <label className="space-y-1">Type<input className="w-full border rounded-lg p-2" value={formData.maintenanceType} onChange={e => setFormData(prev => ({ ...prev, maintenanceType: e.target.value }))} placeholder="Preventive" /></label>
+          <label className="space-y-1">Frequency<select className="w-full border rounded-lg p-2" value={formData.frequency} onChange={e => setFormData(prev => ({ ...prev, frequency: e.target.value }))}><option value="">Select frequency</option><option>Monthly</option><option>Quarterly</option><option>Yearly</option><option>Custom</option></select></label>
+          {formData.frequency === 'Custom' && <label className="space-y-1">Interval (months)<input type="number" min="1" className="w-full border rounded-lg p-2" value={formData.intervalMonths} onChange={e => setFormData(prev => ({ ...prev, intervalMonths: e.target.value }))} /></label>}
+          <label className="space-y-1">First due date<input type="date" className="w-full border rounded-lg p-2" value={formData.firstDueDate} onChange={e => setFormData(prev => ({ ...prev, firstDueDate: e.target.value }))} /></label>
+          <label className="space-y-1 col-span-2">Checklist or schedule title<input className="w-full border rounded-lg p-2" value={formData.checklist} onChange={e => setFormData(prev => ({ ...prev, checklist: e.target.value }))} placeholder="e.g. Laptop PM Checklist" /></label>
+        </div>}
+      </div>
+      <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
+        <h3 className="font-extrabold text-slate-900 flex items-center gap-2"><Cpu className="w-4 h-4 text-[#6C2BD9]" /> Auto Discovery</h3>
+        <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.linkToDiscovered} onChange={e => setFormData(prev => ({ ...prev, linkToDiscovered: e.target.checked, discoveryId: e.target.checked ? prev.discoveryId : '', matchedDiscovery: false }))} /> Link an existing discovered device</label>
+        {formData.linkToDiscovered && <label className="block space-y-1">Discovered device<select className="w-full border rounded-lg p-2" value={formData.discoveryId} onChange={e => selectDiscoveredDevice(e.target.value)}><option value="">{loadingDevices ? 'Loading devices…' : 'Select device'}</option>{discoveredDevices.map(device => <option key={device.id} value={device.id}>{[device.hostname, device.ipAddress, device.serialNumber].filter(Boolean).join(' · ') || device.id}</option>)}</select></label>}
+        {!formData.linkToDiscovered && <p className="text-slate-500">Enter network details manually if this device has not been discovered yet.</p>}
+        <div className="grid grid-cols-2 gap-3">
+          {[['hostname', 'Hostname'], ['ipAddress', 'IP address'], ['macAddress', 'MAC address'], ['discoveredSerial', 'Device serial']].map(([key, label]) => <label key={key} className="space-y-1">{label}<input className="w-full border rounded-lg p-2" value={formData[key]} onChange={e => setFormData(prev => ({ ...prev, [key]: e.target.value }))} /></label>)}
+          {!formData.linkToDiscovered && [['firstSeen', 'First seen'], ['lastSeen', 'Last seen']].map(([key, label]) => <label key={key} className="space-y-1">{label}<input type="date" className="w-full border rounded-lg p-2" value={formData[key]} onChange={e => setFormData(prev => ({ ...prev, [key]: e.target.value }))} /></label>)}
+        </div>
+        {formData.discoveryId && <p className="text-emerald-700 font-semibold">Selected discovery record will be linked when this asset is saved.</p>}
+      </div>
+    </div>
+  );
 
   // ==========================================
   // MODULAR SECTION RENDER FUNCTIONS
@@ -1673,13 +1757,12 @@ export function AssetForm() {
 
               {/* Step 2: Additional Details (Financials + Remarks) */}
               {currentStep === 2 && (
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
-                  <div className="lg:col-span-2 space-y-4">
-                    {renderFinancialInfo()}
+                <div className="space-y-4">
+                  <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-start">
+                    <div className="lg:col-span-2 space-y-4">{renderFinancialInfo()}</div>
+                    <div className="space-y-4">{renderDescription()}</div>
                   </div>
-                  <div className="space-y-4">
-                    {renderDescription()}
-                  </div>
+                  {renderMaintenanceDiscovery()}
                 </div>
               )}
 
@@ -2572,7 +2655,7 @@ export function AssetForm() {
                     onChange={(e) => setFormData({ ...formData, maintenanceType: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
-                    <option value="Preventive">Preventive</option>
+                    <option value="">Select type</option><option value="Preventive">Preventive</option><option value="Corrective">Corrective</option>
                   </select>
                 </div>
 
@@ -2584,18 +2667,18 @@ export function AssetForm() {
                       onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
-                      <option value="Quarterly">Quarterly</option>
+                      <option value="">Select frequency</option><option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option><option value="Yearly">Yearly</option><option value="Custom">Custom</option>
                     </select>
                   </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Interval (Days)</label>
+                  {formData.frequency === 'Custom' && <div>
+                    <label className="font-bold text-slate-700 block mb-1">Interval (Months)</label>
                     <input
                       type="number"
-                      value={formData.intervalDays}
-                      onChange={(e) => setFormData({ ...formData, intervalDays: e.target.value })}
+                      value={formData.intervalMonths}
+                      onChange={(e) => setFormData({ ...formData, intervalMonths: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none text-[11px]"
                     />
-                  </div>
+                  </div>}
                 </div>
 
                 <div className="space-y-1 text-xs">
@@ -2615,7 +2698,7 @@ export function AssetForm() {
                     onChange={(e) => setFormData({ ...formData, checklist: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
-                    <option value="Laptop PM Checklist">Laptop PM Checklist</option>
+                    <option value="">Select checklist</option><option value="Laptop PM Checklist">Laptop PM Checklist</option><option value="General PM Checklist">General PM Checklist</option>
                   </select>
                 </div>
 
@@ -2644,7 +2727,7 @@ export function AssetForm() {
                   <span className="font-bold text-slate-700">Link to Discovered Asset</span>
                   <button
                     type="button"
-                    onClick={() => setFormData({ ...formData, linkToDiscovered: !formData.linkToDiscovered })}
+                    onClick={() => setFormData(prev => ({ ...prev, linkToDiscovered: !prev.linkToDiscovered, discoveryId: !prev.linkToDiscovered ? prev.discoveryId : '', matchedDiscovery: false }))}
                     className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
                       formData.linkToDiscovered ? 'bg-[#6C2BD9] justify-end' : 'bg-slate-300 justify-start'
                     }`}
@@ -2654,13 +2737,19 @@ export function AssetForm() {
                 </div>
 
                 <div className="space-y-1 text-xs">
+                  {formData.linkToDiscovered && <label className="font-bold text-slate-700 block">Discovered Device
+                    <select value={formData.discoveryId} onChange={e => selectDiscoveredDevice(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900">
+                      <option value="">{loadingDevices ? 'Loading devices…' : 'Select device'}</option>
+                      {discoveredDevices.map(device => <option key={device.id} value={device.id}>{[device.hostname, device.ipAddress, device.serialNumber].filter(Boolean).join(' · ') || device.id}</option>)}
+                    </select>
+                  </label>}
                   <label className="font-bold text-slate-700 block">Discovery Source</label>
                   <select
                     value={formData.discoverySource}
                     onChange={(e) => setFormData({ ...formData, discoverySource: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
-                    <option value="Network Scan">Network Scan</option>
+                    <option value="">Manual entry</option><option value="Network Scan">Network Scan</option><option value="MANUAL_ENTRY">Manual entry</option>
                   </select>
                 </div>
 
@@ -2728,13 +2817,13 @@ export function AssetForm() {
                 </div>
 
                 {/* Green Matched Badge Box */}
-                <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs">
+                {formData.discoveryId && <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center gap-2 text-xs">
                   <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
                   <div>
-                    <span className="font-bold text-emerald-800 text-[11px] block leading-tight">Matched with discovery data</span>
-                    <span className="text-[9px] text-emerald-700 block leading-tight">Hostname, Serial Number and MAC Address matched</span>
+                    <span className="font-bold text-emerald-800 text-[11px] block leading-tight">Discovered device selected</span>
+                    <span className="text-[9px] text-emerald-700 block leading-tight">It will be linked after saving the asset.</span>
                   </div>
-                </div>
+                </div>}
               </div>
             </div>
 

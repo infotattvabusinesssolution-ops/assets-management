@@ -133,12 +133,13 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
       }
 
       if (onAssigned) {
+        const isUnassigning = !formData.custodianId || formData.assignedTo === 'Unassigned';
         onAssigned({
           ...asset,
-          custodianId: formData.custodianId,
-          custodianName: formData.assignedTo,
+          custodianId: isUnassigning ? null : formData.custodianId,
+          custodianName: isUnassigning ? 'Unassigned' : formData.assignedTo,
           departmentName: formData.department,
-          lifecycleStatus: 'ASSIGNED'
+          lifecycleStatus: isUnassigning ? 'AVAILABLE' : 'ASSIGNED'
         });
       }
 
@@ -212,7 +213,7 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
               Select New Custodian / Assignee <span className="text-rose-500">*</span>
             </label>
             <select
-              value={formData.custodianId || formData.assignedTo}
+              value={formData.assignedTo === 'Unassigned' ? '__unassign__' : (formData.custodianId || formData.assignedTo)}
               onChange={handleEmployeeChange}
               required
               className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"

@@ -4,6 +4,7 @@ import {
   getMyAssets,
   getAsset360,
   createAsset,
+  transferAssetLocation,
   updateAsset,
   transitionLifecycle,
   deleteAsset,
@@ -47,6 +48,7 @@ router.post('/:id/return-request', requirePermission('ASSETS_VIEW'), requestAsse
 router.post('/:id/report-issue', requirePermission('ASSETS_VIEW'), reportAssetIssue);
 
 router.post('/', requirePermission('ASSETS_CREATE'), createAsset);
+router.post('/:id/location-transfer', requirePermission('ASSETS_EDIT'), transferAssetLocation);
 router.put('/:id', requirePermission('ASSETS_EDIT'), updateAsset);
 router.patch('/:id/lifecycle', requirePermission('ASSETS_TRANSITION'), transitionLifecycle);
 router.delete('/:id', requirePermission('ASSETS_DELETE'), deleteAsset);

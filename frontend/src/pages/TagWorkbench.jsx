@@ -36,6 +36,7 @@ import clsx from 'clsx';
 export function TagWorkbench() {
   const navigate = useNavigate();
   const importFileRef = useRef(null);
+  const rfidInputRef = useRef(null);
 
   // -------------------------------------------------------------
   // Workflow Stepper State (1: Select Assets, 2: Tagging, 3: Verify & Update, 4: Complete)
@@ -77,9 +78,11 @@ export function TagWorkbench() {
   // Scan & Assign Tag Panel State
   // -------------------------------------------------------------
   const [activeTab, setActiveTab] = useState('scan'); // 'scan' | 'print'
-  const [scannedSerialInput, setScannedSerialInput] = useState('');
+  const [focusRfidForAsset, setFocusRfidForAsset] = useState(null);
+  const [scannedBarcodeInput, setScannedBarcodeInput] = useState('');
   const [scannedTagInput, setScannedTagInput] = useState('');
   const [tagValidation, setTagValidation] = useState({ valid: false, status: 'Awaiting Tag Scan', message: 'Scan or enter a tag.' });
+  const tagValidationRequestRef = useRef(0);
 
   // -------------------------------------------------------------
   // Print Labels Panel State
@@ -181,9 +184,18 @@ export function TagWorkbench() {
 
   // When active asset changes, auto-validate current tag
   useEffect(() => {
+    tagValidationRequestRef.current += 1;
     setScannedTagInput('');
     setTagValidation({ valid: false, status: 'Awaiting Tag Scan', message: 'Scan or enter a tag.' });
   }, [activeAsset]);
+
+  useEffect(() => {
+    if (focusRfidForAsset && activeTab === 'scan' && activeAsset?.id === focusRfidForAsset && rfidInputRef.current) {
+      rfidInputRef.current.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      rfidInputRef.current.focus({ preventScroll: true });
+      setFocusRfidForAsset(null);
+    }
+  }, [focusRfidForAsset, activeTab, activeAsset?.id]);
 
   const handleImportFile = async (file) => {
     if (!file) return;
@@ -271,6 +283,7 @@ export function TagWorkbench() {
   // Tag Validation
   // -------------------------------------------------------------
   const validateTagCode = async (tagCode, assetId = activeAsset?.id) => {
+    const requestId = ++tagValidationRequestRef.current;
     if (!tagCode || tagCode.trim() === '') {
       setTagValidation({
         valid: false,
@@ -285,6 +298,7 @@ export function TagWorkbench() {
         tagNumber: tagCode,
         currentAssetId: assetId
       });
+      if (requestId !== tagValidationRequestRef.current) return;
 
       if (res && res.valid) {
         setTagValidation({
@@ -300,6 +314,7 @@ export function TagWorkbench() {
         });
       }
     } catch (err) {
+      if (requestId !== tagValidationRequestRef.current) return;
       setTagValidation({
         valid: false,
         status: 'Validation Error',
@@ -309,43 +324,30 @@ export function TagWorkbench() {
   };
 
   // -------------------------------------------------------------
-  // Generate Tag Action
+  // Asset barcode scanner input handler
   // -------------------------------------------------------------
-  const handleGenerateTag = async () => {
-    try {
-      const res = await api.post('/tagging/generate', { prefix: 'E360000' });
-      if (res && res.success && res.tag) {
-        const newCode = res.tag.tagNumber;
-        setScannedTagInput(newCode);
-        validateTagCode(newCode, activeAsset?.id);
-        setCurrentStep(2);
-        showToast(`Generated new Tag ID: ${newCode}`);
-      }
-    } catch (err) {
-      showToast(err?.message || 'Could not generate tag', 'error');
-    }
-  };
-
-  // -------------------------------------------------------------
-  // Simulated RFID Reader
-  // -------------------------------------------------------------
-  const handleReadFromRfidReader = () => {
-    showToast('Scan a tag with your reader into the Tag ID field.', 'error');
-  };
-
-  // -------------------------------------------------------------
-  // Serial / Barcode Scanner Input Handler
-  // -------------------------------------------------------------
-  const handleSerialScanSubmit = (e) => {
+  const handleBarcodeScanSubmit = async (e) => {
     if (e) e.preventDefault();
-    if (!scannedSerialInput.trim()) return;
+    if (!scannedBarcodeInput.trim()) return;
 
-    const term = scannedSerialInput.trim().toLowerCase();
-    const matched = assets.find(
+    const term = scannedBarcodeInput.trim().toLowerCase();
+    let matched = assets.find(
       a =>
-        a.serialNumber.toLowerCase().includes(term) ||
-        a.assetNumber.toLowerCase().includes(term)
+        String(a.barcode || '').trim().toLowerCase() === term ||
+        String(a.assetNumber || '').trim().toLowerCase() === term
     );
+    if (!matched) {
+      try {
+        const result = await api.get('/tagging/assets', { params: { barcode: scannedBarcodeInput.trim() } });
+        matched = result?.assets?.find(a =>
+          String(a.barcode || '').trim().toLowerCase() === term ||
+          String(a.assetNumber || '').trim().toLowerCase() === term
+        );
+      } catch (err) {
+        showToast(err?.message || 'Could not look up the barcode', 'error');
+        return;
+      }
+    }
 
     if (matched) {
       setActiveAsset(matched);
@@ -354,9 +356,30 @@ export function TagWorkbench() {
       }
       setCurrentStep(2);
       showToast(`Located Asset: ${matched.assetName} (${matched.assetNumber})`);
-      setScannedSerialInput('');
+      setScannedBarcodeInput('');
     } else {
-      showToast(`No asset found matching "${scannedSerialInput}"`, 'error');
+      showToast(`No asset found with barcode "${scannedBarcodeInput}"`, 'error');
+    }
+  };
+
+  const handleRfidScanSubmit = async (e) => {
+    if (e) e.preventDefault();
+    const code = scannedTagInput.trim();
+    if (!code) return;
+    try {
+      const result = await api.get('/tagging/assets', { params: { rfid: code } });
+      const matched = result?.assets?.find(a => String(a.rfidEpc || '').trim().toLowerCase() === code.toLowerCase());
+      if (matched) {
+        setActiveAsset(matched);
+        setSelectedAssetIds(prev => prev.includes(matched.id) ? prev : [...prev, matched.id]);
+        setCurrentStep(2);
+        showToast(`Located Asset: ${matched.assetName} (${matched.assetNumber})`);
+        setScannedTagInput('');
+      } else {
+        validateTagCode(code, activeAsset?.id);
+      }
+    } catch (err) {
+      showToast(err?.message || 'Could not look up the RFID tag', 'error');
     }
   };
 
@@ -369,6 +392,12 @@ export function TagWorkbench() {
       setSelectedAssetIds(prev => [...prev, asset.id]);
     }
     setCurrentStep(2);
+  };
+
+  const handleTagAssetRow = (asset) => {
+    handleSelectAssetRow(asset);
+    setActiveTab('scan');
+    setFocusRfidForAsset(asset.id);
   };
 
   const handleCheckboxToggle = (assetId) => {
@@ -457,7 +486,7 @@ export function TagWorkbench() {
   // -------------------------------------------------------------
   const handleClearContext = () => {
     setScannedTagInput('');
-    setScannedSerialInput('');
+    setScannedBarcodeInput('');
     setTagValidation({
       valid: false,
       status: 'Awaiting Tag Scan',
@@ -1043,7 +1072,8 @@ export function TagWorkbench() {
                           <td className="py-2.5 px-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
                             {isTagged ? (
                               <button
-                                onClick={() => handleSelectAssetRow(item)}
+                                type="button"
+                                onClick={() => navigate(`/assets/${encodeURIComponent(item.assetNumber || item.id)}`)}
                                 className="inline-flex items-center gap-1 text-[#6C2BD9] hover:text-[#5B21B6] font-semibold text-xs px-2 py-1 rounded-lg hover:bg-purple-50 transition-all cursor-pointer whitespace-nowrap"
                               >
                                 <Eye className="w-3.5 h-3.5" />
@@ -1051,7 +1081,8 @@ export function TagWorkbench() {
                               </button>
                             ) : (
                               <button
-                                onClick={() => handleSelectAssetRow(item)}
+                                type="button"
+                                onClick={() => handleTagAssetRow(item)}
                                 className="inline-flex items-center gap-1 text-[#6C2BD9] hover:text-[#5B21B6] font-semibold text-xs px-2.5 py-1 rounded-lg hover:bg-purple-50 transition-all cursor-pointer whitespace-nowrap"
                               >
                                 <Tag className="w-3.5 h-3.5" />
@@ -1178,23 +1209,24 @@ export function TagWorkbench() {
             {/* Tab 1 Content: Scan & Assign Tag */}
             {activeTab === 'scan' && (
               <div className="p-4 space-y-4">
-                {/* Field 1: Scan Asset Barcode / Serial No. */}
+                {/* Scan the existing asset barcode to select an asset */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Scan Asset Barcode / Serial No.
+                    Scan Asset Barcode
                   </label>
-                  <form onSubmit={handleSerialScanSubmit} className="relative">
+                  <form onSubmit={handleBarcodeScanSubmit} className="relative">
                     <input
                       type="text"
-                      value={scannedSerialInput}
-                      onChange={(e) => setScannedSerialInput(e.target.value)}
-                      placeholder="Scan or enter serial number..."
+                      value={scannedBarcodeInput}
+                      onChange={(e) => setScannedBarcodeInput(e.target.value)}
+                      placeholder="Scan asset barcode..."
+                      autoComplete="off"
                       className="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 focus:border-[#6C2BD9] transition-all"
                     />
                     <button
                       type="submit"
                       className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-slate-400 hover:text-[#6C2BD9] transition-colors cursor-pointer"
-                      title="Search Asset by Serial"
+                      title="Find asset by barcode"
                     >
                       <Barcode className="w-4 h-4 text-[#6C2BD9]" />
                     </button>
@@ -1210,52 +1242,26 @@ export function TagWorkbench() {
                   <div className="border-t border-slate-200 w-full"></div>
                 </div>
 
-                {/* Field 2: Scan RFID / Barcode / QR Tag */}
+                {/* Scan the RFID tag to associate with the selected asset */}
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1.5">
-                    Scan RFID / Barcode / QR Tag
+                    Scan RFID
                   </label>
-                  <div className="relative">
+                  <form onSubmit={handleRfidScanSubmit} className="relative">
                     <input
+                      ref={rfidInputRef}
                       type="text"
                       value={scannedTagInput}
                       onChange={(e) => {
                         setScannedTagInput(e.target.value);
                         validateTagCode(e.target.value, activeAsset?.id);
                       }}
-                      placeholder="Scan or enter tag number..."
+                      placeholder="Scan RFID tag..."
+                      autoComplete="off"
                       className="w-full pl-3 pr-10 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 focus:border-[#6C2BD9] transition-all"
                     />
-                    <button
-                      type="button"
-                      onClick={handleReadFromRfidReader}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[#6C2BD9] hover:text-[#5B21B6] transition-colors cursor-pointer"
-                      title="Trigger RFID Reader"
-                    >
-                      <Radio className="w-4 h-4" />
-                    </button>
-                  </div>
-                </div>
-
-                {/* Action Buttons Row */}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 pt-1">
-                  <button
-                    type="button"
-                    onClick={handleGenerateTag}
-                    className="px-3 py-2 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-[#6C2BD9] text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
-                  >
-                    <Plus className="w-3.5 h-3.5 shrink-0" />
-                    <span>Generate Tag Number</span>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={handleReadFromRfidReader}
-                    className="px-3 py-2 rounded-xl border border-purple-200 bg-purple-50/70 hover:bg-purple-100 text-[#6C2BD9] text-[11px] font-bold flex items-center justify-center gap-1.5 shadow-2xs transition-all cursor-pointer whitespace-nowrap active:scale-95"
-                  >
-                    <Radio className="w-3.5 h-3.5 shrink-0" />
-                    <span>Read from RFID Reader</span>
-                  </button>
+                    <button type="submit" className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-[#6C2BD9]" title="Scan RFID"><Radio className="w-4 h-4" /></button>
+                  </form>
                 </div>
               </div>
             )}

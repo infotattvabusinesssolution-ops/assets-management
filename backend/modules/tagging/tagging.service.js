@@ -39,6 +39,8 @@ class TaggingServiceStore {
   async getEligibleAssets(filters = {}) {
     const {
       assetNumber = '',
+      barcode = '',
+      rfid = '',
       assetName = '',
       serialNumber = '',
       category = '',
@@ -52,6 +54,8 @@ class TaggingServiceStore {
     if (!isSqlServerConnected) throw new Error('Database is unavailable.');
     {
         const where = {};
+        if (barcode) where.OR = [{ barcode }, { assetId: barcode }];
+        if (rfid) where.rfidEpc = rfid;
         if (assetNumber) where.assetId = { contains: assetNumber };
         if (serialNumber) where.serialNumber = { contains: serialNumber };
         if (assetName) where.description = { contains: assetName };
@@ -95,6 +99,8 @@ class TaggingServiceStore {
   filterAssetsList(list, filters) {
     const {
       assetNumber = '',
+      barcode = '',
+      rfid = '',
       assetName = '',
       serialNumber = '',
       category = '',
@@ -106,6 +112,8 @@ class TaggingServiceStore {
     } = filters;
 
     return list.filter(asset => {
+      if (barcode && asset.barcode !== barcode && asset.assetNumber !== barcode) return false;
+      if (rfid && asset.rfidEpc !== rfid) return false;
       if (assetNumber && !asset.assetNumber.toLowerCase().includes(assetNumber.toLowerCase())) {
         return false;
       }
@@ -182,7 +190,7 @@ class TaggingServiceStore {
             message: `Tag "${cleanTag}" is already associated with asset ${dbTag.asset.assetId}.`
           };
         }
-        const assetWithTag = await prisma.asset.findFirst({ where: { tagNumber: cleanTag } });
+        const assetWithTag = await prisma.asset.findFirst({ where: { OR: [{ tagNumber: cleanTag }, { rfidEpc: cleanTag }] } });
         if (assetWithTag && assetWithTag.id !== currentAssetId) return { valid: false, status: 'DUPLICATE_CONFLICT', message: `Tag is assigned to ${assetWithTag.assetId}.` };
       } catch (e) { throw e; }
     }

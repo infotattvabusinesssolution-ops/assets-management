@@ -167,9 +167,9 @@ export function MyAssets() {
             warrantyStatus: item.warranty ? 'Active' : 'Standard',
             warrantyStart: item.warranty?.startDate ? new Date(item.warranty.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
             warrantyEnd: item.warranty?.endDate ? new Date(item.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-            nextServiceDate: '15 Oct 2026',
-            maintType: 'Preventive',
-            checklist: 'Standard PM Checklist',
+            nextServiceDate: item.schedules?.[0]?.nextDueDate ? new Date(item.schedules[0].nextDueDate).toLocaleDateString('en-GB') : 'Not scheduled',
+            maintType: item.schedules?.[0] ? 'Preventive' : 'None',
+            checklist: item.schedules?.[0]?.title || 'No checklist',
             documents: []
           };
         });

@@ -3,7 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { TransferAssetModal } from '../components/modals/TransferAssetModal';
+import { LocationTransferModal } from '../components/modals/LocationTransferModal';
 import { AssignCustodianModal } from '../components/modals/AssignCustodianModal';
 import {
   Package,
@@ -174,9 +174,9 @@ export function AssetList() {
             warrantyStatus: item.warranty ? (item.warranty.endDate && new Date(item.warranty.endDate) > new Date() ? 'Active' : 'Expired') : 'Active',
             warrantyStart: item.warranty?.startDate ? new Date(item.warranty.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
             warrantyEnd: item.warranty?.endDate ? new Date(item.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
-            nextServiceDate: '15 Oct 2026',
-            maintType: 'Preventive',
-            checklistName: 'Standard PM Checklist',
+            nextServiceDate: item.schedules?.[0]?.nextDueDate ? new Date(item.schedules[0].nextDueDate).toLocaleDateString('en-GB') : 'Not Scheduled',
+            maintType: item.schedules?.[0] ? 'Preventive' : 'None',
+            checklistName: item.schedules?.[0]?.title || 'No Checklist',
             icon: getCategoryIcon(item.category?.name),
             category: item.category,
             site: item.site,
@@ -1137,7 +1137,7 @@ export function AssetList() {
                                     <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> Assign to Custodian
                                   </button>
 
-                                  <button
+                                  {canEdit && <button
                                     type="button"
                                     onClick={(e) => {
                                       e.stopPropagation();
@@ -1148,7 +1148,7 @@ export function AssetList() {
                                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
                                   >
                                     <ArrowLeftRight className="w-3.5 h-3.5 text-[#6C2BD9]" /> Transfer Location / Site
-                                  </button>
+                                  </button>}
 
                                   {asset.lifecycleStatus !== 'UNDER_MAINTENANCE' && (
                                     <button
@@ -1474,7 +1474,7 @@ export function AssetList() {
                       <span className="text-slate-500 font-medium">Warranty Status</span>
                       <span className={`font-bold text-left ${
                         (selectedAsset.warrantyStatus || 'Active') === 'Active' ? 'text-emerald-600' : 'text-slate-500'
-                      }`}>{selectedAsset.warrantyStatus || 'Active'}</span>
+                      }`}>{selectedAsset.warrantyStatus || 'Unknown'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Start Date</span>
@@ -1490,14 +1490,25 @@ export function AssetList() {
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Maintenance Type</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.maintType || 'Preventive'}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.maintType || 'None'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
                       <span className="text-slate-500 font-medium">Checklist</span>
-                      <span className="font-bold text-slate-900 text-left">{selectedAsset.checklistName || 'Standard PM'}</span>
+                      <span className="font-bold text-slate-900 text-left">{selectedAsset.checklistName || 'No Checklist'}</span>
                     </div>
                   </div>
                 </div>
+
+                {(selectedAsset.hostname || selectedAsset.ipAddress || selectedAsset.macAddress) && (
+                  <div className="space-y-2">
+                    <span className="font-bold text-slate-900 uppercase tracking-wider text-[11px]">Discovery &amp; Network Details</span>
+                    <div className="bg-slate-50 p-3 rounded-xl border border-slate-200 text-xs space-y-1">
+                      <p>Hostname: <strong>{selectedAsset.hostname || '—'}</strong></p>
+                      <p>IP address: <strong>{selectedAsset.ipAddress || '—'}</strong></p>
+                      <p>MAC address: <strong>{selectedAsset.macAddress || '—'}</strong></p>
+                    </div>
+                  </div>
+                )}
 
                 {/* Section 4: Documents */}
                 <div className="space-y-2">
@@ -1775,12 +1786,11 @@ export function AssetList() {
 
       {/* Quick Transfer & Custody Modal */}
       {transferModalAsset && (
-        <TransferAssetModal
-          isOpen={Boolean(transferModalAsset)}
+        <LocationTransferModal
           onClose={() => setTransferModalAsset(null)}
           asset={transferModalAsset}
-          onTransferCompleted={() => {
-            showToast('success', 'Asset transfer processed successfully!');
+          onCompleted={() => {
+            showToast('success', 'Asset location transferred successfully.');
             fetchAssets();
           }}
         />
@@ -1793,10 +1803,15 @@ export function AssetList() {
           onClose={() => setAssignModalAsset(null)}
           asset={assignModalAsset}
           onAssigned={(updated) => {
-            showToast('success', `Asset ${updated.assetId || updated.name} assigned to ${updated.custodianName || 'custodian'} successfully!`);
-            setAssets(prev => prev.map(a => (a.id === updated.id || a.assetId === updated.assetId) ? { ...a, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: 'ASSIGNED' } : a));
+            const isUnassign = updated.custodianName === 'Unassigned' || !updated.custodianId;
+            showToast('success', isUnassign
+              ? `Asset ${updated.assetId || updated.name} unassigned and returned to inventory.`
+              : `Asset ${updated.assetId || updated.name} assigned to ${updated.custodianName || 'custodian'} successfully!`
+            );
+            const targetStatus = isUnassign ? 'AVAILABLE' : 'ASSIGNED';
+            setAssets(prev => prev.map(a => (a.id === updated.id || a.assetId === updated.assetId) ? { ...a, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: targetStatus } : a));
             if (selectedAsset && (selectedAsset.id === updated.id || selectedAsset.assetId === updated.assetId)) {
-              setSelectedAsset(prev => ({ ...prev, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: 'ASSIGNED' }));
+              setSelectedAsset(prev => ({ ...prev, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: targetStatus }));
             }
             fetchAssets();
           }}

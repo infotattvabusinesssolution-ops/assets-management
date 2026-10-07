@@ -151,6 +151,7 @@ export function Asset360Detail() {
                     }
                   ],
                   workOrders: [],
+                  schedules: target.schedules || [],
                   stocktakeObservations: [],
                   mapPosition: null,
                   discoveryMatch: null,
@@ -268,7 +269,7 @@ export function Asset360Detail() {
     );
   }
 
-  const { asset, bookValues = [], transactions = [], workOrders = [], mapPosition, discoveryMatch, warranty, auditEvents = [] } = data;
+  const { asset, bookValues = [], transactions = [], workOrders = [], schedules = [], mapPosition, discoveryMatch, warranty, auditEvents = [] } = data;
 
   // Normalized Dynamic Data Accessors
   const categoryName = asset.category?.name || asset.categoryName || (typeof asset.category === 'string' ? asset.category : '');
@@ -858,8 +859,8 @@ export function Asset360Detail() {
             <div className="bg-white border border-slate-200 rounded-3xl p-5 shadow-sm space-y-1">
               <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider block">Upcoming Service</span>
               <span className="text-xl font-black text-slate-900">
-                {workOrders?.find(w => w.status !== 'COMPLETED' && w.scheduledDate)?.scheduledDate
-                  ? new Date(workOrders.find(w => w.status !== 'COMPLETED' && w.scheduledDate).scheduledDate).toLocaleDateString('en-GB')
+                {schedules[0]?.nextDueDate || workOrders?.find(w => w.status !== 'COMPLETED' && w.scheduledDate)?.scheduledDate
+                  ? new Date(schedules[0]?.nextDueDate || workOrders.find(w => w.status !== 'COMPLETED' && w.scheduledDate).scheduledDate).toLocaleDateString('en-GB')
                   : 'None Scheduled'}
               </span>
               <span className="text-[11px] text-slate-400 block">Preventive Maintenance Schedule</span>
@@ -881,6 +882,11 @@ export function Asset360Detail() {
               </span>
             </div>
           </div>
+
+          {schedules.length > 0 && <div className="bg-white border border-slate-200 rounded-2xl p-4 text-xs">
+            <span className="font-bold text-slate-900">Preventive maintenance schedule</span>
+            {schedules.map(schedule => <p key={schedule.id} className="mt-2 text-slate-600">{schedule.title} · Every {schedule.frequencyMonths} month(s) · Next due {new Date(schedule.nextDueDate).toLocaleDateString('en-GB')}</p>)}
+          </div>}
 
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1197,11 +1203,11 @@ export function Asset360Detail() {
               <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
                 <Cpu className="w-4 h-4 text-[#6C2BD9]" /> Automated Network Discovery Match
               </h3>
-              <p className="text-xs text-slate-500 mt-0.5">Live SNMP, WMI and Agent-based telemetry reconciled with Asset360</p>
+              <p className="text-xs text-slate-500 mt-0.5">{discoveryMatch?.discoverySource === 'MANUAL_ENTRY' ? 'Details entered during asset registration' : 'Discovery telemetry linked with Asset360'}</p>
             </div>
             {discoveryMatch ? (
               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center gap-1">
-                <CheckCircle2 className="w-3.5 h-3.5" /> Reconciled
+                <CheckCircle2 className="w-3.5 h-3.5" /> {discoveryMatch.discoverySource === 'MANUAL_ENTRY' ? 'Manual entry' : 'Reconciled'}
               </span>
             ) : (asset.hostname || asset.ipAddress || asset.macAddress) ? (
               <span className="px-2.5 py-1 rounded-full text-xs font-bold bg-blue-50 text-blue-700 border border-blue-200 flex items-center gap-1">
