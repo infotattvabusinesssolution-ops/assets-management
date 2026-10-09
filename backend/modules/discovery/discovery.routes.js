@@ -20,6 +20,7 @@ import {
   rerunDiscoveryJob,
   updateDiscoveryJob,
   getDiscoverySummary,
+  getScannerNetworks,
   getObservations,
   getMatches,
   triggerScan,
@@ -69,6 +70,7 @@ router.use(authenticateToken);
 
 // Discovered Devices Primary Endpoints
 router.get('/kpis', getDiscoveryKpis);
+router.get('/local-networks', getScannerNetworks);
 router.get('/devices', getDiscoveredDevices);
 router.post('/devices/export', exportDiscoveredDevices);
 router.get('/devices/:id', getDeviceDetails);

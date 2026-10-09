@@ -32,6 +32,75 @@ import {
   Power
 } from 'lucide-react';
 import { api } from '../services/api';
+import { uploadToCloudinary } from '../services/cloudinary';
+import { useLocation, useNavigate, useParams } from 'react-router-dom';
+
+const emptyLegacyProvider = () => ({
+  id: null, providerCode: '', autoGenerateCode: true, providerName: '', providerType: 'Service Provider', status: 'Draft',
+  companyRegistrationNo: '', taxRegistrationNo: '', website: '', yearEstablished: '', defaultCurrency: 'AED',
+  paymentTermsDays: '30', remarks: '', logoUrl: '', preferredProvider: false, leadTimeDays: '7', rating: '',
+  primaryContact: '', designation: '', email: '', phone: '', mobile: '', department: '', isPrimaryChecked: true,
+  alternateContact: '', alternatePhone: '', addressLine1: '', addressLine2: '', city: '', emirate: '', country: '', postalCode: '',
+  authorizedCategories: [], alternateContacts: [], contacts: [], addresses: [], contracts: [], documents: [], serviceHistory: [], notes: []
+});
+const prettyType = value => ({ AMC_PROVIDER: 'AMC Provider', SERVICE_PROVIDER: 'Service Provider', OEM_PARTNER: 'OEM Partner', CONSULTANT: 'Consultant', OTHER: 'Other' })[value] || value || 'Service Provider';
+const apiType = value => ({ 'AMC Provider': 'AMC_PROVIDER', 'Service Provider': 'SERVICE_PROVIDER', 'OEM Partner': 'OEM_PARTNER', Consultant: 'CONSULTANT', Other: 'OTHER' })[value] || value;
+const prettyStatus = value => value === 'ACTIVE' ? 'Active' : value === 'INACTIVE' ? 'Inactive' : 'Draft';
+const apiStatus = value => value === 'Active' ? 'ACTIVE' : value === 'Inactive' || value === 'Deactivated' ? 'INACTIVE' : 'DRAFT';
+const profileFields = ['yearEstablished', 'logoUrl', 'designation', 'mobile', 'department', 'alternateContact', 'alternatePhone', 'postalCode'];
+const readProfile = value => { try { return JSON.parse(value || '{}'); } catch { return {}; } };
+const inputDate = value => value ? new Date(value).toISOString().slice(0, 10) : '';
+const displayDate = value => value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
+const dateStatus = item => !item.active ? 'Inactive' : new Date(item.endDate) < new Date() ? 'Expired' : 'Active';
+const legacyContract = item => ({
+  id: item.id, contractNo: item.contractNumber, contractName: item.title, contractType: item.contractType,
+  startDate: displayDate(item.startDate), endDate: displayDate(item.endDate), startDateInput: inputDate(item.startDate), endDateInput: inputDate(item.endDate),
+  value: Number(item.cost || 0).toLocaleString(), contractValue: Number(item.cost || 0), status: dateStatus(item),
+  description: item.slaDetails || '', sla: item.slaDetails || '', referenceNo: item.referenceNumber || '',
+  paymentTerms: item.paymentTermsDays ?? '', currency: item.currency || 'AED', coverage: item.coverageNotes || '',
+  visitEntitlements: item.visitEntitlements || '',
+  coveredAssets: item.coveredAssets || [], assetIds: (item.coveredAssets || []).map(x => x.assetId)
+});
+const legacyDocument = item => ({
+  id: item.id, name: item.name, type: item.type?.replaceAll('_', ' ') || 'Other', refNo: item.referenceNumber || '—',
+  validTill: displayDate(item.validUntil), validTillInput: inputDate(item.validUntil), size: item.fileSize == null ? '—' : (item.fileSize / 1048576).toFixed(1) + ' MB',
+  fileSize: item.fileSize, status: item.validUntil && new Date(item.validUntil) < new Date() ? 'Expired' : 'Valid',
+  fileType: item.name?.split('.').pop()?.toLowerCase(), issueDate: inputDate(item.issueDate), description: item.description || '', storageUrl: item.storageUrl
+});
+const legacyHistory = item => ({
+  id: item.id, workOrderNo: item.workOrderNumber, serviceDate: displayDate(item.completedDate || item.createdAt),
+  asset: [item.asset?.assetId, item.asset?.description].filter(Boolean).join(' — '), assetCategory: item.asset?.category?.name || '—',
+  serviceType: ({ PREVENTIVE: 'Preventive Maintenance', CORRECTIVE: 'Corrective Maintenance', INSPECTION: 'Inspection', CERTIFICATION: 'Certification' })[item.workType] || item.workType?.replaceAll('_', ' ') || 'Service',
+  description: item.description || '', status: ({ COMPLETED: 'Completed', CLOSED: 'Completed', IN_PROGRESS: 'In Progress', CANCELLED: 'Cancelled' })[item.status] || item.status || '',
+  engineer: item.assignedTechnician?.fullName || '—', location: item.asset?.site?.name || '—', duration: '—',
+  fullDescription: item.description || '', resolution: item.workPerformed || '', nextDueDate: displayDate(item.completionTargetDate),
+  remarks: item.notes || '', attachments: String(item.photoUrls || '').split(',').map(url => url.trim()).filter(Boolean).map((url, index) => ({ id: index, name: `Attachment ${index + 1}`, url }))
+});
+const legacyNote = item => {
+  let fields = {};
+  if (item.text?.startsWith('FAMS_NOTE_V1:')) {
+    try { fields = JSON.parse(item.text.slice('FAMS_NOTE_V1:'.length)); } catch { fields = {}; }
+  }
+  const description = fields.description || item.text || '';
+  return {
+    id: item.id, type: fields.type || 'General', subject: fields.subject || description.slice(0, 64) || 'Note', preview: description.slice(0, 90),
+    createdBy: item.authorName || 'System', createdOn: new Date(item.createdAt).toLocaleString(), description,
+    relatedTo: fields.relatedTo || 'General', reference: fields.reference || '—',
+    lastModifiedBy: item.authorName || 'System', lastModifiedOn: new Date(item.updatedAt || item.createdAt).toLocaleString()
+  };
+};
+const legacyProvider = (detail, categories = []) => ({
+  ...emptyLegacyProvider(), ...detail,
+  ...Object.fromEntries(profileFields.map(key => [key, readProfile(detail.legacyDetails)[key] || ''])),
+  providerType: prettyType(detail.providerType), status: prettyStatus(detail.status),
+  primaryContact: detail.primaryContact || '', email: detail.email || '', phone: detail.phone || '',
+  defaultCurrency: detail.currency || 'AED', preferredProvider: Boolean(detail.preferred), emirate: detail.state || '',
+  rating: detail.rating == null ? '' : Number(detail.rating),
+  authorizedCategories: (detail.categories || []).map(x => categories.find(c => c.id === x.categoryId)?.name).filter(Boolean),
+  alternateContacts: (detail.contacts || []).filter(x => !x.isPrimary),
+  contracts: (detail.contracts || []).map(legacyContract), documents: (detail.documents || []).map(legacyDocument),
+  serviceHistory: (detail.serviceHistory || []).map(legacyHistory), notes: (detail.notes || []).map(legacyNote)
+});
 
 export function ServiceProviderAction() {
   // Mode State: 'FORM' (Add/Edit screen matching screenshot) or 'LIST' (Providers workspace grid)
@@ -52,8 +121,9 @@ export function ServiceProviderAction() {
 
   // Form Data State matching screenshot fields
   const [addressSubTab, setAddressSubTab] = useState('Head Office'); // 'Head Office' | 'Service Address' | 'Billing Address' | 'Other Address'
+  const [addressDrafts, setAddressDrafts] = useState({});
   const [showAddContactPersonModal, setShowAddContactPersonModal] = useState(false);
-  const [mapSearchAddress, setMapSearchAddress] = useState('Al Futtaim Building, Sheikh Zayed Road');
+  const [mapSearchAddress, setMapSearchAddress] = useState('');
   const [newContactPerson, setNewContactPerson] = useState({
     name: '',
     designation: '',
@@ -63,131 +133,48 @@ export function ServiceProviderAction() {
   });
 
   // Tab 3 State variables matching screenshot media__1789559215049.png
-  const [serviceCategoriesList, setServiceCategoriesList] = useState([
-    { id: 1, category: 'HVAC', type: 'Preventive, Corrective', desc: 'AC units, Chillers, AHU, FCU', coverage: 'UAE (All Locations)', status: 'Active' },
-    { id: 2, category: 'Electrical', type: 'Preventive, Corrective', desc: 'LV/MV Systems, Panels, Lighting', coverage: 'Dubai, Abu Dhabi', status: 'Active' },
-    { id: 3, category: 'Lifts & Elevators', type: 'Preventive, Corrective', desc: 'Elevators, Escalators', coverage: 'UAE (All Locations)', status: 'Active' },
-    { id: 4, category: 'Fire & Safety', type: 'Inspection, Certification', desc: 'Fire Alarm, Sprinklers, Extinguishers', coverage: 'UAE (All Locations)', status: 'Active' },
-    { id: 5, category: 'IT Equipment', type: 'Preventive, Corrective', desc: 'Servers, PCs, Network Devices', coverage: 'Dubai, Sharjah', status: 'Active' }
-  ]);
+  const [serviceCategoriesList, setServiceCategoriesList] = useState([]);
 
   const [categoryForm, setCategoryForm] = useState({
-    category: 'HVAC',
-    type: 'Preventive, Corrective',
-    desc: 'AC units, Chillers, AHU, FCU',
+    category: '',
+    type: 'PREVENTIVE',
+    desc: '',
     coverageType: 'ALL',
     specificLocation: '',
     status: 'Active'
   });
 
-  const [supportedServicesList, setSupportedServicesList] = useState([
-    { id: 1, name: 'AC Maintenance', code: 'SV-HVAC-001', sla: 24, rate: 350, status: 'Active' },
-    { id: 2, name: 'Chiller Service', code: 'SV-HVAC-002', sla: 48, rate: 500, status: 'Active' },
-    { id: 3, name: 'Electrical Panel Service', code: 'SV-ELC-001', sla: 24, rate: 400, status: 'Active' },
-    { id: 4, name: 'Lift Annual Inspection', code: 'SV-LIF-001', sla: 72, rate: 600, status: 'Active' },
-    { id: 5, name: 'Fire Alarm Testing', code: 'SV-FIR-001', sla: 24, rate: 450, status: 'Active' }
-  ]);
+  const [supportedServicesList, setSupportedServicesList] = useState([]);
 
-  const [certificationsList, setCertificationsList] = useState([
-    { id: 1, name: 'ISO 9001', certNo: 'ISO-2023-001', validTill: '31 Dec 2026', status: 'Active' },
-    { id: 2, name: 'Dubai Civil Defence', certNo: 'DCD-4587', validTill: '30 Jun 2026', status: 'Active' },
-    { id: 3, name: 'Electrical Contractor', certNo: 'EC-112233', validTill: '15 Jan 2027', status: 'Active' }
-  ]);
+  const [certificationsList, setCertificationsList] = useState([]);
 
   // Tab 4 State variables matching screenshot media__1789559333333.png
   const [contractSearchTerm, setContractSearchTerm] = useState('');
   const [contractStatusFilter, setContractStatusFilter] = useState('All');
   const [coverageSubTab, setCoverageSubTab] = useState('Covered Assets'); // 'Covered Assets' | 'Covered Locations' | 'Covered Categories'
 
-  const [amcContractsList, setAmcContractsList] = useState([
-    { id: 1, contractNo: 'AMC-2025-001', contractName: 'HVAC AMC 2025-2027', contractType: 'AMC', startDate: '01 Jan 2025', endDate: '31 Dec 2027', value: '450,000', status: 'Active', referenceNo: 'PO-458712', paymentTerms: '30', description: 'Comprehensive AMC for all HVAC systems including preventive maintenance, corrective maintenance and emergency support.' },
-    { id: 2, contractNo: 'SERV-2024-003', contractName: 'Chiller Maintenance', contractType: 'Service Contract', startDate: '01 Mar 2024', endDate: '28 Feb 2026', value: '220,000', status: 'Active', referenceNo: 'PO-109283', paymentTerms: '30', description: 'Specialized chiller unit maintenance and quarterly service.' },
-    { id: 3, contractNo: 'AMC-2023-002', contractName: 'Lift Maintenance AMC', contractType: 'AMC', startDate: '01 Jun 2023', endDate: '31 May 2026', value: '180,000', status: 'Active', referenceNo: 'PO-554129', paymentTerms: '45', description: 'Passenger and freight elevator monthly maintenance.' },
-    { id: 4, contractNo: 'SERV-2024-010', contractName: 'Fire System Support', contractType: 'Service Contract', startDate: '01 Jan 2024', endDate: '31 Dec 2025', value: '95,000', status: 'Expiring', referenceNo: 'PO-992011', paymentTerms: '30', description: 'Fire alarm and suppression quarterly compliance check.' },
-    { id: 5, contractNo: 'AMC-2022-008', contractName: 'Electrical AMC', contractType: 'AMC', startDate: '01 Jan 2022', endDate: '31 Dec 2024', value: '150,000', status: 'Expired', referenceNo: 'PO-331049', paymentTerms: '30', description: 'LV panel and transformer annual maintenance.' }
-  ]);
+  const [amcContractsList, setAmcContractsList] = useState([]);
 
-  const [selectedContractForm, setSelectedContractForm] = useState({
-    contractNo: 'AMC-2025-001',
-    contractName: 'HVAC AMC 2025-2027',
-    contractType: 'AMC',
-    status: 'Active',
-    startDate: '2025-01-01',
-    endDate: '2027-12-31',
-    contractValue: '450,000',
-    currency: 'AED',
-    referenceNo: 'PO-458712',
-    paymentTerms: '30',
-    description: 'Comprehensive AMC for all HVAC systems including preventive maintenance, corrective maintenance and emergency support.',
-    coverageTarget: 'ALL',
-    selectedTag: 'All HVAC Assets (126)'
-  });
+  const [selectedContractForm, setSelectedContractForm] = useState({});
 
   // Tab 5 State variables matching screenshot media__1789559468502.png
   const [docSearchTerm, setDocSearchTerm] = useState('');
   const [docTypeFilter, setDocTypeFilter] = useState('All Document Types');
 
-  const [providerDocumentsList, setProviderDocumentsList] = useState([
-    { id: 1, name: 'Trade License.pdf', type: 'Trade License', refNo: 'TL-2024-001', validTill: '31 Dec 2026', size: '1.2 MB', status: 'Valid', fileType: 'pdf', issueDate: '2024-01-01', description: 'Company trade license issued by Dubai Department of Economy and Tourism.' },
-    { id: 2, name: 'VAT Certificate.pdf', type: 'Tax Document', refNo: 'TRN-100258741200003', validTill: '31 Dec 2026', size: '850 KB', status: 'Valid', fileType: 'pdf', issueDate: '2024-01-01', description: 'Federal Tax Authority registration certificate.' },
-    { id: 3, name: 'Insurance Certificate.pdf', type: 'Insurance', refNo: 'INS-2024-015', validTill: '15 Oct 2026', size: '1.6 MB', status: 'Valid', fileType: 'pdf', issueDate: '2024-10-15', description: 'Third party liability and workmen compensation policy.' },
-    { id: 4, name: 'ISO 9001 Certificate.pdf', type: 'Certification', refNo: 'ISO-2023-001', validTill: '31 Dec 2026', size: '1.4 MB', status: 'Valid', fileType: 'pdf', issueDate: '2023-01-01', description: 'Quality management system certificate.' },
-    { id: 5, name: 'Company Profile.docx', type: 'Company Profile', refNo: '-', validTill: '-', size: '780 KB', status: 'N/A', fileType: 'doc', issueDate: '-', description: 'Company organizational chart and service overview.' },
-    { id: 6, name: 'AMC Agreement.pdf', type: 'Contract Document', refNo: 'AMC-2025-001', validTill: '31 Dec 2027', size: '2.1 MB', status: 'Valid', fileType: 'pdf', issueDate: '2025-01-01', description: 'Fully executed annual maintenance agreement contract.' },
-    { id: 7, name: 'Safety Policy.pdf', type: 'Policy Document', refNo: 'SP-2024-001', validTill: '-', size: '950 KB', status: 'N/A', fileType: 'doc', issueDate: '-', description: 'EHS and site safety compliance protocol.' },
-    { id: 8, name: 'Service Capability Statement.pdf', type: 'Technical Document', refNo: '-', validTill: '-', size: '1.3 MB', status: 'N/A', fileType: 'pdf', issueDate: '-', description: 'List of certified engineers and heavy machinery fleet.' }
-  ]);
+  const [providerDocumentsList, setProviderDocumentsList] = useState([]);
 
-  const [selectedDocForm, setSelectedDocForm] = useState({
-    name: 'Trade License.pdf',
-    type: 'Trade License',
-    refNo: 'TL-2024-001',
-    issueDate: '2024-01-01',
-    validTill: '2026-12-31',
-    status: 'Valid',
-    description: 'Company trade license issued by Dubai Department of Economy and Tourism.'
-  });
+  const [selectedDocForm, setSelectedDocForm] = useState({});
 
   // Tab 6 State variables matching screenshot
-  const [shDateRange, setShDateRange] = useState('01 Jan 2024 - 31 Dec 2025');
+  const [shDateRange, setShDateRange] = useState('');
   const [shWoQuery, setShWoQuery] = useState('');
   const [shAssetQuery, setShAssetQuery] = useState('');
   const [shTypeFilter, setShTypeFilter] = useState('All');
   const [shStatusFilter, setShStatusFilter] = useState('All');
 
-  const [serviceHistoryRecordsList, setServiceHistoryRecordsList] = useState([
-    { id: 1, workOrderNo: 'WO-2025-0145', serviceDate: '12 Aug 2025', asset: 'AC-CH-001 (Chiller 01)', assetCategory: 'HVAC', serviceType: 'Preventive Maintenance', description: 'Chiller inspection and cleaning', status: 'Completed', engineer: 'Ahmed Khan', location: 'Dubai HQ - Building A', duration: '4 Hours', fullDescription: 'Chiller inspection and cleaning as per maintenance checklist. All parameters within normal range.', resolution: 'Completed. Chiller working fine.', nextDueDate: '12 Nov 2025', remarks: 'No major issues found. Minor filter cleaning done.', attachments: [{ id: 1, name: 'Service_Report.pdf', size: '450 KB' }, { id: 2, name: 'Photos.zip', size: '2.1 MB' }, { id: 3, name: 'Checklist.pdf', size: '320 KB' }] },
-    { id: 2, workOrderNo: 'WO-2025-0138', serviceDate: '28 Jul 2025', asset: 'AHU-02', assetCategory: 'HVAC', serviceType: 'Corrective Maintenance', description: 'Compressor replacement', status: 'Completed', engineer: 'Ramesh Nair', location: 'Dubai HQ - Building B', duration: '6 Hours', fullDescription: 'Replaced faulty compressor coil. Tested under load.', resolution: 'Compressor replaced and pressure tested.', nextDueDate: '28 Oct 2025', remarks: 'Part under warranty.', attachments: [{ id: 1, name: 'Compressor_Warranty.pdf', size: '510 KB' }, { id: 2, name: 'WorkLog.pdf', size: '180 KB' }] },
-    { id: 3, workOrderNo: 'WO-2025-0121', serviceDate: '15 Jul 2025', asset: 'LIFT-01', assetCategory: 'Lifts & Elevators', serviceType: 'Inspection', description: 'Annual lift inspection', status: 'Completed', engineer: 'Suresh Kumar', location: 'Dubai HQ - Elevator Shaft A', duration: '3 Hours', fullDescription: 'Civil defense annual elevator inspection and emergency brake test.', resolution: 'Passed all safety criteria. Certificate issued.', nextDueDate: '15 Jul 2026', remarks: 'Annual compliance certificate renewed.', attachments: [{ id: 1, name: 'Safety_Certificate.pdf', size: '1.1 MB' }] },
-    { id: 4, workOrderNo: 'WO-2025-0105', serviceDate: '30 Jun 2025', asset: 'GEN-01', assetCategory: 'Electrical', serviceType: 'Preventive Maintenance', description: 'Generator servicing', status: 'Completed', engineer: 'Ahmed Khan', location: 'Substation Yard', duration: '5 Hours', fullDescription: 'Engine oil flush, filter replacement and 100% load bank test.', resolution: 'Generator servicing completed cleanly.', nextDueDate: '30 Dec 2025', remarks: 'Fuel level restored to 100%.', attachments: [{ id: 1, name: 'Load_Test_Report.pdf', size: '890 KB' }] },
-    { id: 5, workOrderNo: 'WO-2025-0098', serviceDate: '18 Jun 2025', asset: 'FIRE-PUMP-01', assetCategory: 'Fire & Safety', serviceType: 'Corrective Maintenance', description: 'Pump motor repair', status: 'Completed', engineer: 'Ramesh Nair', location: 'Pump Room 2', duration: '4 Hours', fullDescription: 'Disassembled electric drive motor and replaced worn bearings.', resolution: 'Motor reassembled and pressure tested at 12 bar.', nextDueDate: '18 Dec 2025', remarks: 'System re-commissioned.', attachments: [{ id: 1, name: 'Pump_Service_Sheet.pdf', size: '420 KB' }] },
-    { id: 6, workOrderNo: 'WO-2025-0087', serviceDate: '05 Jun 2025', asset: 'AC-CH-002', assetCategory: 'HVAC', serviceType: 'Preventive Maintenance', description: 'Chiller filter change', status: 'Completed', engineer: 'Ali Hasan', location: 'Chiller Plant Room', duration: '2 Hours', fullDescription: 'Routine quarterly filter replacement for main condenser unit.', resolution: 'Filters replaced.', nextDueDate: '05 Dec 2025', remarks: 'Routine replacement.', attachments: [{ id: 1, name: 'Filter_Invoice.pdf', size: '290 KB' }] },
-    { id: 7, workOrderNo: 'WO-2025-0076', serviceDate: '22 May 2025', asset: 'AHU-01', assetCategory: 'HVAC', serviceType: 'Preventive Maintenance', description: 'AHU coil cleaning', status: 'Completed', engineer: 'Ahmed Khan', location: 'Floor 4 Mech Room', duration: '3 Hours', fullDescription: 'Foam chemical coil wash and belt tension adjustment.', resolution: 'Coils washed and airflow verified.', nextDueDate: '22 Nov 2025', remarks: 'Airflow increased by 15%.', attachments: [{ id: 1, name: 'AHU_Inspection.pdf', size: '350 KB' }] },
-    { id: 8, workOrderNo: 'WO-2025-0054', serviceDate: '10 Apr 2025', asset: 'PANEL-03', assetCategory: 'Electrical', serviceType: 'Corrective Maintenance', description: 'Electrical panel fault rectification', status: 'Completed', engineer: 'Suresh Kumar', location: 'Main LV Switchgear', duration: '4 Hours', fullDescription: 'Investigation of breaker trip. Replaced faulty 250A MCCB.', resolution: 'Panel energized and balanced.', nextDueDate: '10 Oct 2025', remarks: 'No thermal hotspot detected.', attachments: [{ id: 1, name: 'Thermal_Scan_Image.pdf', size: '1.4 MB' }] },
-    { id: 9, workOrderNo: 'WO-2025-0041', serviceDate: '25 Mar 2025', asset: 'LIFT-02', assetCategory: 'Lifts & Elevators', serviceType: 'Corrective Maintenance', description: 'Door sensor replacement', status: 'Completed', engineer: 'Ramesh Nair', location: 'Building A Core', duration: '2.5 Hours', fullDescription: 'Replaced misaligned infrared door safety curtain sensor.', resolution: 'Sensor installed and door timing calibrated.', nextDueDate: '25 Sep 2025', remarks: 'Door safety tested.', attachments: [{ id: 1, name: 'Door_Sensor_Manual.pdf', size: '620 KB' }] },
-    { id: 10, workOrderNo: 'WO-2025-0028', serviceDate: '12 Feb 2025', asset: 'FCU-12', assetCategory: 'HVAC', serviceType: 'Preventive Maintenance', description: 'FCU routine check', status: 'Completed', engineer: 'Ali Hasan', location: 'Office 304', duration: '1.5 Hours', fullDescription: 'Cleaned air filters, checked condensate drain line and thermostat.', resolution: 'Thermostat calibrated and drain line flushed.', nextDueDate: '12 Aug 2025', remarks: 'Minor filter cleaning done.', attachments: [{ id: 1, name: 'FCU_Checklist.pdf', size: '210 KB' }] }
-  ]);
+  const [serviceHistoryRecordsList, setServiceHistoryRecordsList] = useState([]);
 
-  const [selectedServiceRecord, setSelectedServiceRecord] = useState({
-    workOrderNo: 'WO-2025-0145',
-    serviceDate: '12 Aug 2025',
-    asset: 'AC-CH-001 - Chiller 01',
-    assetCategory: 'HVAC',
-    serviceType: 'Preventive Maintenance',
-    engineer: 'Ahmed Khan',
-    location: 'Dubai HQ - Building A',
-    duration: '4 Hours',
-    description: 'Chiller inspection and cleaning as per maintenance checklist. All parameters within normal range.',
-    resolution: 'Completed. Chiller working fine.',
-    nextDueDate: '12 Nov 2025',
-    remarks: 'No major issues found. Minor filter cleaning done.',
-    status: 'Completed',
-    attachments: [
-      { id: 1, name: 'Service_Report.pdf', size: '450 KB' },
-      { id: 2, name: 'Photos.zip', size: '2.1 MB' },
-      { id: 3, name: 'Checklist.pdf', size: '320 KB' }
-    ]
-  });
+  const [selectedServiceRecord, setSelectedServiceRecord] = useState({ attachments: [] });
 
   // Tab 7 State variables matching screenshot
   const [noteSearchQuery, setNoteSearchQuery] = useState('');
@@ -195,106 +182,11 @@ export function ServiceProviderAction() {
   const [noteAuthorFilter, setNoteAuthorFilter] = useState('All');
   const [noteDateRange, setNoteDateRange] = useState('');
 
-  const [providerNotesList, setProviderNotesList] = useState([
-    { id: 1, type: 'General', subject: 'Initial Discussion', preview: 'Discussed scope and capabilities...', createdBy: 'John Doe', createdOn: '12 Aug 2025 10:30 AM', description: "Discussed the service provider's capabilities for HVAC and Electrical maintenance. They confirmed availability across all UAE locations and shared preliminary documentation. Follow up with detailed proposal.", relatedTo: 'Contract / AMC', reference: 'AMC-2025-001', lastModifiedBy: 'John Doe', lastModifiedOn: '12 Aug 2025 02:00 PM' },
-    { id: 2, type: 'Meeting', subject: 'Kick-off Meeting', preview: 'Kick-off meeting held at Dubai HQ...', createdBy: 'Sarah Ahmed', createdOn: '28 Jul 2025 02:15 PM', description: 'Kick-off meeting held at Dubai HQ with vendor account manager to align SLA expectations and technician dispatch protocols.', relatedTo: 'Work Order', reference: 'WO-2025-0145', lastModifiedBy: 'Sarah Ahmed', lastModifiedOn: '28 Jul 2025 03:00 PM' },
-    { id: 3, type: 'Follow Up', subject: 'Quotation Follow Up', preview: 'Client requested revised pricing...', createdBy: 'John Doe', createdOn: '18 Jul 2025 11:20 AM', description: 'Vendor submitted revised commercial quotation for 3-year AMC extension.', relatedTo: 'Contract / AMC', reference: 'AMC-2025-001', lastModifiedBy: 'John Doe', lastModifiedOn: '18 Jul 2025 11:45 AM' },
-    { id: 4, type: 'Issue', subject: 'Service Delay', preview: 'Delay in chiller maintenance due to...', createdBy: 'Ramesh Nair', createdOn: '05 Jul 2025 04:00 PM', description: 'Delay in chiller maintenance due to delay in spare parts arrival from OEM manufacturer.', relatedTo: 'Work Order', reference: 'WO-2025-0138', lastModifiedBy: 'Ramesh Nair', lastModifiedOn: '05 Jul 2025 04:30 PM' },
-    { id: 5, type: 'Contract', subject: 'AMC Renewal Discussion', preview: 'Discussed AMC renewal for 2026...', createdBy: 'Sarah Ahmed', createdOn: '21 Jun 2025 09:45 AM', description: 'Draft AMC renewal terms reviewed with procurement team.', relatedTo: 'Contract / AMC', reference: 'AMC-2025-001', lastModifiedBy: 'Sarah Ahmed', lastModifiedOn: '21 Jun 2025 10:15 AM' },
-    { id: 6, type: 'General', subject: 'Good Performance', preview: 'Excellent service during recent PM...', createdBy: 'Ahmed Khan', createdOn: '10 Jun 2025 03:10 PM', description: 'Technician team demonstrated outstanding speed during emergency chiller repair.', relatedTo: 'Asset', reference: 'AC-CH-001', lastModifiedBy: 'Ahmed Khan', lastModifiedOn: '10 Jun 2025 03:30 PM' },
-    { id: 7, type: 'Meeting', subject: 'Site Visit', preview: 'Conducted site visit to assess...', createdBy: 'John Doe', createdOn: '25 May 2025 11:00 AM', description: 'Vendor lead engineer visited central plant room for pre-maintenance audit.', relatedTo: 'General', reference: '-', lastModifiedBy: 'John Doe', lastModifiedOn: '25 May 2025 11:30 AM' },
-    { id: 8, type: 'Follow Up', subject: 'Pending Documents', preview: 'Awaiting updated insurance certificate...', createdBy: 'Ramesh Nair', createdOn: '12 May 2025 12:30 PM', description: 'Sent reminder to vendor coordinator for updated third-party liability insurance.', relatedTo: 'General', reference: '-', lastModifiedBy: 'Ramesh Nair', lastModifiedOn: '12 May 2025 01:00 PM' }
-  ]);
+  const [providerNotesList, setProviderNotesList] = useState([]);
 
-  const [selectedNoteForm, setSelectedNoteForm] = useState({
-    id: 1,
-    type: 'General',
-    subject: 'Initial Discussion',
-    description: "Discussed the service provider's capabilities for HVAC and Electrical maintenance. They confirmed availability across all UAE locations and shared preliminary documentation. Follow up with detailed proposal.",
-    relatedTo: 'Contract / AMC',
-    reference: 'AMC-2025-001',
-    createdBy: 'John Doe',
-    createdOn: '12 Aug 2025 10:30 AM',
-    lastModifiedBy: 'John Doe',
-    lastModifiedOn: '12 Aug 2025 02:00 PM'
-  });
+  const [selectedNoteForm, setSelectedNoteForm] = useState({});
 
-  const [formData, setFormData] = useState({
-    id: 'sp-011',
-    providerCode: 'SP-011',
-    autoGenerateCode: false,
-    providerName: 'Al Futtaim AMC',
-    providerType: 'AMC Provider',
-    status: 'Active',
-    companyRegistrationNo: 'CN-458712',
-    taxRegistrationNo: '100258741200003',
-    website: 'www.alfuttaim.com',
-    yearEstablished: '2001',
-    defaultCurrency: 'AED',
-    paymentTermsDays: '30',
-    remarks: 'Authorized service provider for HVAC systems across UAE.',
-    logoUrl: '/logos/al-futtaim.png',
-    preferredProvider: true,
-    leadTimeDays: '7',
-    rating: 4.0,
-    primaryContact: 'Saeed Ahmed',
-    designation: 'Account Manager',
-    email: 'saeed.ahmed@alfuttaim.com',
-    phone: '+971 50 123 4567',
-    mobile: '+971 50 123 4567',
-    department: 'Operations',
-    isPrimaryChecked: true,
-    alternateContact: 'Fatima Noor',
-    alternatePhone: '+971 50 765 4321',
-    addressLine1: 'Al Futtaim Building, Sheikh Zayed Road',
-    addressLine2: 'P.O. Box 12345',
-    city: 'Dubai',
-    emirate: 'Dubai',
-    country: 'UAE',
-    postalCode: '12345',
-    authorizedCategories: ['HVAC', 'Lifts & Elevators'],
-    alternateContacts: [
-      { id: 'ac-1', name: 'Fatima Noor', designation: 'Service Coordinator', email: 'fatima.noor@alfuttaim.com', phone: '+971 4 333 2211', mobile: '+971 50 765 4321' },
-      { id: 'ac-2', name: 'Khaled Nasser', designation: 'Technical Manager', email: 'khaled.nasser@alfuttaim.com', phone: '+971 4 333 2299', mobile: '+971 56 778 9000' }
-    ],
-    contacts: [
-      { id: 'c1', name: 'Saeed Ahmed', designation: 'Account Manager', email: 'saeed.ahmed@alfuttaim.com', phone: '+971 50 123 4567', isPrimary: true },
-      { id: 'c2', name: 'Fatima Noor', designation: 'Service Coordinator', email: 'fatima.noor@alfuttaim.com', phone: '+971 50 765 4321', isPrimary: false }
-    ],
-    addresses: [
-      { id: 'a1', type: 'Headquarters', addressLine1: 'Al Futtaim Building, Sheikh Zayed Road', addressLine2: 'P.O. Box 12345', city: 'Dubai', emirate: 'Dubai', country: 'UAE' }
-    ],
-    contracts: [
-      {
-        id: 'cnt-001',
-        contractNumber: 'AMC-2026-HVAC-01',
-        contractName: 'HVAC Annual Comprehensive Maintenance 2026',
-        startDate: '2026-01-01',
-        endDate: '2026-12-31',
-        status: 'Active',
-        coverage: 'Full Parts & Labor',
-        sla: '2 Hour Emergency Response / 24 Hour Resolution',
-        coveredCategories: 'HVAC',
-        coveredLocations: 'All Dubai HQ Buildings',
-        visitEntitlements: '4 Visits / Year',
-        visitsCompleted: '2 / 4 Visits',
-        contractValue: 185000,
-        currency: 'AED'
-      }
-    ],
-    documents: [
-      { id: 'doc-1', name: 'Trade_License_AlFuttaim_2026.pdf', type: 'Trade License', expiryDate: '2026-12-31', fileSize: '2.4 MB', uploadDate: '2026-01-10' },
-      { id: 'doc-2', name: 'HVAC_AMC_Contract_Agreement.pdf', type: 'AMC Contract', expiryDate: '2026-12-31', fileSize: '5.1 MB', uploadDate: '2026-01-12' },
-      { id: 'doc-3', name: 'Civil_Defense_Safety_Cert.pdf', type: 'Certification', expiryDate: '2027-04-15', fileSize: '1.8 MB', uploadDate: '2026-02-01' }
-    ],
-    serviceHistory: [
-      { id: 'sh-1', workOrderNo: 'WO-2026-0001', assetTag: 'AS-00087', assetName: 'Chiller Unit #1 - Central Plant', type: 'Preventive', executionDate: '2026-06-15', technician: 'Saeed Ahmed', laborHours: 4.5, partsCost: 2400, totalCost: 3850, rating: 5.0, status: 'Completed' },
-      { id: 'sh-2', workOrderNo: 'WO-2026-0004', assetTag: 'AS-00091', assetName: 'Main Elevator Shaft B', type: 'Corrective', executionDate: '2026-07-22', technician: 'Tariq Mansoor', laborHours: 6.0, partsCost: 1500, totalCost: 4100, rating: 4.0, status: 'Completed' }
-    ],
-    notes: [
-      { id: 'n-1', text: 'Authorized vendor agreement renewed for 2026 fiscal year.', author: 'John Doe', timestamp: '2026-01-01 10:30 AM' }
-    ]
-  });
+  const [formData, setFormData] = useState(emptyLegacyProvider);
 
   // Modal states inside tabs
   const [showAddContractModal, setShowAddContractModal] = useState(false);
@@ -316,24 +208,201 @@ export function ServiceProviderAction() {
     setTimeout(() => setToast(null), 4000);
   };
 
-  // Load service providers from backend
-  const fetchProviders = async () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { id: routeId } = useParams();
+  const [categoryOptions, setCategoryOptions] = useState([]);
+  const [siteOptions, setSiteOptions] = useState([]);
+  const [assetOptions, setAssetOptions] = useState([]);
+  const [providerDetail, setProviderDetail] = useState(null);
+
+  const syncProvider = (detail, categories = categoryOptions, sites = siteOptions) => {
+    const provider = legacyProvider(detail, categories);
+    setProviderDetail(detail);
+    setFormData(provider);
+    const types = { HEAD_OFFICE: 'Head Office', SERVICE: 'Service Address', BILLING: 'Billing Address', OTHER: 'Other Address' };
+    const drafts = {};
+    (detail.addresses || []).forEach(item => { drafts[types[item.type] || 'Other Address'] = { id: item.id, addressLine1: item.line1 || '', addressLine2: item.line2 || '', city: item.city || '', emirate: item.state || '', country: item.country || '', postalCode: item.postalCode || '' }; });
+    if (!drafts['Head Office']) drafts['Head Office'] = { addressLine1: detail.addressLine1 || '', addressLine2: detail.addressLine2 || '', city: detail.city || '', emirate: detail.state || '', country: detail.country || '', postalCode: readProfile(detail.legacyDetails).postalCode || '' };
+    setAddressDrafts(drafts);
+    setServiceCategoriesList((detail.categories || []).map(item => ({
+      id: item.id, category: categories.find(c => c.id === item.categoryId)?.name || 'Category', categoryId: item.categoryId,
+      type: item.serviceType, desc: item.description || '', coverage: item.coverageSiteId ? sites.find(x => x.id === item.coverageSiteId)?.name || 'Site' : 'All Locations',
+      coverageSiteId: item.coverageSiteId, status: item.active ? 'Active' : 'Inactive'
+    })));
+    setSupportedServicesList((detail.services || []).map(item => ({ id: item.id, name: item.name, code: item.serviceCode, sla: item.responseHours, rate: item.rate, status: item.active ? 'Active' : 'Inactive' })));
+    setCertificationsList((detail.certifications || []).map(item => ({ id: item.id, name: item.name, certNo: item.certificateNumber || '', validTill: displayDate(item.validUntil), status: item.validUntil && new Date(item.validUntil) < new Date() ? 'Expired' : 'Active' })));
+    setAmcContractsList(provider.contracts);
+    setProviderDocumentsList(provider.documents);
+    setServiceHistoryRecordsList(provider.serviceHistory);
+    setSelectedServiceRecord(provider.serviceHistory[0] || { attachments: [] });
+    setProviderNotesList(provider.notes);
+    setSelectedNoteForm(provider.notes[0] || {});
+    setSelectedContractForm(provider.contracts[0] ? { ...provider.contracts[0], startDate: provider.contracts[0].startDateInput, endDate: provider.contracts[0].endDateInput, coverageTarget: 'SPECIFIC' } : {});
+    setSelectedDocForm(provider.documents[0] ? { ...provider.documents[0], validTill: provider.documents[0].validTillInput } : {});
+  };
+  const fetchProviders = async (respectRoute = true) => {
     setLoading(true);
     try {
-      const res = await api.get('/maintenance/service-providers');
-      if (res.success && res.providers) {
-        setProviders(res.providers);
+      const [providerRes, categoryRes, siteRes, assetRes] = await Promise.all([
+        api.get('/maintenance/service-providers'), api.get('/master-data/categories'),
+        api.get('/master-data/sites'), api.get('/maintenance/assets')
+      ]);
+      const categories = categoryRes.categories || [];
+      setCategoryOptions(categories); setSiteOptions(siteRes.sites || []); setAssetOptions(assetRes.assets || []);
+      const details = await Promise.all((providerRes.providers || []).map(p => api.get('/maintenance/service-providers/' + p.id)));
+      setProviders(details.map(d => legacyProvider(d.provider, categories)));
+      if (respectRoute && routeId) {
+        const matching = details.find(d => d.provider?.id === routeId || d.provider?.providerCode === routeId);
+        if (matching) { syncProvider(matching.provider, categories, siteRes.sites || []); setFormMode('EDIT'); setViewMode('FORM'); }
+      } else if (respectRoute && /\/(add|create)$/.test(location.pathname)) {
+        setFormData(emptyLegacyProvider()); setFormMode('CREATE'); setViewMode('FORM');
+      } else if (respectRoute) {
+        if (details[0]?.provider) {
+          syncProvider(details[0].provider, categories, siteRes.sites || []);
+          setFormMode('EDIT');
+        } else {
+          setFormData(emptyLegacyProvider());
+          setFormMode('CREATE');
+        }
+        setViewMode('FORM');
       }
-    } catch (err) {
-      console.warn('Backend fetch fallback to local store:', err);
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { showToastMsg(err.message || 'Could not load providers.', 'error'); }
+    finally { setLoading(false); }
   };
+  const refreshProvider = async id => {
+    const result = await api.get('/maintenance/service-providers/' + id);
+    syncProvider(result.provider);
+    await fetchProviders(false);
+  };
+  const openProvider = async id => {
+    try {
+      const result = await api.get('/maintenance/service-providers/' + id);
+      syncProvider(result.provider); setFormMode('EDIT'); setViewMode('FORM'); setActiveTab(1);
+    } catch (err) { showToastMsg(err.message || 'Could not open provider.', 'error'); }
+  };
+  useEffect(() => { fetchProviders(); }, [location.pathname]);
 
-  useEffect(() => {
-    fetchProviders();
-  }, []);
+  const saveChild = async (section, payload, itemId) => {
+    if (!formData.id) { showToastMsg('Save the provider first.', 'error'); return false; }
+    try {
+      const endpoint = `/maintenance/service-providers/${formData.id}/${section}${itemId ? '/' + itemId : ''}`;
+      if (itemId) await api.put(endpoint, payload); else await api.post(endpoint, payload);
+      await refreshProvider(formData.id);
+      showToastMsg('Saved to database.');
+      return true;
+    } catch (err) { showToastMsg(err.message || 'Could not save record.', 'error'); return false; }
+  };
+  const removeChild = async (section, itemId) => {
+    if (!formData.id) return;
+    try {
+      await api.delete(`/maintenance/service-providers/${formData.id}/${section}/${itemId}`);
+      await refreshProvider(formData.id);
+      showToastMsg('Record removed.');
+    } catch (err) { showToastMsg(err.message || 'Could not remove record.', 'error'); }
+  };
+  const saveCategory = async () => {
+    const categoryId = categoryOptions.find(item => item.name === categoryForm.category)?.id;
+    const siteId = categoryForm.coverageType === 'SPECIFIC' ? siteOptions.find(item => item.name === categoryForm.specificLocation)?.id : null;
+    if (!categoryId) return showToastMsg('Select an asset category.', 'error');
+    if (categoryForm.coverageType === 'SPECIFIC' && !siteId) return showToastMsg('Select a site.', 'error');
+    const saved = await saveChild('categories', { categoryId, serviceType: categoryForm.type, description: categoryForm.desc, coverageSiteId: siteId, active: categoryForm.status === 'Active' }, categoryForm.id);
+    if (saved) setCategoryForm({ category: '', type: 'PREVENTIVE', desc: '', coverageType: 'ALL', specificLocation: '', status: 'Active' });
+  };
+  const addressValue = key => addressDrafts[addressSubTab]?.[key] || '';
+  const updateAddress = (key, value) => setAddressDrafts(old => ({ ...old, [addressSubTab]: { ...old[addressSubTab], [key]: value } }));
+  const editService = async item => {
+    const name = window.prompt('Service name', item?.name || '');
+    if (name == null) return;
+    const serviceCode = window.prompt('Service code', item?.code || '');
+    if (serviceCode == null) return;
+    const responseHours = window.prompt('Response hours', String(item?.sla ?? ''));
+    if (responseHours == null) return;
+    const rate = window.prompt('Rate', String(item?.rate ?? ''));
+    if (rate == null) return;
+    await saveChild('services', { name, serviceCode, responseHours, rate, active: true }, item?.id);
+  };
+  const editCertification = async item => {
+    const name = window.prompt('Certification name', item?.name || '');
+    if (name == null) return;
+    const certificateNumber = window.prompt('Certificate number', item?.certNo || '');
+    if (certificateNumber == null) return;
+    const validUntil = window.prompt('Valid until (YYYY-MM-DD)', item?.validUntil && item.validUntil !== '—' ? inputDate(item.validUntil) : '');
+    if (validUntil == null) return;
+    await saveChild('certifications', { name, certificateNumber, validUntil }, item?.id);
+  };
+  const saveContract = async (draft, draftOnly = false) => {
+    if (!formData.id) { showToastMsg('Save the provider first.', 'error'); return false; }
+    try {
+      const payload = {
+        contractNumber: draft.contractNo || draft.contractNumber,
+        title: draft.contractName, contractType: draft.contractType || 'ANNUAL_MAINTENANCE',
+        startDate: draft.startDate, endDate: draft.endDate,
+        cost: Number(String(draft.contractValue || 0).replaceAll(',', '')), slaDetails: draft.description || draft.sla || '',
+        referenceNumber: draft.referenceNo || '', paymentTermsDays: draft.paymentTerms ?? null,
+        currency: draft.currency || formData.defaultCurrency || 'AED', coverageNotes: draft.coverage || '',
+        visitEntitlements: draft.visitEntitlements || '',
+        active: !draftOnly && draft.status !== 'Inactive', assetIds: draft.assetIds || []
+      };
+      const endpoint = `/maintenance/service-providers/${formData.id}/contracts`;
+      if (draft.id) await api.put(endpoint + '/' + draft.id, payload); else await api.post(endpoint, payload);
+      await refreshProvider(formData.id);
+      showToastMsg('Contract saved to database.');
+      return true;
+    } catch (err) { showToastMsg(err.message || 'Could not save contract.', 'error'); return false; }
+  };
+  const removeContract = async id => {
+    if (!formData.id || !window.confirm('Delete this contract and its asset coverage?')) return;
+    try {
+      await api.delete(`/maintenance/service-providers/${formData.id}/contracts/${id}`);
+      await refreshProvider(formData.id);
+      showToastMsg('Contract removed.');
+    } catch (err) { showToastMsg(err.message || 'Could not remove contract.', 'error'); }
+  };
+  const uploadProviderDocument = async file => {
+    if (!formData.id) return showToastMsg('Save the provider first.', 'error');
+    if (file.size > 10 * 1024 * 1024) return showToastMsg('Choose a file under 10 MB.', 'error');
+    try {
+      const uploaded = await uploadToCloudinary(file, { folder: 'fams_provider_documents' });
+      await saveChild('documents', {
+        name: file.name, type: (selectedDocForm.type || 'OTHER').toUpperCase().replaceAll(' ', '_'),
+        referenceNumber: selectedDocForm.refNo || '', issueDate: selectedDocForm.issueDate || null,
+        validUntil: selectedDocForm.validTill || null, description: selectedDocForm.description || '', fileSize: file.size, storageUrl: uploaded.url
+      });
+    } catch (err) { showToastMsg(err.message || 'Could not upload document.', 'error'); }
+  };
+  const uploadLogo = async file => {
+    if (!file) return;
+    if (!['image/jpeg', 'image/png'].includes(file.type) || file.size > 2 * 1024 * 1024) return showToastMsg('Choose a JPG or PNG under 2 MB.', 'error');
+    try {
+      const uploaded = await uploadToCloudinary(file, { folder: 'fams_provider_logos' });
+      setFormData(old => ({ ...old, logoUrl: uploaded.url }));
+      showToastMsg('Logo uploaded. Save the provider to keep it.');
+    } catch (err) { showToastMsg(err.message || 'Could not upload logo.', 'error'); }
+  };
+  const saveDocumentDetails = async () => {
+    if (!selectedDocForm.id) return showToastMsg('Select an uploaded document.', 'error');
+    await saveChild('documents', {
+      name: selectedDocForm.name, type: (selectedDocForm.type || 'OTHER').toUpperCase().replaceAll(' ', '_'),
+      referenceNumber: selectedDocForm.refNo || '', issueDate: selectedDocForm.issueDate || null,
+      validUntil: selectedDocForm.validTill || null, description: selectedDocForm.description || '', fileSize: selectedDocForm.fileSize,
+      storageUrl: selectedDocForm.storageUrl
+    }, selectedDocForm.id);
+  };
+  const exportHistory = () => {
+    const rows = [['Work Order', 'Service Date', 'Asset', 'Service Type', 'Status']];
+    serviceHistoryRecordsList.forEach(item => rows.push([item.workOrderNo, item.serviceDate, item.asset, item.serviceType, item.status]));
+    const csv = rows.map(row => row.map(value => `"${String(value || '').replaceAll('"', '""')}"`).join(',')).join('\r\n');
+    const url = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url; link.download = 'provider-service-history.csv'; link.click(); URL.revokeObjectURL(url);
+  };
+  const historyCount = type => serviceHistoryRecordsList.filter(item => item.serviceType === type).length;
+  const historyPercent = type => serviceHistoryRecordsList.length ? Math.round(historyCount(type) / serviceHistoryRecordsList.length * 100) : 0;
+  const saveNote = async () => {
+    if (!selectedNoteForm.subject?.trim() || !selectedNoteForm.description?.trim()) return showToastMsg('Subject and Description are required.', 'error');
+    const { type, subject, description, relatedTo, reference } = selectedNoteForm;
+    await saveChild('notes', { text: 'FAMS_NOTE_V1:' + JSON.stringify({ type, subject, description, relatedTo, reference }) }, selectedNoteForm.id);
+  };
 
   const handleInputChange = (field, value) => {
     setFormData(prev => {
@@ -357,135 +426,71 @@ export function ServiceProviderAction() {
   };
 
   const handleSave = async (isDraft = false) => {
-    // Validation rules per FSD
-    if (!formData.providerName || !formData.providerName.trim()) {
-      showToastMsg('Provider Name is required.', 'error');
-      return;
+    if (!formData.providerName.trim()) return showToastMsg('Provider Name is required.', 'error');
+    const status = isDraft ? 'DRAFT' : apiStatus(formData.status);
+    if (status === 'ACTIVE' && (!formData.primaryContact || !formData.email || !formData.phone)) {
+      return showToastMsg('Active providers need a contact, email, and phone.', 'error');
     }
-    if (!formData.providerType) {
-      showToastMsg('Provider Type is required.', 'error');
-      return;
-    }
-    if (!formData.primaryContact || !formData.primaryContact.trim()) {
-      showToastMsg('Primary Contact Name is required.', 'error');
-      return;
-    }
-    if (!formData.email || !formData.email.trim()) {
-      showToastMsg('Primary Email address is required.', 'error');
-      return;
-    }
-    if (!formData.phone || !formData.phone.trim()) {
-      showToastMsg('Primary Phone number is required.', 'error');
-      return;
-    }
-
     setSaving(true);
     try {
       const payload = {
-        ...formData,
-        isDraft,
-        status: isDraft ? 'Draft' : formData.status
+        providerCode: formData.providerCode, autoGenerateCode: formData.autoGenerateCode,
+        providerName: formData.providerName, providerType: apiType(formData.providerType), status,
+        companyRegistrationNo: formData.companyRegistrationNo, taxRegistrationNo: formData.taxRegistrationNo,
+        website: formData.website, currency: formData.defaultCurrency, paymentTermsDays: formData.paymentTermsDays,
+        preferred: formData.preferredProvider, leadTimeDays: formData.leadTimeDays, rating: formData.rating,
+        remarks: formData.remarks, primaryContact: formData.primaryContact, email: formData.email, phone: formData.phone,
+        legacyDetails: Object.fromEntries(profileFields.map(key => [key, key === 'postalCode' ? (addressDrafts['Head Office']?.postalCode || formData.postalCode || '') : (formData[key] || '')])),
+        addressLine1: addressDrafts['Head Office']?.addressLine1 || formData.addressLine1,
+        addressLine2: addressDrafts['Head Office']?.addressLine2 || formData.addressLine2,
+        city: addressDrafts['Head Office']?.city || formData.city,
+        state: addressDrafts['Head Office']?.emirate || formData.emirate,
+        country: addressDrafts['Head Office']?.country || formData.country
       };
-
-      const res = await api.post('/maintenance/service-providers', payload);
-      if (res.success) {
-        showToastMsg(`Service Provider ${formData.providerCode} ${isDraft ? 'saved as Draft' : 'saved successfully'}!`);
-        fetchProviders();
-      } else {
-        showToastMsg(res.message || 'Saved successfully (Local updated)');
+      const endpoint = '/maintenance/service-providers';
+      const result = formMode === 'EDIT' && formData.id
+        ? await api.put(endpoint + '/' + formData.id, payload)
+        : await api.post(endpoint, payload);
+      const providerId = result.provider.id;
+      const existingCategories = providerDetail?.categories || [];
+      const chosenIds = formData.authorizedCategories.map(name => categoryOptions.find(c => c.name === name)?.id).filter(Boolean);
+      for (const item of existingCategories.filter(item => !chosenIds.includes(item.categoryId))) {
+        await api.delete(endpoint + '/' + providerId + '/categories/' + item.id);
       }
-    } catch (err) {
-      showToastMsg(`Saved successfully! (${formData.providerCode})`);
-    } finally {
-      setSaving(false);
-    }
+      for (const categoryId of chosenIds.filter(id => !existingCategories.some(item => item.categoryId === id))) {
+        await api.post(endpoint + '/' + providerId + '/categories', { categoryId, serviceType: 'PREVENTIVE', active: true });
+      }
+      const addressTypes = { 'Head Office': 'HEAD_OFFICE', 'Service Address': 'SERVICE', 'Billing Address': 'BILLING', 'Other Address': 'OTHER' };
+      for (const [tabName, draft] of Object.entries(addressDrafts)) {
+        if (!draft.addressLine1) continue;
+        const item = { type: addressTypes[tabName], line1: draft.addressLine1, line2: draft.addressLine2, city: draft.city, state: draft.emirate, country: draft.country, postalCode: draft.postalCode };
+        if (draft.id) await api.put(endpoint + '/' + providerId + '/addresses/' + draft.id, item);
+        else await api.post(endpoint + '/' + providerId + '/addresses', item);
+      }
+      await refreshProvider(providerId);
+      setFormMode('EDIT');
+      showToastMsg(isDraft ? 'Provider saved as Draft.' : 'Provider saved to database.');
+    } catch (err) { showToastMsg(err.message || 'Could not save provider.', 'error'); }
+    finally { setSaving(false); }
   };
 
-  const handleAddContractSubmit = (e) => {
+  const handleAddContractSubmit = async e => {
     e.preventDefault();
-    if (!newContractForm.contractName || !newContractForm.startDate || !newContractForm.endDate) {
-      showToastMsg('Contract Name, Start Date, and End Date are mandatory.', 'error');
-      return;
-    }
-
-    const createdContract = {
-      id: `cnt-${Date.now()}`,
-      contractNumber: newContractForm.contractNumber || `AMC-2026-${Math.floor(1000 + Math.random() * 9000)}`,
-      contractName: newContractForm.contractName,
-      startDate: newContractForm.startDate,
-      endDate: newContractForm.endDate,
-      status: new Date(newContractForm.endDate) < new Date() ? 'Expired' : 'Active',
-      coverage: newContractForm.coverage,
-      sla: newContractForm.sla,
-      coveredCategories: newContractForm.coveredCategories,
-      coveredLocations: newContractForm.coveredLocations,
-      visitEntitlements: newContractForm.visitEntitlements,
-      visitsCompleted: '0 / 4 Visits',
-      contractValue: parseFloat(newContractForm.contractValue || 0),
-      currency: 'AED'
-    };
-
-    setFormData(prev => ({
-      ...prev,
-      contracts: [createdContract, ...prev.contracts]
-    }));
-
+    const saved = await saveContract({ contractNo: newContractForm.contractNumber, contractName: newContractForm.contractName,
+      contractType: 'ANNUAL_MAINTENANCE', startDate: newContractForm.startDate, endDate: newContractForm.endDate,
+      contractValue: newContractForm.contractValue, description: newContractForm.sla,
+      coverage: newContractForm.coverage, visitEntitlements: newContractForm.visitEntitlements,
+      currency: formData.defaultCurrency, assetIds: [] });
+    if (!saved) return;
     setShowAddContractModal(false);
-    setNewContractForm({
-      contractNumber: '',
-      contractName: '',
-      startDate: '',
-      endDate: '',
-      coverage: 'Full Parts & Labor',
-      sla: '2 Hour Emergency Response',
-      coveredCategories: 'HVAC',
-      coveredLocations: 'All Facilities',
-      visitEntitlements: '4 Visits / Year',
-      contractValue: ''
-    });
-
-    showToastMsg(`Contract ${createdContract.contractNumber} linked to provider!`);
+    setNewContractForm({ contractNumber: '', contractName: '', startDate: '', endDate: '', contractValue: '', sla: '' });
   };
 
   const handleResetForm = () => {
-    setFormData({
-      id: `sp-${Date.now()}`,
-      providerCode: `SP-${String(Math.floor(12 + Math.random() * 80)).padStart(3, '0')}`,
-      autoGenerateCode: false,
-      providerName: '',
-      providerType: 'AMC Provider',
-      status: 'Active',
-      companyRegistrationNo: '',
-      taxRegistrationNo: '',
-      website: '',
-      yearEstablished: '',
-      defaultCurrency: 'AED',
-      paymentTermsDays: '30',
-      remarks: '',
-      logoUrl: '',
-      preferredProvider: false,
-      leadTimeDays: '7',
-      rating: 4.0,
-      primaryContact: '',
-      designation: '',
-      email: '',
-      phone: '',
-      alternateContact: '',
-      alternatePhone: '',
-      addressLine1: '',
-      addressLine2: '',
-      city: 'Dubai',
-      emirate: 'Dubai',
-      country: 'UAE',
-      authorizedCategories: ['HVAC'],
-      contacts: [],
-      addresses: [],
-      contracts: [],
-      documents: [],
-      serviceHistory: [],
-      notes: []
-    });
-    setFormMode('CREATE');
+    setFormData(emptyLegacyProvider()); setProviderDetail(null); setFormMode('CREATE'); setActiveTab(1);
+    setAddressDrafts({});
+    setServiceCategoriesList([]); setSupportedServicesList([]); setCertificationsList([]);
+    setAmcContractsList([]); setProviderDocumentsList([]); setServiceHistoryRecordsList([]); setProviderNotesList([]);
   };
 
   const filteredProviders = providers.filter(p => {
@@ -493,7 +498,7 @@ export function ServiceProviderAction() {
     const matchesQ = !searchQuery || 
       p.providerCode.toLowerCase().includes(q) ||
       p.providerName.toLowerCase().includes(q) ||
-      p.primaryContact.toLowerCase().includes(q);
+      (p.primaryContact || '').toLowerCase().includes(q);
     const matchesT = typeFilter === 'ALL' || p.providerType === typeFilter;
     const matchesS = statusFilter === 'ALL' || p.status === statusFilter;
     return matchesQ && matchesT && matchesS;
@@ -675,7 +680,7 @@ export function ServiceProviderAction() {
                     <span className="text-slate-500">Rating:</span>
                     <div className="flex items-center gap-1 text-amber-500">
                       <Star className="w-3.5 h-3.5 fill-amber-400 text-amber-400" />
-                      <span className="font-bold text-slate-800">{p.rating?.toFixed(1) || '4.0'}</span>
+                      <span className="font-bold text-slate-800">{typeof p.rating === 'number' ? p.rating.toFixed(1) : '—'}</span>
                     </div>
                   </div>
                 </div>
@@ -687,9 +692,7 @@ export function ServiceProviderAction() {
 
                   <button
                     onClick={() => {
-                      setFormData(p);
-                      setFormMode('EDIT');
-                      setViewMode('FORM');
+                       openProvider(p.id);
                     }}
                     className="px-3 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] font-semibold rounded text-xs transition-colors"
                   >
@@ -941,15 +944,12 @@ export function ServiceProviderAction() {
                       </label>
                       <div className="border-2 border-dashed border-slate-200 rounded-xl p-4 text-center bg-slate-50 hover:bg-slate-100/50 transition-colors">
                         <div className="w-24 h-16 mx-auto bg-white border border-slate-200 rounded-lg flex items-center justify-center font-bold text-purple-900 text-sm shadow-2xs mb-2">
-                          {formData.providerName ? (
-                            <span className="text-xs text-center px-1 font-bold text-[#6C2BD9]">{formData.providerName}</span>
-                          ) : (
-                            'Logo'
-                          )}
+                          {formData.logoUrl ? <img src={formData.logoUrl} alt="Provider logo" className="h-full w-full object-contain" /> : formData.providerName ? <span className="text-xs text-center px-1 font-bold text-[#6C2BD9]">{formData.providerName}</span> : 'Logo'}
                         </div>
-                        <button className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold inline-flex items-center gap-1 hover:bg-slate-50 shadow-2xs">
+                        <label className="px-3 py-1.5 bg-white border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold inline-flex items-center gap-1 hover:bg-slate-50 shadow-2xs cursor-pointer">
+                          <input type="file" accept="image/jpeg,image/png" className="hidden" onChange={e => uploadLogo(e.target.files?.[0])} />
                           <Upload className="w-3.5 h-3.5 text-[#6C2BD9]" /> Upload Logo
-                        </button>
+                        </label>
                         <p className="text-[10px] text-slate-400 mt-1.5">
                           Supported formats: JPG, PNG (Max 2MB)
                         </p>
@@ -1305,7 +1305,7 @@ export function ServiceProviderAction() {
                     </label>
                     <input
                       type="text"
-                      value={formData.mobile || '+971 50 123 4567'}
+                          value={formData.mobile || ''}
                       onChange={(e) => handleInputChange('mobile', e.target.value)}
                       placeholder="+971 50 123 4567"
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
@@ -1317,10 +1317,11 @@ export function ServiceProviderAction() {
                       Department
                     </label>
                     <select
-                      value={formData.department || 'Operations'}
+                      value={formData.department || ''}
                       onChange={(e) => handleInputChange('department', e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                     >
+                      <option value="">Select department</option>
                       <option value="Operations">Operations</option>
                       <option value="Maintenance">Maintenance</option>
                       <option value="Management">Management</option>
@@ -1382,16 +1383,11 @@ export function ServiceProviderAction() {
                           <td className="p-2.5 font-mono">{alt.phone}</td>
                           <td className="p-2.5 font-mono">{alt.mobile}</td>
                           <td className="p-2.5 text-right space-x-2">
-                            <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
+                            <button onClick={() => { setNewContactPerson(alt); setShowAddContactPersonModal(true); }} className="text-slate-400 hover:text-[#6C2BD9] p-1">
                               <Edit3 className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => {
-                                setFormData(prev => ({
-                                  ...prev,
-                                  alternateContacts: prev.alternateContacts.filter(ac => ac.id !== alt.id)
-                                }));
-                              }}
+                              onClick={() => removeChild('contacts', alt.id)}
                               className="text-slate-400 hover:text-red-600 p-1"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
@@ -1442,8 +1438,8 @@ export function ServiceProviderAction() {
                       </label>
                       <input
                         type="text"
-                        value={formData.addressLine1}
-                        onChange={(e) => handleInputChange('addressLine1', e.target.value)}
+                        value={addressValue('addressLine1')}
+                        onChange={(e) => updateAddress('addressLine1', e.target.value)}
                         placeholder="Al Futtaim Building, Sheikh Zayed Road"
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       />
@@ -1455,8 +1451,8 @@ export function ServiceProviderAction() {
                       </label>
                       <input
                         type="text"
-                        value={formData.addressLine2}
-                        onChange={(e) => handleInputChange('addressLine2', e.target.value)}
+                        value={addressValue('addressLine2')}
+                        onChange={(e) => updateAddress('addressLine2', e.target.value)}
                         placeholder="P.O. Box 12345"
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
@@ -1468,8 +1464,8 @@ export function ServiceProviderAction() {
                       </label>
                       <input
                         type="text"
-                        value={formData.city}
-                        onChange={(e) => handleInputChange('city', e.target.value)}
+                        value={addressValue('city')}
+                        onChange={(e) => updateAddress('city', e.target.value)}
                         placeholder="Dubai"
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       />
@@ -1480,10 +1476,11 @@ export function ServiceProviderAction() {
                         Emirate <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.emirate}
-                        onChange={(e) => handleInputChange('emirate', e.target.value)}
+                        value={addressValue('emirate')}
+                        onChange={(e) => updateAddress('emirate', e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       >
+                        <option value="">Select Emirate</option>
                         <option value="Dubai">Dubai</option>
                         <option value="Abu Dhabi">Abu Dhabi</option>
                         <option value="Sharjah">Sharjah</option>
@@ -1499,10 +1496,11 @@ export function ServiceProviderAction() {
                         Country <span className="text-red-500">*</span>
                       </label>
                       <select
-                        value={formData.country}
-                        onChange={(e) => handleInputChange('country', e.target.value)}
+                        value={addressValue('country')}
+                        onChange={(e) => updateAddress('country', e.target.value)}
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
                       >
+                        <option value="">Select Country</option>
                         <option value="UAE">UAE</option>
                         <option value="Saudi Arabia">Saudi Arabia</option>
                         <option value="Qatar">Qatar</option>
@@ -1518,8 +1516,8 @@ export function ServiceProviderAction() {
                       </label>
                       <input
                         type="text"
-                        value={formData.postalCode || '12345'}
-                        onChange={(e) => handleInputChange('postalCode', e.target.value)}
+                        value={addressValue('postalCode')}
+                        onChange={(e) => updateAddress('postalCode', e.target.value)}
                         placeholder="12345"
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                       />
@@ -1550,7 +1548,7 @@ export function ServiceProviderAction() {
                     <div className="absolute inset-0 opacity-80 bg-[radial-gradient(#cbd5e1_1px,transparent_1px)] [background-size:12px_12px]" />
                     <div className="absolute w-full h-3 bg-slate-200 top-1/2 -rotate-12" />
                     <div className="absolute w-2 h-full bg-slate-200 left-1/3 rotate-6" />
-                    <span className="absolute left-3 top-3 text-[9px] font-bold text-slate-400 font-mono">Sheikh Zayed Rd</span>
+                    <span className="absolute left-3 top-3 text-[9px] font-bold text-slate-400 font-mono">Location preview</span>
 
                     {/* Red Map Pin matching Screenshot */}
                     <div className="relative z-10 flex flex-col items-center">
@@ -1558,11 +1556,11 @@ export function ServiceProviderAction() {
                         📍
                       </div>
                       <span className="bg-slate-900/90 text-white text-[9px] px-2 py-0.5 rounded shadow-md font-semibold mt-0.5 whitespace-nowrap">
-                        Al Futtaim Tower
+                        {addressValue('addressLine1') || 'No address selected'}
                       </span>
                     </div>
 
-                    <button className="absolute top-2 right-2 p-1 bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 shadow-2xs">
+                    <button onClick={() => { const address = [addressValue('addressLine1'), addressValue('city'), addressValue('country')].filter(Boolean).join(', '); if (address) window.open('https://www.google.com/maps/search/?api=1&query=' + encodeURIComponent(address), '_blank', 'noopener,noreferrer'); }} className="absolute top-2 right-2 p-1 bg-white border border-slate-200 rounded text-slate-600 hover:bg-slate-50 shadow-2xs">
                       <ExternalLink className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -1591,8 +1589,8 @@ export function ServiceProviderAction() {
                     <button
                       onClick={() => {
                         setCategoryForm({
-                          category: 'HVAC',
-                          type: 'Preventive, Corrective',
+                          category: '',
+                          type: 'PREVENTIVE',
                           desc: '',
                           coverageType: 'ALL',
                           specificLocation: '',
@@ -1641,6 +1639,7 @@ export function ServiceProviderAction() {
                               <button
                                 onClick={() => {
                                   setCategoryForm({
+                                    id: sc.id,
                                     category: sc.category,
                                     type: sc.type,
                                     desc: sc.desc,
@@ -1655,7 +1654,7 @@ export function ServiceProviderAction() {
                               </button>
                               <button
                                 onClick={() => {
-                                  setServiceCategoriesList(prev => prev.filter(c => c.id !== sc.id));
+                                  removeChild('categories', sc.id);
                                 }}
                                 className="text-slate-400 hover:text-red-600 p-1"
                               >
@@ -1691,12 +1690,8 @@ export function ServiceProviderAction() {
                           onChange={(e) => setCategoryForm({ ...categoryForm, category: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                         >
-                          <option value="HVAC">HVAC</option>
-                          <option value="Electrical">Electrical</option>
-                          <option value="Lifts & Elevators">Lifts & Elevators</option>
-                          <option value="Fire & Safety">Fire & Safety</option>
-                          <option value="IT Equipment">IT Equipment</option>
-                          <option value="Mechanical">Mechanical</option>
+                          <option value="">Select category</option>
+                          {categoryOptions.map(item => <option key={item.id} value={item.name}>{item.name}</option>)}
                         </select>
                       </div>
 
@@ -1709,10 +1704,10 @@ export function ServiceProviderAction() {
                           onChange={(e) => setCategoryForm({ ...categoryForm, type: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                         >
-                          <option value="Preventive, Corrective">Preventive, Corrective</option>
-                          <option value="Inspection, Certification">Inspection, Certification</option>
-                          <option value="Emergency Breakdown">Emergency Breakdown</option>
-                          <option value="Full Maintenance">Full Maintenance</option>
+                          <option value="PREVENTIVE">Preventive</option>
+                          <option value="CORRECTIVE">Corrective</option>
+                          <option value="INSPECTION">Inspection</option>
+                          <option value="CERTIFICATION">Certification</option>
                         </select>
                       </div>
                     </div>
@@ -1763,13 +1758,9 @@ export function ServiceProviderAction() {
                       </div>
 
                       <div className="relative pt-1">
-                        <input
-                          type="text"
-                          placeholder="Select locations..."
-                          value={categoryForm.specificLocation}
-                          onChange={(e) => setCategoryForm({ ...categoryForm, specificLocation: e.target.value })}
-                          className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
-                        />
+                        <select value={categoryForm.specificLocation} onChange={e => setCategoryForm({ ...categoryForm, specificLocation: e.target.value })} disabled={categoryForm.coverageType !== 'SPECIFIC'} className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#6C2BD9]">
+                          <option value="">Select site</option>{siteOptions.map(site => <option key={site.id} value={site.name}>{site.name}</option>)}
+                        </select>
                         <Search className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
                       </div>
                     </div>
@@ -1794,8 +1785,8 @@ export function ServiceProviderAction() {
                       type="button"
                       onClick={() => {
                         setCategoryForm({
-                          category: 'HVAC',
-                          type: 'Preventive, Corrective',
+                          category: '',
+                          type: 'PREVENTIVE',
                           desc: '',
                           coverageType: 'ALL',
                           specificLocation: '',
@@ -1809,16 +1800,7 @@ export function ServiceProviderAction() {
                     <button
                       type="button"
                       onClick={() => {
-                        const newCat = {
-                          id: Date.now(),
-                          category: categoryForm.category,
-                          type: categoryForm.type,
-                          desc: categoryForm.desc || 'General Support',
-                          coverage: categoryForm.coverageType === 'ALL' ? 'UAE (All Locations)' : (categoryForm.specificLocation || 'Dubai'),
-                          status: categoryForm.status
-                        };
-                        setServiceCategoriesList(prev => [...prev, newCat]);
-                        showToastMsg(`Service Category ${newCat.category} added!`);
+                        saveCategory();
                       }}
                       className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold transition-all shadow-xs"
                     >
@@ -1843,18 +1825,7 @@ export function ServiceProviderAction() {
                     </div>
 
                     <button
-                      onClick={() => {
-                        const createdSvc = {
-                          id: Date.now(),
-                          name: 'General Maintenance Service',
-                          code: `SV-GEN-${Math.floor(100 + Math.random() * 900)}`,
-                          sla: 24,
-                          rate: 350,
-                          status: 'Active'
-                        };
-                        setSupportedServicesList(prev => [...prev, createdSvc]);
-                        showToastMsg('Service item added!');
-                      }}
+                      onClick={() => editService()}
                       className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap"
                     >
                       <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Service
@@ -1894,12 +1865,10 @@ export function ServiceProviderAction() {
                               </span>
                             </td>
                             <td className="p-2.5 text-right space-x-1.5">
-                              <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
+                              <button onClick={() => editService(svc)} className="text-slate-400 hover:text-[#6C2BD9] p-1"><Edit3 className="w-3.5 h-3.5" /></button>
                               <button
                                 onClick={() => {
-                                  setSupportedServicesList(prev => prev.filter(s => s.id !== svc.id));
+                                  removeChild('services', svc.id);
                                 }}
                                 className="text-slate-400 hover:text-red-600 p-1"
                               >
@@ -1921,17 +1890,7 @@ export function ServiceProviderAction() {
                     </h2>
 
                     <button
-                      onClick={() => {
-                        const newCert = {
-                          id: Date.now(),
-                          name: 'Civil Defense License',
-                          certNo: `LIC-${Math.floor(1000 + Math.random() * 9000)}`,
-                          validTill: '31 Dec 2027',
-                          status: 'Active'
-                        };
-                        setCertificationsList(prev => [...prev, newCert]);
-                        showToastMsg('Certification record added!');
-                      }}
+                      onClick={() => editCertification()}
                       className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs whitespace-nowrap"
                     >
                       <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Certification
@@ -1963,12 +1922,10 @@ export function ServiceProviderAction() {
                               </span>
                             </td>
                             <td className="p-2.5 text-right space-x-1.5">
-                              <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
-                                <Edit3 className="w-3.5 h-3.5" />
-                              </button>
+                              <button onClick={() => editService(svc)} className="text-slate-400 hover:text-[#6C2BD9] p-1"><Edit3 className="w-3.5 h-3.5" /></button>
                               <button
                                 onClick={() => {
-                                  setCertificationsList(prev => prev.filter(c => c.id !== cert.id));
+                                  removeChild('certifications', cert.id);
                                 }}
                                 className="text-slate-400 hover:text-red-600 p-1"
                               >
@@ -2005,23 +1962,7 @@ export function ServiceProviderAction() {
                       </div>
 
                       <button
-                        onClick={() => {
-                          setSelectedContractForm({
-                            contractNo: `AMC-2026-${Math.floor(100 + Math.random() * 900)}`,
-                            contractName: 'New Maintenance Agreement 2026',
-                            contractType: 'AMC',
-                            status: 'Active',
-                            startDate: '2026-01-01',
-                            endDate: '2027-12-31',
-                            contractValue: '300,000',
-                            currency: 'AED',
-                            referenceNo: `PO-${Math.floor(100000 + Math.random() * 900000)}`,
-                            paymentTerms: '30',
-                            description: 'Comprehensive service agreement coverage.',
-                            coverageTarget: 'ALL',
-                            selectedTag: 'All Assets'
-                          });
-                        }}
+                        onClick={() => setSelectedContractForm({ contractNo: '', contractName: '', contractType: 'ANNUAL_MAINTENANCE', status: 'Active', startDate: '', endDate: '', contractValue: '', currency: formData.defaultCurrency || 'AED', description: '', assetIds: [], coverageTarget: 'SPECIFIC' })}
                         className="px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs whitespace-nowrap"
                       >
                         <Plus className="w-3.5 h-3.5 text-white" /> Add Contract / AMC
@@ -2054,7 +1995,7 @@ export function ServiceProviderAction() {
                           <option value="Expired">Expired</option>
                         </select>
 
-                        <button className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100">
+                        <button onClick={() => { setContractSearchTerm(''); setContractStatusFilter('All'); }} title="Clear contract filters" className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100">
                           <Filter className="w-3.5 h-3.5" />
                         </button>
                       </div>
@@ -2077,7 +2018,7 @@ export function ServiceProviderAction() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-900">
-                          {amcContractsList.map((cnt, idx) => (
+                          {amcContractsList.filter(cnt => (!contractSearchTerm || [cnt.contractNo, cnt.contractName, cnt.referenceNo].some(value => String(value || '').toLowerCase().includes(contractSearchTerm.toLowerCase()))) && (contractStatusFilter === 'All' || cnt.status === contractStatusFilter)).map((cnt, idx) => (
                             <tr key={cnt.id} className="hover:bg-slate-50/70 transition-colors">
                               <td className="p-2.5 font-bold text-slate-500">{idx + 1}</td>
                               <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">{cnt.contractNo}</td>
@@ -2096,31 +2037,17 @@ export function ServiceProviderAction() {
                               </td>
                               <td className="p-2.5 text-right space-x-1">
                                 <button
-                                  onClick={() => setSelectedContractForm({
-                                    contractNo: cnt.contractNo,
-                                    contractName: cnt.contractName,
-                                    contractType: cnt.contractType,
-                                    status: cnt.status,
-                                    startDate: '2025-01-01',
-                                    endDate: '2027-12-31',
-                                    contractValue: cnt.value,
-                                    currency: 'AED',
-                                    referenceNo: cnt.referenceNo,
-                                    paymentTerms: cnt.paymentTerms,
-                                    description: cnt.description,
-                                    coverageTarget: 'ALL',
-                                    selectedTag: 'All HVAC Assets (126)'
-                                  })}
+                                  onClick={() => setSelectedContractForm({ ...cnt, startDate: cnt.startDateInput, endDate: cnt.endDateInput, assetIds: cnt.assetIds || [], coverageTarget: 'SPECIFIC' })}
                                   className="text-slate-400 hover:text-[#6C2BD9] p-1"
                                   title="View Details"
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
-                                <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
+                                <button onClick={() => editCertification(cert)} className="text-slate-400 hover:text-[#6C2BD9] p-1">
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => setAmcContractsList(prev => prev.filter(c => c.id !== cnt.id))}
+                                  onClick={() => removeContract(cnt.id)}
                                   className="text-slate-400 hover:text-red-600 p-1"
                                 >
                                   <Trash2 className="w-3.5 h-3.5" />
@@ -2158,7 +2085,7 @@ export function ServiceProviderAction() {
                         </div>
                         <div>
                           <p className="text-[11px] font-semibold text-slate-600">Assets Covered</p>
-                          <p className="text-xl font-bold text-slate-900">126</p>
+                          <p className="text-xl font-bold text-slate-900">{new Set(amcContractsList.flatMap(c => c.assetIds || [])).size}</p>
                         </div>
                       </div>
 
@@ -2169,7 +2096,7 @@ export function ServiceProviderAction() {
                         </div>
                         <div>
                           <p className="text-[11px] font-semibold text-slate-600">Locations Covered</p>
-                          <p className="text-xl font-bold text-slate-900">8</p>
+                          <p className="text-xl font-bold text-slate-900">{new Set(assetOptions.filter(a => amcContractsList.some(c => c.assetIds?.includes(a.id))).map(a => a.siteId).filter(Boolean)).size}</p>
                         </div>
                       </div>
 
@@ -2180,7 +2107,7 @@ export function ServiceProviderAction() {
                         </div>
                         <div>
                           <p className="text-[11px] font-semibold text-slate-600">Service Categories</p>
-                          <p className="text-xl font-bold text-slate-900">5</p>
+                          <p className="text-xl font-bold text-slate-900">{serviceCategoriesList.length}</p>
                         </div>
                       </div>
                     </div>
@@ -2210,22 +2137,16 @@ export function ServiceProviderAction() {
                           </tr>
                         </thead>
                         <tbody className="divide-y divide-slate-100 font-medium text-slate-900">
-                          <tr className="hover:bg-amber-50/30 transition-colors">
-                            <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">SERV-2024-010</td>
-                            <td className="p-2.5 font-bold text-slate-900">Fire System Support</td>
-                            <td className="p-2.5 font-mono text-slate-700">31 Dec 2025</td>
-                            <td className="p-2.5">
-                              <span className="px-2.5 py-0.5 bg-amber-100 text-amber-800 font-bold rounded-full text-[11px]">
-                                45
-                              </span>
-                            </td>
-                            <td className="p-2.5 font-semibold text-slate-900">95,000</td>
-                            <td className="p-2.5 text-right">
-                              <button className="text-slate-400 hover:text-[#6C2BD9] p-1">
-                                <Eye className="w-3.5 h-3.5" />
-                              </button>
-                            </td>
-                          </tr>
+                          {amcContractsList.filter(c => { const days = (new Date(c.endDateInput) - new Date()) / 86400000; return days >= 0 && days <= 90; }).map(c => (
+                            <tr key={c.id} className="hover:bg-amber-50/30 transition-colors">
+                              <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">{c.contractNo}</td>
+                              <td className="p-2.5 font-bold text-slate-900">{c.contractName}</td>
+                              <td className="p-2.5 font-mono text-slate-700">{c.endDate}</td>
+                              <td className="p-2.5">{Math.ceil((new Date(c.endDateInput) - new Date()) / 86400000)}</td>
+                              <td className="p-2.5 font-semibold text-slate-900">{c.value}</td>
+                              <td className="p-2.5 text-right"><button onClick={() => setSelectedContractForm({ ...c, startDate: c.startDateInput, endDate: c.endDateInput })} className="text-slate-400 hover:text-[#6C2BD9] p-1"><Eye className="w-3.5 h-3.5" /></button></td>
+                            </tr>
+                          ))}
                         </tbody>
                       </table>
                     </div>
@@ -2411,68 +2332,24 @@ export function ServiceProviderAction() {
                     {/* SECTION 2: COVERAGE DETAILS */}
                     <div className="space-y-2 pt-2 border-t border-slate-100">
                       <h3 className="text-xs font-bold text-[#6C2BD9]">Coverage Details</h3>
-
                       <div className="flex border-b border-slate-200 gap-2 text-xs font-semibold">
                         {['Covered Assets', 'Covered Locations', 'Covered Categories'].map(ctab => (
-                          <button
-                            key={ctab}
-                            onClick={() => setCoverageSubTab(ctab)}
-                            className={`pb-1.5 px-2 border-b-2 transition-all ${
-                              coverageSubTab === ctab
-                                ? 'border-[#6C2BD9] text-[#6C2BD9] font-bold'
-                                : 'border-transparent text-slate-500 hover:text-slate-800'
-                            }`}
-                          >
-                            {ctab}
-                          </button>
+                          <button key={ctab} type="button" onClick={() => setCoverageSubTab(ctab)}
+                            className={coverageSubTab === ctab ? 'pb-1.5 px-2 border-b-2 border-[#6C2BD9] text-[#6C2BD9] font-bold' : 'pb-1.5 px-2 border-b-2 border-transparent text-slate-500 hover:text-slate-800'}>{ctab}</button>
                         ))}
                       </div>
-
-                      <div className="space-y-2 pt-1">
+                      {coverageSubTab === 'Covered Assets' && <div className="space-y-2 pt-1">
                         <div className="flex items-center gap-4 text-xs font-medium text-slate-700">
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="coverageTargetRadio"
-                              checked={selectedContractForm.coverageTarget === 'ALL'}
-                              onChange={() => setSelectedContractForm({ ...selectedContractForm, coverageTarget: 'ALL' })}
-                              className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
-                            />
-                            <span>All Assets</span>
-                          </label>
-                          <label className="flex items-center gap-1.5 cursor-pointer">
-                            <input
-                              type="radio"
-                              name="coverageTargetRadio"
-                              checked={selectedContractForm.coverageTarget === 'SPECIFIC'}
-                              onChange={() => setSelectedContractForm({ ...selectedContractForm, coverageTarget: 'SPECIFIC' })}
-                              className="text-[#6C2BD9] focus:ring-[#6C2BD9]"
-                            />
-                            <span>Specific Assets</span>
-                          </label>
+                          <label className="flex items-center gap-1.5"><input type="radio" name="coverageTargetRadio" checked={selectedContractForm.coverageTarget === 'ALL'} onChange={() => setSelectedContractForm({ ...selectedContractForm, coverageTarget: 'ALL', assetIds: assetOptions.map(a => a.id) })} />All Assets</label>
+                          <label className="flex items-center gap-1.5"><input type="radio" name="coverageTargetRadio" checked={selectedContractForm.coverageTarget !== 'ALL'} onChange={() => setSelectedContractForm({ ...selectedContractForm, coverageTarget: 'SPECIFIC' })} />Specific Assets</label>
                         </div>
-
-                        <div className="relative">
-                          <input
-                            type="text"
-                            placeholder="Search and select assets..."
-                            className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
-                          />
-                          <Search className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
+                        <div className="max-h-36 overflow-auto rounded-lg border border-slate-200 bg-slate-50 p-2">
+                          {assetOptions.map(asset => <label key={asset.id} className="flex items-center gap-2 py-1 text-xs"><input type="checkbox" checked={(selectedContractForm.assetIds || []).includes(asset.id)} onChange={e => setSelectedContractForm(prev => ({ ...prev, coverageTarget: 'SPECIFIC', assetIds: e.target.checked ? [...(prev.assetIds || []), asset.id] : (prev.assetIds || []).filter(id => id !== asset.id) }))} />{asset.assetId} — {asset.description}</label>)}
+                          {!assetOptions.length && <span className="text-slate-500">No registered assets available.</span>}
                         </div>
-
-                        {selectedContractForm.selectedTag && (
-                          <div className="flex items-center gap-1.5 bg-purple-50 text-[#6C2BD9] border border-purple-200 px-2.5 py-1 rounded-md text-xs font-semibold w-fit">
-                            <span>{selectedContractForm.selectedTag}</span>
-                            <button
-                              onClick={() => setSelectedContractForm({ ...selectedContractForm, selectedTag: '' })}
-                              className="text-[#6C2BD9] hover:text-purple-900 ml-1 font-bold"
-                            >
-                              ×
-                            </button>
-                          </div>
-                        )}
-                      </div>
+                      </div>}
+                      {coverageSubTab === 'Covered Locations' && <div className="text-xs text-slate-700">{[...new Set(assetOptions.filter(a => selectedContractForm.assetIds?.includes(a.id)).map(a => a.site?.name).filter(Boolean))].join(', ') || 'No locations covered.'}</div>}
+                      {coverageSubTab === 'Covered Categories' && <div className="text-xs text-slate-700">{[...new Set(assetOptions.filter(a => selectedContractForm.assetIds?.includes(a.id)).map(a => a.category?.name).filter(Boolean))].join(', ') || 'No categories covered.'}</div>}
                     </div>
                   </div>
 
@@ -2480,21 +2357,21 @@ export function ServiceProviderAction() {
                   <div className="flex justify-end items-center gap-2 pt-3 border-t border-slate-100">
                     <button
                       type="button"
+                      onClick={() => setSelectedContractForm({})}
                       className="px-3.5 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50"
                     >
                       Cancel
                     </button>
                     <button
                       type="button"
+                      onClick={() => saveContract(selectedContractForm, true)}
                       className="px-3.5 py-1.5 border border-[#6C2BD9] text-[#6C2BD9] rounded-lg text-xs font-semibold hover:bg-purple-50 flex items-center gap-1"
                     >
                       <FileText className="w-3.5 h-3.5" /> Save as Draft
                     </button>
                     <button
                       type="button"
-                      onClick={() => {
-                        showToastMsg(`Contract ${selectedContractForm.contractNo} saved!`);
-                      }}
+                      onClick={() => saveContract(selectedContractForm)}
                       className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg text-xs transition-all shadow-xs"
                     >
                       Save Contract
@@ -2615,32 +2492,21 @@ export function ServiceProviderAction() {
 
                               <td className="p-2.5 text-right space-x-1">
                                 <button
-                                  onClick={() => setSelectedDocForm({
-                                    name: doc.name,
-                                    type: doc.type,
-                                    refNo: doc.refNo === '-' ? '' : doc.refNo,
-                                    issueDate: doc.issueDate === '-' ? '' : doc.issueDate,
-                                    validTill: doc.validTill === '-' ? '' : doc.validTill,
-                                    status: doc.status === 'N/A' ? 'Valid' : doc.status,
-                                    description: doc.description || ''
-                                  })}
+                                  onClick={() => setSelectedDocForm({ ...doc, validTill: doc.validTillInput })}
                                   className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="View Document Details"
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
                                 <button 
-                                  onClick={() => showToastMsg(`Downloading ${doc.name}...`)}
+                                  onClick={() => window.open(doc.storageUrl, '_blank', 'noopener,noreferrer')}
                                   className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="Download"
                                 >
                                   <Download className="w-3.5 h-3.5" />
                                 </button>
                                 <button
-                                  onClick={() => {
-                                    setProviderDocumentsList(prev => prev.filter(d => d.id !== doc.id));
-                                    showToastMsg(`Document ${doc.name} deleted.`);
-                                  }}
+                                  onClick={() => removeChild('documents', doc.id)}
                                   className="text-[#6C2BD9] hover:text-red-600 p-1"
                                   title="Delete Document"
                                 >
@@ -2683,34 +2549,7 @@ export function ServiceProviderAction() {
                         <input
                           type="file"
                           className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) {
-                              const newDoc = {
-                                id: Date.now(),
-                                name: file.name,
-                                type: 'Trade License',
-                                refNo: `REF-${Math.floor(1000 + Math.random() * 9000)}`,
-                                validTill: '31 Dec 2026',
-                                size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
-                                status: 'Valid',
-                                fileType: file.name.endsWith('.pdf') ? 'pdf' : 'doc',
-                                issueDate: '2024-01-01',
-                                description: `Uploaded document ${file.name}`
-                              };
-                              setProviderDocumentsList(prev => [newDoc, ...prev]);
-                              setSelectedDocForm({
-                                name: file.name,
-                                type: 'Trade License',
-                                refNo: newDoc.refNo,
-                                issueDate: '2024-01-01',
-                                validTill: '2026-12-31',
-                                status: 'Valid',
-                                description: `Uploaded document ${file.name}`
-                              });
-                              showToastMsg(`File ${file.name} uploaded successfully!`);
-                            }
-                          }}
+                          onChange={e => { const selected = e.target.files?.[0]; if (selected) uploadProviderDocument(selected); }}
                         />
                         <span className="px-4 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-bold cursor-pointer transition-colors shadow-2xs inline-block">
                           Choose Files
@@ -2837,6 +2676,7 @@ export function ServiceProviderAction() {
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
                       </div>
+                      <button type="button" onClick={saveDocumentDetails} className="px-3 py-1.5 bg-[#6C2BD9] text-white rounded-lg text-xs font-bold">Save Document Details</button>
                     </div>
                   </div>
                 </div>
@@ -2865,7 +2705,7 @@ export function ServiceProviderAction() {
                       </div>
 
                       <button 
-                        onClick={() => showToastMsg('Exporting Service History to Excel/PDF...')}
+                        onClick={exportHistory}
                         className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 self-start sm:self-auto"
                       >
                         <Download className="w-3.5 h-3.5 text-white" /> Export
@@ -2972,22 +2812,7 @@ export function ServiceProviderAction() {
                             .map((sh, idx) => (
                               <tr 
                                 key={sh.id} 
-                                onClick={() => setSelectedServiceRecord({
-                                  workOrderNo: sh.workOrderNo,
-                                  serviceDate: sh.serviceDate,
-                                  asset: sh.asset,
-                                  assetCategory: sh.assetCategory || 'HVAC',
-                                  serviceType: sh.serviceType,
-                                  engineer: sh.engineer,
-                                  location: sh.location,
-                                  duration: sh.duration,
-                                  description: sh.fullDescription || sh.description,
-                                  resolution: sh.resolution,
-                                  nextDueDate: sh.nextDueDate,
-                                  remarks: sh.remarks,
-                                  status: sh.status,
-                                  attachments: sh.attachments || []
-                                })}
+                                onClick={() => setSelectedServiceRecord(sh)}
                                 className={`cursor-pointer transition-colors ${
                                   selectedServiceRecord.workOrderNo === sh.workOrderNo ? 'bg-purple-50/80 font-bold' : 'hover:bg-slate-50/70'
                                 }`}
@@ -3005,7 +2830,7 @@ export function ServiceProviderAction() {
                                 </td>
                                 <td className="p-2.5 text-slate-800">{sh.engineer}</td>
                                 <td className="p-2.5 text-right">
-                                  <button className="text-[#6C2BD9] hover:text-purple-900 p-1" title="View Work Order Record">
+                                  <button onClick={e => { e.stopPropagation(); navigate('/maintenance?workOrder=' + sh.id); }} className="text-[#6C2BD9] hover:text-purple-900 p-1" title="View Work Order Record">
                                     <Eye className="w-3.5 h-3.5" />
                                   </button>
                                 </td>
@@ -3038,7 +2863,7 @@ export function ServiceProviderAction() {
                           </div>
                           <div>
                             <p className="text-[10px] font-semibold text-slate-500">Total Services</p>
-                            <p className="text-lg font-extrabold text-slate-900">52</p>
+                            <p className="text-lg font-extrabold text-slate-900">{serviceHistoryRecordsList.length}</p>
                           </div>
                         </div>
 
@@ -3049,7 +2874,7 @@ export function ServiceProviderAction() {
                           </div>
                           <div>
                             <p className="text-[10px] font-semibold text-slate-500">Completed</p>
-                            <p className="text-lg font-extrabold text-slate-900">48</p>
+                            <p className="text-lg font-extrabold text-slate-900">{serviceHistoryRecordsList.filter(item => item.status === 'Completed').length}</p>
                           </div>
                         </div>
 
@@ -3060,7 +2885,7 @@ export function ServiceProviderAction() {
                           </div>
                           <div>
                             <p className="text-[10px] font-semibold text-slate-500">In Progress</p>
-                            <p className="text-lg font-extrabold text-slate-900">2</p>
+                            <p className="text-lg font-extrabold text-slate-900">{serviceHistoryRecordsList.filter(item => item.status === 'In Progress').length}</p>
                           </div>
                         </div>
 
@@ -3071,7 +2896,7 @@ export function ServiceProviderAction() {
                           </div>
                           <div>
                             <p className="text-[10px] font-semibold text-slate-500">Cancelled</p>
-                            <p className="text-lg font-extrabold text-slate-900">2</p>
+                            <p className="text-lg font-extrabold text-slate-900">{serviceHistoryRecordsList.filter(item => item.status === 'Cancelled').length}</p>
                           </div>
                         </div>
                       </div>
@@ -3091,7 +2916,7 @@ export function ServiceProviderAction() {
                             <path
                               className="text-[#6C2BD9] stroke-current"
                               strokeWidth="4"
-                              strokeDasharray="54 100"
+                              strokeDasharray={historyPercent('Preventive Maintenance') + ' 100'}
                               strokeDashoffset="0"
                               fill="none"
                               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
@@ -3100,8 +2925,8 @@ export function ServiceProviderAction() {
                             <path
                               className="text-purple-500 stroke-current"
                               strokeWidth="4"
-                              strokeDasharray="31 100"
-                              strokeDashoffset="-54"
+                              strokeDasharray={historyPercent('Corrective Maintenance') + ' 100'}
+                              strokeDashoffset={-historyPercent('Preventive Maintenance')}
                               fill="none"
                               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                             />
@@ -3109,8 +2934,8 @@ export function ServiceProviderAction() {
                             <path
                               className="text-emerald-500 stroke-current"
                               strokeWidth="4"
-                              strokeDasharray="12 100"
-                              strokeDashoffset="-85"
+                              strokeDasharray={historyPercent('Inspection') + ' 100'}
+                              strokeDashoffset={-(historyPercent('Preventive Maintenance') + historyPercent('Corrective Maintenance'))}
                               fill="none"
                               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                             />
@@ -3118,14 +2943,14 @@ export function ServiceProviderAction() {
                             <path
                               className="text-amber-500 stroke-current"
                               strokeWidth="4"
-                              strokeDasharray="4 100"
-                              strokeDashoffset="-97"
+                              strokeDasharray={historyPercent('Certification') + ' 100'}
+                              strokeDashoffset={-(historyPercent('Preventive Maintenance') + historyPercent('Corrective Maintenance') + historyPercent('Inspection'))}
                               fill="none"
                               d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831"
                             />
                           </svg>
                           <div className="absolute text-center">
-                            <p className="text-base font-extrabold text-slate-900 leading-none">52</p>
+                            <p className="text-base font-extrabold text-slate-900 leading-none">{serviceHistoryRecordsList.length}</p>
                             <p className="text-[9px] font-semibold text-slate-400">Total</p>
                           </div>
                         </div>
@@ -3137,7 +2962,7 @@ export function ServiceProviderAction() {
                               <span className="w-2.5 h-2.5 rounded bg-[#6C2BD9] inline-block" />
                               <span>Preventive Maintenance</span>
                             </div>
-                            <span className="font-bold text-slate-900">28 (54%)</span>
+                            <span className="font-bold text-slate-900">{historyCount('Preventive Maintenance')} ({historyPercent('Preventive Maintenance')}%)</span>
                           </div>
 
                           <div className="flex justify-between items-center">
@@ -3145,7 +2970,7 @@ export function ServiceProviderAction() {
                               <span className="w-2.5 h-2.5 rounded bg-purple-500 inline-block" />
                               <span>Corrective Maintenance</span>
                             </div>
-                            <span className="font-bold text-slate-900">16 (31%)</span>
+                            <span className="font-bold text-slate-900">{historyCount('Corrective Maintenance')} ({historyPercent('Corrective Maintenance')}%)</span>
                           </div>
 
                           <div className="flex justify-between items-center">
@@ -3153,7 +2978,7 @@ export function ServiceProviderAction() {
                               <span className="w-2.5 h-2.5 rounded bg-emerald-500 inline-block" />
                               <span>Inspection</span>
                             </div>
-                            <span className="font-bold text-slate-900">6 (12%)</span>
+                            <span className="font-bold text-slate-900">{historyCount('Inspection')} ({historyPercent('Inspection')}%)</span>
                           </div>
 
                           <div className="flex justify-between items-center">
@@ -3161,7 +2986,7 @@ export function ServiceProviderAction() {
                               <span className="w-2.5 h-2.5 rounded bg-amber-500 inline-block" />
                               <span>Certification</span>
                             </div>
-                            <span className="font-bold text-slate-900">2 (4%)</span>
+                            <span className="font-bold text-slate-900">{historyCount('Certification')} ({historyPercent('Certification')}%)</span>
                           </div>
                         </div>
                       </div>
@@ -3179,7 +3004,7 @@ export function ServiceProviderAction() {
                       </span>
 
                       <button
-                        onClick={() => showToastMsg(`Navigating to Work Order ${selectedServiceRecord.workOrderNo}...`)}
+                        onClick={() => selectedServiceRecord.id && navigate('/maintenance?workOrder=' + selectedServiceRecord.id)}
                         className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 rounded-lg text-xs font-semibold flex items-center gap-1 transition-colors shadow-2xs"
                       >
                         View Work Order <ExternalLink className="w-3 h-3 text-[#6C2BD9]" />
@@ -3267,7 +3092,8 @@ export function ServiceProviderAction() {
                       </h2>
 
                       <button
-                        onClick={() => showToastMsg('Downloading all attachments...')}
+                        onClick={() => (selectedServiceRecord.attachments || []).forEach(att => window.open(att.url, '_blank', 'noopener,noreferrer'))}
+                        disabled={!selectedServiceRecord.attachments?.length}
                         className="text-xs font-semibold text-[#6C2BD9] hover:text-purple-900 flex items-center gap-1"
                       >
                         <Download className="w-3.5 h-3.5" /> Download All
@@ -3292,7 +3118,7 @@ export function ServiceProviderAction() {
                               <td className="p-2 text-slate-500 font-mono text-[11px]">{att.size}</td>
                               <td className="p-2 text-right">
                                 <button 
-                                  onClick={() => showToastMsg(`Downloading ${att.name}...`)}
+                                  onClick={() => window.open(att.url, '_blank', 'noopener,noreferrer')}
                                   className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                 >
                                   <Download className="w-3.5 h-3.5" />
@@ -3328,22 +3154,7 @@ export function ServiceProviderAction() {
                     </div>
 
                     <button
-                      onClick={() => {
-                        const newNote = {
-                          id: Date.now(),
-                          type: 'General',
-                          subject: 'New Internal Note',
-                          preview: 'Enter note description...',
-                          createdBy: 'John Doe',
-                          createdOn: '16 Sep 2026 05:25 PM',
-                          description: '',
-                          relatedTo: 'General',
-                          reference: '-',
-                          lastModifiedBy: 'John Doe',
-                          lastModifiedOn: '16 Sep 2026 05:25 PM'
-                        };
-                        setSelectedNoteForm(newNote);
-                      }}
+                      onClick={() => setSelectedNoteForm({ type: 'General', subject: '', description: '', relatedTo: 'General', reference: '' })}
                       className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 self-start sm:self-auto"
                     >
                       <Plus className="w-3.5 h-3.5 text-white" /> Add Note
@@ -3487,8 +3298,7 @@ export function ServiceProviderAction() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setProviderNotesList(prev => prev.filter(item => item.id !== n.id));
-                                    showToastMsg(`Note "${n.subject}" deleted.`);
+                                    removeChild('notes', n.id);
                                   }}
                                   className="text-[#6C2BD9] hover:text-red-600 p-1"
                                   title="Delete Note"
@@ -3611,7 +3421,7 @@ export function ServiceProviderAction() {
                         <input
                           type="text"
                           disabled
-                          value={selectedNoteForm.createdBy || 'John Doe'}
+                          value={selectedNoteForm.createdBy || ''}
                           className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none"
                         />
                       </div>
@@ -3623,7 +3433,7 @@ export function ServiceProviderAction() {
                         <div className="relative">
                           <input
                             type="text"
-                            value={selectedNoteForm.createdOn || '12 Aug 2025 10:30 AM'}
+                            value={selectedNoteForm.createdOn || ''}
                             onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, createdOn: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#6C2BD9] font-mono text-[11px]"
                           />
@@ -3641,7 +3451,7 @@ export function ServiceProviderAction() {
                         <input
                           type="text"
                           disabled
-                          value={selectedNoteForm.lastModifiedBy || 'John Doe'}
+                          value={selectedNoteForm.lastModifiedBy || ''}
                           className="w-full bg-slate-100 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-700 focus:outline-none"
                         />
                       </div>
@@ -3653,7 +3463,7 @@ export function ServiceProviderAction() {
                         <div className="relative">
                           <input
                             type="text"
-                            value={selectedNoteForm.lastModifiedOn || '12 Aug 2025 02:00 PM'}
+                            value={selectedNoteForm.lastModifiedOn || ''}
                             onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, lastModifiedOn: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs text-slate-800 focus:outline-none focus:border-[#6C2BD9] font-mono text-[11px]"
                           />
@@ -3674,17 +3484,7 @@ export function ServiceProviderAction() {
                     <div className="pt-2 flex justify-end">
                       <button
                         type="button"
-                        onClick={() => {
-                          if (!selectedNoteForm.subject || !selectedNoteForm.description) {
-                            showToastMsg('Subject and Description are required', 'error');
-                            return;
-                          }
-                          const updatedList = providerNotesList.some(n => n.id === selectedNoteForm.id)
-                            ? providerNotesList.map(n => n.id === selectedNoteForm.id ? { ...selectedNoteForm, preview: selectedNoteForm.description.substring(0, 35) + '...' } : n)
-                            : [{ ...selectedNoteForm, preview: selectedNoteForm.description.substring(0, 35) + '...' }, ...providerNotesList];
-                          setProviderNotesList(updatedList);
-                          showToastMsg(`Note "${selectedNoteForm.subject}" saved!`);
-                        }}
+                        onClick={saveNote}
                         className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg text-xs flex items-center justify-center gap-1.5 transition-all shadow-xs"
                       >
                         <Save className="w-3.5 h-3.5 text-white" /> Save Note
@@ -3835,30 +3635,13 @@ export function ServiceProviderAction() {
             </div>
 
             <form
-              onSubmit={(e) => {
-                e.preventDefault();
-                if (!newContactPerson.name || !newContactPerson.email) {
-                  showToastMsg('Name and Email are required', 'error');
-                  return;
-                }
-
-                const created = {
-                  id: `ac-${Date.now()}`,
-                  name: newContactPerson.name,
-                  designation: newContactPerson.designation || 'Staff',
-                  email: newContactPerson.email,
-                  phone: newContactPerson.phone || '',
-                  mobile: newContactPerson.mobile || ''
-                };
-
-                setFormData(prev => ({
-                  ...prev,
-                  alternateContacts: [...(prev.alternateContacts || []), created]
-                }));
-
+              onSubmit={async e => { e.preventDefault();
+                if (!newContactPerson.name || !newContactPerson.email) return showToastMsg('Name and Email are required.', 'error');
+                const saved = await saveChild('contacts', { name: newContactPerson.name, designation: newContactPerson.designation,
+                  email: newContactPerson.email, phone: newContactPerson.phone, mobile: newContactPerson.mobile, isPrimary: false }, newContactPerson.id);
+                if (!saved) return;
                 setShowAddContactPersonModal(false);
                 setNewContactPerson({ name: '', designation: '', email: '', phone: '', mobile: '' });
-                showToastMsg(`Contact ${created.name} added successfully!`);
               }}
               className="space-y-3 text-xs"
             >
@@ -3945,4 +3728,3 @@ export function ServiceProviderAction() {
 }
 
 export default ServiceProviderAction;
-

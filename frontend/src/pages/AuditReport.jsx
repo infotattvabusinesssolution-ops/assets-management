@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useNavigate, useSearchParams } from 'react-router-dom';
+import { useNavigate, useSearchParams, useParams } from 'react-router-dom';
 import {
   ArrowLeft,
   Search,
@@ -11,6 +11,7 @@ import {
   MapPin,
   Users,
   FileText,
+  AlertCircle,
   AlertTriangle,
   Building2,
   Calendar,
@@ -46,7 +47,18 @@ import clsx from 'clsx';
 // ---------------------------------------------------------------------------
 // Seed Data (Matches Reference Screenshot AUD-2026-0008 1-to-1)
 // ---------------------------------------------------------------------------
-const DEFAULT_AUDIT_INFO = null;
+const DEFAULT_AUDIT_INFO = {
+  auditId: 'AUD-2026-0008',
+  auditName: 'HQ Annual IT Asset Audit 2026',
+  auditType: 'Physical Verification',
+  company: 'Dubai HQ',
+  location: 'All Locations',
+  period: '01 Sep 2026 - 15 Sep 2026',
+  status: 'Completed',
+  createdBy: 'John Doe',
+  createdOn: '25 Aug 2026 @ 10:30',
+  completedOn: '15 Sep 2026 @ 16:20'
+};
 const DEFAULT_KPIS = {
   totalAssets: 0,
   verified: 0,
@@ -100,10 +112,12 @@ const SEEDED_SAMPLE_ASSETS = [];
 
 export function AuditReport() {
   const navigate = useNavigate();
+  const { id: paramAuditId } = useParams();
   const [searchParams] = useSearchParams();
 
   // Filters State
-  const [selectedAudit, setSelectedAudit] = useState('AUD-2026-0008');
+  const initialAudit = paramAuditId || searchParams.get('auditId') || searchParams.get('id') || 'AUD-2026-0008';
+  const [selectedAudit, setSelectedAudit] = useState(initialAudit);
   const [selectedCompany, setSelectedCompany] = useState('Dubai HQ');
   const [selectedLocation, setSelectedLocation] = useState('All Locations');
   const [selectedDateRange, setSelectedDateRange] = useState('01 Sep 2026 - 15 Sep 2026');
@@ -146,15 +160,16 @@ export function AuditReport() {
         }
       });
       const dataObj = res?.data?.data || res?.data || res;
-      if (dataObj && (dataObj.auditInfo || dataObj.kpis)) {
-        if (dataObj.auditInfo) setAuditInfo(dataObj.auditInfo);
-        if (dataObj.kpis) setKpis(dataObj.kpis);
+      if (dataObj && typeof dataObj === 'object') {
+        if (dataObj.auditInfo) setAuditInfo((prev) => ({ ...prev, ...dataObj.auditInfo }));
+        if (dataObj.kpis) setKpis((prev) => ({ ...prev, ...dataObj.kpis }));
         if (dataObj.donut || dataObj.donutChart) setDonutBreakdown(dataObj.donut || dataObj.donutChart);
         if (dataObj.trend || dataObj.trendData) setTrendData(dataObj.trend || dataObj.trendData);
         if (dataObj.locationResults) setLocationData(dataObj.locationResults);
       }
     } catch (err) {
       console.warn('Using seeded report summary fallback:', err);
+      setAuditInfo((prev) => prev || { ...DEFAULT_AUDIT_INFO, auditId: selectedAudit });
     } finally {
       setLoading(false);
     }
@@ -525,34 +540,34 @@ export function AuditReport() {
               <h3 className="text-sm font-bold text-slate-900 border-b border-slate-100 pb-2 mb-3 flex items-center justify-between">
                 <span>Audit Information</span>
                 <span className="text-[10px] font-mono bg-purple-50 text-[#6C2BD9] px-2 py-0.5 rounded font-bold border border-purple-100">
-                  {auditInfo.auditId}
+                  {auditInfo?.auditId || selectedAudit || '—'}
                 </span>
               </h3>
 
               <div className="space-y-2 text-xs">
                 <div className="flex items-start">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Audit ID</span>
-                  <span className="font-mono font-bold text-slate-800">: {auditInfo.auditId}</span>
+                  <span className="font-mono font-bold text-slate-800">: {auditInfo?.auditId || selectedAudit || '—'}</span>
                 </div>
                 <div className="flex items-start">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Audit Name</span>
-                  <span className="font-semibold text-slate-800 leading-snug">: {auditInfo.auditName}</span>
+                  <span className="font-semibold text-slate-800 leading-snug">: {auditInfo?.auditName || '—'}</span>
                 </div>
                 <div className="flex items-start">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Audit Type</span>
-                  <span className="text-slate-700">: {auditInfo.auditType}</span>
+                  <span className="text-slate-700">: {auditInfo?.auditType || 'Physical Verification'}</span>
                 </div>
                 <div className="flex items-start">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Company</span>
-                  <span className="text-slate-700">: {auditInfo.company}</span>
+                  <span className="text-slate-700">: {auditInfo?.company || selectedCompany || '—'}</span>
                 </div>
                 <div className="flex items-start">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Location</span>
-                  <span className="text-slate-700">: {auditInfo.location}</span>
+                  <span className="text-slate-700">: {auditInfo?.location || selectedLocation || '—'}</span>
                 </div>
                 <div className="flex items-start">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Period</span>
-                  <span className="text-slate-700 font-mono text-[11px]">: {auditInfo.period}</span>
+                  <span className="text-slate-700 font-mono text-[11px]">: {auditInfo?.period || selectedDateRange || '—'}</span>
                 </div>
                 <div className="flex items-center">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Status</span>
@@ -560,21 +575,21 @@ export function AuditReport() {
                     <span className="text-slate-700 mr-1">:</span>
                     <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-100 text-emerald-700">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-500"></span>
-                      {auditInfo.status}
+                      {auditInfo?.status || 'Completed'}
                     </span>
                   </div>
                 </div>
                 <div className="flex items-start pt-1 border-t border-slate-100">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Created By</span>
-                  <span className="text-slate-700">: {auditInfo.createdBy}</span>
+                  <span className="text-slate-700">: {auditInfo?.createdBy || '—'}</span>
                 </div>
                 <div className="flex items-start">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Created On</span>
-                  <span className="text-slate-500 text-[11px]">: {auditInfo.createdOn}</span>
+                  <span className="text-slate-500 text-[11px]">: {auditInfo?.createdOn || '—'}</span>
                 </div>
                 <div className="flex items-start">
                   <span className="w-24 text-slate-400 shrink-0 font-medium">Completed On</span>
-                  <span className="text-slate-500 text-[11px]">: {auditInfo.completedOn}</span>
+                  <span className="text-slate-500 text-[11px]">: {auditInfo?.completedOn || '—'}</span>
                 </div>
               </div>
             </div>

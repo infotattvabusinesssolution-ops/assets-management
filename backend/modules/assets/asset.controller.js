@@ -149,7 +149,11 @@ export async function getAsset360(req, res, next) {
       zone: true,
       department: true,
       costCenter: true,
-      custodian: true,
+      custodian: {
+        include: {
+          department: true
+        }
+      },
       manufacturer: true,
       model: true,
       parentAsset: true
@@ -1214,6 +1218,100 @@ export async function updateAsset(req, res, next) {
   }
 }
 
+export async function assignAssetCustodian(req, res, next) {
+  try {
+    const asset = await prisma.asset.findFirst({ where: {
+      AND: [{ OR: [{ id: req.params.id }, { assetId: req.params.id }] }, req.dataScopeFilter || {}]
+    } });
+    if (!asset) return res.status(404).json({ success: false, message: 'Asset not found.' });
+    if (['DISPOSED', 'PENDING_DISPOSAL', 'IN_TRANSIT'].includes(asset.lifecycleStatus)) {
+      return res.status(409).json({ success: false, message: 'This asset cannot be assigned in its current status.' });
+    }
+
+    const { custodianId, customCustodian, assignmentDate, assignmentPurpose, conditionAtIssue, remarks } = req.body;
+    const assignedDate = assignmentDate ? new Date(`${assignmentDate}T12:00:00.000Z`) : new Date();
+    if (Number.isNaN(assignedDate.getTime())) {
+      return res.status(400).json({ success: false, message: 'Enter a valid assignment date.' });
+    }
+    if (custodianId && customCustodian) {
+      return res.status(400).json({ success: false, message: 'Choose an existing employee or enter a new one.' });
+    }
+    if (!customCustodian && (custodianId || null) === asset.custodianId) {
+      return res.status(409).json({ success: false, message: 'This custodian is already assigned to the asset.' });
+    }
+    let employee = custodianId ? await prisma.employee.findFirst({
+      where: { id: custodianId, active: true, companyId: asset.companyId }, include: { department: true }
+    }) : null;
+    if (custodianId && !employee) {
+      return res.status(400).json({ success: false, message: 'Select an active employee from this asset’s company.' });
+    }
+    const customName = String(customCustodian?.fullName || '').trim();
+    const customCode = String(customCustodian?.employeeCode || '').trim();
+    const customEmail = String(customCustodian?.email || '').trim();
+    if (customCustodian && (!customName || !customCode || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(customEmail))) {
+      return res.status(400).json({ success: false, message: 'A new custodian needs a name, employee code, and valid email.' });
+    }
+    if (customCustodian) {
+      const duplicate = await prisma.employee.findFirst({ where: { OR: [
+        { employeeCode: customCode }, { email: customEmail }
+      ] } });
+      if (duplicate) return res.status(409).json({ success: false, message: 'This employee code or email already exists. Select that employee instead.' });
+    }
+    const department = customCustodian?.department ? await prisma.department.findFirst({ where: {
+      companyId: asset.companyId, active: true, name: String(customCustodian.department)
+    } }) : null;
+    if (customCustodian?.department && !department) {
+      return res.status(400).json({ success: false, message: 'Select a valid department for this company.' });
+    }
+    const actor = req.user?.id ? await prisma.user.findUnique({ where: { id: req.user.id } }) : null;
+    if (!actor) return res.status(403).json({ success: false, message: 'A valid user is required to assign custody.' });
+    const conditionMap = { Good: 'GOOD', 'Brand New': 'NEW', Fair: 'FAIR' };
+    const normalizedCondition = conditionMap[conditionAtIssue] || asset.condition;
+    const updatedAsset = await prisma.$transaction(async tx => {
+      if (customCustodian) employee = await tx.employee.create({ data: {
+        fullName: customName, employeeCode: customCode, email: customEmail,
+        companyId: asset.companyId, departmentId: department?.id || null
+      } });
+      await tx.custodyAssignment.updateMany({ where: { assetId: asset.id, active: true },
+        data: { active: false, actualReturnDate: assignedDate } });
+      const updated = await tx.asset.update({ where: { id: asset.id }, data: {
+        custodianId: employee?.id || null,
+        departmentId: employee?.departmentId || asset.departmentId,
+        assignedDate: employee ? assignedDate : null,
+        lifecycleStatus: employee ? 'ASSIGNED' : 'IN_STORE',
+        condition: normalizedCondition,
+        updatedByUserId: actor.id
+      }, include: { custodian: true, department: true } });
+      if (employee) await tx.custodyAssignment.create({ data: {
+        assetId: asset.id, custodianId: employee.id, issuedDate: assignedDate,
+        conditionAtIssue: normalizedCondition, issuedByUserId: actor.id,
+        acknowledged: false, active: true
+      } });
+      await tx.assetTransaction.create({ data: {
+        assetId: asset.id, transactionType: employee ? 'ASSIGN' : 'UNASSIGN',
+        fromStatus: asset.lifecycleStatus, toStatus: updated.lifecycleStatus,
+        performedByUserId: actor.id,
+        notes: `${employee ? `Assigned to ${employee.fullName}` : 'Custodian removed'}${assignmentPurpose ? ` · ${assignmentPurpose}` : ''}${remarks ? ` · ${remarks}` : ''}`,
+        payload: JSON.stringify({ fromCustodianId: asset.custodianId,
+          toCustodianId: employee?.id || null, assignmentDate: assignedDate.toISOString(),
+          conditionAtIssue: normalizedCondition })
+      } });
+      await tx.auditEvent.create({ data: {
+        userId: actor.id, action: employee ? 'ASSET_CUSTODIAN_ASSIGNED' : 'ASSET_CUSTODIAN_REMOVED',
+        entityType: 'Asset', entityId: asset.id,
+        beforeState: JSON.stringify({ custodianId: asset.custodianId, lifecycleStatus: asset.lifecycleStatus }).slice(0, 240),
+        afterState: JSON.stringify({ custodianId: employee?.id || null, lifecycleStatus: updated.lifecycleStatus }).slice(0, 240)
+      } });
+      return updated;
+    }, { timeout: 15000 });
+    res.json({ success: true, asset: updatedAsset,
+      message: employee ? `Asset assigned to ${employee.fullName}.` : 'Asset custodian removed.' });
+  } catch (err) {
+    if (err?.code === 'P2002') return res.status(409).json({ success: false, message: 'This employee code already exists.' });
+    next(err);
+  }
+}
+
 export async function transitionLifecycle(req, res, next) {
   try {
     const { id } = req.params;
@@ -1260,12 +1358,26 @@ export async function transitionLifecycle(req, res, next) {
 
 export async function getMyAssets(req, res, next) {
   try {
-    const userId = req.user?.id || 'usr-default';
-    const employeeId = req.user?.employeeId || null;
+    const dbUser = req.user?.id
+      ? await prisma.user.findUnique({ where: { id: req.user.id }, select: { employeeId: true, email: true, companyId: true } })
+      : null;
+    let employeeId = req.user?.employeeId || dbUser?.employeeId || null;
+    if (!employeeId && (dbUser?.email || req.user?.email)) {
+      const employee = await prisma.employee.findFirst({
+        where: {
+          email: dbUser?.email || req.user.email,
+          ...(dbUser?.companyId ? { companyId: dbUser.companyId } : {})
+        },
+        select: { id: true }
+      });
+      employeeId = employee?.id || null;
+    }
+    const roleCode = req.user?.role?.code || req.user?.role;
+    const portfolioMode = !employeeId && ['SYS_ADMIN', 'ASSET_ADMIN', 'MANAGEMENT'].includes(roleCode);
 
     const {
       page = 1,
-      limit = 20,
+      limit = 200,
       search,
       status,
       categoryId,
@@ -1278,14 +1390,14 @@ export async function getMyAssets(req, res, next) {
       sortOrder = 'desc'
     } = req.query;
 
-    const baseCustodianWhere = {
-      ...req.dataScopeFilter,
-      OR: [
-        ...(employeeId ? [{ custodianId: employeeId }] : []),
-        { custodianId: userId },
-        { createdByUserId: userId }
-      ]
-    };
+    const baseCustodianWhere = portfolioMode
+      ? { ...req.dataScopeFilter }
+      : employeeId
+        ? { ...req.dataScopeFilter, OR: [
+            { custodianId: employeeId },
+            { custodyAssignments: { some: { custodianId: employeeId, active: true } } }
+          ] }
+        : { ...req.dataScopeFilter, id: '__no_employee_link__' };
 
     const where = { ...baseCustodianWhere };
 
@@ -1338,8 +1450,9 @@ export async function getMyAssets(req, res, next) {
       ];
     }
 
-    const skip = (parseInt(page, 10) - 1) * parseInt(limit, 10);
-    const take = parseInt(limit, 10);
+    const safePage = Math.max(1, Number.parseInt(page, 10) || 1);
+    const take = Math.min(2000, Math.max(1, Number.parseInt(limit, 10) || 200));
+    const skip = (safePage - 1) * take;
 
     // Parallel execution for assets, total count, KPI counts, and tab counts
     const [assets, total, countInUse, countMaintenance, countOverdue, countPendingReturn, countReturned, countRequested] = await Promise.all([
@@ -1374,18 +1487,17 @@ export async function getMyAssets(req, res, next) {
       prisma.asset.count({ where: { ...baseCustodianWhere, lifecycleStatus: { in: ['REQUESTED', 'Requested', 'ORDERED'] } } })
     ]);
 
-    const totalPortfolio = countInUse + countMaintenance + countOverdue + countPendingReturn + countReturned;
-
+    const portfolioTotal = await prisma.asset.count({ where: baseCustodianWhere });
     const kpiCounts = {
-      total: totalPortfolio || total || 0,
+      total: portfolioTotal,
       inUse: countInUse,
-      inUsePct: totalPortfolio > 0 ? `${((countInUse / totalPortfolio) * 100).toFixed(1)}%` : '0%',
+      inUsePct: portfolioTotal > 0 ? `${((countInUse / portfolioTotal) * 100).toFixed(1)}%` : '0%',
       maintenance: countMaintenance,
-      maintPct: totalPortfolio > 0 ? `${((countMaintenance / totalPortfolio) * 100).toFixed(1)}%` : '0%',
+      maintPct: portfolioTotal > 0 ? `${((countMaintenance / portfolioTotal) * 100).toFixed(1)}%` : '0%',
       overdue: countOverdue,
-      overduePct: totalPortfolio > 0 ? `${((countOverdue / totalPortfolio) * 100).toFixed(1)}%` : '0%',
+      overduePct: portfolioTotal > 0 ? `${((countOverdue / portfolioTotal) * 100).toFixed(1)}%` : '0%',
       pendingReturn: countPendingReturn,
-      pendingPct: totalPortfolio > 0 ? `${((countPendingReturn / totalPortfolio) * 100).toFixed(1)}%` : '0%'
+      pendingPct: portfolioTotal > 0 ? `${((countPendingReturn / portfolioTotal) * 100).toFixed(1)}%` : '0%'
     };
 
     const tabCounts = {
@@ -1394,16 +1506,17 @@ export async function getMyAssets(req, res, next) {
       pendingReturn: countPendingReturn,
       returned: countReturned,
       requested: countRequested,
-      history: totalPortfolio
+      history: portfolioTotal
     };
 
     res.json({
       success: true,
       assets,
+      portfolioMode,
       kpiCounts,
       tabCounts,
       pagination: {
-        page: parseInt(page, 10),
+        page: safePage,
         limit: take,
         total,
         pages: Math.ceil(total / take)

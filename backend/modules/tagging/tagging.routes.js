@@ -8,6 +8,8 @@ import {
   getTaggingStats,
   generateTags,
   printLabels,
+  prepareLabels,
+  getPrintHistory,
   getPrintTemplates,
   saveDraft,
   getDraft,
@@ -35,7 +37,9 @@ router.get('/recent', getRecentTagged);
 router.get('/stats', getTaggingStats);
 router.post('/generate', generateTags);
 router.post('/print', printLabels);
+router.post('/prepare', prepareLabels);
 router.post('/print-labels', printLabels);
+router.get('/print-history', getPrintHistory);
 router.get('/templates', getPrintTemplates);
 router.post('/draft', saveDraft);
 router.get('/draft', getDraft);

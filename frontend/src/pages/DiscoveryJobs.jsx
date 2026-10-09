@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../services/api';
+import { ScheduleDiscoveryModal } from '../components/modals/ScheduleDiscoveryModal';
 import {
   Search,
   Filter,
@@ -51,6 +52,8 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
   const [toastMessage, setToastMessage] = useState(null);
   const [isNewJobOpen, setIsNewJobOpen] = useState(false);
   const [isJobDevicesModalOpen, setIsJobDevicesModalOpen] = useState(false);
+  const [jobDevices, setJobDevices] = useState([]);
+  const [jobBusy, setJobBusy] = useState(false);
   const [isRerunJobModalOpen, setIsRerunJobModalOpen] = useState(false);
   const [isEditJobModalOpen, setIsEditJobModalOpen] = useState(false);
   const [useSameConfig, setUseSameConfig] = useState(true);
@@ -78,12 +81,19 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
     return () => { alive = false; };
   }, []);
 
+  useEffect(() => {
+    if (!isJobDevicesModalOpen || !selectedJobId) return;
+    api.get(`/discovery/jobs/${encodeURIComponent(selectedJobId)}/devices`, { params: { limit: 2000 } })
+      .then(res => setJobDevices(res?.devices || []))
+      .catch(error => { setJobDevices([]); showToast(error?.message || 'Could not load job devices.'); });
+  }, [isJobDevicesModalOpen, selectedJobId]);
+
   const stats = useMemo(() => ({
     total: jobs.length,
     completed: jobs.filter(job => job.status === 'Completed').length,
     running: jobs.filter(job => job.status === 'Running').length,
     failed: jobs.filter(job => job.status === 'Failed').length,
-    scheduled: jobs.filter(job => job.status === 'Scheduled').length
+    scheduled: jobs.filter(job => ['Scheduled', 'Ready'].includes(job.status)).length
   }), [jobs]);
 
   // Filter logic
@@ -150,7 +160,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-xl font-bold text-slate-900 tracking-tight">Discovery Jobs</h1>
-          <p className="text-xs text-slate-500 mt-0.5 font-medium">Manage, schedule and monitor network discovery jobs</p>
+          <p className="text-xs text-slate-500 mt-0.5 font-medium">Save and run local IP range discovery jobs</p>
         </div>
 
         <button

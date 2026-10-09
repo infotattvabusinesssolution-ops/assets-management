@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { AssignCustodianModal } from '../components/modals/AssignCustodianModal';
 import {
   Package,
   DollarSign,
@@ -61,6 +62,7 @@ export function Asset360Detail() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -78,124 +80,119 @@ export function Asset360Detail() {
     setSearchParams({ tab: newTab });
   };
 
-  useEffect(() => {
-    let isMounted = true;
+  const fetch360 = async (silent = false) => {
+    try {
+      if (!silent) setLoading(true);
+      setError(null);
 
-    async function fetch360() {
+      let asset360Result = null;
+
+      // Strategy 1: Direct API call by ID param
       try {
-        setLoading(true);
-        setError(null);
-
-        let asset360Result = null;
-
-        // Strategy 1: Direct API call by ID param
-        try {
-          const res = await api.get(`/assets/${encodeURIComponent(id)}/360`);
-          if (res?.success && res.asset360?.asset) {
-            asset360Result = res.asset360;
-          }
-        } catch (err) {
-          console.warn('Direct 360 lookup note:', err?.message);
-        }
-
-        // Strategy 2: If direct failed (e.g. Server expects UUID instead of assetId or vice versa),
-        // query /assets to find the asset record and resolve its database UUID.
-        if (!asset360Result) {
-          try {
-            const listRes = await api.get('/assets', { params: { limit: 100 } });
-            const list = Array.isArray(listRes?.assets) ? listRes.assets : [];
-            const target = list.find(a =>
-              a.id === id ||
-              a.assetId === id ||
-              (a.assetId && a.assetId.toLowerCase() === id.toLowerCase()) ||
-              a.tagNumber === id ||
-              a.serialNumber === id
-            );
-
-            if (target) {
-              // Try fetching 360 using the resolved database UUID
-              if (target.id && target.id !== id) {
-                try {
-                  const uuidRes = await api.get(`/assets/${encodeURIComponent(target.id)}/360`);
-                  if (uuidRes?.success && uuidRes.asset360?.asset) {
-                    asset360Result = uuidRes.asset360;
-                  }
-                } catch (uuidErr) {
-                  console.warn('UUID 360 lookup note:', uuidErr?.message);
-                }
-              }
-
-              // If still not resolved from 360 endpoint, construct dynamic profile from the asset record
-              if (!asset360Result) {
-                const bookVal = Number(target.acquisitionValue) || 0;
-                asset360Result = {
-                  asset: target,
-                  bookValues: bookVal > 0 ? [{
-                    bookType: 'CORPORATE',
-                    capitalizationDate: target.purchaseDate || target.createdAt || new Date().toISOString(),
-                    capitalizationValue: bookVal,
-                    usefulLifeMonths: 60,
-                    depreciationMethod: 'STRAIGHT_LINE',
-                    accumulatedDepreciation: 0,
-                    netBookValue: bookVal
-                  }] : [],
-                  transactions: [
-                    {
-                      id: 'tx-init',
-                      transactionType: 'RECEIVE',
-                      fromStatus: 'NONE',
-                      toStatus: target.lifecycleStatus || 'IN_SERVICE',
-                      timestamp: target.createdAt || target.purchaseDate || new Date().toISOString(),
-                      notes: 'Asset intake into active register',
-                      performedBy: { fullName: 'System Administrator' }
-                    }
-                  ],
-                  workOrders: [],
-                  schedules: target.schedules || [],
-                  stocktakeObservations: [],
-                  mapPosition: null,
-                  discoveryMatch: null,
-                  warranty: target.warranty || null,
-                  auditEvents: [
-                    {
-                      id: 'ae-init',
-                      action: 'ASSET_CREATE',
-                      timestamp: target.createdAt || new Date().toISOString(),
-                      user: { fullName: 'System Administrator' }
-                    }
-                  ]
-                };
-              }
-            }
-          } catch (listErr) {
-            console.warn('List resolution note:', listErr?.message);
-          }
-        }
-
-        if (isMounted) {
-          if (asset360Result && asset360Result.asset) {
-            setData(asset360Result);
-          } else {
-            setError(`Asset record [${id}] was not found in the database.`);
-          }
+        const res = await api.get(`/assets/${encodeURIComponent(id)}/360`);
+        if (res?.success && res.asset360?.asset) {
+          asset360Result = res.asset360;
         }
       } catch (err) {
-        if (isMounted) {
-          setError(err?.message || 'Failed to retrieve Asset 360 details');
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
+        console.warn('Direct 360 lookup note:', err?.message);
+      }
+
+      // Strategy 2: If direct failed (e.g. Server expects UUID instead of assetId or vice versa),
+      // query /assets to find the asset record and resolve its database UUID.
+      if (!asset360Result) {
+        try {
+          const listRes = await api.get('/assets', { params: { limit: 100 } });
+          const list = Array.isArray(listRes?.assets) ? listRes.assets : [];
+          const target = list.find(a =>
+            a.id === id ||
+            a.assetId === id ||
+            (a.assetId && a.assetId.toLowerCase() === id.toLowerCase()) ||
+            a.tagNumber === id ||
+            a.serialNumber === id
+          );
+
+          if (target) {
+            // Try fetching 360 using the resolved database UUID
+            if (target.id && target.id !== id) {
+              try {
+                const uuidRes = await api.get(`/assets/${encodeURIComponent(target.id)}/360`);
+                if (uuidRes?.success && uuidRes.asset360?.asset) {
+                  asset360Result = uuidRes.asset360;
+                }
+              } catch (uuidErr) {
+                console.warn('UUID 360 lookup note:', uuidErr?.message);
+              }
+            }
+
+            // If still not resolved from 360 endpoint, construct dynamic profile from the asset record
+            if (!asset360Result) {
+              const bookVal = Number(target.acquisitionValue) || 0;
+              asset360Result = {
+                asset: target,
+                bookValues: bookVal > 0 ? [{
+                  bookType: 'CORPORATE',
+                  capitalizationDate: target.purchaseDate || target.createdAt || new Date().toISOString(),
+                  capitalizationValue: bookVal,
+                  usefulLifeMonths: 60,
+                  depreciationMethod: 'STRAIGHT_LINE',
+                  accumulatedDepreciation: 0,
+                  netBookValue: bookVal
+                }] : [],
+                transactions: [
+                  {
+                    id: 'tx-init',
+                    transactionType: 'RECEIVE',
+                    fromStatus: 'NONE',
+                    toStatus: target.lifecycleStatus || 'IN_SERVICE',
+                    timestamp: target.createdAt || target.purchaseDate || new Date().toISOString(),
+                    notes: 'Asset intake into active register',
+                    performedBy: { fullName: 'System Administrator' }
+                  }
+                ],
+                workOrders: [],
+                schedules: target.schedules || [],
+                stocktakeObservations: [],
+                mapPosition: null,
+                discoveryMatch: null,
+                warranty: target.warranty || null,
+                auditEvents: [
+                  {
+                    id: 'ae-init',
+                    action: 'ASSET_CREATE',
+                    timestamp: target.createdAt || new Date().toISOString(),
+                    user: { fullName: 'System Administrator' }
+                  }
+                ]
+              };
+            }
+          }
+        } catch (listErr) {
+          console.warn('List resolution note:', listErr?.message);
         }
       }
+
+      if (asset360Result && asset360Result.asset) {
+        setData(asset360Result);
+      } else {
+        setError(`Asset record [${id}] was not found in the database.`);
+      }
+    } catch (err) {
+      setError(err?.message || 'Failed to retrieve Asset 360 details');
+    } finally {
+      if (!silent) setLoading(false);
     }
+  };
 
+  useEffect(() => {
     fetch360();
-
-    return () => {
-      isMounted = false;
-    };
   }, [id]);
+
+  const handleCustodianAssigned = (updatedAsset) => {
+    setIsAssignModalOpen(false);
+    const identifier = updatedAsset?.assetId || updatedAsset?.id || id;
+    showToast('success', `Custodian updated successfully for asset ${identifier}`);
+    fetch360(true);
+  };
 
   const handleQuickStatusChange = async (toStatus) => {
     if (!data?.asset) return;
@@ -291,8 +288,12 @@ export function Asset360Detail() {
   const custodianName = asset.custodian
     ? (asset.custodian.fullName || `${asset.custodian.firstName || ''} ${asset.custodian.lastName || ''}`.trim() || asset.custodian.email)
     : (asset.custodianName && asset.custodianName.toLowerCase() !== 'unassigned' && asset.custodianName.toLowerCase() !== 'none' ? asset.custodianName : null);
-  const custodianEmail = asset.custodian?.email || null;
-  const custodianCode = asset.custodian?.employeeCode || null;
+  const custodianEmail = asset.custodian?.email || asset.custodianEmail || asset.assignedToEmail || null;
+  const custodianCode = asset.custodian?.employeeCode || asset.custodianCode || asset.assignedToCode || null;
+  const custodianDept = asset.custodian?.department?.name ||
+    asset.custodian?.department ||
+    (hasCustodian ? (asset.department?.name || asset.departmentName) : null) ||
+    '—';
 
   const currency = asset.currency || 'USD';
   const acquisitionValue = Number(asset.acquisitionValue) || 0;
@@ -339,16 +340,11 @@ export function Asset360Detail() {
             </button>
 
             <button
-              onClick={() => {
-                const targetId = asset.assetId || asset.id;
-                navigate(`/movements/assign?assetId=${encodeURIComponent(targetId)}`, {
-                  state: { assetId: targetId, asset }
-                });
-              }}
+              onClick={() => setIsAssignModalOpen(true)}
               className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-              title="Assign to employee / custodian"
+              title="Assign or change employee custodian"
             >
-              <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> Assign to Custodian
+              <User className="w-3.5 h-3.5 text-[#6C2BD9]" /> {hasCustodian ? 'Change Custodian' : 'Assign Custodian'}
             </button>
 
             <button
@@ -627,6 +623,10 @@ export function Asset360Detail() {
                 <span className="font-mono text-slate-600">{custodianEmail || '—'}</span>
               </div>
               <div className="flex justify-between py-1 items-center">
+                <span className="text-slate-500">Department:</span>
+                <span className="font-semibold text-slate-800">{custodianDept}</span>
+              </div>
+              <div className="flex justify-between py-1 items-center">
                 <span className="text-slate-500">Assignment Effective Date:</span>
                 <span className="font-bold text-slate-900">
                   {asset.assignedDate
@@ -635,21 +635,14 @@ export function Asset360Detail() {
                 </span>
               </div>
             </div>
-            {!hasCustodian && (
-              <div className="pt-2">
-                <button
-                  onClick={() => {
-                    const targetId = asset.assetId || asset.id;
-                    navigate(`/movements/assign?assetId=${encodeURIComponent(targetId)}`, {
-                      state: { assetId: targetId, asset }
-                    });
-                  }}
-                  className="w-full py-2 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer"
-                >
-                  <User className="w-3.5 h-3.5" /> Assign Custodian
-                </button>
-              </div>
-            )}
+            <div className="pt-2">
+              <button
+                onClick={() => setIsAssignModalOpen(true)}
+                className="w-full py-2 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
+              >
+                <User className="w-3.5 h-3.5" /> {hasCustodian ? 'Change / Edit Custodian Details' : 'Assign Custodian'}
+              </button>
+            </div>
           </div>
 
           {/* Card 4: Procurement & Supplier Commercials */}
@@ -1429,6 +1422,16 @@ export function Asset360Detail() {
             </div>
           </div>
         </div>
+      )}
+
+      {/* Assign / Change Custodian Modal */}
+      {isAssignModalOpen && (
+        <AssignCustodianModal
+          isOpen={isAssignModalOpen}
+          onClose={() => setIsAssignModalOpen(false)}
+          asset={asset}
+          onAssigned={handleCustodianAssigned}
+        />
       )}
     </div>
   );

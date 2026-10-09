@@ -97,16 +97,7 @@ export function ReceiveWithoutPO() {
   const [validationReport, setValidationReport] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
 
-  // Label Printing State
-  const [printConfig, setPrintConfig] = useState({
-    scheme: 'AUTO_PREFIX_SEQ',
-    tagFormat: 'CODE_128',
-    template: 'STANDARD_2X1',
-    printer: 'Zebra ZT411 RFID (Warehouse Dock 2)',
-    quantity: 1,
-    tagPrefix: 'E360000'
-  });
-  const [printedTagsList, setPrintedTagsList] = useState([]);
+  // Label printing requires a registered asset and uses the shared print page.
   const [isPrinting, setIsPrinting] = useState(false);
 
   const showToast = (msg, type = 'success') => {
@@ -401,23 +392,24 @@ export function ReceiveWithoutPO() {
 
   // Print Labels Action
   const handlePrintLabels = async () => {
+    if (!previewAsset?.serialNumber && !previewAsset?.assetNumber) {
+      showToast('Select an asset to print.', 'error');
+      return;
+    }
     setIsPrinting(true);
     try {
-      const res = await api.post('/tagging/print-labels', {
-        tagFormat: printConfig.tagFormat,
-        numberingScheme: printConfig.scheme,
-        labelTemplate: printConfig.template,
-        printer: printConfig.printer,
-        quantity: parseInt(printConfig.quantity) || 1,
-        tagPrefix: printConfig.tagPrefix,
-        assetDetails: previewAsset
-      });
-      if (res && res.tags) {
-        setPrintedTagsList(res.tags);
-        showToast(`Printed ${res.tags.length} label(s) to ${printConfig.printer}`);
-      }
+      const result = await api.get('/tagging/assets', { params: previewAsset.assetNumber
+        ? { assetNumber: previewAsset.assetNumber }
+        : { serialNumber: previewAsset.serialNumber } });
+      const asset = (result?.assets || []).find(item =>
+        previewAsset.assetNumber
+          ? item.assetNumber === previewAsset.assetNumber
+          : item.serialNumber === previewAsset.serialNumber
+      );
+      if (!asset) throw new Error('Register this received asset before printing its unique tag.');
+      navigate(`/receiving/print-tags?assetId=${encodeURIComponent(asset.id)}`);
     } catch (err) {
-      showToast(err?.message || 'Label request failed', 'error');
+      showToast(err?.message || 'Could not open Print Tags', 'error');
     } finally {
       setIsPrinting(false);
     }
@@ -1291,106 +1283,16 @@ export function ReceiveWithoutPO() {
           ) : (
             /* Tab 2: Print Labels */
             <div className="space-y-3.5 text-xs">
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">Asset Numbering Scheme</label>
-                <select
-                  value={printConfig.scheme}
-                  onChange={(e) => setPrintConfig({ ...printConfig, scheme: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="AUTO_PREFIX_SEQ">Auto Prefix + Sequence (E360000xxxxx)</option>
-                  <option value="CUSTOM_CODE128">Standard Code 128</option>
-                  <option value="GS1_EPC">GS1 EPC Tag URI</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">Tag Format</label>
-                <select
-                  value={printConfig.tagFormat}
-                  onChange={(e) => setPrintConfig({ ...printConfig, tagFormat: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="CODE_128">Barcode (Code 128)</option>
-                  <option value="QR_CODE">QR Code (2D Matrix)</option>
-                  <option value="RFID_EPC">RFID UHF EPC Gen2</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">Label Template</label>
-                <select
-                  value={printConfig.template}
-                  onChange={(e) => setPrintConfig({ ...printConfig, template: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="STANDARD_2X1">Standard 2.0" x 1.0" Asset Label</option>
-                  <option value="COMPACT_1.5X0.75">Compact 1.5" x 0.75" IT Tag</option>
-                  <option value="ASSET_TAG_3X1">Heavy Duty 3.0" x 1.0" Tamper Proof</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-medium text-slate-600 mb-1">Target Printer</label>
-                <select
-                  value={printConfig.printer}
-                  onChange={(e) => setPrintConfig({ ...printConfig, printer: e.target.value })}
-                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
-                >
-                  <option value="Zebra ZT411 RFID (Warehouse Dock 2)">Zebra ZT411 RFID (Warehouse Dock 2)</option>
-                  <option value="SATO CL4NX Thermal (HQ Store)">SATO CL4NX Thermal (HQ Store)</option>
-                  <option value="Brother QL-820NWB (Desk 1)">Brother QL-820NWB (Desk 1)</option>
-                </select>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-slate-600 mb-1">Tag Prefix</label>
-                  <input
-                    type="text"
-                    value={printConfig.tagPrefix}
-                    onChange={(e) => setPrintConfig({ ...printConfig, tagPrefix: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200 font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="block font-medium text-slate-600 mb-1">Quantity</label>
-                  <input
-                    type="number"
-                    value={printConfig.quantity}
-                    onChange={(e) => setPrintConfig({ ...printConfig, quantity: e.target.value })}
-                    className="w-full px-3 py-2 rounded-xl border border-slate-200"
-                    min="1"
-                    max="100"
-                  />
-                </div>
-              </div>
-
-              {/* Tag Label Preview */}
-              <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-center">
-                <div className="text-[10px] uppercase font-bold text-slate-400">Sample Label Output</div>
-                <div className="bg-white p-3 rounded-lg border border-slate-300 shadow-2xs inline-block mx-auto min-w-[200px]">
-                  <div className="text-[9px] font-bold text-slate-900 tracking-wider">ASSET360 ENTERPRISE</div>
-                  <div className="font-mono text-xs font-black text-slate-900 my-1">
-                    {previewAsset?.tagNumber || 'Scan a tag'}
-                  </div>
-                  <div className="flex items-center justify-center gap-1 my-1 text-slate-800">
-                    <Barcode className="w-24 h-6" />
-                  </div>
-                  <div className="text-[8px] text-slate-500 truncate max-w-[180px]">
-                    {previewAsset?.assetName || 'No asset selected'}
-                  </div>
-                </div>
-              </div>
+              <p className="rounded-xl border border-slate-200 bg-slate-50 p-3 text-slate-600">Register the received asset, then choose its backend label template and preview the unique code on Print Tags.</p>
 
               <button
                 type="button"
                 onClick={handlePrintLabels}
-                disabled={isPrinting}
+                disabled={isPrinting || !previewAsset}
                 className="w-full py-2.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-semibold shadow-xs transition-colors flex items-center justify-center gap-2 cursor-pointer"
               >
                 <Printer className="w-4 h-4" />
-                <span>{isPrinting ? 'Printing Labels...' : `Print ${printConfig.quantity} Label(s)`}</span>
+                <span>{isPrinting ? 'Opening Print Tags...' : 'Open Print Tags'}</span>
               </button>
             </div>
           )}

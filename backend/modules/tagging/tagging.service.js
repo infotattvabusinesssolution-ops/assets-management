@@ -1,5 +1,12 @@
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
+import { randomUUID } from 'node:crypto';
+
+const PRINT_TEMPLATES = [
+  { id: 'STANDARD_2X1', name: 'Standard asset barcode', description: 'Code 128 barcode with asset details', widthMm: 50.8, heightMm: 25.4, format: 'BARCODE_128', fields: ['assetNumber', 'assetName', 'serialNumber', 'tagNumber'] },
+  { id: 'QR_HIGH_DENSITY', name: 'Asset QR label', description: 'QR code with asset details', widthMm: 50.8, heightMm: 25.4, format: 'QR_CODE', fields: ['assetNumber', 'assetName', 'serialNumber', 'tagNumber'] },
+  { id: 'ZEBRA_4X2', name: 'Large asset barcode', description: 'Large Code 128 label with EPC text when available', widthMm: 101.6, heightMm: 50.8, format: 'BARCODE_128', fields: ['assetNumber', 'assetName', 'serialNumber', 'tagNumber', 'rfidEpc'] }
+];
 
 // Initial Mock Assets to Tag matching reference functional design
 class TaggingServiceStore {
@@ -8,7 +15,6 @@ class TaggingServiceStore {
     this.recentTagged = [];
     this.auditLogs = [];
     this.draftSessions = new Map();
-    this.nextTagSeq = 12345;
 
     this.settings = {
       defaultPrinter: 'Zebra ZT411 RFID (Warehouse Dock 2)',
@@ -55,7 +61,7 @@ class TaggingServiceStore {
     {
         const where = {};
         if (barcode) where.OR = [{ barcode }, { assetId: barcode }];
-        if (rfid) where.rfidEpc = rfid;
+        if (rfid) where.OR = [{ rfidEpc: rfid }, { tagNumber: rfid }];
         if (assetNumber) where.assetId = { contains: assetNumber };
         if (serialNumber) where.serialNumber = { contains: serialNumber };
         if (assetName) where.description = { contains: assetName };
@@ -64,6 +70,7 @@ class TaggingServiceStore {
         where,
         include: {
           category: true,
+          model: true,
           site: true,
           department: true,
           custodian: true
@@ -71,9 +78,38 @@ class TaggingServiceStore {
         orderBy: { createdAt: 'desc' }
       });
 
+    const images = dbAssets.length ? await prisma.attachment.findMany({
+        where: {
+          entityType: { in: ['Asset', 'ASSET'] },
+          entityId: { in: dbAssets.flatMap(asset => [asset.id, asset.assetId]) },
+          fileType: 'ASSET_IMAGE'
+        },
+        orderBy: { createdAt: 'desc' }
+      }) : [];
+      const imageByAssetId = new Map();
+      for (const image of images) {
+        if (!imageByAssetId.has(image.entityId)) imageByAssetId.set(image.entityId, image.url);
+      }
+      const printTags = dbAssets.length ? await prisma.tag.findMany({
+        where: { assetId: { in: dbAssets.map(asset => asset.id) }, status: { not: 'REPLACED' } },
+        orderBy: { updatedAt: 'desc' },
+        select: { assetId: true, tagNumber: true, printedDate: true, status: true }
+      }) : [];
+      const printTagsByAssetId = new Map();
+      for (const tag of printTags) {
+        const current = printTagsByAssetId.get(tag.assetId) || [];
+        current.push(tag);
+        printTagsByAssetId.set(tag.assetId, current);
+      }
+
       {
         // Map DB assets into tagging format
-        const mapped = dbAssets.map((a, idx) => ({
+        const mapped = dbAssets.map(a => {
+          const tags = printTagsByAssetId.get(a.id) || [];
+          const printTag = a.tagNumber
+            ? tags.find(tag => tag.tagNumber === a.tagNumber)
+            : tags.find(tag => ['RESERVED', 'PRINTED'].includes(tag.status));
+          return {
           id: a.id,
           assetNumber: a.assetId,
           assetName: a.description || a.model?.name || 'Enterprise Asset',
@@ -85,10 +121,13 @@ class TaggingServiceStore {
           status: a.tagNumber ? 'Tagged' : 'Not Tagged',
           custodian: a.custodian?.fullName || '',
           assetStatus: a.active ? 'Active' : 'Inactive',
-          imageUrl: a.imageUrl || null,
+           imageUrl: imageByAssetId.get(a.id) || imageByAssetId.get(a.assetId) || null,
+           printStatus: printTag?.printedDate ? 'Printed' : 'Not Printed',
+           printTagNumber: printTag?.tagNumber || null,
           rfidEpc: a.rfidEpc,
           barcode: a.barcode
-        }));
+          };
+        });
 
         // Merge with our in-memory store so changes made in session are reflected
         return this.filterAssetsList(mapped, filters);
@@ -113,7 +152,7 @@ class TaggingServiceStore {
 
     return list.filter(asset => {
       if (barcode && asset.barcode !== barcode && asset.assetNumber !== barcode) return false;
-      if (rfid && asset.rfidEpc !== rfid) return false;
+       if (rfid && asset.rfidEpc !== rfid && asset.currentTag !== rfid) return false;
       if (assetNumber && !asset.assetNumber.toLowerCase().includes(assetNumber.toLowerCase())) {
         return false;
       }
@@ -200,17 +239,17 @@ class TaggingServiceStore {
       status: 'Valid Tag / Ready to Assign',
       message: 'Tag ID verified and available for assignment.',
       tagNumber: cleanTag,
-      rfidEpc: cleanEpc || `E28011606000${cleanTag.replace(/\D/g, '').slice(-5) || '12345'}`
+       rfidEpc: cleanEpc || (tagType === 'RFID_GEN2' ? cleanTag : null)
     };
   }
 
   // Generate Unique Tag Number & RFID EPC
   async generateTagNumber(prefix = this.settings.prefix || 'E360000', tagType = 'RFID_GEN2') {
     if (!isSqlServerConnected) throw new Error('Database is unavailable.');
-    const seq = Date.now() + this.nextTagSeq++;
-    const tagNumber = `${prefix}${seq}`;
+    const suffix = randomUUID().replace(/-/g, '').slice(0, 16).toUpperCase();
+    const tagNumber = `${prefix}${suffix}`;
     if (await prisma.tag.findUnique({ where: { tagNumber } })) return this.generateTagNumber(prefix, tagType);
-    const rfidEpc = `E28011606000${seq}`;
+    const rfidEpc = `E28011606000${suffix}`;
     return { tagNumber, rfidEpc, tagType };
   }
 
@@ -371,6 +410,12 @@ class TaggingServiceStore {
             });
 
             if (previousTag) {
+              if (previousTag !== tagNumber) {
+                await tx.tag.updateMany({
+                  where: { tagNumber: previousTag, assetId: dbAsset.id },
+                  data: { assetId: null, status: 'REPLACED' }
+                });
+              }
               await tx.tagHistory.create({
                 data: {
                   assetId: dbAsset.id,
@@ -460,55 +505,90 @@ class TaggingServiceStore {
   }
 
   // Print Labels (Kept separate from assignment)
-  async printLabels(params = {}) {
+  async printLabels(params = {}, { markPrinted = true } = {}) {
     if (!isSqlServerConnected) throw new Error('Database is unavailable.');
     const assets = Array.isArray(params.assets) ? params.assets : [];
     const quantity = Math.max(1, Math.min(100, Number(params.quantity) || 1));
     if (!assets.length) throw new Error('Choose at least one asset to print.');
+    const template = PRINT_TEMPLATES.find(item => item.id === (params.template || 'STANDARD_2X1'));
+    if (!template) throw new Error('Choose a supported label template.');
 
     const labels = [];
     for (const selected of assets) {
       const id = selected.id || selected.assetId || selected.assetNumber;
+      if (!id) throw new Error('Each selected asset needs an ID.');
       const asset = await prisma.asset.findFirst({ where: { OR: [{ id }, { assetId: id }] } });
       if (!asset) throw new Error(`Asset ${id} was not found in the database.`);
 
       let tagNumber = asset.tagNumber;
       let rfidEpc = asset.rfidEpc;
       if (!tagNumber) {
-        const generated = await this.generateTagNumber(params.tagPrefix || this.settings.prefix, params.tagFormat || 'RFID_GEN2');
-        tagNumber = generated.tagNumber;
-        rfidEpc = generated.rfidEpc;
-        await prisma.tag.create({ data: {
-          tagNumber, rfidEpc, tagType: params.tagFormat || 'RFID_GEN2',
-          status: 'UNASSIGNED', printedDate: new Date()
-        } });
-      } else {
-        await prisma.tag.upsert({
-          where: { tagNumber },
-          update: { printedDate: new Date() },
-          create: { tagNumber, assetId: asset.id, tagType: rfidEpc ? 'RFID_GEN2' : 'BARCODE_128', status: 'ACTIVE', printedDate: new Date() }
+        let reserved = await prisma.tag.findFirst({
+          where: { assetId: asset.id, status: { not: 'REPLACED' } },
+          orderBy: { createdAt: 'asc' }
         });
+        if (params.reprintOnly && !reserved) throw new Error(`Asset ${asset.assetId} has no existing printed tag to reprint.`);
+        if (!reserved) {
+          for (let attempt = 0; attempt < 3 && !reserved; attempt++) {
+            const generated = await this.generateTagNumber(params.tagPrefix || this.settings.prefix, 'BARCODE_128');
+            try {
+              reserved = await prisma.tag.create({ data: {
+                tagNumber: generated.tagNumber, tagType: template.format,
+                assetId: asset.id, status: 'RESERVED'
+              } });
+            } catch (error) {
+              if (error.code !== 'P2002') throw error;
+            }
+          }
+          if (!reserved) throw new Error(`Could not reserve a unique tag for ${asset.assetId}.`);
+        }
+        tagNumber = reserved.tagNumber;
+        rfidEpc = reserved.rfidEpc;
+        if (markPrinted) await prisma.tag.update({
+          where: { id: reserved.id }, data: { status: 'PRINTED', printedDate: new Date() }
+        });
+      } else if (markPrinted) {
+        const existingTag = await prisma.tag.findUnique({ where: { tagNumber } });
+        if (existingTag?.assetId && existingTag.assetId !== asset.id) {
+          throw new Error(`Tag ${tagNumber} belongs to another asset.`);
+        }
+        if (params.reprintOnly) {
+          if (existingTag?.assetId === asset.id) await prisma.tag.update({ where: { id: existingTag.id }, data: { printedDate: new Date() } });
+        } else {
+          await prisma.tag.upsert({
+            where: { tagNumber },
+            update: { assetId: asset.id, status: 'ACTIVE', printedDate: new Date() },
+            create: { tagNumber, assetId: asset.id, tagType: rfidEpc ? 'RFID_GEN2' : template.format, status: 'ACTIVE', printedDate: new Date() }
+          });
+        }
       }
 
       for (let copy = 0; copy < quantity; copy++) {
         labels.push({
           assetId: asset.id, assetNumber: asset.assetId, assetName: asset.description,
           serialNumber: asset.serialNumber || '', tagNumber, rfidEpc: rfidEpc || '',
-          copy: copy + 1, template: params.template || this.settings.labelTemplate
+          copy: copy + 1, template
         });
       }
     }
-    return { success: true, labels, tags: labels, message: `${labels.length} label(s) prepared for browser printing.` };
+    return { success: true, labels, tags: labels, template, message: `${labels.length} label(s) prepared for browser printing.` };
   }
 
-  // Get Industrial Label Templates
+  // Label layouts supported by the browser renderer.
   getPrintTemplates() {
-    return [
-      { id: 'TPL-01', name: 'STANDARD_2X1', description: 'Standard 2" x 1" Thermal Barcode Label', dimensions: '2.00 x 1.00 in', dpi: 300, barcodeType: 'Code 128' },
-      { id: 'TPL-02', name: 'RFID_GEN2_METALLIC', description: 'On-Metal RFID Tag (DogBone / Monza R6)', dimensions: '3.00 x 1.00 in', dpi: 300, barcodeType: 'RFID + DataMatrix' },
-      { id: 'TPL-03', name: 'COMPACT_1X05', description: 'Asset Mini-Tag for Mobile & Peripherals', dimensions: '1.25 x 0.50 in', dpi: 600, barcodeType: 'QR Code' },
-      { id: 'TPL-04', name: 'TAMPER_EVIDENT', description: 'Destructible Vinyl Security Tag', dimensions: '2.50 x 0.75 in', dpi: 300, barcodeType: 'Code 128 + Hologram' }
-    ];
+    return PRINT_TEMPLATES;
+  }
+
+  async getPrintHistory() {
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    const tags = await prisma.tag.findMany({
+      where: { printedDate: { not: null } }, include: { asset: true },
+      orderBy: { printedDate: 'desc' }, take: 100
+    });
+    return tags.map(tag => ({
+      id: tag.id, assetNumber: tag.asset?.assetId || '', assetName: tag.asset?.description || '',
+      tagNumber: tag.tagNumber, printedDate: tag.printedDate, status: tag.status
+    }));
   }
 
   // Bulk Assign Tags to Multiple Assets
@@ -609,7 +689,7 @@ class TaggingServiceStore {
       prisma.category.findFirst({ where: assetData.category ? { name: assetData.category } : { active: true } })
     ]);
     if (!company || !site || !category) throw new Error('Select a valid site and category.');
-    const assetNumber = assetData.assetNumber?.trim() || `AST-MAN-${Date.now()}`;
+    const assetNumber = assetData.assetNumber?.trim() || `AST-MAN-${randomUUID().slice(0, 8).toUpperCase()}`;
     const created = await prisma.asset.create({ data: {
       assetId: assetNumber, description: assetData.assetName.trim(),
       serialNumber: assetData.serialNumber?.trim() || null,
@@ -623,12 +703,62 @@ class TaggingServiceStore {
 
   // Import Assets from File
   async importAssets(rows = []) {
-    const imported = [];
-    for (const row of rows) {
-      if (!row.assetName && !row.assetNumber) continue;
-      const asset = await this.addManualAsset(row);
-      imported.push(asset);
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    const assetNumbers = rows.map(row => String(row.assetNumber || '').trim()).filter(Boolean);
+    const serialNumbers = rows.map(row => String(row.serialNumber || '').trim()).filter(Boolean);
+    const existingRows = await prisma.asset.findMany({
+      where: { OR: [
+        ...(assetNumbers.length ? [{ assetId: { in: assetNumbers } }] : []),
+        ...(serialNumbers.length ? [{ serialNumber: { in: serialNumbers } }] : [])
+      ] },
+      select: { id: true, assetId: true, serialNumber: true }
+    });
+    const byNumber = new Map(existingRows.map(asset => [asset.assetId, asset]));
+    const bySerial = new Map();
+    for (const asset of existingRows) {
+      if (asset.serialNumber) bySerial.set(asset.serialNumber, asset);
     }
+    const rowAssetIds = [];
+    const seenImportKeys = new Set();
+    for (const row of rows) {
+      const assetNumber = String(row.assetNumber || '').trim();
+      const serialNumber = String(row.serialNumber || '').trim();
+      if (!assetNumber && !serialNumber) throw new Error('Each row needs an asset number or serial number.');
+      const key = (assetNumber || serialNumber).toLowerCase();
+      if (seenImportKeys.has(key)) throw new Error(`Duplicate asset in file: ${assetNumber || serialNumber}`);
+      seenImportKeys.add(key);
+      const existing = assetNumber ? byNumber.get(assetNumber) : bySerial.get(serialNumber);
+      if (!existing && (!row.assetName?.trim() || !row.category?.trim() || !row.location?.trim())) {
+        throw new Error(`Asset ${assetNumber || serialNumber} is not registered. Add Asset Name, Category, and Location to create it.`);
+      }
+      rowAssetIds.push(existing?.id || null);
+    }
+    const newRows = rows.filter((_, index) => !rowAssetIds[index]);
+    if (newRows.length) {
+      const [categories, sites] = await Promise.all([
+        prisma.category.findMany({ where: { name: { in: newRows.map(row => row.category.trim()) } }, select: { name: true } }),
+        prisma.site.findMany({ where: { name: { in: newRows.map(row => row.location.trim()) } }, select: { name: true } })
+      ]);
+      const validCategories = new Map(categories.map(category => [category.name.toLowerCase(), category.name]));
+      const validSites = new Map(sites.map(site => [site.name.toLowerCase(), site.name]));
+      for (const row of newRows) {
+        const category = validCategories.get(row.category.trim().toLowerCase());
+        const site = validSites.get(row.location.trim().toLowerCase());
+        if (!category || !site) {
+          throw new Error(`Asset ${row.assetNumber || row.serialNumber}: choose an existing Category and Location.`);
+        }
+        row.category = category;
+        row.location = site;
+      }
+    }
+    for (let index = 0; index < rows.length; index++) {
+      if (rowAssetIds[index]) continue;
+      const created = await this.addManualAsset(rows[index]);
+      rowAssetIds[index] = created.id;
+    }
+    const mapped = await this.getEligibleAssets();
+    const byId = new Map(mapped.map(asset => [asset.id, asset]));
+    const imported = rowAssetIds.map(id => byId.get(id));
     return {
       success: true,
       count: imported.length,

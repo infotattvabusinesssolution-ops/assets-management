@@ -28,29 +28,391 @@ import {
 import clsx from 'clsx';
 import { api } from '../services/api';
 
-const SEED_AUDITS = [];
+const SEED_AUDITS = [
+  {
+    id: 'AUD-2026-0008',
+    auditId: 'AUD-2026-0008',
+    auditName: 'HQ Annual IT Asset Audit 2026',
+    auditType: 'Physical Verification',
+    company: 'Dubai HQ',
+    location: 'Block B',
+    plannedStart: '01 Sep 2026',
+    plannedEnd: '15 Sep 2026',
+    status: 'In Progress',
+    progress: 65,
+    description: 'Annual physical verification of all IT assets at Dubai HQ - Block B including laptops, desktops, monitors and peripherals.',
+    createdBy: 'John Doe',
+    createdOn: '25 Aug 2026 10:30',
+    lastUpdated: '10 Sep 2026 14:20',
+    totalExpected: 600,
+    scopeType: 'By Location',
+    assetsIncluded: 'IT Equipment, Office Equipment',
+    assetCategories: 'Laptops, Desktops, Monitors, Printers, Peripherals',
+    locationScope: ['Dubai HQ > Block B > 1F - IT-101', 'Dubai HQ > Block B > 2F - IT-201'],
+    verificationMethod: 'Barcode / RFID / Manual Entry',
+    allowUnregistered: 'Yes',
+    capturePhotos: 'Yes',
+    remarksMandatory: 'For Exceptions',
+    autoSync: 'Yes (Online/Offline)',
+    auditInstructions: 'Ensure all assets are verified. Capture condition and actual location. Report discrepancies.',
+    assignedUsers: [
+      { id: 1, name: 'Ahmed Khan', role: 'Auditor', location: 'Block B - 1F', status: 'Active' },
+      { id: 2, name: 'Sara Ali', role: 'Auditor', location: 'Block B - 2F', status: 'Active' },
+      { id: 3, name: 'Omar Saleh', role: 'Supervisor', location: 'All Locations', status: 'Active' }
+    ],
+    timeline: [
+      { time: '25 Aug 2026 10:30', title: 'Audit Created', author: 'by John Doe', type: 'created' },
+      { time: '28 Aug 2026 09:15', title: 'Approved', author: 'by Operations Manager', type: 'approved' },
+      { time: '01 Sep 2026 08:00', title: 'Audit Started', author: '', type: 'started' },
+      { time: 'Current Status', title: 'In Progress', author: '65% completed', type: 'progress' },
+      { time: '15 Sep 2026 17:00', title: 'Planned End Date', author: '', type: 'planned' }
+    ],
+    approvals: [
+      { step: 1, role: 'IT Asset Manager', approver: 'Farhan Zaidi', status: 'Approved', date: '26 Aug 2026' },
+      { step: 2, role: 'Operations Director', approver: 'John Doe', status: 'Approved', date: '28 Aug 2026' }
+    ],
+    exceptions: 12,
+    attachments: 3
+  },
+  {
+    id: 'AUD-2026-0007',
+    auditId: 'AUD-2026-0007',
+    auditName: 'Warehouse Assets Audit',
+    auditType: 'Physical Verification',
+    company: 'Jebel Ali',
+    location: 'Main Warehouse',
+    plannedStart: '10 Sep 2026',
+    plannedEnd: '20 Sep 2026',
+    status: 'Not Started',
+    progress: 0,
+    description: 'Comprehensive annual inventory physical audit for Jebel Ali central distribution warehouse.',
+    createdBy: 'Rashid Mohammed',
+    createdOn: '01 Sep 2026 11:00',
+    lastUpdated: '05 Sep 2026 09:30',
+    totalExpected: 1450,
+    scopeType: 'By Location',
+    assetsIncluded: 'Warehouse Racks, Forklifts, Pallet Jacks, Scanners',
+    assetCategories: 'Heavy Equipment, IT Peripherals, Logistics',
+    locationScope: ['Jebel Ali > Main Warehouse > Racks A-Z'],
+    verificationMethod: 'Barcode / RFID',
+    allowUnregistered: 'Yes',
+    capturePhotos: 'Yes',
+    remarksMandatory: 'Always',
+    autoSync: 'Yes (Online/Offline)',
+    auditInstructions: 'Scan barcode tags on all racking units and material handling equipment.',
+    assignedUsers: [
+      { id: 1, name: 'Rashid Mohammed', role: 'Auditor', location: 'Zone A', status: 'Active' },
+      { id: 2, name: 'Layla Hassan', role: 'Auditor', location: 'Zone B', status: 'Active' }
+    ],
+    timeline: [
+      { time: '01 Sep 2026 11:00', title: 'Audit Created', author: 'by Rashid Mohammed', type: 'created' },
+      { time: '05 Sep 2026 09:30', title: 'Approved', author: 'by Logistics Manager', type: 'approved' },
+      { time: '10 Sep 2026 08:00', title: 'Planned Start Date', author: '', type: 'planned' }
+    ],
+    approvals: [
+      { step: 1, role: 'Logistics Manager', approver: 'Hamad Al Nuaimi', status: 'Approved', date: '05 Sep 2026' }
+    ],
+    exceptions: 0,
+    attachments: 2
+  },
+  {
+    id: 'AUD-2026-0006',
+    auditId: 'AUD-2026-0006',
+    auditName: 'Office Equipment Audit',
+    auditType: 'Physical Verification',
+    company: 'Abu Dhabi',
+    location: 'Head Office',
+    plannedStart: '05 Sep 2026',
+    plannedEnd: '12 Sep 2026',
+    status: 'In Progress',
+    progress: 40,
+    description: 'Mid-year verification of office furniture, AV conference room systems, and administrative assets.',
+    createdBy: 'Fatima Noor',
+    createdOn: '01 Sep 2026 14:00',
+    lastUpdated: '08 Sep 2026 16:45',
+    totalExpected: 380,
+    scopeType: 'By Department',
+    assetsIncluded: 'Furniture, AV Systems, Printers',
+    assetCategories: 'Chairs, Executive Desks, TVs, Projectors',
+    locationScope: ['Abu Dhabi > Head Office > Floors 1-5'],
+    verificationMethod: 'Manual / Barcode',
+    allowUnregistered: 'No',
+    capturePhotos: 'Yes',
+    remarksMandatory: 'For Exceptions',
+    autoSync: 'Yes',
+    auditInstructions: 'Verify serial tag tags on conference tables and display panels.',
+    assignedUsers: [
+      { id: 1, name: 'Fatima Noor', role: 'Auditor', location: 'Floors 1-3', status: 'Active' }
+    ],
+    timeline: [
+      { time: '01 Sep 2026 14:00', title: 'Audit Created', author: 'by Fatima Noor', type: 'created' },
+      { time: '05 Sep 2026 08:00', title: 'Audit Started', author: '', type: 'started' }
+    ],
+    approvals: [
+      { step: 1, role: 'Facilities Manager', approver: 'Khalid Al Mansoori', status: 'Approved', date: '03 Sep 2026' }
+    ],
+    exceptions: 4,
+    attachments: 1
+  },
+  {
+    id: 'AUD-2026-0005',
+    auditId: 'AUD-2026-0005',
+    auditName: 'Vehicle Assets Audit',
+    auditType: 'Cycle Count',
+    company: 'Dubai HQ',
+    location: 'Fleet',
+    plannedStart: '01 Aug 2026',
+    plannedEnd: '10 Aug 2026',
+    status: 'Completed',
+    progress: 100,
+    description: 'Quarterly fleet vehicle registration and odometer verification audit.',
+    createdBy: 'Omar Saleh',
+    createdOn: '25 Jul 2026 09:00',
+    lastUpdated: '10 Aug 2026 17:00',
+    totalExpected: 45,
+    scopeType: 'By Category',
+    assetsIncluded: 'Fleet Vehicles, Vans, Trucks',
+    assetCategories: 'Commercial Vehicles, Passenger Cars',
+    locationScope: ['Dubai HQ > Fleet Parking Lot'],
+    verificationMethod: 'Odometer Check & GPS RFID Tag Scan',
+    allowUnregistered: 'No',
+    capturePhotos: 'Yes',
+    remarksMandatory: 'Always',
+    autoSync: 'Yes',
+    auditInstructions: 'Record exact mileage and check valid vehicle registration cards.',
+    assignedUsers: [
+      { id: 1, name: 'Omar Saleh', role: 'Auditor', location: 'Fleet Yard', status: 'Active' }
+    ],
+    timeline: [
+      { time: '25 Jul 2026 09:00', title: 'Audit Created', author: 'by Omar Saleh', type: 'created' },
+      { time: '01 Aug 2026 08:00', title: 'Audit Started', author: '', type: 'started' },
+      { time: '10 Aug 2026 17:00', title: 'Audit Completed', author: '100% reconciled', type: 'completed' }
+    ],
+    approvals: [
+      { step: 1, role: 'Fleet Manager', approver: 'Sari Nader', status: 'Approved', date: '28 Jul 2026' }
+    ],
+    exceptions: 1,
+    attachments: 4
+  },
+  {
+    id: 'AUD-2026-0004',
+    auditId: 'AUD-2026-0004',
+    auditName: 'IT Accessories Audit',
+    auditType: 'Sample Count',
+    company: 'Sharjah',
+    location: 'Office',
+    plannedStart: '15 Aug 2026',
+    plannedEnd: '18 Aug 2026',
+    status: 'In Progress',
+    progress: 80,
+    description: 'Random sampling of loose IT accessories, docking stations, and monitors in Sharjah branch.',
+    createdBy: 'Sara Ali',
+    createdOn: '10 Aug 2026 10:15',
+    lastUpdated: '17 Aug 2026 12:00',
+    totalExpected: 210,
+    scopeType: 'Sample Count',
+    assetsIncluded: 'Docking Stations, Keyboards, Monitors',
+    assetCategories: 'Peripherals',
+    locationScope: ['Sharjah > Branch Office > IT Store'],
+    verificationMethod: 'Barcode Scan',
+    allowUnregistered: 'Yes',
+    capturePhotos: 'No',
+    remarksMandatory: 'For Exceptions',
+    autoSync: 'Yes',
+    auditInstructions: 'Audit 20% random sample across all workstations.',
+    assignedUsers: [
+      { id: 1, name: 'Sara Ali', role: 'Auditor', location: 'Sharjah IT Store', status: 'Active' }
+    ],
+    timeline: [
+      { time: '10 Aug 2026 10:15', title: 'Audit Created', author: 'by Sara Ali', type: 'created' },
+      { time: '15 Aug 2026 09:00', title: 'Audit Started', author: '', type: 'started' }
+    ],
+    approvals: [],
+    exceptions: 2,
+    attachments: 1
+  },
+  {
+    id: 'AUD-2026-0003',
+    auditId: 'AUD-2026-0003',
+    auditName: 'Tools & Equipment Audit',
+    auditType: 'Physical Verification',
+    company: 'Dubai HQ',
+    location: 'Service Center',
+    plannedStart: '01 Jul 2026',
+    plannedEnd: '07 Jul 2026',
+    status: 'Completed',
+    progress: 100,
+    description: 'Physical audit of specialized maintenance tools, diagnostic instruments, and calibration kits.',
+    createdBy: 'Ahmed Khan',
+    createdOn: '25 Jun 2026 14:00',
+    lastUpdated: '07 Jul 2026 18:00',
+    totalExpected: 310,
+    scopeType: 'By Location',
+    assetsIncluded: 'Diagnostic Tools, Power Tools, Multimeters',
+    assetCategories: 'Maintenance Tools',
+    locationScope: ['Dubai HQ > Service Center > Tool Room'],
+    verificationMethod: 'RFID Handheld Scanner',
+    allowUnregistered: 'No',
+    capturePhotos: 'Yes',
+    remarksMandatory: 'For Exceptions',
+    autoSync: 'Yes',
+    auditInstructions: 'Check calibration expiry sticker on every instrument.',
+    assignedUsers: [
+      { id: 1, name: 'Ahmed Khan', role: 'Auditor', location: 'Service Center', status: 'Active' }
+    ],
+    timeline: [
+      { time: '25 Jun 2026 14:00', title: 'Audit Created', author: 'by Ahmed Khan', type: 'created' },
+      { time: '01 Jul 2026 08:30', title: 'Audit Started', author: '', type: 'started' },
+      { time: '07 Jul 2026 18:00', title: 'Audit Completed', author: '100% verified', type: 'completed' }
+    ],
+    approvals: [
+      { step: 1, role: 'Maintenance Lead', approver: 'Tariq Ziad', status: 'Approved', date: '28 Jun 2026' }
+    ],
+    exceptions: 0,
+    attachments: 2
+  },
+  {
+    id: 'AUD-2026-0002',
+    auditId: 'AUD-2026-0002',
+    auditName: 'Q2 Cycle Count',
+    auditType: 'Cycle Count',
+    company: 'All Entities',
+    location: 'Multiple',
+    plannedStart: '01 Jun 2026',
+    plannedEnd: '30 Jun 2026',
+    status: 'Completed',
+    progress: 100,
+    description: 'Quarterly group-wide mandatory cycle count for high probability variance asset categories.',
+    createdBy: 'John Doe',
+    createdOn: '15 May 2026 08:30',
+    lastUpdated: '30 Jun 2026 19:30',
+    totalExpected: 2200,
+    scopeType: 'Group Wide',
+    assetsIncluded: 'Laptops, Smartphones, Tablets',
+    assetCategories: 'Mobile Computing',
+    locationScope: ['All Entities & Branches'],
+    verificationMethod: 'Agent Auto-Discovery & Tag Scan',
+    allowUnregistered: 'Yes',
+    capturePhotos: 'No',
+    remarksMandatory: 'For Exceptions',
+    autoSync: 'Yes',
+    auditInstructions: 'Ensure mobile assets match current custodian AD login records.',
+    assignedUsers: [
+      { id: 1, name: 'John Doe', role: 'Supervisor', location: 'All Entities', status: 'Active' },
+      { id: 2, name: 'Sara Ali', role: 'Auditor', location: 'Dubai HQ', status: 'Active' }
+    ],
+    timeline: [
+      { time: '15 May 2026 08:30', title: 'Audit Created', author: 'by John Doe', type: 'created' },
+      { time: '01 Jun 2026 08:00', title: 'Audit Started', author: '', type: 'started' },
+      { time: '30 Jun 2026 19:30', title: 'Audit Completed', author: 'Fully Reconciled', type: 'completed' }
+    ],
+    approvals: [
+      { step: 1, role: 'Internal Audit Manager', approver: 'Salim Al Maktoum', status: 'Approved', date: '25 May 2026' }
+    ],
+    exceptions: 8,
+    attachments: 5
+  },
+  {
+    id: 'AUD-2026-0001',
+    auditId: 'AUD-2026-0001',
+    auditName: 'High Value Assets Audit',
+    auditType: 'Physical Verification',
+    company: 'Dubai HQ',
+    location: 'Main Building',
+    plannedStart: '01 May 2026',
+    plannedEnd: '15 May 2026',
+    status: 'Completed',
+    progress: 100,
+    description: 'Annual physical verification of high-value capital assets exceeding $10,000 threshold.',
+    createdBy: 'Farhan Zaidi',
+    createdOn: '20 Apr 2026 11:00',
+    lastUpdated: '15 May 2026 16:00',
+    totalExpected: 180,
+    scopeType: 'By Financial Value',
+    assetsIncluded: 'Datacenter Servers, SAN Storage, Core Switches, Generators',
+    assetCategories: 'Datacenter Infrastructure',
+    locationScope: ['Dubai HQ > Main Building > Server Room 1 & 2'],
+    verificationMethod: 'Dual RFID & Manual Sign-off',
+    allowUnregistered: 'No',
+    capturePhotos: 'Yes',
+    remarksMandatory: 'Always',
+    autoSync: 'Yes',
+    auditInstructions: 'Verify asset serial number and financial asset tag plate.',
+    assignedUsers: [
+      { id: 1, name: 'Farhan Zaidi', role: 'Auditor', location: 'Server Rooms', status: 'Active' }
+    ],
+    timeline: [
+      { time: '20 Apr 2026 11:00', title: 'Audit Created', author: 'by Farhan Zaidi', type: 'created' },
+      { time: '01 May 2026 08:00', title: 'Audit Started', author: '', type: 'started' },
+      { time: '15 May 2026 16:00', title: 'Audit Completed', author: '100% verified', type: 'completed' }
+    ],
+    approvals: [
+      { step: 1, role: 'Chief Financial Officer', approver: 'Adnan Zaid', status: 'Approved', date: '28 Apr 2026' }
+    ],
+    exceptions: 0,
+    attachments: 3
+  }
+];
 
 export function AuditManagement() {
-  const [audits, setAudits] = useState([]);
+  const [audits, setAudits] = useState(SEED_AUDITS);
   const [loading, setLoading] = useState(false);
 
   React.useEffect(() => {
+    let isMounted = true;
     const fetchAudits = async () => {
       setLoading(true);
       try {
         const res = await api.get('/stocktakes/audits').catch(() => null);
-        if (res && res.audits) {
-          setAudits(res.audits);
-        } else if (res && res.campaigns) {
-          setAudits(res.campaigns);
+        const serverAudits = (res && res.audits) || (res && res.campaigns) || (Array.isArray(res) ? res : null);
+        if (serverAudits && serverAudits.length > 0 && isMounted) {
+          const normalized = serverAudits.map((a) => ({
+            ...a,
+            id: a.auditId || a.id,
+            auditId: a.auditId || a.id,
+            auditName: a.auditName || a.name || 'Unnamed Audit',
+            auditType: a.auditType || a.type || 'Physical Verification',
+            company: a.company || 'Dubai HQ',
+            location: a.location || (a.scopeCriteria?.selectedLocations?.map(l => l.name || l.code).join(', ')) || a.company || 'Main Site',
+            plannedStart: a.plannedStart || a.formattedStartDate || a.plannedStartDate || '01 Sep 2026',
+            plannedEnd: a.plannedEnd || a.formattedEndDate || a.plannedEndDate || '15 Sep 2026',
+            status: a.status || 'Draft',
+            progress: a.progress ?? 0,
+            description: a.description || '',
+            createdBy: a.createdBy || 'System Administrator',
+            createdOn: a.createdOn || (a.createdAt ? new Date(a.createdAt).toLocaleDateString('en-GB') : '01 Sep 2026'),
+            lastUpdated: a.lastUpdated || (a.updatedAt ? new Date(a.updatedAt).toLocaleDateString('en-GB') : '01 Sep 2026'),
+            totalExpected: a.totalExpected ?? a.estimatedAssets ?? 0,
+            scopeType: a.scopeType || 'By Location',
+            assetsIncluded: a.assetsIncluded || a.scopeCriteria?.assetGroup || 'All Scoped Assets',
+            assetCategories: a.assetCategories || a.scopeCriteria?.assetCategory || 'All Categories',
+            locationScope: Array.isArray(a.locationScope)
+              ? a.locationScope
+              : (a.scopeCriteria?.selectedLocations?.map(l => l.name || l.code) || [a.location || 'All Locations']),
+            verificationMethod: a.verificationMethod || 'Barcode / RFID / Manual Entry',
+            allowUnregistered: a.allowUnregistered === true ? 'Yes' : (a.allowUnregistered === false ? 'No' : (a.allowUnregistered || 'Yes')),
+            capturePhotos: a.capturePhotos === true ? 'Yes' : (a.capturePhotos === false ? 'No' : (a.capturePhotos || 'Yes')),
+            remarksMandatory: a.remarksMandatory || 'For Exceptions',
+            autoSync: a.autoSync || 'Yes (Online/Offline)',
+            auditInstructions: a.auditInstructions || 'Ensure all assets are verified.',
+            assignedUsers: Array.isArray(a.assignedUsers) ? a.assignedUsers : [],
+            timeline: Array.isArray(a.timeline) ? a.timeline : [
+              { time: a.formattedStartDate || '01 Sep 2026', title: 'Audit Created', author: a.createdBy || '', type: 'created' }
+            ],
+            approvals: Array.isArray(a.approvals) ? a.approvals : [],
+            exceptions: a.exceptions ?? a.totalExceptions ?? 0,
+            attachments: typeof a.attachments === 'number' ? a.attachments : (Array.isArray(a.attachments) ? a.attachments.length : 0),
+          }));
+          setAudits(normalized);
         }
       } catch (e) {
         console.error('Failed to load audits:', e);
       } finally {
-        setLoading(false);
+        if (isMounted) setLoading(false);
       }
     };
     fetchAudits();
+    return () => { isMounted = false; };
   }, []);
   const navigate = useNavigate();
 
@@ -72,8 +434,9 @@ export function AuditManagement() {
 
   // Selected Audit Object
   const selectedAudit = useMemo(() => {
+    if (!audits || audits.length === 0) return null;
     return audits.find(a => a.auditId === selectedAuditId) || audits[0] || null;
-  }, [selectedAuditId]);
+  }, [selectedAuditId, audits]);
 
   // Filtered List
   const filteredAudits = useMemo(() => {
@@ -395,6 +758,8 @@ export function AuditManagement() {
               </button>
             </div>
 
+            {selectedAudit ? (
+              <>
             {/* Key Value Details matching Screenshot 28 */}
             <div className="space-y-2.5 text-xs">
               <div className="flex items-start gap-4">
@@ -505,7 +870,14 @@ export function AuditManagement() {
               </button>
             </div>
 
-          </div>
+          
+              </>
+            ) : (
+              <div className="py-16 text-center text-slate-400">
+                <FileText className="w-8 h-8 mx-auto mb-2 opacity-30 text-slate-400" />
+                <p className="text-xs font-medium">Select an audit to view details</p>
+              </div>
+            )}</div>
         </div>
 
         {/* Bottom Tabbed Section matching Screenshot 28 */}
@@ -533,7 +905,7 @@ export function AuditManagement() {
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              Assigned Users ({selectedAudit.assignedUsers.length})
+              Assigned Users ({selectedAudit?.assignedUsers?.length || 0})
             </button>
             <button
               onClick={() => setActiveTab('expected')}
@@ -544,7 +916,7 @@ export function AuditManagement() {
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              Expected Assets ({selectedAudit.totalExpected})
+              Expected Assets ({selectedAudit?.totalExpected || 0})
             </button>
             <button
               onClick={() => setActiveTab('schedule')}
@@ -566,7 +938,7 @@ export function AuditManagement() {
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              Approvals ({selectedAudit.approvals.length})
+              Approvals ({selectedAudit?.approvals?.length || 0})
             </button>
             <button
               onClick={() => setActiveTab('exceptions')}
@@ -577,7 +949,7 @@ export function AuditManagement() {
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              Exceptions ({selectedAudit.exceptions})
+              Exceptions ({selectedAudit?.exceptions || 0})
             </button>
             <button
               onClick={() => setActiveTab('attachments')}
@@ -588,7 +960,7 @@ export function AuditManagement() {
                   : 'border-transparent text-slate-600 hover:text-slate-900 hover:bg-slate-100'
               )}
             >
-              Attachments ({selectedAudit.attachments})
+              Attachments ({typeof selectedAudit?.attachments === "number" ? selectedAudit.attachments : (selectedAudit?.attachments?.length || 0)})
             </button>
             <button
               onClick={() => setActiveTab('notes')}
@@ -627,9 +999,9 @@ export function AuditManagement() {
                   <div className="flex items-start gap-4">
                     <span className="text-slate-500 w-36 shrink-0">Location Scope</span>
                     <div className="text-slate-800 font-medium">
-                      : {selectedAudit.locationScope[0]}
-                      {selectedAudit.locationScope[1] && (
-                        <div className="pl-2 mt-0.5">{selectedAudit.locationScope[1]}</div>
+                      : {Array.isArray(selectedAudit?.locationScope) ? selectedAudit.locationScope[0] : (selectedAudit?.locationScope || selectedAudit?.location || "-")}
+                      {selectedAudit?.locationScope?.[1] && (
+                        <div className="pl-2 mt-0.5">{selectedAudit?.locationScope?.[1]}</div>
                       )}
                     </div>
                   </div>
@@ -666,7 +1038,7 @@ export function AuditManagement() {
                 {/* Column 2: Assigned Users (3) Table (5 Cols) */}
                 <div className="lg:col-span-5 space-y-3">
                   <div className="flex items-center justify-between">
-                    <h4 className="font-bold text-slate-900 text-sm">Assigned Users ({selectedAudit.assignedUsers.length})</h4>
+                    <h4 className="font-bold text-slate-900 text-sm">Assigned Users ({selectedAudit?.assignedUsers?.length || 0})</h4>
                     <button
                       onClick={() => alert('Assign Users modal')}
                       className="flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 rounded-lg text-xs font-semibold transition-colors cursor-pointer border border-purple-200"
@@ -689,7 +1061,7 @@ export function AuditManagement() {
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-slate-100">
-                        {selectedAudit.assignedUsers.map((u) => (
+                        {(selectedAudit?.assignedUsers || []).map((u) => (
                           <tr key={u.id} className="hover:bg-slate-50/70">
                             <td className="py-2.5 px-3 text-slate-400 text-center">{u.id}</td>
                             <td className="py-2.5 px-3 font-semibold text-slate-900">{u.name}</td>
@@ -717,7 +1089,7 @@ export function AuditManagement() {
                   <h4 className="font-bold text-slate-900 text-sm">Audit Timeline</h4>
 
                   <div className="relative pl-6 space-y-5 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 text-xs">
-                    {selectedAudit.timeline.map((item, idx) => (
+                    {(selectedAudit?.timeline || []).map((item, idx) => (
                       <div key={idx} className="relative">
                         {/* Node Icon */}
                         {item.type === 'approved' ? (
@@ -899,7 +1271,7 @@ export function AuditManagement() {
               <div className="space-y-4 text-xs">
                 <h4 className="font-bold text-slate-900 text-sm">Approval Workflow Sign-Offs</h4>
                 <div className="border border-slate-200 rounded-lg overflow-hidden divide-y divide-slate-100">
-                  {selectedAudit.approvals.map((app, idx) => (
+                  {(selectedAudit?.approvals || []).map((app, idx) => (
                     <div key={idx} className="p-3.5 flex items-center justify-between bg-white hover:bg-slate-50/50">
                       <div className="flex items-center gap-3">
                         <span className="w-7 h-7 rounded-full bg-purple-100 text-[#6C2BD9] font-bold flex items-center justify-center text-xs">

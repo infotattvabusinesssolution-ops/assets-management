@@ -1,4 +1,4 @@
-import prismaPkg from '@prisma/client';
+import prismaPkg from '../node_modules/.prisma/maintenance-client-v5/index.js';
 
 const PrismaClient = prismaPkg?.PrismaClient || prismaPkg?.default?.PrismaClient;
 

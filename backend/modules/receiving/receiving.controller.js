@@ -86,7 +86,7 @@ export async function getReceiptById(req, res, next) {
 
     res.json({ success: true, receipt });
   } catch (err) {
-    const fallback = await ReceivingService.getHistoryDetail(req.params.id);
+    const fallback = await ReceivingService.getHistoryDetail(req.params.id, req.user?.id, req.user);
     if (fallback) return res.json({ success: true, receipt: fallback });
     next(err);
   }
@@ -190,7 +190,7 @@ export async function getDrafts(req, res, next) {
 
 export async function getDraftById(req, res, next) {
   try {
-    const draft = await ReceivingService.getDraftById(req.params.id);
+    const draft = await ReceivingService.getDraftById(req.params.id, req.user?.id);
     if (!draft) return res.status(404).json({ success: false, message: 'Draft not found.' });
     res.json({ success: true, draft });
   } catch (err) { next(err); }
@@ -198,21 +198,70 @@ export async function getDraftById(req, res, next) {
 
 export async function deleteDraft(req, res, next) {
   try {
-    await ReceivingService.deleteDraft(req.params.id);
+    await ReceivingService.deleteDraft(req.params.id, req.user?.id);
     res.json({ success: true, message: 'Draft removed successfully.' });
   } catch (err) { next(err); }
 }
 
 export async function getReceivingHistory(req, res, next) {
   try {
-    const history = await ReceivingService.getHistory(req.query);
-    res.json({ success: true, history, receipts: history });
+    const result = await ReceivingService.getHistoryPage(req.query, req.user?.id, req.user);
+    res.json({ success: true, history: result.records, receipts: result.records, pagination: { total: result.total, page: result.page, pageSize: result.pageSize, totalPages: result.totalPages } });
+  } catch (err) { next(err); }
+}
+
+const csvCell = (value) => `"${String(value ?? '').replace(/"/g, '""')}"`;
+
+async function logReceivingHistoryAction(req, action, entityId, details) {
+  try {
+    await prisma.auditEvent.create({
+      data: {
+        userId: req.user?.id || null,
+        action,
+        entityType: 'RECEIVING_HISTORY',
+        entityId: entityId || null,
+        afterState: JSON.stringify(details),
+        ipAddress: req.ip || null,
+        userAgent: req.get('user-agent') || null
+      }
+    });
+  } catch {
+    // Keep a read/export action available if optional audit storage is unavailable.
+  }
+}
+
+export async function exportReceivingHistory(req, res, next) {
+  try {
+    const records = await ReceivingService.getHistoryRecords(req.query, req.user?.id, req.user);
+    await logReceivingHistoryAction(req, 'EXPORT', null, { recordCount: records.length, filters: req.query });
+    const rows = [
+      ['Receive Number', 'Receive Date', 'PO Number', 'Supplier', 'Receive Type', 'Items', 'Tagged', 'Pending Tagging', 'Status', 'Location', 'Received By'],
+      ...records.map((record) => [record.receiptNumber, record.receivedDate, record.poNumber, record.vendorName, record.mode === 'WITHOUT_PO' ? 'Without PO' : 'With PO', record.summary.unitsReceived, record.summary.unitsTagged, record.summary.unitsPending, record.status, record.receivingLocation, record.receivedBy])
+    ];
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', 'attachment; filename="receiving-history.csv"');
+    res.send(`\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}`);
+  } catch (err) { next(err); }
+}
+
+export async function exportReceivingHistoryReport(req, res, next) {
+  try {
+    const record = await ReceivingService.getHistoryDetail(req.params.id, req.user?.id);
+    if (!record) return res.status(404).json({ success: false, message: 'Transaction history record not found.' });
+    await logReceivingHistoryAction(req, 'REPORT_GENERATED', record.id, { receiptNumber: record.receiptNumber, itemCount: record.summary.unitsReceived });
+    const rows = [
+      ['Receive Number', 'Receive Date', 'PO Number', 'Supplier', 'Receive Type', 'Status', 'Location', 'Received By', 'Remarks', 'Asset ID', 'Asset Name', 'Category', 'Serial Number', 'Tag Number', 'RFID EPC', 'Tag Status'],
+      ...record.lineItems.map((item) => [record.receiptNumber, record.receivedDate, record.poNumber, record.vendorName, record.mode === 'WITHOUT_PO' ? 'Without PO' : 'With PO', record.status, record.receivingLocation, record.receivedBy, record.remarks, item.assetNumber, item.description, item.category, item.serialNumber, item.tagNumber, item.rfidEpc, item.tagStatus])
+    ];
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${String(record.receiptNumber).replace(/[^a-z0-9._-]/gi, '_')}-report.csv"`);
+    res.send(`\uFEFF${rows.map((row) => row.map(csvCell).join(',')).join('\r\n')}`);
   } catch (err) { next(err); }
 }
 
 export async function getReceivingHistoryById(req, res, next) {
   try {
-    const detail = await ReceivingService.getHistoryDetail(req.params.id);
+    const detail = await ReceivingService.getHistoryDetail(req.params.id, req.user?.id);
     if (!detail) return res.status(404).json({ success: false, message: 'Transaction history record not found.' });
     res.json({ success: true, transaction: detail, receipt: detail });
   } catch (err) { next(err); }

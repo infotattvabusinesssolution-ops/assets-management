@@ -1,1027 +1,300 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import ExcelJS from 'exceljs';
+import JsBarcode from 'jsbarcode';
+import { QRCodeSVG } from 'qrcode.react';
+import { renderToStaticMarkup } from 'react-dom/server';
+import { FileSpreadsheet, Printer, Search, X } from 'lucide-react';
 import { api } from '../services/api';
-import {
-  Printer,
-  Search,
-  CheckCircle2,
-  Plus,
-  Upload,
-  MoreVertical,
-  ChevronRight,
-  ArrowRight,
-  Eye,
-  Trash2,
-  Edit3,
-  X,
-  AlertCircle,
-  QrCode,
-  Barcode,
-  Layers,
-  Sparkles,
-  FileCheck
-} from 'lucide-react';
-import clsx from 'clsx';
+
+const initialFilters = { query: '', category: '', location: '', printStatus: '' };
+const initialOptions = { copies: 1, assetNumber: true, assetName: true, serialNumber: true, assetImage: false };
+const tabs = ['Search & Select', 'Upload from File', 'Tag Templates', 'Print Settings', 'Preview & Layout', 'Print History'];
+
+const clean = value => String(value?.text ?? value?.result ?? value ?? '').trim();
+const columnKey = value => clean(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+const escapeHtml = value => clean(value).replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
+
+function parseCsv(source) {
+  const rows = [];
+  let row = [], field = '', quoted = false;
+  for (let index = 0; index < source.length; index++) {
+    const character = source[index];
+    if (character === '"') {
+      if (quoted && source[index + 1] === '"') { field += '"'; index++; }
+      else quoted = !quoted;
+    } else if (character === ',' && !quoted) { row.push(field); field = ''; }
+    else if ((character === '\r' || character === '\n') && !quoted) {
+      if (character === '\r' && source[index + 1] === '\n') index++;
+      row.push(field); if (row.some(value => clean(value))) rows.push(row);
+      row = []; field = '';
+    } else field += character;
+  }
+  row.push(field); if (row.some(value => clean(value))) rows.push(row);
+  return rows;
+}
+
+async function readRows(file) {
+  if (/\.csv$/i.test(file.name)) return parseCsv((await file.text()).replace(/^\uFEFF/, ''));
+  if (!/\.xlsx$/i.test(file.name)) throw new Error('Choose an .xlsx or .csv file.');
+  const workbook = new ExcelJS.Workbook();
+  await workbook.xlsx.load(await file.arrayBuffer());
+  const sheet = workbook.worksheets[0];
+  if (!sheet) throw new Error('The Excel file has no worksheet.');
+  const rows = [];
+  sheet.eachRow(row => rows.push(Array.from({ length: sheet.columnCount }, (_, index) => clean(row.getCell(index + 1).value))));
+  return rows;
+}
+
+function barcodeSvg(value) {
+  const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg');
+  JsBarcode(svg, value, { format: 'CODE128', displayValue: false, margin: 0, height: 38, width: 1.5 });
+  return svg.outerHTML;
+}
+
+function codeSvg(value, template) {
+  return template.format === 'QR_CODE'
+    ? renderToStaticMarkup(<QRCodeSVG value={value} size={84} />)
+    : barcodeSvg(value);
+}
+
+function LiveLabel({ label, template, options }) {
+  const barcodeRef = useRef(null);
+  useEffect(() => {
+    if (barcodeRef.current && label?.tagNumber && template?.format !== 'QR_CODE') {
+      try { JsBarcode(barcodeRef.current, label.tagNumber, { format: 'CODE128', displayValue: false, margin: 0, height: 38, width: 1.5 }); }
+      catch { barcodeRef.current.innerHTML = ''; }
+    }
+  }, [label?.tagNumber, template?.format]);
+  if (!label || !template) return <div className="border border-dashed border-slate-300 rounded-xl p-8 text-center text-xs text-slate-500">Select an asset to generate its real label preview.</div>;
+  return (
+    <div className="mx-auto bg-white border-2 border-slate-900 rounded-lg p-3 max-w-full text-center shadow-sm" style={{ width: Math.min(template.widthMm * 5, 390), minHeight: Math.min(template.heightMm * 5, 260) }}>
+      <p className="text-[9px] font-black tracking-widest text-slate-900">ASSET360</p>
+      {options.assetImage && label.imageUrl && <img src={label.imageUrl} alt="" className="w-9 h-9 object-cover mx-auto my-1" />}
+      {options.assetNumber && <p className="font-mono font-black text-sm text-slate-950 break-all">{label.assetNumber}</p>}
+      {options.assetName && <p className="text-[10px] font-semibold text-slate-700 truncate">{label.assetName}</p>}
+      <div className="flex justify-center items-center my-2 min-h-10">
+        {template.format === 'QR_CODE' ? <QRCodeSVG value={label.tagNumber} size={84} /> : <svg ref={barcodeRef} className="max-w-full h-10" />}
+      </div>
+      <p className="font-mono text-[10px] font-bold text-slate-950 break-all">{label.tagNumber}</p>
+      {options.serialNumber && label.serialNumber && <p className="text-[9px] text-slate-600 truncate">S/N {label.serialNumber}</p>}
+      {label.rfidEpc && template.fields.includes('rfidEpc') && <p className="font-mono text-[8px] text-slate-500 break-all">EPC {label.rfidEpc}</p>}
+    </div>
+  );
+}
+
+function printDocument(labels, template, options, imagesByAssetId) {
+  const cards = labels.map(label => {
+    const visual = codeSvg(label.tagNumber, template);
+    const imageUrl = imagesByAssetId.get(label.assetId);
+    return `<div class="label"><div class="brand">ASSET360</div>${options.assetImage && imageUrl ? `<img src="${escapeHtml(imageUrl)}" alt="">` : ''}${options.assetNumber ? `<div class="number">${escapeHtml(label.assetNumber)}</div>` : ''}${options.assetName ? `<div class="name">${escapeHtml(label.assetName)}</div>` : ''}<div class="code">${visual}</div><div class="tag">${escapeHtml(label.tagNumber)}</div>${options.serialNumber && label.serialNumber ? `<div class="serial">S/N ${escapeHtml(label.serialNumber)}</div>` : ''}${label.rfidEpc && template.fields.includes('rfidEpc') ? `<div class="epc">EPC ${escapeHtml(label.rfidEpc)}</div>` : ''}</div>`;
+  }).join('');
+  return `<!doctype html><html><head><title>Asset tags</title><style>@page{size:${template.widthMm}mm ${template.heightMm}mm;margin:0}*{box-sizing:border-box}body{margin:0;font-family:Arial,sans-serif}.label{width:${template.widthMm}mm;height:${template.heightMm}mm;padding:2mm;border:1px solid #111;text-align:center;break-after:page;overflow:hidden}.brand{font-size:7pt;font-weight:900;letter-spacing:1.5px}.number{font:900 11pt monospace}.name{font-size:8pt;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.code{margin:1mm auto}.code svg{max-width:100%;height:10mm}.tag{font:700 7pt monospace;overflow-wrap:anywhere}.serial,.epc{font-size:6pt;overflow-wrap:anywhere}.label img{height:8mm;width:8mm;object-fit:cover}</style></head><body>${cards}</body></html>`;
+}
 
 export function PrintTagsWorkbench() {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
-
-  // Stepper State (1: Select Assets, 2: Configure & Preview, 3: Generate & Print)
-  const [currentStep, setCurrentStep] = useState(1);
-
-  // Sub-Navigation Tabs State
+  const fileInputRef = useRef(null);
   const [activeTab, setActiveTab] = useState('Search & Select');
+  const [assets, setAssets] = useState([]);
+  const [templates, setTemplates] = useState([]);
+  const [templateId, setTemplateId] = useState('');
+  const [selectedIds, setSelectedIds] = useState([]);
+  const [filters, setFilters] = useState(initialFilters);
+  const [appliedFilters, setAppliedFilters] = useState(initialFilters);
+  const [options, setOptions] = useState(initialOptions);
+  const [previewLabel, setPreviewLabel] = useState(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
+  const [history, setHistory] = useState([]);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState(null);
 
-  // Search Filters State
-  const [filters, setFilters] = useState({
-    assetNumber: '',
-    assetName: '',
-    category: 'All Categories',
-    location: 'All Locations',
-    department: 'All Departments',
-    tagStatus: 'Not Printed',
-    assetType: 'All Types',
-    custodian: 'All Custodians'
-  });
+  const template = templates.find(item => item.id === templateId);
+  const selectedAssets = selectedIds.map(id => assets.find(asset => asset.id === id)).filter(Boolean);
+  const previewAsset = selectedAssets[0];
+  const categories = [...new Set(assets.map(asset => asset.category).filter(Boolean))].sort();
+  const locations = [...new Set(assets.map(asset => asset.location).filter(Boolean))].sort();
+  const visibleAssets = useMemo(() => assets.filter(asset => {
+    const query = appliedFilters.query.toLowerCase();
+    if (query && ![asset.assetNumber, asset.assetName, asset.serialNumber, asset.currentTag, asset.printTagNumber].some(value => clean(value).toLowerCase().includes(query))) return false;
+    if (appliedFilters.category && asset.category !== appliedFilters.category) return false;
+    if (appliedFilters.location && asset.location !== appliedFilters.location) return false;
+    if (appliedFilters.printStatus && asset.printStatus !== appliedFilters.printStatus) return false;
+    return true;
+  }), [assets, appliedFilters]);
 
-  const [searchResults, setSearchResults] = useState([]);
-  const [selectedForPrinting, setSelectedForPrinting] = useState([]);
-
-  // Print Options Checkbox State
-  const [printOptions, setPrintOptions] = useState({
-    numberOfCopies: 1,
-    includeAssetImage: false,
-    includeAssetNumber: true,
-    includeAssetName: true,
-    includeSerialNumber: true,
-    includeCompanyLogo: false
-  });
-
-  // Selected Template Settings State
-  const [templateInfo, setTemplateInfo] = useState({
-    name: 'Asset360 Standard (QR + Text)',
-    labelSize: '50 mm x 25 mm',
-    tagType: 'QR + Text',
-    fieldsDisplayed: 'Asset Number, Asset Name, Serial Number, Barcode/QR',
-    orientation: 'Landscape',
-    includeLogo: 'Yes',
-    includeAssetImage: 'No'
-  });
-
-  // Modals & Toast State
-  const [showAddManualModal, setShowAddManualModal] = useState(false);
-  const [showImportModal, setShowImportModal] = useState(false);
-  const [showPreviewModal, setShowPreviewModal] = useState(false);
-  const [showTemplateModal, setShowTemplateModal] = useState(false);
-  const [printing, setPrinting] = useState(false);
-  const [toast, setToast] = useState(null);
-
-  const showToast = (message, type = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 4000);
+  const notify = (text, type = 'success') => setMessage({ text, type });
+  const refreshAssets = async () => {
+    const response = await api.get('/tagging/assets');
+    if (!response?.success || !Array.isArray(response.assets)) throw new Error(response?.message || 'Could not load assets.');
+    setAssets(response.assets);
+    return response.assets;
   };
-
-  // Toggle selection in search table
-  const handleToggleSelectAsset = (item) => {
-    setSelectedForPrinting((prev) => {
-      const exists = prev.some((a) => a.id === item.id);
-      if (exists) {
-        return prev.filter((a) => a.id !== item.id);
-      } else {
-        return [
-          ...prev,
-          {
-            id: item.id,
-            assetNumber: item.assetNumber,
-            assetName: item.assetName,
-            serialNumber: item.serialNumber,
-            tagNumber: item.currentTag !== '-' ? item.currentTag : '-',
-            printStatus: 'Ready to Print'
-          }
-        ];
-      }
-    });
-  };
-
-  const handleSelectAllSearch = () => {
-    if (selectedForPrinting.length === searchResults.length) {
-      setSelectedForPrinting([]);
-    } else {
-      setSelectedForPrinting(
-        searchResults.map((item) => ({
-          id: item.id,
-          assetNumber: item.assetNumber,
-          assetName: item.assetName,
-          serialNumber: item.serialNumber,
-          tagNumber: item.currentTag !== '-' ? item.currentTag : '-',
-          printStatus: 'Ready to Print'
-        }))
-      );
-    }
-  };
-
-  const handleRemoveSingleSelected = (id) => {
-    setSelectedForPrinting((prev) => prev.filter((item) => item.id !== id));
-  };
-
-  const handleRemoveAllSelected = () => {
-    setSelectedForPrinting([]);
-    showToast('Removed all selected assets from print queue.');
-  };
-
-  // Filter Form Handlers
-  const handleSearchSubmit = (e) => {
-    if (e) e.preventDefault();
-    showToast('Applied search filters.');
-  };
-
-  const handleClearFilters = () => {
-    setFilters({
-      assetNumber: '',
-      assetName: '',
-      category: 'All Categories',
-      location: 'All Locations',
-      department: 'All Departments',
-      tagStatus: 'Not Printed',
-      assetType: 'All Types',
-      custodian: 'All Custodians'
-    });
+  const refreshHistory = async () => {
+    const response = await api.get('/tagging/print-history');
+    if (!response?.success) throw new Error(response?.message || 'Could not load print history.');
+    setHistory(response.history || []);
   };
 
   useEffect(() => {
-    async function loadAssets() {
-      try {
-        const queryParams = new URLSearchParams();
-        if (filters.assetNumber) queryParams.set('assetNumber', filters.assetNumber);
-        if (filters.assetName) queryParams.set('assetName', filters.assetName);
-        if (filters.category && filters.category !== 'All Categories') queryParams.set('category', filters.category);
-        if (filters.location && filters.location !== 'All Locations') queryParams.set('location', filters.location);
-        if (filters.department && filters.department !== 'All Departments') queryParams.set('department', filters.department);
-
-        const res = await api.get(`/tagging/assets?${queryParams.toString()}`);
-        {
-          const mapped = (res?.assets || []).map((a) => ({
-            id: a.id,
-            assetNumber: a.assetNumber || a.assetId,
-            assetName: a.assetName || a.description,
-            category: a.category || '',
-            location: a.location || '',
-            serialNumber: a.serialNumber || '',
-            currentTag: a.currentTag || a.tagNumber || '-',
-            printStatus: a.currentTag && a.currentTag !== '-' ? 'Printed' : 'Not Printed'
-          }));
-          setSearchResults(mapped);
-          const requestedId = searchParams.get('assetId');
-          if (requestedId) {
-            const requestedAsset = mapped.find(a => a.id === requestedId || a.assetNumber === requestedId);
-            if (requestedAsset) setSelectedForPrinting([{
-              id: requestedAsset.id, assetNumber: requestedAsset.assetNumber,
-              assetName: requestedAsset.assetName, serialNumber: requestedAsset.serialNumber,
-              tagNumber: requestedAsset.currentTag, printStatus: 'Ready to Print'
-            }]);
-          }
-        }
-      } catch (err) {
-        setSearchResults([]);
-        showToast(err.message || 'Could not load assets', 'error');
+    Promise.allSettled([refreshAssets(), api.get('/tagging/templates')]).then(([assetResult, templateResult]) => {
+      if (assetResult.status === 'rejected') notify(assetResult.reason?.message || 'Could not load assets.', 'error');
+      else {
+        const requestedIds = (searchParams.get('assetIds') || searchParams.get('assetId') || '').split(',').filter(Boolean);
+        const matches = assetResult.value.filter(asset => requestedIds.includes(asset.id) || requestedIds.includes(asset.assetNumber));
+        if (matches.length) setSelectedIds(matches.map(asset => asset.id));
       }
-    }
-    loadAssets();
-  }, [filters]);
+      if (templateResult.status === 'fulfilled' && templateResult.value?.success) {
+        const list = templateResult.value.templates || [];
+        setTemplates(list); setTemplateId(list[0]?.id || '');
+      } else notify('Could not load label templates from the backend.', 'error');
+    });
+  }, []);
 
-  // Checkbox option toggle
-  const handleOptionToggle = (key) => {
-    setPrintOptions((prev) => ({ ...prev, [key]: !prev[key] }));
+  useEffect(() => {
+    if (activeTab === 'Print History') refreshHistory().catch(error => notify(error.message, 'error'));
+  }, [activeTab]);
+
+  useEffect(() => {
+    if (!previewAsset || !templateId) { setPreviewLabel(null); return; }
+    let cancelled = false;
+    setPreviewLabel(null); setPreviewLoading(true);
+    api.post('/tagging/prepare', { template: templateId, assets: [{ id: previewAsset.id }], quantity: 1 })
+      .then(response => {
+        if (!cancelled) {
+          if (!response?.success || !response.labels?.[0]) throw new Error(response?.message || 'Could not generate preview.');
+          setPreviewLabel({ ...response.labels[0], imageUrl: previewAsset.imageUrl });
+        }
+      })
+      .catch(error => { if (!cancelled) notify(error.message || 'Could not generate preview.', 'error'); })
+      .finally(() => { if (!cancelled) setPreviewLoading(false); });
+    return () => { cancelled = true; };
+  }, [previewAsset?.id, templateId]);
+
+  const toggleAsset = id => setSelectedIds(previous => previous.includes(id) ? previous.filter(value => value !== id) : [...previous, id]);
+  const toggleVisible = () => {
+    const ids = visibleAssets.map(asset => asset.id);
+    setSelectedIds(previous => ids.every(id => previous.includes(id)) ? previous.filter(id => !ids.includes(id)) : [...new Set([...previous, ...ids])]);
+  };
+  const setOption = key => setOptions(previous => ({ ...previous, [key]: !previous[key] }));
+
+  const downloadTemplate = async () => {
+    const workbook = new ExcelJS.Workbook();
+    const sheet = workbook.addWorksheet('Print tags');
+    sheet.addRow(['Asset Number', 'Asset Name', 'Category', 'Location', 'Serial Number']);
+    sheet.addRow(['AST-001', '', '', '', '']);
+    sheet.getRow(1).font = { bold: true };
+    sheet.columns.forEach(column => { column.width = 22; });
+    const blob = new Blob([await workbook.xlsx.writeBuffer()], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a'); link.href = url; link.download = 'print-tags-template.xlsx'; link.click();
+    URL.revokeObjectURL(url);
   };
 
-  // Submit Print Job
-  const handlePrintTags = async () => {
-    if (selectedForPrinting.length === 0) {
-      showToast('Please select at least one asset to print tags.', 'error');
-      return;
-    }
-
-    setPrinting(true);
+  const importFile = async file => {
+    if (!file) return;
+    setBusy(true);
     try {
-      const result = await api.post('/tagging/print', {
-        template: templateInfo.name,
-        quantity: printOptions.numberOfCopies,
-        assets: selectedForPrinting
+      const [header, ...data] = await readRows(file);
+      if (!header || !data.length) throw new Error('The file needs a header and asset rows.');
+      const keys = header.map(columnKey);
+      const get = (row, names) => { const index = keys.findIndex(key => names.includes(key)); return index < 0 ? '' : clean(row[index]); };
+      if (!keys.some(key => ['assetnumber', 'assetid', 'serialnumber'].includes(key))) throw new Error('Add an Asset Number or Serial Number column.');
+      const rows = data.map((row, index) => ({ rowNumber: index + 2, assetNumber: get(row, ['assetnumber', 'assetid']), assetName: get(row, ['assetname', 'description']), category: get(row, ['category']), location: get(row, ['location', 'site']), serialNumber: get(row, ['serialnumber', 'serial']) })).filter(row => row.assetNumber || row.serialNumber);
+      if (!rows.length) throw new Error('No asset identifiers were found.');
+      const seen = new Set();
+      for (const row of rows) { const key = (row.assetNumber || row.serialNumber).toLowerCase(); if (seen.has(key)) throw new Error(`Duplicate asset on row ${row.rowNumber}.`); seen.add(key); }
+      const latest = await refreshAssets();
+      const resolvedRows = rows.map(row => {
+        const match = latest.find(asset => row.assetNumber ? asset.assetNumber.toLowerCase() === row.assetNumber.toLowerCase() : asset.serialNumber && asset.serialNumber.toLowerCase() === row.serialNumber.toLowerCase());
+        return match ? { ...row, assetNumber: match.assetNumber } : row;
       });
-      const labels = result.labels || [];
-      if (!labels.length) throw new Error('No labels were prepared.');
-      const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) throw new Error('Allow popups to print labels.');
-      printWindow.document.write(`<html><head><title>Asset labels</title><style>body{font-family:Arial,sans-serif}.label{display:inline-block;width:48mm;height:23mm;border:1px solid #555;margin:4mm;padding:2mm;break-inside:avoid}.id{font-size:14px;font-weight:bold}.tag{font-family:monospace;font-size:11px}</style></head><body>${labels.map(label => `<div class="label"><div class="id">${escapeHtml(label.assetNumber)}</div><div>${escapeHtml(label.assetName)}</div><div class="tag">${escapeHtml(label.tagNumber)}</div><div>${escapeHtml(label.serialNumber)}</div></div>`).join('')}</body></html>`);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      setCurrentStep(3);
-      showToast(`Prepared ${labels.length} label(s) for printing.`);
-    } catch (e) {
-      showToast(e.message || 'Could not prepare labels.', 'error');
-    } finally {
-      setPrinting(false);
-    }
+      const response = await api.post('/tagging/import', { assets: resolvedRows });
+      if (!response?.success || !Array.isArray(response.imported)) throw new Error(response?.message || 'Import failed.');
+      const ids = [...new Set(response.imported.map(asset => asset.id))];
+      await refreshAssets(); setSelectedIds(ids); setActiveTab('Search & Select');
+      notify(`${ids.length} assets added to the print queue.`);
+    } catch (error) { notify(error.message || 'Could not import file.', 'error'); }
+    finally { setBusy(false); if (fileInputRef.current) fileInputRef.current.value = ''; }
   };
 
-  const handleSaveDraft = async () => {
-    showToast('Print drafts are not supported yet.', 'error');
+  const saveDraft = () => {
+    sessionStorage.setItem('printTagsDraft', JSON.stringify({ selectedIds, templateId, options }));
+    notify('Print queue saved in this browser session.');
+  };
+  const restoreDraft = () => {
+    try {
+      const draft = JSON.parse(sessionStorage.getItem('printTagsDraft') || 'null');
+      if (!draft?.selectedIds?.length) throw new Error('No saved print queue was found.');
+      setSelectedIds(draft.selectedIds.filter(id => assets.some(asset => asset.id === id)));
+      if (templates.some(item => item.id === draft.templateId)) setTemplateId(draft.templateId);
+      setOptions({ ...initialOptions, ...draft.options }); notify('Print queue restored.');
+    } catch (error) { notify(error.message, 'error'); }
+  };
+
+  const printTags = async () => {
+    if (!selectedIds.length || !template) return notify('Select assets and a template first.', 'error');
+    const popup = window.open('', '_blank');
+    if (!popup) return notify('Allow popups to print asset labels.', 'error');
+    popup.document.write('<p>Preparing labels...</p>');
+    setBusy(true);
+    try {
+      const request = { template: template.id, quantity: options.copies, receiptId: searchParams.get('receiptId') || undefined, reprintOnly: searchParams.get('reprintOnly') === '1', assets: selectedIds.map(id => ({ id })) };
+      const prepared = await api.post('/tagging/prepare', request);
+      if (!prepared?.success || !prepared.labels?.length) throw new Error(prepared?.message || 'No labels were prepared.');
+      const imageByAssetId = new Map(assets.map(asset => [asset.id, asset.imageUrl]));
+      const documentHtml = printDocument(prepared.labels, template, options, imageByAssetId);
+      const response = await api.post('/tagging/print', request);
+      if (!response?.success || response.labels?.length !== prepared.labels.length || response.labels.some((label, index) => label.tagNumber !== prepared.labels[index].tagNumber)) {
+        throw new Error('The prepared labels changed before printing. Please try again.');
+      }
+      popup.document.open(); popup.document.write(documentHtml); popup.document.close();
+      popup.focus(); setTimeout(() => popup.print(), 250);
+      await refreshAssets();
+      notify(`${response.labels.length} labels sent to the browser print dialog.`);
+      if (activeTab === 'Print History') await refreshHistory();
+    } catch (error) { popup.close(); notify(error.message || 'Could not prepare labels.', 'error'); }
+    finally { setBusy(false); }
   };
 
   return (
-    <div className="space-y-5 select-none pb-12 font-sans">
-      {/* Toast Notification Banner */}
-      {toast && (
-        <div
-          className={clsx(
-            'fixed top-20 right-8 z-50 px-4 py-3 rounded-xl shadow-xl flex items-center gap-3 border text-sm font-semibold transition-all animate-in fade-in slide-in-from-top-4',
-            toast.type === 'error'
-              ? 'bg-rose-50 text-rose-700 border-rose-200'
-              : 'bg-emerald-50 text-emerald-800 border-emerald-200'
-          )}
-        >
-          {toast.type === 'error' ? (
-            <AlertCircle className="w-5 h-5 text-rose-600 shrink-0" />
-          ) : (
-            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
-          )}
-          <span>{toast.message}</span>
-          <button
-            onClick={() => setToast(null)}
-            className="ml-2 text-slate-400 hover:text-slate-600 cursor-pointer"
-          >
-            <X className="w-4 h-4" />
-          </button>
-        </div>
-      )}
-
-      {/* 1. Header & Stepper Section */}
-      <div className="space-y-4">
-        {/* Breadcrumbs & Title */}
-        <div>
-          <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1">
-            <button
-              onClick={() => navigate('/receiving')}
-              className="hover:text-[#6C2BD9] transition-colors cursor-pointer flex items-center gap-1"
-            >
-              <span>Receiving &amp; Tagging</span>
-            </button>
-            <ChevronRight className="w-3 h-3 text-slate-400" />
-            <span className="text-slate-700 font-semibold">Print Tags</span>
-          </div>
-          <h1 className="text-2xl font-bold text-slate-900 tracking-tight">Print Tags</h1>
-          <p className="text-xs text-slate-500 font-medium mt-0.5">
-            Generate and print barcode / QR / RFID labels for assets
-          </p>
-        </div>
-
-        {/* 3-Step Stepper Header */}
-        <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-3 md:gap-4 w-full max-w-5xl mx-auto px-2">
-            {/* Step 1 */}
-            <div
-              onClick={() => setCurrentStep(1)}
-              className="flex items-center gap-3 cursor-pointer group shrink-0"
-            >
-              <div
-                className={clsx(
-                  'w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-sm shrink-0 transition-all shadow-xs',
-                  currentStep >= 1 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-100 text-[#6C2BD9]'
-                )}
-              >
-                1
-              </div>
-              <div>
-                <div
-                  className={clsx(
-                    'text-xs font-extrabold leading-tight',
-                    currentStep === 1 ? 'text-[#6C2BD9]' : 'text-slate-800'
-                  )}
-                >
-                  Select Assets
-                </div>
-                <div className="text-[11px] text-purple-600 font-medium">
-                  Choose assets to print tags
-                </div>
-              </div>
-            </div>
-
-            {/* Arrow 1 */}
-            <div className="hidden md:block text-purple-400 shrink-0">
-              <ArrowRight className="w-4 h-4" />
-            </div>
-
-            {/* Step 2 */}
-            <div
-              onClick={() => setCurrentStep(2)}
-              className="flex items-center gap-3 cursor-pointer group shrink-0"
-            >
-              <div
-                className={clsx(
-                  'w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-sm shrink-0 transition-all shadow-xs',
-                  currentStep >= 2 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-100 text-[#6C2BD9]'
-                )}
-              >
-                2
-              </div>
-              <div>
-                <div
-                  className={clsx(
-                    'text-xs font-extrabold leading-tight',
-                    currentStep === 2 ? 'text-[#6C2BD9]' : 'text-slate-800'
-                  )}
-                >
-                  Configure &amp; Preview
-                </div>
-                <div className="text-[11px] text-purple-600 font-medium">
-                  Select template and print settings
-                </div>
-              </div>
-            </div>
-
-            {/* Arrow 2 */}
-            <div className="hidden md:block text-purple-400 shrink-0">
-              <ArrowRight className="w-4 h-4" />
-            </div>
-
-            {/* Step 3 */}
-            <div
-              onClick={() => setCurrentStep(3)}
-              className="flex items-center gap-3 cursor-pointer group shrink-0"
-            >
-              <div
-                className={clsx(
-                  'w-9 h-9 rounded-full flex items-center justify-center font-extrabold text-sm shrink-0 transition-all shadow-xs',
-                  currentStep >= 3 ? 'bg-[#6C2BD9] text-white' : 'bg-purple-100 text-[#6C2BD9]'
-                )}
-              >
-                3
-              </div>
-              <div>
-                <div
-                  className={clsx(
-                    'text-xs font-extrabold leading-tight',
-                    currentStep === 3 ? 'text-[#6C2BD9]' : 'text-slate-800'
-                  )}
-                >
-                  Generate &amp; Print
-                </div>
-                <div className="text-[11px] text-purple-600 font-medium">
-                  Print tags and update status
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Sub-Navigation Tabs Bar */}
-        <div className="border-b border-slate-200 flex items-center gap-6 px-1 text-xs font-bold overflow-x-auto scrollbar-none">
-          {[
-            'Search & Select',
-            'Upload from File',
-            'Tag Templates',
-            'Print Settings',
-            'Preview & Layout',
-            'Print History'
-          ].map((tab) => {
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                onClick={() => setActiveTab(tab)}
-                className={clsx(
-                  'pb-2.5 transition-all cursor-pointer relative whitespace-nowrap',
-                  isActive
-                    ? 'text-[#6C2BD9] border-b-2 border-[#6C2BD9]'
-                    : 'text-slate-500 hover:text-slate-800'
-                )}
-              >
-                {tab}
-              </button>
-            );
-          })}
-        </div>
+    <div className="space-y-5 pb-12">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div><button type="button" onClick={() => navigate('/receiving')} className="text-xs text-slate-500 hover:text-purple-700">Receiving &amp; Tagging ›</button><h1 className="text-2xl font-bold text-slate-900">Print Tags</h1><p className="text-xs text-slate-500">Prepare unique labels for registered and newly imported assets.</p></div>
+        <div className="flex items-center gap-2 text-xs font-semibold"><span className="rounded-full bg-purple-100 text-purple-700 px-3 py-1">{selectedIds.length} selected</span><button type="button" onClick={saveDraft} className="px-3 py-2 rounded-xl border border-slate-200 bg-white">Save queue</button><button type="button" onClick={restoreDraft} className="px-3 py-2 rounded-xl border border-slate-200 bg-white">Restore queue</button></div>
       </div>
-
-      {/* 2. Main Split Content Layout */}
+      {message && <div role="status" className={`flex items-center justify-between gap-2 rounded-xl border p-3 text-xs font-semibold ${message.type === 'error' ? 'border-rose-200 bg-rose-50 text-rose-700' : 'border-emerald-200 bg-emerald-50 text-emerald-800'}`}><span>{message.text}</span><button type="button" onClick={() => setMessage(null)} aria-label="Dismiss"><X className="w-4 h-4" /></button></div>}
+      <div className="flex gap-4 overflow-x-auto border-b border-slate-200 text-xs font-bold">
+        {tabs.map(tab => <button type="button" key={tab} onClick={() => setActiveTab(tab)} className={`shrink-0 pb-3 ${activeTab === tab ? 'border-b-2 border-purple-700 text-purple-700' : 'text-slate-500 hover:text-slate-800'}`}>{tab}</button>)}
+      </div>
       <div className="grid grid-cols-1 xl:grid-cols-12 gap-5 items-start">
-        {/* ========================================================= */}
-        {/* LEFT COLUMN (Span 8): Search Form & Two Tables           */}
-        {/* ========================================================= */}
         <div className="xl:col-span-8 space-y-5">
-          {/* Card 1: Search & Select Filter Form */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-4">
-            <form onSubmit={handleSearchSubmit} className="space-y-3">
-              {/* Row 1 Filters */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    Asset Number
-                  </label>
-                  <input
-                    type="text"
-                    value={filters.assetNumber}
-                    onChange={(e) => setFilters((p) => ({ ...p, assetNumber: e.target.value }))}
-                    placeholder="Search asset number..."
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    Asset Name
-                  </label>
-                  <input
-                    type="text"
-                    value={filters.assetName}
-                    onChange={(e) => setFilters((p) => ({ ...p, assetName: e.target.value }))}
-                    placeholder="Search asset name..."
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    Category
-                  </label>
-                  <select
-                    value={filters.category}
-                    onChange={(e) => setFilters((p) => ({ ...p, category: e.target.value }))}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-                  >
-                    <option value="All Categories">All Categories</option>
-                    <option value="Desktop">Desktop</option>
-                    <option value="Printer">Printer</option>
-                    <option value="Monitor">Monitor</option>
-                    <option value="Laptop">Laptop</option>
-                    <option value="Tablet">Tablet</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    Location
-                  </label>
-                  <select
-                    value={filters.location}
-                    onChange={(e) => setFilters((p) => ({ ...p, location: e.target.value }))}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-                  >
-                    <option value="All Locations">All Locations</option>
-                    <option value="IT Store">IT Store</option>
-                    <option value="Admin Block">Admin Block</option>
-                    <option value="Finance Dept">Finance Dept</option>
-                    <option value="Dubai HQ">Dubai HQ</option>
-                    <option value="Warehouse">Warehouse</option>
-                  </select>
-                </div>
+          {activeTab === 'Search & Select' && <>
+            <form onSubmit={event => { event.preventDefault(); setAppliedFilters({ ...filters }); }} className="bg-white border border-slate-200 rounded-2xl p-4 space-y-3">
+              <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2"><Search className="w-4 h-4 text-purple-700" /> Find assets</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3 text-xs">
+                <input value={filters.query} onChange={event => setFilters(previous => ({ ...previous, query: event.target.value }))} placeholder="Asset, serial or tag number" className="px-3 py-2 rounded-xl border border-slate-200" />
+                <select value={filters.category} onChange={event => setFilters(previous => ({ ...previous, category: event.target.value }))} className="px-3 py-2 rounded-xl border border-slate-200"><option value="">All categories</option>{categories.map(value => <option key={value}>{value}</option>)}</select>
+                <select value={filters.location} onChange={event => setFilters(previous => ({ ...previous, location: event.target.value }))} className="px-3 py-2 rounded-xl border border-slate-200"><option value="">All locations</option>{locations.map(value => <option key={value}>{value}</option>)}</select>
+                <select value={filters.printStatus} onChange={event => setFilters(previous => ({ ...previous, printStatus: event.target.value }))} className="px-3 py-2 rounded-xl border border-slate-200"><option value="">All print statuses</option><option>Not Printed</option><option>Printed</option></select>
               </div>
-
-              {/* Row 2 Filters & Action Buttons */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 items-end">
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    Department
-                  </label>
-                  <select
-                    value={filters.department}
-                    onChange={(e) => setFilters((p) => ({ ...p, department: e.target.value }))}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-                  >
-                    <option value="All Departments">All Departments</option>
-                    <option value="IT Store">IT Store</option>
-                    <option value="Admin Block">Admin Block</option>
-                    <option value="Finance Dept">Finance Dept</option>
-                    <option value="Dubai HQ">Dubai HQ</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    Tag Status
-                  </label>
-                  <select
-                    value={filters.tagStatus}
-                    onChange={(e) => setFilters((p) => ({ ...p, tagStatus: e.target.value }))}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer font-medium"
-                  >
-                    <option value="Not Printed">Not Printed</option>
-                    <option value="Printed">Printed</option>
-                    <option value="All">All</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    Asset Type
-                  </label>
-                  <select
-                    value={filters.assetType}
-                    onChange={(e) => setFilters((p) => ({ ...p, assetType: e.target.value }))}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-                  >
-                    <option value="All Types">All Types</option>
-                    <option value="Hardware">Hardware</option>
-                    <option value="Equipment">Equipment</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-semibold text-slate-600 mb-1">
-                    Custodian
-                  </label>
-                  <select
-                    value={filters.custodian}
-                    onChange={(e) => setFilters((p) => ({ ...p, custodian: e.target.value }))}
-                    className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-                  >
-                    <option value="All Custodians">All Custodians</option>
-                    <option value="Alex Murphy">Alex Murphy</option>
-                    <option value="John Doe">John Doe</option>
-                  </select>
-                </div>
-              </div>
-
-              {/* Action Buttons Row */}
-              <div className="flex items-center justify-end gap-2 pt-1">
-                <button
-                  type="button"
-                  onClick={handleClearFilters}
-                  className="px-4 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold transition-all cursor-pointer shadow-2xs"
-                >
-                  Clear
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-xs"
-                >
-                  <Search className="w-3.5 h-3.5" />
-                  <span>Search</span>
-                </button>
-              </div>
+              <div className="flex justify-end gap-2"><button type="button" onClick={() => { setFilters(initialFilters); setAppliedFilters(initialFilters); }} className="px-4 py-2 border rounded-xl text-xs">Clear</button><button type="submit" className="px-4 py-2 bg-purple-700 text-white rounded-xl text-xs font-bold">Search</button></div>
             </form>
-          </div>
-
-          {/* Card 2: Search Results (12) Table */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <h3 className="text-sm font-bold text-slate-900">Search Results (12)</h3>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAddManualModal(true)}
-                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                  <span>Add Manually</span>
-                </button>
-
-                <button
-                  type="button"
-                  onClick={() => setShowImportModal(true)}
-                  className="px-3.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-semibold flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                >
-                  <Upload className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                  <span>Import from File</span>
-                </button>
-
-                <button
-                  type="button"
-                  className="p-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 transition-all cursor-pointer"
-                >
-                  <MoreVertical className="w-4 h-4" />
-                </button>
-              </div>
+            <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden">
+              <div className="p-4 flex items-center justify-between gap-2"><h2 className="text-sm font-bold">Assets ({visibleAssets.length})</h2><button type="button" onClick={() => setActiveTab('Upload from File')} className="text-xs font-bold text-purple-700 flex items-center gap-1"><FileSpreadsheet className="w-4 h-4" /> Import Excel</button></div>
+              <div className="overflow-auto max-h-[500px]"><table className="w-full text-left text-xs"><thead className="sticky top-0 bg-slate-50 text-slate-600"><tr><th className="p-3"><input type="checkbox" aria-label="Select all visible assets" checked={visibleAssets.length > 0 && visibleAssets.every(asset => selectedIds.includes(asset.id))} onChange={toggleVisible} /></th><th className="p-3">Asset Number</th><th className="p-3">Asset Name</th><th className="p-3">Serial Number</th><th className="p-3">Tag</th><th className="p-3">Print Status</th></tr></thead><tbody className="divide-y divide-slate-100">{visibleAssets.map(asset => <tr key={asset.id} onClick={() => toggleAsset(asset.id)} className={`cursor-pointer hover:bg-purple-50 ${selectedIds.includes(asset.id) ? 'bg-purple-50' : ''}`}><td className="p-3" onClick={event => event.stopPropagation()}><input type="checkbox" checked={selectedIds.includes(asset.id)} onChange={() => toggleAsset(asset.id)} aria-label={`Select ${asset.assetNumber}`} /></td><td className="p-3 font-mono font-bold text-purple-700">{asset.assetNumber}</td><td className="p-3">{asset.assetName}</td><td className="p-3 font-mono">{asset.serialNumber || '—'}</td><td className="p-3 font-mono">{asset.currentTag !== '-' ? asset.currentTag : asset.printTagNumber || 'Generated on selection'}</td><td className="p-3">{asset.printStatus || 'Not Printed'}</td></tr>)}</tbody></table>{!visibleAssets.length && <p className="p-8 text-center text-xs text-slate-500">No assets match these filters.</p>}</div>
             </div>
-
-            <div className="overflow-auto max-h-[500px]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase shadow-2xs">
-                  <tr>
-                    <th className="py-2.5 px-3 w-10 text-center whitespace-nowrap">
-                      <input
-                        type="checkbox"
-                        checked={
-                          searchResults.length > 0 &&
-                          selectedForPrinting.length === searchResults.length
-                        }
-                        onChange={handleSelectAllSearch}
-                        className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                      />
-                    </th>
-                    <th className="py-2.5 px-3 w-8 text-slate-500 font-bold whitespace-nowrap">#</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Number</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Name</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Category</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Location</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Serial Number</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Current Tag</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Print Status</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-sans">
-                  {searchResults.map((item, idx) => {
-                    const isChecked = selectedForPrinting.some((a) => a.id === item.id);
-                    const isPrinted = item.printStatus === 'Printed';
-
-                    return (
-                      <tr
-                        key={item.id}
-                        onClick={() => handleToggleSelectAsset(item)}
-                        className={clsx(
-                          'transition-colors cursor-pointer',
-                          isChecked ? 'bg-purple-50/50' : 'hover:bg-slate-50/60'
-                        )}
-                      >
-                        <td
-                          className="py-2.5 px-3 text-center whitespace-nowrap"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleSelectAsset(item)}
-                            className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                          />
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">
-                          {idx + 1}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9] text-xs whitespace-nowrap">
-                          {item.assetNumber}
-                        </td>
-                        <td className="py-2.5 px-3 font-semibold text-slate-800 whitespace-nowrap">
-                          {item.assetName}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
-                          {item.category}
-                        </td>
-                        <td className="py-2.5 px-3 text-slate-600 whitespace-nowrap">
-                          {item.location}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-600 text-[11px] whitespace-nowrap">
-                          {item.serialNumber}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-600 text-[11px] whitespace-nowrap">
-                          {item.currentTag}
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap">
-                          {isPrinted ? (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200 whitespace-nowrap">
-                              Printed
-                            </span>
-                          ) : (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/90 text-amber-800 border border-amber-200 whitespace-nowrap">
-                              Not Printed
-                            </span>
-                          )}
-                        </td>
-                        <td
-                          className="py-2.5 px-3 text-center whitespace-nowrap"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          <button
-                            type="button"
-                            onClick={() => showToast(`Viewing details for ${item.assetNumber}`)}
-                            className="inline-flex items-center gap-1 text-[#6C2BD9] hover:text-[#5B21B6] font-semibold text-xs px-2 py-1 rounded-lg hover:bg-purple-50 transition-all cursor-pointer whitespace-nowrap"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                            <span>View</span>
-                          </button>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="font-medium text-slate-600">Showing {searchResults.length} records</span>
-              <span className="text-slate-400">Scroll down to view all records</span>
-            </div>
-          </div>
-
-          {/* Card 3: Selected Assets (2) Table Component */}
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-xs overflow-hidden">
-            <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-              <h3 className="text-sm font-bold text-slate-900">
-                Selected Assets ({selectedForPrinting.length})
-              </h3>
-              {selectedForPrinting.length > 0 && (
-                <button
-                  type="button"
-                  onClick={handleRemoveAllSelected}
-                  className="px-3 py-1 rounded-xl border border-rose-200 bg-rose-50/50 hover:bg-rose-100 text-rose-700 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer shadow-2xs"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>Remove All</span>
-                </button>
-              )}
-            </div>
-
-            <div className="overflow-auto max-h-[350px]">
-              <table className="w-full text-left text-xs border-collapse">
-                <thead className="sticky top-0 z-10 bg-slate-50 border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase shadow-2xs">
-                  <tr>
-                    <th className="py-2.5 px-3 w-8 text-slate-500 font-bold whitespace-nowrap">#</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Number</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Asset Name</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Serial Number</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Tag Number</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Print Status</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap text-center">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-sans">
-                  {selectedForPrinting.length === 0 ? (
-                    <tr>
-                      <td colSpan="7" className="p-6 text-center text-slate-400 text-xs">
-                        No assets selected for printing yet. Select assets from Search Results above.
-                      </td>
-                    </tr>
-                  ) : (
-                    selectedForPrinting.map((item, idx) => (
-                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-2.5 px-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">
-                          {idx + 1}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9] text-xs whitespace-nowrap">
-                          {item.assetNumber}
-                        </td>
-                        <td className="py-2.5 px-3 font-semibold text-slate-800 whitespace-nowrap">
-                          {item.assetName}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-600 text-[11px] whitespace-nowrap">
-                          {item.serialNumber}
-                        </td>
-                        <td className="py-2.5 px-3 font-mono text-slate-600 text-[11px] whitespace-nowrap">
-                          {item.tagNumber}
-                        </td>
-                        <td className="py-2.5 px-3 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200 whitespace-nowrap">
-                            Ready to Print
-                          </span>
-                        </td>
-                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
-                          <button
-                            type="button"
-                            onClick={() => handleRemoveSingleSelected(item.id)}
-                            className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all cursor-pointer"
-                            title="Remove asset"
-                          >
-                            <Trash2 className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                          </button>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="font-medium text-slate-600">Showing {selectedForPrinting.length} records</span>
-              <span className="text-slate-400">Scroll down to view all records</span>
-            </div>
-          </div>
+          </>}
+          {activeTab === 'Upload from File' && <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4"><h2 className="text-sm font-bold">Import assets from Excel</h2><p className="text-xs text-slate-600">Use Asset Number or Serial Number to add registered assets. New assets also need Asset Name, Category, and Location. Imported rows become the print queue.</p><div className="flex flex-wrap gap-2"><button type="button" onClick={downloadTemplate} className="px-4 py-2 border rounded-xl text-xs font-bold">Download Excel template</button><button type="button" disabled={busy} onClick={() => fileInputRef.current?.click()} className="px-4 py-2 rounded-xl bg-purple-700 text-white text-xs font-bold disabled:opacity-50">Choose Excel or CSV</button><input ref={fileInputRef} type="file" accept=".xlsx,.csv" className="hidden" onChange={event => importFile(event.target.files?.[0])} /></div></div>}
+          {activeTab === 'Tag Templates' && <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4"><h2 className="text-sm font-bold">Supported label templates</h2><p className="text-xs text-slate-500">These layouts come from the tagging backend.</p><div className="grid sm:grid-cols-2 gap-3">{templates.map(item => <button type="button" key={item.id} onClick={() => { setTemplateId(item.id); setActiveTab('Preview & Layout'); }} className={`text-left p-4 border rounded-xl ${templateId === item.id ? 'border-purple-700 bg-purple-50' : 'border-slate-200'}`}><p className="text-xs font-bold">{item.name}</p><p className="text-[11px] text-slate-500 mt-1">{item.description}</p><p className="text-[11px] font-mono mt-2">{item.widthMm} × {item.heightMm} mm · {item.format === 'QR_CODE' ? 'QR' : 'Code 128'}</p></button>)}</div></div>}
+          {activeTab === 'Print Settings' && <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4"><h2 className="text-sm font-bold">Print settings</h2><label className="block text-xs font-semibold">Copies per asset<input type="number" min="1" max="100" value={options.copies} onChange={event => setOptions(previous => ({ ...previous, copies: Math.max(1, Math.min(100, Number(event.target.value) || 1)) }))} className="block mt-1 w-28 px-3 py-2 border rounded-xl" /></label><div className="grid sm:grid-cols-2 gap-2 text-xs">{[['assetNumber', 'Asset number'], ['assetName', 'Asset name'], ['serialNumber', 'Serial number'], ['assetImage', 'Asset photo when available']].map(([key, title]) => <label key={key} className="flex items-center gap-2"><input type="checkbox" checked={options[key]} onChange={() => setOption(key)} /> {title}</label>)}</div><p className="text-xs text-slate-500">The unique tag number and scannable code always appear on the label.</p></div>}
+          {activeTab === 'Preview & Layout' && <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4"><h2 className="text-sm font-bold">Generated label preview</h2><p className="text-xs text-slate-500">Previewing the first of {selectedIds.length} selected assets. The code is reserved by the backend and stays the same on reprint.</p>{previewLoading ? <p className="text-xs text-slate-500">Generating preview...</p> : <LiveLabel label={previewLabel} template={template} options={options} />}</div>}
+          {activeTab === 'Print History' && <div className="bg-white border border-slate-200 rounded-2xl p-5"><h2 className="text-sm font-bold mb-3">Recent print history</h2><div className="overflow-auto"><table className="w-full text-left text-xs"><thead className="bg-slate-50"><tr><th className="p-2">Printed</th><th className="p-2">Asset</th><th className="p-2">Tag number</th><th className="p-2">Status</th></tr></thead><tbody className="divide-y divide-slate-100">{history.map(item => <tr key={item.id}><td className="p-2">{new Date(item.printedDate).toLocaleString()}</td><td className="p-2">{item.assetNumber || '—'} {item.assetName}</td><td className="p-2 font-mono">{item.tagNumber}</td><td className="p-2">{item.status}</td></tr>)}</tbody></table>{!history.length && <p className="p-6 text-center text-xs text-slate-500">No printed tags yet.</p>}</div></div>}
         </div>
-
-        {/* ========================================================= */}
-        {/* RIGHT COLUMN (Span 4): Template Preview, Options, Buttons */}
-        {/* ========================================================= */}
         <div className="xl:col-span-4 space-y-5">
-          {/* Card 1: Selected Template & Preview */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-4">
-            <div className="flex items-center justify-between pb-2 border-b border-slate-100">
-              <h3 className="text-sm font-bold text-[#5B21B6]">Selected Template</h3>
-              <button
-                type="button"
-                onClick={() => setShowPreviewModal(true)}
-                className="text-xs font-semibold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
-              >
-                <Eye className="w-3.5 h-3.5" />
-                <span>Preview Larger</span>
-              </button>
-            </div>
-
-            {/* Simulated Label Sticker Design Box */}
-            <div className="p-4 bg-white border border-slate-200 rounded-xl shadow-2xs space-y-3">
-              <div className="flex items-start justify-between gap-3">
-                {/* QR Code Container */}
-                <div className="w-20 h-20 bg-slate-900 rounded-lg p-1.5 flex items-center justify-center shrink-0">
-                  {/* High contrast SVG QR simulation */}
-                  <svg className="w-full h-full text-white" viewBox="0 0 24 24" fill="currentColor">
-                    <path d="M2 2h8v8H2V2zm2 2v4h4V4H4zm8-2h8v8h-8V2zm2 2v4h4V4h-4zM2 14h8v8H2v-8zm2 2v4h4v-4H4zm13-2h3v3h-3v-3zm-5 0h3v3h-3v-3zm2 5h3v3h-3v-3zm3 0h3v3h-3v-3zm-5 0h2v2h-2v-2z" />
-                  </svg>
-                </div>
-
-                {/* Right Text Fields */}
-                <div className="flex-1 space-y-1 text-left min-w-0">
-                  <div className="flex items-center gap-1 text-[10px] font-extrabold text-[#6C2BD9]">
-                    <span className="font-sans font-black text-xs tracking-tight">∞ Asset360</span>
-                  </div>
-                  <div className="pt-0.5">
-                    <span className="text-[9px] uppercase font-bold text-slate-400 block leading-none">
-                      ASSET NUMBER
-                    </span>
-                    <span className="font-mono font-bold text-slate-900 text-xs block leading-tight">
-                      AS-2026-00121
-                    </span>
-                  </div>
-                  <div>
-                    <span className="font-bold text-slate-800 text-xs block leading-tight truncate">
-                      Dell OptiPlex 7020
-                    </span>
-                    <span className="font-mono text-slate-500 text-[10px] block leading-tight mt-0.5">
-                      SN: 7CD1234
-                    </span>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            {/* Template Footer */}
-            <div className="flex items-center justify-between text-xs pt-1">
-              <span className="font-bold text-slate-800 text-xs">
-                Asset360 Standard (QR + Text)
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowTemplateModal(true)}
-                className="px-2.5 py-1 rounded-lg border border-purple-200 bg-purple-50/60 hover:bg-purple-100 text-[#6C2BD9] text-xs font-semibold flex items-center gap-1 transition-all cursor-pointer"
-              >
-                <Edit3 className="w-3.5 h-3.5" />
-                <span>Change Template</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Card 2: Template Details Table */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
-            <h3 className="text-sm font-bold text-slate-900 pb-2 border-b border-slate-100">
-              Template Details
-            </h3>
-
-            <div className="space-y-1.5 text-xs">
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500 font-medium text-[11px]">Label Size</span>
-                <span className="font-semibold text-slate-800 text-xs">
-                  {templateInfo.labelSize}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500 font-medium text-[11px]">Tag Type</span>
-                <span className="font-semibold text-slate-800 text-xs">
-                  {templateInfo.tagType}
-                </span>
-              </div>
-
-              <div className="flex items-start justify-between py-1 border-b border-slate-100 gap-4">
-                <span className="text-slate-500 font-medium text-[11px] shrink-0">
-                  Fields Displayed
-                </span>
-                <span className="font-semibold text-slate-800 text-xs text-right">
-                  {templateInfo.fieldsDisplayed}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500 font-medium text-[11px]">Orientation</span>
-                <span className="font-semibold text-slate-800 text-xs">
-                  {templateInfo.orientation}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1 border-b border-slate-100">
-                <span className="text-slate-500 font-medium text-[11px]">Include Logo</span>
-                <span className="font-semibold text-slate-800 text-xs">
-                  {templateInfo.includeLogo}
-                </span>
-              </div>
-
-              <div className="flex items-center justify-between py-1">
-                <span className="text-slate-500 font-medium text-[11px]">
-                  Include Asset Image
-                </span>
-                <span className="font-semibold text-slate-800 text-xs">
-                  {templateInfo.includeAssetImage}
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Print Options */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
-            <h3 className="text-sm font-bold text-[#5B21B6] pb-2 border-b border-slate-100">
-              Print Options
-            </h3>
-
-            <div className="grid grid-cols-1 sm:grid-cols-12 gap-4 items-center">
-              {/* Left Column: Number of Copies */}
-              <div className="sm:col-span-5 space-y-1">
-                <label className="block text-[11px] font-semibold text-slate-600">
-                  Number of Copies
-                </label>
-                <input
-                  type="number"
-                  min="1"
-                  max="100"
-                  value={printOptions.numberOfCopies}
-                  onChange={(e) =>
-                    setPrintOptions((p) => ({
-                      ...p,
-                      numberOfCopies: parseInt(e.target.value) || 1
-                    }))
-                  }
-                  className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-800 text-center"
-                />
-              </div>
-
-              {/* Right Column: Checkboxes */}
-              <div className="sm:col-span-7 space-y-2 text-xs font-medium text-slate-700">
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printOptions.includeAssetImage}
-                    onChange={() => handleOptionToggle('includeAssetImage')}
-                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                  />
-                  <span>Include Asset Image (if available)</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printOptions.includeAssetNumber}
-                    onChange={() => handleOptionToggle('includeAssetNumber')}
-                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                  />
-                  <span>Include Asset Number</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printOptions.includeAssetName}
-                    onChange={() => handleOptionToggle('includeAssetName')}
-                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                  />
-                  <span>Include Asset Name</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printOptions.includeSerialNumber}
-                    onChange={() => handleOptionToggle('includeSerialNumber')}
-                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                  />
-                  <span>Include Serial Number</span>
-                </label>
-
-                <label className="flex items-center gap-2 cursor-pointer">
-                  <input
-                    type="checkbox"
-                    checked={printOptions.includeCompanyLogo}
-                    onChange={() => handleOptionToggle('includeCompanyLogo')}
-                    className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                  />
-                  <span>Include Company Logo</span>
-                </label>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 4: Action Buttons Row at Bottom Right */}
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={handleSaveDraft}
-              className="flex-1 py-3 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 text-xs font-bold transition-all cursor-pointer shadow-2xs active:scale-98"
-            >
-              Save as Draft
-            </button>
-
-            <button
-              type="button"
-              disabled={printing || selectedForPrinting.length === 0}
-              onClick={handlePrintTags}
-              className={clsx(
-                'flex-1 py-3 rounded-xl text-xs font-bold flex items-center justify-center gap-2 shadow-md transition-all active:scale-95',
-                selectedForPrinting.length > 0
-                  ? 'bg-[#5B21B6] hover:bg-[#4C1D95] text-white cursor-pointer'
-                  : 'bg-slate-200 text-slate-400 border border-slate-300 cursor-not-allowed shadow-none'
-              )}
-            >
-              <Printer className="w-4 h-4" />
-              <span>Print Tags</span>
-            </button>
-          </div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-4"><div className="flex items-center justify-between"><h2 className="text-sm font-bold text-purple-800">Selected template</h2><button type="button" onClick={() => setActiveTab('Tag Templates')} className="text-xs font-bold text-purple-700">Change</button></div><p className="text-xs text-slate-600">{template ? `${template.name} · ${template.widthMm} × ${template.heightMm} mm` : 'Loading templates...'}</p>{previewLoading ? <p className="text-xs text-slate-500">Generating preview...</p> : <LiveLabel label={previewLabel} template={template} options={options} />}{previewLabel && <p className="text-[11px] text-slate-600">Unique tag: <span className="font-mono font-bold">{previewLabel.tagNumber}</span></p>}</div>
+          <div className="bg-white border border-slate-200 rounded-2xl p-5 space-y-3"><div className="flex items-center justify-between"><h2 className="text-sm font-bold">Print queue ({selectedIds.length})</h2><button type="button" onClick={() => setSelectedIds([])} disabled={!selectedIds.length} className="text-xs text-rose-600 disabled:opacity-40">Clear</button></div><div className="max-h-48 overflow-auto divide-y divide-slate-100">{selectedAssets.map(asset => <div key={asset.id} className="flex items-center justify-between gap-2 py-2 text-xs"><span className="min-w-0"><span className="font-mono font-bold block truncate">{asset.assetNumber}</span><span className="text-slate-500 block truncate">{asset.assetName}</span></span><button type="button" onClick={() => toggleAsset(asset.id)} aria-label={`Remove ${asset.assetNumber}`} className="text-slate-400 hover:text-rose-600"><X className="w-4 h-4" /></button></div>)}{!selectedIds.length && <p className="text-xs text-slate-500 py-2">Select assets to prepare labels.</p>}</div><button type="button" onClick={printTags} disabled={busy || !selectedIds.length || !template} className="w-full py-2.5 rounded-xl bg-purple-700 text-white text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50"><Printer className="w-4 h-4" />{busy ? 'Preparing...' : `Print ${selectedIds.length * options.copies} label(s)`}</button><p className="text-[11px] text-slate-500">The browser print dialog lets you choose your printer.</p></div>
         </div>
       </div>
     </div>

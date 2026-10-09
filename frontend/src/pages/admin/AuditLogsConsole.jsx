@@ -21,11 +21,146 @@ import {
 } from 'lucide-react';
 import { api } from '../../services/api';
 
-const SEED_AUDIT_LOGS = [];
+const SEED_AUDIT_LOGS = [
+  {
+    id: 'LOG-001248',
+    dateTime: '10 Sep 2026 14:32:15',
+    timestamp: '2026-09-10T14:32:15Z',
+    user: 'John Doe',
+    userEmail: 'john.doe@company.com',
+    userType: 'Internal',
+    module: 'Assets',
+    action: 'Update',
+    recordId: 'AST-0001256',
+    recordType: 'Asset',
+    status: 'Success',
+    ipAddress: '192.168.10.45',
+    device: 'Web Browser (Chrome 128.0)',
+    company: 'Asset360 Holdings',
+    location: 'Dubai HQ',
+    description: 'Updated asset location from "Old Warehouse" to "Main Store"',
+    oldValue: '{ "Location": "Old Warehouse" }',
+    newValue: '{ "Location": "Main Store" }',
+    additionalInfo: {
+      sessionId: 'SESS-8812903',
+      authMethod: 'MFA Verified (Azure AD SSO)',
+      changedFields: ['Location', 'LastModifiedDate', 'ModifiedBy']
+    },
+    relatedLogs: [
+      { id: 'LOG-001242', dateTime: '10 Sep 2026 11:20:00', action: 'Barcode Scan', user: 'John Doe', note: 'Physical tag verified during floor sweep' },
+      { id: 'LOG-001198', dateTime: '08 Sep 2026 09:15:30', action: 'Transfer Request', user: 'Sarah Ali', note: 'Movement ticket TRF-000335 approved' },
+      { id: 'LOG-000840', dateTime: '15 Jan 2026 10:00:12', action: 'Registration', user: 'Admin', note: 'Asset master created via PO-2026-0199' }
+    ]
+  },
+  {
+    id: 'LOG-001247',
+    dateTime: '10 Sep 2026 13:18:47',
+    timestamp: '2026-09-10T13:18:47Z',
+    user: 'Mary Smith',
+    userEmail: 'mary.smith@company.com',
+    userType: 'Internal',
+    module: 'User Management',
+    action: 'Create',
+    recordId: 'USR-001024',
+    recordType: 'User',
+    status: 'Success',
+    ipAddress: '192.168.10.82',
+    device: 'Web Browser (Chrome 128.0)',
+    company: 'Asset360 Holdings',
+    location: 'Dubai HQ',
+    description: 'Created new user account for Michael Chang (mchang@company.com) with role "Auditor".',
+    oldValue: null,
+    newValue: '{ "Username": "mchang", "Role": "Auditor", "Department": "Internal Audit", "Status": "Active" }',
+    additionalInfo: {
+      sessionId: 'SESS-8812741',
+      authMethod: 'Corporate Password + OTP',
+      changedFields: ['All User Master Fields']
+    },
+    relatedLogs: []
+  },
+  {
+    id: 'LOG-001246',
+    dateTime: '10 Sep 2026 12:05:33',
+    timestamp: '2026-09-10T12:05:33Z',
+    user: 'Ahmed Khan',
+    userEmail: 'ahmed.khan@company.com',
+    userType: 'Internal',
+    module: 'Maintenance',
+    action: 'Approve',
+    recordId: 'WO-000458',
+    recordType: 'Work Order',
+    status: 'Success',
+    ipAddress: '192.168.12.19',
+    device: 'Web Browser (Edge 128.0)',
+    company: 'Asset360 Holdings',
+    location: 'Dubai HQ',
+    description: 'Approved completed work order WO-000458 for HVAC Chiller Unit CH-01 annual inspection.',
+    oldValue: '{ "Status": "Pending Approval", "ApprovedBy": null }',
+    newValue: '{ "Status": "Approved / Closed", "ApprovedBy": "Ahmed Khan", "ApprovalDate": "2026-09-10" }',
+    additionalInfo: {
+      sessionId: 'SESS-8812610',
+      authMethod: 'MFA Verified',
+      changedFields: ['Status', 'ApprovedBy', 'ApprovalDate']
+    },
+    relatedLogs: []
+  },
+  {
+    id: 'LOG-001245',
+    dateTime: '10 Sep 2026 11:42:11',
+    timestamp: '2026-09-10T11:42:11Z',
+    user: 'Sarah Ali',
+    userEmail: 'sarah.ali@company.com',
+    userType: 'Internal',
+    module: 'Inventory',
+    action: 'Delete',
+    recordId: 'STK-000789',
+    recordType: 'Stock Item',
+    status: 'Success',
+    ipAddress: '192.168.10.63',
+    device: 'Web Browser (Chrome 128.0)',
+    company: 'Asset360 Holdings',
+    location: 'Jebel Ali Warehouse',
+    description: 'Removed obsolete draft spare part item record from Jebel Ali staging ledger.',
+    oldValue: '{ "PartNo": "SP-9921", "Description": "Obsolete Filter Bracket", "Quantity": 0 }',
+    newValue: null,
+    additionalInfo: {
+      sessionId: 'SESS-8812502',
+      authMethod: 'Session Token',
+      changedFields: ['Record Deleted']
+    },
+    relatedLogs: []
+  },
+  {
+    id: 'LOG-001244',
+    dateTime: '10 Sep 2026 10:15:26',
+    timestamp: '2026-09-10T10:15:26Z',
+    user: 'System',
+    userEmail: 'system.service@asset360.internal',
+    userType: 'System Service',
+    module: 'Integrations',
+    action: 'Sync',
+    recordId: 'INT-ERP-01',
+    recordType: 'Integration Job',
+    status: 'Success',
+    ipAddress: '127.0.0.1 (Local Service)',
+    device: 'Automated Job Runner (Node.js)',
+    company: 'Asset360 Holdings',
+    location: 'Dubai HQ',
+    description: 'Automated bi-directional synchronization with SAP ERP completed: 1,420 asset valuation balances synchronized.',
+    oldValue: '{ "LastSyncStatus": "Pending", "SyncedRecords": 1390 }',
+    newValue: '{ "LastSyncStatus": "Success", "SyncedRecords": 1420, "Errors": 0 }',
+    additionalInfo: {
+      sessionId: 'CRON-INT-0916',
+      authMethod: 'Internal mTLS',
+      changedFields: ['LastSyncTimestamp', 'BookValueAdjustments']
+    },
+    relatedLogs: []
+  }
+];
 
 export function AuditLogsConsole() {
   // State: Data
-  const [logs, setLogs] = useState([]);
+  const [logs, setLogs] = useState(SEED_AUDIT_LOGS);
   const [selectedLogId, setSelectedLogId] = useState('LOG-001248');
   const [showLogDetails, setShowLogDetails] = useState(true);
 
@@ -89,6 +224,9 @@ export function AuditLogsConsole() {
       if (res?.logs && res.logs.length > 0) {
         setLogs(res.logs);
         if (res.total) setTotalRecords(res.total);
+        if (!res.logs.some(l => l.id === selectedLogId)) {
+          setSelectedLogId(res.logs[0].id);
+        }
       }
     } catch (err) {
       // Fallback to local in-memory filtering
@@ -117,7 +255,8 @@ export function AuditLogsConsole() {
     setLocationFilter('All Locations');
     setRecordIdFilter('');
     setKeywordFilter('');
-    setLogs([]);
+    setLogs(SEED_AUDIT_LOGS);
+    setSelectedLogId(SEED_AUDIT_LOGS[0]?.id || '');
     setTotalRecords(1248);
     showNotification('info', 'Filters reset to default.');
   };
@@ -436,7 +575,7 @@ export function AuditLogsConsole() {
       {/* 3. Main Split View: Audit Logs Grid (Left) + Log Details (Right) */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-12 items-start">
         {/* Left Grid Panel */}
-        <div className={showLogDetails ? 'lg:col-span-8' : 'lg:col-span-12'}>
+        <div className={showLogDetails && selectedLog ? 'lg:col-span-8' : 'lg:col-span-12'}>
           <div className="rounded-xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
             {/* Table Top Controls */}
             <div className="flex items-center justify-between border-b border-slate-100 p-3.5">
@@ -523,59 +662,72 @@ export function AuditLogsConsole() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {logs.map(log => {
-                    const isSelected = selectedLogId === log.id;
-                    const isChecked = selectedRowIds.has(log.id);
-                    return (
-                      <tr
-                        key={log.id}
-                        onClick={() => {
-                          setSelectedLogId(log.id);
-                          setShowLogDetails(true);
-                        }}
-                        className={`cursor-pointer transition-colors ${
-                          isSelected
-                            ? 'bg-[#F5F3FF]'
-                            : 'hover:bg-slate-50/70'
-                        }`}
-                      >
-                        <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleToggleRowSelect(log.id)}
-                            className="h-4 w-4 rounded border-2 border-[#6C2BD9] text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer accent-[#6C2BD9]"
-                          />
-                        </td>
-                        <td className="p-3 whitespace-nowrap font-medium text-slate-700">
-                          {log.dateTime}
-                        </td>
-                        <td className="p-3 whitespace-nowrap font-semibold text-slate-800">
-                          {log.user}
-                        </td>
-                        <td className="p-3 whitespace-nowrap text-slate-600 font-medium">
-                          {log.module}
-                        </td>
-                        <td className="p-3 whitespace-nowrap text-slate-600 font-medium">
-                          {log.action}
-                        </td>
-                        <td className="p-3 whitespace-nowrap font-mono text-slate-800 font-semibold">
-                          {log.recordId}
-                        </td>
-                        <td className="p-3 whitespace-nowrap">
-                          <span
-                            className={`inline-block rounded-md px-3 py-0.5 text-[11px] font-bold ${
-                              log.status === 'Success'
-                                ? 'bg-[#DCFCE7] text-[#15803D]'
-                                : 'bg-[#FEE2E2] text-[#DC2626]'
-                            }`}
-                          >
-                            {log.status}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
+                  {logs.length === 0 ? (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
+                        No audit logs found matching the selected filters.
+                      </td>
+                    </tr>
+                  ) : (
+                    logs.map(log => {
+                      const isSelected = selectedLog?.id === log.id;
+                      const isChecked = selectedRowIds.has(log.id);
+                      const displayUser = typeof log.user === 'object'
+                        ? (log.user?.name || log.user?.username || 'System')
+                        : (log.user || 'System');
+                      const displayDate = log.dateTime || log.timestamp || '—';
+
+                      return (
+                        <tr
+                          key={log.id}
+                          onClick={() => {
+                            setSelectedLogId(log.id);
+                            setShowLogDetails(true);
+                          }}
+                          className={`cursor-pointer transition-colors ${
+                            isSelected
+                              ? 'bg-[#F5F3FF]'
+                              : 'hover:bg-slate-50/70'
+                          }`}
+                        >
+                          <td className="p-3 text-center" onClick={e => e.stopPropagation()}>
+                            <input
+                              type="checkbox"
+                              checked={isChecked}
+                              onChange={() => handleToggleRowSelect(log.id)}
+                              className="h-4 w-4 rounded border-2 border-[#6C2BD9] text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer accent-[#6C2BD9]"
+                            />
+                          </td>
+                          <td className="p-3 whitespace-nowrap font-medium text-slate-700">
+                            {displayDate}
+                          </td>
+                          <td className="p-3 whitespace-nowrap font-semibold text-slate-800">
+                            {displayUser}
+                          </td>
+                          <td className="p-3 whitespace-nowrap text-slate-600 font-medium">
+                            {log.module}
+                          </td>
+                          <td className="p-3 whitespace-nowrap text-slate-600 font-medium">
+                            {log.action}
+                          </td>
+                          <td className="p-3 whitespace-nowrap font-mono text-slate-800 font-semibold">
+                            {log.recordId}
+                          </td>
+                          <td className="p-3 whitespace-nowrap">
+                            <span
+                              className={`inline-block rounded-md px-3 py-0.5 text-[11px] font-bold ${
+                                log.status === 'Success'
+                                  ? 'bg-[#DCFCE7] text-[#15803D]'
+                                  : 'bg-[#FEE2E2] text-[#DC2626]'
+                              }`}
+                            >
+                              {log.status}
+                            </span>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
                 </tbody>
               </table>
             </div>
@@ -593,7 +745,7 @@ export function AuditLogsConsole() {
         </div>
 
         {/* Right Log Details Card */}
-        {showLogDetails && (
+        {showLogDetails && selectedLog && (
           <div className="lg:col-span-4 rounded-xl border border-slate-200 bg-white shadow-2xs overflow-hidden">
             {/* Card Header */}
             <div className="flex items-center justify-between border-b border-slate-100 px-5 py-3.5">
@@ -612,39 +764,42 @@ export function AuditLogsConsole() {
               <div className="flex items-baseline">
                 <span className="w-28 text-slate-500 font-semibold shrink-0">Date &amp; Time</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
-                <span className="font-semibold text-slate-900">{selectedLog.dateTime}</span>
+                <span className="font-semibold text-slate-900">{selectedLog.dateTime || selectedLog.timestamp || '—'}</span>
               </div>
 
               <div className="flex items-baseline">
                 <span className="w-28 text-slate-500 font-semibold shrink-0">User</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
                 <span className="font-semibold text-slate-900">
-                  {selectedLog.user} {selectedLog.userEmail ? `(${selectedLog.userEmail})` : ''}
+                  {typeof selectedLog.user === 'object' ? (selectedLog.user?.name || selectedLog.user?.username || 'System') : (selectedLog.user || 'System')}
+                  {selectedLog.userEmail || (typeof selectedLog.user === 'object' && selectedLog.user?.email) ? ` (${selectedLog.userEmail || selectedLog.user?.email})` : ''}
                 </span>
               </div>
 
               <div className="flex items-baseline">
                 <span className="w-28 text-slate-500 font-semibold shrink-0">User Type</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
-                <span className="text-slate-800 font-medium">{selectedLog.userType || 'Internal'}</span>
+                <span className="text-slate-800 font-medium">
+                  {selectedLog.userType || (typeof selectedLog.user === 'object' ? selectedLog.user?.role : 'Internal') || 'Internal'}
+                </span>
               </div>
 
               <div className="flex items-baseline">
                 <span className="w-28 text-slate-500 font-semibold shrink-0">Module</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
-                <span className="text-slate-800 font-medium">{selectedLog.module}</span>
+                <span className="text-slate-800 font-medium">{selectedLog.module || '—'}</span>
               </div>
 
               <div className="flex items-baseline">
                 <span className="w-28 text-slate-500 font-semibold shrink-0">Action</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
-                <span className="text-slate-800 font-medium">{selectedLog.action}</span>
+                <span className="text-slate-800 font-medium">{selectedLog.action || '—'}</span>
               </div>
 
               <div className="flex items-baseline">
                 <span className="w-28 text-slate-500 font-semibold shrink-0">Record ID</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
-                <span className="font-mono font-bold text-slate-900">{selectedLog.recordId}</span>
+                <span className="font-mono font-bold text-slate-900">{selectedLog.recordId || '—'}</span>
               </div>
 
               <div className="flex items-baseline">
@@ -663,20 +818,20 @@ export function AuditLogsConsole() {
                       : 'bg-[#FEE2E2] text-[#DC2626]'
                   }`}
                 >
-                  {selectedLog.status}
+                  {selectedLog.status || 'Success'}
                 </span>
               </div>
 
               <div className="flex items-baseline">
                 <span className="w-28 text-slate-500 font-semibold shrink-0">IP Address</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
-                <span className="font-mono text-slate-800">{selectedLog.ipAddress}</span>
+                <span className="font-mono text-slate-800">{selectedLog.ipAddress || '—'}</span>
               </div>
 
               <div className="flex items-baseline">
                 <span className="w-28 text-slate-500 font-semibold shrink-0">Device</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
-                <span className="text-slate-800 font-medium">{selectedLog.device}</span>
+                <span className="text-slate-800 font-medium">{selectedLog.device || '—'}</span>
               </div>
 
               <div className="flex items-baseline">
@@ -689,7 +844,7 @@ export function AuditLogsConsole() {
                 <span className="w-28 text-slate-500 font-semibold shrink-0">Description</span>
                 <span className="w-4 text-slate-400 shrink-0">:</span>
                 <span className="text-slate-800 font-normal leading-relaxed">
-                  {selectedLog.description}
+                  {selectedLog.description || '—'}
                 </span>
               </div>
 
@@ -699,8 +854,8 @@ export function AuditLogsConsole() {
                 <span className="w-4 text-slate-400 shrink-0 pt-1.5">:</span>
                 <div className="flex-1">
                   {selectedLog.oldValue ? (
-                    <div className="rounded-lg bg-[#F8FAFC] border border-slate-200/80 p-2 font-mono text-[11px] text-slate-800">
-                      {selectedLog.oldValue}
+                    <div className="rounded-lg bg-[#F8FAFC] border border-slate-200/80 p-2 font-mono text-[11px] text-slate-800 break-all">
+                      {typeof selectedLog.oldValue === 'object' ? JSON.stringify(selectedLog.oldValue, null, 2) : String(selectedLog.oldValue)}
                     </div>
                   ) : (
                     <span className="text-slate-400 italic text-[11px] pt-1.5 block">None / Initial State</span>
@@ -714,8 +869,8 @@ export function AuditLogsConsole() {
                 <span className="w-4 text-slate-400 shrink-0 pt-1.5">:</span>
                 <div className="flex-1">
                   {selectedLog.newValue ? (
-                    <div className="rounded-lg bg-[#F8FAFC] border border-slate-200/80 p-2 font-mono text-[11px] text-slate-800">
-                      {selectedLog.newValue}
+                    <div className="rounded-lg bg-[#F8FAFC] border border-slate-200/80 p-2 font-mono text-[11px] text-slate-800 break-all">
+                      {typeof selectedLog.newValue === 'object' ? JSON.stringify(selectedLog.newValue, null, 2) : String(selectedLog.newValue)}
                     </div>
                   ) : (
                     <span className="text-slate-400 italic text-[11px] pt-1.5 block">None / Deleted State</span>
@@ -752,7 +907,7 @@ export function AuditLogsConsole() {
                     </div>
                     <div>
                       <span className="font-semibold text-slate-700">Changed Fields: </span>
-                      <span>{selectedLog.additionalInfo?.changedFields?.join(', ') || 'Standard Update'}</span>
+                      <span>{Array.isArray(selectedLog.additionalInfo?.changedFields) ? selectedLog.additionalInfo.changedFields.join(', ') : (selectedLog.additionalInfo?.changedFields || 'Standard Update')}</span>
                     </div>
                   </div>
                 )}
@@ -765,7 +920,7 @@ export function AuditLogsConsole() {
                   onClick={() => setIsRelatedLogsOpen(!isRelatedLogsOpen)}
                   className="w-full flex items-center justify-between px-5 py-3 hover:bg-purple-50/40 text-left transition-colors"
                 >
-                  <span>Related Logs ({selectedLog.relatedLogs?.length || 3})</span>
+                  <span>Related Logs ({selectedLog.relatedLogs?.length || 0})</span>
                   <ChevronRight
                     className={`h-4 w-4 text-[#6C2BD9] transition-transform ${
                       isRelatedLogsOpen ? 'rotate-90' : ''
@@ -774,24 +929,23 @@ export function AuditLogsConsole() {
                 </button>
                 {isRelatedLogsOpen && (
                   <div className="px-5 pb-3.5 space-y-2 text-[11px] font-normal text-slate-600 bg-purple-50/20">
-                    {(selectedLog.relatedLogs && selectedLog.relatedLogs.length > 0
-                      ? selectedLog.relatedLogs
-                      : [
-                          { id: 'LOG-001242', dateTime: '10 Sep 2026 11:20:00', action: 'Barcode Scan', user: 'John Doe' },
-                          { id: 'LOG-001198', dateTime: '08 Sep 2026 09:15:30', action: 'Transfer Request', user: 'Sarah Ali' },
-                          { id: 'LOG-000840', dateTime: '15 Jan 2026 10:00:12', action: 'Registration', user: 'Admin' }
-                        ]
-                    ).map(rel => (
-                      <div key={rel.id} className="rounded-lg border border-purple-100 bg-white p-2 flex items-center justify-between">
-                        <div>
-                          <span className="font-mono font-bold text-[#6C2BD9]">{rel.id}</span>
-                          <span className="mx-1 text-slate-300">·</span>
-                          <span className="font-semibold text-slate-800">{rel.action}</span>
-                          <span className="block text-[10px] text-slate-400">{rel.dateTime}</span>
+                    {selectedLog.relatedLogs && selectedLog.relatedLogs.length > 0 ? (
+                      selectedLog.relatedLogs.map(rel => (
+                        <div key={rel.id} className="rounded-lg border border-purple-100 bg-white p-2 flex items-center justify-between">
+                          <div>
+                            <span className="font-mono font-bold text-[#6C2BD9]">{rel.id}</span>
+                            <span className="mx-1 text-slate-300">·</span>
+                            <span className="font-semibold text-slate-800">{rel.action}</span>
+                            <span className="block text-[10px] text-slate-400">{rel.dateTime || rel.timestamp || '—'}</span>
+                          </div>
+                          <span className="text-[10px] font-semibold text-slate-600">
+                            {typeof rel.user === 'object' ? (rel.user?.name || rel.user?.username || 'System') : (rel.user || 'System')}
+                          </span>
                         </div>
-                        <span className="text-[10px] font-semibold text-slate-600">{rel.user}</span>
-                      </div>
-                    ))}
+                      ))
+                    ) : (
+                      <p className="text-slate-400 italic text-[11px]">No related logs found for this entry.</p>
+                    )}
                   </div>
                 )}
               </div>

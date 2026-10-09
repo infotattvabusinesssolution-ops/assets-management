@@ -44,3 +44,8 @@ Thumbs.db
 *.njsproj
 *.sln
 *.sw?
+
+# System Drive artifacts & temporary files
+%SystemDrive%/
+**/%SystemDrive%/
+.provider-doc-extract.txt

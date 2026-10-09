@@ -308,16 +308,17 @@ export async function getLocationHierarchy() {
         prisma.room.findMany({ where: { active: true } })
       ]);
       return {
-        sites: sites.length ? sites : locationHierarchyStore.sites,
-        buildings: buildings.length ? buildings : locationHierarchyStore.buildings,
-        floors: floors.length ? floors : locationHierarchyStore.floors,
-        rooms: rooms.length ? rooms : locationHierarchyStore.rooms
+        sites: sites,
+        buildings: buildings,
+        floors: floors,
+        rooms: rooms
       };
     } catch (err) {
-      console.warn('[TransferMovementService] Error fetching hierarchy from Prisma, using fallback:', err.message);
+      console.warn('[TransferMovementService] Error fetching hierarchy from Prisma:', err.message);
+      return { sites: [], buildings: [], floors: [], rooms: [] };
     }
   }
-  return locationHierarchyStore;
+  return { sites: [], buildings: [], floors: [], rooms: [] };
 }
 
 /**
@@ -332,25 +333,21 @@ export async function getMasterReferences() {
         prisma.employee.findMany({ where: { active: true }, include: { department: true } })
       ]);
       return {
-        departments: departments.length ? departments : departmentsStore,
-        custodians: employees.length
-          ? employees.map(e => ({
-              id: e.id,
-              code: e.employeeCode,
-              name: `${e.fullName} (${e.employeeCode})`,
-              department: e.department?.name || 'General',
-              email: e.email
-            }))
-          : custodiansStore
+        departments: departments,
+        custodians: employees.map(e => ({
+          id: e.id,
+          code: e.employeeCode,
+          name: `${e.fullName} (${e.employeeCode})`,
+          department: e.department?.name || 'General',
+          email: e.email
+        }))
       };
     } catch (err) {
-      console.warn('[TransferMovementService] Error fetching master data from Prisma, using fallback:', err.message);
+      console.warn('[TransferMovementService] Error fetching master data from Prisma:', err.message);
+      return { departments: [], custodians: [] };
     }
   }
-  return {
-    departments: departmentsStore,
-    custodians: custodiansStore
-  };
+  return { departments: [], custodians: [] };
 }
 
 /**
@@ -438,24 +435,26 @@ export async function searchEligibleAssets({ query = '', scanType = 'ALL' }) {
             activeTransferId: null
           };
         });
+        
+        if (q) {
+          list = list.filter(a =>
+            a.assetNumber.toLowerCase().includes(q) ||
+            a.assetName.toLowerCase().includes(q) ||
+            (a.serialNumber && a.serialNumber.toLowerCase().includes(q)) ||
+            (a.barcode && a.barcode.toLowerCase().includes(q)) ||
+            (a.rfidEpc && a.rfidEpc.toLowerCase().includes(q))
+          );
+        }
+        return list;
       }
+      return [];
     } catch (err) {
-      console.warn('[TransferMovementService] Prisma query failed, using in-memory list:', err.message);
+      console.warn('[TransferMovementService] Prisma query failed:', err.message);
+      return [];
     }
   }
 
-  // Filter in-memory if not already handled by DB
-  if (q) {
-    list = list.filter(a =>
-      a.assetNumber.toLowerCase().includes(q) ||
-      a.assetName.toLowerCase().includes(q) ||
-      (a.serialNumber && a.serialNumber.toLowerCase().includes(q)) ||
-      (a.barcode && a.barcode.toLowerCase().includes(q)) ||
-      (a.rfidEpc && a.rfidEpc.toLowerCase().includes(q))
-    );
-  }
-
-  return list;
+  return [];
 }
 
 /**
@@ -503,6 +502,8 @@ export async function getTransfers({ status = 'ALL', search = '' }) {
           asset: {
             include: { category: true, site: true, building: true, floor: true, room: true, department: true }
           },
+          fromSite: true,
+          toSite: true,
           fromCustodian: true,
           toCustodian: true,
           requestedBy: true,
@@ -516,18 +517,25 @@ export async function getTransfers({ status = 'ALL', search = '' }) {
         let results = dbTransfers.map(t => ({
           id: t.id,
           transferNumber: t.transferNumber,
+          transferDate: t.createdAt.toISOString().split('T')[0],
           assetCount: 1,
           assetSummary: t.asset?.description || t.asset?.assetId || 'Equipment',
           transferType: t.transferType,
-          fromSite: t.fromSiteId || 'Dubai HQ Campus',
-          toSite: t.toSiteId || 'Abu Dhabi Operations Hub',
+          fromLocationFormatted: t.fromSite?.name || t.fromSiteId || 'Dubai HQ Campus',
+          toLocationFormatted: t.toSite?.name || t.toSiteId || 'Abu Dhabi Operations Hub',
+          fromSite: t.fromSite?.name || t.fromSiteId || 'Dubai HQ Campus',
+          toSite: t.toSite?.name || t.toSiteId || 'Abu Dhabi Operations Hub',
           toCustodian: t.toCustodian ? t.toCustodian.fullName : 'Unassigned',
           department: t.asset?.department?.name || 'Information Technology',
           reason: t.reason || '',
           status: t.status,
           requestedBy: t.requestedBy?.fullName || 'System Admin',
           requestedAt: t.createdAt.toISOString(),
-          assets: [t.asset].filter(Boolean)
+          assets: [t.asset].filter(Boolean).map(a => ({
+            assetNumber: a.assetId || a.id,
+            assetName: a.description || a.assetId || 'Unnamed Asset',
+            serialNumber: a.serialNumber || 'N/A'
+          }))
         }));
 
         if (search) {
@@ -538,9 +546,9 @@ export async function getTransfers({ status = 'ALL', search = '' }) {
             (t.toCustodian && t.toCustodian.toLowerCase().includes(s))
           );
         }
-
         return results;
       }
+      return []; // Return empty if connected to DB but no records
     } catch (err) {
       console.warn('[TransferMovementService] Error fetching transfers from DB:', err.message);
     }
@@ -555,11 +563,59 @@ export async function getTransfers({ status = 'ALL', search = '' }) {
  * Get single transfer details
  */
 export async function getTransferById(id) {
-  const transfer = transfersStore.find(t => t.id === id || t.transferNumber === id);
-  if (!transfer) {
-    throw new Error(`Transfer record ${id} not found.`);
+  const isConnected = isSqlServerConnected || isDbConnected();
+  if (isConnected) {
+    try {
+      const dbTransfer = await prisma.assetTransfer.findFirst({
+        where: {
+          OR: [
+            { id: id },
+            { transferNumber: id }
+          ]
+        },
+        include: {
+          asset: {
+            include: { category: true, site: true, building: true, floor: true, room: true, department: true }
+          },
+          fromSite: true,
+          toSite: true,
+          fromCustodian: true,
+          toCustodian: true,
+          requestedBy: true,
+          approvedBy: true,
+          receivedBy: true
+        }
+      });
+      if (dbTransfer) {
+        return {
+          id: dbTransfer.id,
+          transferNumber: dbTransfer.transferNumber,
+          transferType: dbTransfer.transferType,
+          status: dbTransfer.status,
+          reason: dbTransfer.reason,
+          fromLocationFormatted: dbTransfer.fromSite?.name || dbTransfer.fromSiteId || 'Dubai HQ Campus',
+          toLocationFormatted: dbTransfer.toSite?.name || dbTransfer.toSiteId || 'Abu Dhabi Operations Hub',
+          fromCustodian: dbTransfer.fromCustodian?.fullName || '-',
+          toCustodian: dbTransfer.toCustodian?.fullName || '-',
+          requestedBy: dbTransfer.requestedBy?.fullName || '-',
+          requestedAt: dbTransfer.createdAt.toISOString(),
+          transferDate: dbTransfer.createdAt.toISOString(),
+          assetCount: 1,
+          assets: [dbTransfer.asset].filter(Boolean).map(a => ({
+            assetNumber: a.assetId || a.id,
+            assetName: a.description || a.assetId || 'Unnamed Asset',
+            serialNumber: a.serialNumber || 'N/A'
+          })),
+          history: [],
+          documents: []
+        };
+      }
+    } catch (e) {
+      console.warn('DB error fetching transfer by id', e.message);
+    }
   }
-  return transfer;
+
+  throw new Error(`Transfer record ${id} not found.`);
 }
 
 /**
@@ -618,7 +674,36 @@ export async function createTransfer(payload, user = {}) {
   // Validate all assets exist and are eligible
   const targetAssets = [];
   for (const aid of assetIds) {
-    const asset = assetsStore.find(a => a.id === aid || a.assetNumber === aid);
+    let asset = assetsStore.find(a => a.id === aid || a.assetNumber === aid);
+    
+    // DB Fallback for real dynamic assets
+    if (!asset && isDbConnected()) {
+      const dbAsset = await prisma.asset.findFirst({
+        where: {
+          OR: [{ id: aid }, { assetId: aid }]
+        },
+        include: {
+          site: true,
+          building: true,
+          floor: true,
+          room: true
+        }
+      });
+      if (dbAsset) {
+        asset = {
+          id: dbAsset.id,
+          assetNumber: dbAsset.assetId || dbAsset.id,
+          assetName: dbAsset.name || dbAsset.description || 'Asset',
+          siteName: dbAsset.site?.name || 'Unknown',
+          buildingName: dbAsset.building?.name || 'Unknown',
+          floorName: dbAsset.floor?.name || '',
+          roomName: dbAsset.room?.name || '',
+          isEligibleForTransfer: dbAsset.lifecycleStatus !== 'DISPOSED' && dbAsset.status !== 'Disposed',
+          ineligibilityReason: 'Asset is disposed'
+        };
+      }
+    }
+
     if (!asset) {
       throw new Error(`Asset ID ${aid} was not found in Asset360.`);
     }
@@ -702,6 +787,63 @@ export async function createTransfer(payload, user = {}) {
 
   transfersStore.unshift(newTransfer);
 
+  // DB Fallback: Actually save the record to Prisma so it isn't lost on restart
+  if (isDbConnected()) {
+    try {
+      let reqUserId = newTransfer.requestedByUserId;
+      if (!reqUserId) {
+        const anyUser = await prisma.user.findFirst();
+        if (anyUser) reqUserId = anyUser.id;
+      }
+      
+      if (reqUserId) {
+        // Resolve target IDs based on strings if explicit IDs were missing
+        // This makes sure our UI selections map correctly to SQL fields
+        let fromSiteId = null, toSiteId = null, toCustodianId = null;
+
+        if (newTransfer.toCustodianId) {
+          toCustodianId = newTransfer.toCustodianId;
+        } else if (newTransfer.toCustodian && newTransfer.toCustodian !== 'Unassigned') {
+          const matchedCust = await prisma.employee.findFirst({
+            where: { fullName: { contains: newTransfer.toCustodian } }
+          });
+          if (matchedCust) toCustodianId = matchedCust.id;
+        }
+
+        if (newTransfer.fromSite) {
+          const matchedSite = await prisma.site.findFirst({
+            where: { name: { contains: newTransfer.fromSite } }
+          });
+          if (matchedSite) fromSiteId = matchedSite.id;
+        }
+
+        if (newTransfer.toSite) {
+          const matchedSite = await prisma.site.findFirst({
+            where: { name: { contains: newTransfer.toSite } }
+          });
+          if (matchedSite) toSiteId = matchedSite.id;
+        }
+
+        await prisma.assetTransfer.create({
+          data: {
+            transferNumber: newTransfer.transferNumber,
+            transferType: newTransfer.transferType,
+            status: newTransfer.status,
+            reason: newTransfer.reason || '',
+            assetId: targetAssets[0].id,
+            requestedByUserId: reqUserId,
+            fromSiteId,
+            toSiteId,
+            toCustodianId
+          }
+        });
+        console.log(`Saved Transfer ${newTransfer.transferNumber} to SQL Database.`);
+      }
+    } catch(err) {
+      console.warn('Could not save transfer to DB, falling back to memory store.', err.message);
+    }
+  }
+
   return newTransfer;
 }
 
@@ -716,9 +858,15 @@ export async function createTransfer(payload, user = {}) {
  *     3. Appends immutable records to Movement History
  */
 export async function updateTransferStatus(transferId, actionPayload, user = {}) {
-  const transfer = transfersStore.find(t => t.id === transferId || t.transferNumber === transferId);
+  const isConnected = isSqlServerConnected || isDbConnected();
+  if (!isConnected) throw new Error('Database disconnected.');
+
+  const transfer = await prisma.assetTransfer.findFirst({
+    where: { OR: [{ id: transferId }, { transferNumber: transferId }] }
+  });
+
   if (!transfer) {
-    throw new Error(`Transfer ${transferId} does not exist.`);
+    throw new Error(`Transfer ${transferId} does not exist in DB.`);
   }
 
   const {
@@ -731,109 +879,45 @@ export async function updateTransferStatus(transferId, actionPayload, user = {})
   const now = new Date().toISOString();
   const userName = user?.name || user?.fullName || 'John Doe (System Administrator)';
 
-  switch (action) {
-    case 'APPROVE': {
-      if (transfer.status !== 'PENDING_APPROVAL') {
-        throw new Error(`Cannot approve transfer in status: ${transfer.status}`);
-      }
-      transfer.status = 'APPROVED';
-      transfer.approvedBy = userName;
-      transfer.approvedAt = now;
-      break;
+  let newStatus = transfer.status;
+
+  if (action === 'APPROVE') {
+    if (newStatus !== 'PENDING_APPROVAL') throw new Error(`Cannot approve transfer in status: ${newStatus}`);
+    newStatus = 'APPROVED';
+  } else if (action === 'REJECT') {
+    newStatus = 'REJECTED';
+  } else if (action === 'DISPATCH' || action === 'MARK_TRANSIT') {
+    newStatus = 'IN_TRANSIT';
+  } else if (action === 'CONFIRM_RECEIPT') {
+    if (!['DISPATCHED', 'IN_TRANSIT', 'APPROVED'].includes(newStatus)) {
+      throw new Error(`Cannot confirm receipt for transfer in status: ${newStatus}`);
     }
-
-    case 'REJECT': {
-      transfer.status = 'REJECTED';
-      transfer.rejectionReason = comments;
-      // Unlock all assets
-      for (const item of transfer.assets) {
-        const a = assetsStore.find(x => x.id === item.assetId);
-        if (a) a.activeTransferId = null;
-      }
-      break;
-    }
-
-    case 'DISPATCH': {
-      if (!['APPROVED', 'DRAFT'].includes(transfer.status)) {
-        throw new Error(`Cannot dispatch transfer in status: ${transfer.status}`);
-      }
-      transfer.status = 'DISPATCHED';
-      transfer.dispatchedBy = userName;
-      transfer.dispatchedAt = now;
-      break;
-    }
-
-    case 'MARK_TRANSIT': {
-      transfer.status = 'IN_TRANSIT';
-      break;
-    }
-
-    case 'CONFIRM_RECEIPT': {
-      if (!['DISPATCHED', 'IN_TRANSIT', 'APPROVED'].includes(transfer.status)) {
-        throw new Error(`Cannot confirm receipt for transfer in status: ${transfer.status}`);
-      }
-      transfer.status = 'COMPLETED';
-      transfer.receivedBy = receiverName || userName;
-      transfer.receivedAt = now;
-      transfer.completedAt = now;
-
-      // UPDATE ASSET MASTER FOR EVERY ASSET IN BULK
-      for (const item of transfer.assets) {
-        const asset = assetsStore.find(x => x.id === item.assetId);
-        if (asset) {
-          // Record historical snapshot into Movement History
-          const historyEntry = {
-            id: `MOV-HIST-${Date.now().toString().slice(-6)}-${Math.floor(Math.random() * 1000)}`,
-            movementId: `MOV-${transfer.transferNumber}`,
-            transferNumber: transfer.transferNumber,
-            assetId: asset.id,
-            assetNumber: asset.assetNumber,
-            assetName: asset.assetName,
-            serialNumber: asset.serialNumber,
-            rfidEpc: asset.rfidEpc,
-            movementType: transfer.transferType,
-            fromLocation: asset.currentLocationFormatted,
-            toLocation: transfer.toLocationFormatted,
-            previousCustodian: asset.currentCustodian,
-            newCustodian: transfer.toCustodian,
-            department: transfer.department,
-            reason: transfer.reason,
-            condition: receivedCondition || transfer.conditionAtTransfer,
-            accessories: transfer.accessoriesIncluded,
-            referenceNo: transfer.referenceNo,
-            requestedBy: transfer.requestedBy,
-            approvedBy: transfer.approvedBy,
-            dispatcher: transfer.dispatchedBy,
-            receiver: transfer.receivedBy,
-            timestamp: now,
-            status: 'COMPLETED',
-            documentsCount: (transfer.documents || []).length
-          };
-          movementHistoryStore.unshift(historyEntry);
-
-          // Update Asset Master fields (Protected fields like tagNumber, rfidEpc, acquisitionValue remain strictly untouched!)
-          asset.currentLocationFormatted = transfer.toLocationFormatted;
-          if (transfer.toSite) asset.siteName = transfer.toSite;
-          if (transfer.toBuilding) asset.buildingName = transfer.toBuilding;
-          if (transfer.toFloor) asset.floorName = transfer.toFloor;
-          if (transfer.toRoom) asset.roomName = transfer.toRoom;
-          if (transfer.department) asset.department = transfer.department;
-          if (transfer.toCustodian && transfer.toCustodian !== '-') {
-            asset.currentCustodian = transfer.toCustodian;
-            asset.status = 'Assigned';
-          }
-          asset.condition = receivedCondition || asset.condition;
-          asset.activeTransferId = null;
-        }
-      }
-      break;
-    }
-
-    default:
-      throw new Error(`Unsupported transfer action: ${action}`);
+    newStatus = 'COMPLETED';
+  } else {
+    throw new Error(`Unsupported transfer action: ${action}`);
   }
 
-  return transfer;
+  const updatedTransfer = await prisma.assetTransfer.update({
+    where: { id: transfer.id },
+    data: {
+      status: newStatus,
+      ...(action === 'DISPATCH' ? { dispatchDate: new Date() } : {}),
+      ...(action === 'CONFIRM_RECEIPT' ? { receiveDate: new Date(), receivedByUserId: user?.id || null } : {}),
+      ...(action === 'APPROVE' ? { approvedByUserId: user?.id || null } : {})
+    }
+  });
+
+  // If completed, update asset condition (if any) and unlock asset
+  if (action === 'CONFIRM_RECEIPT' && transfer.assetId) {
+    await prisma.asset.update({
+      where: { id: transfer.assetId },
+      data: {
+        condition: receivedCondition || undefined
+      }
+    });
+  }
+
+  return updatedTransfer;
 }
 
 /**
@@ -860,6 +944,8 @@ export async function getMovementHistory({ assetId = '', transferId = '', search
           asset: {
             include: { category: true, site: true, building: true, floor: true, room: true, department: true }
           },
+          fromSite: true,
+          toSite: true,
           fromCustodian: true,
           toCustodian: true,
           requestedBy: true,
@@ -871,8 +957,8 @@ export async function getMovementHistory({ assetId = '', transferId = '', search
 
       if (dbTransfers && dbTransfers.length > 0) {
         let results = dbTransfers.map(t => {
-          const fromLoc = t.asset?.site?.name ? `${t.asset.site.name} > ${t.asset.building?.name || ''} > ${t.asset.room?.name || ''}`.trim() : 'Dubai HQ Campus';
-          const toLoc = t.toSiteId || 'Abu Dhabi Operations Hub';
+          const fromLoc = t.fromSite?.name || (t.asset?.site?.name ? `${t.asset.site.name} > ${t.asset.building?.name || ''} > ${t.asset.room?.name || ''}`.trim() : 'Dubai HQ Campus');
+          const toLoc = t.toSite?.name || t.toSiteId || 'Abu Dhabi Operations Hub';
           return {
             id: t.id,
             movementId: t.transferNumber,
@@ -919,12 +1005,12 @@ export async function getMovementHistory({ assetId = '', transferId = '', search
 
         return results;
       }
+      return [];
     } catch (err) {
       console.warn('[TransferMovementService] Error fetching movement history from DB:', err.message);
+      return [];
     }
   }
 
-  let list = [...movementHistoryStore];
-  if (assetId) list = list.filter(m => m.assetId === assetId || m.assetNumber === assetId);
-  return list;
+  return [];
 }

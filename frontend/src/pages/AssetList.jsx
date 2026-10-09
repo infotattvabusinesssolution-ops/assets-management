@@ -1805,10 +1805,10 @@ export function AssetList() {
           onAssigned={(updated) => {
             const isUnassign = updated.custodianName === 'Unassigned' || !updated.custodianId;
             showToast('success', isUnassign
-              ? `Asset ${updated.assetId || updated.name} unassigned and returned to inventory.`
+              ? `Custodian removed from asset ${updated.assetId || updated.name}.`
               : `Asset ${updated.assetId || updated.name} assigned to ${updated.custodianName || 'custodian'} successfully!`
             );
-            const targetStatus = isUnassign ? 'AVAILABLE' : 'ASSIGNED';
+            const targetStatus = updated.lifecycleStatus;
             setAssets(prev => prev.map(a => (a.id === updated.id || a.assetId === updated.assetId) ? { ...a, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: targetStatus } : a));
             if (selectedAsset && (selectedAsset.id === updated.id || selectedAsset.assetId === updated.assetId)) {
               setSelectedAsset(prev => ({ ...prev, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: targetStatus }));

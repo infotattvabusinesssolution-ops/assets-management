@@ -34,7 +34,6 @@ import {
   CheckCircle2,
   ShieldAlert,
   ChevronRight,
-  MoreHorizontal,
   ChevronDown,
   Paperclip,
   MessageSquare,
@@ -48,6 +47,25 @@ import {
 } from 'lucide-react';
 
 const formatDate = (value) => value ? new Date(value).toLocaleDateString() : "-";
+const toDateInput = (value) => value ? new Date(value).toISOString().slice(0, 10) : '';
+const getWorkOrderUrl = (filters = {}) => {
+  const query = new URLSearchParams();
+  Object.entries(filters).forEach(([key, value]) => { if (value && value !== 'ALL') query.set(key, value); });
+  return `/maintenance/work-orders${query.toString() ? `?${query.toString()}` : ''}`;
+};
+const csvCell = (value) => {
+  const raw = String(value ?? '');
+  const safe = /^[=+@\-]/.test(raw) ? `'${raw}` : raw;
+  return `"${safe.replaceAll('"', '""')}"`;
+};
+const STATUS_TRANSITIONS = {
+  OPEN: ['ASSIGNED', 'IN_PROGRESS', 'CANCELLED'],
+  ASSIGNED: ['IN_PROGRESS', 'OPEN', 'ON_HOLD', 'CANCELLED'],
+  IN_PROGRESS: ['ON_HOLD', 'ASSIGNED', 'CANCELLED'],
+  ON_HOLD: ['IN_PROGRESS', 'CANCELLED'],
+  COMPLETED: ['IN_PROGRESS'],
+  VERIFIED: [], CLOSED: [], CANCELLED: ['OPEN']
+};
 
 export function MaintenanceManager() {
   const navigate = useNavigate();
@@ -58,15 +76,22 @@ export function MaintenanceManager() {
 
   const [workOrders, setWorkOrders] = useState([]);
   const [schedules, setSchedules] = useState([]);
+  const [assetHistory, setAssetHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
   const [assets, setAssets] = useState([]);
-  const [employees, setEmployees] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
+  const [exportLoading, setExportLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
   // Selected Work Order & Asset Drill-down State
   const [selectedWoId, setSelectedWoId] = useState(null);
+  const [focusedAssetId, setFocusedAssetId] = useState(null);
+  const [selectedWorkOrderDetail, setSelectedWorkOrderDetail] = useState(null);
+  const [detailLoading, setDetailLoading] = useState(false);
+  const [detailRevision, setDetailRevision] = useState(0);
   const [bottomTab, setBottomTab] = useState('HISTORY'); // HISTORY | SCHEDULED | PARTS | TIMELOGS | ATTACHMENTS | NOTES
 
   // Filters State
@@ -76,6 +101,9 @@ export function MaintenanceManager() {
   const [categoryFilter, setCategoryFilter] = useState('ALL');
   const [locationFilter, setLocationFilter] = useState('ALL');
   const [priorityFilter, setPriorityFilter] = useState('ALL');
+  const [startDateFilter, setStartDateFilter] = useState('');
+  const [endDateFilter, setEndDateFilter] = useState('');
+  const [appliedFilters, setAppliedFilters] = useState({});
 
   // Pagination State
   const [currentPage, setCurrentPage] = useState(1);
@@ -83,7 +111,9 @@ export function MaintenanceManager() {
 
   // Modals
   const [showCreateWoModal, setShowCreateWoModal] = useState(false);
+  const [showEditWoModal, setShowEditWoModal] = useState(false);
   const [showCreateSchedModal, setShowCreateSchedModal] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
   const [showUpdateStatusModal, setShowUpdateStatusModal] = useState(false);
   const [showAddTimeLogModal, setShowAddTimeLogModal] = useState(false);
   const [showAddPartsModal, setShowAddPartsModal] = useState(false);
@@ -93,20 +123,20 @@ export function MaintenanceManager() {
   const [woForm, setWoForm] = useState({
     assetId: '',
     workType: 'CORRECTIVE',
-    priority: 'HIGH',
+    priority: 'MEDIUM',
     description: '',
     assignedTechnicianId: '',
     vendorName: '',
-    scheduledDate: new Date().toISOString().split('T')[0],
+    scheduledDate: '',
     dueTargetDate: '',
     notes: ''
   });
+  const [editForm, setEditForm] = useState({ description: '', workType: 'CORRECTIVE', priority: 'MEDIUM', scheduledDate: '', dueTargetDate: '', vendorName: '', notes: '' });
 
   const [schedForm, setSchedForm] = useState({
     title: '',
     assetId: '',
-    scheduleType: 'CALENDAR',
-    frequencyMonths: 6,
+    frequencyMonths: '',
     nextDueDate: ''
   });
 
@@ -119,9 +149,10 @@ export function MaintenanceManager() {
   const [timeLogForm, setTimeLogForm] = useState({
     technician: '',
     workDate: new Date().toISOString().split('T')[0],
-    startTime: '09:00',
-    endTime: '12:00',
-    hoursWorked: 3,
+    startTime: '',
+    endTime: '',
+    hoursWorked: '',
+    hourlyRate: 0,
     activity: '',
     remarks: ''
   });
@@ -130,16 +161,16 @@ export function MaintenanceManager() {
     partName: '',
     partNumber: '',
     quantity: 1,
-    unitCost: 150
+    unitCost: ''
   });
 
   const [closeForm, setCloseForm] = useState({
     workPerformed: '',
     failureCode: '',
     rootCause: '',
-    downtimeHours: 0,
+    downtimeHours: '',
     completionComments: '',
-    supervisorVerification: true
+    supervisorVerification: false
   });
 
   const showToast = (type, message) => {
@@ -148,78 +179,191 @@ export function MaintenanceManager() {
   };
 
   // Fetch maintenance records linked to the Asset Register
-  const loadMaintenanceData = async () => {
+  const loadMaintenanceData = async (filters = appliedFilters, preferredId = null) => {
+    setLoading(true);
     try {
-      const [sumRes, woRes, schRes, assRes, empRes, catRes] = await Promise.all([
+      const [sumRes, woRes, schRes, assRes, techRes, catRes] = await Promise.all([
         api.get('/maintenance/summary'),
-        api.get('/maintenance/work-orders'),
+        api.get(getWorkOrderUrl(filters)),
         api.get('/maintenance/schedules'),
-        api.get('/assets?limit=2000'),
-        api.get('/master-data/employees').catch(() => ({ employees: [] })),
+        api.get('/maintenance/assets'),
+        api.get('/maintenance/technicians'),
         api.get('/master-data/categories').catch(() => ({ categories: [] }))
       ]);
 
       if (sumRes?.success) setSummary(sumRes.summary);
       if (woRes?.success) {
+        setSelectedWorkOrderDetail(null);
         setWorkOrders(woRes.workOrders || []);
-        setSelectedWoId(current => woRes.workOrders?.some(w => w.id === current) ? current : woRes.workOrders?.[0]?.id || null);
+        setSelectedWoId(current => {
+          const desired = preferredId || current;
+          return woRes.workOrders?.some(w => w.id === desired) ? desired : woRes.workOrders?.[0]?.id || null;
+        });
+        setDetailRevision(revision => revision + 1);
       }
       if (schRes?.success) setSchedules(schRes.schedules || []);
       if (assRes?.success) setAssets(assRes.assets || []);
-      if (empRes?.success) setEmployees(empRes.employees || []);
+      if (techRes?.success) setTechnicians(techRes.technicians || []);
       if (catRes?.success) setCategories(catRes.categories || []);
     } catch (err) {
       showToast('error', err.message || 'Could not load maintenance records.');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
-    loadMaintenanceData();
+    loadMaintenanceData({}, searchParams.get('workOrder'));
   }, []);
+
+  useEffect(() => {
+    if (!selectedWoId) {
+      setSelectedWorkOrderDetail(null);
+      setDetailLoading(false);
+      return undefined;
+    }
+    let active = true;
+    setDetailLoading(true);
+    api.get(`/maintenance/work-orders/${encodeURIComponent(selectedWoId)}`)
+      .then(result => {
+        if (active && result?.success) setSelectedWorkOrderDetail(result.workOrder);
+      })
+      .catch(err => {
+        if (active) {
+          setSelectedWorkOrderDetail(null);
+          showToast('error', err.message || 'Could not load work order details.');
+        }
+      })
+      .finally(() => { if (active) setDetailLoading(false); });
+    return () => { active = false; };
+  }, [selectedWoId, detailRevision]);
 
   // Selected Work Order reference object
   const selectedWo = useMemo(() => {
-    return workOrders.find(w => (w._id || w.id) === selectedWoId) || workOrders[0] || null;
-  }, [workOrders, selectedWoId]);
+    if (selectedWorkOrderDetail && (selectedWorkOrderDetail._id || selectedWorkOrderDetail.id) === selectedWoId) return selectedWorkOrderDetail;
+    return workOrders.find(w => (w._id || w.id) === selectedWoId) || null;
+  }, [workOrders, selectedWoId, selectedWorkOrderDetail]);
 
   // Selected Asset reference object
   const selectedAsset = useMemo(() => {
-    if (!selectedWo) return null;
-    return selectedWo.asset || assets.find(a => a.id === selectedWo.assetId) || null;
-  }, [selectedWo, assets]);
+    if (selectedWo) return selectedWo.asset || assets.find(a => a.id === selectedWo.assetId) || null;
+    return assets.find(a => a.id === focusedAssetId) || null;
+  }, [selectedWo, assets, focusedAssetId]);
 
-  // Filtering Logic
-  const filteredWorkOrders = useMemo(() => {
-    return workOrders.filter(w => {
-      const assetObj = w.asset || assets.find(a => a.id === w.assetId) || {};
-      const assetNo = assetObj.assetId || '';
-      const assetName = assetObj.description || '';
-      const techObj = w.assignedTechnician || {};
-      const techName = techObj.fullName || (typeof w.assignedTechnicianId === 'string' ? w.assignedTechnicianId : '');
-      const s = searchQuery.toLowerCase().trim();
+  useEffect(() => {
+    if (!selectedAsset?.id) { setAssetHistory([]); return undefined; }
+    let active = true;
+    setHistoryLoading(true);
+    api.get(`/maintenance/assets/${encodeURIComponent(selectedAsset.id)}/history`)
+      .then(result => { if (active && result?.success) setAssetHistory(result.history || []); })
+      .catch(err => { if (active) { setAssetHistory([]); showToast('error', err.message || 'Could not load asset maintenance history.'); } })
+      .finally(() => { if (active) setHistoryLoading(false); });
+    return () => { active = false; };
+  }, [selectedAsset?.id, detailRevision]);
 
-      const matchesSearch = !s || (
-        (w.workOrderNumber && w.workOrderNumber.toLowerCase().includes(s)) ||
-        (assetNo && assetNo.toLowerCase().includes(s)) ||
-        (assetName && assetName.toLowerCase().includes(s)) ||
-        (techName && techName.toLowerCase().includes(s)) ||
-        (w.description && w.description.toLowerCase().includes(s))
-      );
-
-      const matchesStatus = statusFilter === 'ALL' || w.status === statusFilter || (statusFilter === 'In Progress' && w.status === 'In Progress');
-      const matchesType = typeFilter === 'ALL' || w.workType === typeFilter;
-      const matchesPriority = priorityFilter === 'ALL' || w.priority === priorityFilter;
-
-      const matchesCategory = categoryFilter === 'ALL' || assetObj.categoryId === categoryFilter;
-      const matchesLocation = locationFilter === 'ALL' || assetObj.siteId === locationFilter;
-      return matchesSearch && matchesStatus && matchesType && matchesPriority && matchesCategory && matchesLocation;
-    });
-  }, [workOrders, assets, searchQuery, statusFilter, typeFilter, categoryFilter, locationFilter, priorityFilter]);
+  const filteredWorkOrders = workOrders;
 
   const totalRecords = filteredWorkOrders.length;
+  const totalPages = Math.max(1, Math.ceil(totalRecords / pageSize));
   const paginatedWorkOrders = useMemo(() => {
-    return filteredWorkOrders;
-  }, [filteredWorkOrders]);
+    return filteredWorkOrders.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+  }, [filteredWorkOrders, currentPage, pageSize]);
+
+  useEffect(() => { setCurrentPage(1); }, [appliedFilters]);
+
+  const handleSearch = () => {
+    if (startDateFilter && endDateFilter && startDateFilter > endDateFilter) {
+      showToast('error', 'Created from must be on or before Created to.');
+      return;
+    }
+    const filters = { search: searchQuery.trim(), status: statusFilter, workType: typeFilter, categoryId: categoryFilter, location: locationFilter, priority: priorityFilter, startDate: startDateFilter, endDate: endDateFilter };
+    setAppliedFilters(filters);
+    loadMaintenanceData(filters);
+  };
+
+  const clearFilterFields = () => {
+    setSearchQuery(''); setStatusFilter('ALL'); setTypeFilter('ALL'); setCategoryFilter('ALL');
+    setLocationFilter('ALL'); setPriorityFilter('ALL'); setStartDateFilter(''); setEndDateFilter('');
+  };
+
+  const handleClearFilters = () => {
+    clearFilterFields();
+    setAppliedFilters({});
+    loadMaintenanceData({});
+  };
+
+  const refreshAllSelecting = async (id) => {
+    clearFilterFields();
+    setAppliedFilters({});
+    await loadMaintenanceData({}, id);
+  };
+
+  const handleViewWorkOrder = (id) => {
+    setFocusedAssetId(null);
+    setSelectedWorkOrderDetail(null);
+    setSelectedWoId(id);
+    setDetailRevision(revision => revision + 1);
+  };
+
+  const handleBottomTabChange = async (tab) => {
+    setBottomTab(tab);
+    if (tab === 'SCHEDULED') {
+      try {
+        const result = await api.get('/maintenance/schedules');
+        if (!result?.success) throw new Error(result?.message || 'Could not refresh schedules.');
+        setSchedules(result.schedules || []);
+      } catch (err) { showToast('error', err.message || 'Could not refresh schedules.'); }
+    } else {
+      setDetailRevision(revision => revision + 1);
+    }
+  };
+
+  const handleExport = async () => {
+    setExportLoading(true);
+    try {
+      const result = await api.get(getWorkOrderUrl(appliedFilters));
+      if (!result?.success) throw new Error(result?.message || 'Could not export work orders.');
+      const headers = ['Work Order', 'Asset', 'Asset Name', 'Type', 'Priority', 'Status', 'Assigned To', 'Scheduled Date'];
+      const rows = (result.workOrders || []).map(w => [w.workOrderNumber, w.asset?.assetId, w.asset?.description, w.workType, w.priority, w.status, w.assignedTechnician?.fullName, w.scheduledDate].map(csvCell).join(','));
+      const blob = new Blob([[headers.map(csvCell).join(','), ...rows].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a'); link.href = url; link.download = 'maintenance-work-orders.csv'; document.body.appendChild(link); link.click(); link.remove();
+      window.setTimeout(() => URL.revokeObjectURL(url), 1000);
+    } catch (err) { showToast('error', err.message || 'Could not export work orders.'); }
+    finally { setExportLoading(false); }
+  };
+
+  const openEditWorkOrder = () => {
+    if (!selectedWo) return;
+    setEditForm({ description: selectedWo.description || '', workType: selectedWo.workType || 'CORRECTIVE', priority: selectedWo.priority || 'MEDIUM', scheduledDate: toDateInput(selectedWo.scheduledDate), dueTargetDate: toDateInput(selectedWo.completionTargetDate), vendorName: selectedWo.vendorName || '', notes: selectedWo.notes || '' });
+    setShowEditWoModal(true);
+  };
+
+  const openStatusModal = () => {
+    if (!selectedWo) return;
+    setStatusForm({ targetStatus: '', assignedTechnicianId: '', comments: '' });
+    setShowUpdateStatusModal(true);
+  };
+
+  const openCloseModal = () => {
+    if (!selectedWo || ['VERIFIED', 'CLOSED', 'CANCELLED'].includes(selectedWo.status)) return;
+    setCloseForm({ workPerformed: selectedWo.status === 'COMPLETED' ? (selectedWo.notes?.match(/Work performed: ([^\n]+)/)?.[1] || '') : '', failureCode: selectedWo.failureCode || '', rootCause: selectedWo.rootCause || '', downtimeHours: '', completionComments: '', supervisorVerification: selectedWo.status === 'COMPLETED' });
+    setShowCloseWoModal(true);
+  };
+
+  const handleEditWoSubmit = async (event) => {
+    event.preventDefault();
+    if (!selectedWo) return;
+    setActionLoading(true);
+    try {
+      const result = await api.put(`/maintenance/work-orders/${selectedWo.id}`, editForm);
+      if (!result?.success) throw new Error(result?.message || 'Could not update work order.');
+      setShowEditWoModal(false);
+      showToast('success', 'Work order details saved.');
+      await refreshAllSelecting(selectedWo.id);
+    } catch (err) { showToast('error', err.message || 'Could not update work order.'); }
+    finally { setActionLoading(false); }
+  };
 
   // Handlers
   const handleCreateWoSubmit = async (e) => {
@@ -232,16 +376,97 @@ export function MaintenanceManager() {
     setActionLoading(true);
     try {
       const res = await api.post('/maintenance/work-orders', woForm);
+      if (!res?.success) throw new Error(res?.message || 'Could not create work order.');
       if (res.success) {
         showToast('success', `Work Order ${res.workOrder?.workOrderNumber || ''} created!`);
         setShowCreateWoModal(false);
-        loadMaintenanceData();
+        setWoForm({ assetId: '', workType: 'CORRECTIVE', priority: 'MEDIUM', description: '', assignedTechnicianId: '', vendorName: '', scheduledDate: '', dueTargetDate: '', notes: '' });
+        await refreshAllSelecting(res.workOrder.id);
       }
     } catch (err) {
       showToast('error', err.message || 'Could not create work order.');
     } finally {
       setActionLoading(false);
     }
+  };
+
+  const handleCreateScheduleSubmit = async (e) => {
+    e.preventDefault();
+    setActionLoading(true);
+    try {
+      const payload = { ...schedForm, frequencyMonths: Number(schedForm.frequencyMonths) };
+      const result = editingScheduleId
+        ? await api.put(`/maintenance/schedules/${editingScheduleId}`, payload)
+        : await api.post('/maintenance/schedules', payload);
+      if (!result?.success) throw new Error(result?.message || 'Could not save schedule.');
+      showToast('success', editingScheduleId ? 'Maintenance schedule updated.' : 'Maintenance schedule created.');
+      setShowCreateSchedModal(false);
+      setBottomTab('SCHEDULED');
+      setEditingScheduleId(null);
+      setSchedForm({ title: '', assetId: '', frequencyMonths: '', nextDueDate: '' });
+      await loadMaintenanceData();
+      if (selectedAsset?.id !== payload.assetId || focusedAssetId) {
+        setFocusedAssetId(payload.assetId);
+        setSelectedWoId(null);
+      }
+    } catch (err) { showToast('error', err.message || 'Could not save schedule.'); }
+    finally { setActionLoading(false); }
+  };
+
+  const openCreateSchedule = () => {
+    setEditingScheduleId(null);
+    setSchedForm({ title: '', assetId: selectedAsset?.id || '', frequencyMonths: '', nextDueDate: '' });
+    setShowCreateSchedModal(true);
+  };
+
+  const openEditSchedule = (schedule) => {
+    setEditingScheduleId(schedule.id);
+    setSchedForm({ title: schedule.title || '', assetId: schedule.assetId, frequencyMonths: schedule.frequencyMonths || '', nextDueDate: toDateInput(schedule.nextDueDate) });
+    setShowCreateSchedModal(true);
+  };
+
+  const handleToggleSchedule = async (schedule) => {
+    setActionLoading(true);
+    try {
+      const result = await api.put(`/maintenance/schedules/${schedule.id}`, { active: !schedule.active });
+      if (!result?.success) throw new Error(result?.message || 'Could not update schedule.');
+      showToast('success', schedule.active ? 'Schedule paused.' : 'Schedule reactivated.');
+      await loadMaintenanceData();
+      if (focusedAssetId) { setFocusedAssetId(schedule.assetId); setSelectedWoId(null); }
+    } catch (err) { showToast('error', err.message || 'Could not update schedule.'); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleAddTimeLogSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedWo) return;
+    setActionLoading(true);
+    try {
+      const result = await api.post(`/maintenance/work-orders/${selectedWo.id}/time-logs`, { ...timeLogForm, hoursWorked: Number(timeLogForm.hoursWorked), hourlyRate: Number(timeLogForm.hourlyRate || 0) });
+      if (!result?.success) throw new Error(result?.message || 'Could not save time log.');
+      showToast('success', 'Time log saved.');
+      setShowAddTimeLogModal(false);
+      setBottomTab('TIMELOGS');
+      setTimeLogForm({ technician: '', workDate: new Date().toISOString().split('T')[0], startTime: '', endTime: '', hoursWorked: '', hourlyRate: 0, activity: '', remarks: '' });
+      await refreshAllSelecting(selectedWo.id);
+    } catch (err) { showToast('error', err.message || 'Could not save time log.'); }
+    finally { setActionLoading(false); }
+  };
+
+  const handleAddPartsSubmit = async (e) => {
+    e.preventDefault();
+    if (!selectedWo) return;
+    setActionLoading(true);
+    try {
+      const result = await api.post(`/maintenance/work-orders/${selectedWo.id}/parts`, { ...partForm, quantity: Number(partForm.quantity), unitCost: Number(partForm.unitCost || 0) });
+      if (!result?.success) throw new Error(result?.message || 'Could not save part usage.');
+      showToast('success', 'Part usage saved.');
+      setShowAddPartsModal(false);
+      setBottomTab('PARTS');
+      setPartForm({ partName: '', partNumber: '', quantity: 1, unitCost: '' });
+      await refreshAllSelecting(selectedWo.id);
+    } catch (err) { showToast('error', err.message || 'Could not save part usage.'); }
+    finally { setActionLoading(false); }
   };
 
   const handleUpdateStatusSubmit = async (e) => {
@@ -253,13 +478,16 @@ export function MaintenanceManager() {
       const targetWoId = selectedWo._id || selectedWo.id;
       const res = await api.put(`/maintenance/work-orders/${targetWoId}/status`, {
         status: statusForm.targetStatus,
-        comments: statusForm.comments
+        comments: statusForm.comments,
+        assignedTechnicianId: statusForm.assignedTechnicianId || undefined
       });
+      if (!res?.success) throw new Error(res?.message || 'Could not update work order.');
 
       if (res.success) {
         showToast('success', `Work Order status updated to ${statusForm.targetStatus}!`);
         setShowUpdateStatusModal(false);
-        loadMaintenanceData();
+        setStatusForm({ targetStatus: '', assignedTechnicianId: '', comments: '' });
+        await refreshAllSelecting(targetWoId);
       }
     } catch (err) {
       showToast('error', err.message || 'Could not update work order.');
@@ -275,10 +503,12 @@ export function MaintenanceManager() {
     setActionLoading(true);
     try {
       const targetWoId = selectedWo._id || selectedWo.id;
-      await api.post(`/maintenance/work-orders/${targetWoId}/close`, closeForm);
-      showToast('success', `Work Order ${selectedWo.workOrderNumber} closed & verified!`);
+      const result = await api.post(`/maintenance/work-orders/${targetWoId}/close`, closeForm);
+      if (!result?.success) throw new Error(result?.message || 'Could not complete work order.');
+      showToast('success', `Work Order ${selectedWo.workOrderNumber} ${result.workOrder?.status === 'VERIFIED' ? 'verified' : 'completed'}.`);
       setShowCloseWoModal(false);
-      loadMaintenanceData();
+      setCloseForm({ workPerformed: '', failureCode: '', rootCause: '', downtimeHours: '', completionComments: '', supervisorVerification: false });
+      await refreshAllSelecting(targetWoId);
     } catch (err) {
       showToast('error', err.message || 'Could not close work order.');
     } finally {
@@ -366,25 +596,33 @@ export function MaintenanceManager() {
           </button>
           
           <button
-            onClick={() => setShowCreateSchedModal(true)}
+            onClick={openCreateSchedule}
             className="px-4 py-2 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-lg shadow-xs flex items-center gap-1.5 text-xs transition-all"
           >
             <Calendar className="w-4 h-4 text-[#6C2BD9]" /> Schedule Maintenance
           </button>
 
           <button
+            onClick={handleExport}
+            disabled={exportLoading}
             className="px-3 py-2 bg-white border border-slate-300 text-slate-700 hover:bg-slate-50 font-bold rounded-lg shadow-2xs text-xs flex items-center gap-1"
           >
-            More <ChevronDown className="w-3.5 h-3.5" />
+            {exportLoading ? 'Exporting…' : 'Export CSV'} <ChevronDown className="w-3.5 h-3.5" />
           </button>
         </div>
+      </div>
+
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+        {[['Open', summary.openCount], ['Assigned', summary.assignedCount], ['In progress', summary.inProgressCount], ['Completed', summary.completedCount]].map(([label, value]) => (
+          <div key={label} className="bg-white p-3 rounded-xl border border-slate-200 shadow-2xs"><div className="text-[11px] text-slate-500 font-semibold">{label}</div><div className="text-xl font-extrabold text-slate-900">{Number(value || 0).toLocaleString()}</div></div>
+        ))}
       </div>
 
       {/* ========================================================================= */}
       {/* SEARCH AND FILTERS BAR MATCHING SCREENSHOT 31 */}
       {/* ========================================================================= */}
       <div className="bg-white p-3.5 rounded-xl border border-slate-200 shadow-2xs">
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-2.5 items-end">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-8 gap-2.5 items-end">
           
           {/* Search Input */}
           <div className="lg:col-span-2 space-y-1">
@@ -395,6 +633,7 @@ export function MaintenanceManager() {
                 placeholder="Search by WO No., Asset No., name..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
+                onKeyDown={e => { if (e.key === 'Enter') handleSearch(); }}
                 className="w-full bg-white border border-slate-300 rounded-lg pl-3 pr-8 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] font-medium"
               />
               <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -414,8 +653,10 @@ export function MaintenanceManager() {
               <option value="IN_PROGRESS">In Progress</option>
               <option value="COMPLETED">Completed</option>
               <option value="OPEN">Open</option>
-              <option value="ON_HOLD">Overdue</option>
+              <option value="ON_HOLD">On Hold</option>
               <option value="CANCELLED">Cancelled</option>
+              <option value="VERIFIED">Verified</option>
+              <option value="CLOSED">Closed</option>
             </select>
           </div>
 
@@ -431,8 +672,11 @@ export function MaintenanceManager() {
               <option value="PREVENTIVE">Preventive</option>
               <option value="CORRECTIVE">Corrective</option>
               <option value="INSPECTION">Inspection</option>
+              <option value="EMERGENCY">Emergency</option>
             </select>
           </div>
+
+          <div className="space-y-1"><label className="text-[11px] font-bold text-slate-700">Priority</label><select value={priorityFilter} onChange={e => setPriorityFilter(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-2.5 py-1.5 text-xs"><option value="ALL">All</option><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></div>
 
           {/* Asset Category Dropdown */}
           <div className="space-y-1">
@@ -460,38 +704,22 @@ export function MaintenanceManager() {
             </select>
           </div>
 
-          {/* Date Range Picker */}
-          <div className="space-y-1">
-            <label className="text-[11px] font-bold text-slate-700">Date Range</label>
-            <div className="relative">
-              <input
-                type="text"
-                readOnly
-                value="All dates"
-                className="w-full bg-white border border-slate-300 rounded-lg pl-2.5 pr-7 py-1.5 text-[11px] text-slate-800 font-medium cursor-pointer"
-              />
-              <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          </div>
+          <div className="space-y-1"><label className="text-[11px] font-bold text-slate-700">Created from</label><input type="date" value={startDateFilter} onChange={e => setStartDateFilter(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-[11px]" /></div>
+          <div className="space-y-1"><label className="text-[11px] font-bold text-slate-700">Created to</label><input type="date" value={endDateFilter} onChange={e => setEndDateFilter(e.target.value)} className="w-full bg-white border border-slate-300 rounded-lg px-2 py-1.5 text-[11px]" /></div>
         </div>
 
         {/* Search & Clear Buttons */}
         <div className="flex items-center gap-2 mt-3 pt-2 border-t border-slate-100 justify-end">
           <button
-            onClick={() => {}}
+            onClick={handleSearch}
+            disabled={loading}
             className="bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold py-1.5 px-4 rounded-lg shadow-xs flex items-center justify-center gap-1.5 text-xs"
           >
             <Search className="w-3.5 h-3.5" /> Search
           </button>
           <button
-            onClick={() => {
-              setSearchQuery('');
-              setStatusFilter('ALL');
-              setTypeFilter('ALL');
-              setCategoryFilter('ALL');
-              setLocationFilter('ALL');
-              setPriorityFilter('ALL');
-            }}
+            onClick={handleClearFilters}
+            disabled={loading}
             className="bg-white hover:bg-slate-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold py-1.5 px-4 rounded-lg shadow-2xs text-xs"
           >
             Clear Filters
@@ -517,9 +745,7 @@ export function MaintenanceManager() {
               <table className="w-full text-left border-collapse">
                 <thead className="sticky top-0 z-10 bg-[#F8FAFC] shadow-2xs text-slate-700 font-bold text-[11px] border-b border-slate-200">
                   <tr>
-                    <th className="p-2.5 text-center w-8">
-                      <input type="checkbox" className="rounded border-slate-300" />
-                    </th>
+                    <th className="p-2.5 text-center w-8">Select</th>
                     <th className="p-2.5">WO No.</th>
                     <th className="p-2.5">Asset No.</th>
                     <th className="p-2.5">Asset Name</th>
@@ -541,13 +767,16 @@ export function MaintenanceManager() {
                     return (
                       <tr 
                         key={woId}
-                        onClick={() => setSelectedWoId(woId)}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => handleViewWorkOrder(woId)}
+                        onKeyDown={event => { if (event.key === 'Enter' || event.key === ' ') { event.preventDefault(); handleViewWorkOrder(woId); } }}
                         className={`cursor-pointer transition-colors ${
                           isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50'
                         }`}
                       >
                         <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                          <input type="checkbox" checked={isSelected} onChange={() => setSelectedWoId(woId)} className="rounded border-slate-300" />
+                          <input type="radio" name="selected-maintenance-work-order" aria-label={`Select ${wo.workOrderNumber}`} checked={isSelected} onChange={() => handleViewWorkOrder(woId)} className="border-slate-300" />
                         </td>
                         <td className="p-2.5 font-mono text-[#6C2BD9] font-bold hover:underline">
                           {wo.workOrderNumber}
@@ -578,19 +807,21 @@ export function MaintenanceManager() {
                           {techName}
                         </td>
                         <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                          <button className="p-1 hover:bg-slate-200 rounded text-slate-600">
-                            <MoreHorizontal className="w-4 h-4" />
+                          <button type="button" onClick={() => handleViewWorkOrder(woId)} aria-label={`View ${wo.workOrderNumber}`} title="View work order details" className="px-2 py-1 hover:bg-purple-100 rounded text-[#6C2BD9] font-semibold">
+                            View
                           </button>
                         </td>
                       </tr>
                     );
                   })}
+                  {!loading && paginatedWorkOrders.length === 0 && <tr><td colSpan={10} className="p-8 text-center text-slate-500">No work orders match these filters. Create a work order or clear the filters.</td></tr>}
+                  {loading && <tr><td colSpan={10} className="p-8 text-center text-slate-500">Loading work orders from the database…</td></tr>}
                 </tbody>
               </table>
             </div>
             <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="font-medium text-slate-600">Showing {filteredWorkOrders.length} records</span>
-              <span className="text-slate-400">Scroll down to view all records</span>
+              <span className="font-medium text-slate-600">Showing {totalRecords ? (currentPage - 1) * pageSize + 1 : 0}–{Math.min(currentPage * pageSize, totalRecords)} of {totalRecords}</span>
+              <div className="flex items-center gap-2"><select value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="border rounded px-1.5 py-1"><option value={10}>10</option><option value={25}>25</option><option value={50}>50</option></select><button disabled={currentPage <= 1} onClick={() => setCurrentPage(page => page - 1)} className="border rounded px-2 py-1 disabled:opacity-40">Previous</button><span>Page {currentPage} of {totalPages}</span><button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(page => page + 1)} className="border rounded px-2 py-1 disabled:opacity-40">Next</button></div>
             </div>
           </div>
         </div>
@@ -600,14 +831,17 @@ export function MaintenanceManager() {
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Work Order Details</h3>
             <button 
-              onClick={() => setShowUpdateStatusModal(true)}
-              className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-md text-xs flex items-center gap-1 shadow-2xs"
+              disabled={!selectedWo || detailLoading}
+              onClick={openEditWorkOrder}
+              className="px-3 py-1 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold rounded-md text-xs flex items-center gap-1 shadow-2xs disabled:opacity-40 disabled:cursor-not-allowed"
             >
-              <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" /> Edit
+              <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" /> Edit Details
             </button>
           </div>
 
-          <div className="space-y-2 text-xs">
+          {detailLoading && <p role="status" className="text-xs text-slate-500">Loading selected work order from the database…</p>}
+          {!detailLoading && !selectedWo && <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-5 text-center text-xs text-slate-500">No work order is selected. Choose a row above, or create a work order to see its details here.</div>}
+          <div className={`space-y-2 text-xs ${!selectedWo ? 'hidden' : ''}`}>
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">WO Number</span>
               <span className="col-span-7 font-mono font-bold text-slate-900">: {selectedWo?.workOrderNumber || "-"}</span>
@@ -631,7 +865,7 @@ export function MaintenanceManager() {
             <div className="grid grid-cols-12 gap-1.5 py-0.5 items-center">
               <span className="col-span-5 text-slate-500 font-semibold">Priority</span>
               <span className="col-span-7">
-                : <span className="px-2 py-0.5 rounded text-[10px] font-bold border bg-pink-100 text-pink-700 border-pink-200 inline-block">
+                : <span className={`px-2 py-0.5 rounded text-[10px] font-bold border inline-block ${getPriorityBadgeStyle(selectedWo?.priority)}`}>
                   {selectedWo?.priority || "-"}
                 </span>
               </span>
@@ -640,7 +874,7 @@ export function MaintenanceManager() {
             <div className="grid grid-cols-12 gap-1.5 py-0.5 items-center">
               <span className="col-span-5 text-slate-500 font-semibold">Status</span>
               <span className="col-span-7">
-                : <span className="px-2 py-0.5 rounded text-[10px] border bg-purple-100 text-purple-900 border-purple-300 font-bold inline-block">
+                : <span className={`px-2 py-0.5 rounded text-[10px] border font-bold inline-block ${getStatusBadgeStyle(selectedWo?.status)}`}>
                   {selectedWo?.status || "-"}
                 </span>
               </span>
@@ -653,7 +887,7 @@ export function MaintenanceManager() {
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
               <span className="col-span-5 text-slate-500 font-semibold">Due Date</span>
-              <span className="col-span-7 font-mono text-slate-800">: {formatDate(selectedWo?.scheduledDate)}</span>
+              <span className="col-span-7 font-mono text-slate-800">: {formatDate(selectedWo?.completionTargetDate)}</span>
             </div>
 
             <div className="grid grid-cols-12 gap-1.5 py-0.5">
@@ -675,15 +909,17 @@ export function MaintenanceManager() {
             <div className="pt-3 border-t border-slate-100 space-y-2">
               <div className="grid grid-cols-2 gap-2">
                 <button
-                  onClick={() => setShowUpdateStatusModal(true)}
-                  className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs flex items-center justify-center gap-1 text-xs"
+                  disabled={!selectedWo}
+                  onClick={openStatusModal}
+                  className="w-full py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs flex items-center justify-center gap-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   Update Status <ChevronDown className="w-3.5 h-3.5" />
                 </button>
 
                 <button
+                  disabled={!selectedWo}
                   onClick={() => setShowAddTimeLogModal(true)}
-                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
+                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Clock className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Time Log
                 </button>
@@ -691,17 +927,19 @@ export function MaintenanceManager() {
 
               <div className="grid grid-cols-2 gap-2">
                 <button
+                  disabled={!selectedWo}
                   onClick={() => setShowAddPartsModal(true)}
-                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
+                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
                 >
                   <Box className="w-3.5 h-3.5 text-[#6C2BD9]" /> Add Parts Used
                 </button>
 
                 <button
-                  onClick={() => setShowCloseWoModal(true)}
-                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs"
+                  disabled={!selectedWo || ['VERIFIED', 'CLOSED', 'CANCELLED'].includes(selectedWo.status)}
+                  onClick={openCloseModal}
+                  className="w-full py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-[#6C2BD9] font-bold rounded-lg shadow-2xs flex items-center justify-center gap-1 text-xs disabled:opacity-40 disabled:cursor-not-allowed"
                 >
-                  <Check className="w-3.5 h-3.5 text-[#6C2BD9]" /> Close Work Order
+                  <Check className="w-3.5 h-3.5 text-[#6C2BD9]" /> {selectedWo?.status === 'COMPLETED' ? 'Verify Work Order' : 'Complete Work Order'}
                 </button>
               </div>
             </div>
@@ -721,7 +959,7 @@ export function MaintenanceManager() {
           {/* Tabs Navigation Bar */}
           <div className="flex items-center border-b border-slate-200 gap-6 overflow-x-auto">
             <button
-              onClick={() => setBottomTab('HISTORY')}
+              onClick={() => handleBottomTabChange('HISTORY')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
                 bottomTab === 'HISTORY' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -730,7 +968,7 @@ export function MaintenanceManager() {
             </button>
 
             <button
-              onClick={() => setBottomTab('SCHEDULED')}
+              onClick={() => handleBottomTabChange('SCHEDULED')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
                 bottomTab === 'SCHEDULED' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -739,7 +977,7 @@ export function MaintenanceManager() {
             </button>
 
             <button
-              onClick={() => setBottomTab('PARTS')}
+              onClick={() => handleBottomTabChange('PARTS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
                 bottomTab === 'PARTS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -748,7 +986,7 @@ export function MaintenanceManager() {
             </button>
 
             <button
-              onClick={() => setBottomTab('TIMELOGS')}
+              onClick={() => handleBottomTabChange('TIMELOGS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
                 bottomTab === 'TIMELOGS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -757,7 +995,7 @@ export function MaintenanceManager() {
             </button>
 
             <button
-              onClick={() => setBottomTab('ATTACHMENTS')}
+              onClick={() => handleBottomTabChange('ATTACHMENTS')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
                 bottomTab === 'ATTACHMENTS' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -766,7 +1004,7 @@ export function MaintenanceManager() {
             </button>
 
             <button
-              onClick={() => setBottomTab('NOTES')}
+              onClick={() => handleBottomTabChange('NOTES')}
               className={`pb-2.5 text-xs font-bold border-b-2 transition-all whitespace-nowrap ${
                 bottomTab === 'NOTES' ? 'border-[#6C2BD9] text-[#6C2BD9]' : 'border-transparent text-slate-500 hover:text-slate-800'
               }`}
@@ -788,19 +1026,16 @@ export function MaintenanceManager() {
                       <th className="p-2.5">Description</th>
                       <th className="p-2.5">Performed By</th>
                       <th className="p-2.5">Status</th>
-                      <th className="p-2.5 text-right">Cost (AED)</th>
-                      <th className="p-2.5 text-center">Action</th>
+                      <th className="p-2.5 text-right">Cost</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {workOrders.filter(w => w.assetId === selectedAsset?.id).map((h) => (
+                    {assetHistory.map((h) => (
                       <tr key={h.id} className="hover:bg-slate-50">
                         <td className="p-2.5 font-mono text-slate-600 whitespace-nowrap">
                           {formatDate(h.completedDate || h.createdAt)}
                         </td>
-                        <td className="p-2.5 font-mono font-bold text-[#6C2BD9]">
-                          {h.workOrderNumber}
-                        </td>
+                        <td className="p-2.5 font-mono font-bold text-[#6C2BD9]"><button type="button" onClick={() => handleViewWorkOrder(h.id)} className="hover:underline" title="View this work order">{h.workOrderNumber}</button></td>
                         <td className="p-2.5 text-slate-800">
                           {h.workType}
                         </td>
@@ -818,27 +1053,30 @@ export function MaintenanceManager() {
                         <td className="p-2.5 text-right font-mono font-bold text-slate-900">
                           {Number(h.cost || 0).toLocaleString()}
                         </td>
-                        <td className="p-2.5 text-center">
-                          <button className="p-1 text-slate-500 hover:text-slate-900">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </td>
                       </tr>
                     ))}
+                    {!historyLoading && assetHistory.length === 0 && <tr><td colSpan={7} className="p-6 text-center text-slate-500">No maintenance history for this asset.</td></tr>}
+                    {historyLoading && <tr><td colSpan={7} className="p-6 text-center text-slate-500">Loading asset history…</td></tr>}
                   </tbody>
                 </table>
               </div>
               <div className="p-2.5 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span className="font-medium text-slate-600">Showing {workOrders.filter(w => w.assetId === selectedAsset?.id).length} records</span>
+                <span className="font-medium text-slate-600">Showing {assetHistory.length} records</span>
                 <span className="text-slate-400">Scroll down to view all records</span>
               </div>
             </div>
           )}
 
-          {bottomTab === 'SCHEDULED' && <div className="space-y-2">{schedules.filter(item => item.assetId === selectedAsset?.id).map(item => <div key={item.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs flex justify-between"><span>{item.title}</span><span>Due {formatDate(item.nextDueDate)} · Every {item.frequencyMonths} months</span></div>)}{!schedules.some(item => item.assetId === selectedAsset?.id) && <p className="text-slate-500">No scheduled maintenance for this asset.</p>}</div>}
-          {bottomTab === 'PARTS' && <div className="space-y-2">{(selectedWo?.partsUsed || []).map(part => <div key={part.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs flex justify-between"><span>{part.partName}</span><span>{part.quantity} × {Number(part.unitCost || 0).toLocaleString()} AED</span></div>)}{!selectedWo?.partsUsed?.length && <p className="text-slate-500">No parts recorded.</p>}</div>}
+          {bottomTab === 'SCHEDULED' && <div className="space-y-2">
+            {schedules.filter(item => item.assetId === selectedAsset?.id).map(item => <div key={item.id} className="p-3 bg-slate-50 rounded-lg border border-slate-200 text-xs flex flex-wrap items-center justify-between gap-2">
+              <div><div className="font-bold text-slate-900">{item.title} <span className={item.active ? 'text-emerald-700' : 'text-slate-500'}>· {item.active ? 'Active' : 'Paused'}</span></div><div className="text-slate-600">Due {formatDate(item.nextDueDate)} · Every {item.frequencyMonths} months</div></div>
+              <div className="flex gap-2"><button type="button" disabled={actionLoading} onClick={() => openEditSchedule(item)} className="px-2 py-1 rounded border border-[#6C2BD9] text-[#6C2BD9] disabled:opacity-40">Edit</button><button type="button" disabled={actionLoading} onClick={() => handleToggleSchedule(item)} className="px-2 py-1 rounded border border-slate-300 text-slate-700 disabled:opacity-40">{item.active ? 'Pause' : 'Reactivate'}</button></div>
+            </div>)}
+            {!schedules.some(item => item.assetId === selectedAsset?.id) && <p className="text-slate-500">No scheduled maintenance for this asset.</p>}
+          </div>}
+          {bottomTab === 'PARTS' && <div className="space-y-2">{(selectedWo?.partsUsed || []).map(part => <div key={part.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs flex justify-between"><span>{part.partName}{part.partNumber ? ` · ${part.partNumber}` : ''}</span><span>{part.quantity} × {Number(part.unitCost || 0).toLocaleString()}</span></div>)}{!selectedWo?.partsUsed?.length && <p className="text-slate-500">No parts recorded.</p>}</div>}
           {bottomTab === 'TIMELOGS' && <div className="space-y-2">{(selectedWo?.timeLogs || []).map(log => <div key={log.id} className="p-4 bg-slate-50 rounded-lg border border-slate-200 text-xs">{log.technician || 'Technician'} · {Number(log.hoursWorked || 0)} hours · {formatDate(log.workDate)}</div>)}{!selectedWo?.timeLogs?.length && <p className="text-slate-500">No time logs recorded.</p>}</div>}
-          {bottomTab === 'ATTACHMENTS' && <div className="p-4 text-slate-500 text-xs">{selectedWo?.photoUrls || 'No attachments recorded.'}</div>}
+          {bottomTab === 'ATTACHMENTS' && <div className="space-y-2">{(selectedWo?.photoUrls ? String(selectedWo.photoUrls).split(',').map(value => value.trim()).filter(Boolean) : []).map((url, index) => <a key={`${url}-${index}`} href={url} target="_blank" rel="noreferrer" className="block p-3 bg-slate-50 rounded border text-[#6C2BD9] underline break-all">Attachment {index + 1}: {url}</a>)}{!selectedWo?.photoUrls && <p className="p-4 text-slate-500 text-xs">No attachments recorded.</p>}</div>}
           {bottomTab === 'NOTES' && <div className="p-4 text-slate-700 text-xs">{selectedWo?.notes || 'No notes recorded.'}</div>}
         </div>
 
@@ -918,13 +1156,22 @@ export function MaintenanceManager() {
               </button>
             </div>
 
-            <form onSubmit={handleCreateWoSubmit} className="space-y-3">
+            <form onSubmit={handleCreateWoSubmit} className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
               <div className="space-y-1">
                 <label className="text-xs font-bold text-slate-700">Select Asset</label>
                 <select required value={woForm.assetId} onChange={e => setWoForm({ ...woForm, assetId: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium">
                   <option value="">Select an asset</option>
                   {assets.map(asset => <option key={asset.id} value={asset.id}>{asset.assetId} - {asset.description}</option>)}
                 </select>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1 text-xs font-bold text-slate-700">Work Type<select value={woForm.workType} onChange={e => setWoForm({ ...woForm, workType: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs"><option value="CORRECTIVE">Corrective</option><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option><option value="EMERGENCY">Emergency</option></select></label>
+                <label className="space-y-1 text-xs font-bold text-slate-700">Priority<select value={woForm.priority} onChange={e => setWoForm({ ...woForm, priority: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
+                <label className="space-y-1 text-xs font-bold text-slate-700">Assign Technician<select value={woForm.assignedTechnicianId} onChange={e => setWoForm({ ...woForm, assignedTechnicianId: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs"><option value="">Unassigned</option>{technicians.map(person => <option key={person.id} value={person.id}>{person.fullName || person.username} · {person.role?.name || person.role?.code || 'User'}</option>)}</select></label>
+                <label className="space-y-1 text-xs font-bold text-slate-700">Scheduled Date<input type="date" value={woForm.scheduledDate} onChange={e => setWoForm({ ...woForm, scheduledDate: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs" /></label>
+                <label className="space-y-1 text-xs font-bold text-slate-700">Due Date<input type="date" value={woForm.dueTargetDate} onChange={e => setWoForm({ ...woForm, dueTargetDate: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs" /></label>
+                <label className="space-y-1 text-xs font-bold text-slate-700">Vendor<input value={woForm.vendorName} onChange={e => setWoForm({ ...woForm, vendorName: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs" /></label>
               </div>
 
               <div className="space-y-1">
@@ -938,6 +1185,8 @@ export function MaintenanceManager() {
                 />
               </div>
 
+              <label className="block space-y-1 text-xs font-bold text-slate-700">Notes<textarea rows={2} value={woForm.notes} onChange={e => setWoForm({ ...woForm, notes: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium" /></label>
+
               <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
@@ -948,6 +1197,7 @@ export function MaintenanceManager() {
                 </button>
                 <button
                   type="submit"
+                  disabled={actionLoading}
                   className="px-4 py-2 bg-[#6C2BD9] text-white font-bold rounded-lg hover:bg-[#5B21B6] shadow-xs"
                 >
                   Create Work Order
@@ -956,6 +1206,63 @@ export function MaintenanceManager() {
             </form>
           </div>
         </div>
+      )}
+
+      {showEditWoModal && selectedWo && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4"><div className="bg-white rounded-xl border shadow-2xl w-full max-w-lg p-5 space-y-4">
+          <div className="flex justify-between border-b pb-3"><h3 className="font-bold">Edit {selectedWo.workOrderNumber}</h3><button type="button" onClick={() => setShowEditWoModal(false)} aria-label="Close edit form"><X className="w-4 h-4" /></button></div>
+          <form onSubmit={handleEditWoSubmit} className="space-y-3 max-h-[70vh] overflow-y-auto pr-1">
+            <p className="text-xs text-slate-600">Asset: {selectedAsset?.assetId || selectedWo.assetId} · {selectedAsset?.description || ''}</p>
+            <label className="block space-y-1 text-xs font-bold">Description<textarea required rows={3} value={editForm.description} onChange={e => setEditForm({ ...editForm, description: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <div className="grid grid-cols-2 gap-3">
+              <label className="space-y-1 text-xs font-bold">Maintenance type<select value={editForm.workType} onChange={e => setEditForm({ ...editForm, workType: e.target.value })} className="w-full border rounded-lg p-2"><option value="CORRECTIVE">Corrective</option><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option><option value="EMERGENCY">Emergency</option></select></label>
+              <label className="space-y-1 text-xs font-bold">Priority<select value={editForm.priority} onChange={e => setEditForm({ ...editForm, priority: e.target.value })} className="w-full border rounded-lg p-2"><option value="LOW">Low</option><option value="MEDIUM">Medium</option><option value="HIGH">High</option><option value="CRITICAL">Critical</option></select></label>
+              <label className="space-y-1 text-xs font-bold">Scheduled date<input type="date" value={editForm.scheduledDate} onChange={e => setEditForm({ ...editForm, scheduledDate: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+              <label className="space-y-1 text-xs font-bold">Due date<input type="date" value={editForm.dueTargetDate} onChange={e => setEditForm({ ...editForm, dueTargetDate: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            </div>
+            <label className="block space-y-1 text-xs font-bold">Vendor<input value={editForm.vendorName} onChange={e => setEditForm({ ...editForm, vendorName: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <label className="block space-y-1 text-xs font-bold">Notes<textarea rows={3} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowEditWoModal(false)} className="px-3 py-2 bg-slate-100 rounded-lg">Cancel</button><button type="submit" disabled={actionLoading} className="px-3 py-2 bg-[#6C2BD9] text-white rounded-lg disabled:opacity-40">Save Changes</button></div>
+          </form>
+        </div></div>
+      )}
+
+      {showCreateSchedModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4"><div className="bg-white rounded-xl border shadow-2xl w-full max-w-md p-5 space-y-4">
+          <div className="flex justify-between border-b pb-3"><h3 className="font-bold">{editingScheduleId ? 'Edit Maintenance Schedule' : 'Schedule Preventive Maintenance'}</h3><button onClick={() => setShowCreateSchedModal(false)}><X className="w-4 h-4" /></button></div>
+          <form onSubmit={handleCreateScheduleSubmit} className="space-y-3">
+            <label className="block space-y-1 text-xs font-bold">Schedule name<input required value={schedForm.title} onChange={e => setSchedForm({ ...schedForm, title: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <label className="block space-y-1 text-xs font-bold">Database asset<select required value={schedForm.assetId} onChange={e => setSchedForm({ ...schedForm, assetId: e.target.value })} className="w-full border rounded-lg p-2"><option value="">Select asset</option>{assets.map(asset => <option key={asset.id} value={asset.id}>{asset.assetId} · {asset.description}</option>)}</select></label>
+            <div className="grid grid-cols-2 gap-3"><label className="space-y-1 text-xs font-bold">Frequency (months)<input required type="number" min="1" step="1" value={schedForm.frequencyMonths} onChange={e => setSchedForm({ ...schedForm, frequencyMonths: e.target.value })} className="w-full border rounded-lg p-2" /></label><label className="space-y-1 text-xs font-bold">Next due date<input required type="date" value={schedForm.nextDueDate} onChange={e => setSchedForm({ ...schedForm, nextDueDate: e.target.value })} className="w-full border rounded-lg p-2" /></label></div>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowCreateSchedModal(false)} className="px-3 py-2 bg-slate-100 rounded-lg">Cancel</button><button disabled={actionLoading} className="px-3 py-2 bg-[#6C2BD9] text-white rounded-lg">{editingScheduleId ? 'Update Schedule' : 'Create Schedule'}</button></div>
+          </form>
+        </div></div>
+      )}
+
+      {showAddTimeLogModal && selectedWo && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4"><div className="bg-white rounded-xl border shadow-2xl w-full max-w-md p-5 space-y-4">
+          <div className="flex justify-between border-b pb-3"><h3 className="font-bold">Add Labor / Time Log</h3><button onClick={() => setShowAddTimeLogModal(false)}><X className="w-4 h-4" /></button></div>
+          <form onSubmit={handleAddTimeLogSubmit} className="space-y-3">
+            <label className="block space-y-1 text-xs font-bold">Technician<select value={timeLogForm.technician} onChange={e => setTimeLogForm({ ...timeLogForm, technician: e.target.value })} className="w-full border rounded-lg p-2"><option value="">Signed-in user</option>{technicians.map(person => <option key={person.id} value={person.fullName || person.username}>{person.fullName || person.username}</option>)}</select></label>
+            <div className="grid grid-cols-2 gap-3"><label className="space-y-1 text-xs font-bold">Work date<input required type="date" value={timeLogForm.workDate} onChange={e => setTimeLogForm({ ...timeLogForm, workDate: e.target.value })} className="w-full border rounded-lg p-2" /></label><label className="space-y-1 text-xs font-bold">Hours worked<input required type="number" min="0.01" max="24" step="0.01" value={timeLogForm.hoursWorked} onChange={e => setTimeLogForm({ ...timeLogForm, hoursWorked: e.target.value })} className="w-full border rounded-lg p-2" /></label><label className="space-y-1 text-xs font-bold">Start time<input type="time" value={timeLogForm.startTime} onChange={e => setTimeLogForm({ ...timeLogForm, startTime: e.target.value })} className="w-full border rounded-lg p-2" /></label><label className="space-y-1 text-xs font-bold">End time<input type="time" value={timeLogForm.endTime} onChange={e => setTimeLogForm({ ...timeLogForm, endTime: e.target.value })} className="w-full border rounded-lg p-2" /></label></div>
+            <label className="block space-y-1 text-xs font-bold">Hourly cost (optional)<input type="number" min="0" step="0.01" value={timeLogForm.hourlyRate} onChange={e => setTimeLogForm({ ...timeLogForm, hourlyRate: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <label className="block space-y-1 text-xs font-bold">Activity<textarea required rows={2} value={timeLogForm.activity} onChange={e => setTimeLogForm({ ...timeLogForm, activity: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <label className="block space-y-1 text-xs font-bold">Remarks<textarea rows={2} value={timeLogForm.remarks} onChange={e => setTimeLogForm({ ...timeLogForm, remarks: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowAddTimeLogModal(false)} className="px-3 py-2 bg-slate-100 rounded-lg">Cancel</button><button disabled={actionLoading} className="px-3 py-2 bg-[#6C2BD9] text-white rounded-lg">Save Time</button></div>
+          </form>
+        </div></div>
+      )}
+
+      {showAddPartsModal && selectedWo && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 flex items-center justify-center p-4"><div className="bg-white rounded-xl border shadow-2xl w-full max-w-md p-5 space-y-4">
+          <div className="flex justify-between border-b pb-3"><h3 className="font-bold">Record Parts Used</h3><button onClick={() => setShowAddPartsModal(false)}><X className="w-4 h-4" /></button></div>
+          <form onSubmit={handleAddPartsSubmit} className="space-y-3">
+            <label className="block space-y-1 text-xs font-bold">Part name<input required value={partForm.partName} onChange={e => setPartForm({ ...partForm, partName: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <label className="block space-y-1 text-xs font-bold">Part number<input value={partForm.partNumber} onChange={e => setPartForm({ ...partForm, partNumber: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <div className="grid grid-cols-2 gap-3"><label className="space-y-1 text-xs font-bold">Quantity<input required type="number" min="1" step="1" value={partForm.quantity} onChange={e => setPartForm({ ...partForm, quantity: e.target.value })} className="w-full border rounded-lg p-2" /></label><label className="space-y-1 text-xs font-bold">Unit cost<input type="number" min="0" step="0.01" value={partForm.unitCost} onChange={e => setPartForm({ ...partForm, unitCost: e.target.value })} className="w-full border rounded-lg p-2" /></label></div>
+            <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowAddPartsModal(false)} className="px-3 py-2 bg-slate-100 rounded-lg">Cancel</button><button disabled={actionLoading} className="px-3 py-2 bg-[#6C2BD9] text-white rounded-lg">Save Part</button></div>
+          </form>
+        </div></div>
       )}
 
       {showUpdateStatusModal && (
@@ -977,12 +1284,14 @@ export function MaintenanceManager() {
                   onChange={(e) => setStatusForm({ ...statusForm, targetStatus: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium"
                 >
-                  <option value="IN_PROGRESS">In Progress</option>
-                  <option value="COMPLETED">Completed</option>
-                  <option value="VERIFIED">Verified</option>
-                  <option value="CLOSED">Closed</option>
+                  <option value="">Choose a status</option>
+                  {selectedWo && <option value={selectedWo.status}>{selectedWo.status.replaceAll('_', ' ')} (keep)</option>}
+                  {(STATUS_TRANSITIONS[selectedWo?.status] || []).map(nextStatus => <option key={nextStatus} value={nextStatus}>{nextStatus.replaceAll('_', ' ')}</option>)}
                 </select>
               </div>
+
+              <label className="block space-y-1 text-xs font-bold text-slate-700">Assign Technician<select required={statusForm.targetStatus === 'ASSIGNED' && !selectedWo?.assignedTechnicianId} value={statusForm.assignedTechnicianId} onChange={e => setStatusForm({ ...statusForm, assignedTechnicianId: e.target.value })} className="w-full border rounded-lg p-2 text-xs"><option value="">Keep current assignment</option>{technicians.map(person => <option key={person.id} value={person.id}>{person.fullName || person.username}</option>)}</select></label>
+              <label className="block space-y-1 text-xs font-bold text-slate-700">Status comment<textarea rows={2} value={statusForm.comments} onChange={e => setStatusForm({ ...statusForm, comments: e.target.value })} className="w-full border rounded-lg p-2 text-xs" /></label>
 
               <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
@@ -994,6 +1303,7 @@ export function MaintenanceManager() {
                 </button>
                 <button
                   type="submit"
+                  disabled={actionLoading}
                   className="px-4 py-2 bg-[#6C2BD9] text-white font-bold rounded-lg hover:bg-[#5B21B6] shadow-xs"
                 >
                   Update Status
@@ -1008,7 +1318,7 @@ export function MaintenanceManager() {
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-xl shadow-2xl border border-slate-200 w-full max-w-md p-5 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-bold text-slate-900">Close Work Order - {selectedWo?.workOrderNumber || ""}</h3>
+              <h3 className="text-sm font-bold text-slate-900">{selectedWo?.status === 'COMPLETED' ? 'Verify' : 'Complete'} Work Order - {selectedWo?.workOrderNumber || ""}</h3>
               <button onClick={() => setShowCloseWoModal(false)} className="text-slate-400 hover:text-slate-700">
                 <X className="w-4 h-4" />
               </button>
@@ -1026,6 +1336,14 @@ export function MaintenanceManager() {
                 />
               </div>
 
+              <div className="grid grid-cols-2 gap-3">
+                <label className="space-y-1 text-xs font-bold">Failure code<input value={closeForm.failureCode} onChange={e => setCloseForm({ ...closeForm, failureCode: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+                <label className="space-y-1 text-xs font-bold">Downtime hours<input type="number" min="0" step="0.1" value={closeForm.downtimeHours} onChange={e => setCloseForm({ ...closeForm, downtimeHours: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+              </div>
+              <label className="block space-y-1 text-xs font-bold">Root cause<textarea rows={2} value={closeForm.rootCause} onChange={e => setCloseForm({ ...closeForm, rootCause: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+              <label className="block space-y-1 text-xs font-bold">Completion comments<textarea rows={2} value={closeForm.completionComments} onChange={e => setCloseForm({ ...closeForm, completionComments: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+              <label className="flex items-center gap-2 text-xs font-semibold"><input type="checkbox" disabled={selectedWo?.status === 'COMPLETED'} checked={closeForm.supervisorVerification} onChange={e => setCloseForm({ ...closeForm, supervisorVerification: e.target.checked })} /> Supervisor verified</label>
+
               <div className="pt-3 flex items-center justify-end gap-2 border-t border-slate-100">
                 <button
                   type="button"
@@ -1036,9 +1354,10 @@ export function MaintenanceManager() {
                 </button>
                 <button
                   type="submit"
+                  disabled={actionLoading}
                   className="px-4 py-2 bg-emerald-600 text-white font-bold rounded-lg hover:bg-emerald-700 shadow-xs"
                 >
-                  Close &amp; Move to History
+                  {selectedWo?.status === 'COMPLETED' ? 'Verify Work Order' : 'Complete Work Order'}
                 </button>
               </div>
             </form>

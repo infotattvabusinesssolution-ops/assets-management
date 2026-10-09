@@ -7,52 +7,42 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
   const [submitError, setSubmitError] = useState('');
   const [employeesList, setEmployeesList] = useState([]);
   const [departmentsList, setDepartmentsList] = useState([]);
-  const [sitesList, setSitesList] = useState([]);
 
+  const [isCustomCustodian, setIsCustomCustodian] = useState(false);
   const [formData, setFormData] = useState({
     custodianId: '',
     assignedTo: '',
+    employeeCode: '',
+    contactEmail: '',
     department: '',
-    location: '',
-    building: '',
-    floor: '',
-    room: '',
     assignmentDate: new Date().toISOString().slice(0, 10),
     assignmentPurpose: 'Regular Use',
     conditionAtIssue: 'Good',
     remarks: ''
   });
 
-  // Fetch live master data (employees, departments, locations)
+  // Load real employee and department records for the asset company.
   useEffect(() => {
     if (isOpen) {
       setSubmitError('');
-      Promise.allSettled([
+      Promise.all([
         api.get('/master-data/employees'),
-        api.get('/custody-transfers/master-references'),
-        api.get('/custody-transfers/locations/hierarchy')
-      ]).then(([empRes, refRes, hierRes]) => {
-        if (empRes.status === 'fulfilled' && empRes.value?.employees?.length) {
-          setEmployeesList(empRes.value.employees);
-        } else if (refRes.status === 'fulfilled' && refRes.value?.custodians?.length) {
-          setEmployeesList(refRes.value.custodians.map(c => ({
-            id: c.id,
-            employeeCode: c.code,
-            fullName: c.name || c.fullName,
-            department: c.department
-          })));
+        api.get('/master-data/departments')
+      ]).then(([empRes, deptRes]) => {
+        if (!Array.isArray(empRes?.employees) || !Array.isArray(deptRes?.departments)) {
+          throw new Error('Could not load employee master data.');
         }
-
-        if (refRes.status === 'fulfilled' && refRes.value?.departments?.length) {
-          setDepartmentsList(refRes.value.departments);
-        }
-
-        if (hierRes.status === 'fulfilled' && hierRes.value?.sites?.length) {
-          setSitesList(hierRes.value.sites);
-        }
+        setEmployeesList(empRes.employees.filter(employee => employee.active &&
+          (!asset?.companyId || employee.companyId === asset.companyId)));
+        setDepartmentsList(deptRes.departments.filter(department => department.active &&
+          (!asset?.companyId || department.companyId === asset.companyId)));
+      }).catch(error => {
+        setEmployeesList([]);
+        setDepartmentsList([]);
+        setSubmitError(error?.message || 'Could not load employee master data.');
       });
     }
-  }, [isOpen]);
+  }, [isOpen, asset?.companyId]);
 
   // Pre-fill asset context
   useEffect(() => {
@@ -61,20 +51,21 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
         ? asset.custodianName
         : (asset.custodian ? (asset.custodian.fullName || asset.custodian.firstName) : '');
       const currentCustId = asset.custodianId || asset.custodian?.id || '';
+      const currentCode = asset.custodian?.employeeCode || asset.custodianCode || '';
+      const currentEmail = asset.custodian?.email || asset.custodianEmail || '';
 
       setFormData({
         custodianId: currentCustId,
         assignedTo: currentCust,
+        employeeCode: currentCode,
+        contactEmail: currentEmail,
         department: asset.departmentName || asset.department?.name || '',
-        location: asset.siteName || asset.site?.name || asset.locationStr || 'Dubai HQ',
-        building: asset.buildingName || asset.building?.name || 'Block A',
-        floor: asset.floorRoom || asset.floorName || asset.floor?.name || 'Ground Floor',
-        room: asset.roomName || asset.room?.name || 'IT-101',
         assignmentDate: new Date().toISOString().slice(0, 10),
         assignmentPurpose: 'Regular Use',
         conditionAtIssue: asset.condition || 'Good',
         remarks: ''
       });
+      setIsCustomCustodian(false);
     }
   }, [asset, isOpen]);
 
@@ -83,27 +74,49 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
   const handleEmployeeChange = (e) => {
     const val = e.target.value;
     if (!val || val === '__unassign__') {
+      setIsCustomCustodian(false);
       setFormData(prev => ({
         ...prev,
         custodianId: '',
-        assignedTo: val === '__unassign__' ? 'Unassigned' : ''
+        assignedTo: val === '__unassign__' ? 'Unassigned' : '',
+        employeeCode: '',
+        contactEmail: ''
       }));
       return;
     }
 
-    const emp = employeesList.find(x => x.id === val || x.fullName === val || `${x.fullName} (${x.employeeCode || 'EMP'})` === val);
+    if (val === '__custom__') {
+      setIsCustomCustodian(true);
+      setFormData(prev => ({
+        ...prev,
+        custodianId: '',
+        assignedTo: '',
+        employeeCode: '',
+        contactEmail: ''
+      }));
+      return;
+    }
+
+    setIsCustomCustodian(false);
+    const emp = employeesList.find(x => x.id === val);
     setFormData(prev => ({
       ...prev,
-      custodianId: emp?.id || val,
-      assignedTo: emp?.fullName || val,
-      department: emp?.department?.name || (typeof emp?.department === 'string' ? emp.department : prev.department)
+      custodianId: emp?.id || '',
+      assignedTo: emp?.fullName || '',
+      employeeCode: emp?.employeeCode || '',
+      contactEmail: emp?.email || '',
+      department: emp?.department?.name || ''
     }));
   };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    if (!formData.assignedTo && !formData.custodianId) {
-      setSubmitError('Please select a custodian to assign this asset to.');
+    if (!formData.custodianId && !isCustomCustodian && formData.assignedTo !== 'Unassigned') {
+      setSubmitError('Please select or enter a custodian to assign this asset to.');
+      return;
+    }
+    if (isCustomCustodian && (!formData.assignedTo.trim() || !formData.employeeCode.trim() || !formData.contactEmail.trim())) {
+      setSubmitError('Name, employee code, and email are required for a new custodian.');
       return;
     }
 
@@ -112,35 +125,34 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
 
     try {
       const payload = {
-        assetId: asset.id || asset.assetId,
         custodianId: formData.custodianId || null,
-        assignedTo: formData.assignedTo,
-        department: formData.department,
-        location: formData.location,
-        building: formData.building,
-        floor: formData.floor,
-        room: formData.room,
+        customCustodian: isCustomCustodian ? {
+          fullName: formData.assignedTo.trim(),
+          employeeCode: formData.employeeCode.trim(),
+          email: formData.contactEmail.trim(),
+          department: formData.department
+        } : undefined,
         assignmentDate: formData.assignmentDate,
         assignmentPurpose: formData.assignmentPurpose,
         conditionAtIssue: formData.conditionAtIssue,
-        remarks: formData.remarks,
-        isDraft: false
+        remarks: formData.remarks
       };
 
-      const res = await api.post('/movements/assign', payload);
-      if (res?.success === false) {
+      const res = await api.post(`/assets/${encodeURIComponent(asset.dbId || asset.id || asset.assetId)}/custodian-assignment`, payload);
+      if (!res?.success || !res.asset) {
         throw new Error(res.message || 'Failed to assign custodian');
       }
 
       if (onAssigned) {
-        const isUnassigning = !formData.custodianId || formData.assignedTo === 'Unassigned';
         onAssigned({
           ...asset,
-          custodianId: isUnassigning ? null : formData.custodianId,
-          custodianName: isUnassigning ? 'Unassigned' : formData.assignedTo,
-          departmentName: formData.department,
-          lifecycleStatus: isUnassigning ? 'AVAILABLE' : 'ASSIGNED'
-        });
+          ...res.asset,
+          custodianName: res.asset.custodian?.fullName || 'Unassigned',
+          custodianCode: res.asset.custodian?.employeeCode || '',
+          custodianEmail: res.asset.custodian?.email || '',
+          departmentName: res.asset.department?.name || asset.departmentName || '',
+          lifecycleStatus: res.asset.lifecycleStatus
+        }, res);
       }
 
       onClose();
@@ -195,7 +207,7 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
                   {asset.assetId || asset.assetNumber || asset.id}
                 </span>
                 <span className="inline-flex items-center px-1.5 py-0.2 rounded-full text-[10px] font-semibold bg-purple-100/70 text-[#6C2BD9]">
-                  {asset.lifecycleStatus || 'ACTIVE'}
+                  {asset.lifecycleStatus || 'Unknown'}
                 </span>
               </div>
               <p className="font-semibold text-slate-800 truncate mt-0.5">
@@ -213,7 +225,7 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
               Select New Custodian / Assignee <span className="text-rose-500">*</span>
             </label>
             <select
-              value={formData.assignedTo === 'Unassigned' ? '__unassign__' : (formData.custodianId || formData.assignedTo)}
+              value={isCustomCustodian ? '__custom__' : (formData.assignedTo === 'Unassigned' ? '__unassign__' : formData.custodianId)}
               onChange={handleEmployeeChange}
               required
               className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
@@ -227,33 +239,76 @@ export function AssignCustodianModal({ isOpen, onClose, asset, onAssigned }) {
                   </option>
                 );
               })}
-              <option value="__unassign__">Unassign / Return to Store Inventory</option>
+              <option value="__custom__">+ Enter Custom Custodian...</option>
+              <option value="__unassign__">Remove custodian</option>
             </select>
           </div>
+
+          {/* Custom Assignee Name Input */}
+          {isCustomCustodian && (
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">
+                Assignee Full Name <span className="text-rose-500">*</span>
+              </label>
+              <input
+                type="text"
+                value={formData.assignedTo}
+                onChange={e => setFormData({ ...formData, assignedTo: e.target.value })}
+                placeholder="e.g. David Miller"
+                required
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 font-medium focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+              />
+            </div>
+          )}
+
+          {/* Real Contact Email & Employee ID Inputs */}
+          {formData.assignedTo && formData.assignedTo !== 'Unassigned' && (
+            <div className="grid grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200/80">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Employee ID / Code
+                </label>
+                <input
+                  type="text"
+                  value={formData.employeeCode}
+                  onChange={e => setFormData({ ...formData, employeeCode: e.target.value })}
+                  readOnly={!isCustomCustodian}
+                  required={isCustomCustodian}
+                  placeholder="e.g. EMP-102"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 font-mono font-bold focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Contact Email
+                </label>
+                <input
+                  type="email"
+                  value={formData.contactEmail}
+                  onChange={e => setFormData({ ...formData, contactEmail: e.target.value })}
+                  readOnly={!isCustomCustodian}
+                  required={isCustomCustodian}
+                  placeholder="e.g. employee@company.com"
+                  className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 font-mono focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                />
+              </div>
+            </div>
+          )}
 
           {/* Department & Location */}
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className="block font-semibold text-slate-700 mb-1">Department</label>
-              <select
+              {isCustomCustodian ? <select
                 value={formData.department}
                 onChange={e => setFormData({ ...formData, department: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
               >
                 <option value="">Select Department</option>
-                {departmentsList.map(d => (
-                  <option key={d.id} value={d.name}>{d.name}</option>
-                ))}
-                {departmentsList.length === 0 && (
-                  <>
-                    <option value="Information Technology">Information Technology</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Operations">Operations</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Facilities">Facilities</option>
-                  </>
-                )}
-              </select>
+                {departmentsList.map(d => <option key={d.id} value={d.name}>{d.name}</option>)}
+              </select> : <input value={formData.department} readOnly
+                className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-slate-100 text-xs text-slate-800" />}
             </div>
 
             <div>

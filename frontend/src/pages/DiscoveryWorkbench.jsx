@@ -48,8 +48,6 @@ import { DiscoveryJobs } from './DiscoveryJobs';
 import { DiscoveredDevices } from './DiscoveredDevices';
 import { DiscoverySettings } from './DiscoverySettings';
 
-const SEED_DEVICES = [];
-
 export function DiscoveryWorkbench({ defaultTab }) {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
@@ -57,8 +55,12 @@ export function DiscoveryWorkbench({ defaultTab }) {
 
   // Config State
   const [discoveryType, setDiscoveryType] = useState('IP Range Scan');
-  const [ipStart, setIpStart] = useState('192.168.1.1');
-  const [ipEnd, setIpEnd] = useState('192.168.1.254');
+  const [ipStart, setIpStart] = useState('');
+  const [ipEnd, setIpEnd] = useState('');
+  const [localNetworks, setLocalNetworks] = useState([]);
+  const [selectedNetwork, setSelectedNetwork] = useState('');
+  const [scanResult, setScanResult] = useState(null);
+  const [scanError, setScanError] = useState('');
   const [profile, setProfile] = useState('Default (All Devices)');
   const [credentials, setCredentials] = useState('Use Saved Credentials');
   const [showMoreOptions, setShowMoreOptions] = useState(false);
@@ -68,39 +70,63 @@ export function DiscoveryWorkbench({ defaultTab }) {
     domainIpAddress: '',
     snmpCommunity: ''
   });
+  const [devices, setDevices] = useState([]);
 
-  // Summary Metrics State matching Screenshot #17
-  const [summary] = useState({
-    discovered: 245,
-    matched: 198,
-    newAssets: 32,
-    review: 15,
-    deviceTypes: [
-      { name: 'Computers', count: 120, pct: 49, color: '#4F46E5' },
-      { name: 'Monitors', count: 48, pct: 20, color: '#3B82F6' },
-      { name: 'Network Devices', count: 22, pct: 9, color: '#10B981' },
-      { name: 'Printers', count: 18, pct: 7, color: '#F59E0B' },
-      { name: 'Mobile Devices', count: 15, pct: 6, color: '#EC4899' },
-      { name: 'Others', count: 22, pct: 9, color: '#8B5CF6' }
-    ]
-  });
+  const summary = useMemo(() => {
+    const counts = new Map();
+    devices.forEach(device => counts.set(device.deviceType || 'Unknown', (counts.get(device.deviceType || 'Unknown') || 0) + 1));
+    return {
+      discovered: devices.length,
+      matched: devices.filter(device => device.status === 'Matched').length,
+      newAssets: devices.filter(device => device.status === 'New').length,
+      review: devices.filter(device => device.status === 'Review').length,
+      deviceTypes: [...counts].map(([name, count], index) => ({ name, count,
+        pct: devices.length ? Math.round(count / devices.length * 100) : 0,
+        color: ['#4F46E5', '#3B82F6', '#10B981', '#F59E0B', '#EC4899'][index % 5] }))
+    };
+  }, [devices]);
 
   // Stages Progression matching Screenshot #17
   const [stages, setStages] = useState([
-    { id: 1, name: 'Scanning IP Range', status: 'Completed', duration: '2 min 14 sec' },
-    { id: 2, name: 'Identifying Devices', status: 'Completed', duration: '1 min 32 sec' },
-    { id: 3, name: 'Collecting Device Details', status: 'Completed', duration: '1 min 08 sec' },
-    { id: 4, name: 'Matching with Asset Database', status: 'Completed', duration: '45 sec' },
-    { id: 5, name: 'Generating Report', status: 'Completed', duration: '30 sec' }
+    { id: 1, name: 'Probe selected local IP range', status: 'Not run', duration: '' },
+    { id: 2, name: 'Identify responding devices', status: 'Not run', duration: '' },
+    { id: 3, name: 'Save and compare observations', status: 'Not run', duration: '' }
   ]);
   const [isScanning, setIsScanning] = useState(false);
-  const [scanProgress, setScanProgress] = useState(100);
 
   // Table Data State
-  const [devices, setDevices] = useState([]);
   const [selectedDevice, setSelectedDevice] = useState(null);
   const [selectedIds, setSelectedIds] = useState([]);
   const [detailTab, setDetailTab] = useState('software'); // software | hardware | network | match
+
+  // The scan runs on the API server's network, so select a subnet it can reach.
+  useEffect(() => {
+    api.get('/discovery/local-networks').then(res => {
+      const networks = res?.networks || [];
+      setLocalNetworks(networks);
+      if (networks.length) {
+        setSelectedNetwork(networks[0].address);
+        setIpStart(networks[0].ipStart);
+        setIpEnd(networks[0].ipEnd);
+      }
+    }).catch(error => setScanError(error?.message || 'Could not detect scanner networks.'));
+  }, []);
+
+  const fetchDevices = async () => {
+    try {
+      const res = await api.get('/discovery/devices', { params: { limit: 2000 } });
+      if (Array.isArray(res?.devices)) setDevices(res.devices);
+    } catch (err) {
+      setScanError(err?.message || 'Could not load saved observations.');
+      try {
+        const live = JSON.parse(sessionStorage.getItem('localDiscoveryResults') || '[]');
+        if (Array.isArray(live)) setDevices(live);
+      } catch { /* Ignore an invalid browser cache. */ }
+    }
+  };
+  useEffect(() => {
+    fetchDevices();
+  }, []);
 
   // Table Filters
   const [searchFilter, setSearchFilter] = useState('');
@@ -119,38 +145,41 @@ export function DiscoveryWorkbench({ defaultTab }) {
   // Run live multi-stage discovery scan
   const handleStartDiscovery = async () => {
     if (isScanning) return;
-    setIsScanning(true);
-    setScanProgress(0);
-
-    const stageNames = [
-      'Scanning IP Range',
-      'Identifying Devices',
-      'Collecting Device Details',
-      'Matching with Asset Database',
-      'Generating Report'
-    ];
-
-    for (let i = 0; i < stageNames.length; i++) {
-      setStages(prev =>
-        prev.map((s, idx) => {
-          if (idx < i) return { ...s, status: 'Completed' };
-          if (idx === i) return { ...s, status: 'In Progress', duration: 'Scanning...' };
-          return { ...s, status: 'Pending', duration: 'Pending' };
-        })
-      );
-      setScanProgress(Math.round(((i + 1) / stageNames.length) * 100));
-      await new Promise(res => setTimeout(res, 600));
+    if (discoveryType !== 'IP Range Scan') {
+      setScanError(`${discoveryType} is not available yet. Select IP Range Scan to discover devices.`);
+      return;
     }
+    setIsScanning(true);
+    setScanError('');
+    setScanResult(null);
+    try {
+      setStages(prev => prev.map((stage, index) => ({ ...stage,
+        status: index === 0 ? 'Running' : 'Waiting', duration: '' })));
+      const res = await api.post('/discovery/scan', { ipStart, ipEnd, discoveryType });
+      if (!res?.success || !res?.result) throw new Error(res?.message || 'Scan failed.');
+      setScanResult(res.result);
+      if (res.result.persisted) {
+        sessionStorage.removeItem('localDiscoveryResults');
+        await fetchDevices();
+      } else {
+        const live = res.result.devices.map((device, index) => ({ ...device, id: device.id || `live-${index}`,
+            deviceType: device.deviceType || 'Unknown', manufacturer: device.manufacturer || '', model: device.model || '', serialNumber: device.serialNumber || '',
+            assetStatus: device.status, hardware: device.hardware || {}, network: device.network || {}, software: device.software || [] }));
+        sessionStorage.setItem('localDiscoveryResults', JSON.stringify(live));
+        setDevices(prev => [...live,
+          ...prev.filter(device => !live.some(scanned => scanned.ipAddress === device.ipAddress))]);
+        setScanError(`Scan found ${res.result.aliveCount} responding device(s), but could not save them: ${res.result.persistenceError}`);
+      }
+      setStages(prev => prev.map((stage, index) => ({ ...stage,
+        status: index === 2 && !res.result.persisted ? 'Unavailable' : 'Completed',
+        duration: index === 0 ? `${(res.result.durationMs / 1000).toFixed(1)} sec` : '' })));
 
-    setStages([
-      { id: 1, name: 'Scanning IP Range', status: 'Completed', duration: '2 min 14 sec' },
-      { id: 2, name: 'Identifying Devices', status: 'Completed', duration: '1 min 32 sec' },
-      { id: 3, name: 'Collecting Device Details', status: 'Completed', duration: '1 min 08 sec' },
-      { id: 4, name: 'Matching with Asset Database', status: 'Completed', duration: '45 sec' },
-      { id: 5, name: 'Generating Report', status: 'Completed', duration: '30 sec' }
-    ]);
-    setIsScanning(false);
-    setScanProgress(100);
+    } catch (err) {
+      setScanError(err?.response?.data?.message || err?.message || 'Scan failed.');
+      setStages(prev => prev.map(stage => ({ ...stage, status: 'Failed', duration: '' })));
+    } finally {
+      setIsScanning(false);
+    }
   };
 
   // Filtered devices
@@ -316,6 +345,26 @@ export function DiscoveryWorkbench({ defaultTab }) {
                         <option value="Active Directory Sync">Active Directory Sync</option>
                         <option value="WMI/WinRM Agentless">WMI/WinRM Agentless</option>
                       </select>
+                      {discoveryType !== 'IP Range Scan' && (
+                        <p role="status" className="mt-1.5 text-[10px] font-medium text-amber-700">
+                          This scan type is shown for reference and is not available yet. IP Range Scan remains active.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
+                      <label className="block text-slate-500 mb-1">Scanner Network</label>
+                      <select value={selectedNetwork} onChange={(event) => {
+                        const network = localNetworks.find(item => item.address === event.target.value);
+                        setSelectedNetwork(event.target.value);
+                        if (network) { setIpStart(network.ipStart); setIpEnd(network.ipEnd); }
+                      }} className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                        {localNetworks.length === 0 && <option value="">No private local network detected</option>}
+                        {localNetworks.map(network => <option key={`${network.name}-${network.address}`} value={network.address}>
+                          {network.name} · {network.address}
+                        </option>)}
+                      </select>
+                      <p className="mt-1 text-[10px] text-slate-500">Scan runs from the API server on its connected network.</p>
                     </div>
 
                     {/* IP Range Inputs */}
@@ -338,19 +387,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
                       </div>
                     </div>
 
-                    {/* Discovery Profile */}
-                    <div>
-                      <label className="block text-slate-500 mb-1">Discovery Profile</label>
-                      <select
-                        value={profile}
-                        onChange={(e) => setProfile(e.target.value)}
-                        className="w-full bg-slate-50 border border-slate-200 text-xs font-bold text-slate-800 rounded-xl px-3 py-2 focus:outline-none focus:border-[#6C2BD9]"
-                      >
-                        <option value="Default (All Devices)">Default (All Devices)</option>
-                        <option value="Workstations Only">Workstations Only</option>
-                        <option value="Network Hardware">Network Hardware</option>
-                      </select>
-                    </div>
+                    <p className="text-[11px] text-slate-500">Responding hosts are found with ICMP and common TCP ports. Hostnames and MAC addresses appear only when the scanner can resolve them.</p>
 
                     {/* Dynamic Credentials Section */}
                     <div className="pt-2 border-t border-slate-100">
@@ -452,13 +489,13 @@ export function DiscoveryWorkbench({ defaultTab }) {
                 <div className="pt-4 mt-4 border-t border-slate-100 flex items-center gap-3">
                   <button
                     onClick={handleStartDiscovery}
-                    disabled={isScanning}
+                    disabled={isScanning || !selectedNetwork || discoveryType !== 'IP Range Scan'}
                     className="flex-1 flex items-center justify-center gap-2 py-2 px-4 rounded-xl bg-[#6C2BD9] hover:bg-purple-700 text-white font-bold text-xs shadow-xs transition-all cursor-pointer disabled:opacity-70"
                   >
                     {isScanning ? (
                       <>
                         <RefreshCw className="w-4 h-4 animate-spin" />
-                        <span>Scanning ({scanProgress}%)...</span>
+                        <span>Scanning local network...</span>
                       </>
                     ) : (
                       <>
@@ -470,7 +507,8 @@ export function DiscoveryWorkbench({ defaultTab }) {
 
                   <button
                     onClick={() => setIsScheduleOpen(true)}
-                    className="flex items-center gap-1.5 py-2 px-3 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold text-xs transition-all cursor-pointer whitespace-nowrap"
+                    disabled={discoveryType !== 'IP Range Scan'}
+                    className="flex items-center gap-1.5 py-2 px-3 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 font-bold text-xs transition-all cursor-pointer whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                   >
                     <Calendar className="w-4 h-4" />
                     <span>Save as Job</span>
@@ -485,8 +523,8 @@ export function DiscoveryWorkbench({ defaultTab }) {
                   <div className="flex items-center justify-between pb-3 mb-4 border-b border-slate-100">
                     <h2 className="text-sm font-bold text-purple-900">Discovery Summary</h2>
                     <div className="flex items-center gap-3 text-xs font-semibold">
-                      <span className="text-slate-400">Last Scan: 10 Sep 2026 10:24 AM</span>
-                      <button className="text-[#6C2BD9] hover:underline font-bold flex items-center gap-1">
+                      <span className="text-slate-400">Last Scan: {scanResult?.completedAt ? new Date(scanResult.completedAt).toLocaleString() : 'Not run in this session'}</span>
+                      <button onClick={() => setSearchParams({ tab: 'devices' })} className="text-[#6C2BD9] hover:underline font-bold flex items-center gap-1">
                         <span>View Details</span>
                         <ArrowRight className="w-3.5 h-3.5" />
                       </button>
@@ -549,20 +587,9 @@ export function DiscoveryWorkbench({ defaultTab }) {
                     <div className="bg-slate-50/60 rounded-xl p-3.5 border border-slate-200">
                       <h3 className="text-xs font-bold text-slate-900 mb-3">Device Type Breakdown</h3>
                       <div className="flex items-center gap-4">
-                        {/* Donut Chart Graphic */}
-                        <div className="relative w-28 h-28 shrink-0 flex items-center justify-center">
-                          <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
-                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#4F46E5" strokeWidth="14" strokeDasharray="49 51" strokeDashoffset="0" />
-                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#3B82F6" strokeWidth="14" strokeDasharray="20 80" strokeDashoffset="-49" />
-                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#10B981" strokeWidth="14" strokeDasharray="9 91" strokeDashoffset="-69" />
-                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F59E0B" strokeWidth="14" strokeDasharray="7 93" strokeDashoffset="-78" />
-                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#EC4899" strokeWidth="14" strokeDasharray="6 94" strokeDashoffset="-85" />
-                            <circle cx="50" cy="50" r="38" fill="transparent" stroke="#8B5CF6" strokeWidth="14" strokeDasharray="9 91" strokeDashoffset="-91" />
-                          </svg>
-                          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-                            <span className="text-sm font-black text-slate-900 leading-none">245</span>
-                            <span className="text-[10px] text-slate-500 font-semibold">Devices</span>
-                          </div>
+                        <div className="w-28 h-28 shrink-0 rounded-full border-[12px] border-indigo-200 flex flex-col items-center justify-center">
+                          <span className="text-sm font-black text-slate-900 leading-none">{summary.discovered}</span>
+                          <span className="text-[10px] text-slate-500 font-semibold">Devices</span>
                         </div>
 
                         {/* Legend */}
@@ -576,6 +603,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
                               <span className="text-slate-500 font-mono text-[10px] ml-1">{dt.count} ({dt.pct}%)</span>
                             </div>
                           ))}
+                          {summary.deviceTypes.length === 0 && <span className="text-slate-500">No observations yet</span>}
                         </div>
                       </div>
                     </div>
@@ -587,11 +615,13 @@ export function DiscoveryWorkbench({ defaultTab }) {
                         {stages.map((st) => (
                           <div key={st.id} className="flex items-center justify-between">
                             <div className="flex items-center gap-2">
-                              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                              {st.status === 'Completed' ? <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                                : <Clock className="w-4 h-4 text-slate-400 shrink-0" />}
                               <span className="text-slate-800 text-[11px]">{st.name}</span>
                             </div>
                             <div className="flex items-center gap-3">
-                              <span className="text-emerald-700 text-[10px] font-bold bg-emerald-100 px-2 py-0.5 rounded-full">
+                              <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${st.status === 'Completed'
+                                ? 'text-emerald-700 bg-emerald-100' : 'text-slate-600 bg-slate-200'}`}>
                                 {st.status}
                               </span>
                               <span className="text-slate-400 font-mono text-[10px] min-w-[55px] text-right">
@@ -609,13 +639,19 @@ export function DiscoveryWorkbench({ defaultTab }) {
 
             </div>
 
-            {/* Middle Section: Discovered Devices (245) Grid Table matching Screenshot #17 */}
+            {scanError && <div role="alert" className="rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-xs text-amber-900">{scanError}</div>}
+            {scanResult && <div className="rounded-xl border border-slate-200 bg-white px-4 py-3 text-xs text-slate-700">
+              Scanned {scanResult.scanned} addresses from {scanResult.scannerAddress}; {scanResult.aliveCount} responded.
+              {scanResult.persisted ? ' Observations saved for review and registration.' : ' Results shown for this session only.'}
+            </div>}
+
+            {/* Discovered devices from the API or the current live scan */}
             <div className="bg-white rounded-2xl border border-slate-200 p-4 shadow-xs space-y-3">
               
               {/* Table Header & Search Filter Bar */}
               <div className="flex flex-col md:flex-row items-stretch md:items-center justify-between gap-3">
                 <h3 className="text-sm font-bold text-purple-900">
-                  Discovered Devices <span className="text-slate-400 font-medium">(245)</span>
+                  Discovered Devices <span className="text-slate-400 font-medium">({filteredDevices.length})</span>
                 </h3>
 
                 <div className="flex flex-wrap items-center gap-2">
@@ -706,7 +742,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
                     </thead>
                     <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                       {filteredDevices.map((dev) => {
-                        const isSelected = selectedDevice.id === dev.id;
+                        const isSelected = selectedDevice?.id === dev.id;
                         const isChecked = selectedIds.includes(dev.id);
 
                         return (
@@ -1014,9 +1050,9 @@ export function DiscoveryWorkbench({ defaultTab }) {
       <ScheduleDiscoveryModal
         isOpen={isScheduleOpen}
         onClose={() => setIsScheduleOpen(false)}
-        onJobScheduled={(job) => {
-          console.log('Job scheduled:', job);
-        }}
+        defaultIpStart={ipStart}
+        defaultIpEnd={ipEnd}
+        onJobScheduled={() => setSearchParams({ tab: 'jobs' })}
       />
 
       <DiscoverySettingsModal

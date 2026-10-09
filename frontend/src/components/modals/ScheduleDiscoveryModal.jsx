@@ -1,12 +1,12 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Calendar, Clock, Network, ShieldCheck, Mail, CheckCircle2 } from 'lucide-react';
 import { api } from '../../services/api';
 
-export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
+export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled, defaultIpStart, defaultIpEnd }) {
   const [formData, setFormData] = useState({
-    name: 'Daily HQ Floor 1-3 Subnet Sweep',
+    name: 'Local network scan',
     discoveryType: 'IP Range Scan',
-    scope: '192.168.1.1 - 192.168.1.254',
+    scope: '',
     frequency: 'Daily at 02:00 AM',
     profile: 'Default (All Devices)',
     credentials: 'Use Saved Credentials',
@@ -14,22 +14,31 @@ export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
   });
 
   const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (isOpen) {
+      setFormData(prev => ({ ...prev, scope: [defaultIpStart, defaultIpEnd].filter(Boolean).join(' - ') }));
+      setError('');
+    }
+  }, [isOpen, defaultIpStart, defaultIpEnd]);
 
   if (!isOpen) return null;
 
   const handleSubmit = async (e) => {
     e.preventDefault();
     setSaving(true);
+    setError('');
     try {
-      const res = await api.post('/discovery/jobs/schedule', formData);
-      if (onJobScheduled) {
-        onJobScheduled(res.job || formData);
-      }
+      const [ipStart, ipEnd] = formData.scope.split(/\s+-\s+/);
+      const res = await api.post('/discovery/jobs', {
+        jobName: formData.name.trim(), discoveryType: 'IP Range Scan', ipStart, ipEnd
+      });
+      if (!res?.success || !res.job) throw new Error(res?.message || 'Could not save the scan job.');
+      onJobScheduled?.(res.job);
       onClose();
     } catch (err) {
-      // Fallback
-      if (onJobScheduled) onJobScheduled(formData);
-      onClose();
+      setError(err?.response?.data?.message || err?.message || 'Could not save the scan job.');
     } finally {
       setSaving(false);
     }
@@ -46,8 +55,8 @@ export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
               <Calendar className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="text-sm font-bold text-slate-900">Schedule Discovery Job</h3>
-              <p className="text-xs text-slate-500">Configure automated recurring network scans and alerts</p>
+              <h3 className="text-sm font-bold text-slate-900">Save Local Scan Job</h3>
+              <p className="text-xs text-slate-500">Run this IP range again from Discovery Jobs</p>
             </div>
           </div>
           <button onClick={onClose} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors">
@@ -57,6 +66,7 @@ export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
 
         {/* Form Body */}
         <form onSubmit={handleSubmit} className="p-6 space-y-4 text-xs">
+          {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 p-3 text-rose-700">{error}</div>}
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Job Name</label>
             <input
@@ -66,36 +76,6 @@ export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
               className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
               required
             />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Discovery Type</label>
-              <select
-                value={formData.discoveryType}
-                onChange={e => setFormData({ ...formData, discoveryType: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white"
-              >
-                <option value="IP Range Scan">IP Range Scan</option>
-                <option value="SNMP Polling">SNMP Polling</option>
-                <option value="WMI/WinRM Agentless">WMI/WinRM Agentless</option>
-                <option value="SSH Linux Discovery">SSH Linux Discovery</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Frequency</label>
-              <select
-                value={formData.frequency}
-                onChange={e => setFormData({ ...formData, frequency: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white"
-              >
-                <option value="Daily at 02:00 AM">Daily at 02:00 AM</option>
-                <option value="Every 6 Hours">Every 6 Hours</option>
-                <option value="Weekly on Sunday">Weekly on Sunday</option>
-                <option value="Monthly (1st day)">Monthly (1st day)</option>
-              </select>
-            </div>
           </div>
 
           <div>
@@ -110,45 +90,7 @@ export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
             />
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Discovery Profile</label>
-              <select
-                value={formData.profile}
-                onChange={e => setFormData({ ...formData, profile: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white"
-              >
-                <option value="Default (All Devices)">Default (All Devices)</option>
-                <option value="Workstations Only">Workstations Only</option>
-                <option value="Network Infrastructure">Network Infrastructure</option>
-                <option value="Printers & Scanners">Printers &amp; Scanners</option>
-              </select>
-            </div>
-
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Credentials Set</label>
-              <select
-                value={formData.credentials}
-                onChange={e => setFormData({ ...formData, credentials: e.target.value })}
-                className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white"
-              >
-                <option value="Use Saved Credentials">Use Saved Credentials</option>
-                <option value="Windows Domain Admin">Windows Domain Admin</option>
-                <option value="SNMP v3 AuthPriv">SNMP v3 AuthPriv</option>
-                <option value="No Auth (Ping Sweep)">No Auth (Ping Sweep)</option>
-              </select>
-            </div>
-          </div>
-
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Notification Email</label>
-            <input
-              type="email"
-              value={formData.notifyEmail}
-              onChange={e => setFormData({ ...formData, notifyEmail: e.target.value })}
-              className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800"
-            />
-          </div>
+          <p className="text-slate-500">The API server must be connected to this private network. This saved job runs when you select Run in Discovery Jobs.</p>
 
           <div className="pt-3 flex items-center justify-end gap-2.5 border-t border-slate-100">
             <button
@@ -163,7 +105,7 @@ export function ScheduleDiscoveryModal({ isOpen, onClose, onJobScheduled }) {
               disabled={saving}
               className="px-5 py-2 text-xs font-semibold text-white bg-[#6C2BD9] hover:bg-[#5B21B6] rounded-xl shadow-xs transition-colors"
             >
-              {saving ? 'Scheduling...' : 'Save & Schedule Job'}
+              {saving ? 'Saving...' : 'Save Scan Job'}
             </button>
           </div>
         </form>

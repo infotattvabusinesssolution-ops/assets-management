@@ -121,7 +121,7 @@ export function MovementHistory() {
 
   // Find currently selected movement
   const selectedMovement = useMemo(() => {
-    return movements.find(m => m.movementId === selectedMovementId) || movements[0] || null;
+    return movements.find(m => m.movementId === selectedMovementId) || movements[0] || { movementId: '-', assetName: '-', assetNumber: '-', documents: [], timeline: [], workflow: [], fromLocation: '-', toLocation: '-', fromCustodian: '-', toCustodian: '-' };
   }, [movements, selectedMovementId]);
 
   // Handle Export CSV

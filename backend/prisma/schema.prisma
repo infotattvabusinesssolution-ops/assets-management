@@ -5,6 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
+  output   = "../node_modules/.prisma/maintenance-client-v5"
 }
 
 // ------------------------------------------------------
@@ -733,17 +734,236 @@ model MaintenanceSchedule {
   id                String    @id @default(uuid())
   legacyMongoId     String?
   title             String
+  description       String?
+  workType          String    @default("PREVENTIVE")
   assetId           String
   frequencyMonths   Int       @default(6)
   lastPerformedDate DateTime?
   nextDueDate       DateTime
   active            Boolean   @default(true)
+  autoGenerateWorkOrders Boolean @default(false)
+  advanceDays       Int       @default(7)
+  checklistJson     String?   @db.NVarChar(Max)
   createdAt         DateTime  @default(now())
   updatedAt         DateTime  @updatedAt
 
   asset Asset @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("maintenance_schedules")
+}
+
+model MaintenanceScheduleRun {
+  id          String   @id @default(uuid()) @db.NVarChar(36)
+  scheduleId  String   @db.NVarChar(36)
+  workOrderId String   @db.NVarChar(36)
+  dueDate     DateTime
+  createdAt   DateTime @default(now())
+
+  @@unique([scheduleId, dueDate])
+  @@map("maintenance_schedule_runs")
+}
+
+model MaintenancePlan {
+  id                   String   @id @default(uuid()) @db.NVarChar(36)
+  planNumber           String   @unique @db.NVarChar(50)
+  companyId            String?
+  name                 String
+  description          String?
+  workType             String   @default("PREVENTIVE")
+  applyToRule          String   @default("CATEGORY")
+  categoryId           String?
+  siteId               String?
+  custodianId          String?
+  assetIdsJson         String?  @db.NVarChar(Max)
+  frequencyMonths      Int      @default(6)
+  nextDueDate          DateTime
+  active               Boolean  @default(true)
+  autoCreateWorkOrders Boolean  @default(false)
+  advanceDays          Int      @default(7)
+  createdByUserId      String
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  checklist MaintenancePlanChecklist[]
+  comments  MaintenancePlanComment[]
+  events    MaintenancePlanEvent[]
+  runs      MaintenancePlanRun[]
+
+  @@index([active, nextDueDate])
+  @@map("maintenance_plans")
+}
+
+model MaintenancePlanChecklist {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  planId    String   @db.NVarChar(36)
+  task      String
+  sortOrder Int      @default(0)
+  createdAt DateTime @default(now())
+  plan      MaintenancePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_plan_checklist")
+}
+
+model MaintenancePlanComment {
+  id         String   @id @default(uuid()) @db.NVarChar(36)
+  planId     String   @db.NVarChar(36)
+  text       String   @db.NVarChar(Max)
+  authorName String
+  createdAt  DateTime @default(now())
+  plan       MaintenancePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_plan_comments")
+}
+
+model MaintenancePlanEvent {
+  id        String   @id @default(uuid()) @db.NVarChar(36)
+  planId    String   @db.NVarChar(36)
+  action    String
+  details   String?
+  actorName String
+  createdAt DateTime @default(now())
+  plan      MaintenancePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@map("maintenance_plan_events")
+}
+
+model MaintenancePlanRun {
+  id          String   @id @default(uuid()) @db.NVarChar(36)
+  planId      String   @db.NVarChar(36)
+  assetId     String   @db.NVarChar(36)
+  workOrderId String   @db.NVarChar(36)
+  dueDate     DateTime
+  createdAt   DateTime @default(now())
+  plan        MaintenancePlan @relation(fields: [planId], references: [id], onDelete: Cascade)
+
+  @@unique([planId, assetId, dueDate])
+  @@map("maintenance_plan_runs")
+}
+
+model ServiceProvider {
+  id                    String @id @default(uuid()) @db.NVarChar(36)
+  providerCode          String @unique @db.NVarChar(50)
+  providerName          String @db.NVarChar(300)
+  providerType          String @default("SERVICE_PROVIDER")
+  status                String @default("DRAFT")
+  companyRegistrationNo String? @db.NVarChar(100)
+  taxRegistrationNo     String? @db.NVarChar(100)
+  website               String? @db.NVarChar(500)
+  currency              String @default("AED") @db.NVarChar(10)
+  paymentTermsDays      Int @default(30)
+  preferred             Boolean @default(false)
+  leadTimeDays          Int @default(7)
+  rating                Float?
+  remarks               String? @db.NVarChar(Max)
+  legacyDetails         String? @db.NVarChar(Max)
+  primaryContact        String? @db.NVarChar(200)
+  email                 String? @db.NVarChar(200)
+  phone                 String? @db.NVarChar(100)
+  addressLine1          String? @db.NVarChar(300)
+  addressLine2          String? @db.NVarChar(300)
+  city                  String? @db.NVarChar(100)
+  state                 String? @db.NVarChar(100)
+  country               String? @db.NVarChar(100)
+  companyId             String? @db.NVarChar(36)
+  createdAt             DateTime @default(now())
+  updatedAt             DateTime @updatedAt
+  categories            ProviderCategory[]
+  contacts              ProviderContact[]
+  addresses             ProviderAddress[]
+  services              ProviderService[]
+  certifications        ProviderCertification[]
+  documents             ProviderDocument[]
+  notes                 ProviderNote[]
+  @@map("service_providers")
+}
+
+model ProviderCategory {
+  id String @id @default(uuid()) @db.NVarChar(36)
+  providerId String @db.NVarChar(36)
+  categoryId String @db.NVarChar(36)
+  serviceType String @default("PREVENTIVE")
+  coverageSiteId String? @db.NVarChar(36)
+  description String? @db.NVarChar(1000)
+  active Boolean @default(true)
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@map("provider_categories")
+}
+
+model ProviderContact {
+  id String @id @default(uuid()) @db.NVarChar(36)
+  providerId String @db.NVarChar(36)
+  name String @db.NVarChar(200)
+  designation String? @db.NVarChar(200)
+  email String? @db.NVarChar(200)
+  phone String? @db.NVarChar(100)
+  mobile String? @db.NVarChar(100)
+  isPrimary Boolean @default(false)
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@map("provider_contacts")
+}
+
+model ProviderAddress {
+  id String @id @default(uuid()) @db.NVarChar(36)
+  providerId String @db.NVarChar(36)
+  type String @default("HEAD_OFFICE")
+  line1 String @db.NVarChar(300)
+  line2 String? @db.NVarChar(300)
+  city String? @db.NVarChar(100)
+  state String? @db.NVarChar(100)
+  country String? @db.NVarChar(100)
+  postalCode String? @db.NVarChar(50)
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@map("provider_addresses")
+}
+
+model ProviderService {
+  id String @id @default(uuid()) @db.NVarChar(36)
+  providerId String @db.NVarChar(36)
+  name String @db.NVarChar(200)
+  serviceCode String @db.NVarChar(100)
+  responseHours Int?
+  rate Decimal? @db.Decimal(18, 2)
+  active Boolean @default(true)
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@unique([providerId, serviceCode])
+  @@map("provider_services")
+}
+
+model ProviderCertification {
+  id String @id @default(uuid()) @db.NVarChar(36)
+  providerId String @db.NVarChar(36)
+  name String @db.NVarChar(200)
+  certificateNumber String? @db.NVarChar(100)
+  issuingAuthority String? @db.NVarChar(200)
+  validUntil DateTime?
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@map("provider_certifications")
+}
+
+model ProviderDocument {
+  id String @id @default(uuid()) @db.NVarChar(36)
+  providerId String @db.NVarChar(36)
+  name String @db.NVarChar(300)
+  type String @db.NVarChar(100)
+  referenceNumber String? @db.NVarChar(100)
+  issueDate DateTime?
+  validUntil DateTime?
+  description String? @db.NVarChar(1000)
+  fileSize Int?
+  storageUrl String @db.NVarChar(1000)
+  createdAt DateTime @default(now())
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@map("provider_documents")
+}
+
+model ProviderNote {
+  id String @id @default(uuid()) @db.NVarChar(36)
+  providerId String @db.NVarChar(36)
+  text String @db.NVarChar(Max)
+  authorName String @db.NVarChar(200)
+  createdAt DateTime @default(now())
+  provider ServiceProvider @relation(fields: [providerId], references: [id], onDelete: Cascade)
+  @@map("provider_notes")
 }
 
 model MaintenanceWorkOrder {
@@ -864,6 +1084,11 @@ model Contract {
   endDate        DateTime
   cost           Decimal      @default(0) @db.Decimal(18, 2)
   slaDetails     String?
+  referenceNumber String? @db.NVarChar(1000)
+  paymentTermsDays Int?
+  currency String @default("AED") @db.NVarChar(10)
+  coverageNotes String? @db.NVarChar(1000)
+  visitEntitlements String? @db.NVarChar(200)
   active         Boolean      @default(true)
   createdAt      DateTime     @default(now())
   updatedAt      DateTime     @updatedAt

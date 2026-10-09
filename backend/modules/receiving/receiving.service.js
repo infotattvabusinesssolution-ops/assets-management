@@ -4,6 +4,124 @@ import { listPurchaseOrders, findPurchaseOrder, storePurchaseOrder } from './rec
 
 const draftsStore = new Map();
 
+function parseStoredIds(value) {
+  if (Array.isArray(value)) return value.filter(Boolean).map(String);
+  if (value == null || value === '') return [];
+  if (typeof value !== 'string') return [String(value)];
+  try {
+    const parsed = JSON.parse(value);
+    if (Array.isArray(parsed)) return parsed.filter(Boolean).map(String);
+    return parsed ? [String(parsed)] : [];
+  } catch {
+    return value.split(',').map((part) => part.trim()).filter(Boolean);
+  }
+}
+
+function parseSerials(value) {
+  if (Array.isArray(value)) return value.map(String);
+  if (value == null || value === '') return [];
+  try {
+    const parsed = JSON.parse(value);
+    return Array.isArray(parsed) ? parsed.map(String) : [String(parsed)];
+  } catch {
+    return String(value).split(',').map((part) => part.trim()).filter(Boolean);
+  }
+}
+
+function mapReceiptHistory(receipt, assetsById, tagsByAsset, usersById) {
+  const lineItems = (receipt.lineItems || []).flatMap((line) => {
+    const assetIds = parseStoredIds(line.createdAssetIds);
+    const serials = parseSerials(line.serialNumbers);
+    const fallbackCount = Math.max(serials.length, Number.parseInt(line.quantity, 10) || 0, 1);
+    const ids = assetIds.length ? assetIds : Array.from({ length: fallbackCount }, (_, index) => `${line.id}:serial:${index}`);
+    if (!ids.length) ids.push(`${line.id}:line`);
+    return ids.map((assetId, index) => {
+      const asset = assetsById.get(assetId);
+      const tag = asset ? tagsByAsset.get(asset.id) : null;
+      const tagNumber = asset?.tagNumber || tag?.tagNumber || null;
+      const rfidEpc = asset?.rfidEpc || tag?.rfidEpc || null;
+      return {
+        id: `${line.id}:${index}`,
+        assetId: asset?.id || null,
+        assetNumber: asset?.assetId || null,
+        description: asset?.description || line.description || '-',
+        category: line.category?.name || asset?.category?.name || '',
+        serialNumber: asset?.serialNumber || serials[index] || serials[0] || '-',
+        tagNumber,
+        rfidEpc,
+        tagStatus: tagNumber || rfidEpc ? 'Tagged' : 'Pending'
+      };
+    });
+  });
+  const unitsReceived = lineItems.length || (receipt.lineItems || []).reduce((sum, line) => sum + (line.quantity || 0), 0);
+  const unitsTagged = lineItems.filter((line) => line.tagStatus === 'Tagged').length;
+  const rawStatus = String(receipt.status || '').toUpperCase();
+  const status = ['COMPLETED', 'PARTIAL', 'STAGED'].includes(rawStatus) && unitsReceived > unitsTagged
+    ? 'PENDING_TAGGING'
+    : receipt.status;
+  return {
+    id: receipt.id,
+    receiptNumber: receipt.receiptNumber,
+    mode: receipt.poNumber === 'NON-PO' ? 'WITHOUT_PO' : 'WITH_PO',
+    poNumber: receipt.poNumber,
+    vendorName: receipt.vendorName,
+    receivingLocation: receipt.site?.name || '',
+    receivedBy: usersById.get(receipt.receivedByUserId) || receipt.receivedByUserId || '',
+    receivedDate: receipt.receivedDate?.toISOString?.() || receipt.receivedDate || null,
+    status,
+    remarks: receipt.remarks || '',
+    lineItems,
+    summary: {
+      poItems: (receipt.lineItems || []).length,
+      unitsReceived,
+      unitsTagged,
+      unitsPending: Math.max(unitsReceived - unitsTagged, 0),
+      unitsFailed: null
+    }
+  };
+}
+
+function mapDraftHistory(draft) {
+  const header = draft.header || draft;
+  const rawItems = draft.items || draft.recentScannedItems || draft.scannedItems || draft.lineItems || [];
+  const items = rawItems.map((item, index) => ({
+    id: item.id || `${draft.id}:draft:${index}`,
+    assetId: item.assetId || item.registeredAssetId || null,
+    assetNumber: item.assetNumber || item.assetId || item.assetTag || '-',
+    description: item.description || item.assetName || item.itemDescription || '-',
+    category: item.category || item.categoryName || '',
+    serialNumber: item.serialNumber || item.serial || '-',
+    tagNumber: item.tagNumber || item.barcode || null,
+    rfidEpc: item.rfidEpc || item.rfid || null,
+    tagStatus: item.tagNumber || item.barcode || item.rfidEpc || item.rfid ? 'Tagged' : 'Pending'
+  }));
+  const tagged = items.filter((item) => item.tagStatus === 'Tagged').length;
+  return {
+    id: draft.id,
+    receiptNumber: draft.referenceNo || draft.receiptNumber || draft.id,
+    mode: String(draft.mode || header.mode || '').toUpperCase().includes('WITHOUT') || String(draft.mode || '').toLowerCase() === 'non-po' ? 'WITHOUT_PO' : 'WITH_PO',
+    poNumber: draft.poNumber || header.poNumber || (String(draft.mode || header.mode || '').toUpperCase().includes('WITHOUT') ? 'NON-PO' : ''),
+    vendorName: draft.supplier || header.supplier || header.vendorName || '',
+    receivingLocation: draft.receivingLocation || header.receivingLocation || header.location || '',
+    receivedBy: draft.receivedBy || header.receivedBy || '',
+    receivedDate: draft.updatedAt || draft.savedAt || draft.receivingDate || header.receivingDate || null,
+    status: 'DRAFT',
+    remarks: draft.remarks || header.remarks || '',
+    lineItems: items,
+    summary: { poItems: items.length, unitsReceived: items.length, unitsTagged: tagged, unitsPending: items.length - tagged, unitsFailed: null }
+  };
+}
+
+function buildReceiptVisibilityWhere(userId, user) {
+  const where = { status: { not: 'PURCHASE_ORDER' } };
+  const roleCode = String(user?.role?.code || '').toUpperCase();
+  if (roleCode === 'SYS_ADMIN' || roleCode === 'ADMIN') return where;
+  if (user?.companyId) where.companyId = user.companyId;
+  if (user?.siteId) where.siteId = user.siteId;
+  if (!user?.companyId && !user?.siteId && userId) where.receivedByUserId = userId;
+  return where;
+}
+
 export class ReceivingService {
   /**
    * Search / List available Purchase Orders
@@ -172,16 +290,19 @@ export class ReceivingService {
   }
 
   static async getDrafts(userId) {
-    return Array.from(draftsStore.values()).sort(
+    const records = Array.from(draftsStore.values()).filter((record) => !userId || record.userId === userId);
+    return records.sort(
       (a, b) => new Date(b.updatedAt) - new Date(a.updatedAt)
     );
   }
 
-  static async getDraftById(id) {
-    return draftsStore.get(id) || null;
+  static async getDraftById(id, userId) {
+    const draft = draftsStore.get(id) || null;
+    return draft && (!userId || draft.userId === userId) ? draft : null;
   }
 
-  static async deleteDraft(id) {
+  static async deleteDraft(id, userId) {
+    if (userId && draftsStore.get(id)?.userId !== userId) return false;
     return draftsStore.delete(id);
   }
 
@@ -388,141 +509,99 @@ export class ReceivingService {
   /**
    * Search / Query Receiving History
    */
-  static async getHistory(filters = {}) {
-    const { q, poNumber, supplier, location, status } = filters;
+  static async getHistoryRecords(filters = {}, userId, user) {
     if (!isSqlServerConnected) throw new Error('Database is unavailable.');
-    let records = [];
-
-    // Fetch from Prisma if SQL Server is connected
-    if (isSqlServerConnected) {
-      try {
-        const dbReceipts = await prisma.receipt.findMany({
-          where: { status: { not: 'PURCHASE_ORDER' } },
-          include: { company: true, site: true, lineItems: true },
-          orderBy: { createdAt: 'desc' }
-        });
-        const ids = dbReceipts.flatMap(r => r.lineItems.map(l => l.createdAssetIds)).filter(Boolean);
-        const receiptAssets = ids.length ? await prisma.asset.findMany({ where: { id: { in: ids } }, select: { id: true, tagNumber: true } }) : [];
-        const tagsByAsset = new Map(receiptAssets.map(a => [a.id, a.tagNumber]));
-        if (dbReceipts && dbReceipts.length > 0) {
-          const dbRecords = dbReceipts.map((r) => ({
-            id: r.id,
-            receiptNumber: r.receiptNumber,
-            mode: r.poNumber === 'NON-PO' ? 'WITHOUT_PO' : 'WITH_PO',
-            poNumber: r.poNumber,
-            vendorName: r.vendorName,
-            receivingLocation: r.site?.name || '',
-            receivedBy: r.receivedByUserId || '',
-            receivedDate: r.receivedDate?.toISOString() || null,
-            status: r.status,
-            remarks: '',
-            lineItems: r.lineItems.map(l => ({ ...l, tagNumber: tagsByAsset.get(l.createdAssetIds) || null })),
-            scannedAssets: [],
-            summary: {
-              poItems: r.lineItems?.length || 0,
-              unitsReceived: r.lineItems?.reduce((acc, l) => acc + (l.quantity || 1), 0) || 0,
-              unitsTagged: r.lineItems?.filter(l => tagsByAsset.get(l.createdAssetIds)).length || 0,
-              unitsPending: 0
-            }
-          }));
-
-          records = dbRecords;
-        }
-      } catch (e) { throw e; }
+    const receipts = await prisma.receipt.findMany({
+      where: buildReceiptVisibilityWhere(userId, user),
+      include: { site: true, lineItems: { include: { category: true } } },
+      orderBy: { receivedDate: 'desc' }
+    });
+    const assetIds = [...new Set(receipts.flatMap((receipt) => (receipt.lineItems || []).flatMap((line) => parseStoredIds(line.createdAssetIds))))];
+    const [assets, tags, users] = await Promise.all([
+      assetIds.length ? prisma.asset.findMany({ where: { id: { in: assetIds } }, include: { category: { select: { name: true } }} }) : [],
+      assetIds.length ? prisma.tag.findMany({ where: { assetId: { in: assetIds } } }) : [],
+      [...new Set(receipts.map((receipt) => receipt.receivedByUserId).filter(Boolean))].length
+        ? prisma.user.findMany({ where: { id: { in: [...new Set(receipts.map((receipt) => receipt.receivedByUserId).filter(Boolean))] } }, select: { id: true, fullName: true, username: true } })
+        : []
+    ]);
+    const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
+    const tagsByAsset = new Map();
+    for (const tag of tags) if (tag.assetId && (!tagsByAsset.has(tag.assetId) || tag.printedDate)) tagsByAsset.set(tag.assetId, tag);
+    const usersById = new Map(users.map((user) => [user.id, user.fullName || user.username]));
+    let records = receipts.map((receipt) => mapReceiptHistory(receipt, assetsById, tagsByAsset, usersById));
+    if (userId) records.push(...(await this.getDrafts(userId)).map(mapDraftHistory));
+    const contains = (value, term) => String(value || '').toLowerCase().includes(String(term || '').trim().toLowerCase());
+    if (filters.receiveNumber) records = records.filter((record) => contains(record.receiptNumber, filters.receiveNumber));
+    if (filters.poNumber) records = records.filter((record) => contains(record.poNumber, filters.poNumber));
+    if (filters.q) records = records.filter((record) => [record.receiptNumber, record.poNumber, record.vendorName, record.receivingLocation, record.receivedBy, ...record.lineItems.flatMap((item) => [item.assetNumber, item.description, item.serialNumber, item.tagNumber, item.rfidEpc])].some((value) => contains(value, filters.q)));
+    if (filters.supplier && !['All', 'All Suppliers'].includes(filters.supplier)) records = records.filter((record) => contains(record.vendorName, filters.supplier));
+    if (filters.location && !['All', 'All Locations'].includes(filters.location)) records = records.filter((record) => contains(record.receivingLocation, filters.location));
+    if (filters.receivedBy && !['All', 'All Users'].includes(filters.receivedBy)) records = records.filter((record) => contains(record.receivedBy, filters.receivedBy));
+    if (filters.status && !['All', 'All Status'].includes(filters.status)) {
+      const wanted = String(filters.status).toUpperCase().replace(/[ -]+/g, '_');
+      records = records.filter((record) => String(record.status).toUpperCase().replace(/[ -]+/g, '_') === wanted);
     }
-
-    if (q) {
-      const term = q.toLowerCase();
-      records = records.filter(
-        (r) =>
-          r.receiptNumber.toLowerCase().includes(term) ||
-          r.poNumber.toLowerCase().includes(term) ||
-          r.vendorName.toLowerCase().includes(term) ||
-          (r.remarks && r.remarks.toLowerCase().includes(term))
-      );
+    if (filters.receiveType && !['All', 'All Types'].includes(filters.receiveType)) {
+      const withoutPo = String(filters.receiveType).toLowerCase().includes('without');
+      records = records.filter((record) => (record.mode === 'WITHOUT_PO') === withoutPo);
     }
-
-    if (poNumber) {
-      records = records.filter((r) => r.poNumber.toLowerCase().includes(poNumber.toLowerCase()));
-    }
-
-    if (filters.receiveNumber) {
-      records = records.filter((r) => r.receiptNumber.toLowerCase().includes(filters.receiveNumber.toLowerCase()));
-    }
-
-    if (supplier && supplier !== 'All' && supplier !== 'All Suppliers') {
-      records = records.filter((r) => r.vendorName.toLowerCase().includes(supplier.toLowerCase()));
-    }
-
-    if (location && location !== 'All' && location !== 'All Locations') {
-      records = records.filter((r) => (r.receivingLocation || '').toLowerCase().includes(location.toLowerCase()));
-    }
-
-    if (status && status !== 'All' && status !== 'All Status') {
-      records = records.filter((r) => r.status.toLowerCase() === status.toLowerCase());
-    }
-
-    if (filters.receiveType && filters.receiveType !== 'All' && filters.receiveType !== 'All Types') {
-      const type = filters.receiveType.toLowerCase();
-      if (type.includes('with po') || type === 'with_po') {
-        records = records.filter((r) => r.mode === 'WITH_PO' || r.poNumber !== 'NON-PO');
-      } else if (type.includes('without po') || type === 'without_po' || type.includes('non-po')) {
-        records = records.filter((r) => r.mode === 'WITHOUT_PO' || r.poNumber === 'NON-PO');
-      }
-    }
-
-    if (filters.receivedBy && filters.receivedBy !== 'All' && filters.receivedBy !== 'All Users') {
-      records = records.filter((r) => (r.receivedBy || '').toLowerCase().includes(filters.receivedBy.toLowerCase()));
-    }
-
     if (filters.fromDate) {
-      records = records.filter((r) => new Date(r.receivedDate) >= new Date(filters.fromDate));
+      const from = new Date(filters.fromDate);
+      if (!Number.isNaN(from.getTime())) records = records.filter((record) => new Date(record.receivedDate) >= from);
     }
-
     if (filters.toDate) {
-      records = records.filter((r) => new Date(r.receivedDate) <= new Date(filters.toDate));
+      const to = new Date(filters.toDate);
+      if (!Number.isNaN(to.getTime())) { to.setHours(23, 59, 59, 999); records = records.filter((record) => new Date(record.receivedDate) <= to); }
     }
-
+    if (filters.category && !['All', 'All Categories'].includes(filters.category)) records = records.filter((record) => record.lineItems.some((item) => contains(item.category, filters.category)));
+    if (filters.taggingStatus && !['All', ''].includes(filters.taggingStatus)) {
+      const tagged = String(filters.taggingStatus).toLowerCase() === 'tagged';
+      records = records.filter((record) => record.lineItems.some((item) => (item.tagStatus === 'Tagged') === tagged));
+    }
     return records;
   }
 
-  static async getHistoryDetail(id) {
-    if (isSqlServerConnected) {
-      try {
-        const dbReceipt = await prisma.receipt.findFirst({
-          where: { status: { not: 'PURCHASE_ORDER' }, OR: [{ id }, { receiptNumber: id }] },
-          include: { company: true, site: true, lineItems: { include: { category: true } } }
-        });
-        if (dbReceipt) {
-          return {
-            id: dbReceipt.id,
-            receiptNumber: dbReceipt.receiptNumber,
-            mode: dbReceipt.poNumber === 'NON-PO' ? 'WITHOUT_PO' : 'WITH_PO',
-            poNumber: dbReceipt.poNumber,
-            vendorName: dbReceipt.vendorName,
-            receivingLocation: dbReceipt.site?.name || 'Main IT Store',
-            receivedBy: dbReceipt.receivedByUserId,
-            receivedDate: dbReceipt.receivedDate ? dbReceipt.receivedDate.toISOString() : new Date().toISOString(),
-            status: dbReceipt.status,
-            remarks: `Receipt ${dbReceipt.receiptNumber}`,
-            lineItems: dbReceipt.lineItems || [],
-            scannedAssets: [],
-            summary: {
-              poItems: dbReceipt.lineItems?.length || 0,
-              unitsReceived: dbReceipt.lineItems?.reduce((acc, l) => acc + (l.quantity || 1), 0) || 0,
-              unitsTagged: dbReceipt.lineItems?.length || 0,
-              unitsPending: 0
-            }
-          };
-        }
-      } catch (e) { throw e; }
-    }
-    return null;
+  static async getHistory(filters = {}) {
+    return this.getHistoryRecords(filters);
   }
 
-  /**
-   * Get Configurable Reasons for Non-PO Receipt from Master Data
-   */
+  static async getHistoryPage(filters = {}, userId, user) {
+    const records = await this.getHistoryRecords(filters, userId, user);
+    const pageSize = Math.min(Math.max(Number.parseInt(filters.pageSize, 10) || 10, 1), 100);
+    const total = records.length;
+    const page = Math.min(Math.max(Number.parseInt(filters.page, 10) || 1, 1), Math.max(1, Math.ceil(total / pageSize)));
+    const sortBy = ['receivedDate', 'receiptNumber', 'poNumber', 'vendorName', 'status'].includes(filters.sortBy) ? filters.sortBy : 'receivedDate';
+    const direction = String(filters.sortOrder).toLowerCase() === 'asc' ? 1 : -1;
+    records.sort((a, b) => {
+      const left = a[sortBy] || '';
+      const right = b[sortBy] || '';
+      return (left < right ? -1 : left > right ? 1 : 0) * direction;
+    });
+    const offset = (page - 1) * pageSize;
+    return { records: records.slice(offset, offset + pageSize), total, page, pageSize, totalPages: Math.ceil(total / pageSize) };
+  }
+
+  static async getHistoryDetail(id, userId, user) {
+    const draftRecord = await this.getDraftById(id, userId);
+    if (draftRecord) return mapDraftHistory(draftRecord);
+    if (!isSqlServerConnected) throw new Error('Database is unavailable.');
+    const receipt = await prisma.receipt.findFirst({
+      where: { AND: [buildReceiptVisibilityWhere(userId, user), { OR: [{ id }, { receiptNumber: id }] }] },
+      include: { site: true, lineItems: { include: { category: true } } }
+    });
+    if (!receipt) return null;
+    const assetIds = [...new Set(receipt.lineItems.flatMap((line) => parseStoredIds(line.createdAssetIds)))];
+    const [assets, tags, receivedByUser] = await Promise.all([
+      assetIds.length ? prisma.asset.findMany({ where: { id: { in: assetIds } }, include: { category: { select: { name: true } } } }) : [],
+      assetIds.length ? prisma.tag.findMany({ where: { assetId: { in: assetIds } } }) : [],
+      receipt.receivedByUserId ? prisma.user.findUnique({ where: { id: receipt.receivedByUserId }, select: { fullName: true, username: true } }) : null
+    ]);
+    const assetsById = new Map(assets.map((asset) => [asset.id, asset]));
+    const tagsByAsset = new Map();
+    for (const tag of tags) if (tag.assetId && (!tagsByAsset.has(tag.assetId) || tag.printedDate)) tagsByAsset.set(tag.assetId, tag);
+    return mapReceiptHistory(receipt, assetsById, tagsByAsset, new Map([[receipt.receivedByUserId, receivedByUser?.fullName || receivedByUser?.username || receipt.receivedByUserId]]));
+  }
+
   static async getNonPoReasons() {
     return [
       { id: 'REASON-01', code: 'INITIAL_STOCK', name: 'Initial stock / Donation / Transfer', description: 'Initial stock intake, legacy asset registration, donor contribution or inter-site transfer' },

@@ -16,6 +16,8 @@ import {
   getDraftById,
   deleteDraft,
   getReceivingHistory,
+  exportReceivingHistory,
+  exportReceivingHistoryReport,
   getReceivingHistoryById,
   getNonPoReasons,
   getSuppliers,
@@ -57,6 +59,8 @@ router.post('/submit', submitReceiving);
 router.post('/', createReceipt);
 
 // Receiving History
+router.get('/history/export', exportReceivingHistory);
+router.get('/history/:id/report', exportReceivingHistoryReport);
 router.get('/history', getReceivingHistory);
 router.get('/history/:id', getReceivingHistoryById);
 

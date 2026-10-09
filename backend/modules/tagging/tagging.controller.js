@@ -108,10 +108,38 @@ export async function generateTags(req, res, next) {
 export async function printLabels(req, res, next) {
   try {
     const result = await TaggingService.printLabels(req.body);
+    try {
+      await prisma.auditEvent.create({
+        data: {
+          userId: req.user?.id || null,
+          action: 'TAGS_PRINTED',
+          entityType: 'RECEIVING_HISTORY',
+          entityId: req.body?.receiptId || null,
+          afterState: JSON.stringify({ assetIds: result.labels?.map((label) => label.assetId) || [], tagNumbers: result.labels?.map((label) => label.tagNumber) || [] }),
+          ipAddress: req.ip || null,
+          userAgent: req.get('user-agent') || null
+        }
+      });
+    } catch {
+      // Printing remains available if optional audit storage is unavailable.
+    }
     res.json(result);
   } catch (err) {
     next(err);
   }
+}
+
+export async function prepareLabels(req, res, next) {
+  try {
+    const result = await TaggingService.printLabels(req.body, { markPrinted: false });
+    res.json(result);
+  } catch (err) { next(err); }
+}
+
+export async function getPrintHistory(req, res, next) {
+  try {
+    res.json({ success: true, history: await TaggingService.getPrintHistory() });
+  } catch (err) { next(err); }
 }
 
 /**

@@ -25,7 +25,8 @@ import {
   Clock,
   Printer,
   FileSpreadsheet,
-  AlertCircle
+  AlertCircle,
+  ArrowLeftRight
 } from 'lucide-react';
 
 export default function TransferMovement({ defaultTab = 'form' }) {
@@ -1447,6 +1448,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                     <th className="p-3 font-semibold">To Location</th>
                     <th className="p-3 font-semibold">New Custodian</th>
                     <th className="p-3 font-semibold">Reason</th>
+                    <th className="p-3 font-semibold">Date</th>
                     <th className="p-3 font-semibold">Status</th>
                     <th className="p-3 font-semibold text-right">Actions</th>
                   </tr>
@@ -1468,6 +1470,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                         <td className="p-3 font-medium text-gray-900">{t.toLocationFormatted}</td>
                         <td className="p-3">{t.toCustodian || '-'}</td>
                         <td className="p-3 text-gray-500">{t.reason}</td>
+                        <td className="p-3 text-gray-900 whitespace-nowrap">{t.transferDate || t.createdAt || '-'}</td>
                         <td className="p-3">
                           <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                             t.status === 'APPROVED' ? 'bg-emerald-100 text-emerald-800' :
@@ -1482,6 +1485,15 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                         <td className="p-3 text-right">
                           {t.status === 'PENDING_APPROVAL' ? (
                             <div className="flex items-center justify-end gap-2">
+                              <button
+                                onClick={() => {
+                                  setActiveSlipTransfer(t);
+                                  setShowSlipModal(true);
+                                }}
+                                className="px-2.5 py-1 text-[#6C2BD9] hover:bg-purple-50 rounded font-bold text-[11px] border border-purple-200"
+                              >
+                                View
+                              </button>
                               <button
                                 onClick={() => handleWorkflowAction(t.id, 'APPROVE')}
                                 className="px-2.5 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium text-[11px]"
@@ -1534,6 +1546,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                     <th className="p-3 font-semibold">From Facility</th>
                     <th className="p-3 font-semibold">Destination Facility</th>
                     <th className="p-3 font-semibold">Assets</th>
+                    <th className="p-3 font-semibold">Date</th>
                     <th className="p-3 font-semibold">Status</th>
                     <th className="p-3 font-semibold">Dispatcher</th>
                     <th className="p-3 font-semibold">Receiver</th>
@@ -1547,6 +1560,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                       <td className="p-3">{t.fromLocationFormatted}</td>
                       <td className="p-3 font-medium text-gray-900">{t.toLocationFormatted}</td>
                       <td className="p-3 font-semibold">{t.assetCount} asset(s)</td>
+                      <td className="p-3 text-gray-900 whitespace-nowrap">{t.transferDate || t.createdAt || '-'}</td>
                       <td className="p-3">
                         <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
                           t.status === 'COMPLETED' ? 'bg-emerald-100 text-emerald-800' :

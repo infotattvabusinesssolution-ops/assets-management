@@ -527,6 +527,7 @@ export function EmailNotifications() {
 
   // Templates List (All items rendered for scroll-down view)
   const totalRecords = filteredTemplates.length;
+  const startIdx = (currentPage - 1) * pageSize;
   const displayedTemplates = filteredTemplates;
 
   // Checkbox handlers

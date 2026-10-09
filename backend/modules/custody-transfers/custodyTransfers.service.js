@@ -237,14 +237,14 @@ export class CustodyTransfersService {
       assignmentType = 'Employee',
       assignedTo,
       department,
-      location = 'Dubai HQ',
-      building = 'Block A',
-      floor = 'Ground Floor',
-      room = 'IT-101',
+      location,
+      building,
+      floor,
+      room,
       assignmentDate = new Date().toISOString().slice(0, 10),
       expectedReturnDate,
       assignmentPurpose = 'Regular Use',
-      conditionAtIssue = 'Good',
+      conditionAtIssue,
       accessoriesIncluded,
       remarks,
       signatureData,
@@ -270,7 +270,7 @@ export class CustodyTransfersService {
             id: dbAsset.id,
             assetNumber: dbAsset.assetId,
             assetName: dbAsset.description || dbAsset.assetId,
-            currentLocation: `${dbAsset.site?.name || ''} ${dbAsset.building?.name || ''} ${dbAsset.room?.name || ''}`.trim() || 'Dubai HQ',
+            currentLocation: `${dbAsset.site?.name || ''} ${dbAsset.building?.name || ''} ${dbAsset.room?.name || ''}`.trim() || 'Unassigned',
             assignedTo: dbAsset.custodian ? `${dbAsset.custodian.fullName || dbAsset.custodian.firstName || ''}`.trim() : 'Unassigned',
             status: dbAsset.lifecycleStatus || 'Available'
           };
@@ -285,7 +285,7 @@ export class CustodyTransfersService {
         id: assetId,
         assetNumber: assetId,
         assetName: 'Asset ' + assetId,
-        currentLocation: 'Dubai HQ',
+        currentLocation: 'Unassigned',
         assignedTo: 'Unassigned',
         status: 'Available'
       };
@@ -315,7 +315,7 @@ export class CustodyTransfersService {
         date: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
         status: 'Pending',
         fromLocation: asset.currentLocation,
-        toLocation: `${location} > ${building} > ${floor}`,
+        toLocation: location ? `${location} > ${building || ''} > ${floor || ''}`.trim() : asset.currentLocation,
         newCustodian: assignedTo
       };
       pendingApprovalsStore.unshift(approvalReq);
@@ -333,15 +333,29 @@ export class CustodyTransfersService {
     const previousLocation = asset.currentLocation;
     const isUnassigning = !custodianId && (assignedTo === 'Unassigned' || !assignedTo || assignedTo === '__unassign__');
 
-    asset.status = isUnassigning ? 'Available' : 'Assigned';
-    asset.assignedTo = isUnassigning ? 'Unassigned' : assignedTo;
-    asset.department = isUnassigning ? '' : (department || asset.department);
-    asset.site = location;
-    asset.building = building;
-    asset.floor = floor;
-    asset.room = room;
-    asset.currentLocation = `${location} > ${building} > ${floor}`;
-    asset.fullLocation = `${location} > ${building} > ${floor} > ${room}`;
+    if (!isUnassigning) {
+      asset.assignedTo = assignedTo;
+      if (['Available', 'Available / In Store', 'In Store'].includes(asset.status)) {
+        asset.status = 'Assigned';
+      }
+    } else {
+      asset.assignedTo = 'Unassigned';
+      if (asset.status === 'Assigned') {
+        asset.status = 'Available';
+      }
+    }
+
+    if (department) {
+      asset.department = department;
+    }
+    if (location || building || floor || room) {
+      if (location) asset.site = location;
+      if (building) asset.building = building;
+      if (floor) asset.floor = floor;
+      if (room) asset.room = room;
+      asset.currentLocation = [location || asset.site, building || asset.building, floor || asset.floor].filter(Boolean).join(' > ');
+      asset.fullLocation = [location || asset.site, building || asset.building, floor || asset.floor, room || asset.room].filter(Boolean).join(' > ');
+    }
     asset.assignedDate = isUnassigning ? null : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
     asset.lastMoved = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     asset.lastMovedDate = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -374,7 +388,7 @@ export class CustodyTransfersService {
       approvedBy: 'Auto-Approved (Direct Issue)',
       receivedBy: isUnassigning ? 'Store Inventory' : assignedTo,
       reason: assignmentPurpose,
-      condition: conditionAtIssue,
+      condition: conditionAtIssue || asset.condition,
       status: 'Completed',
       remarks: remarks || accessoriesIncluded || (isUnassigning ? 'Unassigned to store' : 'Assigned')
     });
@@ -405,26 +419,80 @@ export class CustodyTransfersService {
           if (emp) employeeId = emp.id;
         }
 
-        let siteId = dbAsset.siteId;
-        if (location) {
+        // Only update department IF explicitly provided in payload
+        let departmentId = undefined;
+        if (payload.department && typeof payload.department === 'string' && payload.department.trim() !== '') {
+          const dept = await prisma.department.findFirst({
+            where: { OR: [{ id: payload.department }, { name: { contains: payload.department } }, { code: payload.department }] }
+          });
+          if (dept) departmentId = dept.id;
+        }
+
+        // Auto-create employee record if user provided a custom assignee not yet in Employee master
+        if (!isUnassigning && !employeeId && assignedTo && assignedTo !== 'Unassigned') {
+          try {
+            const companyId = dbAsset.companyId || (await prisma.company.findFirst())?.id;
+            const newEmpCode = payload.employeeCode?.trim() || `EMP-${Date.now().toString().slice(-4)}`;
+            const newEmail = (payload.contactEmail || payload.email || `${assignedTo.toLowerCase().replace(/[^a-z0-9]/g, '.')}@company.com`).trim();
+
+            const newEmp = await prisma.employee.create({
+              data: {
+                fullName: assignedTo.trim(),
+                employeeCode: newEmpCode,
+                email: newEmail,
+                companyId: companyId,
+                departmentId: departmentId || dbAsset.departmentId || null
+              }
+            });
+            employeeId = newEmp.id;
+          } catch (createEmpErr) {
+            console.warn('Could not auto-create employee for assignment:', createEmpErr.message);
+          }
+        }
+
+        // Persist real contact email and employee ID/code updates into the employee record
+        if (employeeId && (payload.contactEmail || payload.email || payload.employeeCode)) {
+          try {
+            const empUpdateData = {};
+            if (payload.contactEmail || payload.email) {
+              empUpdateData.email = (payload.contactEmail || payload.email).trim();
+            }
+            if (payload.employeeCode) {
+              empUpdateData.employeeCode = payload.employeeCode.trim();
+            }
+            if (departmentId) {
+              empUpdateData.departmentId = departmentId;
+            }
+            await prisma.employee.update({
+              where: { id: employeeId },
+              data: empUpdateData
+            });
+          } catch (empUpdErr) {
+            console.warn('Could not update employee email/code:', empUpdErr.message);
+          }
+        }
+
+        // Only update location IF explicitly provided in payload
+        let siteId = undefined;
+        if (payload.location && typeof payload.location === 'string' && payload.location.trim() !== '') {
           const site = await prisma.site.findFirst({
-            where: { OR: [{ id: location }, { name: { contains: location } }, { code: location }] }
+            where: { OR: [{ id: payload.location }, { name: { contains: payload.location } }, { code: payload.location }] }
           });
           if (site) siteId = site.id;
         }
 
-        let buildingId = dbAsset.buildingId;
-        if (building) {
+        let buildingId = undefined;
+        if (payload.building && typeof payload.building === 'string' && payload.building.trim() !== '') {
           const bld = await prisma.building.findFirst({
-            where: { OR: [{ id: building }, { name: { contains: building } }] }
+            where: { OR: [{ id: payload.building }, { name: { contains: payload.building } }] }
           });
           if (bld) buildingId = bld.id;
         }
 
-        let roomId = dbAsset.roomId;
-        if (room) {
+        let roomId = undefined;
+        if (payload.room && typeof payload.room === 'string' && payload.room.trim() !== '') {
           const rm = await prisma.room.findFirst({
-            where: { OR: [{ id: room }, { name: { contains: room } }] }
+            where: { OR: [{ id: payload.room }, { name: { contains: payload.room } }] }
           });
           if (rm) roomId = rm.id;
         }
@@ -447,19 +515,26 @@ export class CustodyTransfersService {
             data: {
               active: false,
               actualReturnDate: new Date(),
-              conditionAtReturn: conditionAtIssue || 'Good'
+              conditionAtReturn: conditionAtIssue || dbAsset.condition || 'Good'
             }
           }).catch(e => console.warn('Could not close active custody records:', e.message));
+
+          // Preserve specialized statuses (DISPOSAL, UNDER_MAINTENANCE, RETIRED, etc.)
+          const targetStatus = ['DISPOSAL', 'UNDER_MAINTENANCE', 'RETIRED', 'WRITTEN_OFF', 'SCRAPPED'].includes(dbAsset.lifecycleStatus)
+            ? dbAsset.lifecycleStatus
+            : 'AVAILABLE';
 
           await prisma.asset.update({
             where: { id: dbAsset.id },
             data: {
-              lifecycleStatus: 'AVAILABLE',
+              lifecycleStatus: targetStatus,
               custodianId: null,
-              ...(siteId ? { siteId } : {}),
-              ...(buildingId ? { buildingId } : {}),
-              ...(roomId ? { roomId } : {}),
-              condition: conditionAtIssue || dbAsset.condition || 'GOOD'
+              assignedDate: null,
+              ...(departmentId !== undefined ? { departmentId } : {}),
+              ...(siteId !== undefined ? { siteId } : {}),
+              ...(buildingId !== undefined ? { buildingId } : {}),
+              ...(roomId !== undefined ? { roomId } : {}),
+              ...(payload.conditionAtIssue && payload.conditionAtIssue !== dbAsset.condition ? { condition: payload.conditionAtIssue } : {})
             }
           });
 
@@ -469,7 +544,7 @@ export class CustodyTransfersService {
                 assetId: dbAsset.id,
                 transactionType: 'UNASSIGN',
                 fromStatus: dbAsset.lifecycleStatus || 'ASSIGNED',
-                toStatus: 'AVAILABLE',
+                toStatus: targetStatus,
                 performedByUserId: validUserId,
                 notes: remarks || 'Custodian unassigned - returned to inventory store'
               }
@@ -485,16 +560,22 @@ export class CustodyTransfersService {
             }
           }).catch(e => console.warn('Could not close prior custody records:', e.message));
 
+          // Preserve specialized statuses (DISPOSAL, UNDER_MAINTENANCE, RETIRED, etc.)
+          const targetStatus = ['DISPOSAL', 'UNDER_MAINTENANCE', 'RETIRED', 'WRITTEN_OFF', 'SCRAPPED'].includes(dbAsset.lifecycleStatus)
+            ? dbAsset.lifecycleStatus
+            : 'ASSIGNED';
+
           await prisma.asset.update({
             where: { id: dbAsset.id },
             data: {
-              lifecycleStatus: 'ASSIGNED',
+              lifecycleStatus: targetStatus,
               custodianId: employeeId,
-              ...(siteId ? { siteId } : {}),
-              ...(buildingId ? { buildingId } : {}),
-              ...(roomId ? { roomId } : {}),
               assignedDate: new Date(),
-              condition: conditionAtIssue || dbAsset.condition || 'GOOD'
+              ...(departmentId !== undefined ? { departmentId } : {}),
+              ...(siteId !== undefined ? { siteId } : {}),
+              ...(buildingId !== undefined ? { buildingId } : {}),
+              ...(roomId !== undefined ? { roomId } : {}),
+              ...(payload.conditionAtIssue && payload.conditionAtIssue !== dbAsset.condition ? { condition: payload.conditionAtIssue } : {})
             }
           });
 
@@ -504,7 +585,7 @@ export class CustodyTransfersService {
                 assetId: dbAsset.id,
                 custodianId: employeeId,
                 issuedDate: new Date(),
-                conditionAtIssue: conditionAtIssue || 'Good',
+                conditionAtIssue: conditionAtIssue || dbAsset.condition || 'Good',
                 issuedByUserId: validUserId,
                 acknowledged: true,
                 acknowledgementDate: new Date(),
@@ -517,7 +598,7 @@ export class CustodyTransfersService {
                 assetId: dbAsset.id,
                 transactionType: 'ASSIGN',
                 fromStatus: dbAsset.lifecycleStatus || 'AVAILABLE',
-                toStatus: 'ASSIGNED',
+                toStatus: targetStatus,
                 performedByUserId: validUserId,
                 notes: remarks || `Assigned to custodian (${assignedTo || employeeId})`
               }

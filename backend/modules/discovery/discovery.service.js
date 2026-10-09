@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
+import { DiscoveryEngine, validateLocalRange } from './discoveryEngine.js';
 
 const requireDb = () => {
   if (!isSqlServerConnected) throw new Error('Database is unavailable.');
@@ -224,7 +225,7 @@ export class DiscoveryService {
     const jobs = await this.getJobs();
     return { total: jobs.length, completed: jobs.filter(j => j.status === 'Completed').length,
       running: jobs.filter(j => j.status === 'Running').length, failed: jobs.filter(j => j.status === 'Failed').length,
-      scheduled: jobs.filter(j => j.status === 'Scheduled').length };
+      scheduled: jobs.filter(j => ['Scheduled', 'Ready'].includes(j.status)).length };
   }
 
   static async getJobById(id) {
@@ -234,16 +235,20 @@ export class DiscoveryService {
   static async createJob(data = {}, user) {
     requireDb();
     if (!data.jobName?.trim()) throw new Error('Job name is required.');
+    if (data.discoveryType !== 'IP Range Scan') throw new Error('Only local IP range scans can be run.');
+    validateLocalRange(data.ipStart, data.ipEnd);
     const job = {
       id: `JOB-${Date.now()}`, jobName: data.jobName.trim(),
-      discoveryType: data.discoveryType || '', ipRange: data.ipRange || '',
-      profile: data.profile || '', schedule: data.schedule || 'Manual',
-      status: data.runImmediately ? 'Queued' : 'Scheduled',
+      discoveryType: 'IP Range Scan', ipRange: `${data.ipStart} - ${data.ipEnd}`,
+      ipStart: data.ipStart, ipEnd: data.ipEnd,
+      profile: 'Local ICMP/TCP', schedule: 'Manual',
+      status: 'Ready',
       createdBy: user?.fullName || user?.username || '', createdOn: new Date().toISOString(),
       startedOn: null, completedOn: null, duration: '', devicesFound: 0,
       newAssets: 0, matchedAssets: 0, requiresReview: 0, stages: []
     };
-    return saveSnapshot('DISCOVERY_JOB', job.id, job);
+    await saveSnapshot('DISCOVERY_JOB', job.id, job);
+    return data.runImmediately ? this.rerunJob(job.id) : job;
   }
 
   static async updateJob(id, updates = {}) {
@@ -253,7 +258,29 @@ export class DiscoveryService {
   }
 
   static async rerunJob(id) {
-    return this.updateJob(id, { status: 'Queued', startedOn: null, completedOn: null });
+    const job = await this.getJobById(id);
+    if (!job) throw new Error('Discovery job not found.');
+    const [rangeStart, rangeEnd] = String(job.ipRange || '').split(/\s+-\s+/);
+    const ipStart = job.ipStart || rangeStart;
+    const ipEnd = job.ipEnd || rangeEnd;
+    validateLocalRange(ipStart, ipEnd);
+    await this.updateJob(job.id, { status: 'Running', startedOn: new Date().toISOString(), completedOn: null });
+    try {
+      const result = await DiscoveryEngine.runIpScan(ipStart, ipEnd, job.jobName);
+      return this.updateJob(job.id, {
+        status: result.persisted ? 'Completed' : 'Failed',
+        completedOn: result.completedAt,
+        duration: `${(result.durationMs / 1000).toFixed(1)} sec`,
+        devicesFound: result.aliveCount,
+        newAssets: result.devices.filter(device => device.status === 'New').length,
+        matchedAssets: 0,
+        requiresReview: result.devices.filter(device => device.status === 'Review').length,
+        error: result.persisted ? '' : result.persistenceError
+      });
+    } catch (error) {
+      await this.updateJob(job.id, { status: 'Failed', completedOn: new Date().toISOString(), error: error.message });
+      throw error;
+    }
   }
 
   static async cloneJob(id, user) {

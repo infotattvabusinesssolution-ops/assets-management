@@ -46,8 +46,12 @@ export function MyAssets() {
 
   // Active States
   const [assets, setAssets] = useState([]);
+  const [unregisteredDevices, setUnregisteredDevices] = useState([]);
+  const [discoverySessionOnly, setDiscoverySessionOnly] = useState(false);
   const [activeKpi, setActiveKpi] = useState('ALL'); // ALL, IN_USE, MAINTENANCE, OVERDUE, PENDING_RETURN
-  const [activeTab, setActiveTab] = useState('ASSIGNED'); // ASSIGNED, MAINTENANCE, PENDING_RETURN, RETURNED, REQUESTED, HISTORY
+  const [activeTab, setActiveTab] = useState('ALL');
+  const [portfolioMode, setPortfolioMode] = useState(false);
+  const [categories, setCategories] = useState([]);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
   const [drawerTab, setDrawerTab] = useState('details'); // details, location, maintenance, history
@@ -109,6 +113,7 @@ export function MyAssets() {
       setLoading(true);
       const res = await api.get('/assets/my-assets', {
         params: {
+          limit: 2000,
           search: searchQuery || undefined,
           status: statusFilter !== 'All' ? statusFilter : undefined,
           categoryId: categoryFilter !== 'All' ? categoryFilter : undefined,
@@ -117,15 +122,9 @@ export function MyAssets() {
         }
       });
 
-      let rawList = [];
-      if (res?.success && Array.isArray(res.assets) && res.assets.length > 0) {
-        rawList = res.assets;
-      } else {
-        const fallbackRes = await api.get('/assets', { params: { limit: 100 } }).catch(() => null);
-        if (fallbackRes?.assets && fallbackRes.assets.length > 0) {
-          rawList = fallbackRes.assets;
-        }
-      }
+      if (!res?.success || !Array.isArray(res.assets)) throw new Error('Could not load assigned assets.');
+      setPortfolioMode(Boolean(res.portfolioMode));
+      const rawList = res.assets;
 
       if (rawList.length > 0) {
         const mappedAssets = rawList.map((item) => {
@@ -141,30 +140,30 @@ export function MyAssets() {
             id: item.assetId || item.id,
             dbId: item.id,
             name: item.description || item.assetId,
-            category: item.category?.name || 'Equipment',
+            category: item.category?.name || 'Uncategorized',
             tagRfid: item.tagNumber || item.barcode || 'N/A',
             rfidEpc: item.rfidEpc || 'N/A',
             barcode: item.barcode || item.qrCode || 'N/A',
-            serialNumber: item.serialNumber || 'SN-UNKNOWN',
-            manufacturer: item.manufacturer?.name || 'Generic',
-            model: item.model?.name || 'Standard Model',
+            serialNumber: item.serialNumber || '',
+            manufacturer: item.manufacturer?.name || '',
+            model: item.model?.name || '',
             location: locParts.join(' > ') || item.site?.name || 'Unassigned',
             site: item.site?.name || '',
             building: item.building?.name || '',
             floorRoom: [item.floor?.name, item.room?.name].filter(Boolean).join(' / ') || '',
             department: item.department?.name || '',
             costCenter: item.costCenter?.code || '',
-            status: item.lifecycleStatus === 'IN_SERVICE' ? 'In Use' :
+            status: ['IN_SERVICE', 'ASSIGNED'].includes(item.lifecycleStatus) ? 'In Use' :
                     item.lifecycleStatus === 'UNDER_MAINTENANCE' ? 'Under Maintenance' :
                     item.lifecycleStatus === 'PENDING_RETURN' ? 'Pending Return' :
                     item.lifecycleStatus === 'RETURNED' ? 'Returned' : (item.lifecycleStatus || 'In Use'),
-            condition: item.condition || 'Good',
+            condition: item.condition || '',
             assignedDate: item.assignedDate ? new Date(item.assignedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : (item.createdAt ? new Date(item.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : ''),
-            custodian: item.custodian ? `${item.custodian.fullName} (You)` : 'You',
+            custodian: item.custodian?.fullName || 'Unassigned',
             image: null,
             icon: Package,
             ackRequired: false,
-            warrantyStatus: item.warranty ? 'Active' : 'Standard',
+            warrantyStatus: item.warranty ? 'Active' : 'Not recorded',
             warrantyStart: item.warranty?.startDate ? new Date(item.warranty.startDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
             warrantyEnd: item.warranty?.endDate ? new Date(item.warranty.endDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '',
             nextServiceDate: item.schedules?.[0]?.nextDueDate ? new Date(item.schedules[0].nextDueDate).toLocaleDateString('en-GB') : 'Not scheduled',
@@ -175,13 +174,20 @@ export function MyAssets() {
         });
 
         setAssets(mappedAssets);
-        setSelectedAsset(prev => prev || mappedAssets[0]);
-        setSelectedRowIds(prev => (prev && prev.length) ? prev : [mappedAssets[0].id]);
+        setSelectedAsset(prev => mappedAssets.find(item => item.id === prev?.id) || mappedAssets[0]);
+        setSelectedRowIds(prev => prev.filter(id => mappedAssets.some(item => item.id === id)));
+      }
+      if (rawList.length === 0) {
+        setAssets([]);
+        setSelectedAsset(null);
+        setSelectedRowIds([]);
       }
       if (res?.kpiCounts) setServerKpiCounts(res.kpiCounts);
       if (res?.tabCounts) setServerTabCounts(res.tabCounts);
     } catch (err) {
-      console.warn('Backend API request failed, using rich mock data:', err);
+      console.warn('Could not load assigned assets:', err);
+      setAssets([]);
+      setSelectedAsset(null);
     } finally {
       setLoading(false);
     }
@@ -191,58 +197,60 @@ export function MyAssets() {
     fetchMyAssets();
   }, [activeKpi, activeTab, searchQuery, categoryFilter, statusFilter]);
 
-  // KPI Summary Counts (uses server counts if available, otherwise mock counts)
+  useEffect(() => {
+    api.get('/master-data/categories')
+      .then(res => { if (res?.success) setCategories(res.categories || []); })
+      .catch(() => setCategories([]));
+  }, []);
+
+  useEffect(() => {
+    let active = true;
+    const loadUnregistered = async () => {
+      try {
+        const res = await api.get('/discovery/devices', { params: { limit: 2000 } });
+        if (!active) return;
+        const unregistered = (res?.devices || []).filter(device =>
+          device.discoverySource === 'IP Range Scan' && device.status === 'New' && !device.linkedAssetId);
+        setUnregisteredDevices(unregistered);
+        setDiscoverySessionOnly(false);
+      } catch {
+        if (!active) return;
+        try {
+          const scanned = JSON.parse(sessionStorage.getItem('localDiscoveryResults') || '[]');
+          setUnregisteredDevices(Array.isArray(scanned) ? scanned.filter(device => device.status === 'New') : []);
+          setDiscoverySessionOnly(true);
+        } catch { setUnregisteredDevices([]); }
+      }
+    };
+    loadUnregistered();
+    return () => { active = false; };
+  }, []);
+
+  // Show only counts returned by the assigned-assets API.
   const kpiCounts = useMemo(() => {
     if (serverKpiCounts) return serverKpiCounts;
     return {
-      total: 18,
-      inUse: 16,
-      inUsePct: '88.9%',
-      maintenance: 1,
-      maintPct: '5.6%',
+      total: 0,
+      inUse: 0,
+      inUsePct: '0%',
+      maintenance: 0,
+      maintPct: '0%',
       overdue: 0,
       overduePct: '0%',
-      pendingReturn: 1,
-      pendingPct: '5.6%'
+      pendingReturn: 0,
+      pendingPct: '0%'
     };
   }, [serverKpiCounts]);
 
   // Filtered Assets List
   const filteredAssets = useMemo(() => {
     return assets.filter(asset => {
-      // KPI Filter
-      if (activeKpi === 'IN_USE' && asset.status !== 'In Use') return false;
-      if (activeKpi === 'MAINTENANCE' && asset.status !== 'Under Maintenance') return false;
-      if (activeKpi === 'OVERDUE' && asset.status !== 'Overdue') return false;
-      if (activeKpi === 'PENDING_RETURN' && asset.status !== 'Pending Return') return false;
-
-      // Lifecycle Tab Filter
-      if (activeTab === 'ASSIGNED' && asset.status !== 'In Use' && asset.status !== 'Under Maintenance') return false;
-      if (activeTab === 'MAINTENANCE' && asset.status !== 'Under Maintenance') return false;
-      if (activeTab === 'PENDING_RETURN' && asset.status !== 'Pending Return') return false;
-      if (activeTab === 'RETURNED' && asset.status !== 'Returned') return false;
-
-      // Search Query
-      if (searchQuery.trim()) {
-        const q = searchQuery.toLowerCase();
-        const matches =
-          asset.id.toLowerCase().includes(q) ||
-          asset.name.toLowerCase().includes(q) ||
-          asset.serialNumber.toLowerCase().includes(q) ||
-          asset.tagRfid.toLowerCase().includes(q) ||
-          asset.category.toLowerCase().includes(q);
-        if (!matches) return false;
-      }
-
-      // Dropdown Filters
-      if (categoryFilter !== 'All' && asset.category !== categoryFilter) return false;
-      if (statusFilter !== 'All' && asset.status !== statusFilter) return false;
       if (locationFilter !== 'All' && !asset.location.includes(locationFilter)) return false;
       if (manufacturerFilter !== 'All' && asset.manufacturer !== manufacturerFilter) return false;
 
       return true;
     });
-  }, [assets, activeKpi, activeTab, searchQuery, categoryFilter, statusFilter, locationFilter, manufacturerFilter]);
+  }, [assets, locationFilter, manufacturerFilter]);
 
   // Self-Service Transaction Submit Handlers
   const handleConfirmAcknowledge = async (status) => {
@@ -459,6 +467,28 @@ export function MyAssets() {
         </div>
       </div>
 
+      {unregisteredDevices.length > 0 && <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 space-y-3">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold text-amber-950">Unregistered devices on the scanner network ({unregisteredDevices.length})</h2>
+            <p className="text-xs text-amber-800">These responded to a local scan. Review and register a device before it becomes an Asset 360 record.</p>
+            {discoverySessionOnly && <p className="text-xs text-amber-800">Database unavailable; these scan results are visible in this browser session only.</p>}
+          </div>
+          <button onClick={() => navigate(discoverySessionOnly ? '/discovery?tab=network' : '/discovery/devices')}
+            className="shrink-0 rounded-lg bg-white border border-amber-300 px-3 py-2 text-xs font-bold text-amber-900 hover:bg-amber-100">
+            Review devices
+          </button>
+        </div>
+        <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+          {unregisteredDevices.slice(0, 6).map(device => <div key={device.id || device.ipAddress}
+            className="rounded-lg bg-white border border-amber-200 p-2.5 text-xs">
+            <span className="font-mono font-bold text-slate-900">{device.ipAddress}</span>
+            <span className="ml-2 text-amber-700">Not registered</span>
+            <p className="truncate text-slate-600">{device.hostname || device.macAddress || 'Identity unavailable'}</p>
+          </div>)}
+        </div>
+      </div>}
+
       {/* Main Screen Layout: Left Area (75% or 100%) + Right Asset 360° Panel (25%) */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
         
@@ -480,15 +510,15 @@ export function MyAssets() {
                 </div>
                 <div>
                   <p className="text-xl font-black text-slate-900 leading-none">{kpiCounts.total}</p>
-                  <p className="text-[11px] font-bold text-slate-800 leading-tight">My Assets</p>
-                  <p className="text-[9px] text-slate-400 font-normal block leading-tight">Total assigned to you</p>
+                  <p className="text-[11px] font-bold text-slate-800 leading-tight">{portfolioMode ? 'Asset Portfolio' : 'My Assets'}</p>
+                  <p className="text-[9px] text-slate-400 font-normal block leading-tight">{portfolioMode ? 'Assets in your access scope' : 'Total assigned to you'}</p>
                 </div>
               </div>
             </button>
 
             {/* Card 2: In Use */}
             <button
-              onClick={() => setActiveKpi('IN_USE')}
+              onClick={() => { setActiveTab('ALL'); setActiveKpi('IN_USE'); }}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer shadow-2xs ${
                 activeKpi === 'IN_USE' ? 'bg-emerald-50/70 border-emerald-500 ring-2 ring-emerald-500/20' : 'bg-white border-slate-200 hover:border-emerald-300'
               }`}
@@ -507,7 +537,7 @@ export function MyAssets() {
 
             {/* Card 3: Under Maintenance */}
             <button
-              onClick={() => setActiveKpi('MAINTENANCE')}
+              onClick={() => { setActiveTab('ALL'); setActiveKpi('MAINTENANCE'); }}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer shadow-2xs ${
                 activeKpi === 'MAINTENANCE' ? 'bg-amber-50/70 border-amber-500 ring-2 ring-amber-500/20' : 'bg-white border-slate-200 hover:border-amber-300'
               }`}
@@ -526,7 +556,7 @@ export function MyAssets() {
 
             {/* Card 4: Overdue */}
             <button
-              onClick={() => setActiveKpi('OVERDUE')}
+              onClick={() => { setActiveTab('ALL'); setActiveKpi('OVERDUE'); }}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer shadow-2xs ${
                 activeKpi === 'OVERDUE' ? 'bg-rose-50/70 border-rose-500 ring-2 ring-rose-500/20' : 'bg-white border-slate-200 hover:border-rose-300'
               }`}
@@ -545,7 +575,7 @@ export function MyAssets() {
 
             {/* Card 5: Pending Return */}
             <button
-              onClick={() => setActiveKpi('PENDING_RETURN')}
+              onClick={() => { setActiveTab('ALL'); setActiveKpi('PENDING_RETURN'); }}
               className={`p-3.5 rounded-xl border text-left transition-all cursor-pointer shadow-2xs ${
                 activeKpi === 'PENDING_RETURN' ? 'bg-purple-50/70 border-purple-500 ring-2 ring-purple-500/20' : 'bg-white border-slate-200 hover:border-purple-300'
               }`}
@@ -567,11 +597,12 @@ export function MyAssets() {
           <div className="bg-white border border-slate-200 rounded-xl p-1.5 shadow-2xs">
             <div className="flex items-center gap-2 overflow-x-auto scrollbar-none text-xs font-bold border-b border-slate-100 pb-1">
               {[
-                { id: 'ASSIGNED', title: 'Currently Assigned (16)' },
-                { id: 'MAINTENANCE', title: 'Under Maintenance (1)' },
-                { id: 'PENDING_RETURN', title: 'Pending Return (1)' },
-                { id: 'RETURNED', title: 'Returned (0)' },
-                { id: 'REQUESTED', title: 'Requested (2)' },
+                { id: 'ALL', title: `All Assets (${serverKpiCounts?.total ?? 0})` },
+                { id: 'ASSIGNED', title: `Currently Assigned (${serverTabCounts?.assigned ?? 0})` },
+                { id: 'MAINTENANCE', title: `Under Maintenance (${serverTabCounts?.maintenance ?? 0})` },
+                { id: 'PENDING_RETURN', title: `Pending Return (${serverTabCounts?.pendingReturn ?? 0})` },
+                { id: 'RETURNED', title: `Returned (${serverTabCounts?.returned ?? 0})` },
+                { id: 'REQUESTED', title: `Requested (${serverTabCounts?.requested ?? 0})` },
                 { id: 'HISTORY', title: 'History' }
               ].map((tab) => {
                 const isActive = activeTab === tab.id;
@@ -619,13 +650,7 @@ export function MyAssets() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-800 font-bold focus:border-[#6C2BD9]"
                 >
                   <option value="All">All</option>
-                  <option value="Laptop">Laptop</option>
-                  <option value="Mobile Device">Mobile Device</option>
-                  <option value="Furniture">Furniture</option>
-                  <option value="Monitor">Monitor</option>
-                  <option value="Accessory">Accessory</option>
-                  <option value="Tablet">Tablet</option>
-                  <option value="Printer">Printer</option>
+                  {categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}
                 </select>
               </div>
 
@@ -637,9 +662,7 @@ export function MyAssets() {
                   className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-800 font-bold focus:border-[#6C2BD9]"
                 >
                   <option value="All">All</option>
-                  <option value="In Use">In Use</option>
-                  <option value="Under Maintenance">Under Maintenance</option>
-                  <option value="Pending Return">Pending Return</option>
+                  {[...new Set(assets.map(asset => asset.lifecycleStatus).filter(Boolean))].sort().map(status => <option key={status} value={status}>{status.replaceAll('_', ' ')}</option>)}
                 </select>
               </div>
 

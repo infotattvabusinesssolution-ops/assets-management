@@ -26,12 +26,22 @@ export function AssetMatchModal({ isOpen, onClose, device, onReconciled }) {
   const handleReconcile = async (actionType) => {
     setActionLoading(true);
     try {
-      await api.post(`/discovery/devices/${device.id || device.deviceId}/reconcile`, {
-        action: actionType,
-        assetId: matchData.assetTag
-      });
+      const deviceId = device.id || device.deviceId;
+      let endpoint = '';
+      if (actionType === 'CONFIRM') endpoint = `/discovery/devices/${deviceId}/confirm-match`;
+      else if (actionType === 'REJECT') endpoint = `/discovery/devices/${deviceId}/reject-match`;
+      else if (actionType === 'REGISTER_NEW') endpoint = `/discovery/devices/${deviceId}/create-asset`;
+
+      if (endpoint) {
+        await api.post(endpoint, {
+          action: actionType,
+          assetId: matchData.assetTag,
+          ...device // Pass the device data for asset creation
+        });
+      }
+      
       if (onReconciled) {
-        onReconciled(device.id || device.deviceId, actionType);
+        onReconciled(deviceId, actionType);
       }
       onClose();
     } catch (err) {

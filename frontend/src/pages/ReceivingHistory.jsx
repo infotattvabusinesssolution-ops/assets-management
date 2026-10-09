@@ -33,162 +33,141 @@ import clsx from 'clsx';
 export function ReceivingHistory() {
   const navigate = useNavigate();
 
-  // Search & Filter State (Matching exact fields in reference screenshot)
-  const [filters, setFilters] = useState({
-    receiveNumber: '',
-    poNumber: '',
-    receiveType: 'All Types',
-    status: 'All Status',
-    fromDate: '',
-    toDate: '',
-    supplier: 'All Suppliers',
-    category: 'All Categories',
-    location: 'All Locations',
-    receivedBy: 'All Users',
-    taggingStatus: 'All'
-  });
-
-  const [savedView, setSavedView] = useState('All Receives');
-
+  const savedFilters = (() => { try { return JSON.parse(localStorage.getItem('receiving-history-saved-view') || 'null'); } catch { return null; } })();
+  const [savedView, setSavedView] = useState(savedFilters ? 'Custom Saved View' : 'All Receives');
+  const emptyFilters = { receiveNumber: '', poNumber: '', receiveType: 'All Types', status: 'All Status', fromDate: '', toDate: '', supplier: 'All Suppliers', category: 'All Categories', location: 'All Locations', receivedBy: 'All Users', taggingStatus: 'All' };
+  const [filters, setFilters] = useState(savedFilters || emptyFilters);
+  const [appliedFilters, setAppliedFilters] = useState(savedFilters || emptyFilters);
   const [transactions, setTransactions] = useState([]);
   const [selectedTxId, setSelectedTxId] = useState(null);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
-
-  // Pagination & Toast state
+  const [selectedDetails, setSelectedDetails] = useState(null);
+  const [showAllItems, setShowAllItems] = useState(false);
+  const [pagination, setPagination] = useState({ total: 0, page: 1, pageSize: 10, totalPages: 0 });
   const [currentPage, setCurrentPage] = useState(1);
   const [rowsPerPage, setRowsPerPage] = useState(10);
+  const [sortBy, setSortBy] = useState('receivedDate');
+  const [sortOrder, setSortOrder] = useState('desc');
+  const [loading, setLoading] = useState(false);
+  const [loadError, setLoadError] = useState('');
+  const [reloadVersion, setReloadVersion] = useState(0);
   const [toast, setToast] = useState(null);
 
-  const activeTx = transactions.find((t) => t.id === selectedTxId) || transactions[0];
+  const listTx = transactions.find((t) => t.id === selectedTxId) || transactions[0];
+  const activeTx = selectedDetails?.id === listTx?.id ? { ...listTx, ...selectedDetails } : listTx;
 
   const showToast = (message, type = 'success') => {
     setToast({ message, type });
     setTimeout(() => setToast(null), 4000);
   };
 
-  useEffect(() => {
-    async function fetchHistory() {
-      try {
-        const queryParams = new URLSearchParams();
-        if (filters.receiveNumber) queryParams.set('receiveNumber', filters.receiveNumber);
-        if (filters.poNumber) queryParams.set('poNumber', filters.poNumber);
-        if (filters.receiveType && filters.receiveType !== 'All Types') queryParams.set('receiveType', filters.receiveType);
-        if (filters.status && filters.status !== 'All Status') queryParams.set('status', filters.status);
-        if (filters.supplier && filters.supplier !== 'All Suppliers') queryParams.set('supplier', filters.supplier);
-        if (filters.location && filters.location !== 'All Locations') queryParams.set('location', filters.location);
-        if (filters.receivedBy && filters.receivedBy !== 'All Users') queryParams.set('receivedBy', filters.receivedBy);
-        if (filters.fromDate) queryParams.set('fromDate', filters.fromDate);
-        if (filters.toDate) queryParams.set('toDate', filters.toDate);
+  const buildQuery = (source, page, pageSize) => {
+    const query = new URLSearchParams();
+    ['receiveNumber', 'poNumber', 'receiveType', 'status', 'fromDate', 'toDate', 'supplier', 'category', 'location', 'receivedBy', 'taggingStatus'].forEach((key) => {
+      const value = source[key];
+      if (value && !['All Types', 'All Status', 'All Suppliers', 'All Categories', 'All Locations', 'All Users', 'All'].includes(value)) query.set(key, value);
+    });
+    if (page) query.set('page', String(page));
+    if (pageSize) query.set('pageSize', String(pageSize));
+    query.set('sortBy', sortBy);
+    query.set('sortOrder', sortOrder);
+    return query.toString();
+  };
 
-        const res = await api.get(`/receiving/history?${queryParams.toString()}`);
-        const list = res?.history || res?.receipts || [];
-        const mapped = list.map((r) => ({
-          id: r.id,
-          receiveNumber: r.receiptNumber,
-          receiveDate: r.receivedDate ? new Date(r.receivedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-          receiveTime: r.receivedDate ? new Date(r.receivedDate).toLocaleString('en-GB') : '-',
-          poNumber: r.poNumber === 'NON-PO' ? '-' : (r.poNumber || '-'),
-          supplier: r.vendorName || '-',
-          receiveType: r.mode === 'WITHOUT_PO' ? 'Without PO' : 'With PO',
-          itemsCount: r.summary?.unitsReceived ?? 0,
-          taggedCount: r.summary?.unitsTagged ?? 0,
-          status: r.status || '-',
-          receivedBy: r.receivedBy || '-',
-          location: r.receivingLocation || '-',
-          remarks: r.remarks || '-',
-          items: (r.lineItems || []).map((l, i) => ({
-            id: l.id,
-            assetId: l.createdAssetIds,
-            idx: i + 1,
-            assetName: l.description || '-',
-            serialNumber: l.serialNumbers || '-',
-            tagNumber: l.tagNumber || '-',
-            tagStatus: l.tagNumber ? 'Tagged' : 'Pending'
-          }))
-        }));
+  const mapReceipt = (r) => ({
+    id: r.id, receiveNumber: r.receiptNumber,
+    receiveDate: r.receivedDate ? new Date(r.receivedDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+    receiveTime: r.receivedDate ? new Date(r.receivedDate).toLocaleString('en-GB') : '-',
+    poNumber: r.poNumber === 'NON-PO' ? '-' : (r.poNumber || '-'), supplier: r.vendorName || '-',
+    receiveType: r.mode === 'WITHOUT_PO' ? 'Without PO' : 'With PO',
+    itemsCount: r.summary?.unitsReceived ?? 0, taggedCount: r.summary?.unitsTagged ?? 0,
+    pendingCount: r.summary?.unitsPending ?? 0, failedCount: r.summary?.unitsFailed ?? null,
+    status: r.status || '-', receivedBy: r.receivedBy || '-', location: r.receivingLocation || '-', remarks: r.remarks || '-',
+    items: (r.lineItems || []).map((item, index) => ({ id: item.id || index, assetId: item.assetId, assetNumber: item.assetNumber || '-', idx: index + 1, assetName: item.description || '-', category: item.category || '-', serialNumber: item.serialNumber || '-', tagNumber: item.tagNumber || item.rfidEpc || '-', tagStatus: item.tagStatus || (item.tagNumber || item.rfidEpc ? 'Tagged' : 'Pending') }))
+  });
+
+  useEffect(() => {
+    let alive = true;
+    async function fetchHistory() {
+      setLoading(true);
+      setLoadError('');
+      try {
+        const res = await api.get(`/receiving/history?${buildQuery(appliedFilters, currentPage, rowsPerPage)}`);
+        const mapped = (res?.history || res?.receipts || []).map(mapReceipt);
+        if (!alive) return;
         setTransactions(mapped);
-        setSelectedTxId(previous => mapped.some(t => t.id === previous) ? previous : (mapped[0]?.id || null));
-        setSelectedRowIds(previous => previous.filter(id => mapped.some(t => t.id === id)));
+        const meta = res?.pagination || {};
+        setPagination({ total: meta.total ?? mapped.length, page: meta.page ?? currentPage, pageSize: meta.pageSize ?? rowsPerPage, totalPages: meta.totalPages ?? (mapped.length ? 1 : 0) });
+        setSelectedTxId((previous) => mapped.some((tx) => tx.id === previous) ? previous : (mapped[0]?.id || null));
+        setSelectedRowIds((previous) => previous.filter((id) => mapped.some((tx) => tx.id === id)));
       } catch (err) {
-        setTransactions([]);
-        setSelectedTxId(null);
+        if (!alive) return;
+        setTransactions([]); setSelectedTxId(null); setPagination({ total: 0, page: 1, pageSize: rowsPerPage, totalPages: 0 });
+        setLoadError(err.message || 'Could not load receipt history.');
         showToast(err.message || 'Could not load receipt history.', 'error');
-      }
+      } finally { if (alive) setLoading(false); }
     }
     fetchHistory();
-  }, [filters]);
+    return () => { alive = false; };
+  }, [appliedFilters, currentPage, rowsPerPage, sortBy, sortOrder, reloadVersion]);
 
-  // Row selection handler
-  const handleSelectRow = (tx) => {
-    setSelectedTxId(tx.id);
-    setSelectedRowIds([tx.id]);
+  useEffect(() => {
+    if (!selectedTxId) { setSelectedDetails(null); return; }
+    let alive = true;
+    setSelectedDetails(null);
+    api.get(`/receiving/history/${encodeURIComponent(selectedTxId)}`)
+      .then((res) => { if (alive && res?.transaction) setSelectedDetails(mapReceipt(res.transaction)); })
+      .catch((err) => { if (alive) showToast(err.message || 'Could not load receipt details.', 'error'); });
+    return () => { alive = false; };
+  }, [selectedTxId]);
+
+  const handleSelectRow = (tx) => { setSelectedTxId(tx.id); setSelectedRowIds([tx.id]); setShowAllItems(false); };
+  const handleCheckboxToggle = (txId) => { setSelectedRowIds((prev) => prev.includes(txId) ? prev.filter((id) => id !== txId) : [...prev, txId]); setSelectedTxId(txId); setShowAllItems(false); };
+  const handleSelectAllToggle = () => setSelectedRowIds(selectedRowIds.length === transactions.length ? [] : transactions.map((tx) => tx.id));
+  const handleSearchSubmit = (event) => { event?.preventDefault(); setCurrentPage(1); setAppliedFilters({ ...filters }); };
+  const handleSort = (column) => { setSortOrder((order) => sortBy === column && order === 'desc' ? 'asc' : 'desc'); setSortBy(column); setCurrentPage(1); };
+
+  const handleSavedViewChange = (value) => {
+    setSavedView(value);
+    let next = { ...filters };
+    if (value === 'All Receives') next = { ...emptyFilters };
+    if (value === 'Recent 30 Days') { const now = new Date(); const from = new Date(); from.setDate(now.getDate() - 30); next = { ...filters, fromDate: from.toISOString().slice(0, 10), toDate: now.toISOString().slice(0, 10) }; }
+    if (value === 'Pending Tagging') next = { ...filters, status: 'Pending Tagging', taggingStatus: 'Untagged' };
+    if (value === 'Custom Saved View') { try { next = JSON.parse(localStorage.getItem('receiving-history-saved-view') || '{}'); } catch { next = { ...filters }; } }
+    setFilters(next); setAppliedFilters(next); setCurrentPage(1);
   };
+  const handleSaveView = () => { localStorage.setItem('receiving-history-saved-view', JSON.stringify(filters)); setSavedView('Custom Saved View'); showToast('Saved this filter view in this browser.'); };
+  const handleResetFilters = () => { setFilters({ ...emptyFilters }); setAppliedFilters({ ...emptyFilters }); setSavedView('All Receives'); setCurrentPage(1); };
 
-  const handleCheckboxToggle = (txId) => {
-    setSelectedRowIds((prev) =>
-      prev.includes(txId) ? prev.filter((id) => id !== txId) : [...prev, txId]
-    );
+  const downloadFile = (data, filename) => {
+    const url = URL.createObjectURL(new Blob([data], { type: 'text/csv;charset=utf-8' }));
+    const link = document.createElement('a'); link.href = url; link.download = filename; link.click();
+    setTimeout(() => URL.revokeObjectURL(url), 1000);
   };
-
-  const handleSelectAllToggle = () => {
-    if (selectedRowIds.length === transactions.length) {
-      setSelectedRowIds([]);
-    } else {
-      setSelectedRowIds(transactions.map((t) => t.id));
+  const handleExport = async () => {
+    try { const csv = await api.get(`/receiving/history/export?${buildQuery(appliedFilters)}`); downloadFile(csv, 'receiving-history.csv'); }
+    catch (err) { showToast(err.message || 'Could not export receiving history.', 'error'); }
+  };
+  const handleReprintTags = async () => {
+    if (!activeTx) return;
+    let receipts = [activeTx];
+    if (selectedRowIds.length) {
+      try {
+        receipts = await Promise.all(transactions.filter((tx) => selectedRowIds.includes(tx.id)).map(async (tx) => {
+          if (selectedDetails?.id === tx.id) return selectedDetails;
+          const response = await api.get(`/receiving/history/${encodeURIComponent(tx.id)}`);
+          return response?.transaction || tx;
+        }));
+      } catch (err) { showToast(err.message || 'Could not load selected receipt items.', 'error'); return; }
     }
+    const assetIds = [...new Set(receipts.flatMap((receipt) => (receipt.lineItems || receipt.items || []).filter((item) => item.tagStatus === 'Tagged').map((item) => item.assetId).filter(Boolean)))];
+    if (!assetIds.length) return showToast('This receipt has no registered assets with tags to print.', 'error');
+    navigate(`/receiving/print-tags?receiptId=${encodeURIComponent(activeTx.id)}&reprintOnly=1&assetIds=${encodeURIComponent(assetIds.join(','))}`);
   };
-
-  // Filter actions
-  const handleSearchSubmit = (e) => {
-    if (e) e.preventDefault();
-    showToast('Applied receive history search filters.');
-  };
-
-  const handleResetFilters = () => {
-    setFilters({
-      receiveNumber: '',
-      poNumber: '',
-      receiveType: 'All Types',
-      status: 'All Status',
-      fromDate: '',
-      toDate: '',
-      supplier: 'All Suppliers',
-      category: 'All Categories',
-      location: 'All Locations',
-      receivedBy: 'All Users',
-      taggingStatus: 'All'
-    });
-    showToast('Reset all filters.');
-  };
-
-  const handleExport = () => {
-    const columns = ['Receive Number', 'Receive Date', 'PO Number', 'Supplier', 'Type', 'Items', 'Tagged', 'Status', 'Received By'];
-    const quote = value => `"${String(value ?? '').replace(/"/g, '""')}"`;
-    const rows = transactions.map(t => [t.receiveNumber, t.receiveDate, t.poNumber, t.supplier, t.receiveType, t.itemsCount, t.taggedCount, t.status, t.receivedBy]);
-    const blob = new Blob([[columns, ...rows].map(row => row.map(quote).join(',')).join('\n')], { type: 'text/csv;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'receiving-history.csv';
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-
-  const handleReprintTags = () => {
+  const handleGenerateReport = async () => {
     if (!activeTx) return;
-    navigate(`/receiving/print-tags?assetId=${encodeURIComponent(activeTx.items[0]?.assetId || '')}`);
-  };
-
-  const handleGenerateReport = () => {
-    if (!activeTx) return;
-    const content = [activeTx.receiveNumber, `Date: ${activeTx.receiveTime}`, `PO: ${activeTx.poNumber}`, `Supplier: ${activeTx.supplier}`, `Location: ${activeTx.location}`, `Items received: ${activeTx.itemsCount}`, ...activeTx.items.map(item => `${item.assetName} | ${item.serialNumber} | ${item.tagNumber}`)].join('\n');
-    const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `${activeTx.receiveNumber}.txt`;
-    link.click();
-    URL.revokeObjectURL(url);
+    try { const report = await api.get(`/receiving/history/${encodeURIComponent(activeTx.id)}/report`); downloadFile(report, `${activeTx.receiveNumber}-report.csv`); }
+    catch (err) { showToast(err.message || 'Could not generate receipt report.', 'error'); }
   };
 
   return (
@@ -264,18 +243,19 @@ export function ReceivingHistory() {
               <span className="text-slate-500 font-medium">Saved Views</span>
               <select
                 value={savedView}
-                onChange={(e) => setSavedView(e.target.value)}
+                onChange={(e) => handleSavedViewChange(e.target.value)}
                 className="px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none cursor-pointer"
               >
                 <option value="All Receives">All Receives</option>
                 <option value="Recent 30 Days">Recent 30 Days</option>
                 <option value="Pending Tagging">Pending Tagging</option>
+                {(savedFilters || savedView === 'Custom Saved View') && <option value="Custom Saved View">Custom Saved View</option>}
               </select>
             </div>
 
             <button
               type="button"
-              onClick={() => showToast('Saved view preferences.')}
+              onClick={handleSaveView}
               className="px-3 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-700 font-semibold flex items-center gap-1.5 shadow-2xs cursor-pointer"
             >
               <Save className="w-3.5 h-3.5 text-[#6C2BD9]" />
@@ -351,6 +331,9 @@ export function ReceivingHistory() {
                 <option value="Completed">Completed</option>
                 <option value="Partial">Partial</option>
                 <option value="Pending Tagging">Pending Tagging</option>
+                <option value="Pending Approval">Pending Approval</option>
+                <option value="Draft">Draft</option>
+                <option value="Cancelled">Cancelled</option>
               </select>
             </div>
 
@@ -360,10 +343,9 @@ export function ReceivingHistory() {
               </label>
               <div className="relative">
                 <input
-                  type="text"
+                  type="date"
                   value={filters.fromDate}
                   onChange={(e) => setFilters((p) => ({ ...p, fromDate: e.target.value }))}
-                  placeholder="dd/mm/yyyy"
                   className="w-full pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
                 />
                 <Calendar className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -376,10 +358,9 @@ export function ReceivingHistory() {
               </label>
               <div className="relative">
                 <input
-                  type="text"
+                  type="date"
                   value={filters.toDate}
                   onChange={(e) => setFilters((p) => ({ ...p, toDate: e.target.value }))}
-                  placeholder="dd/mm/yyyy"
                   className="w-full pl-3 pr-8 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
                 />
                 <Calendar className="w-3.5 h-3.5 absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400" />
@@ -393,62 +374,52 @@ export function ReceivingHistory() {
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                 Supplier
               </label>
-              <select
-                value={filters.supplier}
-                onChange={(e) => setFilters((p) => ({ ...p, supplier: e.target.value }))}
-                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-              >
-                <option value="All Suppliers">All Suppliers</option>
-                <option value="Dell Technologies">Dell Technologies</option>
-                <option value="HP Middle East">HP Middle East</option>
-                <option value="Lenovo FZCO">Lenovo FZCO</option>
-              </select>
+              <input
+                type="text"
+                value={filters.supplier === 'All Suppliers' ? '' : filters.supplier}
+                onChange={(e) => setFilters((p) => ({ ...p, supplier: e.target.value || 'All Suppliers' }))}
+                placeholder="All suppliers"
+                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
+              />
             </div>
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                 Category
               </label>
-              <select
-                value={filters.category}
-                onChange={(e) => setFilters((p) => ({ ...p, category: e.target.value }))}
-                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-              >
-                <option value="All Categories">All Categories</option>
-                <option value="Desktop">Desktop</option>
-                <option value="Printer">Printer</option>
-                <option value="Laptop">Laptop</option>
-              </select>
+              <input
+                type="text"
+                value={filters.category === 'All Categories' ? '' : filters.category}
+                onChange={(e) => setFilters((p) => ({ ...p, category: e.target.value || 'All Categories' }))}
+                placeholder="All categories"
+                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
+              />
             </div>
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                 Location
               </label>
-              <select
-                value={filters.location}
-                onChange={(e) => setFilters((p) => ({ ...p, location: e.target.value }))}
-                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-              >
-                <option value="All Locations">All Locations</option>
-                <option value="IT Store - Dubai HQ">IT Store - Dubai HQ</option>
-                <option value="Admin Block">Admin Block</option>
-              </select>
+              <input
+                type="text"
+                value={filters.location === 'All Locations' ? '' : filters.location}
+                onChange={(e) => setFilters((p) => ({ ...p, location: e.target.value || 'All Locations' }))}
+                placeholder="All locations"
+                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
+              />
             </div>
 
             <div>
               <label className="block text-[11px] font-semibold text-slate-600 mb-1">
                 Received By
               </label>
-              <select
-                value={filters.receivedBy}
-                onChange={(e) => setFilters((p) => ({ ...p, receivedBy: e.target.value }))}
-                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 cursor-pointer"
-              >
-                <option value="All Users">All Users</option>
-                <option value="John Doe">John Doe</option>
-                <option value="Sara Ahmed">Sara Ahmed</option>
-              </select>
+              <input
+                type="text"
+                value={filters.receivedBy === 'All Users' ? '' : filters.receivedBy}
+                onChange={(e) => setFilters((p) => ({ ...p, receivedBy: e.target.value || 'All Users' }))}
+                placeholder="All users"
+                className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
+              />
             </div>
 
             <div>
@@ -489,7 +460,7 @@ export function ReceivingHistory() {
             {/* Header & Table Actions */}
             <div className="p-4 border-b border-slate-100 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <h3 className="text-sm font-bold text-[#5B21B6]">
-                Receive Transactions ({transactions.length})
+                Receive Transactions ({pagination.total})
               </h3>
 
               <div className="flex items-center gap-2">
@@ -536,8 +507,8 @@ export function ReceivingHistory() {
                       />
                     </th>
                     <th className="py-2.5 px-3 w-8 text-slate-500 font-bold whitespace-nowrap">#</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Receive Number</th>
-                    <th className="py-2.5 px-3 font-bold whitespace-nowrap">Receive Date</th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap"><button type="button" onClick={() => handleSort('receiptNumber')} className="cursor-pointer">Receive Number {sortBy === 'receiptNumber' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</button></th>
+                    <th className="py-2.5 px-3 font-bold whitespace-nowrap"><button type="button" onClick={() => handleSort('receivedDate')} className="cursor-pointer">Receive Date {sortBy === 'receivedDate' ? (sortOrder === 'asc' ? '↑' : '↓') : ''}</button></th>
                     <th className="py-2.5 px-3 font-bold whitespace-nowrap">PO Number</th>
                     <th className="py-2.5 px-3 font-bold whitespace-nowrap">Supplier</th>
                     <th className="py-2.5 px-3 font-bold whitespace-nowrap">Receive Type</th>
@@ -549,7 +520,9 @@ export function ReceivingHistory() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 font-sans">
-                  {transactions.length === 0 && <tr><td colSpan="12" className="p-8 text-center text-slate-500">No receiving records found.</td></tr>}
+                  {loading && transactions.length === 0 && <tr><td colSpan="12" className="p-8 text-center text-slate-500">Loading receiving records…</td></tr>}
+                  {!loading && loadError && <tr><td colSpan="12" className="p-8 text-center text-rose-700"><div className="flex flex-col items-center gap-2"><span>{loadError}</span><button type="button" onClick={() => setReloadVersion((value) => value + 1)} className="px-3 py-1.5 rounded-lg bg-[#6C2BD9] text-white font-semibold">Retry</button></div></td></tr>}
+                  {!loading && !loadError && transactions.length === 0 && <tr><td colSpan="12" className="p-8 text-center text-slate-500">No receiving records match these filters.</td></tr>}
                   {transactions.map((tx, idx) => {
                     const isSelected = selectedRowIds.includes(tx.id);
                     const isActive = selectedTxId === tx.id;
@@ -567,22 +540,17 @@ export function ReceivingHistory() {
                             : 'hover:bg-slate-50/60'
                         )}
                       >
-                        <td
-                          className="py-2.5 px-3 text-center whitespace-nowrap"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleCheckboxToggle(tx.id);
-                          }}
-                        >
+                        <td className="py-2.5 px-3 text-center whitespace-nowrap">
                           <input
                             type="checkbox"
                             checked={isSelected}
                             onChange={() => handleCheckboxToggle(tx.id)}
+                            onClick={(event) => event.stopPropagation()}
                             className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                           />
                         </td>
                         <td className="py-2.5 px-3 text-slate-400 font-mono text-[11px] whitespace-nowrap">
-                          {idx + 1}
+                          {(currentPage - 1) * rowsPerPage + idx + 1}
                         </td>
                         <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9] text-xs whitespace-nowrap">
                           {tx.receiveNumber}
@@ -606,21 +574,12 @@ export function ReceivingHistory() {
                           {tx.taggedCount}
                         </td>
                         <td className="py-2.5 px-3 whitespace-nowrap">
-                          {(tx.status === 'COMPLETED' || tx.status === 'Completed') && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200 whitespace-nowrap">
-                              Completed
-                            </span>
-                          )}
-                          {(tx.status === 'PARTIAL' || tx.status === 'Partial') && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-amber-100/90 text-amber-800 border border-amber-200 whitespace-nowrap">
-                              Partial
-                            </span>
-                          )}
-                          {(tx.status === 'PENDING_TAGGING' || tx.status === 'Pending Tagging') && (
-                            <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-rose-100/90 text-rose-800 border border-rose-200 whitespace-nowrap">
-                              Pending Tagging
-                            </span>
-                          )}
+                          <span className={clsx('inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap',
+                            /COMPLETED/i.test(tx.status) ? 'bg-emerald-100/90 text-emerald-800 border-emerald-200' :
+                            /PARTIAL|PENDING|STAGED|DRAFT/i.test(tx.status) ? 'bg-amber-100/90 text-amber-800 border-amber-200' :
+                            /CANCEL|FAIL|REJECT/i.test(tx.status) ? 'bg-rose-100/90 text-rose-800 border-rose-200' : 'bg-slate-100 text-slate-700 border-slate-200')}>
+                            {String(tx.status).replace(/_/g, ' ').toLowerCase().replace(/\b\w/g, (letter) => letter.toUpperCase())}
+                          </span>
                         </td>
                         <td className="py-2.5 px-3 text-slate-700 whitespace-nowrap">
                           {tx.receivedBy}
@@ -646,9 +605,19 @@ export function ReceivingHistory() {
             </div>
 
             {/* Scroll Down Summary */}
-            <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="font-medium text-slate-600">Showing {transactions.length} records</span>
-              <span className="text-slate-400">Scroll down to view all records</span>
+            <div className="p-3 border-t border-slate-100 flex flex-wrap items-center justify-between gap-3 text-xs text-slate-500">
+              <span className="font-medium text-slate-600">{loading ? 'Loading receipts…' : `Showing ${pagination.total ? (currentPage - 1) * rowsPerPage + 1 : 0}–${Math.min(currentPage * rowsPerPage, pagination.total)} of ${pagination.total}`}</span>
+              <div className="flex items-center gap-2">
+                <label htmlFor="receiving-history-page-size">Rows</label>
+                <select id="receiving-history-page-size" value={rowsPerPage} onChange={(e) => { setRowsPerPage(Number(e.target.value)); setCurrentPage(1); }} className="px-2 py-1 rounded-lg border border-slate-200 bg-white">
+                  {[10, 25, 50, 100].map((size) => <option key={size} value={size}>{size}</option>)}
+                </select>
+                <button type="button" aria-label="First page" disabled={currentPage <= 1} onClick={() => setCurrentPage(1)} className="p-1 disabled:opacity-40"><ChevronsLeft className="w-4 h-4" /></button>
+                <button type="button" aria-label="Previous page" disabled={currentPage <= 1} onClick={() => setCurrentPage((page) => Math.max(1, page - 1))} className="p-1 disabled:opacity-40"><ChevronLeft className="w-4 h-4" /></button>
+                <span>Page {pagination.totalPages ? currentPage : 0} of {pagination.totalPages}</span>
+                <button type="button" aria-label="Next page" disabled={currentPage >= pagination.totalPages} onClick={() => setCurrentPage((page) => Math.min(pagination.totalPages, page + 1))} className="p-1 disabled:opacity-40"><ChevronRight className="w-4 h-4" /></button>
+                <button type="button" aria-label="Last page" disabled={currentPage >= pagination.totalPages} onClick={() => setCurrentPage(pagination.totalPages)} className="p-1 disabled:opacity-40"><ChevronsRight className="w-4 h-4" /></button>
+              </div>
             </div>
           </div>
         </div>
@@ -662,8 +631,8 @@ export function ReceivingHistory() {
           <div className="bg-white border border-slate-200 rounded-2xl p-5 shadow-xs space-y-3">
             <div className="flex items-center justify-between pb-2 border-b border-slate-100">
               <h3 className="text-sm font-bold text-[#5B21B6]">Receive Details</h3>
-              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200">
-                {activeTx.status}
+              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-800 border border-slate-200">
+                {String(activeTx.status).replace(/_/g, ' ')}
               </span>
             </div>
 
@@ -726,11 +695,12 @@ export function ReceivingHistory() {
               Items Received ({activeTx.itemsCount})
             </h3>
 
-            <div data-receipt-items className="overflow-auto max-h-[300px]">
+            <div data-receipt-items className={clsx('overflow-auto', showAllItems ? 'max-h-[70vh]' : 'max-h-[300px]')}>
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 z-10 bg-slate-50 shadow-2xs">
                   <tr className="border-b border-slate-200 text-slate-700 font-bold text-[11px] uppercase">
                     <th className="py-2 px-2.5 w-6 text-slate-500 font-bold whitespace-nowrap">#</th>
+                    <th className="py-2 px-2.5 font-bold whitespace-nowrap">Asset ID</th>
                     <th className="py-2 px-2.5 font-bold whitespace-nowrap">Asset Name</th>
                     <th className="py-2 px-2.5 font-bold whitespace-nowrap">Serial Number</th>
                     <th className="py-2 px-2.5 font-bold whitespace-nowrap">Tag Number</th>
@@ -744,6 +714,7 @@ export function ReceivingHistory() {
                         <td className="py-2 px-2.5 text-slate-500 font-mono text-[11px] whitespace-nowrap">
                           {item.idx}
                         </td>
+                        <td className="py-2 px-2.5 font-mono text-[#6C2BD9] text-[11px] whitespace-nowrap">{item.assetNumber}</td>
                         <td className="py-2 px-2.5 font-semibold text-slate-800 whitespace-nowrap">
                           {item.assetName}
                         </td>
@@ -754,7 +725,7 @@ export function ReceivingHistory() {
                           {item.tagNumber}
                         </td>
                         <td className="py-2 px-2.5 whitespace-nowrap">
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100/90 text-emerald-800 border border-emerald-200 whitespace-nowrap">
+                          <span className={clsx('inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold border whitespace-nowrap', item.tagStatus === 'Tagged' ? 'bg-emerald-100/90 text-emerald-800 border-emerald-200' : 'bg-amber-100/90 text-amber-800 border-amber-200')}>
                             {item.tagStatus}
                           </span>
                         </td>
@@ -762,7 +733,7 @@ export function ReceivingHistory() {
                     ))
                   ) : (
                     <tr>
-                      <td colSpan="5" className="p-4 text-center text-slate-400 text-xs">
+                      <td colSpan="6" className="p-4 text-center text-slate-400 text-xs">
                         No serialized item records available for this intake.
                       </td>
                     </tr>
@@ -775,10 +746,10 @@ export function ReceivingHistory() {
             <div className="text-center pt-1 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() => document.querySelector('[data-receipt-items]')?.scrollIntoView({ behavior: 'smooth' })}
+                onClick={() => setShowAllItems((visible) => !visible)}
                 className="text-xs font-bold text-[#6C2BD9] hover:underline cursor-pointer"
               >
-                View All {activeTx.itemsCount} Items
+                {showAllItems ? 'Show Less' : `View All ${activeTx.itemsCount} Items`}
               </button>
             </div>
           </div>
@@ -823,7 +794,7 @@ export function ReceivingHistory() {
                   <Clock className="w-3.5 h-3.5" />
                 </div>
                 <p className="text-base font-black text-slate-900 leading-tight">
-                  {activeTx.itemsCount - activeTx.taggedCount}
+                  {activeTx.pendingCount ?? Math.max(activeTx.itemsCount - activeTx.taggedCount, 0)}
                 </p>
                 <p className="text-[9px] text-slate-500 font-bold leading-tight mt-0.5">
                   Pending
@@ -836,7 +807,7 @@ export function ReceivingHistory() {
                   <AlertCircle className="w-3.5 h-3.5" />
                 </div>
                 <p className="text-base font-black text-slate-900 leading-tight">
-                  0
+                  {activeTx.failedCount ?? '—'}
                 </p>
                 <p className="text-[9px] text-slate-500 font-bold leading-tight mt-0.5">
                   Failed

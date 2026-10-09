@@ -573,6 +573,7 @@ export function SystemConfiguration() {
   }, [filteredParameters, paramSortField, paramSortOrder]);
 
   const totalParamRecords = sortedParameters.length;
+  const paramStartIdx = (paramPage - 1) * paramPageSize || 0;
   const paginatedParameters = sortedParameters;
 
   const isAllParamSelected =
@@ -1102,7 +1103,7 @@ export function SystemConfiguration() {
                       </tr>
                     ) : (
                       paginatedParameters.map((param, index) => {
-                        const rowNumber = paramStartIdx + index + 1;
+                        const rowNumber = (typeof paramStartIdx !== 'undefined' ? paramStartIdx : 0) + index + 1;
                         const isSelected = selectedParamIds.has(param.id);
                         return (
                           <tr

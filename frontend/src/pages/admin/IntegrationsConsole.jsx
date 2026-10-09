@@ -571,6 +571,7 @@ export function IntegrationsConsole() {
 
   // Integrations List (All items rendered for scroll-down view)
   const totalRecords = sortedIntegrations.length;
+  const startIdx = (currentPage - 1) * pageSize;
   const paginatedIntegrations = sortedIntegrations;
 
   // Checkbox handlers

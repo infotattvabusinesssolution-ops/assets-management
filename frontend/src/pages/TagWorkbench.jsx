@@ -107,6 +107,8 @@ export function TagWorkbench() {
   const [auditLogs, setAuditLogs] = useState([]);
   const [categories, setCategories] = useState([]);
   const [sites, setSites] = useState([]);
+  const [departments, setDepartments] = useState([]);
+  const [custodians, setCustodians] = useState([]);
 
   // Manual Asset Form
   const [manualForm, setManualForm] = useState({
@@ -153,9 +155,10 @@ export function TagWorkbench() {
           setSummary(assetsRes.value.summary);
         }
 
-        // Keep the selected database asset if it remains in the result.
-        setActiveAsset(prev => list.find(a => a.id === prev?.id) || list[0] || null);
-        setSelectedAssetIds(prev => prev.filter(id => list.some(a => a.id === id)));
+         setActiveAsset(prev => list.find(a => a.id === prev?.id) || null);
+         setSelectedAssetIds(prev => prev.filter(id => list.some(a => a.id === id)));
+      } else {
+        showToast(assetsRes.status === 'rejected' ? (assetsRes.reason?.message || 'Could not search assets.') : (assetsRes.value?.message || 'Could not search assets.'), 'error');
       }
 
       if (recentRes.status === 'fulfilled' && recentRes.value?.success) {
@@ -174,19 +177,29 @@ export function TagWorkbench() {
 
   useEffect(() => {
     fetchTaggingData();
-    Promise.all([api.get('/master-data/categories'), api.get('/master-data/sites')])
-      .then(([categoryRes, siteRes]) => {
-        setCategories(categoryRes.categories || []);
-        setSites(siteRes.sites || []);
-      })
-      .catch(err => showToast(err?.message || 'Could not load categories and sites', 'error'));
+     Promise.allSettled([
+       api.get('/master-data/categories'),
+       api.get('/master-data/sites'),
+       api.get('/master-data/departments'),
+       api.get('/master-data/employees')
+     ]).then(([categoryRes, siteRes, departmentRes, employeeRes]) => {
+       if (categoryRes.status === 'fulfilled') setCategories(categoryRes.value.categories || []);
+       if (siteRes.status === 'fulfilled') setSites(siteRes.value.sites || []);
+       if (departmentRes.status === 'fulfilled') setDepartments(departmentRes.value.departments || []);
+       if (employeeRes.status === 'fulfilled') setCustodians(employeeRes.value.employees || []);
+     });
   }, []);
 
   // When active asset changes, auto-validate current tag
   useEffect(() => {
     tagValidationRequestRef.current += 1;
     setScannedTagInput('');
-    setTagValidation({ valid: false, status: 'Awaiting Tag Scan', message: 'Scan or enter a tag.' });
+    const alreadyTagged = Boolean(activeAsset?.currentTag && activeAsset.currentTag !== '-');
+    setTagValidation({
+      valid: false,
+      status: alreadyTagged ? 'Already Tagged' : 'Awaiting Tag Scan',
+      message: alreadyTagged ? 'This asset already has a tag. Scan a different RFID to replace it.' : 'Scan or enter a tag.'
+    });
   }, [activeAsset]);
 
   useEffect(() => {
@@ -293,6 +306,11 @@ export function TagWorkbench() {
       return;
     }
 
+    if (activeAsset?.id === assetId && [activeAsset.currentTag, activeAsset.rfidEpc].some(value => value && value !== '-' && value.trim().toLowerCase() === tagCode.trim().toLowerCase())) {
+      setTagValidation({ valid: false, status: 'Already Tagged', message: 'This tag is already assigned to the selected asset.' });
+      return;
+    }
+
     try {
       const res = await api.post('/tagging/validate', {
         tagNumber: tagCode,
@@ -368,7 +386,7 @@ export function TagWorkbench() {
     if (!code) return;
     try {
       const result = await api.get('/tagging/assets', { params: { rfid: code } });
-      const matched = result?.assets?.find(a => String(a.rfidEpc || '').trim().toLowerCase() === code.toLowerCase());
+       const matched = result?.assets?.find(a => [a.rfidEpc, a.currentTag].some(value => String(value || '').trim().toLowerCase() === code.toLowerCase()));
       if (matched) {
         setActiveAsset(matched);
         setSelectedAssetIds(prev => prev.includes(matched.id) ? prev : [...prev, matched.id]);
@@ -401,19 +419,21 @@ export function TagWorkbench() {
   };
 
   const handleCheckboxToggle = (assetId) => {
-    setSelectedAssetIds(prev => {
-      const next = prev.includes(assetId)
-        ? prev.filter(id => id !== assetId)
-        : [...prev, assetId];
-      return next;
-    });
+    const asset = assets.find(item => item.id === assetId);
+    const next = selectedAssetIds.includes(assetId)
+      ? selectedAssetIds.filter(id => id !== assetId)
+      : [...selectedAssetIds, assetId];
+    setSelectedAssetIds(next);
+    setActiveAsset(current => next.includes(current?.id) ? current : (next.includes(assetId) ? asset : assets.find(item => next.includes(item.id)) || null));
   };
 
   const handleSelectAllToggle = () => {
     if (selectedAssetIds.length === assets.length) {
       setSelectedAssetIds([]);
+      setActiveAsset(null);
     } else {
       setSelectedAssetIds(assets.map(a => a.id));
+      setActiveAsset(current => assets.find(a => a.id === current?.id) || assets[0] || null);
     }
   };
 
@@ -496,30 +516,11 @@ export function TagWorkbench() {
   };
 
   // -------------------------------------------------------------
-  // Print Label Action (Isolated from Tag Assignment)
+  // Open the shared print page for this database asset.
   // -------------------------------------------------------------
-  const handlePrintLabel = async () => {
+  const handlePrintLabel = () => {
     if (!activeAsset) { showToast('Select an asset first.', 'error'); return; }
-    setSubmitting(true);
-    try {
-      const result = await api.post('/tagging/print', {
-        ...printConfig, assets: [{ id: activeAsset.id }]
-      });
-      const labels = result?.labels || [];
-      if (!labels.length) throw new Error('No labels were prepared.');
-      const escapeHtml = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char]);
-      const printWindow = window.open('', '_blank');
-      if (!printWindow) throw new Error('Allow popups to print labels.');
-      printWindow.document.write(`<html><head><title>Asset labels</title><style>body{font-family:Arial,sans-serif}.label{display:inline-block;width:48mm;height:23mm;border:1px solid #555;margin:4mm;padding:2mm}.id{font-size:14px;font-weight:bold}.tag{font-family:monospace;font-size:11px}</style></head><body>${labels.map(label => `<div class="label"><div class="id">${escapeHtml(label.assetNumber)}</div><div>${escapeHtml(label.assetName)}</div><div class="tag">${escapeHtml(label.tagNumber)}</div><div>${escapeHtml(label.serialNumber)}</div></div>`).join('')}</body></html>`);
-      printWindow.document.close();
-      printWindow.focus();
-      printWindow.print();
-      showToast(`${labels.length} label(s) prepared for printing.`);
-    } catch (err) {
-      showToast(err.message || 'Print request failed.', 'error');
-    } finally {
-      setSubmitting(false);
-    }
+    navigate(`/receiving/print-tags?assetId=${encodeURIComponent(activeAsset.id)}`);
   };
 
   // -------------------------------------------------------------
@@ -830,11 +831,7 @@ export function TagWorkbench() {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 focus:border-[#6C2BD9] transition-all cursor-pointer"
               >
                 <option value="All Departments">All Departments</option>
-                <option value="IT Store">IT Store</option>
-                <option value="Admin Block">Admin Block</option>
-                <option value="Finance Dept">Finance Dept</option>
-                <option value="">Select site</option>
-                    {sites.map(site => <option key={site.id} value={site.name}>{site.name}</option>)}
+                 {departments.map(department => <option key={department.id} value={department.name}>{department.name}</option>)}
               </select>
             </div>
           </div>
@@ -851,9 +848,7 @@ export function TagWorkbench() {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 focus:border-[#6C2BD9] transition-all cursor-pointer"
               >
                 <option value="All Categories">All Categories</option>
-                <option value="">Select category</option>
-                    {categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
-                <option value="Network">Network</option>
+                 {categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
               </select>
             </div>
 
@@ -867,12 +862,7 @@ export function TagWorkbench() {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 focus:border-[#6C2BD9] transition-all cursor-pointer"
               >
                 <option value="All Locations">All Locations</option>
-                <option value="IT Store">IT Store</option>
-                <option value="Admin Block">Admin Block</option>
-                <option value="Finance Dept">Finance Dept</option>
-                <option value="Dubai HQ">Dubai HQ</option>
-                <option value="HR Dept">HR Dept</option>
-                <option value="Warehouse">Warehouse</option>
+                 {sites.map(site => <option key={site.id} value={site.name}>{site.name}</option>)}
               </select>
             </div>
 
@@ -901,12 +891,7 @@ export function TagWorkbench() {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 focus:border-[#6C2BD9] transition-all cursor-pointer"
               >
                 <option value="All Custodians">All Custodians</option>
-                <option value="Alex Murphy">Alex Murphy</option>
-                <option value="Sarah Connor">Sarah Connor</option>
-                <option value="Michael Scott">Michael Scott</option>
-                <option value="John Doe">John Doe</option>
-                <option value="Elena Vance">Elena Vance</option>
-                <option value="David Miller">David Miller</option>
+                 {custodians.map(custodian => <option key={custodian.id} value={custodian.fullName}>{custodian.fullName}</option>)}
               </select>
             </div>
           </div>
@@ -923,7 +908,7 @@ export function TagWorkbench() {
                 className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30 focus:border-[#6C2BD9] transition-all cursor-pointer"
               >
                 <option value="Active">Active</option>
-                <option value="In Storage">In Storage</option>
+                 <option value="Inactive">Inactive</option>
                 <option value="All">All</option>
               </select>
             </div>
@@ -1033,15 +1018,12 @@ export function TagWorkbench() {
                         >
                           <td
                             className="py-2.5 px-3 text-center whitespace-nowrap"
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleCheckboxToggle(item.id);
-                            }}
+                            onClick={(e) => e.stopPropagation()}
                           >
                             <input
                               type="checkbox"
                               checked={isSelected}
-                              onChange={() => {}}
+                              onChange={() => handleCheckboxToggle(item.id)}
                               className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
                             />
                           </td>
@@ -1268,96 +1250,10 @@ export function TagWorkbench() {
 
             {/* Tab 2 Content: Print Labels */}
             {activeTab === 'print' && (
-              <div className="p-4 space-y-3.5">
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Label Template
-                  </label>
-                  <select
-                    value={printConfig.template}
-                    onChange={(e) =>
-                      setPrintConfig((prev) => ({ ...prev, template: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
-                  >
-                    <option value="STANDARD_2X1">Standard 2"x1" Barcode (Code 128)</option>
-                    <option value="ZEBRA_4X2">Zebra 4"x2" EPC Gen2 RFID Inlay</option>
-                    <option value="QR_HIGH_DENSITY">High-Density QR Code Asset Label</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                    Target Printer
-                  </label>
-                  <select
-                    value={printConfig.printer}
-                    onChange={(e) =>
-                      setPrintConfig((prev) => ({ ...prev, printer: e.target.value }))
-                    }
-                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/30"
-                  >
-                    <option value="Zebra ZT411 RFID (Warehouse Dock 2)">
-                      Zebra ZT411 RFID (Warehouse Dock 2)
-                    </option>
-                    <option value="TSC TX200 (IT Support Lab)">TSC TX200 (IT Support Lab)</option>
-                    <option value="Brother TD-4550DNWB (Admin Floor 3)">
-                      Brother TD-4550DNWB (Admin Floor 3)
-                    </option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Prefix Scheme
-                    </label>
-                    <input
-                      type="text"
-                      value={printConfig.prefix}
-                      onChange={(e) =>
-                        setPrintConfig((prev) => ({ ...prev, prefix: e.target.value }))
-                      }
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-[11px] font-bold text-slate-700 mb-1">
-                      Quantity
-                    </label>
-                    <input
-                      type="number"
-                      min="1"
-                      max="100"
-                      value={printConfig.quantity}
-                      onChange={(e) =>
-                        setPrintConfig((prev) => ({
-                          ...prev,
-                          quantity: parseInt(e.target.value) || 1
-                        }))
-                      }
-                      className="w-full px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                    />
-                  </div>
-                </div>
-
-                {/* Info Alert: Printing does not assign tag */}
-                <div className="p-2.5 rounded-xl bg-amber-50/70 border border-amber-200 text-[11px] text-amber-800 flex items-start gap-2">
-                  <AlertCircle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
-                  <span>
-                    Note: Label printing is independent of tag assignment. Tag association is only
-                    confirmed when "Assign Tag" is performed.
-                  </span>
-                </div>
-
-                <button
-                  type="button"
-                  disabled={submitting}
-                  onClick={handlePrintLabel}
-                  className="w-full py-2.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center justify-center gap-2 shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer"
-                >
-                  <Printer className="w-4 h-4" />
-                  <span>Print Label (Send to Spooler)</span>
+              <div className="p-4 space-y-3">
+                <p className="text-xs text-slate-600">Choose the selected asset's backend label template and preview its unique tag on the Print Tags page.</p>
+                <button type="button" disabled={!activeAsset} onClick={handlePrintLabel} className="w-full py-2.5 rounded-xl bg-[#6C2BD9] text-white text-xs font-bold flex items-center justify-center gap-2 disabled:opacity-50">
+                  <Printer className="w-4 h-4" /> Open Print Tags
                 </button>
               </div>
             )}
@@ -1373,16 +1269,16 @@ export function TagWorkbench() {
               <div className="space-y-4">
                 {/* Visual Image & Details Row */}
                 <div className="flex flex-col sm:flex-row items-start gap-3.5">
-                  {/* Hardware Preview Graphic */}
+                  {/* The preview uses this asset's saved image only. */}
                   <div className="w-28 h-28 sm:w-28 sm:h-28 rounded-xl border border-slate-200/80 bg-white overflow-hidden flex items-center justify-center shrink-0 shadow-2xs relative group mt-0.5">
-                    <img
-                      src={
-                        activeAsset.imageUrl ||
-                        'https://images.unsplash.com/photo-1588872657578-7efd1f1555ed?w=400&q=80'
-                      }
-                      alt={activeAsset.assetName}
-                      className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105"
-                    />
+                    {activeAsset.imageUrl ? (
+                       <img src={activeAsset.imageUrl} alt={activeAsset.assetName} className="w-full h-full object-cover transition-transform duration-300 group-hover:scale-105" />
+                    ) : (
+                       <div className="flex flex-col items-center gap-1 text-slate-400 text-center px-2">
+                         <Tag className="w-6 h-6" />
+                         <span className="text-[10px]">No asset photo</span>
+                       </div>
+                    )}
                     <span className="absolute bottom-1.5 left-1.5 px-2 py-0.5 rounded-md bg-[#1E293B]/80 backdrop-blur-xs text-[10px] font-bold text-white shadow-xs">
                       {activeAsset.category}
                     </span>
@@ -1426,10 +1322,17 @@ export function TagWorkbench() {
                       </span>
                     </div>
 
+                    {activeAsset.rfidEpc && (
+                       <div className="flex items-center justify-between py-0.5 border-b border-slate-100 gap-2">
+                         <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">RFID EPC</span>
+                         <span className="font-mono text-slate-700 text-xs text-right break-all">{activeAsset.rfidEpc}</span>
+                       </div>
+                    )}
+
                     <div className="flex items-center justify-between py-0.5 border-b border-slate-100">
                       <span className="text-[#64748B] font-medium text-[11px] whitespace-nowrap">New Tag</span>
                       <span className="font-mono font-bold text-[#059669] text-xs whitespace-nowrap">
-                        {scannedTagInput || '-'}
+                        {scannedTagInput && scannedTagInput !== activeAsset.currentTag ? scannedTagInput : '-'}
                       </span>
                     </div>
 
@@ -1447,7 +1350,14 @@ export function TagWorkbench() {
                             </span>
                           </>
                         ) : (
-                          <span className="inline-block px-3 py-1 rounded-full text-xs font-bold bg-[#FFE4E6] text-[#E11D48] border border-rose-200 whitespace-nowrap">
+                          <span className={clsx(
+                            'inline-block px-3 py-1 rounded-full text-xs font-bold border whitespace-nowrap',
+                            tagValidation.status === 'Already Tagged'
+                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                              : tagValidation.status === 'Awaiting Tag Scan'
+                                ? 'bg-slate-100 text-slate-600 border-slate-200'
+                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                          )}>
                             {tagValidation.status || 'Validation Error'}
                           </span>
                         )}
@@ -1503,7 +1413,7 @@ export function TagWorkbench() {
                   <Layers className="w-4 h-4" />
                 </div>
                 <p className="text-lg font-black text-slate-900 leading-tight">
-                  {summary.selected}
+                  {selectedAssetIds.length}
                 </p>
                 <p className="text-[10px] text-slate-500 font-semibold leading-tight mt-0.5">
                   Assets Selected

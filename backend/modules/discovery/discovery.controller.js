@@ -1,4 +1,11 @@
 import { DiscoveryService } from './discovery.service.js';
+import { DiscoveryEngine, getLocalNetworks } from './discoveryEngine.js';
+
+export function getScannerNetworks(req, res) {
+  const networks = getLocalNetworks().map(({ name, address, netmask, ipStart, ipEnd }) =>
+    ({ name, address, netmask, ipStart, ipEnd }));
+  res.json({ success: true, networks, scannerLocation: 'The network connected to the API server' });
+}
 
 export async function getDiscoveryKpis(req, res, next) {
   try {
@@ -162,7 +169,8 @@ export async function rerunDiscoveryJob(req, res, next) {
   try {
     const { jobId } = req.params;
     const newExec = await DiscoveryService.rerunJob(jobId);
-    res.json({ success: true, execution: newExec, message: `Execution of ${jobId} initiated.` });
+    res.json({ success: newExec.status === 'Completed', execution: newExec,
+      message: newExec.status === 'Completed' ? `Discovery job ${jobId} completed.` : `Discovery job ${jobId} failed: ${newExec.error || 'results were not saved'}` });
   } catch (err) { next(err); }
 }
 
@@ -198,8 +206,23 @@ export async function getMatches(req, res, next) {
 
 export async function triggerScan(req, res, next) {
   try {
-    res.json({ success: true, message: 'Network scan sweep initiated.' });
-  } catch (err) { next(err); }
+    const { ipStart, ipEnd, discoveryType } = req.body;
+    if (discoveryType !== 'IP Range Scan' || !ipStart || !ipEnd) {
+      return res.status(400).json({ success: false, message: 'Select an IP range on a local scanner network.' });
+    }
+    const result = await DiscoveryEngine.runIpScan(ipStart, ipEnd);
+    res.json({ 
+      success: true, 
+      message: result.persisted ? 'Local network scan completed and saved.'
+        : 'Local network scan completed. Results could not be saved to the database.',
+      result
+    });
+  } catch (err) {
+    if (/IPv4|range|local network/i.test(err.message || '')) {
+      return res.status(400).json({ success: false, message: err.message });
+    }
+    next(err);
+  }
 }
 
 export async function confirmMatch(req, res, next) {
