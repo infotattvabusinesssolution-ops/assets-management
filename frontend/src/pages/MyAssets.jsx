@@ -54,7 +54,7 @@ export function MyAssets() {
   const [categories, setCategories] = useState([]);
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [selectedRowIds, setSelectedRowIds] = useState([]);
-  const [drawerTab, setDrawerTab] = useState('details'); // details, location, maintenance, history
+  const [drawerTab, setDrawerTab] = useState('details'); // details, location, maintenance, history, return
   const [loading, setLoading] = useState(true);
 
   // Server-computed KPI & Tab Counts
@@ -71,7 +71,7 @@ export function MyAssets() {
   const [manufacturerFilter, setManufacturerFilter] = useState('All');
 
   // Modals & Popup State
-  const [activeModal, setActiveModal] = useState(null); // null, REQUEST_ASSET, ACKNOWLEDGE, TRANSFER, RETURN, REPORT_ISSUE, MAP_LOCATE, RFID_LOCATE, DOCUMENTS, MAINTENANCE, HISTORY
+  const [activeModal, setActiveModal] = useState(null);
   const [actionAsset, setActionAsset] = useState(null);
   const [activeMenuId, setActiveMenuId] = useState(null);
   const [toast, setToast] = useState(null);
@@ -80,26 +80,21 @@ export function MyAssets() {
   const [requestAssetForm, setRequestAssetForm] = useState({
     category: 'Laptop',
     requiredDate: new Date().toISOString().split('T')[0],
-    costCenter: 'IT-001',
+    costCenter: '',
     justification: ''
   });
 
-  const [transferForm, setTransferForm] = useState({
-    targetEmployee: 'Ahmed Khan (Facilities Lead)',
-    targetLocation: 'Dubai HQ Floor 2',
-    reason: 'Departmental reassignment'
-  });
-
   const [returnForm, setReturnForm] = useState({
-    reason: 'No longer required for role',
-    returnStore: 'IT Central Store - Room 304',
+    reason: '',
+    returnStore: '',
     condition: 'Good'
   });
 
   const [issueForm, setIssueForm] = useState({
     issueType: 'Hardware Malfunction',
     severity: 'Medium',
-    description: 'Hardware issue reported by user.'
+    description: '',
+    isUnusable: false
   });
 
   const showToast = (type, message) => {
@@ -169,6 +164,7 @@ export function MyAssets() {
             nextServiceDate: item.schedules?.[0]?.nextDueDate ? new Date(item.schedules[0].nextDueDate).toLocaleDateString('en-GB') : 'Not scheduled',
             maintType: item.schedules?.[0] ? 'Preventive' : 'None',
             checklist: item.schedules?.[0]?.title || 'No checklist',
+            latestReturnRequest: item.transactions?.[0] || null,
             documents: []
           };
         });
@@ -256,47 +252,36 @@ export function MyAssets() {
   const handleConfirmAcknowledge = async (status) => {
     try {
       const targetId = actionAsset?.dbId || actionAsset?.id;
-      if (targetId) {
-        await api.post(`/assets/${targetId}/acknowledge`, { status, condition: 'Good', remarks: 'Acknowledged via self-service' });
-      }
+      if (!targetId) throw new Error('Select an asset first.');
+      const response = await api.post(`/assets/${encodeURIComponent(targetId)}/acknowledge`, { status, condition: 'Good', remarks: 'Acknowledged via self-service' });
+      if (!response?.success) throw new Error(response?.message || 'Could not acknowledge this asset.');
       showToast('success', status === 'ACKNOWLEDGED' ? `Acknowledged receipt of asset ${actionAsset?.id}` : `Reported discrepancy for asset ${actionAsset?.id}`);
       setActiveModal(null);
       fetchMyAssets();
     } catch (err) {
-      showToast('success', status === 'ACKNOWLEDGED' ? `Acknowledged receipt of asset ${actionAsset?.id}!` : `Discrepancy reported!`);
-      setActiveModal(null);
-    }
-  };
-
-  const handleSubmitTransfer = async (e) => {
-    e.preventDefault();
-    try {
-      const targetId = actionAsset?.dbId || actionAsset?.id;
-      if (targetId) {
-        await api.post(`/assets/${targetId}/transfer-request`, transferForm);
-      }
-      showToast('success', `Transfer request for ${actionAsset?.id} submitted into approval workflow!`);
-      setActiveModal(null);
-      fetchMyAssets();
-    } catch (err) {
-      showToast('success', `Transfer request for ${actionAsset?.id} submitted into approval workflow!`);
-      setActiveModal(null);
+      showToast('error', err?.message || 'Could not acknowledge this asset.');
     }
   };
 
   const handleSubmitReturn = async (e) => {
     e.preventDefault();
     try {
-      const targetId = actionAsset?.dbId || actionAsset?.id;
-      if (targetId) {
-        await api.post(`/assets/${targetId}/return-request`, returnForm);
-      }
-      showToast('success', `Return request initiated for asset ${actionAsset?.id}!`);
-      setActiveModal(null);
-      fetchMyAssets();
+      const targetId = selectedAsset?.dbId || selectedAsset?.id;
+      if (!targetId) throw new Error('Select an asset first.');
+      const response = await api.post(`/assets/${encodeURIComponent(targetId)}/return-request`, returnForm);
+      if (!response?.success) throw new Error(response?.message || 'Could not submit the return request.');
+      showToast('success', `Return request submitted for ${selectedAsset?.id}. See Pending Return.`);
+      setActiveKpi('ALL');
+      setSearchQuery('');
+      setCategoryFilter('All');
+      setStatusFilter('All');
+      setLocationFilter('All');
+      setManufacturerFilter('All');
+      setActiveTab('PENDING_RETURN');
+      setDrawerTab('history');
+      if (activeTab === 'PENDING_RETURN' && activeKpi === 'ALL' && statusFilter === 'All' && !searchQuery && categoryFilter === 'All') fetchMyAssets();
     } catch (err) {
-      showToast('success', `Return request initiated for asset ${actionAsset?.id}!`);
-      setActiveModal(null);
+      showToast('error', err?.message || 'Could not submit the return request.');
     }
   };
 
@@ -304,28 +289,27 @@ export function MyAssets() {
     e.preventDefault();
     try {
       const targetId = actionAsset?.dbId || actionAsset?.id;
-      if (targetId) {
-        await api.post(`/assets/${targetId}/report-issue`, issueForm);
-      }
-      showToast('success', `Reported issue for ${actionAsset?.id}. Work Order created!`);
+      if (!targetId) throw new Error('Select an asset first.');
+      const response = await api.post(`/assets/${encodeURIComponent(targetId)}/report-issue`, issueForm);
+      if (!response?.success) throw new Error(response?.message || 'Could not report this issue.');
+      showToast('success', `Reported issue for ${actionAsset?.id}. Work Order ${response.workOrder?.workOrderNumber || ''} created.`);
       setActiveModal(null);
       fetchMyAssets();
     } catch (err) {
-      showToast('success', `Reported issue for ${actionAsset?.id}. Work Order created!`);
-      setActiveModal(null);
+      showToast('error', err?.message || 'Could not report this issue.');
     }
   };
 
   const handleSubmitRequestAsset = async (e) => {
     e.preventDefault();
     try {
-      await api.post('/assets/request-asset', requestAssetForm);
+      const response = await api.post('/assets/request-asset', requestAssetForm);
+      if (!response?.success) throw new Error(response?.message || 'Could not submit the asset request.');
       showToast('success', `Submitted asset request for ${requestAssetForm.category}!`);
       setActiveModal(null);
       fetchMyAssets();
     } catch (err) {
-      showToast('success', `Submitted asset request for ${requestAssetForm.category}!`);
-      setActiveModal(null);
+      showToast('error', err?.message || 'Could not submit the asset request.');
     }
   };
 
@@ -336,27 +320,37 @@ export function MyAssets() {
     setActiveMenuId(null);
 
     if (actionType === 'VIEW') {
-      setSelectedAsset(asset);
+      navigate(`/assets/${encodeURIComponent(asset.dbId || asset.id)}`);
     } else if (actionType === 'EDIT') {
-      navigate(`/assets/edit/${asset.id || asset.assetId}`);
+      navigate(`/assets/edit/${encodeURIComponent(asset.dbId || asset.id)}`);
     } else if (actionType === 'ACKNOWLEDGE') {
       setActiveModal('ACKNOWLEDGE');
     } else if (actionType === 'TRANSFER') {
-      setActiveModal('TRANSFER');
+      navigate(`/movements/transfer?assetId=${encodeURIComponent(asset.dbId || asset.id)}`);
     } else if (actionType === 'RETURN') {
-      setActiveModal('RETURN');
+      if (asset.lifecycleStatus === 'PENDING_RETURN') {
+        setSelectedAsset(asset);
+        setActiveKpi('ALL');
+        setActiveTab('PENDING_RETURN');
+        setDrawerTab('history');
+      } else {
+        setReturnForm({ reason: '', returnStore: '', condition: 'Good' });
+        setSelectedAsset(asset);
+        setDrawerTab('return');
+      }
     } else if (actionType === 'REPORT_ISSUE') {
+      setIssueForm({ issueType: 'Hardware Malfunction', severity: 'Medium', description: '', isUnusable: false });
       setActiveModal('REPORT_ISSUE');
     } else if (actionType === 'MAP') {
-      setActiveModal('MAP_LOCATE');
+      navigate(`/assets/${encodeURIComponent(asset.dbId || asset.id)}?tab=map`);
     } else if (actionType === 'RFID') {
-      setActiveModal('RFID_LOCATE');
+      navigate(`/assets/${encodeURIComponent(asset.dbId || asset.id)}?tab=rtls`);
     } else if (actionType === 'MAINTENANCE') {
-      setActiveModal('MAINTENANCE');
+      navigate(`/assets/${encodeURIComponent(asset.dbId || asset.id)}?tab=maintenance`);
     } else if (actionType === 'DOCUMENTS') {
-      setActiveModal('DOCUMENTS');
+      navigate(`/assets/${encodeURIComponent(asset.dbId || asset.id)}?tab=contracts`);
     } else if (actionType === 'HISTORY') {
-      setActiveModal('HISTORY');
+      navigate(`/assets/${encodeURIComponent(asset.dbId || asset.id)}?tab=audit`);
     }
   };
 
@@ -951,7 +945,7 @@ export function MyAssets() {
                                 <ArrowLeftRight className="w-3.5 h-3.5" /> Request Transfer
                               </button>
                               <button onClick={(e) => handleOpenAction('RETURN', asset, e)} className="w-full p-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-xl flex items-center gap-2">
-                                <RotateCcw className="w-3.5 h-3.5" /> Request Return
+                                <RotateCcw className="w-3.5 h-3.5" /> {asset.lifecycleStatus === 'PENDING_RETURN' ? 'View Return Request' : 'Request Return'}
                               </button>
                               <button onClick={(e) => handleOpenAction('REPORT_ISSUE', asset, e)} className="w-full p-2 hover:bg-rose-50 text-rose-700 rounded-xl flex items-center gap-2">
                                 <AlertTriangle className="w-3.5 h-3.5" /> Report Issue
@@ -1040,7 +1034,7 @@ export function MyAssets() {
 
           {/* 4 Navigation Tabs */}
           <div className="flex items-center justify-between border-b border-slate-200 text-xs font-bold">
-            {['details', 'location', 'maintenance', 'history'].map((t) => (
+            {['details', 'location', 'maintenance', 'history', 'return'].map((t) => (
               <button
                 key={t}
                 onClick={() => setDrawerTab(t)}
@@ -1054,6 +1048,20 @@ export function MyAssets() {
               </button>
             ))}
           </div>
+
+          {selectedAsset.lifecycleStatus === 'PENDING_RETURN' && (
+            <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 text-xs space-y-2">
+              <p className="font-extrabold text-purple-900">Return request pending for {selectedAsset.id}</p>
+              {selectedAsset.latestReturnRequest && (
+                <>
+                  <p className="text-purple-800">Requested {new Date(selectedAsset.latestReturnRequest.timestamp).toLocaleString()}</p>
+                  <p className="text-purple-800">{selectedAsset.latestReturnRequest.notes}</p>
+                </>
+              )}
+              <p className="text-purple-800">This asset remains assigned until its return is received.</p>
+              <button onClick={() => navigate(`/assets/${encodeURIComponent(selectedAsset.dbId || selectedAsset.id)}?tab=audit`)} className="font-bold text-[#6C2BD9] hover:underline">View request history</button>
+            </div>
+          )}
 
           {/* Tab 1: Details */}
           {drawerTab === 'details' && (
@@ -1237,8 +1245,47 @@ export function MyAssets() {
           {drawerTab === 'history' && (
             <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-2 text-xs">
               <span className="font-bold text-slate-800 block">Audit Log</span>
-              <p className="text-slate-500 text-[11px]">{selectedAsset.assignedDate}: Custody assigned to {selectedAsset.custodian}</p>
+              <p className="text-slate-500 text-[11px]">Open the asset audit timeline to view recorded custody and return events.</p>
+              <button onClick={() => navigate(`/assets/${encodeURIComponent(selectedAsset.dbId || selectedAsset.id)}?tab=audit`)} className="font-bold text-[#6C2BD9] hover:underline">View audit timeline</button>
             </div>
+          )}
+
+          {drawerTab === 'return' && (
+            <form onSubmit={handleSubmitReturn} className="p-3 bg-slate-50 border border-slate-200 rounded-xl space-y-3 text-xs">
+              <h4 className="font-extrabold text-slate-900">Request return for {selectedAsset.id}</h4>
+              {selectedAsset.lifecycleStatus === 'PENDING_RETURN' ? (
+                <p className="text-purple-800">A return request is already pending. View the request details above.</p>
+              ) : (
+                <>
+                  <div>
+                    <label htmlFor="return-store" className="font-bold text-slate-700 block mb-1">Return Store / Receiving Location *</label>
+                    <input id="return-store" type="text" required value={returnForm.returnStore}
+                      onChange={(e) => setReturnForm({ ...returnForm, returnStore: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium" />
+                  </div>
+                  <div>
+                    <label htmlFor="return-condition" className="font-bold text-slate-700 block mb-1">Asset Condition at Return *</label>
+                    <select id="return-condition" value={returnForm.condition}
+                      onChange={(e) => setReturnForm({ ...returnForm, condition: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold">
+                      <option value="Good">Good - Full Working Order</option>
+                      <option value="Fair">Fair - Minor Wear</option>
+                      <option value="Damaged">Damaged - Needs Repair</option>
+                    </select>
+                  </div>
+                  <div>
+                    <label htmlFor="return-reason" className="font-bold text-slate-700 block mb-1">Return Reason *</label>
+                    <textarea id="return-reason" rows={3} required value={returnForm.reason}
+                      onChange={(e) => setReturnForm({ ...returnForm, reason: e.target.value })}
+                      className="w-full bg-white border border-slate-200 rounded-xl p-2.5 text-slate-900" />
+                  </div>
+                  <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+                    <button type="button" onClick={() => setDrawerTab('details')} className="px-3 py-2 bg-white border border-slate-200 font-bold text-slate-700 rounded-xl">Cancel</button>
+                    <button type="submit" className="px-4 py-2 bg-[#6C2BD9] text-white font-extrabold rounded-xl">Submit Return Request</button>
+                  </div>
+                </>
+              )}
+            </form>
           )}
 
         </div>
@@ -1342,120 +1389,6 @@ export function MyAssets() {
         </div>
       )}
 
-      {/* Request Transfer Modal */}
-      {activeModal === 'TRANSFER' && actionAsset && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <ArrowLeftRight className="w-5 h-5 text-[#6C2BD9]" /> Request Asset Transfer ({actionAsset.id})
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitTransfer} className="space-y-3">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Target Custodian / Employee *</label>
-                <input
-                  type="text"
-                  required
-                  value={transferForm.targetEmployee}
-                  onChange={(e) => setTransferForm({ ...transferForm, targetEmployee: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Target Location *</label>
-                <input
-                  type="text"
-                  required
-                  value={transferForm.targetLocation}
-                  onChange={(e) => setTransferForm({ ...transferForm, targetLocation: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Reason for Transfer *</label>
-                <textarea
-                  rows={2}
-                  required
-                  value={transferForm.reason}
-                  onChange={(e) => setTransferForm({ ...transferForm, reason: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-100 font-bold text-slate-700 rounded-xl">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-[#6C2BD9] text-white font-extrabold rounded-xl shadow-md">Submit Transfer Request</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
-      {/* Request Return Modal */}
-      {activeModal === 'RETURN' && actionAsset && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-in zoom-in-95 duration-150 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <RotateCcw className="w-5 h-5 text-[#6C2BD9]" /> Initiate Asset Return ({actionAsset.id})
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <form onSubmit={handleSubmitReturn} className="space-y-3">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Return Store / Receiving Location *</label>
-                <input
-                  type="text"
-                  required
-                  value={returnForm.returnStore}
-                  onChange={(e) => setReturnForm({ ...returnForm, returnStore: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium"
-                />
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Asset Condition at Return *</label>
-                <select
-                  value={returnForm.condition}
-                  onChange={(e) => setReturnForm({ ...returnForm, condition: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold"
-                >
-                  <option value="Good">Good - Full Working Order</option>
-                  <option value="Fair">Fair - Minor Wear</option>
-                  <option value="Damaged">Damaged - Needs Repair</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">Return Reason *</label>
-                <textarea
-                  rows={2}
-                  required
-                  value={returnForm.reason}
-                  onChange={(e) => setReturnForm({ ...returnForm, reason: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-                <button type="button" onClick={() => setActiveModal(null)} className="px-4 py-2 bg-slate-100 font-bold text-slate-700 rounded-xl">Cancel</button>
-                <button type="submit" className="px-5 py-2 bg-[#6C2BD9] text-white font-extrabold rounded-xl shadow-md">Initiate Return</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
-
       {/* Report Issue / Damage Modal */}
       {activeModal === 'REPORT_ISSUE' && actionAsset && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
@@ -1513,7 +1446,7 @@ export function MyAssets() {
               </div>
 
               <div className="flex items-center gap-2">
-                <input type="checkbox" id="unusable" className="rounded text-[#6C2BD9]" />
+                <input type="checkbox" id="unusable" checked={issueForm.isUnusable} onChange={(e) => setIssueForm({ ...issueForm, isUnusable: e.target.checked })} className="rounded text-[#6C2BD9]" />
                 <label htmlFor="unusable" className="font-bold text-slate-700 cursor-pointer">Asset is completely unusable and requires immediate maintenance</label>
               </div>
 
@@ -1522,109 +1455,6 @@ export function MyAssets() {
                 <button type="submit" className="px-5 py-2 bg-rose-600 text-white font-extrabold rounded-xl shadow-md">Submit Issue Report</button>
               </div>
             </form>
-          </div>
-        </div>
-      )}
-
-      {/* View Documents Modal */}
-      {activeModal === 'DOCUMENTS' && actionAsset && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <FileText className="w-5 h-5 text-[#6C2BD9]" /> Asset Documents ({actionAsset.id})
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><X className="w-4 h-4" /></button>
-            </div>
-
-            <div className="space-y-2">
-              {(actionAsset.documents || [
-                { name: `${actionAsset.id}_Warranty_Card.pdf`, size: '420 KB' },
-                { name: `${actionAsset.id}_Handover_Agreement.pdf`, size: '310 KB' }
-              ]).map((doc) => (
-                <div key={doc.name} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
-                  <div className="flex items-center gap-2">
-                    <FileText className="w-4 h-4 text-[#6C2BD9]" />
-                    <span className="font-bold text-slate-900">{doc.name}</span>
-                  </div>
-                  <div className="flex items-center gap-3">
-                    <span className="text-[10px] text-slate-400 font-mono">{doc.size}</span>
-                    <button onClick={() => showToast('success', `Downloaded ${doc.name}`)} className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg font-bold text-slate-700 hover:bg-slate-100 flex items-center gap-1">
-                      <Download className="w-3 h-3" /> Download
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-slate-100">
-              <button onClick={() => setActiveModal(null)} className="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View Maintenance Modal */}
-      {activeModal === 'MAINTENANCE' && actionAsset && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Wrench className="w-5 h-5 text-[#6C2BD9]" /> Maintenance Schedule ({actionAsset.id})
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><X className="w-4 h-4" /></button>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3">
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <span className="text-slate-400 text-[10px] block">Next Service Date</span>
-                <span className="font-extrabold text-slate-900 text-sm">{actionAsset.nextServiceDate || '15 Oct 2026'}</span>
-              </div>
-              <div className="bg-slate-50 p-3 rounded-xl border border-slate-200">
-                <span className="text-slate-400 text-[10px] block">Maintenance Type</span>
-                <span className="font-extrabold text-[#6C2BD9] text-sm">{actionAsset.maintType || 'Preventive'}</span>
-              </div>
-            </div>
-
-            <div className="bg-purple-50/60 p-3 rounded-xl border border-purple-100 space-y-1">
-              <span className="font-bold text-slate-900 block">Standard Protocol Checklist:</span>
-              <p className="text-slate-600">{actionAsset.checklist || 'Hardware Safety & Diagnostics Protocol'}</p>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-slate-100">
-              <button onClick={() => setActiveModal(null)} className="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl">Close</button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* View History Modal */}
-      {activeModal === 'HISTORY' && actionAsset && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-base font-extrabold text-slate-900 flex items-center gap-2">
-                <Clock className="w-5 h-5 text-[#6C2BD9]" /> Custody &amp; Transaction History ({actionAsset.id})
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><X className="w-4 h-4" /></button>
-            </div>
-
-            <div className="space-y-3 relative pl-4 border-l-2 border-purple-200">
-              <div className="relative">
-                <div className="w-2.5 h-2.5 rounded-full bg-[#6C2BD9] absolute -left-[21px] top-1" />
-                <span className="font-extrabold text-slate-900 block">{actionAsset.assignedDate}: Custody Assigned</span>
-                <p className="text-slate-500 text-[11px]">Assigned to {actionAsset.custodian} by IT Department.</p>
-              </div>
-              <div className="relative">
-                <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 absolute -left-[21px] top-1" />
-                <span className="font-extrabold text-slate-900 block">Tagging &amp; Verification</span>
-                <p className="text-slate-500 text-[11px]">Verified RFID Tag EPC: {actionAsset.rfidEpc}</p>
-              </div>
-            </div>
-
-            <div className="flex justify-end pt-2 border-t border-slate-100">
-              <button onClick={() => setActiveModal(null)} className="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl">Close</button>
-            </div>
           </div>
         </div>
       )}
@@ -1678,48 +1508,6 @@ export function MyAssets() {
         </div>
       )}
 
-      {/* Locate on Map Modal */}
-      {activeModal === 'MAP_LOCATE' && actionAsset && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 text-xs">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-[#6C2BD9]" /> Floor Map Location ({actionAsset.id})
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="h-44 bg-slate-900 rounded-xl border border-slate-800 flex items-center justify-center relative overflow-hidden">
-              <div className="z-10 bg-white/90 px-4 py-2 rounded-xl border border-purple-300 shadow-xl flex items-center gap-2">
-                <MapPin className="w-5 h-5 text-[#6C2BD9]" />
-                <span className="font-extrabold text-slate-900">{actionAsset.name} ({actionAsset.location})</span>
-              </div>
-            </div>
-            <div className="flex justify-end"><button onClick={() => setActiveModal(null)} className="px-5 py-2 bg-slate-900 text-white font-bold rounded-xl">Close</button></div>
-          </div>
-        </div>
-      )}
-
-      {/* RFID Locate Radar Modal */}
-      {activeModal === 'RFID_LOCATE' && actionAsset && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white border border-slate-200 rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4 text-xs text-center">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <h3 className="text-sm font-extrabold text-slate-900 flex items-center gap-2">
-                <Radio className="w-5 h-5 text-[#6C2BD9]" /> RFID UHF Signal Radar
-              </h3>
-              <button onClick={() => setActiveModal(null)} className="p-1 hover:bg-slate-100 rounded-lg text-slate-400"><X className="w-4 h-4" /></button>
-            </div>
-            <div className="py-4 space-y-2">
-              <div className="w-20 h-20 mx-auto rounded-full bg-purple-100 border-4 border-[#6C2BD9] flex items-center justify-center animate-pulse">
-                <Radio className="w-8 h-8 text-[#6C2BD9]" />
-              </div>
-              <p className="font-mono font-bold text-[#6C2BD9] text-sm">{actionAsset.rfidEpc}</p>
-              <p className="font-bold text-slate-800">Signal Proximity: <span className="text-emerald-600 font-extrabold">96% RSSI</span></p>
-            </div>
-            <button onClick={() => setActiveModal(null)} className="w-full py-2 bg-[#6C2BD9] text-white font-bold rounded-xl">Close</button>
-          </div>
-        </div>
-      )}
 
     </div>
   );

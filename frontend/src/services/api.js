@@ -3,7 +3,7 @@ import axios from 'axios';
 // Dynamic URL configuration to support both Local Development and Live Server environments:
 // 1. Uses VITE_API_BASE_URL if set in .env
 // 2. Uses relative '/api/v1' in local dev mode (via Vite proxy)
-// 3. Defaults to live server URL: https://apiasset.milkmen.online/api/v1
+// 3. Defaults to the current origin's '/api/v1' when no URL is configured
 
 const getApiBaseUrl = () => {
   if (import.meta.env.VITE_API_BASE_URL) {

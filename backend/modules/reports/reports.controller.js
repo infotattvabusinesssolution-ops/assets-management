@@ -346,19 +346,20 @@ export async function getDepreciationReport(req, res, next) {
     const assets = await prisma.asset.findMany({
       where,
       include: {
-        category: { select: { name: true, code: true } },
-        site: { select: { name: true, code: true } }
+        category: { select: { name: true, code: true, annualDepreciationRatePercent: true, defaultUsefulLifeMonths: true } },
+        site: { select: { name: true, code: true } },
+        bookValues: { where: { bookType: 'CORPORATE' }, take: 1 }
       }
     });
 
     const reportData = assets.map(a => {
-      const cost = Number(a.acquisitionValue || 0);
-      const purchaseDate = a.purchaseDate || a.inServiceDate || a.createdAt;
-      const yearsInService = purchaseDate ? Math.max(0, (new Date() - new Date(purchaseDate)) / (365.25 * 24 * 3600 * 1000)) : 0;
-      const usefulLife = 5;
-      const annualDep = usefulLife > 0 ? cost / usefulLife : 0;
-      const accumDep = Math.min(cost, annualDep * yearsInService);
-      const netBookValue = Math.max(0, cost - accumDep);
+      const book = a.bookValues?.[0];
+      const cost = Number(book?.capitalizationValue ?? a.acquisitionValue ?? 0);
+      const purchaseDate = book?.capitalizationDate || a.purchaseDate || a.inServiceDate || a.createdAt;
+      const usefulLifeMonths = book?.usefulLifeMonths || a.category?.defaultUsefulLifeMonths || 60;
+      const annualRatePercent = Number(book?.annualDepreciationRatePercent ?? a.category?.annualDepreciationRatePercent ?? 0);
+      const accumDep = Number(book?.accumulatedDepreciation || 0);
+      const netBookValue = Number(book?.netBookValue ?? cost);
 
       return {
         id: a.id,
@@ -368,7 +369,8 @@ export async function getDepreciationReport(req, res, next) {
         siteName: a.site?.name || 'N/A',
         acquisitionDate: purchaseDate,
         acquisitionValue: cost,
-        usefulLifeYears: usefulLife,
+        usefulLifeYears: usefulLifeMonths / 12,
+        annualDepreciationRatePercent: annualRatePercent,
         accumulatedDepreciation: Math.round(accumDep * 100) / 100,
         netBookValue: Math.round(netBookValue * 100) / 100,
         lifecycleStatus: a.lifecycleStatus

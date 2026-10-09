@@ -6,6 +6,7 @@
  */
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected, isDbConnected } from '../../config/db.js';
+import { getTransferLocationDetails } from './transferPersistence.service.js';
 
 // ---------------------------------------------------------------------------
 // 1. In-Memory Store & Seed Data (Matches Screenshot & Realistic Enterprise Data)
@@ -502,8 +503,6 @@ export async function getTransfers({ status = 'ALL', search = '' }) {
           asset: {
             include: { category: true, site: true, building: true, floor: true, room: true, department: true }
           },
-          fromSite: true,
-          toSite: true,
           fromCustodian: true,
           toCustodian: true,
           requestedBy: true,
@@ -514,6 +513,10 @@ export async function getTransfers({ status = 'ALL', search = '' }) {
       });
 
       if (dbTransfers && dbTransfers.length > 0) {
+        const siteIds = [...new Set(dbTransfers.flatMap(t => [t.fromSiteId, t.toSiteId]).filter(Boolean))];
+        const sites = await prisma.site.findMany({ where: { id: { in: siteIds } }, select: { id: true, name: true } });
+        const siteNames = new Map(sites.map(site => [site.id, site.name]));
+        const locationDetails = await getTransferLocationDetails(dbTransfers);
         let results = dbTransfers.map(t => ({
           id: t.id,
           transferNumber: t.transferNumber,
@@ -521,15 +524,15 @@ export async function getTransfers({ status = 'ALL', search = '' }) {
           assetCount: 1,
           assetSummary: t.asset?.description || t.asset?.assetId || 'Equipment',
           transferType: t.transferType,
-          fromLocationFormatted: t.fromSite?.name || t.fromSiteId || 'Dubai HQ Campus',
-          toLocationFormatted: t.toSite?.name || t.toSiteId || 'Abu Dhabi Operations Hub',
-          fromSite: t.fromSite?.name || t.fromSiteId || 'Dubai HQ Campus',
-          toSite: t.toSite?.name || t.toSiteId || 'Abu Dhabi Operations Hub',
+          fromLocationFormatted: locationDetails.get(t.id)?.from || 'Unassigned',
+          toLocationFormatted: locationDetails.get(t.id)?.to || 'Not selected',
+          fromSite: siteNames.get(t.fromSiteId) || t.fromSiteId || 'Unassigned',
+          toSite: siteNames.get(t.toSiteId) || t.toSiteId || 'Not selected',
           toCustodian: t.toCustodian ? t.toCustodian.fullName : 'Unassigned',
-          department: t.asset?.department?.name || 'Information Technology',
+          department: t.asset?.department?.name || '',
           reason: t.reason || '',
           status: t.status,
-          requestedBy: t.requestedBy?.fullName || 'System Admin',
+          requestedBy: t.requestedBy?.fullName || '',
           requestedAt: t.createdAt.toISOString(),
           assets: [t.asset].filter(Boolean).map(a => ({
             assetNumber: a.assetId || a.id,
@@ -550,13 +553,11 @@ export async function getTransfers({ status = 'ALL', search = '' }) {
       }
       return []; // Return empty if connected to DB but no records
     } catch (err) {
-      console.warn('[TransferMovementService] Error fetching transfers from DB:', err.message);
+      throw err;
     }
   }
 
-  let list = [...transfersStore];
-  if (status && status !== 'ALL') list = list.filter(t => t.status === status);
-  return list;
+  throw new Error('Database is unavailable. Transfers could not be loaded.');
 }
 
 /**
@@ -577,8 +578,6 @@ export async function getTransferById(id) {
           asset: {
             include: { category: true, site: true, building: true, floor: true, room: true, department: true }
           },
-          fromSite: true,
-          toSite: true,
           fromCustodian: true,
           toCustodian: true,
           requestedBy: true,
@@ -587,14 +586,15 @@ export async function getTransferById(id) {
         }
       });
       if (dbTransfer) {
+        const locationDetails = await getTransferLocationDetails([dbTransfer]);
         return {
           id: dbTransfer.id,
           transferNumber: dbTransfer.transferNumber,
           transferType: dbTransfer.transferType,
           status: dbTransfer.status,
           reason: dbTransfer.reason,
-          fromLocationFormatted: dbTransfer.fromSite?.name || dbTransfer.fromSiteId || 'Dubai HQ Campus',
-          toLocationFormatted: dbTransfer.toSite?.name || dbTransfer.toSiteId || 'Abu Dhabi Operations Hub',
+          fromLocationFormatted: locationDetails.get(dbTransfer.id)?.from || 'Unassigned',
+          toLocationFormatted: locationDetails.get(dbTransfer.id)?.to || 'Not selected',
           fromCustodian: dbTransfer.fromCustodian?.fullName || '-',
           toCustodian: dbTransfer.toCustodian?.fullName || '-',
           requestedBy: dbTransfer.requestedBy?.fullName || '-',
@@ -944,8 +944,6 @@ export async function getMovementHistory({ assetId = '', transferId = '', search
           asset: {
             include: { category: true, site: true, building: true, floor: true, room: true, department: true }
           },
-          fromSite: true,
-          toSite: true,
           fromCustodian: true,
           toCustodian: true,
           requestedBy: true,
@@ -956,9 +954,10 @@ export async function getMovementHistory({ assetId = '', transferId = '', search
       });
 
       if (dbTransfers && dbTransfers.length > 0) {
+        const locationDetails = await getTransferLocationDetails(dbTransfers);
         let results = dbTransfers.map(t => {
-          const fromLoc = t.fromSite?.name || (t.asset?.site?.name ? `${t.asset.site.name} > ${t.asset.building?.name || ''} > ${t.asset.room?.name || ''}`.trim() : 'Dubai HQ Campus');
-          const toLoc = t.toSite?.name || t.toSiteId || 'Abu Dhabi Operations Hub';
+          const fromLoc = locationDetails.get(t.id)?.from || 'Unassigned';
+          const toLoc = locationDetails.get(t.id)?.to || 'Not selected';
           return {
             id: t.id,
             movementId: t.transferNumber,
@@ -973,15 +972,15 @@ export async function getMovementHistory({ assetId = '', transferId = '', search
             toLocation: toLoc,
             previousCustodian: t.fromCustodian ? t.fromCustodian.fullName : 'Unassigned',
             newCustodian: t.toCustodian ? t.toCustodian.fullName : 'Unassigned',
-            department: t.asset?.department?.name || 'Information Technology',
-            reason: t.reason || 'Operational Movement',
+            department: t.asset?.department?.name || '',
+            reason: t.reason || '',
             condition: t.asset?.condition || 'Good',
             accessories: 'N/A',
             referenceNo: t.transferNumber,
-            requestedBy: t.requestedBy?.fullName || 'System Admin',
-            approvedBy: t.approvedBy?.fullName || 'Asset Administrator',
-            dispatcher: 'Logistics Team',
-            receiver: t.receivedBy?.fullName || t.toCustodian?.fullName || 'Logistics Team',
+            requestedBy: t.requestedBy?.fullName || '',
+            approvedBy: t.approvedBy?.fullName || '',
+            dispatcher: '',
+            receiver: t.receivedBy?.fullName || t.toCustodian?.fullName || '',
             timestamp: t.createdAt.toISOString(),
             status: t.status || 'COMPLETED',
             documentsCount: 0
@@ -1007,10 +1006,9 @@ export async function getMovementHistory({ assetId = '', transferId = '', search
       }
       return [];
     } catch (err) {
-      console.warn('[TransferMovementService] Error fetching movement history from DB:', err.message);
-      return [];
+      throw err;
     }
   }
 
-  return [];
+  throw new Error('Database is unavailable. Movement history could not be loaded.');
 }

@@ -269,14 +269,33 @@ export async function createAsset(req, res, next) {
       }
     }
     const maintenance = req.body.maintenance;
+    let scheduleInput = null;
     if (maintenance?.enabled) {
       const due = new Date(maintenance.nextDueDate);
-      if (!maintenance.nextDueDate || Number.isNaN(due.getTime())) {
-        return res.status(400).json({ success: false, message: 'A valid first maintenance due date is required.' });
-      }
-      if (maintenance.frequency === 'Custom' && (!Number.isInteger(Number(maintenance.intervalMonths)) || Number(maintenance.intervalMonths) < 1)) {
-        return res.status(400).json({ success: false, message: 'A positive maintenance interval in months is required.' });
-      }
+      const months = Number(maintenance.frequencyMonths);
+      const advanceDays = Number(maintenance.advanceDays ?? 7);
+      const title = String(maintenance.title || '').trim();
+      const description = String(maintenance.description || '').trim();
+      const checklist = maintenance.checklist;
+      if (!title || title.length > 200 || !maintenance.nextDueDate || Number.isNaN(due.getTime()))
+        return res.status(400).json({ success: false, message: 'A schedule title and valid next due date are required.' });
+      if (!Number.isInteger(months) || months < 1 || months > 120)
+        return res.status(400).json({ success: false, message: 'Schedule frequency must be 1 to 120 months.' });
+      if (!['PREVENTIVE', 'INSPECTION'].includes(maintenance.workType))
+        return res.status(400).json({ success: false, message: 'Choose Preventive or Inspection as the schedule type.' });
+      if (!Number.isInteger(advanceDays) || advanceDays < 0 || advanceDays > 90)
+        return res.status(400).json({ success: false, message: 'Advance days must be 0 to 90.' });
+      if (description.length > 500 || !Array.isArray(checklist) || checklist.length > 30 ||
+          checklist.some(task => !String(task).trim() || String(task).length > 200))
+        return res.status(400).json({ success: false, message: 'Description is limited to 500 characters and checklist to 30 nonempty tasks of 200 characters each.' });
+      scheduleInput = {
+        title, description: description || null, workType: maintenance.workType,
+        frequencyMonths: months, nextDueDate: due,
+        active: maintenance.active !== false,
+        autoGenerateWorkOrders: Boolean(maintenance.autoGenerateWorkOrders),
+        advanceDays,
+        checklistJson: JSON.stringify(checklist.map(task => String(task).trim()))
+      };
     }
     const rawCategory = req.body.categoryId || req.body.category || 'Laptop';
     const rawCompany = req.body.companyId || req.body.company;
@@ -534,17 +553,8 @@ export async function createAsset(req, res, next) {
         } });
       }
 
-      if (maintenance?.enabled) {
-        const frequencyMonths = maintenance.frequency === 'Monthly' ? 1
-          : maintenance.frequency === 'Quarterly' ? 3
-          : maintenance.frequency === 'Yearly' ? 12
-          : maintenance.frequency === 'Custom' ? Number(maintenance.intervalMonths) : 6;
-        await tx.maintenanceSchedule.create({ data: {
-          assetId: newAsset.id,
-          title: maintenance.checklist || `${maintenance.type || 'Preventive'} Maintenance`,
-          frequencyMonths,
-          nextDueDate: new Date(maintenance.nextDueDate)
-        } });
+      if (scheduleInput) {
+        await tx.maintenanceSchedule.create({ data: { assetId: newAsset.id, ...scheduleInput } });
       }
 
       if (req.body.imageUrl) {
@@ -566,16 +576,20 @@ export async function createAsset(req, res, next) {
 
       // 1. Initial Corporate Book Value (only if capitalized value is provided)
       if (acqValue > 0) {
+        const categoryRate = Number(category.annualDepreciationRatePercent || 0);
+        const categoryLife = Number(category.defaultUsefulLifeMonths) || 60;
+        const categoryResidualPercent = Number(category.defaultResidualValuePercent || 0);
         childOperations.push(
           tx.assetBookValue.create({
             data: {
               assetId: newAsset.id,
               bookType: 'CORPORATE',
-              capitalizationDate: new Date(),
+              capitalizationDate: newAsset.inServiceDate || newAsset.purchaseDate || new Date(),
               capitalizationValue: acqValue,
-              usefulLifeMonths: parseInt(req.body.usefulLifeYears, 10) * 12 || 60,
-              depreciationMethod: req.body.depreciationMethod === 'Straight Line' ? 'STRAIGHT_LINE' : 'STRAIGHT_LINE',
-              residualValue: parseFloat(req.body.residualValue) || 0,
+              usefulLifeMonths: categoryRate > 0 ? Math.round(1200 / categoryRate) : categoryLife,
+              depreciationMethod: category.depreciationMethod || 'STRAIGHT_LINE',
+              annualDepreciationRatePercent: categoryRate > 0 ? categoryRate : null,
+              residualValue: acqValue * categoryResidualPercent / 100,
               accumulatedDepreciation: 0,
               netBookValue: acqValue
             }
@@ -644,10 +658,19 @@ export async function createAsset(req, res, next) {
 
       await Promise.all(childOperations);
 
-      return newAsset;
+      return tx.asset.findUnique({
+        where: { id: newAsset.id },
+        include: { category: true, bookValues: { where: { bookType: 'CORPORATE' }, take: 1 }, schedules: true }
+      });
     }, { timeout: 30000, maxWait: 10000 });
 
-    res.status(201).json({ success: true, asset: result });
+    res.status(201).json({
+      success: true,
+      asset: result,
+      category: result.category,
+      bookValue: result.bookValues[0] || null,
+      maintenanceSchedule: result.schedules[0] || null
+    });
   } catch (err) {
     next(err);
   }
@@ -1228,10 +1251,15 @@ export async function assignAssetCustodian(req, res, next) {
       return res.status(409).json({ success: false, message: 'This asset cannot be assigned in its current status.' });
     }
 
-    const { custodianId, customCustodian, assignmentDate, assignmentPurpose, conditionAtIssue, remarks } = req.body;
+    const { custodianId, customCustodian, assignmentDate, expectedReturnDate, assignmentPurpose, conditionAtIssue,
+      department: departmentName, location, building, floor, room, accessoriesIncluded, remarks, acknowledged } = req.body;
     const assignedDate = assignmentDate ? new Date(`${assignmentDate}T12:00:00.000Z`) : new Date();
     if (Number.isNaN(assignedDate.getTime())) {
       return res.status(400).json({ success: false, message: 'Enter a valid assignment date.' });
+    }
+    const returnDate = expectedReturnDate ? new Date(`${expectedReturnDate}T12:00:00.000Z`) : null;
+    if (returnDate && (Number.isNaN(returnDate.getTime()) || returnDate < assignedDate)) {
+      return res.status(400).json({ success: false, message: 'Expected return date must be on or after the assignment date.' });
     }
     if (custodianId && customCustodian) {
       return res.status(400).json({ success: false, message: 'Choose an existing employee or enter a new one.' });
@@ -1265,7 +1293,52 @@ export async function assignAssetCustodian(req, res, next) {
     }
     const actor = req.user?.id ? await prisma.user.findUnique({ where: { id: req.user.id } }) : null;
     if (!actor) return res.status(403).json({ success: false, message: 'A valid user is required to assign custody.' });
-    const conditionMap = { Good: 'GOOD', 'Brand New': 'NEW', Fair: 'FAIR' };
+    const requestedDepartment = String(departmentName || '').trim();
+    const targetDepartment = requestedDepartment ? await prisma.department.findFirst({ where: {
+      companyId: asset.companyId, active: true,
+      OR: [{ id: requestedDepartment }, { name: requestedDepartment }, { code: requestedDepartment }]
+    } }) : null;
+    if (requestedDepartment && !targetDepartment) {
+      return res.status(400).json({ success: false, message: 'Select a valid department for this asset’s company.' });
+    }
+
+    const requestedSite = String(location || '').trim();
+    const site = requestedSite ? await prisma.site.findFirst({ where: {
+      companyId: asset.companyId, active: true,
+      OR: [{ id: requestedSite }, { name: requestedSite }, { code: requestedSite }]
+    } }) : null;
+    if (requestedSite && !site) {
+      return res.status(400).json({ success: false, message: 'Select a valid site for this asset’s company.' });
+    }
+    const siteId = site?.id || asset.siteId;
+    const requestedBuilding = String(building || '').trim();
+    const targetBuilding = requestedBuilding ? await prisma.building.findFirst({ where: {
+      siteId, active: true,
+      OR: [{ id: requestedBuilding }, { name: requestedBuilding }, { code: requestedBuilding }]
+    } }) : null;
+    if (requestedBuilding && !targetBuilding) {
+      return res.status(400).json({ success: false, message: 'Select a building in the chosen site.' });
+    }
+    const buildingId = targetBuilding?.id || (siteId === asset.siteId ? asset.buildingId : null);
+    const requestedFloor = String(floor || '').trim();
+    const targetFloor = requestedFloor && buildingId ? await prisma.floor.findFirst({ where: {
+      buildingId, active: true,
+      OR: [{ id: requestedFloor }, { name: requestedFloor }, { code: requestedFloor }]
+    } }) : null;
+    if (requestedFloor && !targetFloor) {
+      return res.status(400).json({ success: false, message: 'Select a floor in the chosen building.' });
+    }
+    const floorId = targetFloor?.id || (buildingId === asset.buildingId ? asset.floorId : null);
+    const requestedRoom = String(room || '').trim();
+    const targetRoom = requestedRoom && floorId ? await prisma.room.findFirst({ where: {
+      floorId, active: true,
+      OR: [{ id: requestedRoom }, { name: requestedRoom }, { code: requestedRoom }]
+    } }) : null;
+    if (requestedRoom && !targetRoom) {
+      return res.status(400).json({ success: false, message: 'Select a room in the chosen floor.' });
+    }
+    const roomId = targetRoom?.id || (floorId === asset.floorId ? asset.roomId : null);
+    const conditionMap = { Good: 'GOOD', 'Brand New': 'NEW', 'New / Sealed': 'NEW', Excellent: 'EXCELLENT', Fair: 'FAIR' };
     const normalizedCondition = conditionMap[conditionAtIssue] || asset.condition;
     const updatedAsset = await prisma.$transaction(async tx => {
       if (customCustodian) employee = await tx.employee.create({ data: {
@@ -1276,25 +1349,33 @@ export async function assignAssetCustodian(req, res, next) {
         data: { active: false, actualReturnDate: assignedDate } });
       const updated = await tx.asset.update({ where: { id: asset.id }, data: {
         custodianId: employee?.id || null,
-        departmentId: employee?.departmentId || asset.departmentId,
+        departmentId: targetDepartment?.id || employee?.departmentId || asset.departmentId,
+        siteId,
+        buildingId,
+        floorId,
+        roomId,
         assignedDate: employee ? assignedDate : null,
         lifecycleStatus: employee ? 'ASSIGNED' : 'IN_STORE',
         condition: normalizedCondition,
         updatedByUserId: actor.id
-      }, include: { custodian: true, department: true } });
+      }, include: { custodian: true, department: true, site: true, building: true, floor: true, room: true } });
       if (employee) await tx.custodyAssignment.create({ data: {
         assetId: asset.id, custodianId: employee.id, issuedDate: assignedDate,
+        expectedReturnDate: returnDate,
         conditionAtIssue: normalizedCondition, issuedByUserId: actor.id,
-        acknowledged: false, active: true
+        acknowledged: Boolean(acknowledged),
+        acknowledgementDate: acknowledged ? assignedDate : null,
+        active: true
       } });
-      await tx.assetTransaction.create({ data: {
+      const assignmentTransaction = await tx.assetTransaction.create({ data: {
         assetId: asset.id, transactionType: employee ? 'ASSIGN' : 'UNASSIGN',
         fromStatus: asset.lifecycleStatus, toStatus: updated.lifecycleStatus,
         performedByUserId: actor.id,
-        notes: `${employee ? `Assigned to ${employee.fullName}` : 'Custodian removed'}${assignmentPurpose ? ` · ${assignmentPurpose}` : ''}${remarks ? ` · ${remarks}` : ''}`,
+        notes: `${employee ? `Assigned to ${employee.fullName}` : 'Custodian removed'}${assignmentPurpose ? ` · ${assignmentPurpose}` : ''}${accessoriesIncluded ? ` · Accessories: ${accessoriesIncluded}` : ''}${remarks ? ` · ${remarks}` : ''}`,
         payload: JSON.stringify({ fromCustodianId: asset.custodianId,
           toCustodianId: employee?.id || null, assignmentDate: assignedDate.toISOString(),
-          conditionAtIssue: normalizedCondition })
+          expectedReturnDate: returnDate?.toISOString() || null, conditionAtIssue: normalizedCondition,
+          fromSiteId: asset.siteId, toSiteId: siteId, fromRoomId: asset.roomId, toRoomId: roomId })
       } });
       await tx.auditEvent.create({ data: {
         userId: actor.id, action: employee ? 'ASSET_CUSTODIAN_ASSIGNED' : 'ASSET_CUSTODIAN_REMOVED',
@@ -1302,9 +1383,9 @@ export async function assignAssetCustodian(req, res, next) {
         beforeState: JSON.stringify({ custodianId: asset.custodianId, lifecycleStatus: asset.lifecycleStatus }).slice(0, 240),
         afterState: JSON.stringify({ custodianId: employee?.id || null, lifecycleStatus: updated.lifecycleStatus }).slice(0, 240)
       } });
-      return updated;
+      return { asset: updated, assignmentId: assignmentTransaction.id };
     }, { timeout: 15000 });
-    res.json({ success: true, asset: updatedAsset,
+    res.json({ success: true, asset: updatedAsset.asset, assignmentId: updatedAsset.assignmentId,
       message: employee ? `Asset assigned to ${employee.fullName}.` : 'Asset custodian removed.' });
   } catch (err) {
     if (err?.code === 'P2002') return res.status(409).json({ success: false, message: 'This employee code already exists.' });
@@ -1469,6 +1550,11 @@ export async function getMyAssets(req, res, next) {
           manufacturer: true,
           model: true,
           schedules: { where: { active: true }, orderBy: { nextDueDate: 'asc' } },
+          transactions: {
+            where: { transactionType: 'RETURN_REQUESTED' },
+            orderBy: { timestamp: 'desc' },
+            take: 1
+          },
           custodyAssignments: {
             where: { active: true },
             take: 1
@@ -1671,34 +1757,43 @@ export async function requestAssetReturn(req, res, next) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
     }
 
-    const updatedAsset = await prisma.asset.update({
-      where: { id: asset.id },
-      data: {
-        lifecycleStatus: 'PENDING_RETURN',
-        condition: condition || asset.condition,
-        updatedByUserId: finalUserId
-      }
-    });
+    if (['PENDING_RETURN', 'Pending Return'].includes(asset.lifecycleStatus)) {
+      return res.status(409).json({ success: false, message: 'A return request is already pending for this asset.' });
+    }
 
-    await prisma.assetTransaction.create({
-      data: {
-        assetId: asset.id,
-        transactionType: 'RETURN_REQUESTED',
-        fromStatus: asset.lifecycleStatus,
-        toStatus: 'PENDING_RETURN',
-        performedByUserId: finalUserId,
-        notes: `Return initiated to store [${returnStore || 'Default Store'}]. Reason: ${reason || 'N/A'}. Condition: ${condition || asset.condition}`
-      }
-    });
+    if (!reason?.trim() || !returnStore?.trim() || !condition?.trim()) {
+      return res.status(400).json({ success: false, message: 'Return location, condition, and reason are required.' });
+    }
 
-    await prisma.auditEvent.create({
-      data: {
-        userId: finalUserId,
-        action: 'ASSET_RETURN_REQUEST',
-        entityType: 'Asset',
-        entityId: asset.id,
-        afterState: JSON.stringify({ returnStore, condition, reason, remarks }).slice(0, 240)
-      }
+    const updatedAsset = await prisma.$transaction(async (tx) => {
+      const updated = await tx.asset.update({
+        where: { id: asset.id },
+        data: {
+          lifecycleStatus: 'PENDING_RETURN',
+          condition,
+          updatedByUserId: finalUserId
+        }
+      });
+      await tx.assetTransaction.create({
+        data: {
+          assetId: asset.id,
+          transactionType: 'RETURN_REQUESTED',
+          fromStatus: asset.lifecycleStatus,
+          toStatus: 'PENDING_RETURN',
+          performedByUserId: finalUserId,
+          notes: `Return initiated to store [${returnStore}]. Reason: ${reason}. Condition: ${condition}`
+        }
+      });
+      await tx.auditEvent.create({
+        data: {
+          userId: finalUserId,
+          action: 'ASSET_RETURN_REQUEST',
+          entityType: 'Asset',
+          entityId: asset.id,
+          afterState: JSON.stringify({ returnStore, condition, reason, remarks }).slice(0, 240)
+        }
+      });
+      return updated;
     });
 
     res.json({
@@ -2702,5 +2797,3 @@ export async function getHierarchyAuditHistory(req, res, next) {
     next(err);
   }
 }
-
-

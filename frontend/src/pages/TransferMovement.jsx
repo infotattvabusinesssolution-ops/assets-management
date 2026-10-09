@@ -198,30 +198,14 @@ export default function TransferMovement({ defaultTab = 'form' }) {
         const floors = hRes.value.floors || [];
         const rooms = hRes.value.rooms || [];
         setHierarchy({ sites, buildings, floors, rooms });
-
-        if (sites.length > 0) {
-          setDestSiteId(prev => prev || sites[0].id);
-          const relB = buildings.filter(b => b.siteId === sites[0].id);
-          if (relB.length > 0) {
-            setDestBuildingId(prev => prev || relB[0].id);
-            const relF = floors.filter(f => f.buildingId === relB[0].id);
-            if (relF.length > 0) {
-              setDestFloorId(prev => prev || relF[0].id);
-              const relR = rooms.filter(r => r.floorId === relF[0].id);
-              if (relR.length > 0) setDestRoomId(prev => prev || relR[0].id);
-            }
-          }
-        }
       }
 
       if (rRes.status === 'fulfilled' && rRes.value.success) {
         if (rRes.value.departments && rRes.value.departments.length > 0) {
           setDepartments(rRes.value.departments);
-          setDepartment(prev => prev || rRes.value.departments[0].name || rRes.value.departments[0].id);
         }
         if (rRes.value.custodians && rRes.value.custodians.length > 0) {
           setCustodians(rRes.value.custodians);
-          setNewCustodian(prev => prev || rRes.value.custodians[0].name || rRes.value.custodians[0].fullName || '');
         }
       }
 
@@ -278,24 +262,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
           }
           setAssetsList(mergedList);
           setSelectedAssetIds([targetObj.id, targetObj.assetNumber].filter(Boolean));
-          if (targetObj.department) setDepartment(targetObj.department);
-          if (targetObj.currentCustodian && targetObj.currentCustodian !== 'Unassigned') {
-            setNewCustodian(targetObj.currentCustodian);
-          }
-          if (targetObj.siteId && sites.length > 1) {
-            const alternateSite = sites.find(s => s.id !== targetObj.siteId) || sites[0];
-            setDestSiteId(alternateSite.id);
-            const altB = buildings.filter(b => b.siteId === alternateSite.id);
-            if (altB.length > 0) {
-              setDestBuildingId(altB[0].id);
-              const altF = floors.filter(f => f.buildingId === altB[0].id);
-              if (altF.length > 0) {
-                setDestFloorId(altF[0].id);
-                const altR = rooms.filter(r => r.floorId === altF[0].id);
-                if (altR.length > 0) setDestRoomId(altR[0].id);
-              }
-            }
-          }
+          if (targetObj.department && targetObj.department !== '-') setDepartment(targetObj.department);
         } else {
           setAssetsList(backendFormatted);
           if (!targetId) {
@@ -356,17 +323,17 @@ export default function TransferMovement({ defaultTab = 'form' }) {
 
   // Filtered Dependent Dropdowns
   const filteredBuildings = useMemo(() => {
-    if (!destSiteId) return hierarchy.buildings;
+    if (!destSiteId) return [];
     return hierarchy.buildings.filter(b => b.siteId === destSiteId);
   }, [hierarchy.buildings, destSiteId]);
 
   const filteredFloors = useMemo(() => {
-    if (!destBuildingId) return hierarchy.floors;
+    if (!destBuildingId) return [];
     return hierarchy.floors.filter(f => f.buildingId === destBuildingId);
   }, [hierarchy.floors, destBuildingId]);
 
   const filteredRooms = useMemo(() => {
-    if (!destFloorId) return hierarchy.rooms;
+    if (!destFloorId) return [];
     return hierarchy.rooms.filter(r => r.floorId === destFloorId);
   }, [hierarchy.rooms, destFloorId]);
 
@@ -528,6 +495,10 @@ export default function TransferMovement({ defaultTab = 'form' }) {
       showToast('Please select at least one asset to save draft.', 'error');
       return;
     }
+    if (!destSiteId) {
+      showToast('Select a destination site before saving the draft.', 'error');
+      return;
+    }
 
     const payload = {
       assetIds: selectedAssets.map(a => a.id),
@@ -535,14 +506,15 @@ export default function TransferMovement({ defaultTab = 'form' }) {
       transferDate,
       effectiveDate,
       toSiteId: destSiteId,
-      toSiteName: destSiteObj?.name || 'Dubai HQ',
+      toSiteName: destSiteObj?.name || '',
       toBuildingId: destBuildingId,
-      toBuildingName: destBuildingObj?.name || 'Block B',
+      toBuildingName: destBuildingObj?.name || '',
       toFloorId: destFloorId,
-      toFloorName: destFloorObj?.name || '1st Floor',
+      toFloorName: destFloorObj?.name || '',
       toRoomId: destRoomId,
-      toRoomName: destRoomObj?.name || 'IT-201',
+      toRoomName: destRoomObj?.name || '',
       departmentName: department,
+      toCustodianId: custodians.find(c => c.name === newCustodian)?.id || null,
       toCustodianName: newCustodian,
       reason: movementReason,
       conditionAtTransfer,
@@ -556,6 +528,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
     try {
       setLoading(true);
       const res = await api.post('/custody-transfers/movement-records', payload);
+      if (!res?.success || !res.transfer?.id) throw new Error('Draft was not saved to the database.');
       showToast('Transfer saved as Draft! Asset Master remains unchanged.', 'success');
       fetchInitialData();
     } catch (err) {
@@ -570,6 +543,10 @@ export default function TransferMovement({ defaultTab = 'form' }) {
       showToast('Please select at least one asset.', 'error');
       return;
     }
+    if (!destSiteId) {
+      showToast('Select a destination site.', 'error');
+      return;
+    }
 
     if (!movementReason) {
       showToast('Movement reason is required.', 'error');
@@ -582,14 +559,15 @@ export default function TransferMovement({ defaultTab = 'form' }) {
       transferDate,
       effectiveDate,
       toSiteId: destSiteId,
-      toSiteName: destSiteObj?.name || 'Dubai HQ',
+      toSiteName: destSiteObj?.name || '',
       toBuildingId: destBuildingId,
-      toBuildingName: destBuildingObj?.name || 'Block B',
+      toBuildingName: destBuildingObj?.name || '',
       toFloorId: destFloorId,
-      toFloorName: destFloorObj?.name || '1st Floor',
+      toFloorName: destFloorObj?.name || '',
       toRoomId: destRoomId,
-      toRoomName: destRoomObj?.name || 'IT-201',
+      toRoomName: destRoomObj?.name || '',
       departmentName: department,
+      toCustodianId: custodians.find(c => c.name === newCustodian)?.id || null,
       toCustodianName: newCustodian,
       reason: movementReason,
       conditionAtTransfer,
@@ -604,6 +582,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
     try {
       setLoading(true);
       const res = await api.post('/custody-transfers/movement-records', payload);
+      if (!res?.success || !res.transfer?.id) throw new Error('Transfer was not saved to the database.');
       showToast('Transfer submitted successfully! Workflow routed for approval.', 'success');
       setShowConfirmModal(false);
       fetchInitialData();
@@ -621,10 +600,11 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   const handleWorkflowAction = async (transferId, action, params = {}) => {
     try {
       setLoading(true);
-      await api.put(`/custody-transfers/movement-records/${transferId}/status`, {
-        action,
-        ...params
-      });
+        const result = await api.put(`/custody-transfers/movement-records/${transferId}/status`, {
+          action,
+          ...params
+        });
+        if (!result?.success) throw new Error('Transfer status was not saved.');
 
       if (action === 'APPROVE') {
         showToast('Transfer approved! Assets ready for physical dispatch.');
@@ -1028,11 +1008,13 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                           value={destSiteId}
                           onChange={(e) => {
                             setDestSiteId(e.target.value);
-                            const blds = hierarchy.buildings.filter(b => b.siteId === e.target.value);
-                            if (blds.length) setDestBuildingId(blds[0].id);
+                            setDestBuildingId('');
+                            setDestFloorId('');
+                            setDestRoomId('');
                           }}
                           className="w-full border border-gray-300 rounded p-1 text-xs outline-none"
                         >
+                          <option value="">Select destination site</option>
                           {hierarchy.sites.map(s => (
                             <option key={s.id} value={s.id}>{s.name}</option>
                           ))}
@@ -1045,11 +1027,12 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                           value={destBuildingId}
                           onChange={(e) => {
                             setDestBuildingId(e.target.value);
-                            const flrs = hierarchy.floors.filter(f => f.buildingId === e.target.value);
-                            if (flrs.length) setDestFloorId(flrs[0].id);
+                            setDestFloorId('');
+                            setDestRoomId('');
                           }}
                           className="w-full border border-gray-300 rounded p-1 text-xs outline-none"
                         >
+                          <option value="">No building selected</option>
                           {filteredBuildings.map(b => (
                             <option key={b.id} value={b.id}>{b.name}</option>
                           ))}
@@ -1062,11 +1045,11 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                           value={destFloorId}
                           onChange={(e) => {
                             setDestFloorId(e.target.value);
-                            const rms = hierarchy.rooms.filter(r => r.floorId === e.target.value);
-                            if (rms.length) setDestRoomId(rms[0].id);
+                            setDestRoomId('');
                           }}
                           className="w-full border border-gray-300 rounded p-1 text-xs outline-none"
                         >
+                          <option value="">No floor selected</option>
                           {filteredFloors.map(f => (
                             <option key={f.id} value={f.id}>{f.name}</option>
                           ))}
@@ -1080,6 +1063,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                           onChange={(e) => setDestRoomId(e.target.value)}
                           className="w-full border border-gray-300 rounded p-1 text-xs outline-none"
                         >
+                          <option value="">No room selected</option>
                           {filteredRooms.map(r => (
                             <option key={r.id} value={r.id}>{r.name}</option>
                           ))}
@@ -1097,6 +1081,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                         onChange={(e) => setDepartment(e.target.value)}
                         className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none"
                       >
+                        <option value="">Keep current department</option>
                         {departments.map(d => (
                           <option key={d.id} value={d.name}>{d.name}</option>
                         ))}
@@ -1110,6 +1095,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                         onChange={(e) => setNewCustodian(e.target.value)}
                         className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none bg-white"
                       >
+                        <option value="">Keep current custodian</option>
                         {custodians.map(c => (
                           <option key={c.id} value={c.name}>{c.name}</option>
                         ))}
@@ -1584,7 +1570,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                         )}
                         {['DISPATCHED', 'IN_TRANSIT'].includes(t.status) && (
                           <button
-                            onClick={() => handleWorkflowAction(t.id, 'CONFIRM_RECEIPT', { receiverName: 'Omar Saleh', receivedCondition: 'Good' })}
+                             onClick={() => handleWorkflowAction(t.id, 'CONFIRM_RECEIPT', { receivedCondition: 'Good' })}
                             className="px-3 py-1 bg-emerald-600 hover:bg-emerald-700 text-white rounded font-medium text-[11px] shadow-sm"
                           >
                             Confirm Receipt

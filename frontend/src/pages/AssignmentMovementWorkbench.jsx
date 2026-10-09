@@ -424,7 +424,9 @@ export function AssignmentMovementWorkbench({ defaultTab }) {
                   type="button"
                   onClick={() => {
                     setIsActionDropdownOpen(false);
-                    navigate('/movements/assign');
+                    const assetId = selectedAsset?.id;
+                    navigate(assetId ? `/movements/assign?assetId=${encodeURIComponent(assetId)}` : '/movements/assign',
+                      assetId ? { state: { assetId } } : undefined);
                   }}
                   className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2 font-medium cursor-pointer"
                 >

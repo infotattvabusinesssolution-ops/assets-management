@@ -34,7 +34,6 @@ import {
   Receipt,
   Building2
 } from 'lucide-react';
-import { AssignCustodianModal } from '../components/modals/AssignCustodianModal';
 
 export function AssetHierarchy() {
   const navigate = useNavigate();
@@ -49,7 +48,6 @@ export function AssetHierarchy() {
   const [activeTab, setActiveTab] = useState('Details'); // Details, Child Assets, Related Documents, History
   const [activeModal, setActiveModal] = useState(null); // null, ADD_CHILD, REASSIGN_PARENT
   const [modalTab, setModalTab] = useState('CREATE'); // 'CREATE' | 'ATTACH'
-  const [isAssignCustodianOpen, setIsAssignCustodianOpen] = useState(false);
   
   // Master data collections
   const [categories, setCategories] = useState([]);
@@ -572,7 +570,10 @@ export function AssetHierarchy() {
 
           <button
             type="button"
-            onClick={() => setIsAssignCustodianOpen(true)}
+             onClick={() => {
+               const assetId = selectedAsset.id || selectedAsset.assetId;
+               navigate(`/movements/assign?assetId=${encodeURIComponent(assetId)}`, { state: { assetId } });
+             }}
             disabled={!selectedAsset}
             className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-800 font-bold rounded-xl text-xs flex items-center gap-1.5 border border-slate-200 shadow-2xs transition-all cursor-pointer"
           >
@@ -730,7 +731,10 @@ export function AssetHierarchy() {
                     </span>
                     <button
                       type="button"
-                      onClick={() => setIsAssignCustodianOpen(true)}
+                       onClick={() => {
+                         const assetId = selectedAsset.id || selectedAsset.assetId;
+                         navigate(`/movements/assign?assetId=${encodeURIComponent(assetId)}`, { state: { assetId } });
+                       }}
                       className="px-2.5 py-1 bg-white hover:bg-purple-100/70 text-[#6C2BD9] border border-purple-200 rounded-lg font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-2xs"
                     >
                       <UserCheck className="w-3.5 h-3.5" /> Reassign Custodian
@@ -1670,19 +1674,6 @@ export function AssetHierarchy() {
         </div>
       )}
 
-      {/* Assign Custodian Modal */}
-      {isAssignCustodianOpen && selectedAsset && (
-        <AssignCustodianModal
-          isOpen={isAssignCustodianOpen}
-          onClose={() => setIsAssignCustodianOpen(false)}
-          asset={selectedAsset}
-          onAssigned={() => {
-            setIsAssignCustodianOpen(false);
-            showToast('success', 'Custodian assigned successfully!');
-            fetchHierarchyTree();
-          }}
-        />
-      )}
     </div>
   );
 }

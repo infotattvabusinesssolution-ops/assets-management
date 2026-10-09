@@ -1,5 +1,6 @@
 import Decimal from 'decimal.js';
 import prisma from '../../config/prisma.js';
+import { annualDepreciationDue } from './annualDepreciation.js';
 
 export async function getFinancialSummary(req, res, next) {
   try {
@@ -145,6 +146,16 @@ export async function runDepreciation(req, res, next) {
     if (!period || period.isClosed) {
       return res.status(400).json({ success: false, message: 'Cannot calculate depreciation for a closed or invalid fiscal period' });
     }
+    if (period.companyId !== companyId) {
+      return res.status(400).json({ success: false, message: 'Fiscal period does not belong to the selected company' });
+    }
+    const existingRun = await prisma.depreciationRun.findFirst({
+      where: { companyId, fiscalPeriodId, bookType, status: { in: ['DRAFT', 'POSTED'] } },
+      select: { id: true }
+    });
+    if (existingRun) {
+      return res.status(409).json({ success: false, message: 'A depreciation run already exists for this company, period, and book.' });
+    }
 
     const result = await prisma.$transaction(async (tx) => {
       const depRun = await tx.depreciationRun.create({
@@ -157,7 +168,7 @@ export async function runDepreciation(req, res, next) {
         }
       });
 
-      const assets = await tx.asset.findMany({ where: { companyId, active: true } });
+      const assets = await tx.asset.findMany({ where: { companyId, active: true }, include: { category: true } });
       let totalProcessed = 0;
       let totalDepAmount = new Decimal(0);
       const entriesDocs = [];
@@ -175,31 +186,36 @@ export async function runDepreciation(req, res, next) {
 
         if (nbv.lte(resVal)) continue;
 
-        const depreciableBase = capVal.sub(resVal);
-        const usefulMonths = bookVal.usefulLifeMonths || 60;
+        const configuredRate = bookVal.annualDepreciationRatePercent || asset.category?.annualDepreciationRatePercent;
+        const asOf = new Date(Math.min(new Date(period.endDate).getTime(), Date.now()));
+        const due = annualDepreciationDue({
+          capitalizationValue: capVal,
+          residualValue: resVal,
+          accumulatedDepreciation: accumDep,
+          netBookValue: nbv,
+          annualRatePercent: configuredRate,
+          usefulLifeMonths: bookVal.usefulLifeMonths,
+          capitalizationDate: bookVal.capitalizationDate || asset.inServiceDate || asset.purchaseDate || asset.createdAt,
+          throughDate: asOf
+        });
+        if (due.lte(0)) continue;
 
-        let monthlyDep = depreciableBase.div(usefulMonths).toDecimalPlaces(2, Decimal.ROUND_HALF_UP);
-
-        if (nbv.sub(monthlyDep).lt(resVal)) {
-          monthlyDep = nbv.sub(resVal);
-        }
-
-        const closingNbv = nbv.sub(monthlyDep);
-        const newAccumDep = accumDep.add(monthlyDep);
+        const closingNbv = nbv.sub(due);
+        const newAccumDep = accumDep.add(due);
 
         entriesDocs.push({
           depreciationRunId: depRun.id,
           assetId: asset.id,
           fiscalPeriodId,
           openingNetBookValue: nbv.toString(),
-          depreciationAmount: monthlyDep.toString(),
+          depreciationAmount: due.toString(),
           accumulatedDepreciation: newAccumDep.toString(),
           closingNetBookValue: closingNbv.toString(),
           isPosted: false
         });
 
         totalProcessed++;
-        totalDepAmount = totalDepAmount.add(monthlyDep);
+        totalDepAmount = totalDepAmount.add(due);
       }
 
       if (entriesDocs.length > 0) {

@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import ExcelJS from 'exceljs';
+import { bulkAssetFields, normalizeBulkHeader } from './bulkAssetFields';
 import {
   FileSpreadsheet,
   Upload,
@@ -89,18 +90,7 @@ export function BulkUpload() {
         views: [{ state: 'frozen', ySplit: 1 }]
       });
 
-      sheet.columns = [
-        { header: 'Asset Name', key: 'name', width: 36 },
-        { header: 'Category', key: 'category', width: 22 },
-        { header: 'Serial Number', key: 'serialNumber', width: 22 },
-        { header: 'Location', key: 'location', width: 24 },
-        { header: 'Custodian', key: 'custodian', width: 20 },
-        { header: 'Acquisition Value', key: 'acquisitionValue', width: 18 },
-        { header: 'Currency', key: 'currency', width: 12 },
-        { header: 'Status', key: 'status', width: 16 },
-        { header: 'Condition', key: 'condition', width: 14 },
-        { header: 'Asset ID', key: 'assetId', width: 22 }
-      ];
+      sheet.columns = bulkAssetFields.map(([key, header]) => ({ header, key, width: Math.max(18, Math.min(36, header.length + 5)) }));
 
       // Format Header Row (Brand Purple, Bold, Centered)
       const headerRow = sheet.getRow(1);
@@ -128,18 +118,17 @@ export function BulkUpload() {
       guideHeader.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FF334155' } };
       guideHeader.alignment = { vertical: 'middle' };
 
-      const guideData = [
-        { field: 'Asset Name', req: 'REQUIRED', guide: 'Descriptive title of the item or equipment.', example: 'Dell Latitude 5540 15-inch Laptop' },
-        { field: 'Category', req: 'REQUIRED', guide: 'Must match system: Laptop, Monitor, Printer, IT Infrastructure, Furniture, Mobile Device, Tablet, HVAC Equipment.', example: 'Laptop' },
-        { field: 'Serial Number', req: 'REQUIRED for IT / Server / Mobile', guide: 'Unique manufacturer serial number.', example: 'SN-DL5540-88120' },
-        { field: 'Location', req: 'RECOMMENDED', guide: 'Campus/Site name. Default: Dubai HQ Campus.', example: 'Dubai HQ Campus' },
-        { field: 'Custodian', req: 'OPTIONAL', guide: 'Assigned employee name (e.g. John Doe, Jane Smith, David Miller, Facilities Team).', example: 'John Doe' },
-        { field: 'Acquisition Value', req: 'RECOMMENDED', guide: 'Numeric purchase cost without symbols.', example: '1450.00' },
-        { field: 'Currency', req: 'OPTIONAL', guide: 'Currency code. Defaults to USD (or AED, EUR, GBP).', example: 'USD' },
-        { field: 'Status', req: 'OPTIONAL', guide: 'In Service, In Store, Under Maintenance. Defaults to In Service.', example: 'In Service' },
-        { field: 'Condition', req: 'OPTIONAL', guide: 'New, Excellent, Good, Fair, Damaged. Defaults to Good.', example: 'Good' },
-        { field: 'Asset ID', req: 'OPTIONAL', guide: 'Leave blank to auto-generate unique ID (AST-YYYY-XXXXX).', example: '(Leave blank)' }
-      ];
+      const guideData = bulkAssetFields.map(([key, field]) => ({
+        field,
+        req: ['assetName', 'category'].includes(key) ? 'REQUIRED' : 'OPTIONAL',
+        guide: key === 'assetTagBarcode' || key === 'rfidEpc' || key === 'tid'
+          ? 'Optional. Leave blank to import an untagged asset.'
+          : key.startsWith('pm') || key === 'enablePm' ? 'Complete PM title, interval and due date when Enable PM is Yes.'
+          : key === 'category' ? 'Use an existing category name or code.'
+          : key === 'site' ? 'Use an existing site name or code.'
+          : 'Same field as New Asset Registration; leave blank when not applicable.',
+        example: key === 'enablePm' || key === 'underWarranty' ? 'Yes / No' : ''
+      }));
 
       guideData.forEach(row => {
         const added = guideSheet.addRow(row);
@@ -169,7 +158,7 @@ export function BulkUpload() {
 
   // Handle Download Clean UTF-8 CSV Template with Sample Data
   const handleDownloadCsvTemplate = () => {
-    const headers = ['Asset Name', 'Category', 'Serial Number', 'Location', 'Custodian', 'Acquisition Value', 'Currency', 'Status', 'Condition', 'Asset ID'];
+    const headers = bulkAssetFields.map(([, header]) => header);
     const cell = value => '"' + String(value ?? '').replace(/"/g, '""') + '"';
     const csvContent = '\uFEFF' + [headers].map(row => row.map(cell).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -247,29 +236,29 @@ export function BulkUpload() {
         if (quoted) throw new Error('CSV has an unclosed quoted field.');
         rows.at(-1).push(cell.trim());
       }
-      const headers = (rows.shift() || []).map(h => h.replace(/^\uFEFF/, '').toLowerCase().replace(/[^a-z0-9]/g, ''));
+      const headers = (rows.shift() || []).map(normalizeBulkHeader);
       const field = (values, ...names) => {
         const index = headers.findIndex(h => names.includes(h));
         return index < 0 ? '' : (values[index] || '');
       };
-      const parsed = rows.filter(values => values.some(Boolean)).map((values, index) => {
-        const userAssetId = field(values, 'assetid', 'id', 'tag');
-        const autoId = userAssetId || `AST-${new Date().getFullYear()}-${Math.floor(10000 + Math.random() * 90000)}`;
-        return {
-          row: index + 2,
-          assetId: autoId,
-          name: field(values, 'assetname', 'name', 'description', 'assetdescription', 'itemname'),
-          category: field(values, 'category', 'assetcategory', 'type'),
-          serialNumber: field(values, 'serialnumber', 'serialno', 'sn', 'serial'),
-          location: field(values, 'location', 'site', 'facility', 'campus') || 'Dubai HQ Campus',
-          custodian: field(values, 'custodian', 'assignedto', 'owner', 'employee'),
-          acquisitionValue: field(values, 'acquisitionvalue', 'acquisitioncost', 'cost', 'price', 'value'),
-          currency: field(values, 'currency', 'curr') || 'USD',
-          status: 'Unvalidated',
-          condition: field(values, 'condition', 'assetcondition') || 'Good',
-          remarks: 'Awaiting server validation'
-        };
-      });
+      const parsed = rows.map((values, index) => ({ values, row: index + 2 }))
+        .filter(({ values }) => values.some(Boolean)).map(({ values, row }) => {
+          const details = Object.fromEntries(bulkAssetFields.map(([key, header]) => [key, field(values, normalizeBulkHeader(header), normalizeBulkHeader(key))]));
+          return {
+            ...details,
+            row,
+            assetId: details.assetId || field(values, 'id'),
+            name: details.assetName || field(values, 'name', 'assetdescription', 'itemname'),
+            category: details.category || field(values, 'assetcategory'),
+            serialNumber: details.serialNumber || field(values, 'serialno', 'sn', 'serial'),
+            site: details.site || field(values, 'location', 'facility', 'campus'),
+            location: details.site || field(values, 'location', 'facility', 'campus'),
+            acquisitionValue: details.acquisitionCost || field(values, 'acquisitionvalue', 'cost', 'price', 'value'),
+            currency: details.currency || 'AED',
+            status: 'Unvalidated',
+            remarks: 'Awaiting server validation'
+          };
+        });
       if (!parsed.length) throw new Error('The file has no asset rows.');
       setSelectedFile({ name: file.name, size: (file.size / 1024).toFixed(1) + ' KB' });
       setRecords(parsed);

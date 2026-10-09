@@ -241,12 +241,15 @@ export function AssetForm() {
 
     // 7. Maintenance Setup
     enablePm: false,
-    maintenanceType: 'Preventive',
-    frequency: 'Quarterly',
-    intervalMonths: '',
-    firstDueDate: '',
-    checklist: '',
-    nextDueDate: '',
+    pmTitle: '',
+    pmDescription: '',
+    pmWorkType: 'PREVENTIVE',
+    pmFrequencyMonths: 3,
+    pmNextDueDate: '',
+    pmChecklistText: '',
+    pmActive: true,
+    pmAutoGenerateWorkOrders: false,
+    pmAdvanceDays: 7,
 
     // 8. Auto Discovery
     linkToDiscovered: false,
@@ -283,6 +286,50 @@ export function AssetForm() {
     businessApplication: '',
     remarks: ''
   });
+
+  const selectedDepreciationCategory = categories.find(category => category.id === formData.categoryId)
+    || categories.find(category => category.name === formData.category);
+  const categoryDepreciationRate = Number(selectedDepreciationCategory?.annualDepreciationRatePercent || 0);
+  const categoryUsefulLifeMonths = categoryDepreciationRate > 0
+    ? Math.round(1200 / categoryDepreciationRate)
+    : Number(selectedDepreciationCategory?.defaultUsefulLifeMonths || 60);
+  const categoryResidualPercent = Number(selectedDepreciationCategory?.defaultResidualValuePercent || 0);
+  const enteredAcquisitionCost = Number.parseFloat(String(formData.acquisitionCost || formData.purchaseCost || '0').replace(/[^0-9.-]/g, '')) || 0;
+  const residualAmount = enteredAcquisitionCost * categoryResidualPercent / 100;
+  const firstYearDepreciation = enteredAcquisitionCost > 0 && selectedDepreciationCategory
+    ? Math.min(enteredAcquisitionCost - residualAmount, Number((categoryDepreciationRate > 0
+      ? enteredAcquisitionCost * categoryDepreciationRate / 100
+      : (enteredAcquisitionCost - residualAmount) * 12 / categoryUsefulLifeMonths).toFixed(2)))
+    : 0;
+  const depreciationStartDate = new Date(`${formData.inServiceDate || formData.purchaseDate || formData.acquisitionDate || new Date().toISOString().slice(0, 10)}T00:00:00Z`);
+  const firstDepreciationDate = new Date(depreciationStartDate);
+  firstDepreciationDate.setUTCFullYear(firstDepreciationDate.getUTCFullYear() + 1);
+  const formatDepreciationAmount = (amount) => new Intl.NumberFormat('en-US', {
+    style: 'currency', currency: formData.currency || 'AED', maximumFractionDigits: 2
+  }).format(amount);
+
+  const renderCategoryDepreciation = () => (
+    <div className="rounded-xl border border-purple-200 bg-purple-50 p-3 space-y-3 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <strong className="text-slate-900">Category depreciation configuration</strong>
+        <button type="button" onClick={() => navigate('/admin/master-data?tab=depreciation')} className="font-bold text-[#6C2BD9] hover:underline">Edit in Administration</button>
+      </div>
+      {selectedDepreciationCategory ? (
+        <>
+          <p className="text-slate-700">Category: <strong>{selectedDepreciationCategory.name}</strong> ({selectedDepreciationCategory.code}) · {categoryDepreciationRate > 0 ? `${categoryDepreciationRate}% per year` : 'Rate not configured'} · Straight line · {categoryUsefulLifeMonths} months useful life · {categoryResidualPercent}% residual value.</p>
+          {enteredAcquisitionCost > 0 ? (
+            <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+              <div className="rounded-lg bg-white p-2"><span className="block text-slate-500">Before first anniversary</span><strong>{formatDepreciationAmount(0)}</strong></div>
+              <div className="rounded-lg bg-white p-2"><span className="block text-slate-500">First annual depreciation</span><strong>{formatDepreciationAmount(firstYearDepreciation)}</strong></div>
+              <div className="rounded-lg bg-white p-2"><span className="block text-slate-500">Value after first anniversary</span><strong>{formatDepreciationAmount(enteredAcquisitionCost - firstYearDepreciation)}</strong></div>
+              <div className="rounded-lg bg-white p-2"><span className="block text-slate-500">Residual floor</span><strong>{formatDepreciationAmount(residualAmount)}</strong></div>
+            </div>
+          ) : <p className="text-slate-600">Enter the acquisition cost to preview the depreciated value.</p>}
+          <p className="text-slate-500">No depreciation is due until {firstDepreciationDate.toLocaleDateString('en-GB', { timeZone: 'UTC' })}, one full year after the start date. Finance runs post completed years only.</p>
+        </>
+      ) : <p className="text-slate-600">Select a category to see its saved depreciation policy.</p>}
+    </div>
+  );
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -525,8 +572,16 @@ export function AssetForm() {
   const handleSubmit = async (targetStatus) => {
     setLoading(true);
     try {
-      if (formData.enablePm && !formData.firstDueDate) {
-        showToast('error', 'Choose a first due date for preventive maintenance.');
+      if (!formData.categoryId || !categories.some(category => category.id === formData.categoryId)) {
+        showToast('error', 'Select a registered category so its depreciation policy can be applied.');
+        return;
+      }
+      const pmTasks = formData.pmChecklistText.split('\n').map(task => task.trim()).filter(Boolean);
+      if (formData.enablePm && (!formData.pmTitle.trim() || !formData.pmNextDueDate ||
+          !Number.isInteger(Number(formData.pmFrequencyMonths)) || Number(formData.pmFrequencyMonths) < 1 || Number(formData.pmFrequencyMonths) > 120 ||
+          !Number.isInteger(Number(formData.pmAdvanceDays)) || Number(formData.pmAdvanceDays) < 0 || Number(formData.pmAdvanceDays) > 90 ||
+          formData.pmDescription.length > 500 || pmTasks.length > 30 || pmTasks.some(task => task.length > 200))) {
+        showToast('error', 'Complete the preventive schedule: title, due date, 1–120 month interval, 0–90 advance days, and up to 30 checklist tasks.');
         return;
       }
       if (formData.linkToDiscovered && !formData.discoveryId) {
@@ -581,20 +636,24 @@ export function AssetForm() {
         lastSeen: !formData.linkToDiscovered ? formData.lastSeen || undefined : undefined,
         maintenance: formData.enablePm ? {
           enabled: true,
-          type: formData.maintenanceType || 'Preventive',
-          frequency: formData.frequency || 'Quarterly',
-          intervalMonths: formData.intervalMonths || undefined,
-          nextDueDate: formData.firstDueDate,
-          checklist: formData.checklist || undefined
+          title: formData.pmTitle.trim(),
+          description: formData.pmDescription.trim(),
+          workType: formData.pmWorkType,
+          frequencyMonths: Number(formData.pmFrequencyMonths),
+          nextDueDate: formData.pmNextDueDate,
+          checklist: pmTasks,
+          active: formData.pmActive,
+          autoGenerateWorkOrders: formData.pmAutoGenerateWorkOrders,
+          advanceDays: Number(formData.pmAdvanceDays)
         } : undefined
       };
 
       const res = await api.post('/assets', payload);
       if (res?.success) {
         showToast('success', targetStatus === 'SUBMITTED'
-          ? `Asset ${formData.assetName} (${res.asset?.assetId || formData.assetId}) registered successfully!`
-          : `Asset draft ${formData.assetId} saved successfully!`);
-        setTimeout(() => navigate('/assets'), 1200);
+          ? `Asset ${res.asset?.assetId || formData.assetId} registered in ${res.category?.name || formData.category}${res.bookValue?.annualDepreciationRatePercent ? ` with ${Number(res.bookValue.annualDepreciationRatePercent)}% annual depreciation` : ''}.`
+          : `Asset draft ${res.asset?.assetId || formData.assetId} saved in ${res.category?.name || formData.category}.`);
+        setTimeout(() => navigate(res.asset?.id ? `/assets/${encodeURIComponent(res.asset.id)}?tab=financial` : '/assets'), 1200);
       } else {
         showToast('error', res?.message || 'Error submitting asset form.');
       }
@@ -625,18 +684,53 @@ export function AssetForm() {
     }));
   };
 
+  const renderPreventiveMaintenanceFields = (compact = false) => (
+    <div className={`grid gap-3 text-xs ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+      <label className="space-y-1 font-semibold">Schedule No.
+        <input readOnly value="Assigned on save" className="w-full rounded-lg border bg-slate-100 p-2" />
+      </label>
+      <label className="space-y-1 font-semibold">Asset / Category
+        <input readOnly value={[formData.assetId, formData.category].filter(Boolean).join(' · ')} className="w-full rounded-lg border bg-slate-100 p-2" />
+      </label>
+      <label className="space-y-1 font-semibold">Location
+        <input readOnly value={[formData.site, formData.building, formData.floor, formData.room].filter(Boolean).join(' · ')} className="w-full rounded-lg border bg-slate-100 p-2" />
+      </label>
+      <label className="space-y-1 font-semibold">Last Service Date
+        <input readOnly value="Not serviced yet" className="w-full rounded-lg border bg-slate-100 p-2" />
+      </label>
+      <label className="space-y-1 font-semibold">Schedule Title *
+        <input value={formData.pmTitle} maxLength={200} onChange={e => setFormData(prev => ({ ...prev, pmTitle: e.target.value }))} className="w-full rounded-lg border p-2" placeholder="e.g. Laptop quarterly inspection" />
+      </label>
+      <label className="space-y-1 font-semibold">Schedule Type
+        <select value={formData.pmWorkType} onChange={e => setFormData(prev => ({ ...prev, pmWorkType: e.target.value }))} className="w-full rounded-lg border p-2"><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option></select>
+      </label>
+      <label className="space-y-1 font-semibold">Repeat Every (Months) *
+        <input type="number" min="1" max="120" value={formData.pmFrequencyMonths} onChange={e => setFormData(prev => ({ ...prev, pmFrequencyMonths: e.target.value }))} className="w-full rounded-lg border p-2" />
+      </label>
+      <label className="space-y-1 font-semibold">Next Due Date *
+        <input type="date" value={formData.pmNextDueDate} onChange={e => setFormData(prev => ({ ...prev, pmNextDueDate: e.target.value }))} className="w-full rounded-lg border p-2" />
+      </label>
+      <label className={`space-y-1 font-semibold ${compact ? '' : 'sm:col-span-2'}`}>Description
+        <textarea rows={2} maxLength={500} value={formData.pmDescription} onChange={e => setFormData(prev => ({ ...prev, pmDescription: e.target.value }))} className="w-full rounded-lg border p-2" />
+      </label>
+      <label className={`space-y-1 font-semibold ${compact ? '' : 'sm:col-span-2'}`}>Checklist (one task per line)
+        <textarea rows={3} value={formData.pmChecklistText} onChange={e => setFormData(prev => ({ ...prev, pmChecklistText: e.target.value }))} className="w-full rounded-lg border p-2" placeholder="Inspect condition&#10;Check battery" />
+      </label>
+      <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.pmActive} onChange={e => setFormData(prev => ({ ...prev, pmActive: e.target.checked }))} /> Schedule active</label>
+      <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.pmAutoGenerateWorkOrders} onChange={e => setFormData(prev => ({ ...prev, pmAutoGenerateWorkOrders: e.target.checked }))} /> Automatically generate work order when due</label>
+      <label className="space-y-1 font-semibold">Generate this many days before due date
+        <input type="number" min="0" max="90" value={formData.pmAdvanceDays} onChange={e => setFormData(prev => ({ ...prev, pmAdvanceDays: e.target.value }))} className="w-full rounded-lg border p-2" />
+      </label>
+      <p className="self-end text-slate-500">The schedule will appear under Preventive Maintenance after this asset is saved.</p>
+    </div>
+  );
+
   const renderMaintenanceDiscovery = () => (
     <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
       <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
         <h3 className="font-extrabold text-slate-900 flex items-center gap-2"><Wrench className="w-4 h-4 text-[#6C2BD9]" /> Preventive Maintenance</h3>
         <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.enablePm} onChange={e => setFormData(prev => ({ ...prev, enablePm: e.target.checked }))} /> Enable maintenance schedule</label>
-        {formData.enablePm && <div className="grid grid-cols-2 gap-3">
-          <label className="space-y-1">Type<input className="w-full border rounded-lg p-2" value={formData.maintenanceType} onChange={e => setFormData(prev => ({ ...prev, maintenanceType: e.target.value }))} placeholder="Preventive" /></label>
-          <label className="space-y-1">Frequency<select className="w-full border rounded-lg p-2" value={formData.frequency} onChange={e => setFormData(prev => ({ ...prev, frequency: e.target.value }))}><option value="">Select frequency</option><option>Monthly</option><option>Quarterly</option><option>Yearly</option><option>Custom</option></select></label>
-          {formData.frequency === 'Custom' && <label className="space-y-1">Interval (months)<input type="number" min="1" className="w-full border rounded-lg p-2" value={formData.intervalMonths} onChange={e => setFormData(prev => ({ ...prev, intervalMonths: e.target.value }))} /></label>}
-          <label className="space-y-1">First due date<input type="date" className="w-full border rounded-lg p-2" value={formData.firstDueDate} onChange={e => setFormData(prev => ({ ...prev, firstDueDate: e.target.value }))} /></label>
-          <label className="space-y-1 col-span-2">Checklist or schedule title<input className="w-full border rounded-lg p-2" value={formData.checklist} onChange={e => setFormData(prev => ({ ...prev, checklist: e.target.value }))} placeholder="e.g. Laptop PM Checklist" /></label>
-        </div>}
+        {formData.enablePm && renderPreventiveMaintenanceFields()}
       </div>
       <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
         <h3 className="font-extrabold text-slate-900 flex items-center gap-2"><Cpu className="w-4 h-4 text-[#6C2BD9]" /> Auto Discovery</h3>
@@ -965,6 +1059,7 @@ export function AssetForm() {
           </select>
         </div>
       </div>
+      {renderCategoryDepreciation()}
     </div>
   );
 
@@ -2068,11 +2163,14 @@ export function AssetForm() {
                     <label className="font-bold text-slate-700 block mb-1">Category *</label>
                     <select
                       value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                      onChange={(e) => {
+                        const selectedCat = categories.find(category => category.name === e.target.value);
+                        setFormData({ ...formData, category: e.target.value, categoryId: selectedCat?.id || '' });
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
-                      <option value="Laptop">Laptop</option>
-                      <option value="Mobile Device">Mobile Device</option>
+                      <option value="">Select Category</option>
+                      {categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
                     </select>
                   </div>
                   <div>
@@ -2493,36 +2591,21 @@ export function AssetForm() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Depreciation Method</label>
-                    <select
-                      value={formData.depreciationMethod}
-                      onChange={(e) => setFormData({ ...formData, depreciationMethod: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none text-[11px]"
-                    >
-                      <option value="Straight Line">Straight Line</option>
-                    </select>
-                  </div>
+                    <div>
+                      <label className="font-bold text-slate-700 block mb-1">Depreciation Method</label>
+                      <p className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold text-[11px]">Straight Line (Category Policy)</p>
+                    </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Useful Life (Years)</label>
-                    <input
-                      type="number"
-                      value={formData.usefulLifeYears}
-                      onChange={(e) => setFormData({ ...formData, usefulLifeYears: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none text-[11px]"
-                    />
+                      <p className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold text-[11px]">{(categoryUsefulLifeMonths / 12).toFixed(1)}</p>
                   </div>
                 </div>
 
                 <div className="space-y-1 text-xs">
                   <label className="font-bold text-slate-700 block">Residual Value</label>
-                  <input
-                    type="text"
-                    value={formData.residualValue}
-                    onChange={(e) => setFormData({ ...formData, residualValue: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none text-[11px]"
-                  />
+                  <p className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold text-[11px]">{categoryResidualPercent}% of acquisition value</p>
                 </div>
+                {renderCategoryDepreciation()}
               </div>
             </div>
 
@@ -2648,68 +2731,7 @@ export function AssetForm() {
                   </button>
                 </div>
 
-                <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Maintenance Type</label>
-                  <select
-                    value={formData.maintenanceType}
-                    onChange={(e) => setFormData({ ...formData, maintenanceType: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                  >
-                    <option value="">Select type</option><option value="Preventive">Preventive</option><option value="Corrective">Corrective</option>
-                  </select>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Frequency</label>
-                    <select
-                      value={formData.frequency}
-                      onChange={(e) => setFormData({ ...formData, frequency: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    >
-                      <option value="">Select frequency</option><option value="Monthly">Monthly</option><option value="Quarterly">Quarterly</option><option value="Yearly">Yearly</option><option value="Custom">Custom</option>
-                    </select>
-                  </div>
-                  {formData.frequency === 'Custom' && <div>
-                    <label className="font-bold text-slate-700 block mb-1">Interval (Months)</label>
-                    <input
-                      type="number"
-                      value={formData.intervalMonths}
-                      onChange={(e) => setFormData({ ...formData, intervalMonths: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none text-[11px]"
-                    />
-                  </div>}
-                </div>
-
-                <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">First Due Date</label>
-                  <input
-                    type="date"
-                    value={formData.firstDueDate}
-                    onChange={(e) => setFormData({ ...formData, firstDueDate: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none text-[11px]"
-                  />
-                </div>
-
-                <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Checklist</label>
-                  <select
-                    value={formData.checklist}
-                    onChange={(e) => setFormData({ ...formData, checklist: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                  >
-                    <option value="">Select checklist</option><option value="Laptop PM Checklist">Laptop PM Checklist</option><option value="General PM Checklist">General PM Checklist</option>
-                  </select>
-                </div>
-
-                {/* Next Due Date Box */}
-                <div className="p-3 bg-purple-50 border border-purple-200 rounded-xl flex items-center gap-2.5 text-xs">
-                  <Calendar className="w-5 h-5 text-[#6C2BD9]" />
-                  <div>
-                    <span className="text-[10px] font-bold text-slate-500 uppercase block">Next Due Date</span>
-                    <span className="font-extrabold text-[#6C2BD9] text-sm">{formData.nextDueDate}</span>
-                  </div>
-                </div>
+                {formData.enablePm && renderPreventiveMaintenanceFields(true)}
               </div>
             </div>
 

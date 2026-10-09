@@ -2,6 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import rateLimit from 'express-rate-limit';
+import { isDbConnected } from './config/db.js';
 
 import authRoutes from './modules/auth/auth.routes.js';
 import masterDataRoutes from './modules/master-data/masterData.routes.js';
@@ -50,7 +51,12 @@ app.use(limiter);
 
 // Health check
 app.get('/api/v1/health', (req, res) => {
-  res.json({ status: 'ok', service: 'FAMS API', timestamp: new Date() });
+  res.json({
+    status: 'ok',
+    service: 'FAMS API',
+    database: isDbConnected() ? 'connected' : 'offline',
+    timestamp: new Date()
+  });
 });
 
 // API Routes

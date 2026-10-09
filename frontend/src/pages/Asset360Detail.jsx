@@ -2,7 +2,6 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { AssignCustodianModal } from '../components/modals/AssignCustodianModal';
 import {
   Package,
   DollarSign,
@@ -62,7 +61,6 @@ export function Asset360Detail() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
-  const [isAssignModalOpen, setIsAssignModalOpen] = useState(false);
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -187,11 +185,9 @@ export function Asset360Detail() {
     fetch360();
   }, [id]);
 
-  const handleCustodianAssigned = (updatedAsset) => {
-    setIsAssignModalOpen(false);
-    const identifier = updatedAsset?.assetId || updatedAsset?.id || id;
-    showToast('success', `Custodian updated successfully for asset ${identifier}`);
-    fetch360(true);
+  const openCustodianAssignment = () => {
+    const assetId = data?.asset?.id || id;
+    navigate(`/movements/assign?assetId=${encodeURIComponent(assetId)}`, { state: { assetId } });
   };
 
   const handleQuickStatusChange = async (toStatus) => {
@@ -298,6 +294,16 @@ export function Asset360Detail() {
   const currency = asset.currency || 'USD';
   const acquisitionValue = Number(asset.acquisitionValue) || 0;
   const primaryBook = bookValues && bookValues.length > 0 ? bookValues[0] : null;
+  const bookCost = Number(primaryBook?.capitalizationValue || acquisitionValue);
+  const bookResidual = Number(primaryBook?.residualValue || 0);
+  const bookAnnualRate = Number(primaryBook?.annualDepreciationRatePercent || asset.category?.annualDepreciationRatePercent || 0);
+  const projectedFirstYearDepreciation = primaryBook && bookCost > 0
+    ? Math.min(bookCost - bookResidual, Number((bookAnnualRate > 0
+      ? bookCost * bookAnnualRate / 100
+      : (bookCost - bookResidual) * 12 / (primaryBook.usefulLifeMonths || 60)).toFixed(2)))
+    : 0;
+  const firstDepreciationDate = primaryBook?.capitalizationDate ? new Date(primaryBook.capitalizationDate) : null;
+  if (firstDepreciationDate) firstDepreciationDate.setUTCFullYear(firstDepreciationDate.getUTCFullYear() + 1);
 
   const tagNumber = asset.tagNumber || asset.barcode || asset.qrCode || '—';
   const rfidEpc = asset.rfidEpc || (asset.tagNumber?.startsWith('E28') || asset.tagNumber?.startsWith('E360') ? asset.tagNumber : null);
@@ -340,7 +346,7 @@ export function Asset360Detail() {
             </button>
 
             <button
-              onClick={() => setIsAssignModalOpen(true)}
+              onClick={openCustodianAssignment}
               className="px-3.5 py-1.5 bg-white border border-slate-200 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
               title="Assign or change employee custodian"
             >
@@ -637,7 +643,7 @@ export function Asset360Detail() {
             </div>
             <div className="pt-2">
               <button
-                onClick={() => setIsAssignModalOpen(true)}
+                onClick={openCustodianAssignment}
                 className="w-full py-2 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 rounded-xl text-xs font-bold transition-all flex items-center justify-center gap-1.5 cursor-pointer shadow-2xs"
               >
                 <User className="w-3.5 h-3.5" /> {hasCustodian ? 'Change / Edit Custodian Details' : 'Assign Custodian'}
@@ -732,10 +738,20 @@ export function Asset360Detail() {
                 {primaryBook?.usefulLifeMonths ? `${primaryBook.usefulLifeMonths} Months` : '—'}
               </span>
               <span className="text-[11px] text-slate-400 block">
-                {primaryBook?.usefulLifeMonths ? `${(primaryBook.usefulLifeMonths / 12).toFixed(1)} Years Schedule` : 'Unscheduled'}
+                {primaryBook?.annualDepreciationRatePercent
+                  ? `${Number(primaryBook.annualDepreciationRatePercent)}% annually · ${categoryName || 'Category'}`
+                  : primaryBook?.usefulLifeMonths ? `${(primaryBook.usefulLifeMonths / 12).toFixed(1)} Years Schedule` : 'Unscheduled'}
               </span>
             </div>
           </div>
+
+          {primaryBook && bookCost > 0 && (
+            <div className="rounded-2xl border border-purple-200 bg-purple-50 p-4 text-xs text-slate-700">
+              <p className="font-bold text-slate-900">{categoryName || 'Asset'} depreciation preview · {bookAnnualRate > 0 ? `${bookAnnualRate}% annually` : 'Straight line'}</p>
+              <p className="mt-1">Before first anniversary: <strong>{currency} 0</strong> · First annual depreciation: <strong>{currency} {projectedFirstYearDepreciation.toLocaleString()}</strong> · Value after first anniversary: <strong>{currency} {(bookCost - projectedFirstYearDepreciation).toLocaleString()}</strong></p>
+              <p className="mt-1 text-slate-500">First due {firstDepreciationDate ? firstDepreciationDate.toLocaleDateString('en-GB', { timeZone: 'UTC' }) : 'after one full year'}. Posted depreciation appears in the book values above.</p>
+            </div>
+          )}
 
           {/* Book Value Schedules Table */}
           <div className="bg-white border border-slate-200 rounded-3xl p-6 shadow-sm space-y-4">
@@ -1424,15 +1440,6 @@ export function Asset360Detail() {
         </div>
       )}
 
-      {/* Assign / Change Custodian Modal */}
-      {isAssignModalOpen && (
-        <AssignCustodianModal
-          isOpen={isAssignModalOpen}
-          onClose={() => setIsAssignModalOpen(false)}
-          asset={asset}
-          onAssigned={handleCustodianAssigned}
-        />
-      )}
     </div>
   );
 }

@@ -15,6 +15,97 @@ function isCategoryMatch(c, catName) {
   );
 }
 
+const filled = value => String(value ?? '').trim();
+const isYes = value => ['yes', 'true', '1', 'on'].includes(filled(value).toLowerCase());
+const validDate = value => !value || !Number.isNaN(Date.parse(value));
+const findMaster = (list, value, keys = ['name', 'code']) => list.find(item =>
+  keys.some(key => filled(item[key]).toLowerCase() === filled(value).toLowerCase()));
+
+const extraRegistrationFields = [
+  'assetType','subcategory','quantity','description','assetGroup','assetClass','brand','modelNumber',
+  'businessUnit','storageArea','alternateCustodian','expectedUser','assetBook','depreciationMethod',
+  'usefulLifeYears','residualValue','project','reference','notes','costAllocation',
+  'businessApplication','remarks','tagType','tagStatus','approvalRequired','approvalStatus'
+];
+
+async function saveRegistrationDetails(asset, row, category, userId) {
+  const assetId = asset.id;
+  if (isYes(row.underWarranty)) {
+    await prisma.warranty.upsert({ where: { assetId }, create: {
+      assetId, providerName: filled(row.provider || row.manufacturer) || null,
+      warrantyNumber: filled(row.contractReference) || `WAR-${asset.assetId}`,
+      startDate: new Date(row.warrantyStartDate), endDate: new Date(row.warrantyEndDate),
+      terms: filled(row.coverage) || null, coverageType: filled(row.warrantyType) || 'FULL'
+    }, update: {
+      providerName: filled(row.provider || row.manufacturer) || null,
+      startDate: new Date(row.warrantyStartDate), endDate: new Date(row.warrantyEndDate),
+      terms: filled(row.coverage) || null, coverageType: filled(row.warrantyType) || 'FULL'
+    } });
+  }
+  if (isYes(row.enablePm)) {
+    const scheduleData = {
+      title: filled(row.pmTitle), description: filled(row.pmDescription) || null,
+      workType: filled(row.pmWorkType) || 'PREVENTIVE',
+      frequencyMonths: Number(row.pmFrequencyMonths), nextDueDate: new Date(row.pmNextDueDate),
+      active: row.pmActive === '' || row.pmActive == null ? true : isYes(row.pmActive),
+      autoGenerateWorkOrders: isYes(row.pmAutoGenerateWorkOrders),
+      advanceDays: row.pmAdvanceDays === '' || row.pmAdvanceDays == null ? 7 : Number(row.pmAdvanceDays),
+      checklistJson: JSON.stringify(filled(row.pmChecklistText).split(/\r?\n|;/).map(x => x.trim()).filter(Boolean))
+    };
+    const schedule = await prisma.maintenanceSchedule.findFirst({ where: { assetId }, orderBy: { createdAt: 'asc' } });
+    if (schedule) await prisma.maintenanceSchedule.update({ where: { id: schedule.id }, data: scheduleData });
+    else await prisma.maintenanceSchedule.create({ data: { assetId, ...scheduleData } });
+  }
+  if (filled(row.hostname || row.ipAddress || row.macAddress || row.discoveredSerial)) {
+    const observation = row.discoveryId
+      ? await prisma.discoveryObservation.findUnique({ where: { id: row.discoveryId } })
+      : await prisma.discoveryObservation.create({ data: {
+        discoverySource: filled(row.discoverySource) || 'MANUAL_ENTRY',
+        hostname: filled(row.hostname) || null, ipAddress: filled(row.ipAddress) || null,
+        macAddress: filled(row.macAddress) || null, serialNumber: filled(row.discoveredSerial) || null,
+        firstSeen: row.firstSeen ? new Date(row.firstSeen) : new Date(),
+        lastSeen: row.lastSeen ? new Date(row.lastSeen) : new Date()
+      } });
+    if (observation) {
+      await prisma.asset.update({ where: { id: assetId }, data: { discoveryId: observation.id } });
+      const match = await prisma.discoveryMatch.findFirst({ where: { matchedAssetId: assetId, observationId: observation.id } });
+      if (!match) await prisma.discoveryMatch.create({ data: {
+        observationId: observation.id, matchedAssetId: assetId,
+        confidenceScore: row.discoveryId ? 100 : 0,
+        matchRule: row.discoveryId ? 'USER_SELECTED' : 'MANUAL_ENTRY',
+        status: 'CONFIRMED', reviewedByUserId: userId, reviewedAt: new Date()
+      } });
+    }
+  }
+  const valueFields = extraRegistrationFields.filter(key => filled(row[key]));
+  for (const key of valueFields) {
+    const name = `BULK_REG_${key}`;
+    const definition = await prisma.customFieldDefinition.upsert({ where: { name },
+      create: { name, label: key.replace(/([A-Z])/g, ' $1').trim(), fieldType: 'TEXT' }, update: {} });
+    await prisma.assetCustomFieldValue.upsert({
+      where: { assetId_customFieldDefId: { assetId, customFieldDefId: definition.id } },
+      create: { assetId, customFieldDefId: definition.id, textValue: filled(row[key]) },
+      update: { textValue: filled(row[key]) }
+    });
+  }
+  const book = await prisma.assetBookValue.findFirst({ where: { assetId, bookType: 'CORPORATE' } });
+  const value = Number(asset.acquisitionValue);
+  if (value > 0) {
+    const categoryRate = Number(category.annualDepreciationRatePercent || 0);
+    const bookData = {
+      capitalizationDate: asset.inServiceDate || asset.purchaseDate || new Date(),
+      capitalizationValue: value,
+      usefulLifeMonths: categoryRate > 0 ? Math.round(1200 / categoryRate) : (category.defaultUsefulLifeMonths || 60),
+      depreciationMethod: category.depreciationMethod || 'STRAIGHT_LINE',
+      annualDepreciationRatePercent: categoryRate || null,
+      residualValue: value * Number(category.defaultResidualValuePercent || 0) / 100,
+      netBookValue: value
+    };
+    if (book) await prisma.assetBookValue.update({ where: { id: book.id }, data: bookData });
+    else await prisma.assetBookValue.create({ data: { assetId, bookType: 'CORPORATE', ...bookData, accumulatedDepreciation: 0 } });
+  }
+}
+
 /**
  * Validate Bulk Import Records (Pre-upload validation)
  */
@@ -50,47 +141,39 @@ export async function validateBulkImport(req, res, next) {
       const name = row.assetName || row.name || row.Description || row.description || '';
       const category = String(row.category || row.Category || '').trim();
       const serialNumber = row.serialNumber || row.SerialNumber || row['Serial Number'] || '';
-      const location = String(row.location || row.Location || row.site || '').trim();
+      const location = String(row.site || row.location || row.Location || '').trim();
       const custodian = row.custodian || row.Custodian || '';
-      const rawCost = row.acquisitionValue || row['Acquisition Value'] || row.acquisitionCost || row.cost || 0;
+      const rawCost = row.acquisitionCost || row.acquisitionValue || row['Acquisition Value'] || row.purchaseCost || row.cost || 0;
       const currency = row.currency || row.Currency || 'USD';
 
-      // Validation logic
-      if (!name || name.trim() === '') {
-        status = 'Error';
-        remarks = 'Asset Name / Description is required';
-        errorCount++;
-      } else if (!category || !categories.some(c => isCategoryMatch(c, category))) {
-        status = 'Error'; remarks = 'Category not found in master data'; errorCount++;
-      } else if (location === 'Invalid' || location === 'Unknown') {
-        status = 'Error';
-        remarks = 'Invalid location reference';
-        errorCount++;
-      } else if (location && location !== '-' && location !== 'Unassigned' && !sites.some(site => site.name.toLowerCase() === location.toLowerCase() || site.name.toLowerCase().includes(location.toLowerCase()) || location.toLowerCase().includes(site.name.toLowerCase()) || site.code.toLowerCase() === location.toLowerCase())) {
-        status = 'Error'; remarks = 'Site not found in master data'; errorCount++;
-      } else if (row.assetId && seenBatchIds.has(row.assetId)) {
-        status = 'Error'; remarks = 'Duplicate Asset ID within the same upload batch'; errorCount++;
-      } else if (!serialNumber && (category === 'Laptop' || category === 'Mobile Device' || category === 'Server')) {
-        status = 'Error';
-        remarks = 'Serial number is required for serialized category';
-        errorCount++;
-      } else if (serialNumber && seenBatchSerials.has(serialNumber)) {
-        status = 'Error';
-        remarks = `Duplicate serial number [${serialNumber}] within the same upload batch`;
-        errorCount++;
-      } else if (custodian && !employees.some((e) => e.fullName.toLowerCase().includes(custodian.toLowerCase()))) {
-        status = 'Warning';
-        remarks = `Custodian [${custodian}] not found. Will be unassigned.`;
-        warningCount++;
-      } else if (serialNumber && existingSerials.has(serialNumber)) {
-        status = 'Warning';
-        remarks = `Existing Serial Number [${serialNumber}]. Record will update existing master.`;
-        warningCount++;
-      } else {
-        status = 'Valid';
-        remarks = '-';
-        validCount++;
+      const errors = [];
+      const warnings = [];
+      if (!filled(name)) errors.push('Asset Name is required');
+      if (!category || !categories.some(c => isCategoryMatch(c, category))) errors.push('Category not found in master data');
+      if (location && !findMaster(sites, location)) errors.push('Site not found in master data');
+      if (row.assetId && seenBatchIds.has(assetId)) errors.push('Duplicate Asset ID in upload');
+      if (!serialNumber && ['laptop', 'mobile device', 'server'].includes(category.toLowerCase())) errors.push('Serial number is required for this category');
+      if (serialNumber && seenBatchSerials.has(serialNumber)) errors.push('Duplicate serial number in upload');
+      if (rawCost !== '' && rawCost != null && (!Number.isFinite(Number(rawCost)) || Number(rawCost) < 0)) errors.push('Acquisition Cost must be a nonnegative number');
+      if (row.quantity && (!Number.isInteger(Number(row.quantity)) || Number(row.quantity) !== 1)) errors.push('Each asset row must have Quantity 1');
+      for (const key of ['acquisitionDate','purchaseDate','warrantyStartDate','warrantyEndDate','pmNextDueDate','firstSeen','lastSeen']) {
+        if (!validDate(row[key])) errors.push(`${key} must be a valid date`);
       }
+      if (isYes(row.underWarranty) && (!row.warrantyStartDate || !row.warrantyEndDate)) errors.push('Warranty start and end dates are required');
+      if (row.warrantyStartDate && row.warrantyEndDate && Date.parse(row.warrantyEndDate) < Date.parse(row.warrantyStartDate)) errors.push('Warranty end date precedes start date');
+      if (isYes(row.enablePm)) {
+        if (!filled(row.pmTitle) || !row.pmNextDueDate) errors.push('PM Title and Next Due Date are required');
+        if (!Number.isInteger(Number(row.pmFrequencyMonths)) || Number(row.pmFrequencyMonths) < 1 || Number(row.pmFrequencyMonths) > 120) errors.push('PM Frequency Months must be 1–120');
+        if (row.pmAdvanceDays && (!Number.isInteger(Number(row.pmAdvanceDays)) || Number(row.pmAdvanceDays) < 0 || Number(row.pmAdvanceDays) > 90)) errors.push('PM Advance Days must be 0–90');
+      }
+      if (custodian && !findMaster(employees, custodian, ['id', 'fullName', 'employeeCode'])) warnings.push(`Custodian [${custodian}] not found; asset will be unassigned`);
+      if (serialNumber && existingSerials.has(serialNumber)) warnings.push(`Existing serial [${serialNumber}] will update its asset`);
+      if (existingAssetIds.has(assetId)) warnings.push(`Existing Asset ID [${assetId}] will update its asset`);
+      status = errors.length ? 'Error' : warnings.length ? 'Warning' : 'Valid';
+      remarks = [...errors, ...warnings].join('; ') || '-';
+      if (status === 'Error') errorCount++;
+      else if (status === 'Warning') warningCount++;
+      else validCount++;
 
       seenBatchIds.add(assetId);
       if (serialNumber) {
@@ -98,6 +181,7 @@ export async function validateBulkImport(req, res, next) {
       }
 
       records.push({
+        ...row,
         row: rowNum,
         status,
         assetId,
@@ -108,7 +192,8 @@ export async function validateBulkImport(req, res, next) {
         custodian,
         acquisitionValue: Number(rawCost) || 0,
         currency,
-        condition: row.condition || 'Good',
+        assetStatus: row.assetStatus || row.lifecycleStatus || 'IN_SERVICE',
+        condition: row.condition || 'NEW',
         remarks
       });
     }
@@ -154,15 +239,15 @@ export async function submitBulkImport(req, res, next) {
     const finalFileName = fileName || 'Unknown file';
 
     // Fetch master defaults
-    const [defaultCompany, defaultSite, defaultCategory, categories, sites, employees, manufacturers] =
+    const [defaultCompany, defaultSite, categories, sites, employees, manufacturers, companies, departments, costCenters, buildings, floors, rooms, zones] =
       await Promise.all([
         prisma.company.findFirst({ where: { active: true } }),
         prisma.site.findFirst({ where: { active: true } }),
-        prisma.category.findFirst({ where: { active: true } }),
         prisma.category.findMany(),
         prisma.site.findMany(),
-        prisma.employee.findMany(),
-        prisma.manufacturer.findMany()
+        prisma.employee.findMany(), prisma.manufacturer.findMany(), prisma.company.findMany(),
+        prisma.department.findMany(), prisma.costCenter.findMany(), prisma.building.findMany(),
+        prisma.floor.findMany(), prisma.room.findMany(), prisma.zone.findMany()
       ]);
 
     if (!defaultCompany) return res.status(400).json({ success: false, message: 'An active company is required before importing assets.' });
@@ -188,13 +273,10 @@ export async function submitBulkImport(req, res, next) {
         }
         let assetId = String(row.assetId || row.AssetID || '').trim() || `AST-BLK-${Date.now()}-${row.row || i + 1}`;
         if (!desc || !row.category) throw new Error('Asset name and category are required.');
-        let tagNumber = row.tagNumber || `TAG-${assetId}`;
-        const existingTag = await prisma.asset.findFirst({ where: { tagNumber } });
-        if (existingTag) {
-          tagNumber = `TAG-${assetId}-${Date.now().toString().slice(-4)}`;
-        }
-        const rawAcq = row.acquisitionValue || row.acquisitionCost || row['Acquisition Value'] || 0;
-        const acqValue = typeof rawAcq === 'string' ? parseFloat(rawAcq.replace(/[^0-9.-]+/g, '')) || 0 : Number(rawAcq) || 0;
+        const tagNumber = filled(row.assetTagBarcode || row.tagNumber) || null;
+        const rawAcq = row.acquisitionCost || row.acquisitionValue || row.purchaseCost || 0;
+        const acqValue = Number(rawAcq);
+        if (!Number.isFinite(acqValue) || acqValue < 0) throw new Error('Acquisition cost must be a nonnegative number.');
         const currency = row.currency || 'USD';
 
         // Resolve Category
@@ -203,15 +285,12 @@ export async function submitBulkImport(req, res, next) {
         if (rowCatName) {
           matchedCat = categories.find((c) => isCategoryMatch(c, rowCatName));
         }
-        if (!matchedCat) {
-          matchedCat = defaultCategory || categories[0];
-        }
         if (!matchedCat) throw new Error('Category not found in master data.');
         const categoryId = matchedCat.id;
 
         // Resolve Site
         let matchedSite = null;
-        const rowLoc = row.location || row.Location || row.site;
+        const rowLoc = row.site || row.location || row.Location;
         if (rowLoc) {
           matchedSite = sites.find(
             (s) =>
@@ -221,9 +300,7 @@ export async function submitBulkImport(req, res, next) {
               s.code.toLowerCase() === rowLoc.toLowerCase()
           );
         }
-        if (!matchedSite) {
-          matchedSite = defaultSite || sites[0];
-        }
+        if (!matchedSite && !rowLoc) matchedSite = defaultSite || sites[0];
         if (!matchedSite) throw new Error('Site not found in master data.');
         const siteId = matchedSite.id;
 
@@ -240,11 +317,42 @@ export async function submitBulkImport(req, res, next) {
         }
 
         // Map status and condition
-        let lifecycleStatus = 'IN_SERVICE';
-        if (row.status === 'Under Maintenance') lifecycleStatus = 'UNDER_MAINTENANCE';
-        else if (row.status === 'In Store') lifecycleStatus = 'IN_STORE';
+        const statusValue = filled(row.assetStatus || row.lifecycleStatus || 'IN_SERVICE').toUpperCase().replaceAll(' ', '_');
+        const lifecycleStatus = ({ NEW: 'IN_SERVICE', ACTIVE: 'IN_SERVICE' })[statusValue] || statusValue;
 
-        const condition = row.condition ? String(row.condition).toUpperCase() : 'GOOD';
+        const condition = row.condition ? String(row.condition).toUpperCase() : 'NEW';
+        const company = row.company ? findMaster(companies, row.company, ['id','name','code']) : defaultCompany;
+        if (!company) throw new Error('Company not found in master data.');
+        const resolve = (list, value) => value ? findMaster(list, value, ['id','name','code'])?.id : null;
+        const departmentId = resolve(departments, row.department);
+        const costCenterId = resolve(costCenters, row.costCenter);
+        const buildingId = resolve(buildings, row.building);
+        const floorId = resolve(floors, row.floor);
+        const roomId = resolve(rooms, row.room);
+        const zoneId = resolve(zones, row.zoneArea);
+        const manufacturerName = filled(row.manufacturer || row.brand);
+        let manufacturer = manufacturerName ? findMaster(manufacturers, manufacturerName, ['id','name']) : null;
+        if (manufacturerName && !manufacturer) manufacturer = await prisma.manufacturer.create({ data: { name: manufacturerName } });
+        const modelName = filled(row.model || row.modelNumber);
+        let assetModel = modelName ? await prisma.assetModel.findFirst({ where: { OR: [{ name: modelName }, { modelNumber: modelName }] } }) : null;
+        if (modelName && !assetModel && manufacturer) assetModel = await prisma.assetModel.create({ data: { name: modelName, modelNumber: filled(row.modelNumber) || modelName, manufacturerId: manufacturer.id, categoryId } });
+        const assetFields = {
+          description: desc, categoryId, companyId: company.id, siteId,
+          buildingId, floorId, roomId, zoneId, departmentId, costCenterId, custodianId,
+          manufacturerId: manufacturer?.id || null, modelId: assetModel?.id || null,
+          serialNumber: rawSerial || null, tagNumber,
+          barcode: tagNumber, qrCode: tagNumber, rfidEpc: filled(row.rfidEpc) || null,
+          rfidTid: filled(row.tid) || null, lifecycleStatus,
+          condition: ['GOOD','FAIR','DAMAGED','NEW','RETIRED'].includes(condition) ? condition : 'NEW',
+          criticality: filled(row.criticality || 'MEDIUM').toUpperCase(),
+          acquisitionValue: acqValue, currency,
+          poNumber: filled(row.poInvoiceNo) || null,
+          supplierName: filled(row.supplier || row.vendorSupplier) || null,
+          purchaseDate: row.purchaseDate ? new Date(row.purchaseDate) : row.acquisitionDate ? new Date(row.acquisitionDate) : null,
+          inServiceDate: row.acquisitionDate ? new Date(row.acquisitionDate) : null,
+          hostname: filled(row.hostname) || null, ipAddress: filled(row.ipAddress) || null,
+          macAddress: filled(row.macAddress) || null, updatedByUserId: finalUserId
+        };
 
         // Check if asset already exists by serialNumber or assetId
         let existingAsset = null;
@@ -259,17 +367,8 @@ export async function submitBulkImport(req, res, next) {
           // Update existing asset
           const updated = await prisma.asset.update({
             where: { id: existingAsset.id },
-            data: {
-              description: desc,
-              categoryId: categoryId || existingAsset.categoryId,
-              siteId: siteId || existingAsset.siteId,
-              custodianId: custodianId || existingAsset.custodianId,
-              condition: ['GOOD', 'FAIR', 'DAMAGED', 'NEW'].includes(condition) ? condition : existingAsset.condition,
-              lifecycleStatus,
-              acquisitionValue: acqValue || existingAsset.acquisitionValue,
-              currency,
-              updatedByUserId: finalUserId
-            }
+            data: { ...assetFields, tagNumber: tagNumber || existingAsset.tagNumber,
+              barcode: tagNumber || existingAsset.barcode, qrCode: tagNumber || existingAsset.qrCode }
           });
 
           await prisma.assetTransaction.create({
@@ -283,47 +382,16 @@ export async function submitBulkImport(req, res, next) {
             }
           });
 
+          await saveRegistrationDetails(updated, row, matchedCat, finalUserId);
           updatedCount++;
           processedAssetIds.push(updated.assetId);
         } else {
           // Create new asset
           const newAsset = await prisma.asset.create({
-            data: {
-              assetId,
-              description: desc,
-              categoryId,
-              companyId,
-              siteId,
-              custodianId,
-              serialNumber: rawSerial || `SN-${assetId}`,
-              tagNumber,
-              barcode: tagNumber,
-              qrCode: tagNumber,
-              lifecycleStatus,
-              condition: ['GOOD', 'FAIR', 'DAMAGED', 'NEW'].includes(condition) ? condition : 'NEW',
-              criticality: 'MEDIUM',
-              acquisitionValue: acqValue,
-              currency,
-              createdByUserId: finalUserId,
-              updatedByUserId: finalUserId
-            }
+            data: { assetId, ...assetFields, createdByUserId: finalUserId }
           });
 
-          // Corporate Book Value with netBookValue
-          if (acqValue > 0) {
-            await prisma.assetBookValue.create({
-              data: {
-                assetId: newAsset.id,
-                bookType: 'CORPORATE',
-                capitalizationDate: new Date(),
-                capitalizationValue: acqValue,
-                usefulLifeMonths: 48,
-                residualValue: parseFloat((acqValue * 0.1).toFixed(2)),
-                accumulatedDepreciation: 0,
-                netBookValue: acqValue
-              }
-            });
-          }
+          await saveRegistrationDetails(newAsset, row, matchedCat, finalUserId);
 
           // Initial Registration Transaction
           await prisma.assetTransaction.create({

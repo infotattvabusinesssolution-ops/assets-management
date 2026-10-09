@@ -3,8 +3,6 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
-import { LocationTransferModal } from '../components/modals/LocationTransferModal';
-import { AssignCustodianModal } from '../components/modals/AssignCustodianModal';
 import {
   Package,
   Plus,
@@ -95,10 +93,6 @@ export function AssetList() {
   // Disposal Request Modal
   const [disposalRequestAsset, setDisposalRequestAsset] = useState(null);
   const [disposalReason, setDisposalReason] = useState('Obsolescence / End of Useful Life');
-
-  // Quick Transfer / Custody Modal
-  const [transferModalAsset, setTransferModalAsset] = useState(null);
-  const [assignModalAsset, setAssignModalAsset] = useState(null);
 
   // Filters State
   const [search, setSearch] = useState(initialSearchParam);
@@ -1130,7 +1124,7 @@ export function AssetList() {
                                       e.stopPropagation();
                                       e.preventDefault();
                                       setOpenActionMenuId(null);
-                                      setAssignModalAsset(asset);
+                                      navigate(`/movements/assign?assetId=${encodeURIComponent(asset.id)}`, { state: { assetId: asset.id } });
                                     }}
                                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
                                   >
@@ -1143,7 +1137,7 @@ export function AssetList() {
                                       e.stopPropagation();
                                       e.preventDefault();
                                       setOpenActionMenuId(null);
-                                      setTransferModalAsset(asset);
+                                      navigate(`/movements/transfer?assetId=${encodeURIComponent(asset.id)}`, { state: { assetId: asset.id } });
                                     }}
                                     className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-xl transition-all cursor-pointer"
                                   >
@@ -1311,7 +1305,7 @@ export function AssetList() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setAssignModalAsset(selectedAsset);
+                      navigate(`/movements/assign?assetId=${encodeURIComponent(selectedAsset.id)}`, { state: { assetId: selectedAsset.id } });
                     }}
                     className="px-2.5 py-1 bg-white hover:bg-purple-50 text-slate-700 border border-slate-200 hover:border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
                     title="Assign to Custodian"
@@ -1323,7 +1317,7 @@ export function AssetList() {
                     type="button"
                     onClick={(e) => {
                       e.stopPropagation();
-                      setTransferModalAsset(selectedAsset);
+                      navigate(`/movements/transfer?assetId=${encodeURIComponent(selectedAsset.id)}`, { state: { assetId: selectedAsset.id } });
                     }}
                     className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] border border-purple-200 text-[11px] font-bold rounded-lg shadow-2xs cursor-pointer flex items-center gap-1 transition-colors"
                     title="Transfer Location / Site"
@@ -1784,39 +1778,6 @@ export function AssetList() {
         </div>
       )}
 
-      {/* Quick Transfer & Custody Modal */}
-      {transferModalAsset && (
-        <LocationTransferModal
-          onClose={() => setTransferModalAsset(null)}
-          asset={transferModalAsset}
-          onCompleted={() => {
-            showToast('success', 'Asset location transferred successfully.');
-            fetchAssets();
-          }}
-        />
-      )}
-
-      {/* Quick Assign Custodian Modal */}
-      {assignModalAsset && (
-        <AssignCustodianModal
-          isOpen={Boolean(assignModalAsset)}
-          onClose={() => setAssignModalAsset(null)}
-          asset={assignModalAsset}
-          onAssigned={(updated) => {
-            const isUnassign = updated.custodianName === 'Unassigned' || !updated.custodianId;
-            showToast('success', isUnassign
-              ? `Custodian removed from asset ${updated.assetId || updated.name}.`
-              : `Asset ${updated.assetId || updated.name} assigned to ${updated.custodianName || 'custodian'} successfully!`
-            );
-            const targetStatus = updated.lifecycleStatus;
-            setAssets(prev => prev.map(a => (a.id === updated.id || a.assetId === updated.assetId) ? { ...a, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: targetStatus } : a));
-            if (selectedAsset && (selectedAsset.id === updated.id || selectedAsset.assetId === updated.assetId)) {
-              setSelectedAsset(prev => ({ ...prev, custodianName: updated.custodianName, custodianId: updated.custodianId, lifecycleStatus: targetStatus }));
-            }
-            fetchAssets();
-          }}
-        />
-      )}
     </div>
   );
 }

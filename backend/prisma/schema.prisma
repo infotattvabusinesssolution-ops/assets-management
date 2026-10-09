@@ -213,6 +213,7 @@ model Category {
   name                        String
   description                 String?
   depreciationMethod          String             @default("STRAIGHT_LINE")
+  annualDepreciationRatePercent Decimal?           @db.Decimal(5, 2)
   defaultUsefulLifeMonths     Int                @default(60)
   defaultResidualValuePercent Decimal            @default(0) @db.Decimal(5, 2)
   isSerialized                Boolean            @default(true)
@@ -646,6 +647,7 @@ model AssetBookValue {
   capitalizationValue     Decimal            @db.Decimal(18, 2)
   usefulLifeMonths        Int
   depreciationMethod      String             @default("STRAIGHT_LINE")
+  annualDepreciationRatePercent Decimal?       @db.Decimal(5, 2)
   residualValue           Decimal            @default(0) @db.Decimal(18, 2)
   accumulatedDepreciation Decimal            @default(0) @db.Decimal(18, 2)
   netBookValue            Decimal            @db.Decimal(18, 2)

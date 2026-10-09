@@ -198,6 +198,51 @@ export async function createCategory(req, res, next) {
   } catch (err) { next(err); }
 }
 
+export async function getDepreciationPolicies(req, res, next) {
+  try {
+    const categories = await prisma.category.findMany({
+      orderBy: { name: 'asc' },
+      select: {
+        id: true, code: true, name: true, active: true,
+        depreciationMethod: true, annualDepreciationRatePercent: true,
+        defaultUsefulLifeMonths: true, defaultResidualValuePercent: true
+      }
+    });
+    res.json({ success: true, categories });
+  } catch (err) { next(err); }
+}
+
+export async function updateDepreciationPolicy(req, res, next) {
+  try {
+    const rate = Number(req.body.annualDepreciationRatePercent);
+    const life = rate > 0 ? Math.round(1200 / rate) : 0;
+    const residual = Number(req.body.defaultResidualValuePercent);
+    if (!Number.isFinite(rate) || rate < 1 || rate > 100 ||
+        !Number.isFinite(residual) || residual < 0 || residual >= 100) {
+      return res.status(400).json({ success: false, message: 'Enter an annual rate from 1% to 100% and a residual percentage from 0% to below 100%.' });
+    }
+    const category = await prisma.category.findUnique({ where: { id: req.params.id } });
+    if (!category) return res.status(404).json({ success: false, message: 'Category not found.' });
+    const { updated, booksUpdated } = await prisma.$transaction(async (tx) => {
+      const updated = await tx.category.update({
+        where: { id: category.id },
+        data: {
+          depreciationMethod: 'STRAIGHT_LINE',
+          annualDepreciationRatePercent: rate,
+          defaultUsefulLifeMonths: life,
+          defaultResidualValuePercent: residual
+        }
+      });
+      const booksUpdated = await tx.assetBookValue.updateMany({
+        where: { asset: { categoryId: category.id }, isLocked: false },
+        data: { annualDepreciationRatePercent: rate, usefulLifeMonths: life }
+      });
+      return { updated, booksUpdated: booksUpdated.count };
+    });
+    res.json({ success: true, category: updated, booksUpdated });
+  } catch (err) { next(err); }
+}
+
 export async function getManufacturers(req, res, next) {
   try {
     const where = req.query.includeInactive === 'true' ? {} : { active: true };

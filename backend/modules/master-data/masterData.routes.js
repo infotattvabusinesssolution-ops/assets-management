@@ -6,7 +6,7 @@ import {
   getBuildings, createBuilding,
   getFloors, createFloor,
   getRooms, createRoom,
-  getCategories, createCategory,
+  getCategories, createCategory, getDepreciationPolicies, updateDepreciationPolicy,
   getManufacturers, createManufacturer,
   getModels, createModel,
   getDepartments, createDepartment,
@@ -42,6 +42,8 @@ router.post('/rooms', createRoom);
 
 router.get('/categories', getCategories);
 router.post('/categories', createCategory);
+router.get('/depreciation-policies', getDepreciationPolicies);
+router.put('/depreciation-policies/:id', updateDepreciationPolicy);
 
 router.get('/manufacturers', getManufacturers);
 router.post('/manufacturers', createManufacturer);

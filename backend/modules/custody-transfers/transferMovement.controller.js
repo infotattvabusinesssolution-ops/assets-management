@@ -5,6 +5,7 @@
  * and immutable movement history auditing.
  */
 import * as service from './transferMovement.service.js';
+import { createTransferRecord, updateTransferRecordStatus } from './transferPersistence.service.js';
 
 export async function getLocationHierarchy(req, res, next) {
   try {
@@ -70,7 +71,7 @@ export async function getTransferById(req, res, next) {
 export async function createTransfer(req, res, next) {
   try {
     const payload = req.body;
-    const transfer = await service.createTransfer(payload, req.user);
+    const transfer = await createTransferRecord(payload, req.user);
     res.status(201).json({
       success: true,
       message: payload.isDraft ? 'Transfer saved as draft' : 'Transfer submitted successfully',
@@ -85,7 +86,7 @@ export async function updateTransferStatus(req, res, next) {
   try {
     const { id } = req.params;
     const actionPayload = req.body;
-    const updatedTransfer = await service.updateTransferStatus(id, actionPayload, req.user);
+    const updatedTransfer = await updateTransferRecordStatus(id, actionPayload, req.user);
     res.json({
       success: true,
       message: `Transfer status updated successfully to ${updatedTransfer.status}`,

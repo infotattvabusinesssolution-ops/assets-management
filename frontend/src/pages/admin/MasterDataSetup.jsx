@@ -54,6 +54,7 @@ import { DepartmentsTab, INITIAL_DEPARTMENTS } from '../../components/master-dat
 import { CostCentersTab, INITIAL_COST_CENTERS } from '../../components/master-data/CostCentersTab';
 import { SuppliersTab, INITIAL_SUPPLIERS } from '../../components/master-data/SuppliersTab';
 import { GenericMasterTab } from '../../components/master-data/GenericMasterTab';
+import { DepreciationPoliciesTab } from '../../components/master-data/DepreciationPoliciesTab';
 
 export function MasterDataSetup() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -166,6 +167,7 @@ export function MasterDataSetup() {
     { id: 'asset-groups', name: 'Asset Groups', icon: Box },
     { id: 'classes', name: 'Classes', icon: Layers },
     { id: 'categories', name: 'Categories', icon: Tag },
+    { id: 'depreciation', name: 'Depreciation', icon: BarChart3 },
     { id: 'subcategories', name: 'Sub Categories', icon: FolderTree },
     { id: 'locations', name: 'Locations', icon: MapPin },
     { id: 'departments', name: 'Departments', icon: Users },
@@ -226,7 +228,7 @@ export function MasterDataSetup() {
         </div>
 
         {/* Action Buttons Top Right */}
-        <div className="flex items-center gap-2 relative">
+        {activeTab !== 'depreciation' && <div className="flex items-center gap-2 relative">
           {/* Import Dropdown */}
           <div className="relative">
             <button
@@ -386,7 +388,7 @@ export function MasterDataSetup() {
               </div>
             )}
           </div>
-        </div>
+        </div>}
       </div>
 
       {/* Horizontal Master Data Navigation Tabs */}
@@ -473,6 +475,8 @@ export function MasterDataSetup() {
           setShowAuditHistoryModal={setShowAuditHistoryModal}
         />
       )}
+
+      {activeTab === 'depreciation' && <DepreciationPoliciesTab />}
 
       {activeTab === 'subcategories' && (
         <SubCategoriesTab
