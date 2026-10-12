@@ -30,14 +30,19 @@ import {
 import { api } from '../services/api';
 import clsx from 'clsx';
 
-const SEED_MOVEMENTS = [];
+const EMPTY_FILTERS = { assetTypes: [], movementTypes: [], sites: [], departments: [], custodians: [], statuses: [] };
+const EMPTY_KPIS = { totalMovements: 0, completed: 0, inTransit: 0, pendingReceipt: 0, cancelledRejected: 0 };
+const csvCell = value => `"${String(value ?? '').replaceAll('"', '""')}"`;
+const htmlCell = value => String(value ?? '-').replace(/[&<>"']/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[character]);
 
 export function MovementHistory() {
   const navigate = useNavigate();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   // Selected Movement & Drawer Tab
   const [selectedMovementId, setSelectedMovementId] = useState(null);
+  const [movementDetail, setMovementDetail] = useState(null);
+  const [fullTimeline, setFullTimeline] = useState([]);
   const [drawerTab, setDrawerTab] = useState('overview'); // overview | details | assets | workflow | documents
 
   // Filter States
@@ -50,60 +55,63 @@ export function MovementHistory() {
   const [filterDepartment, setFilterDepartment] = useState('All Departments');
   const [filterCustodian, setFilterCustodian] = useState('All');
   const [filterStatus, setFilterStatus] = useState('All');
+  const [appliedFilters, setAppliedFilters] = useState(() => ({ search: searchParams.get('search') || '' }));
+  const [filterOptions, setFilterOptions] = useState(EMPTY_FILTERS);
+  const [error, setError] = useState('');
 
   // Server Data & Pagination State
   const [movements, setMovements] = useState([]);
   const [totalRecords, setTotalRecords] = useState(0);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
-  const [kpis, setKpis] = useState({
-    totalMovements: 0,
-    completed: 0,
-    inTransit: 0,
-    pendingReceipt: 0,
-    cancelledRejected: 0
-  });
+  const [kpis, setKpis] = useState(EMPTY_KPIS);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isFullTimelineModalOpen, setIsFullTimelineModalOpen] = useState(false);
 
-  // Fetch Movement History from API
   useEffect(() => {
-    fetchHistory();
-  }, [currentPage, pageSize]);
+    let cancelled = false;
+    const load = async () => {
+      setIsLoading(true);
+      setError('');
+      try {
+        const res = await api.get('/custody-transfers/history', { params: { ...appliedFilters, page: currentPage, limit: pageSize } });
+        if (cancelled) return;
+        setMovements(res.history || []);
+        setTotalRecords(res.total || 0);
+        setKpis(res.kpis || EMPTY_KPIS);
+        setFilterOptions(res.filters || EMPTY_FILTERS);
+        setSelectedMovementId(previous => (res.history || []).some(row => row.movementId === previous) ? previous : res.history?.[0]?.movementId || null);
+      } catch (e) {
+        if (cancelled) return;
+        setMovements([]);
+        setTotalRecords(0);
+        setKpis(EMPTY_KPIS);
+        setError(e?.message || 'Movement history could not be loaded.');
+      } finally { if (!cancelled) setIsLoading(false); }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [currentPage, pageSize, appliedFilters]);
 
-  const fetchHistory = async () => {
-    setIsLoading(true);
-    try {
-      const params = {
-        search: filterSearch,
-        movementType: filterMovementType,
-        site: filterSite,
-        department: filterDepartment,
-        custodian: filterCustodian,
-        status: filterStatus,
-        fromDate: filterFromDate,
-        toDate: filterToDate,
-        page: currentPage,
-        limit: pageSize
-      };
-      const res = await api.get('/movements/history', { params }).catch(() => null);
-      if (res && res.history) {
-        setMovements(res.history);
-        setTotalRecords(res.total || 24);
-        if (res.kpis) setKpis(res.kpis);
-      }
-    } catch (e) {
-      // Graceful fallback to seeded data
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  useEffect(() => {
+    if (!selectedMovementId) { setMovementDetail(null); return; }
+    let cancelled = false;
+    setMovementDetail(null);
+    api.get(`/custody-transfers/history/${encodeURIComponent(selectedMovementId)}`)
+      .then(res => { if (!cancelled) setMovementDetail(res.movement); })
+      .catch(e => { if (!cancelled) setError(e?.message || 'Movement details could not be loaded.'); });
+    return () => { cancelled = true; };
+  }, [selectedMovementId]);
 
-  const handleSearchClick = () => {
+  const applyFilters = overrides => {
     setCurrentPage(1);
-    fetchHistory();
+    setAppliedFilters({ search: filterSearch, assetType: filterAssetType, movementType: filterMovementType,
+      fromDate: filterFromDate, toDate: filterToDate, site: filterSite, department: filterDepartment,
+      custodian: filterCustodian, status: filterStatus, ...overrides });
   };
+
+  const handleSearchClick = () => applyFilters();
 
   const handleClearFilters = () => {
     setFilterSearch('');
@@ -116,19 +124,42 @@ export function MovementHistory() {
     setFilterCustodian('All');
     setFilterStatus('All');
     setCurrentPage(1);
-    fetchHistory();
+    setAppliedFilters({});
   };
 
   // Find currently selected movement
   const selectedMovement = useMemo(() => {
-    return movements.find(m => m.movementId === selectedMovementId) || movements[0] || { movementId: '-', assetName: '-', assetNumber: '-', documents: [], timeline: [], workflow: [], fromLocation: '-', toLocation: '-', fromCustodian: '-', toCustodian: '-' };
-  }, [movements, selectedMovementId]);
+    const row = movements.find(m => m.movementId === selectedMovementId) || movements[0] || null;
+    return movementDetail?.movementId === row?.movementId ? movementDetail : row;
+  }, [movements, selectedMovementId, movementDetail]);
+
+  const openFullTimeline = async () => {
+    if (!selectedMovement) return;
+    try {
+      setError('');
+      const res = await api.get('/custody-transfers/history', { params: { assetId: selectedMovement.assetId, page: 1, limit: 5000 } });
+      setFullTimeline((res.history || []).flatMap(row => row.timeline || []).sort((a, b) => new Date(b.timestamp) - new Date(a.timestamp)));
+      setIsFullTimelineModalOpen(true);
+    } catch (e) { setError(e?.message || 'Full timeline could not be loaded.'); }
+  };
 
   // Handle Export CSV
-  const handleExport = () => {
+  const handleExport = async () => {
+    try {
+    const exported = [];
+    let page = 1;
+    let total = 0;
+    do {
+      const res = await api.get('/custody-transfers/history', { params: { ...appliedFilters, page, limit: 500 } });
+      const batch = res.history || [];
+      exported.push(...batch);
+      total = res.total || 0;
+      if (!batch.length) break;
+      page += 1;
+    } while (exported.length < total);
     const csvRows = [
       ['Movement ID', 'Asset No', 'Asset Name', 'Movement Type', 'From Location', 'To Location', 'From Custodian', 'To Custodian', 'Movement Date', 'Status'],
-      ...movements.map(m => [
+      ...exported.map(m => [
         m.movementId,
         m.assetNumber,
         m.assetName,
@@ -141,20 +172,41 @@ export function MovementHistory() {
         m.status
       ])
     ];
-    const csvContent = 'data:text/csv;charset=utf-8,' + csvRows.map(e => e.join(',')).join('\n');
-    const encodedUri = encodeURI(csvContent);
+    const csvContent = '\uFEFF' + csvRows.map(row => row.map(csvCell).join(',')).join('\r\n');
+    const encodedUri = URL.createObjectURL(new Blob([csvContent], { type: 'text/csv;charset=utf-8' }));
     const link = document.createElement('a');
     link.setAttribute('href', encodedUri);
     link.setAttribute('download', `movement_history_${Date.now()}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+    URL.revokeObjectURL(encodedUri);
+    } catch (e) { setError(e?.message || 'Export failed.'); }
+  };
+
+  const handlePrint = () => {
+    if (!selectedMovement) return;
+    const printable = window.open('', '_blank');
+    if (!printable) { setError('Allow popups to print the movement report.'); return; }
+    const rows = [
+      ['Movement ID', selectedMovement.movementId], ['Asset No.', selectedMovement.assetNumber],
+      ['Asset Name', selectedMovement.assetName], ['Type', selectedMovement.movementType],
+      ['Status', selectedMovement.status], ['Date', `${selectedMovement.movementDate} ${selectedMovement.movementTime}`],
+      ['From Location', selectedMovement.fromLocation], ['To Location', selectedMovement.toLocation],
+      ['From Custodian', selectedMovement.fromCustodian], ['To Custodian', selectedMovement.toCustodian],
+      ['Reason', selectedMovement.reason], ['Requested By', selectedMovement.requestedBy], ['Approved By', selectedMovement.approvedBy]
+    ];
+    printable.document.write(`<html><head><title>Movement ${htmlCell(selectedMovement.movementId)}</title><style>body{font:14px Arial,sans-serif;padding:32px;color:#1e293b}h1{font-size:22px}table{border-collapse:collapse;width:100%}td{border-bottom:1px solid #ddd;padding:10px}td:first-child{font-weight:bold;width:32%}</style></head><body><h1>Movement Report</h1><table>${rows.map(([label, value]) => `<tr><td>${htmlCell(label)}</td><td>${htmlCell(value)}</td></tr>`).join('')}</table><h2>Audit Timeline</h2><table>${(selectedMovement.timeline || []).map(event => `<tr><td>${htmlCell(`${event.movementDate} ${event.movementTime}`)}</td><td>${htmlCell(`${event.movementType}: ${event.reason || ''} (${event.performedBy})`)}</td></tr>`).join('')}</table></body></html>`);
+    printable.document.close();
+    printable.focus();
+    printable.print();
   };
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-16">
       {/* Container */}
       <div className="max-w-[1580px] mx-auto px-4 sm:px-6 lg:px-8 pt-5 space-y-5">
+        {error && <div role="alert" className="rounded-lg border border-rose-200 bg-rose-50 px-4 py-2 text-xs text-rose-700">{error}</div>}
         {/* Top Header & Breadcrumb matching Screenshot 27 */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
           <div className="space-y-1">
@@ -191,13 +243,13 @@ export function MovementHistory() {
         {/* 5 KPI Summary Cards (per FSD specifications) */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5">
           <div
-            onClick={() => setFilterStatus('All')}
+            onClick={() => { setFilterStatus('All'); applyFilters({ status: 'All' }); }}
             className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-[#6C2BD9] transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">Total Movements</span>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-[#6C2BD9] border border-purple-200">
-                100%
+                {kpis.totalMovements ? '100%' : '0%'}
               </span>
             </div>
             <p className="text-2xl font-bold text-slate-900 mt-2">{kpis.totalMovements}</p>
@@ -205,13 +257,13 @@ export function MovementHistory() {
           </div>
 
           <div
-            onClick={() => setFilterStatus('Completed')}
+            onClick={() => { setFilterStatus('Completed'); applyFilters({ status: 'Completed' }); }}
             className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-emerald-400 transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">Completed</span>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
-                83%
+                {kpis.totalMovements ? `${Math.round(kpis.completed / kpis.totalMovements * 100)}%` : '0%'}
               </span>
             </div>
             <p className="text-2xl font-bold text-emerald-700 mt-2">{kpis.completed}</p>
@@ -219,13 +271,13 @@ export function MovementHistory() {
           </div>
 
           <div
-            onClick={() => setFilterStatus('In Transit')}
+            onClick={() => { setFilterStatus('In Transit'); applyFilters({ status: 'In Transit' }); }}
             className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-[#6C2BD9] transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">In Transit</span>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-[#6C2BD9] border border-purple-200">
-                8%
+                {kpis.totalMovements ? `${Math.round(kpis.inTransit / kpis.totalMovements * 100)}%` : '0%'}
               </span>
             </div>
             <p className="text-2xl font-bold text-[#6C2BD9] mt-2">{kpis.inTransit}</p>
@@ -233,13 +285,13 @@ export function MovementHistory() {
           </div>
 
           <div
-            onClick={() => setFilterStatus('Pending Receipt')}
+            onClick={() => { setFilterStatus('Pending Receipt'); applyFilters({ status: 'Pending Receipt' }); }}
             className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-amber-400 transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">Pending Receipt</span>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">
-                4%
+                {kpis.totalMovements ? `${Math.round(kpis.pendingReceipt / kpis.totalMovements * 100)}%` : '0%'}
               </span>
             </div>
             <p className="text-2xl font-bold text-amber-600 mt-2">{kpis.pendingReceipt}</p>
@@ -247,13 +299,13 @@ export function MovementHistory() {
           </div>
 
           <div
-            onClick={() => setFilterStatus('Cancelled')}
+            onClick={() => { setFilterStatus('Cancelled / Rejected'); applyFilters({ status: 'Cancelled / Rejected' }); }}
             className="bg-white rounded-xl border border-slate-200/80 p-4 shadow-xs cursor-pointer hover:border-rose-400 transition-all"
           >
             <div className="flex items-center justify-between">
               <span className="text-xs font-semibold text-slate-500">Cancelled / Rejected</span>
               <span className="text-[11px] font-bold px-2 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
-                4%
+                {kpis.totalMovements ? `${Math.round(kpis.cancelledRejected / kpis.totalMovements * 100)}%` : '0%'}
               </span>
             </div>
             <p className="text-2xl font-bold text-rose-700 mt-2">{kpis.cancelledRejected}</p>
@@ -294,10 +346,7 @@ export function MovementHistory() {
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All">All</option>
-                <option value="IT Equipment">IT Equipment</option>
-                <option value="Network Device">Network Device</option>
-                <option value="Furniture">Furniture</option>
-                <option value="Safety Equipment">Safety Equipment</option>
+                {filterOptions.assetTypes.map(value => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 
@@ -312,14 +361,7 @@ export function MovementHistory() {
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All">All</option>
-                <option value="Location Transfer">Location Transfer</option>
-                <option value="Custodian Transfer">Custodian Transfer</option>
-                <option value="Assignment">Assignment</option>
-                <option value="Maintenance Return">Maintenance Return</option>
-                <option value="Sent for Maintenance">Sent for Maintenance</option>
-                <option value="Site Transfer">Site Transfer</option>
-                <option value="Inter-company Transfer">Inter-company Transfer</option>
-                <option value="Bulk Transfer">Bulk Transfer</option>
+                {filterOptions.movementTypes.map(value => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 
@@ -330,10 +372,9 @@ export function MovementHistory() {
               </label>
               <div className="relative">
                 <input
-                  type="text"
+                  type="date"
                   value={filterFromDate}
                   onChange={(e) => setFilterFromDate(e.target.value)}
-                  placeholder="01 Jan 2025"
                   className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
                 />
                 <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -347,10 +388,9 @@ export function MovementHistory() {
               </label>
               <div className="relative">
                 <input
-                  type="text"
+                  type="date"
                   value={filterToDate}
                   onChange={(e) => setFilterToDate(e.target.value)}
-                  placeholder="10 Sep 2026"
                   className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 placeholder:text-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
                 />
                 <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
@@ -371,10 +411,7 @@ export function MovementHistory() {
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All Sites">All Sites</option>
-                <option value="Dubai HQ">Dubai HQ</option>
-                <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
-                <option value="Riyadh DC">Riyadh DC</option>
-                <option value="Sharjah Hub">Sharjah Hub</option>
+                {filterOptions.sites.map(value => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 
@@ -389,14 +426,7 @@ export function MovementHistory() {
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All Departments">All Departments</option>
-                <option value="IT Department">IT Department</option>
-                <option value="Finance">Finance</option>
-                <option value="Operations">Operations</option>
-                <option value="HR">HR</option>
-                <option value="Facilities">Facilities</option>
-                <option value="Management">Management</option>
-                <option value="Marketing">Marketing</option>
-                <option value="Warehouse">Warehouse</option>
+                {filterOptions.departments.map(value => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 
@@ -411,12 +441,7 @@ export function MovementHistory() {
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All">All</option>
-                <option value="Ahmed Khan">Ahmed Khan</option>
-                <option value="Sara Ali">Sara Ali</option>
-                <option value="Omar Saleh">Omar Saleh</option>
-                <option value="Fatima Noor">Fatima Noor</option>
-                <option value="Rashid Mohammed">Rashid Mohammed</option>
-                <option value="Layla Hassan">Layla Hassan</option>
+                {filterOptions.custodians.map(value => <option key={value} value={value}>{value}</option>)}
               </select>
             </div>
 
@@ -431,10 +456,9 @@ export function MovementHistory() {
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20"
               >
                 <option value="All">All</option>
-                <option value="Completed">Completed</option>
-                <option value="In Transit">In Transit</option>
+                {filterOptions.statuses.map(value => <option key={value} value={value}>{value}</option>)}
                 <option value="Pending Receipt">Pending Receipt</option>
-                <option value="Cancelled">Cancelled</option>
+                <option value="Cancelled / Rejected">Cancelled / Rejected</option>
               </select>
             </div>
 
@@ -502,7 +526,7 @@ export function MovementHistory() {
                         )}
                       >
                         <td className="py-3 px-3 text-slate-400 text-center text-[11px]">
-                          {idx + 1}
+                          {(currentPage - 1) * pageSize + idx + 1}
                         </td>
                         <td className="py-3 px-3 font-mono font-semibold text-slate-900 text-[11px]">
                           {row.movementId}
@@ -539,9 +563,11 @@ export function MovementHistory() {
                                 ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
                                 : row.status === 'In Transit'
                                 ? 'bg-purple-50 text-[#6C2BD9] border-purple-200'
-                                : row.status === 'Pending Receipt'
+                                : row.status === 'Approved' || row.status === 'Pending Approval'
                                 ? 'bg-amber-50 text-amber-700 border-amber-200'
-                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                                : ['Rejected', 'Cancelled'].includes(row.status)
+                                ? 'bg-rose-50 text-rose-700 border-rose-200'
+                                : 'bg-slate-50 text-slate-700 border-slate-200'
                             )}
                           >
                             {row.status}
@@ -562,18 +588,28 @@ export function MovementHistory() {
                       </tr>
                     );
                   })}
+                  {!isLoading && movements.length === 0 && <tr><td colSpan={12} className="p-8 text-center text-slate-500">No movement records match these filters.</td></tr>}
                 </tbody>
               </table>
             </div>
 
             {/* Scroll Down Summary */}
             <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-              <span className="font-medium text-slate-600">Showing {movements.length} records</span>
-              <span className="text-slate-400">Scroll down to view all records</span>
+              <span className="font-medium text-slate-600">Showing {movements.length} of {totalRecords} records</span>
+              <div className="flex items-center gap-2">
+                <label htmlFor="movement-page-size">Rows</label>
+                <select id="movement-page-size" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }} className="rounded border border-slate-200 px-1 py-0.5">
+                  {[10, 25, 50].map(size => <option key={size} value={size}>{size}</option>)}
+                </select>
+                <button type="button" disabled={currentPage <= 1} onClick={() => setCurrentPage(page => page - 1)} className="rounded border border-slate-200 p-1 disabled:opacity-40" aria-label="Previous page"><ChevronLeft className="h-4 w-4" /></button>
+                <span>Page {currentPage} of {Math.max(1, Math.ceil(totalRecords / pageSize))}</span>
+                <button type="button" disabled={currentPage * pageSize >= totalRecords} onClick={() => setCurrentPage(page => page + 1)} className="rounded border border-slate-200 p-1 disabled:opacity-40" aria-label="Next page"><ChevronRight className="h-4 w-4" /></button>
+              </div>
             </div>
           </div>
 
           {/* Right Side Panel: Asset Information & Timeline & Supporting Documents */}
+          {selectedMovement ? (
           <div className="col-span-12 lg:col-span-4 space-y-5">
             {/* Subtabs for Detail View */}
             <div className="bg-white rounded-xl border border-slate-200 p-1 flex items-center gap-1 text-xs font-semibold shadow-xs">
@@ -632,15 +668,7 @@ export function MovementHistory() {
 
                   <div className="flex items-center gap-3.5 bg-slate-50/70 p-3 rounded-xl border border-slate-100">
                     <div className="w-16 h-14 rounded-lg bg-white border border-slate-200 flex items-center justify-center p-1.5 shrink-0 overflow-hidden shadow-2xs">
-                      <img
-                        src="/laptop.png"
-                        alt={selectedMovement.assetName}
-                        className="w-full h-full object-contain"
-                        onError={(e) => {
-                          e.target.style.display = 'none';
-                        }}
-                      />
-                      <Laptop className="w-8 h-8 text-slate-400 hidden only:block" />
+                      <Laptop className="w-8 h-8 text-slate-400" />
                     </div>
                     <div className="min-w-0 flex-1">
                       <div className="flex items-center justify-between gap-1">
@@ -648,11 +676,11 @@ export function MovementHistory() {
                           {selectedMovement.assetNumber}
                         </span>
                         <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                          Active
+                          {selectedMovement.assetStatus}
                         </span>
                       </div>
                       <p className="text-xs text-slate-700 font-medium truncate mt-0.5">
-                        Laptop - Dell Latitude 5440
+                        {selectedMovement.assetName}
                       </p>
                     </div>
                   </div>
@@ -661,32 +689,32 @@ export function MovementHistory() {
                     <div className="flex justify-between py-2">
                       <span className="text-slate-500">Serial Number</span>
                       <span className="font-mono text-slate-800 font-medium">
-                        {selectedMovement.serialNumber || '75K3D24'}
+                        {selectedMovement.serialNumber}
                       </span>
                     </div>
                     <div className="flex justify-between py-2">
                       <span className="text-slate-500">Tag / EPC</span>
                       <span className="font-mono text-slate-800 text-[11px] font-medium truncate max-w-[180px]" title={selectedMovement.tagEpc}>
-                        {selectedMovement.tagEpc || 'E28011606000002053A1B4C0'}
+                        {selectedMovement.tagEpc}
                       </span>
                     </div>
                     <div className="flex justify-between py-2">
                       <span className="text-slate-500">Asset Type</span>
-                      <span className="text-slate-800 font-medium">IT Equipment</span>
+                      <span className="text-slate-800 font-medium">{selectedMovement.assetType}</span>
                     </div>
                     <div className="flex justify-between py-2">
                       <span className="text-slate-500">Asset Category</span>
-                      <span className="text-slate-800 font-medium">Laptops</span>
+                      <span className="text-slate-800 font-medium">{selectedMovement.assetCategory}</span>
                     </div>
                     <div className="flex items-start justify-between py-2 gap-2">
                       <span className="text-slate-500 shrink-0">Current Location</span>
                       <span className="text-slate-800 font-medium text-right">
-                        Dubai HQ &gt; Block B &gt; 1F &gt; IT-201
+                        {selectedMovement.currentLocation}
                       </span>
                     </div>
                     <div className="flex justify-between py-2 items-center">
                       <span className="text-slate-500">Current Custodian</span>
-                      <span className="text-slate-800 font-semibold">Sara Ali</span>
+                      <span className="text-slate-800 font-semibold">{selectedMovement.currentCustodian}</span>
                     </div>
                   </div>
                 </div>
@@ -695,83 +723,20 @@ export function MovementHistory() {
                 <div className="bg-white rounded-xl border border-slate-200 shadow-xs p-5 space-y-4">
                   <h3 className="text-sm font-bold text-slate-900">Movement Timeline</h3>
 
-                  {/* Vertical Timeline */}
-                  <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
-                    {/* Event 1 */}
-                    <div className="relative">
-                      <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
-                      <div className="flex items-baseline justify-between text-xs mb-1">
-                        <span className="text-[11px] text-slate-400 font-medium">10 Sep 2026 10:24</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
-                          Location Transfer
-                        </span>
+                  <div className="relative pl-6 space-y-4 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200">
+                    {selectedMovement.timeline.length ? selectedMovement.timeline.slice(-5).reverse().map((event, index) => (
+                      <div key={index} className="relative">
+                        <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white" />
+                        <p className="text-[11px] text-slate-400">{event.movementDate} {event.movementTime} ? {event.movementType}</p>
+                        <p className="text-xs text-slate-700">{event.reason || `${event.fromLocation} ? ${event.toLocation}`}</p>
+                        <p className="text-[11px] text-slate-400">By: {event.performedBy}</p>
                       </div>
-                      <p className="text-xs text-slate-700 font-medium">
-                        Block A &gt; GF &gt; IT-101 <span className="text-[#6C2BD9]">➔</span> Block B &gt; 1F &gt; IT-201
-                      </p>
-                      <p className="text-[11px] text-slate-400 mt-0.5">By: Sara Ali</p>
-                    </div>
-
-                    {/* Event 2 */}
-                    <div className="relative">
-                      <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
-                      <div className="flex items-baseline justify-between text-xs mb-1">
-                        <span className="text-[11px] text-slate-400 font-medium">15 Aug 2026 14:10</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
-                          Custodian Transfer
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-700 font-medium">
-                        Sara Ali <span className="text-[#6C2BD9]">➔</span> Omar Saleh
-                      </p>
-                    </div>
-
-                    {/* Event 3 */}
-                    <div className="relative">
-                      <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
-                      <div className="flex items-baseline justify-between text-xs mb-1">
-                        <span className="text-[11px] text-slate-400 font-medium">01 Jul 2026 09:30</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
-                          Location Transfer
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-700 font-medium">
-                        Block C &gt; 2F &gt; IT-301 <span className="text-[#6C2BD9]">➔</span> Block A &gt; GF &gt; IT-101
-                      </p>
-                    </div>
-
-                    {/* Event 4 */}
-                    <div className="relative">
-                      <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
-                      <div className="flex items-baseline justify-between text-xs mb-1">
-                        <span className="text-[11px] text-slate-400 font-medium">15 Jun 2026 11:15</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
-                          Assignment
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-700 font-medium">
-                        Assigned to Omar Saleh
-                      </p>
-                    </div>
-
-                    {/* Event 5 */}
-                    <div className="relative">
-                      <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
-                      <div className="flex items-baseline justify-between text-xs mb-1">
-                        <span className="text-[11px] text-slate-400 font-medium">12 May 2026 16:40</span>
-                        <span className="px-2 py-0.5 rounded text-[10px] font-semibold bg-purple-50 text-[#6C2BD9]">
-                          Location Transfer
-                        </span>
-                      </div>
-                      <p className="text-xs text-slate-700 font-medium">
-                        Store - Main <span className="text-[#6C2BD9]">➔</span> Block C &gt; 2F &gt; IT-301
-                      </p>
-                    </div>
+                    )) : <p className="text-xs text-slate-400">No timeline events recorded.</p>}
                   </div>
 
                   <div className="pt-2 border-t border-slate-100 text-right">
                     <button
-                      onClick={() => setIsFullTimelineModalOpen(true)}
+                      onClick={openFullTimeline}
                       className="text-xs text-[#6C2BD9] hover:text-[#5b21b6] font-semibold cursor-pointer inline-flex items-center gap-1"
                     >
                       <span>View Full History</span>
@@ -801,7 +766,7 @@ export function MovementHistory() {
                             </div>
                           </div>
                           <button
-                            onClick={() => window.open('#', '_blank')}
+                            onClick={() => window.open(doc.url, '_blank', 'noopener,noreferrer')}
                             className="p-1.5 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 transition-colors cursor-pointer"
                             title="Download Document"
                           >
@@ -921,7 +886,7 @@ export function MovementHistory() {
                         </div>
                       </div>
                       <button
-                        onClick={() => window.open('#', '_blank')}
+                        onClick={() => window.open(doc.url, '_blank', 'noopener,noreferrer')}
                         className="px-3 py-1.5 bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 rounded-lg font-semibold flex items-center gap-1 cursor-pointer"
                       >
                         <Download className="w-3.5 h-3.5" />
@@ -929,6 +894,7 @@ export function MovementHistory() {
                       </button>
                     </div>
                   ))}
+                  {!selectedMovement.documents?.length && <p className="text-slate-400">No documents attached to this movement.</p>}
                 </div>
               </div>
             )}
@@ -936,14 +902,14 @@ export function MovementHistory() {
             {/* Action Buttons Toolbar at Bottom of Drawer */}
             <div className="bg-white rounded-xl border border-slate-200 p-4 shadow-xs flex items-center justify-between gap-2">
               <button
-                onClick={() => navigate(`/assets/${selectedMovement.assetNumber}`)}
+                onClick={() => navigate(`/assets/${selectedMovement.assetId}`)}
                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] rounded-lg text-xs font-semibold transition-colors cursor-pointer"
               >
                 <ExternalLink className="w-3.5 h-3.5" />
                 <span>View Asset 360°</span>
               </button>
               <button
-                onClick={() => window.print()}
+                onClick={handlePrint}
                 className="flex-1 flex items-center justify-center gap-1.5 px-3 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-lg text-xs font-semibold transition-colors cursor-pointer shadow-2xs"
               >
                 <Printer className="w-3.5 h-3.5" />
@@ -951,11 +917,12 @@ export function MovementHistory() {
               </button>
             </div>
           </div>
+          ) : <div className="col-span-12 lg:col-span-4 rounded-xl border border-slate-200 bg-white p-5 text-xs text-slate-500">{isLoading ? 'Loading movement details…' : 'Select a movement to view its details.'}</div>}
         </div>
       </div>
 
       {/* Full Timeline Modal */}
-      {isFullTimelineModalOpen && (
+      {isFullTimelineModalOpen && selectedMovement && (
         <div className="fixed inset-0 z-50 bg-slate-900/40 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 p-6 max-w-2xl w-full shadow-2xl space-y-5 animate-in fade-in zoom-in-95 duration-150 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -974,7 +941,7 @@ export function MovementHistory() {
             </div>
 
             <div className="relative pl-6 space-y-6 before:content-[''] before:absolute before:left-2 before:top-2 before:bottom-2 before:w-0.5 before:bg-slate-200 text-xs">
-              {(selectedMovement?.timeline || movements || []).map((ev, i) => (
+              {fullTimeline.map((ev, i) => (
                 <div key={i} className="relative">
                   <div className="absolute -left-6 top-1 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-4 ring-white shadow-xs" />
                   <div className="flex items-baseline justify-between text-xs mb-1">

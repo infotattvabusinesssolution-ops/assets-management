@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import ExcelJS from 'exceljs';
-import { bulkAssetFields, normalizeBulkHeader } from './bulkAssetFields';
+import { bulkAssetFields, parseBulkAssetRows } from './bulkAssetFields';
 import {
   FileSpreadsheet,
   Upload,
@@ -78,7 +78,7 @@ export function BulkUpload() {
 
   const totalPages = Math.ceil(filteredRecords.length / perPage) || 1;
 
-  // Handle Download Formatted Excel Template (.xlsx) with Real Sample Data & Guide Sheet
+  // Handle Download Formatted Excel Template (.xlsx) with field guide.
   const handleDownloadExcelTemplate = async () => {
     try {
       const workbook = new ExcelJS.Workbook();
@@ -124,6 +124,9 @@ export function BulkUpload() {
         guide: key === 'assetTagBarcode' || key === 'rfidEpc' || key === 'tid'
           ? 'Optional. Leave blank to import an untagged asset.'
           : key.startsWith('pm') || key === 'enablePm' ? 'Complete PM title, interval and due date when Enable PM is Yes.'
+          : key === 'quantity' ? 'Use 1 for an individual asset. For a group of identical assets, enter 2–50 and list each serial in Serial Numbers.'
+          : key === 'serialNumbers' ? 'For Quantity above 1, enter exactly that many different serial numbers separated by semicolons. Leave Serial Number and Asset ID blank.'
+          : key === 'warrantyYears' ? 'Enter 1–50 whole years with Warranty Start Date; the end date is calculated.'
           : key === 'category' ? 'Use an existing category name or code.'
           : key === 'site' ? 'Use an existing site name or code.'
           : 'Same field as New Asset Registration; leave blank when not applicable.',
@@ -148,7 +151,7 @@ export function BulkUpload() {
       document.body.removeChild(link);
       URL.revokeObjectURL(url);
 
-      showToast('success', 'Downloaded formatted Excel (.xlsx) template with column guide!');
+      showToast('success', 'Downloaded formatted Excel template with column guide.');
     } catch (err) {
       console.error('Error generating Excel template:', err);
       showToast('error', 'Could not generate Excel template. Downloading CSV template fallback.');
@@ -177,8 +180,8 @@ export function BulkUpload() {
   // Handle Download Error Report CSV
   const handleDownloadErrorReport = () => {
     const errorRows = records.filter(r => r.status === 'Error' || r.status === 'Warning');
-    const headers = ['Row Number', 'Status', 'Asset ID', 'Asset Name', 'Category', 'Serial Number', 'Remarks / Error Reason'];
-    const rows = errorRows.map(r => [r.row, r.status, r.assetId, r.name, r.category, r.serialNumber, r.remarks]);
+    const headers = ['Row Number', 'Item', 'Status', 'Asset ID', 'Asset Name', 'Category', 'Serial Number', 'Remarks / Error Reason'];
+    const rows = errorRows.map(r => [r.row, r.batchItemNumber || '', r.status, r.assetId, r.name, r.category, r.serialNumber, r.remarks]);
     const cell = value => '"' + String(value ?? '').replace(/"/g, '""') + '"';
     const csvContent = '\uFEFF' + [headers, ...rows].map(row => row.map(cell).join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
@@ -236,29 +239,7 @@ export function BulkUpload() {
         if (quoted) throw new Error('CSV has an unclosed quoted field.');
         rows.at(-1).push(cell.trim());
       }
-      const headers = (rows.shift() || []).map(normalizeBulkHeader);
-      const field = (values, ...names) => {
-        const index = headers.findIndex(h => names.includes(h));
-        return index < 0 ? '' : (values[index] || '');
-      };
-      const parsed = rows.map((values, index) => ({ values, row: index + 2 }))
-        .filter(({ values }) => values.some(Boolean)).map(({ values, row }) => {
-          const details = Object.fromEntries(bulkAssetFields.map(([key, header]) => [key, field(values, normalizeBulkHeader(header), normalizeBulkHeader(key))]));
-          return {
-            ...details,
-            row,
-            assetId: details.assetId || field(values, 'id'),
-            name: details.assetName || field(values, 'name', 'assetdescription', 'itemname'),
-            category: details.category || field(values, 'assetcategory'),
-            serialNumber: details.serialNumber || field(values, 'serialno', 'sn', 'serial'),
-            site: details.site || field(values, 'location', 'facility', 'campus'),
-            location: details.site || field(values, 'location', 'facility', 'campus'),
-            acquisitionValue: details.acquisitionCost || field(values, 'acquisitionvalue', 'cost', 'price', 'value'),
-            currency: details.currency || 'AED',
-            status: 'Unvalidated',
-            remarks: 'Awaiting server validation'
-          };
-        });
+      const parsed = parseBulkAssetRows(rows);
       if (!parsed.length) throw new Error('The file has no asset rows.');
       setSelectedFile({ name: file.name, size: (file.size / 1024).toFixed(1) + ' KB' });
       setRecords(parsed);
@@ -311,9 +292,17 @@ export function BulkUpload() {
         rows: records
       });
       if (!res?.success) throw new Error(res?.message || 'Upload failed.');
+      if (res.failedCount && Array.isArray(res.errors)) {
+        const failed = new Map(res.errors.map(error => [`${error.row}:${error.batchItemNumber || ''}`, error.remarks]));
+        setRecords(current => current.map(record => failed.has(`${record.row}:${record.batchItemNumber || ''}`)
+          ? { ...record, status: 'Error', remarks: failed.get(`${record.row}:${record.batchItemNumber || ''}`) }
+          : record));
+      }
       showToast(
         res.failedCount > 0 ? 'error' : 'success',
-        res?.message || `Bulk upload batch ${batchRef} processed successfully! ${validRows.length} assets created/updated.`
+        res.failedCount > 0
+          ? `${res.createdCount} created, ${res.updatedCount} updated, ${res.failedCount} failed. Review the marked rows.`
+          : res?.message || `Bulk upload batch ${batchRef} processed successfully! ${validRows.length} assets created/updated.`
       );
       if (!res.failedCount) setTimeout(() => navigate('/assets'), 1400);
     } catch (err) {
@@ -714,12 +703,12 @@ export function BulkUpload() {
                 {paginatedRecords.length > 0 ? (
                   paginatedRecords.map((r) => {
                     return (
-                      <tr key={r.row} className="hover:bg-purple-50/40 transition-colors">
+                      <tr key={`${r.row}:${r.batchItemNumber || ''}`} className="hover:bg-purple-50/40 transition-colors">
                         <td className="px-4 py-3.5">
                           <span className="w-4 block" />
                         </td>
 
-                        <td className="px-4 py-3.5 text-black font-mono font-bold">{r.row}</td>
+                        <td className="px-4 py-3.5 text-black font-mono font-bold">{r.row}{r.batchItemNumber ? ` (${r.batchItemNumber}/${r.sourceQuantity})` : ''}</td>
 
                         {/* Status Badge */}
                         <td className="px-4 py-3.5 whitespace-nowrap">
@@ -868,8 +857,13 @@ export function BulkUpload() {
                 <span className="font-extrabold block text-xs">💡 Quick Tips for Normal Users:</span>
                 <ul className="list-disc list-inside space-y-1 text-[11px] text-purple-900">
                   <li><strong>Asset ID:</strong> You can leave this blank! The system will automatically generate a standard unique ID (e.g. <code>AST-2026-XXXXX</code>).</li>
-                  <li><strong>Location:</strong> If left empty, it defaults automatically to <code>Dubai HQ Campus</code>.</li>
+                  <li><strong>Site:</strong> If left empty, the active default site is used.</li>
                   <li><strong>Serial Number:</strong> Required for IT hardware (Laptops, Servers, Mobile Devices). If non-serialized, you can leave it blank.</li>
+                  <li><strong>Quantity:</strong> For identical assets, enter 2–50, leave Asset ID and Serial Number blank, and enter one unique serial per item in <strong>Serial Numbers</strong>, separated by semicolons. Example: <code>SN-001;SN-002;SN-003</code>.</li>
+                  <li><strong>Different details:</strong> Use a separate Excel row with Quantity 1 for each asset when custodians, sites, tags, RFID or discovery data differ. Each row has the same fields as asset registration.</li>
+                  <li><strong>Warranty:</strong> Enter a start date and Warranty Years to calculate the end date automatically.</li>
+                  <li><strong>Tag / Barcode / RFID:</strong> Leave blank to register assets without tagging. Tags can be added later.</li>
+                  <li><strong>Preventive Maintenance:</strong> When enabled, provide a title, frequency in months, and next due date.</li>
                 </ul>
               </div>
 
@@ -913,9 +907,14 @@ export function BulkUpload() {
                       <td className="p-2.5 text-slate-600">Required for Laptop/Server/Mobile (e.g. <em>SN-DL5540-88120</em>)</td>
                     </tr>
                     <tr>
-                      <td className="p-2.5 font-bold">Location</td>
+                      <td className="p-2.5 font-bold">Quantity / Serial Numbers</td>
+                      <td className="p-2.5 font-bold text-amber-700">Conditional</td>
+                      <td className="p-2.5 text-slate-600">For Quantity 3, supply exactly three unique serials, e.g. <em>SN-001;SN-002;SN-003</em>. Validation shows each asset separately.</td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold">Site</td>
                       <td className="p-2.5 text-slate-500">Optional</td>
-                      <td className="p-2.5 text-slate-600">Defaults to <em>Dubai HQ Campus</em></td>
+                      <td className="p-2.5 text-slate-600">Use a registered site name or code; blank uses the active default.</td>
                     </tr>
                     <tr>
                       <td className="p-2.5 font-bold">Custodian</td>
@@ -923,7 +922,7 @@ export function BulkUpload() {
                       <td className="p-2.5 text-slate-600">Assigned employee (e.g. <em>John Doe, Jane Smith</em>)</td>
                     </tr>
                     <tr>
-                      <td className="p-2.5 font-bold">Acquisition Value</td>
+                      <td className="p-2.5 font-bold">Acquisition Cost</td>
                       <td className="p-2.5 text-slate-500">Optional</td>
                       <td className="p-2.5 text-slate-600">Purchase cost number (e.g. <em>1450.00</em>)</td>
                     </tr>
@@ -931,6 +930,11 @@ export function BulkUpload() {
                       <td className="p-2.5 font-bold">Status</td>
                       <td className="p-2.5 text-slate-500">Optional</td>
                       <td className="p-2.5 text-slate-600"><em>In Service</em>, <em>In Store</em>, <em>Under Maintenance</em></td>
+                    </tr>
+                    <tr>
+                      <td className="p-2.5 font-bold">Other registration fields</td>
+                      <td className="p-2.5 text-slate-500">Optional</td>
+                      <td className="p-2.5 text-slate-600">See the Excel guide sheet for all {bulkAssetFields.length} columns, including warranty, depreciation policy and PM.</td>
                     </tr>
                   </tbody>
                 </table>

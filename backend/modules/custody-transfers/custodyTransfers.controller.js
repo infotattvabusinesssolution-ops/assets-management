@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.js';
 import { CustodyTransfersService } from './custodyTransfers.service.js';
+import * as movementHistory from './movementHistory.service.js';
 
 export async function getCustodyAssignments(req, res, next) {
   try {
@@ -425,14 +426,14 @@ export async function getRecentMovements(req, res, next) {
 
 export async function getMovementHistory(req, res, next) {
   try {
-    const result = await CustodyTransfersService.getMovementHistory(req.query);
+    const result = await movementHistory.getMovementHistory(req.query);
     res.json({ success: true, ...result });
   } catch (err) { next(err); }
 }
 
 export async function getMovementDetailsById(req, res, next) {
   try {
-    const movement = await CustodyTransfersService.getMovementById(req.params.id);
+    const movement = await movementHistory.getMovementById(req.params.id);
     if (!movement) return res.status(404).json({ success: false, message: 'Movement record not found' });
     res.json({ success: true, movement });
   } catch (err) { next(err); }

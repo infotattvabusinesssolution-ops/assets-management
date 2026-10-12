@@ -159,11 +159,22 @@ export async function updateTransferRecordStatus(transferId, actionPayload, user
 
   if (action !== 'CONFIRM_RECEIPT') {
     const status = action === 'APPROVE' ? 'APPROVED' : action === 'REJECT' ? 'REJECTED' : 'IN_TRANSIT';
-    return prisma.assetTransfer.update({ where: { id: transfer.id }, data: {
-      status,
-      ...(action === 'APPROVE' ? { approvedByUserId: actorId } : {}),
-      ...(action === 'DISPATCH' || action === 'MARK_TRANSIT' ? { dispatchDate: new Date() } : {})
-    } });
+    return prisma.$transaction(async tx => {
+      const updated = await tx.assetTransfer.updateMany({ where: { id: transfer.id, status: transfer.status }, data: {
+        status,
+        ...(action === 'APPROVE' ? { approvedByUserId: actorId } : {}),
+        ...(action === 'DISPATCH' || action === 'MARK_TRANSIT' ? { dispatchDate: new Date() } : {})
+      } });
+      if (updated.count !== 1) fail('Transfer was already updated. Refresh and try again.');
+      await tx.assetTransaction.create({ data: {
+        assetId: transfer.assetId,
+        transactionType: ['APPROVE', 'REJECT'].includes(action) ? 'TRANSFER_APPROVAL_DECISION' : 'TRANSFER_WORKFLOW',
+        fromStatus: transfer.status, toStatus: status, performedByUserId: actorId,
+        notes: String(actionPayload.comments || `${action.replaceAll('_', ' ')} transfer ${transfer.transferNumber}`).trim(),
+        payload: JSON.stringify({ transferId: transfer.id, decision: action })
+      } });
+      return tx.assetTransfer.findUnique({ where: { id: transfer.id } });
+    }, { timeout: 20000 });
   }
 
   const asset = await prisma.asset.findUnique({ where: { id: transfer.assetId } });

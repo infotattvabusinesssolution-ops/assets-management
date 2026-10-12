@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import prisma from '../../config/prisma.js';
 import { resolveDbUserId } from '../assets/asset.controller.js';
+import { advanceDueDate, FREQUENCY_LIMITS } from './maintenanceFrequency.js';
 
 const include = {
   checklist: { orderBy: { sortOrder: 'asc' } },
@@ -32,13 +33,14 @@ function validate(body) {
   const name = String(body.name || '').trim();
   const workType = String(body.workType || 'PREVENTIVE').toUpperCase();
   const applyToRule = String(body.applyToRule || 'CATEGORY').toUpperCase();
-  const frequencyMonths = Number(body.frequencyMonths);
+  const frequencyUnit = String(body.frequencyUnit || 'MONTHS').toUpperCase();
+  const frequencyInterval = Number(body.frequencyInterval ?? body.frequencyMonths);
   const advanceDays = Number(body.advanceDays ?? 7);
   const nextDueDate = new Date(body.nextDueDate);
   const assetIds = Array.isArray(body.assetIds) ? [...new Set(body.assetIds.map(String))] : [];
   if (!name) return { error: 'Enter a plan name.' };
   if (!validTypes.includes(workType) || !validRules.includes(applyToRule)) return { error: 'Choose a valid work type and asset rule.' };
-  if (!Number.isInteger(frequencyMonths) || frequencyMonths < 1 || frequencyMonths > 120) return { error: 'Frequency must be 1 to 120 months.' };
+  if (!FREQUENCY_LIMITS[frequencyUnit] || !Number.isInteger(frequencyInterval) || frequencyInterval < 1 || frequencyInterval > FREQUENCY_LIMITS[frequencyUnit]) return { error: 'Choose a valid frequency between 1 and the selected unit limit.' };
   if (!Number.isInteger(advanceDays) || advanceDays < 0 || advanceDays > 90) return { error: 'Advance days must be 0 to 90.' };
   if (Number.isNaN(nextDueDate.getTime())) return { error: 'Enter a valid next due date.' };
   if (applyToRule === 'CATEGORY' && !body.categoryId) return { error: 'Select a category.' };
@@ -52,7 +54,9 @@ function validate(body) {
     siteId: ['LOCATION', 'FILTER'].includes(applyToRule) ? body.siteId || null : null,
     custodianId: applyToRule === 'CUSTODIAN' ? body.custodianId : null,
     assetIdsJson: applyToRule === 'SPECIFIC' ? JSON.stringify(assetIds) : null,
-    frequencyMonths, advanceDays, nextDueDate,
+    frequencyUnit, frequencyInterval,
+    frequencyMonths: frequencyUnit === 'YEARS' ? frequencyInterval * 12 : frequencyUnit === 'MONTHS' ? frequencyInterval : 1,
+    advanceDays, nextDueDate,
     active: body.active !== false, autoCreateWorkOrders: body.autoCreateWorkOrders === true
   } };
 }
@@ -191,8 +195,9 @@ export async function generatePlanWorkOrders(planId, reqScope = {}, who = 'Syste
   }
   if (created || (assets.length && (await prisma.maintenancePlanRun.count({ where: { planId, dueDate: plan.nextDueDate } })) === assets.length)) {
     const nextDueDate = new Date(plan.nextDueDate);
-    do { nextDueDate.setUTCMonth(nextDueDate.getUTCMonth() + plan.frequencyMonths); } while (nextDueDate <= windowEnd);
-    await prisma.maintenancePlan.update({ where: { id: planId }, data: { nextDueDate } });
+    let advanced = nextDueDate;
+    do { advanced = advanceDueDate(advanced, plan.frequencyUnit || 'MONTHS', plan.frequencyInterval || plan.frequencyMonths); } while (advanced <= windowEnd);
+    await prisma.maintenancePlan.update({ where: { id: planId }, data: { nextDueDate: advanced } });
   }
   return { created, skipped, message: created ? `${created} work order(s) generated.` : 'No new work orders were needed.' };
 }

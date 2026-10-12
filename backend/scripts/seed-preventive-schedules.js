@@ -1,5 +1,5 @@
 import 'dotenv/config';
-import prismaPkg from '../node_modules/.prisma/maintenance-client-v5/index.js';
+import prismaPkg from '../node_modules/.prisma/maintenance-client-v6/index.js';
 
 const { PrismaClient } = prismaPkg;
 const prisma = new PrismaClient();

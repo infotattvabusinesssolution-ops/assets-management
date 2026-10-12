@@ -81,7 +81,9 @@ export async function bulkSubmitDecisions(req, res, next) {
 export async function exportMovementApprovals(req, res, next) {
   try {
     const result = await MovementApprovalsService.exportApprovals(req.body);
-    res.json({ success: true, ...result });
+    res.setHeader('Content-Type', 'text/csv; charset=utf-8');
+    res.setHeader('Content-Disposition', `attachment; filename="${result.fileName}"`);
+    res.send(result.content);
   } catch (err) {
     next(err);
   }

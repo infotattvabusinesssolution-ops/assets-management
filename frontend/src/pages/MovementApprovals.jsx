@@ -35,8 +35,6 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 
-const DEFAULT_REQUESTS = [];
-
 export function MovementApprovals() {
   const navigate = useNavigate();
 
@@ -63,7 +61,9 @@ export function MovementApprovals() {
   const [filterSite, setFilterSite] = useState('All Sites');
   const [filterDepartment, setFilterDepartment] = useState('All Departments');
   const [filterRequestedBy, setFilterRequestedBy] = useState('All Users');
-  const [filterDateRange, setFilterDateRange] = useState('01 Sep 2026 - 30 Sep 2026');
+  const [dateFrom, setDateFrom] = useState('');
+  const [dateTo, setDateTo] = useState('');
+  const [filterOptions, setFilterOptions] = useState({ sites: [], departments: [], requestedBy: [], requestTypes: [] });
   const [searchQuery, setSearchQuery] = useState('');
 
   // Pagination state
@@ -99,10 +99,8 @@ export function MovementApprovals() {
   const [modalComments, setModalComments] = useState('');
   const [commentError, setCommentError] = useState('');
   const [attachedFiles, setAttachedFiles] = useState([]);
+  const [uploadingFiles, setUploadingFiles] = useState(false);
   const [notifyRequester, setNotifyRequester] = useState(true);
-  const [notifyNextApprover, setNotifyNextApprover] = useState(true);
-  const [addAdditionalRecipients, setAddAdditionalRecipients] = useState(false);
-  const [additionalRecipientEmail, setAdditionalRecipientEmail] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   // Close dropdowns on outside click
@@ -122,12 +120,12 @@ export function MovementApprovals() {
   // Fetch KPIs
   const fetchKpis = async () => {
     try {
-      const res = await api.get('/movement-approvals/kpis').catch(() => null);
+      const res = await api.get('/movement-approvals/kpis');
       if (res && res.data) {
         setKpis(res.data);
       }
     } catch (err) {
-      console.warn('Failed to load live KPIs, using defaults:', err);
+      showToast(err.message || 'Could not load approval totals.', 'error');
     }
   };
 
@@ -143,19 +141,24 @@ export function MovementApprovals() {
         site: filterSite,
         department: filterDepartment,
         requestedBy: filterRequestedBy,
+        dateFrom: dateFrom || undefined,
+        dateTo: dateTo || undefined,
         search: searchQuery || undefined
       };
 
-      const res = await api.get('/movement-approvals', { params }).catch(() => null);
+      const res = await api.get('/movement-approvals', { params });
       if (res && res.requests) {
         setRequests(res.requests);
         setTotalRecords(res.pagination?.totalRecords || res.requests.length);
-        if (res.requests.length > 0 && (!selectedRequest || !res.requests.some(r => r.id === selectedRequest.id))) {
-          setSelectedRequest(res.requests[0]);
-        }
+        setFilterOptions(res.filters || { sites: [], departments: [], requestedBy: [], requestTypes: [] });
+        setSelectedRequest(previous => res.requests.find(request => request.id === previous?.id) || res.requests[0] || null);
+        setSelectedIds(new Set());
       }
     } catch (err) {
-      console.warn('Failed to fetch approvals from API:', err);
+      setRequests([]);
+      setTotalRecords(0);
+      setSelectedRequest(null);
+      showToast(err.message || 'Could not load movement approvals.', 'error');
     } finally {
       setLoading(false);
     }
@@ -167,13 +170,13 @@ export function MovementApprovals() {
 
   useEffect(() => {
     fetchRequests();
-  }, [currentPage, itemsPerPage, filterStatus, filterRequestType, filterSite, filterDepartment, filterRequestedBy]);
+  }, [currentPage, itemsPerPage, filterStatus, filterRequestType, filterSite, filterDepartment, filterRequestedBy, dateFrom, dateTo]);
 
   // Handle Search Trigger
   const handleSearch = (e) => {
     if (e) e.preventDefault();
-    setCurrentPage(1);
-    fetchRequests();
+    if (currentPage === 1) fetchRequests();
+    else setCurrentPage(1);
   };
 
   // Clear Filters
@@ -183,7 +186,8 @@ export function MovementApprovals() {
     setFilterSite('All Sites');
     setFilterDepartment('All Departments');
     setFilterRequestedBy('All Users');
-    setFilterDateRange('01 Sep 2026 - 30 Sep 2026');
+    setDateFrom('');
+    setDateTo('');
     setSearchQuery('');
     setCurrentPage(1);
     showToast('Filters reset to default view', 'info');
@@ -191,10 +195,11 @@ export function MovementApprovals() {
 
   // Checkbox Selection
   const handleSelectAll = () => {
-    if (selectedIds.size === requests.length) {
+    const pendingIds = requests.filter(request => request.status === 'Pending').map(request => request.id);
+    if (pendingIds.length && pendingIds.every(id => selectedIds.has(id))) {
       setSelectedIds(new Set());
     } else {
-      setSelectedIds(new Set(requests.map(r => r.id)));
+      setSelectedIds(new Set(pendingIds));
     }
   };
 
@@ -217,25 +222,31 @@ export function MovementApprovals() {
     setCommentError('');
     setAttachedFiles([]);
     setNotifyRequester(true);
-    setNotifyNextApprover(true);
-    setAddAdditionalRecipients(false);
-    setAdditionalRecipientEmail('');
     setIsActionModalOpen(true);
   };
 
-  // File Upload Handlers (Simulation)
-  const handleFileDrop = (e) => {
+  const handleFileDrop = async (e) => {
     e.preventDefault();
     const files = Array.from(e.dataTransfer?.files || e.target?.files || []);
-    if (files.length > 0) {
-      const newFiles = files.map((f, i) => ({
-        id: `att-up-${Date.now()}-${i}`,
-        name: f.name,
-        size: `${(f.size / 1024).toFixed(1)} KB`
-      }));
-      setAttachedFiles(prev => [...prev, ...newFiles]);
-      showToast(`${files.length} document(s) attached.`);
+    if (!files.length) return;
+    if (files.some(file => file.size > 10 * 1024 * 1024 || !/\.(jpg|jpeg|png|pdf)$/i.test(file.name))) {
+      showToast('Use JPG, PNG or PDF files under 10 MB each.', 'error');
+      return;
     }
+    setUploadingFiles(true);
+    try {
+      const form = new FormData();
+      files.forEach(file => form.append('files', file));
+      form.append('folder', 'movement_approvals');
+      const result = await api.post('/uploads/files', form, { headers: { 'Content-Type': 'multipart/form-data' } });
+      if (!result.success || !Array.isArray(result.files)) throw new Error('Files were not uploaded.');
+      setAttachedFiles(previous => [...previous, ...result.files.map(file => ({
+        id: file.public_id, name: file.name, size: file.size, formattedSize: file.formattedSize,
+        url: file.url, publicId: file.public_id, type: file.format
+      }))]);
+      showToast(`${result.files.length} document(s) uploaded.`);
+    } catch (error) { showToast(error.message || 'Could not upload files.', 'error'); }
+    finally { setUploadingFiles(false); }
   };
 
   const removeAttachedFile = (fileId) => {
@@ -259,9 +270,7 @@ export function MovementApprovals() {
         decision: selectedDecision,
         comments: modalComments,
         attachments: attachedFiles,
-        notifyRequester,
-        notifyNextApprover,
-        additionalRecipients: addAdditionalRecipients && additionalRecipientEmail ? [additionalRecipientEmail] : []
+        notifyRequester
       };
 
       const res = await api.post(`/movement-approvals/${modalRequest.id}/decision`, payload);
@@ -272,13 +281,10 @@ export function MovementApprovals() {
       setQuickComments('');
 
       // Refresh list and KPIs immediately
-      await fetchRequests();
-      await fetchKpis();
+      await Promise.all([fetchRequests(), fetchKpis()]);
 
       // Update selectedRequest details if currently viewed
-      if (selectedRequest?.id === modalRequest.id && res.request) {
-        setSelectedRequest(res.request);
-      }
+      if (selectedRequest?.id === modalRequest.id && res.request && filterStatus !== 'Pending') setSelectedRequest(res.request);
     } catch (err) {
       showToast(err.message || 'Error processing approval decision', 'error');
     } finally {
@@ -305,11 +311,10 @@ export function MovementApprovals() {
         decision,
         comments
       });
-      showToast(`Processed ${res.processed} requests successfully.`);
+      showToast(`${res.processed} processed${res.failed ? `; ${res.failed} failed: ${res.results.filter(result => !result.success).map(result => result.error).join('; ')}` : ''}.`, res.failed ? 'error' : 'success');
       setIsBulkDropdownOpen(false);
       setSelectedIds(new Set());
-      fetchRequests();
-      fetchKpis();
+      await Promise.all([fetchRequests(), fetchKpis()]);
     } catch (err) {
       showToast(err.message || 'Bulk processing failed', 'error');
     }
@@ -318,19 +323,20 @@ export function MovementApprovals() {
   // Export handler
   const handleExport = async () => {
     try {
-      const res = await api.post('/movement-approvals/export', { format: 'xlsx', status: filterStatus });
-      showToast(`Export complete: ${res.fileName}`);
-      // Simple client trigger
-      const dummyContent = `Movement Approvals Export\nDate: ${new Date().toLocaleString()}\nStatus: ${filterStatus}\nRecords: ${res.totalRecords}\n`;
-      const blob = new Blob([dummyContent], { type: 'text/plain' });
+      const blob = await api.post('/movement-approvals/export', {
+        status: filterStatus, requestType: filterRequestType, site: filterSite,
+        department: filterDepartment, requestedBy: filterRequestedBy,
+        dateFrom, dateTo, search: searchQuery
+      }, { responseType: 'blob' });
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = res.fileName || 'Movement_Approvals.xlsx';
+      a.download = `Movement_Approvals_${new Date().toISOString().slice(0, 10)}.csv`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
       window.URL.revokeObjectURL(url);
+      showToast('Movement approvals CSV downloaded.');
     } catch (err) {
       showToast('Export failed', 'error');
     }
@@ -480,9 +486,7 @@ export function MovementApprovals() {
               className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
             >
               <option value="All">All</option>
-              <option value="Transfer">Transfer</option>
-              <option value="Assignment">Assignment</option>
-              <option value="Custodian Transfer">Custodian Transfer</option>
+              {filterOptions.requestTypes.map(type => <option key={type} value={type}>{type}</option>)}
             </select>
           </div>
 
@@ -498,6 +502,8 @@ export function MovementApprovals() {
               <option value="Approved">Approved</option>
               <option value="Rejected">Rejected</option>
               <option value="Changes Requested">Changes Requested</option>
+              <option value="In Transit">In Transit</option>
+              <option value="Completed">Completed</option>
             </select>
           </div>
 
@@ -509,9 +515,7 @@ export function MovementApprovals() {
               className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
             >
               <option value="All Sites">All Sites</option>
-              <option value="Dubai HQ">Dubai HQ</option>
-              <option value="Dubai Central Warehouse">Dubai Central Warehouse</option>
-              <option value="Downtown Retail">Downtown Retail</option>
+              {filterOptions.sites.map(site => <option key={site} value={site}>{site}</option>)}
             </select>
           </div>
 
@@ -523,11 +527,7 @@ export function MovementApprovals() {
               className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
             >
               <option value="All Departments">All Departments</option>
-              <option value="IT Department">IT Department</option>
-              <option value="Finance">Finance</option>
-              <option value="Marketing">Marketing</option>
-              <option value="Operations">Operations</option>
-              <option value="Facilities">Facilities</option>
+              {filterOptions.departments.map(department => <option key={department} value={department}>{department}</option>)}
             </select>
           </div>
 
@@ -539,26 +539,19 @@ export function MovementApprovals() {
               className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
             >
               <option value="All Users">All Users</option>
-              <option value="Sara Ali">Sara Ali</option>
-              <option value="Omar Saleh">Omar Saleh</option>
-              <option value="IT Team">IT Team</option>
-              <option value="Layla Hassan">Layla Hassan</option>
-              <option value="Rashid Mohammed">Rashid Mohammed</option>
-              <option value="Fatima Noor">Fatima Noor</option>
-              <option value="Ahmed Khan">Ahmed Khan</option>
-              <option value="Mohammed Rashid">Mohammed Rashid</option>
+              {filterOptions.requestedBy.map(name => <option key={name} value={name}>{name}</option>)}
             </select>
           </div>
 
           <div>
             <label className="font-semibold text-slate-600 block mb-1">Date Range</label>
-            <div className="relative">
-              <input
-                type="text"
-                value={filterDateRange}
-                onChange={(e) => setFilterDateRange(e.target.value)}
-                className="w-full px-2.5 py-1.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
-              />
+            <div className="flex gap-1">
+              <input aria-label="From date" type="date" value={dateFrom} max={dateTo || undefined}
+                onChange={e => setDateFrom(e.target.value)}
+                className="w-1/2 min-w-0 px-1 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px]" />
+              <input aria-label="To date" type="date" value={dateTo} min={dateFrom || undefined}
+                onChange={e => setDateTo(e.target.value)}
+                className="w-1/2 min-w-0 px-1 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-[10px]" />
             </div>
           </div>
         </div>
@@ -613,7 +606,7 @@ export function MovementApprovals() {
                   <th className="py-3 px-3 w-8">
                     <input
                       type="checkbox"
-                      checked={requests.length > 0 && selectedIds.size === requests.length}
+                      checked={requests.some(request => request.status === 'Pending') && requests.filter(request => request.status === 'Pending').every(request => selectedIds.has(request.id))}
                       onChange={handleSelectAll}
                       className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                     />
@@ -661,6 +654,7 @@ export function MovementApprovals() {
                           <input
                             type="checkbox"
                             checked={isChecked}
+                            disabled={r.status !== 'Pending'}
                             onChange={(e) => handleToggleSelect(r.id, e)}
                             className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
                           />
@@ -717,6 +711,7 @@ export function MovementApprovals() {
                                 <button
                                   onClick={() => {
                                     setSelectedRequest(r);
+                                    setActiveDetailTab('details');
                                     setActiveDropdownRowId(null);
                                   }}
                                   className="w-full text-left px-4 py-2 hover:bg-slate-50 flex items-center gap-2"
@@ -771,9 +766,16 @@ export function MovementApprovals() {
           </div>
 
           {/* Scroll Down Summary */}
-          <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="font-medium text-slate-600">Showing {requests.length} records</span>
-            <span className="text-slate-400">Scroll down to view all records</span>
+          <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 gap-2">
+            <span className="font-medium text-slate-600">Showing {requests.length} of {totalRecords} records</span>
+            <div className="flex items-center gap-2">
+              <select aria-label="Rows per page" value={itemsPerPage} onChange={event => { setItemsPerPage(Number(event.target.value)); setCurrentPage(1); }} className="border border-slate-200 rounded p-1">
+                <option value={10}>10</option><option value={25}>25</option><option value={50}>50</option>
+              </select>
+              <button disabled={currentPage <= 1} onClick={() => setCurrentPage(page => page - 1)} className="disabled:opacity-40">Previous</button>
+              <span>{currentPage} / {totalPages}</span>
+              <button disabled={currentPage >= totalPages} onClick={() => setCurrentPage(page => page + 1)} className="disabled:opacity-40">Next</button>
+            </div>
           </div>
         </div>
 
@@ -788,7 +790,7 @@ export function MovementApprovals() {
                 </span>
                 <span className="text-[11px] text-slate-400 font-mono flex items-center gap-1">
                   <Calendar className="w-3 h-3" />
-                  {selectedRequest.requestDate} {selectedRequest.requestTime || '10:24'}
+                  {selectedRequest.requestDate} {selectedRequest.requestTime}
                 </span>
               </div>
 
@@ -800,7 +802,7 @@ export function MovementApprovals() {
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-bold text-slate-900">{selectedRequest.requestNumber}</h3>
                     <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
-                      Pending Approval
+                      {selectedRequest.status}
                     </span>
                   </div>
                   <p className="text-xs text-slate-500 font-medium">
@@ -846,7 +848,7 @@ export function MovementApprovals() {
                       </div>
                       <div className="flex justify-between py-1 border-b border-slate-100">
                         <span className="text-slate-500">Reason</span>
-                        <span className="font-medium text-slate-900">{selectedRequest.reason || 'Department Restructure'}</span>
+                        <span className="font-medium text-slate-900">{selectedRequest.reason || '-'}</span>
                       </div>
                       <div className="flex justify-between py-1 border-b border-slate-100">
                         <span className="text-slate-500">Effective Date</span>
@@ -896,7 +898,7 @@ export function MovementApprovals() {
                             <div className="flex items-center gap-2">
                               <span className="text-[11px] text-slate-400 font-mono">{doc.size}</span>
                               <button
-                                onClick={() => showToast(`Downloading ${doc.name}...`)}
+                                onClick={() => window.open(doc.url, '_blank', 'noopener,noreferrer')}
                                 className="p-1 hover:bg-slate-200 rounded text-slate-600 transition-colors"
                               >
                                 <Download className="w-3 h-3" />
@@ -911,7 +913,7 @@ export function MovementApprovals() {
                   </div>
 
                   {/* Approval Actions Section (Image 1) */}
-                  <div className="pt-2 border-t border-slate-200">
+                  {selectedRequest.status === 'Pending' && <div className="pt-2 border-t border-slate-200">
                     <h4 className="font-bold text-slate-900 text-xs mb-2">Approval Actions</h4>
                     <div className="grid grid-cols-3 gap-2">
                       <button
@@ -953,7 +955,14 @@ export function MovementApprovals() {
                         className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#6C2BD9] focus:bg-white resize-none"
                       />
                     </div>
-                  </div>
+                  </div>}
+                  {selectedRequest.status === 'Changes Requested' && (
+                    <button type="button"
+                      onClick={() => navigate(`/movements/transfer?assetId=${encodeURIComponent(selectedRequest.assetNo)}`)}
+                      className="w-full px-3 py-2 rounded-xl bg-purple-50 text-[#6C2BD9] border border-purple-200 font-bold">
+                      Create revised transfer request
+                    </button>
+                  )}
                 </>
               )}
 
@@ -982,7 +991,7 @@ export function MovementApprovals() {
               {/* TAB 3: WORKFLOW */}
               {activeDetailTab === 'workflow' && (
                 <div className="space-y-4">
-                  <h4 className="font-bold text-slate-900 text-xs">Multi-Level Approval Pipeline</h4>
+                  <h4 className="font-bold text-slate-900 text-xs">Approval Workflow</h4>
                   <div className="space-y-4 relative before:absolute before:inset-0 before:left-3.5 before:w-0.5 before:bg-slate-200">
                     {selectedRequest.workflowStages?.map((stage, idx) => (
                       <div key={idx} className="relative flex items-start gap-3 text-xs">
@@ -1087,7 +1096,7 @@ export function MovementApprovals() {
                   <p className="text-slate-500 font-medium">Requested By</p>
                   <p className="font-bold text-slate-900">{modalRequest.requestedBy}</p>
                   <p className="text-[11px] text-slate-500 font-mono mt-0.5">
-                    {modalRequest.department} • {modalRequest.requestDate} {modalRequest.requestTime || '10:24'}
+                    {modalRequest.department} • {modalRequest.requestDate} {modalRequest.requestTime}
                   </p>
                 </div>
               </div>
@@ -1257,7 +1266,7 @@ export function MovementApprovals() {
                         <div className="flex items-center gap-2">
                           <Paperclip className="w-3.5 h-3.5 text-[#6C2BD9]" />
                           <span className="font-semibold text-slate-800 truncate max-w-[200px]">{f.name}</span>
-                          <span className="text-[10px] text-slate-400 font-mono">({f.size})</span>
+                          <span className="text-[10px] text-slate-400 font-mono">({f.formattedSize})</span>
                         </div>
                         <button
                           onClick={() => removeAttachedFile(f.id)}
@@ -1274,7 +1283,7 @@ export function MovementApprovals() {
               {/* Notify Users (Image 2) */}
               <div>
                 <label className="font-bold text-slate-900 flex items-center gap-1 mb-2">
-                  Notify Users (Optional) <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
+                  Notification (Optional) <HelpCircle className="w-3.5 h-3.5 text-slate-400" />
                 </label>
                 <div className="space-y-2">
                   <label className="flex items-center gap-2.5 cursor-pointer">
@@ -1289,41 +1298,6 @@ export function MovementApprovals() {
                     </span>
                   </label>
 
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={notifyNextApprover}
-                      onChange={(e) => setNotifyNextApprover(e.target.checked)}
-                      className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
-                    />
-                    <span className="font-semibold text-slate-700">
-                      Notify next approver
-                    </span>
-                  </label>
-
-                  <label className="flex items-center gap-2.5 cursor-pointer">
-                    <input
-                      type="checkbox"
-                      checked={addAdditionalRecipients}
-                      onChange={(e) => setAddAdditionalRecipients(e.target.checked)}
-                      className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
-                    />
-                    <span className="font-semibold text-slate-700">
-                      Add additional recipients
-                    </span>
-                  </label>
-
-                  {addAdditionalRecipients && (
-                    <div className="pl-6 pt-1">
-                      <input
-                        type="email"
-                        placeholder="Enter email address..."
-                        value={additionalRecipientEmail}
-                        onChange={(e) => setAdditionalRecipientEmail(e.target.value)}
-                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs focus:outline-none focus:border-[#6C2BD9]"
-                      />
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -1338,7 +1312,7 @@ export function MovementApprovals() {
               </button>
 
               <button
-                disabled={isSubmitting}
+                disabled={isSubmitting || uploadingFiles}
                 onClick={handleSubmitDecision}
                 className={clsx(
                   "px-6 py-2.5 text-white rounded-xl font-bold transition-all shadow-xs flex items-center gap-1.5",

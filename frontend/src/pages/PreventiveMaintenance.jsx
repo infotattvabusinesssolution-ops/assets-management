@@ -1,15 +1,15 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
-import { Plus, Settings, Download, RefreshCw, MoreHorizontal, Save, Search, ChevronRight } from 'lucide-react';
+import { Plus, Settings, Download, RefreshCw, MoreHorizontal, Save, Search, ChevronRight, X } from 'lucide-react';
 
 const newForm = () => ({
-  title: '', assetId: '', description: '', workType: 'PREVENTIVE',
+  title: '', categoryId: '', assetId: '', description: '', workType: 'PREVENTIVE',
   frequencyMonths: 3, nextDueDate: new Date().toISOString().slice(0, 10),
   active: true, autoGenerateWorkOrders: false, advanceDays: 7, checklist: []
 });
 const formFrom = s => ({
-  title: s.title, assetId: s.assetId, description: s.description || '',
+  title: s.title, categoryId: s.asset?.categoryId || '', assetId: s.assetId, description: s.description || '',
   workType: s.workType, frequencyMonths: s.frequencyMonths,
   nextDueDate: s.nextDueDate.slice(0, 10), active: s.active,
   autoGenerateWorkOrders: s.autoGenerateWorkOrders, advanceDays: s.advanceDays,
@@ -44,6 +44,8 @@ export function PreventiveMaintenance() {
   const [schedules, setSchedules] = useState([]);
   const [orders, setOrders] = useState([]);
   const [assets, setAssets] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [choicesLoading, setChoicesLoading] = useState(false);
   const [selectedId, setSelectedId] = useState(null);
   const [creating, setCreating] = useState(false);
   const [form, setForm] = useState(newForm);
@@ -63,8 +65,8 @@ export function PreventiveMaintenance() {
   const [error, setError] = useState('');
 
   const selected = schedules.find(s => s.id === selectedId);
-  const selectedAsset = assets.find(a => a.id === form.assetId) || selected?.asset;
-  const categories = useMemo(() => [...new Map(assets.filter(a => a.category).map(a => [a.categoryId, { id: a.categoryId, name: a.category.name }])).values()].sort((a,b) => a.name.localeCompare(b.name)), [assets]);
+  const selectedAsset = assets.find(a => a.id === form.assetId) || (!creating ? selected?.asset : null);
+  const availableAssets = useMemo(() => assets.filter(asset => asset.categoryId === form.categoryId && !['DISPOSED', 'RETIRED'].includes(asset.lifecycleStatus)), [assets, form.categoryId]);
   const sites = useMemo(() => [...new Map(assets.filter(a => a.site).map(a => [a.siteId, { id: a.siteId, name: a.site.name }])).values()].sort((a,b) => a.name.localeCompare(b.name)), [assets]);
   const filtered = useMemo(() => schedules.filter(s => {
     const due = new Date(s.nextDueDate);
@@ -88,9 +90,10 @@ export function PreventiveMaintenance() {
   const selectedOrders = orders.filter(w => w.scheduleId === selectedId);
 
   async function load(preferredId) {
-    const [dashboard, assetResponse] = await Promise.all([api.get('/maintenance/preventive'), api.get('/maintenance/assets')]);
+    const [dashboard, assetResponse, categoryResponse] = await Promise.all([api.get('/maintenance/preventive'), api.get('/maintenance/assets'), api.get('/master-data/categories')]);
     const next = dashboard.schedules || [];
     setSchedules(next); setOrders(dashboard.generatedWorkOrders || []); setAssets(assetResponse.assets || []);
+    setCategories((categoryResponse.categories || []).filter(item => item.active !== false));
     setSelectedId(current => preferredId || (next.some(s => s.id === current) ? current : next[0]?.id || null));
     setLoading(false);
     return next;
@@ -99,10 +102,27 @@ export function PreventiveMaintenance() {
   useEffect(() => {
     if (!creating && selected) { setForm(formFrom(selected)); setChecklistText((selected.checklist || []).join('\n')); }
   }, [selectedId, schedules, creating]);
+  useEffect(() => {
+    if (!creating) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = event => { if (event.key === 'Escape' && !busy) setCreating(false); };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', closeOnEscape); };
+  }, [creating, busy]);
 
   function update(key, value) { setForm(previous => ({ ...previous, [key]: value })); }
   function select(id) { setSelectedId(id); setCreating(false); setMenuId(null); setError(''); setMessage(''); }
-  function create() { setCreating(true); setSelectedId(null); setForm(newForm()); setChecklistText(''); setMenuId(null); setError(''); setMessage(''); }
+  async function create() {
+    setCreating(true); setForm(newForm()); setChecklistText(''); setMenuId(null); setError(''); setMessage('');
+    setAssets([]); setCategories([]); setChoicesLoading(true);
+    try {
+      const [assetResponse, categoryResponse] = await Promise.all([api.get('/maintenance/assets'), api.get('/master-data/categories')]);
+      setAssets(assetResponse.assets || []);
+      setCategories((categoryResponse.categories || []).filter(item => item.active !== false));
+    } catch (e) { setError(errorText(e)); }
+    finally { setChoicesLoading(false); }
+  }
   async function refresh() {
     setError(''); setMessage('');
     try { await load(); setMessage('Schedules refreshed.'); } catch (e) { setError(errorText(e)); }
@@ -112,9 +132,9 @@ export function PreventiveMaintenance() {
     try {
       const payload = { ...form, checklist: checklistText.split('\n').map(task => task.trim()).filter(Boolean) };
       const response = creating ? await api.post('/maintenance/schedules', payload) : await api.put('/maintenance/schedules/' + selectedId, payload);
-      setCreating(false);
       await load(response.schedule.id);
       setMessage(creating ? 'Schedule created.' : 'Schedule saved.');
+      setCreating(false);
     } catch (e) { setError(errorText(e)); }
     finally { setBusy(false); }
   }
@@ -151,7 +171,7 @@ export function PreventiveMaintenance() {
       <div><div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-500">Maintenance <ChevronRight size={12} /><span className="font-bold text-[#6C2BD9]">Preventive Maintenance</span></div><h1 className="mt-1 text-xl font-extrabold text-slate-900">Preventive Maintenance</h1><p className="mt-0.5 text-xs text-slate-500">Manage scheduled preventive maintenance and generate work orders</p></div>
       <div className="flex flex-wrap gap-2"><button className={purple + ' flex items-center gap-1.5'} onClick={create}><Plus size={15} />Create PM Schedule</button><button className={outline + ' flex items-center gap-1.5'} disabled={busy} onClick={() => generate()}><Settings size={15} />Generate Work Orders</button><button className={outline + ' flex items-center gap-1.5'} disabled={!filtered.length} onClick={exportCsv}><Download size={15} />Export</button><button className={outline} onClick={refresh} aria-label="Refresh schedules"><RefreshCw size={15} /></button></div>
     </header>
-    {error && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</div>}
+    {error && !creating && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</div>}
     {message && <div role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 font-semibold text-emerald-800">{message}</div>}
 
     <section className="rounded-xl border border-slate-200 bg-white p-3.5">
@@ -182,21 +202,25 @@ export function PreventiveMaintenance() {
         {menuId && schedules.find(s => s.id === menuId) && <><button type="button" className="fixed inset-0 z-40 cursor-default" aria-label="Close actions menu" onClick={() => setMenuId(null)} /><div className="fixed z-50 min-w-44 rounded-lg border bg-white p-1 text-left shadow-xl" style={{ top: menuPosition.top, left: menuPosition.left }}><button className="block w-full rounded px-3 py-2 text-left hover:bg-purple-50" onClick={() => select(menuId)}>View / Edit</button><button className="block w-full rounded px-3 py-2 text-left hover:bg-purple-50" onClick={() => generate(menuId)}>Generate due work order</button><button className="block w-full rounded px-3 py-2 text-left hover:bg-purple-50" onClick={() => toggle(schedules.find(s => s.id === menuId))}>{schedules.find(s => s.id === menuId).active ? 'Deactivate' : 'Activate'}</button><button className="block w-full rounded px-3 py-2 text-left hover:bg-purple-50" onClick={() => navigate('/assets/' + schedules.find(s => s.id === menuId).assetId)}>Open Asset 360</button></div></>}
       </section>
 
-      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 lg:col-span-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3"><h2 className="text-sm font-bold text-slate-900">Schedule Details</h2>{selected && !creating && <span className={'rounded border px-2 py-0.5 text-[10px] font-bold ' + (selected.active ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-slate-300 bg-slate-100 text-slate-600')}>{selected.active ? 'Active' : 'Inactive'}</span>}</div>
+      <section role={creating ? 'dialog' : undefined} aria-modal={creating ? 'true' : undefined} aria-label={creating ? 'Create PM Schedule' : undefined} className={creating ? 'fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4' : 'space-y-4 rounded-xl border border-slate-200 bg-white p-4 lg:col-span-4'} onMouseDown={creating ? event => { if (event.target === event.currentTarget && !busy) setCreating(false); } : undefined}>
+        <div className={creating ? 'w-full max-w-2xl max-h-[90vh] space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 shadow-2xl' : 'contents'}>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3"><h2 className="text-sm font-bold text-slate-900">{creating ? 'Create PM Schedule' : 'Schedule Details'}</h2>{creating ? <button type="button" aria-label="Close create schedule" onClick={() => setCreating(false)} disabled={busy} className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"><X size={18} /></button> : selected && <span className={'rounded border px-2 py-0.5 text-[10px] font-bold ' + (selected.active ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-slate-300 bg-slate-100 text-slate-600')}>{selected.active ? 'Active' : 'Inactive'}</span>}</div>
+        {creating && error && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</div>}
         {creating || selected ? <form className="space-y-3.5" onSubmit={save}>
           <label className="block space-y-1"><span className="text-[11px] font-bold">Schedule No.</span><input readOnly className={input + ' bg-slate-100 font-mono'} value={creating ? 'Assigned on save' : number(selected)} /></label>
-          <label className="block space-y-1"><span className="text-[11px] font-bold">Asset *</span><select required className={input} value={form.assetId} disabled={!creating && selectedOrders.length > 0} onChange={e => update('assetId',e.target.value)}><option value="">Select registered asset</option>{assets.map(a => <option key={a.id} value={a.id}>{a.assetId} — {a.description}</option>)}</select></label>
-          <div className="grid grid-cols-2 gap-3"><label className="space-y-1"><span className="text-[11px] font-bold">Asset Category</span><input readOnly className={input + ' bg-slate-100'} value={selectedAsset?.category?.name || ''} /></label><label className="space-y-1"><span className="text-[11px] font-bold">Location</span><input readOnly className={input + ' bg-slate-100'} value={selectedAsset?.site?.name || ''} /></label></div>
+          <div className="grid grid-cols-2 gap-3"><label className="space-y-1"><span className="text-[11px] font-bold">Asset Category {creating && '*'}</span>{creating ? <select required autoFocus className={input} value={form.categoryId} disabled={choicesLoading} onChange={e => setForm(previous => ({ ...previous, categoryId: e.target.value, assetId: '' }))}><option value="">{choicesLoading ? 'Loading categories…' : 'Select database category'}</option>{categories.map(category => <option key={category.id} value={category.id}>{category.name}</option>)}</select> : <input readOnly className={input + ' bg-slate-100'} value={selectedAsset?.category?.name || ''} />}</label><label className="space-y-1"><span className="text-[11px] font-bold">Location</span><input readOnly className={input + ' bg-slate-100'} value={selectedAsset?.site?.name || ''} /></label></div>
+          <label className="block space-y-1"><span className="text-[11px] font-bold">Asset *</span><select required className={input} value={form.assetId} disabled={creating ? choicesLoading || !form.categoryId : selectedOrders.length > 0} onChange={e => update('assetId',e.target.value)}><option value="">{creating && !form.categoryId ? 'Select a category first' : 'Select registered asset'}</option>{(creating ? availableAssets : assets).map(asset => <option key={asset.id} value={asset.id}>{asset.assetId} — {asset.description} ({asset.site?.name || 'No site'})</option>)}</select></label>
+          {creating && form.categoryId && !choicesLoading && availableAssets.length === 0 && <p className="text-[11px] text-amber-700">No active registered assets in this category are eligible for a PM schedule.</p>}
           <label className="block space-y-1"><span className="text-[11px] font-bold">Schedule Title *</span><input required className={input} value={form.title} onChange={e => update('title',e.target.value)} /></label>
           <div className="grid grid-cols-2 gap-3"><label className="space-y-1"><span className="text-[11px] font-bold">Schedule Type</span><select className={input} value={form.workType} onChange={e => update('workType',e.target.value)}><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option></select></label><label className="space-y-1"><span className="text-[11px] font-bold">Repeat Every (Months)</span><input type="number" min="1" max="120" required className={input} value={form.frequencyMonths} onChange={e => update('frequencyMonths',Number(e.target.value))} /></label></div>
           <div className="grid grid-cols-2 gap-3"><label className="space-y-1"><span className="text-[11px] font-bold">Last Service Date</span><input readOnly className={input + ' bg-slate-100'} value={creating ? '—' : date(selected.lastPerformedDate)} /></label><label className="space-y-1"><span className="text-[11px] font-bold">Next Due Date *</span><input type="date" required className={input} value={form.nextDueDate} onChange={e => update('nextDueDate',e.target.value)} /></label></div>
           <label className="block space-y-1"><span className="text-[11px] font-bold">Description</span><textarea rows={3} maxLength={500} className={input} value={form.description} onChange={e => update('description',e.target.value)} /><span className="block text-right text-[10px] text-slate-400">{form.description.length}/500</span></label>
           <label className="block space-y-1"><span className="text-[11px] font-bold">Checklist (one task per line)</span><textarea rows={3} className={input} value={checklistText} onChange={e => setChecklistText(e.target.value)} /></label>
           <div className="space-y-2 border-t border-slate-100 pt-2"><h3 className="font-bold text-[#6C2BD9]">Additional Settings</h3><label className="flex gap-2"><input type="checkbox" checked={form.active} onChange={e => update('active',e.target.checked)} />Schedule active</label><label className="flex gap-2"><input type="checkbox" checked={form.autoGenerateWorkOrders} onChange={e => update('autoGenerateWorkOrders',e.target.checked)} />Automatically generate work order when due</label><label className="block space-y-1"><span>Generate this many days before due date</span><input type="number" min="0" max="90" className={input + ' max-w-24'} value={form.advanceDays} onChange={e => update('advanceDays',Number(e.target.value))} /></label></div>
-          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3"><button type="button" className={outline} onClick={() => { if (creating) { setCreating(false); setSelectedId(schedules[0]?.id || null); } else { setForm(formFrom(selected)); setChecklistText((selected.checklist || []).join('\n')); } }}>Cancel</button><button type="submit" disabled={busy} className={purple + ' flex items-center gap-1'}><Save size={14} />Save Schedule</button></div>
+          <div className="flex justify-end gap-2 border-t border-slate-100 pt-3"><button type="button" disabled={busy} className={outline} onClick={() => { if (creating) setCreating(false); else { setForm(formFrom(selected)); setChecklistText((selected.checklist || []).join('\n')); } }}>Cancel</button><button type="submit" disabled={busy} className={purple + ' flex items-center gap-1'}><Save size={14} />{creating ? 'Create Schedule' : 'Save Schedule'}</button></div>
           {!creating && <button type="button" className={outline + ' w-full'} disabled={busy || !selected.active} onClick={() => generate(selected.id)}>Generate due work order</button>}
         </form> : <p className="py-6 text-center text-slate-500">Select a schedule or create one.</p>}
+        </div>
       </section>
     </div>
 

@@ -6,7 +6,7 @@ import { Plus, RefreshCw, Download, Save, X, Trash2, Wrench } from 'lucide-react
 const blank = () => ({
   name: '', description: '', workType: 'PREVENTIVE', applyToRule: 'CATEGORY',
   categoryId: '', siteId: '', custodianId: '', assetIds: [],
-  frequencyMonths: 6, nextDueDate: new Date().toISOString().slice(0, 10),
+  frequencyUnit: 'MONTHS', frequencyInterval: 6, nextDueDate: new Date().toISOString().slice(0, 10),
   active: true, autoCreateWorkOrders: false, advanceDays: 7
 });
 const date = value => value ? new Date(value).toLocaleDateString() : '—';
@@ -14,6 +14,8 @@ const errorText = error => error?.message || 'Request failed.';
 const fieldClass = 'w-full rounded-lg border border-slate-300 px-3 py-2 text-sm focus:border-blue-500 focus:outline-none';
 const buttonClass = 'rounded-lg border border-slate-300 px-3 py-2 text-sm font-medium hover:bg-slate-50 disabled:opacity-50';
 const tabs = ['Applicable Assets', 'Generated Work Orders', 'Checklist', 'Comments', 'History'];
+const frequencyUnits = { DAYS: { label: 'Days', max: 365 }, WEEKS: { label: 'Weeks', max: 52 }, MONTHS: { label: 'Months', max: 120 }, YEARS: { label: 'Years', max: 10 } };
+const frequencyLabel = plan => { const unit = plan.frequencyUnit || 'MONTHS'; const count = plan.frequencyInterval || plan.frequencyMonths; return `Every ${count} ${count === 1 ? frequencyUnits[unit]?.label.slice(0, -1).toLowerCase() : frequencyUnits[unit]?.label.toLowerCase()}`; };
 
 export function MaintenancePlans() {
   const navigate = useNavigate();
@@ -67,7 +69,7 @@ export function MaintenancePlans() {
       workType: result.plan.workType, applyToRule: result.plan.applyToRule,
       categoryId: result.plan.categoryId || '', siteId: result.plan.siteId || '',
       custodianId: result.plan.custodianId || '', assetIds: result.plan.assetIds || [],
-      frequencyMonths: result.plan.frequencyMonths,
+      frequencyUnit: result.plan.frequencyUnit || 'MONTHS', frequencyInterval: result.plan.frequencyInterval || result.plan.frequencyMonths,
       nextDueDate: result.plan.nextDueDate.slice(0, 10),
       active: result.plan.active, autoCreateWorkOrders: result.plan.autoCreateWorkOrders,
       advanceDays: result.plan.advanceDays
@@ -80,10 +82,18 @@ export function MaintenancePlans() {
     if (!selectedId || creating) return;
     loadDetail(selectedId).catch(e => setError(errorText(e)));
   }, [selectedId, creating]);
+  useEffect(() => {
+    if (!creating) return;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const closeOnEscape = event => { if (event.key === 'Escape' && !busy) setCreating(false); };
+    window.addEventListener('keydown', closeOnEscape);
+    return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', closeOnEscape); };
+  }, [creating, busy]);
 
   function update(key, value) { setForm(previous => ({ ...previous, [key]: value })); }
   function select(id) { setCreating(false); setSelectedId(id); setDetail(null); setTab(tabs[0]); setMessage(''); setError(''); }
-  function create() { setCreating(true); setSelectedId(null); setDetail(null); setForm(blank()); setTab(tabs[0]); setMessage(''); setError(''); }
+  function create() { setCreating(true); setForm(blank()); setMessage(''); setError(''); }
   async function refresh() {
     setError(''); setMessage('');
     try { await loadPlans(); if (selectedId && !creating) await loadDetail(selectedId); }
@@ -95,9 +105,9 @@ export function MaintenancePlans() {
       const response = creating
         ? await api.post('/maintenance/plans', form)
         : await api.put('/maintenance/plans/' + selectedId, form);
-      setCreating(false);
       await loadPlans(response.plan.id);
       await loadDetail(response.plan.id);
+      setCreating(false);
       setMessage('Plan saved.');
     } catch (e) { setError(errorText(e)); }
     finally { setBusy(false); }
@@ -114,8 +124,8 @@ export function MaintenancePlans() {
     finally { setBusy(false); }
   }
   function exportCsv() {
-    const rows = [['Plan number','Name','Work type','Asset rule','Assets','Frequency months','Next due','Active','Auto create work orders']];
-    filtered.forEach(p => rows.push([p.planNumber,p.name,p.workType,p.applyToRule,p.assetCount,p.frequencyMonths,p.nextDueDate?.slice(0,10),p.active?'Yes':'No',p.autoCreateWorkOrders?'Yes':'No']));
+    const rows = [['Plan number','Name','Work type','Asset rule','Assets','Frequency unit','Every','Next due','Active','Auto create work orders']];
+    filtered.forEach(p => rows.push([p.planNumber,p.name,p.workType,p.applyToRule,p.assetCount,p.frequencyUnit || 'MONTHS',p.frequencyInterval || p.frequencyMonths,p.nextDueDate?.slice(0,10),p.active?'Yes':'No',p.autoCreateWorkOrders?'Yes':'No']));
     const csv = rows.map(row => row.map(value => {
       const cell = String(value ?? '');
       return '"' + (/^[=+@\-]/.test(cell) ? "'" + cell : cell).replaceAll('"','""') + '"';
@@ -148,7 +158,7 @@ export function MaintenancePlans() {
       </div>
     </div>
 
-    {error && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</div>}
+    {error && !creating && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</div>}
     {message && <div role="status" className="rounded-lg border border-emerald-300 bg-emerald-50 p-3 font-semibold text-emerald-800">{message}</div>}
 
     <div className="rounded-xl border border-slate-200 bg-white p-3.5">
@@ -181,7 +191,7 @@ export function MaintenancePlans() {
                   <td className="p-2.5 font-bold text-slate-900">{p.name}</td>
                   <td className="p-2.5">{categoryName(p.categoryId)}</td>
                   <td className="p-2.5">{p.workType}</td>
-                  <td className="p-2.5 whitespace-nowrap">Every {p.frequencyMonths} months</td>
+                  <td className="p-2.5 whitespace-nowrap">{frequencyLabel(p)}</td>
                   <td className="p-2.5 text-center"><span className={'rounded border px-2 py-0.5 text-[10px] font-bold ' + (p.active ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-slate-300 bg-slate-200 text-slate-600')}>{p.active ? 'Active' : 'Inactive'}</span></td>
                   <td className="whitespace-nowrap p-2.5 font-mono text-slate-600">{date(p.nextDueDate)}</td>
                   <td className="p-2.5 text-center"><button type="button" onClick={e => { e.stopPropagation(); select(p.id); }} className="rounded p-1 text-[#6C2BD9] hover:bg-purple-100" aria-label={'View ' + p.name}>View</button></td>
@@ -193,14 +203,16 @@ export function MaintenancePlans() {
         </div>
       </section>
 
-      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-4 lg:col-span-4">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-3"><h2 className="text-sm font-bold text-slate-900">Plan Details</h2>{selected && !creating && <span className="rounded border border-purple-200 bg-purple-50 px-2 py-1 font-mono text-[11px] text-[#6C2BD9]">{selected.planNumber}</span>}</div>
+      <section role={creating ? 'dialog' : undefined} aria-modal={creating ? 'true' : undefined} aria-label={creating ? 'Create Maintenance Plan' : undefined} className={creating ? 'fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4' : 'space-y-4 rounded-xl border border-slate-200 bg-white p-4 lg:col-span-4'} onMouseDown={creating ? event => { if (event.target === event.currentTarget && !busy) setCreating(false); } : undefined}>
+        <div className={creating ? 'w-full max-w-2xl max-h-[90vh] space-y-4 overflow-y-auto rounded-xl border border-slate-200 bg-white p-5 shadow-2xl' : 'contents'}>
+        <div className="flex items-center justify-between border-b border-slate-100 pb-3"><h2 className="text-sm font-bold text-slate-900">{creating ? 'Create Maintenance Plan' : 'Plan Details'}</h2>{creating ? <button type="button" aria-label="Close create plan" onClick={() => setCreating(false)} disabled={busy} className="rounded p-1 text-slate-500 hover:bg-slate-100 disabled:opacity-50"><X size={18} /></button> : selected && <span className="rounded border border-purple-200 bg-purple-50 px-2 py-1 font-mono text-[11px] text-[#6C2BD9]">{selected.planNumber}</span>}</div>
+        {creating && error && <div role="alert" className="rounded-lg border border-rose-300 bg-rose-50 p-3 font-semibold text-rose-800">{error}</div>}
         {creating || selected ? <form className="space-y-3.5" onSubmit={save}>
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1"><span className="text-[11px] font-bold">Plan No.</span><input readOnly className={input + ' bg-slate-100 font-mono'} value={creating ? 'Assigned on save' : selected?.planNumber || ''} /></label>
             <label className="space-y-1"><span className="text-[11px] font-bold">Status</span><select className={input} value={form.active ? 'ACTIVE' : 'INACTIVE'} onChange={e => update('active',e.target.value === 'ACTIVE')}><option value="ACTIVE">Active</option><option value="INACTIVE">Inactive</option></select></label>
           </div>
-          <label className="block space-y-1"><span className="text-[11px] font-bold">Plan Name *</span><input required className={input + ' font-bold'} value={form.name} onChange={e => update('name',e.target.value)} /></label>
+          <label className="block space-y-1"><span className="text-[11px] font-bold">Plan Name *</span><input required autoFocus={creating} className={input + ' font-bold'} value={form.name} onChange={e => update('name',e.target.value)} /></label>
           <div className="grid grid-cols-2 gap-3">
             <label className="space-y-1"><span className="text-[11px] font-bold">Asset Category</span><select className={input} value={form.categoryId} onChange={e => update('categoryId',e.target.value)}><option value="">Select category</option>{categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}</select></label>
             <label className="space-y-1"><span className="text-[11px] font-bold">Maintenance Type *</span><select className={input} value={form.workType} onChange={e => update('workType',e.target.value)}><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option><option value="CORRECTIVE">Corrective</option></select></label>
@@ -208,11 +220,13 @@ export function MaintenancePlans() {
           <label className="block space-y-1"><span className="text-[11px] font-bold">Description</span><textarea className={input} rows={3} maxLength={500} value={form.description} onChange={e => update('description',e.target.value)} /><span className="block text-right text-[10px] text-slate-400">{form.description.length}/500</span></label>
           <div className="space-y-2 border-t border-slate-100 pt-2"><h3 className="text-xs font-bold text-[#6C2BD9]">Scheduling</h3>
             <div className="grid grid-cols-2 gap-2">
-              <label className="space-y-1"><span className="text-[10px] font-bold">Frequency Type</span><select className={input} value="MONTHS" disabled><option value="MONTHS">Calendar (Months)</option></select></label>
-              <label className="space-y-1"><span className="text-[10px] font-bold">Every *</span><div className="flex items-center gap-1"><input required type="number" min="1" max="120" className={input} value={form.frequencyMonths} onChange={e => update('frequencyMonths',Number(e.target.value))} /><span className="text-[10px] font-bold">Months</span></div></label>
+              <label className="space-y-1"><span className="text-[10px] font-bold">Frequency Type</span><select className={input} value={form.frequencyUnit} onChange={e => setForm(previous => ({ ...previous, frequencyUnit: e.target.value, frequencyInterval: Math.min(previous.frequencyInterval, frequencyUnits[e.target.value].max) }))}>{Object.entries(frequencyUnits).map(([key, value]) => <option key={key} value={key}>{value.label}</option>)}</select></label>
+              <label className="space-y-1"><span className="text-[10px] font-bold">Every *</span><div className="flex items-center gap-1"><input required type="number" min="1" max={frequencyUnits[form.frequencyUnit].max} className={input} value={form.frequencyInterval} onChange={e => update('frequencyInterval', Number(e.target.value))} /><span className="text-[10px] font-bold">{frequencyUnits[form.frequencyUnit].label}</span></div></label>
               <label className="space-y-1"><span className="text-[10px] font-bold">Created</span><input readOnly className={input + ' bg-slate-100'} value={creating ? 'On save' : date(detail?.createdAt)} /></label>
               <label className="space-y-1"><span className="text-[10px] font-bold">Next Due Date *</span><input required type="date" className={input} value={form.nextDueDate} onChange={e => update('nextDueDate',e.target.value)} /></label>
             </div>
+            <div className="flex flex-wrap items-center gap-1.5"><span className="mr-1 text-[10px] font-semibold text-slate-500">Common schedules:</span>{[['Weekly','WEEKS',1],['Monthly','MONTHS',1],['Quarterly','MONTHS',3],['Every 6 months','MONTHS',6],['Yearly','YEARS',1]].map(([label, unit, interval]) => <button key={label} type="button" onClick={() => setForm(previous => ({ ...previous, frequencyUnit: unit, frequencyInterval: interval }))} className={'rounded-full border px-2 py-1 text-[10px] font-semibold ' + (form.frequencyUnit === unit && form.frequencyInterval === interval ? 'border-[#6C2BD9] bg-purple-50 text-[#6C2BD9]' : 'border-slate-200 text-slate-600 hover:bg-slate-50')}>{label}</button>)}</div>
+            <p className="text-[11px] text-slate-500">The first work order is due on the selected date; later due dates follow this interval.</p>
           </div>
           <div className="space-y-2 border-t border-slate-100 pt-2"><h3 className="text-xs font-bold text-[#6C2BD9]">Apply To</h3>
             <div className="grid grid-cols-2 gap-2 font-medium">
@@ -228,11 +242,12 @@ export function MaintenancePlans() {
             <p className="text-[11px] text-slate-500">Checklist tasks below are copied to generated work orders.</p>
           </div>
           <div className="flex flex-wrap justify-end gap-2 border-t border-slate-100 pt-3">
-            <button type="button" className={outlineButton} onClick={() => { if (creating) { setCreating(false); setSelectedId(plans[0]?.id || null); } else loadDetail(selectedId).catch(e => setError(errorText(e))); }}>Cancel</button>
-            <button type="submit" disabled={busy || !assets.length} className={purpleButton + ' flex items-center gap-1'}><Save size={14} />Save Plan</button>
+            <button type="button" className={outlineButton} disabled={busy} onClick={() => { if (creating) setCreating(false); else loadDetail(selectedId).catch(e => setError(errorText(e))); }}>Cancel</button>
+            <button type="submit" disabled={busy || !assets.length} className={purpleButton + ' flex items-center gap-1'}><Save size={14} />{creating ? 'Create Plan' : 'Save Plan'}</button>
           </div>
           {!creating && <button type="button" disabled={busy || !detail?.active} className={outlineButton + ' w-full'} onClick={() => act(() => api.post('/maintenance/plans/' + selectedId + '/generate'), 'Generation checked.')}><Wrench size={14} className="mr-1 inline" />Generate due work orders</button>}
         </form> : <p className="py-6 text-center text-slate-500">Select a plan or create a new one.</p>}
+        </div>
       </section>
     </div>
 

@@ -51,7 +51,12 @@ const profileFields = ['yearEstablished', 'logoUrl', 'designation', 'mobile', 'd
 const readProfile = value => { try { return JSON.parse(value || '{}'); } catch { return {}; } };
 const inputDate = value => value ? new Date(value).toISOString().slice(0, 10) : '';
 const displayDate = value => value ? new Date(value).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '—';
-const dateStatus = item => !item.active ? 'Inactive' : new Date(item.endDate) < new Date() ? 'Expired' : 'Active';
+const dateStatus = item => {
+  if (!item.active) return 'Inactive';
+  const endDate = new Date(item.endDate);
+  if (endDate < new Date()) return 'Expired';
+  return endDate <= new Date(Date.now() + 30 * 86400000) ? 'Expiring' : 'Active';
+};
 const legacyContract = item => ({
   id: item.id, contractNo: item.contractNumber, contractName: item.title, contractType: item.contractType,
   startDate: displayDate(item.startDate), endDate: displayDate(item.endDate), startDateInput: inputDate(item.startDate), endDateInput: inputDate(item.endDate),
@@ -231,7 +236,7 @@ export function ServiceProviderAction() {
       coverageSiteId: item.coverageSiteId, status: item.active ? 'Active' : 'Inactive'
     })));
     setSupportedServicesList((detail.services || []).map(item => ({ id: item.id, name: item.name, code: item.serviceCode, sla: item.responseHours, rate: item.rate, status: item.active ? 'Active' : 'Inactive' })));
-    setCertificationsList((detail.certifications || []).map(item => ({ id: item.id, name: item.name, certNo: item.certificateNumber || '', validTill: displayDate(item.validUntil), status: item.validUntil && new Date(item.validUntil) < new Date() ? 'Expired' : 'Active' })));
+    setCertificationsList((detail.certifications || []).map(item => ({ id: item.id, name: item.name, certNo: item.certificateNumber || '', validUntil: inputDate(item.validUntil), validTill: displayDate(item.validUntil), status: item.validUntil && new Date(item.validUntil) < new Date() ? 'Expired' : 'Active' })));
     setAmcContractsList(provider.contracts);
     setProviderDocumentsList(provider.documents);
     setServiceHistoryRecordsList(provider.serviceHistory);
@@ -498,6 +503,8 @@ export function ServiceProviderAction() {
     const matchesQ = !searchQuery || 
       p.providerCode.toLowerCase().includes(q) ||
       p.providerName.toLowerCase().includes(q) ||
+      (p.companyRegistrationNo || '').toLowerCase().includes(q) ||
+      (p.taxRegistrationNo || '').toLowerCase().includes(q) ||
       (p.primaryContact || '').toLowerCase().includes(q);
     const matchesT = typeFilter === 'ALL' || p.providerType === typeFilter;
     const matchesS = statusFilter === 'ALL' || p.status === statusFilter;
@@ -622,7 +629,6 @@ export function ServiceProviderAction() {
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                   <option value="Draft">Draft</option>
-                  <option value="Deactivated">Deactivated</option>
                 </select>
               </div>
             </div>
@@ -1051,7 +1057,7 @@ export function ServiceProviderAction() {
                               onClick={() => handleInputChange('rating', star)}
                             />
                           ))}
-                          <span className="text-xs font-bold text-slate-700 ml-1">({formData.rating.toFixed(1)})</span>
+                          <span className="text-xs font-bold text-slate-700 ml-1">({formData.rating === '' || formData.rating == null || !Number.isFinite(Number(formData.rating)) ? '—' : Number(formData.rating).toFixed(1)})</span>
                         </div>
                       </div>
                     </div>
@@ -1865,7 +1871,7 @@ export function ServiceProviderAction() {
                               </span>
                             </td>
                             <td className="p-2.5 text-right space-x-1.5">
-                              <button onClick={() => editService(svc)} className="text-slate-400 hover:text-[#6C2BD9] p-1"><Edit3 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => editService(svc)} className="text-slate-400 hover:text-[#6C2BD9] p-1" title="Edit service"><Edit3 className="w-3.5 h-3.5" /></button>
                               <button
                                 onClick={() => {
                                   removeChild('services', svc.id);
@@ -1922,7 +1928,7 @@ export function ServiceProviderAction() {
                               </span>
                             </td>
                             <td className="p-2.5 text-right space-x-1.5">
-                              <button onClick={() => editService(svc)} className="text-slate-400 hover:text-[#6C2BD9] p-1"><Edit3 className="w-3.5 h-3.5" /></button>
+                              <button onClick={() => editCertification(cert)} className="text-slate-400 hover:text-[#6C2BD9] p-1" title="Edit certification"><Edit3 className="w-3.5 h-3.5" /></button>
                               <button
                                 onClick={() => {
                                   removeChild('certifications', cert.id);
@@ -1993,6 +1999,7 @@ export function ServiceProviderAction() {
                           <option value="Active">Active</option>
                           <option value="Expiring">Expiring</option>
                           <option value="Expired">Expired</option>
+                          <option value="Inactive">Inactive</option>
                         </select>
 
                         <button onClick={() => { setContractSearchTerm(''); setContractStatusFilter('All'); }} title="Clear contract filters" className="p-1.5 bg-slate-50 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-100">
@@ -2043,7 +2050,7 @@ export function ServiceProviderAction() {
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => editCertification(cert)} className="text-slate-400 hover:text-[#6C2BD9] p-1">
+                                <button onClick={() => setSelectedContractForm({ ...cnt, startDate: cnt.startDateInput, endDate: cnt.endDateInput, assetIds: cnt.assetIds || [], coverageTarget: 'SPECIFIC' })} className="text-slate-400 hover:text-[#6C2BD9] p-1" title="Edit contract">
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                                 <button

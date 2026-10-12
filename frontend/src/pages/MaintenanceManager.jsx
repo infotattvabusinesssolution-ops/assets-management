@@ -59,13 +59,14 @@ const csvCell = (value) => {
   return `"${safe.replaceAll('"', '""')}"`;
 };
 const STATUS_TRANSITIONS = {
-  OPEN: ['ASSIGNED', 'IN_PROGRESS', 'CANCELLED'],
-  ASSIGNED: ['IN_PROGRESS', 'OPEN', 'ON_HOLD', 'CANCELLED'],
-  IN_PROGRESS: ['ON_HOLD', 'ASSIGNED', 'CANCELLED'],
-  ON_HOLD: ['IN_PROGRESS', 'CANCELLED'],
-  COMPLETED: ['IN_PROGRESS'],
+  OPEN: ['ASSIGNED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+  ASSIGNED: ['IN_PROGRESS', 'OPEN', 'ON_HOLD', 'COMPLETED', 'CANCELLED'],
+  IN_PROGRESS: ['ON_HOLD', 'ASSIGNED', 'COMPLETED', 'CANCELLED'],
+  ON_HOLD: ['IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
+  COMPLETED: ['IN_PROGRESS', 'VERIFIED'],
   VERIFIED: [], CLOSED: [], CANCELLED: ['OPEN']
 };
+const STATUS_OPTIONS = ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD', 'COMPLETED', 'VERIFIED', 'CLOSED', 'CANCELLED'];
 
 export function MaintenanceManager() {
   const navigate = useNavigate();
@@ -80,6 +81,7 @@ export function MaintenanceManager() {
   const [historyLoading, setHistoryLoading] = useState(false);
   const [assets, setAssets] = useState([]);
   const [technicians, setTechnicians] = useState([]);
+  const [providers, setProviders] = useState([]);
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
@@ -126,12 +128,12 @@ export function MaintenanceManager() {
     priority: 'MEDIUM',
     description: '',
     assignedTechnicianId: '',
-    vendorName: '',
+    vendorId: '',
     scheduledDate: '',
     dueTargetDate: '',
     notes: ''
   });
-  const [editForm, setEditForm] = useState({ description: '', workType: 'CORRECTIVE', priority: 'MEDIUM', scheduledDate: '', dueTargetDate: '', vendorName: '', notes: '' });
+  const [editForm, setEditForm] = useState({ description: '', workType: 'CORRECTIVE', priority: 'MEDIUM', scheduledDate: '', dueTargetDate: '', vendorId: '', notes: '' });
 
   const [schedForm, setSchedForm] = useState({
     title: '',
@@ -182,13 +184,14 @@ export function MaintenanceManager() {
   const loadMaintenanceData = async (filters = appliedFilters, preferredId = null) => {
     setLoading(true);
     try {
-      const [sumRes, woRes, schRes, assRes, techRes, catRes] = await Promise.all([
+      const [sumRes, woRes, schRes, assRes, techRes, catRes, providerRes] = await Promise.all([
         api.get('/maintenance/summary'),
         api.get(getWorkOrderUrl(filters)),
         api.get('/maintenance/schedules'),
         api.get('/maintenance/assets'),
         api.get('/maintenance/technicians'),
-        api.get('/master-data/categories').catch(() => ({ categories: [] }))
+        api.get('/master-data/categories').catch(() => ({ categories: [] })),
+        api.get('/maintenance/service-providers')
       ]);
 
       if (sumRes?.success) setSummary(sumRes.summary);
@@ -205,6 +208,7 @@ export function MaintenanceManager() {
       if (assRes?.success) setAssets(assRes.assets || []);
       if (techRes?.success) setTechnicians(techRes.technicians || []);
       if (catRes?.success) setCategories(catRes.categories || []);
+      if (providerRes?.success) setProviders(providerRes.providers || []);
     } catch (err) {
       showToast('error', err.message || 'Could not load maintenance records.');
     } finally {
@@ -335,7 +339,7 @@ export function MaintenanceManager() {
 
   const openEditWorkOrder = () => {
     if (!selectedWo) return;
-    setEditForm({ description: selectedWo.description || '', workType: selectedWo.workType || 'CORRECTIVE', priority: selectedWo.priority || 'MEDIUM', scheduledDate: toDateInput(selectedWo.scheduledDate), dueTargetDate: toDateInput(selectedWo.completionTargetDate), vendorName: selectedWo.vendorName || '', notes: selectedWo.notes || '' });
+    setEditForm({ description: selectedWo.description || '', workType: selectedWo.workType || 'CORRECTIVE', priority: selectedWo.priority || 'MEDIUM', scheduledDate: toDateInput(selectedWo.scheduledDate), dueTargetDate: toDateInput(selectedWo.completionTargetDate), vendorId: selectedWo.vendorId || providers.find(p => p.providerName === selectedWo.vendorName)?.id || '', notes: selectedWo.notes || '' });
     setShowEditWoModal(true);
   };
 
@@ -380,7 +384,7 @@ export function MaintenanceManager() {
       if (res.success) {
         showToast('success', `Work Order ${res.workOrder?.workOrderNumber || ''} created!`);
         setShowCreateWoModal(false);
-        setWoForm({ assetId: '', workType: 'CORRECTIVE', priority: 'MEDIUM', description: '', assignedTechnicianId: '', vendorName: '', scheduledDate: '', dueTargetDate: '', notes: '' });
+        setWoForm({ assetId: '', workType: 'CORRECTIVE', priority: 'MEDIUM', description: '', assignedTechnicianId: '', vendorId: '', scheduledDate: '', dueTargetDate: '', notes: '' });
         await refreshAllSelecting(res.workOrder.id);
       }
     } catch (err) {
@@ -472,6 +476,13 @@ export function MaintenanceManager() {
   const handleUpdateStatusSubmit = async (e) => {
     e.preventDefault();
     if (!selectedWo || !statusForm.targetStatus) return;
+
+    if (['COMPLETED', 'VERIFIED'].includes(statusForm.targetStatus)) {
+      setCloseForm({ workPerformed: statusForm.targetStatus === 'VERIFIED' ? (selectedWo.notes?.match(/Work performed: ([^\n]+)/)?.[1] || '') : '', failureCode: selectedWo.failureCode || '', rootCause: selectedWo.rootCause || '', downtimeHours: '', completionComments: statusForm.comments, supervisorVerification: statusForm.targetStatus === 'VERIFIED' });
+      setShowUpdateStatusModal(false);
+      setShowCloseWoModal(true);
+      return;
+    }
 
     setActionLoading(true);
     try {
@@ -754,7 +765,6 @@ export function MaintenanceManager() {
                     <th className="p-2.5">Scheduled Date</th>
                     <th className="p-2.5">Status</th>
                     <th className="p-2.5">Assigned To</th>
-                    <th className="p-2.5 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100 text-xs font-medium">
@@ -806,16 +816,11 @@ export function MaintenanceManager() {
                         <td className="p-2.5 text-slate-800">
                           {techName}
                         </td>
-                        <td className="p-2.5 text-center" onClick={(e) => e.stopPropagation()}>
-                          <button type="button" onClick={() => handleViewWorkOrder(woId)} aria-label={`View ${wo.workOrderNumber}`} title="View work order details" className="px-2 py-1 hover:bg-purple-100 rounded text-[#6C2BD9] font-semibold">
-                            View
-                          </button>
-                        </td>
                       </tr>
                     );
                   })}
-                  {!loading && paginatedWorkOrders.length === 0 && <tr><td colSpan={10} className="p-8 text-center text-slate-500">No work orders match these filters. Create a work order or clear the filters.</td></tr>}
-                  {loading && <tr><td colSpan={10} className="p-8 text-center text-slate-500">Loading work orders from the database…</td></tr>}
+                  {!loading && paginatedWorkOrders.length === 0 && <tr><td colSpan={9} className="p-8 text-center text-slate-500">No work orders match these filters. Create a work order or clear the filters.</td></tr>}
+                  {loading && <tr><td colSpan={9} className="p-8 text-center text-slate-500">Loading work orders from the database…</td></tr>}
                 </tbody>
               </table>
             </div>
@@ -1171,7 +1176,7 @@ export function MaintenanceManager() {
                 <label className="space-y-1 text-xs font-bold text-slate-700">Assign Technician<select value={woForm.assignedTechnicianId} onChange={e => setWoForm({ ...woForm, assignedTechnicianId: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs"><option value="">Unassigned</option>{technicians.map(person => <option key={person.id} value={person.id}>{person.fullName || person.username} · {person.role?.name || person.role?.code || 'User'}</option>)}</select></label>
                 <label className="space-y-1 text-xs font-bold text-slate-700">Scheduled Date<input type="date" value={woForm.scheduledDate} onChange={e => setWoForm({ ...woForm, scheduledDate: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs" /></label>
                 <label className="space-y-1 text-xs font-bold text-slate-700">Due Date<input type="date" value={woForm.dueTargetDate} onChange={e => setWoForm({ ...woForm, dueTargetDate: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs" /></label>
-                <label className="space-y-1 text-xs font-bold text-slate-700">Vendor<input value={woForm.vendorName} onChange={e => setWoForm({ ...woForm, vendorName: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs" /></label>
+                <label className="space-y-1 text-xs font-bold text-slate-700">Service Provider<select value={woForm.vendorId} onChange={e => setWoForm({ ...woForm, vendorId: e.target.value })} className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs"><option value="">No provider</option>{providers.filter(p => p.status === 'ACTIVE').map(p => <option key={p.id} value={p.id}>{p.providerName}</option>)}</select></label>
               </div>
 
               <div className="space-y-1">
@@ -1220,7 +1225,7 @@ export function MaintenanceManager() {
               <label className="space-y-1 text-xs font-bold">Scheduled date<input type="date" value={editForm.scheduledDate} onChange={e => setEditForm({ ...editForm, scheduledDate: e.target.value })} className="w-full border rounded-lg p-2" /></label>
               <label className="space-y-1 text-xs font-bold">Due date<input type="date" value={editForm.dueTargetDate} onChange={e => setEditForm({ ...editForm, dueTargetDate: e.target.value })} className="w-full border rounded-lg p-2" /></label>
             </div>
-            <label className="block space-y-1 text-xs font-bold">Vendor<input value={editForm.vendorName} onChange={e => setEditForm({ ...editForm, vendorName: e.target.value })} className="w-full border rounded-lg p-2" /></label>
+            <label className="block space-y-1 text-xs font-bold">Service Provider<select value={editForm.vendorId} onChange={e => setEditForm({ ...editForm, vendorId: e.target.value })} className="w-full border rounded-lg p-2"><option value="">No provider</option>{providers.filter(p => p.status === 'ACTIVE' || p.id === editForm.vendorId).map(p => <option key={p.id} value={p.id}>{p.providerName}</option>)}</select></label>
             <label className="block space-y-1 text-xs font-bold">Notes<textarea rows={3} value={editForm.notes} onChange={e => setEditForm({ ...editForm, notes: e.target.value })} className="w-full border rounded-lg p-2" /></label>
             <div className="flex justify-end gap-2"><button type="button" onClick={() => setShowEditWoModal(false)} className="px-3 py-2 bg-slate-100 rounded-lg">Cancel</button><button type="submit" disabled={actionLoading} className="px-3 py-2 bg-[#6C2BD9] text-white rounded-lg disabled:opacity-40">Save Changes</button></div>
           </form>
@@ -1285,8 +1290,12 @@ export function MaintenanceManager() {
                   className="w-full bg-slate-50 border border-slate-300 rounded-lg p-2 text-xs font-medium"
                 >
                   <option value="">Choose a status</option>
-                  {selectedWo && <option value={selectedWo.status}>{selectedWo.status.replaceAll('_', ' ')} (keep)</option>}
-                  {(STATUS_TRANSITIONS[selectedWo?.status] || []).map(nextStatus => <option key={nextStatus} value={nextStatus}>{nextStatus.replaceAll('_', ' ')}</option>)}
+                  {STATUS_OPTIONS.map(nextStatus => {
+                    const current = nextStatus === selectedWo?.status;
+                    const allowed = current || (STATUS_TRANSITIONS[selectedWo?.status] || []).includes(nextStatus);
+                    const label = nextStatus === 'COMPLETED' ? 'Finished (Completed)' : nextStatus.replaceAll('_', ' ');
+                    return <option key={nextStatus} value={nextStatus} disabled={!allowed}>{label}{current ? ' (current)' : !allowed ? ' (unavailable from current status)' : ''}</option>;
+                  })}
                 </select>
               </div>
 

@@ -635,38 +635,6 @@ export function AssetList() {
         </div>
       </div>
 
-      {/* 2. Asset Status Tabs (Callout 2) */}
-      <div className="border-b border-slate-200 flex items-center gap-2 overflow-x-auto text-xs font-bold scrollbar-none">
-        {[
-          { id: 'ALL', label: 'All Assets', count: kpiCounts.total },
-          { id: 'IN_USE', label: 'In Use', count: kpiCounts.inUse },
-          { id: 'UNDER_MAINTENANCE', label: 'Under Maintenance', count: kpiCounts.maintenance },
-          { id: 'OVERDUE', label: 'Overdue', count: kpiCounts.overdue },
-          { id: 'PENDING_DISPOSAL', label: 'Pending Disposal', count: kpiCounts.pendingDisposal },
-          { id: 'DISPOSED', label: 'Disposed', count: kpiCounts.disposed }
-        ].map((tab) => {
-          const isActive = activeTab === tab.id;
-          return (
-            <button
-              key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
-              className={`px-4 py-2.5 rounded-t-xl transition-all whitespace-nowrap cursor-pointer flex items-center gap-2 ${
-                isActive
-                  ? 'bg-purple-50 text-[#6C2BD9] font-extrabold border-b-2 border-[#6C2BD9]'
-                  : 'text-slate-600 hover:bg-slate-50 hover:text-slate-900'
-              }`}
-            >
-              <span>{tab.label}</span>
-              <span className={`text-[11px] px-2 py-0.5 rounded-full font-bold transition-colors ${
-                isActive ? 'bg-[#6C2BD9] text-white' : 'bg-slate-100 text-slate-600'
-              }`}>
-                {tab.count.toLocaleString()}
-              </span>
-            </button>
-          );
-        })}
-      </div>
-
       {/* 3. Search and Filters Palette (Callout 3) */}
       <div className="bg-white border border-slate-200 rounded-2xl p-4 shadow-2xs space-y-3">
         {/* Search Bar */}
@@ -776,12 +744,12 @@ export function AssetList() {
       </div>
 
       {/* Main Split Content: Table Left (8 cols), Right Panel (4 cols) if selected */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
         
         {/* 4. Asset Register List Table (Callout 4) */}
-        <div className={`transition-all ${selectedAsset ? 'lg:col-span-8' : 'lg:col-span-12'}`}>
-          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs">
-            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[420px] relative scrollbar-thin">
+        <div className={`transition-all ${selectedAsset ? 'lg:col-span-8 lg:h-[calc(100vh-100px)]' : 'lg:col-span-12'}`}>
+          <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs h-full flex flex-col">
+            <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[420px] lg:max-h-none lg:min-h-0 flex-1 relative scrollbar-thin">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-2xs">
                   <tr className="bg-slate-50 text-slate-500 uppercase font-bold text-[10px]">
@@ -1252,7 +1220,7 @@ export function AssetList() {
 
         {/* 6. Asset 360° Right Detail Panel (Callout 6) */}
         {selectedAsset && (
-          <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl space-y-4 relative sticky top-20 max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin animate-in fade-in zoom-in duration-150">
+          <div className="lg:col-span-4 bg-white border border-slate-200 rounded-2xl p-4 shadow-xl space-y-4 relative sticky top-20 lg:h-[calc(100vh-100px)] max-h-[calc(100vh-100px)] overflow-y-auto scrollbar-thin animate-in fade-in zoom-in duration-150">
             {/* Close Panel Button */}
             <button
               onClick={() => {

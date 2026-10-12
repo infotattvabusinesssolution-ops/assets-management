@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { uploadToCloudinary } from '../services/cloudinary';
 import {
   Package,
   CheckCircle2,
@@ -168,8 +167,9 @@ function assetToForm({ asset, bookValues = [], warranty, schedules = [], discove
     assetId: asset.assetId,
     assetName: asset.description || '',
     description: asset.description || '',
-    assetType: asset.assetClass?.name || '',
+    assetType: asset.assetType || '',
     category: asset.category?.name || '',
+    subCategory: asset.assetClass?.name || '',
     manufacturer: asset.manufacturer?.name || '',
     model: asset.model?.name || asset.model?.modelNumber || '',
     serialNumber: asset.serialNumber || '',
@@ -254,11 +254,7 @@ export function AssetEdit() {
   const [assetOptions, setAssetOptions] = useState([]);
   const [assetListError, setAssetListError] = useState(false);
   const [assetLoading, setAssetLoading] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const imageInputRef = useRef(null);
-  const documentInputRef = useRef(null);
   const [categories, setCategories] = useState([]);
-  const [discoveredDevices, setDiscoveredDevices] = useState([]);
   const [assetError, setAssetError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [searchOpen, setSearchOpen] = useState(false);
@@ -296,8 +292,6 @@ export function AssetEdit() {
   // Load every page for the switcher and the in-page asset search.
   useEffect(() => {
     api.get('/master-data/categories').then(res => setCategories(res?.categories || [])).catch(() => {});
-    api.get('/discovery/devices', { params: { limit: 2000 } })
-      .then(res => setDiscoveredDevices(res?.devices || [])).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -365,80 +359,18 @@ export function AssetEdit() {
     navigate(`/assets/edit/${encodeURIComponent(newId)}`);
   };
 
-  const handleSubmitChanges = async (isDraft = false) => {
+  const handleSubmitChanges = async () => {
     const original = originalFormRef.current;
     if (!original || !formData.dbId) {
       showToast('error', 'Load an asset before saving changes.');
       return;
     }
-    if (!formData.assetName.trim()) {
-      showToast('error', 'Asset Name is required.');
-      return;
-    }
-    if (uploading || (formData.linkToDiscovery && !formData.discoveryId)) {
-      showToast('error', uploading ? 'Wait for the upload to finish.' : 'Select a discovered device before saving.');
-      return;
-    }
-
     const payload = {};
     const changed = (key, apiKey = key, transform = value => value) => {
       if (formData[key] !== original[key]) payload[apiKey] = transform(formData[key]);
     };
-    changed('assetName', 'description', value => value.trim());
-    changed('serialNumber');
-    changed('category');
-    changed('manufacturer');
-    changed('model');
     changed('status');
     changed('condition');
-    changed('barcode');
-    changed('rfidEpc');
-    changed('acquisitionCost');
-    changed('currency');
-    changed('supplier');
-    changed('poNumber');
-    changed('acquisitionDate', 'purchaseDate');
-    changed('hostname');
-    changed('ipAddress');
-    changed('macAddress');
-    changed('criticality');
-    changed('healthScore');
-    if (formData.discoveryId !== original.discoveryId) payload.discoveryId = formData.discoveryId || null;
-    if (formData.warrantyStart !== original.warrantyStart || formData.warrantyEnd !== original.warrantyEnd ||
-      formData.warrantyProvider !== original.warrantyProvider || formData.warrantyReference !== original.warrantyReference ||
-      formData.warrantyCoverage !== original.warrantyCoverage) {
-      payload.warrantyDetails = {
-        enabled: Boolean(formData.warrantyStart || formData.warrantyEnd),
-        startDate: formData.warrantyStart, endDate: formData.warrantyEnd,
-        providerName: formData.warrantyProvider, warrantyNumber: formData.warrantyReference,
-        terms: formData.warrantyCoverage
-      };
-    }
-    if (formData.enablePm !== original.enablePm || formData.intervalMonths !== original.intervalMonths ||
-      formData.nextServiceDate !== original.nextServiceDate || formData.checklist !== original.checklist) {
-      payload.maintenanceDetails = {
-        enabled: formData.enablePm, frequencyMonths: Number(formData.intervalMonths),
-        nextDueDate: formData.nextServiceDate, title: formData.checklist
-      };
-    }
-    if (formData.usefulLifeMonths !== original.usefulLifeMonths || formData.residualValue !== original.residualValue ||
-      formData.depreciationMethod !== original.depreciationMethod) {
-      payload.bookDetails = {
-        usefulLifeMonths: Number(formData.usefulLifeMonths), residualValue: Number(formData.residualValue),
-        depreciationMethod: formData.depreciationMethod
-      };
-    }
-    if (['processor', 'ram', 'storage', 'operatingSystem', 'hostname', 'ipAddress', 'macAddress']
-      .some(key => formData[key] !== original[key]) && !formData.linkToDiscovery) {
-      payload.manualDiscoveryDetails = {
-        cpuInfo: formData.processor, ramGb: formData.ram, storageGb: formData.storage,
-        osFamily: formData.operatingSystem, hostname: formData.hostname,
-        ipAddress: formData.ipAddress, macAddress: formData.macAddress
-      };
-    }
-    if (formData.image !== original.image) payload.imageUrl = formData.image;
-    const newDocuments = formData.documents.filter(doc => !doc.id);
-    if (newDocuments.length) payload.documents = newDocuments;
 
     if (!Object.keys(payload).length) {
       showToast('info', 'No changes to save.');
@@ -447,7 +379,7 @@ export function AssetEdit() {
 
     try {
       setLoading(true);
-      const res = await api.put(`/assets/${encodeURIComponent(formData.dbId)}`, { ...payload, isDraft });
+      const res = await api.put(`/assets/${encodeURIComponent(formData.dbId)}`, payload);
       if (res?.success === false) throw new Error(res.message || 'Could not save changes');
       originalFormRef.current = { ...formData };
       showToast('success', res?.message || `Asset ${formData.assetId} updated.`);
@@ -468,47 +400,6 @@ export function AssetEdit() {
     } finally {
       setLoading(false);
     }
-  };
-
-  const handleUpload = async (event, isImage = false) => {
-    const files = Array.from(event.target.files || []);
-    if (!files.length) return;
-    setUploading(true);
-    try {
-      if (isImage) {
-        const result = await uploadToCloudinary(files[0], { folder: 'fams_assets' });
-        setFormData(prev => ({ ...prev, image: result.secure_url || result.url }));
-      } else {
-        const docs = await Promise.all(files.map(async file => {
-          const result = await uploadToCloudinary(file, { folder: 'fams_documents' });
-          return { name: file.name, size: file.size, type: file.type,
-            url: result.secure_url || result.url, publicId: result.public_id };
-        }));
-        setFormData(prev => ({ ...prev, documents: [...prev.documents, ...docs] }));
-      }
-      showToast('success', 'File uploaded. Save Changes to attach it to the asset.');
-    } catch (error) {
-      showToast('error', error?.message || 'Upload failed.');
-    } finally {
-      setUploading(false);
-      event.target.value = '';
-    }
-  };
-
-  const selectDiscoveredDevice = (id) => {
-    const device = discoveredDevices.find(item => item.id === id);
-    setFormData(prev => ({ ...prev,
-      discoveryId: id, linkToDiscovery: Boolean(id),
-      discoverySource: device?.discoverySource || '',
-      hostname: device ? device.hostname || '' : prev.hostname,
-      ipAddress: device ? device.ipAddress || '' : prev.ipAddress,
-      macAddress: device ? device.macAddress || '' : prev.macAddress,
-      processor: device?.cpuInfo || '',
-      ram: device?.ramGb == null ? '' : String(device.ramGb),
-      storage: device?.storageGb == null ? '' : String(device.storageGb),
-      operatingSystem: [device?.osFamily, device?.osVersion].filter(Boolean).join(' '),
-      firstSeen: toDateInput(device?.firstSeen), lastSeen: toDateInput(device?.lastSeen)
-    }));
   };
 
   return (
@@ -587,11 +478,11 @@ export function AssetEdit() {
 
           <div className="flex items-center gap-2 border-l border-slate-200 pl-3">
             <div className="w-8 h-8 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-              JD
+              {(user?.fullName || user?.username || '?').split(/\s+/).map(part => part[0]).slice(0, 2).join('').toUpperCase()}
             </div>
             <div className="text-left hidden sm:block">
-              <span className="font-extrabold text-slate-900 text-xs block leading-tight">John Doe</span>
-              <span className="text-[10px] text-slate-400 font-bold block leading-tight">Asset Manager</span>
+              <span className="font-extrabold text-slate-900 text-xs block leading-tight">{user?.fullName || user?.username || 'User'}</span>
+              <span className="text-[10px] text-slate-400 font-bold block leading-tight">{user?.role?.name || user?.role?.code || ''}</span>
             </div>
           </div>
         </div>
@@ -634,20 +525,11 @@ export function AssetEdit() {
 
           <button
             type="button"
-            onClick={() => handleSubmitChanges(true)}
-            className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-800 font-extrabold rounded-xl text-xs border border-slate-300 shadow-2xs transition-all cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
-            disabled={loading || assetLoading || !originalFormRef.current}
-          >
-            Save as Draft
-          </button>
-
-          <button
-            type="button"
-            onClick={() => handleSubmitChanges(false)}
+            onClick={handleSubmitChanges}
             className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5"
             disabled={loading || assetLoading || !originalFormRef.current}
           >
-            <Send className="w-3.5 h-3.5" /> Submit Changes
+            <Save className="w-3.5 h-3.5" /> Save Status &amp; Condition
           </button>
         </div>
       </div>
@@ -697,11 +579,10 @@ export function AssetEdit() {
         </div>
       </div>
 
-      {/* Main Two-Column Content: Left 9 Accordions (8 Cols) vs Right Sidebar (4 Cols) */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
+      {/* Full-width asset details */}
+      <div className="space-y-4">
 
-        {/* LEFT COLUMN: 9 ACCORDION SECTIONS (8 COLS) */}
-        <div className="lg:col-span-8 space-y-3">
+        <div className="space-y-3">
 
           {/* ================= ACCORDION 1: BASIC INFORMATION ================= */}
           <div className="bg-white border border-slate-200 rounded-xl shadow-2xs overflow-hidden">
@@ -710,20 +591,25 @@ export function AssetEdit() {
               onClick={() => toggleSection(1)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  1
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Basic Information</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Update general asset details and master descriptions</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Basic Information</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Review asset details and update status or condition</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[1] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
 
             {openSections[1] && (
               <div className="p-4 space-y-3.5 text-xs animate-in fade-in duration-100">
+                <div className="flex items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-3">
+                  <div className="flex h-24 w-28 shrink-0 items-center justify-center rounded-lg border border-slate-200 bg-white p-2">
+                    {formData.image ? <img src={formData.image} alt={formData.assetName} className="max-h-full max-w-full object-contain" /> : <Package className="h-9 w-9 text-slate-300" />}
+                  </div>
+                  <div>
+                    <p className="font-bold text-slate-900">Asset Preview</p>
+                    <p className="mt-1 font-mono text-slate-600">{formData.assetId}</p>
+                    <p className="mt-1 text-slate-500">{formData.assetName || 'No asset name'}</p>
+                  </div>
+                </div>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Asset ID (Read-Only)</label>
@@ -739,10 +625,9 @@ export function AssetEdit() {
                     <label className="font-bold text-slate-700 block mb-1">Asset Name *</label>
                     <input
                       type="text"
-                      required
                       value={formData.assetName}
-                      onChange={(e) => setFormData({ ...formData, assetName: e.target.value, description: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                      readOnly
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold"
                     />
                   </div>
 
@@ -755,8 +640,8 @@ export function AssetEdit() {
                     <label className="font-bold text-slate-700 block mb-1">Category *</label>
                     <select
                       value={formData.category}
-                      onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                      disabled
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold"
                     >
                       <option value="">Select...</option>
                       {formData.category && !categories.some(item => item.name === formData.category) && <option value={formData.category}>{formData.category}</option>}
@@ -774,8 +659,8 @@ export function AssetEdit() {
                     <input
                       type="text"
                       value={formData.manufacturer}
-                      onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                      readOnly
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold"
                     />
                   </div>
 
@@ -784,8 +669,8 @@ export function AssetEdit() {
                     <input
                       type="text"
                       value={formData.model}
-                      onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                      readOnly
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold"
                     />
                   </div>
 
@@ -794,8 +679,8 @@ export function AssetEdit() {
                     <input
                       type="text"
                       value={formData.serialNumber}
-                      onChange={(e) => setFormData({ ...formData, serialNumber: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none"
+                      readOnly
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold"
                     />
                   </div>
 
@@ -823,7 +708,8 @@ export function AssetEdit() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none"
                     >
                       <option value="">Select...</option>
-                      {formData.condition && !['Good', 'Fair', 'Damaged', 'New'].includes(formData.condition) && <option value={formData.condition}>{formData.condition}</option>}
+                      {formData.condition && !['Excellent', 'Good', 'Fair', 'Damaged', 'New'].includes(formData.condition) && <option value={formData.condition}>{formData.condition}</option>}
+                      <option value="Excellent">Excellent</option>
                       <option value="Good">Good</option>
                       <option value="Fair">Fair</option>
                       <option value="Damaged">Damaged</option>
@@ -837,8 +723,8 @@ export function AssetEdit() {
                   <textarea
                     rows={3}
                     value={formData.description}
-                    onChange={(e) => setFormData({ ...formData, description: e.target.value, assetName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium focus:border-[#6C2BD9] outline-none"
+                    readOnly
+                    className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-medium"
                   />
                   <div className="text-right text-[10px] text-slate-400">{formData.description.length}/500</div>
                 </div>
@@ -853,20 +739,15 @@ export function AssetEdit() {
               onClick={() => toggleSection(2)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  2
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Technical Details</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Manufacturer, model specifications and hardware attributes</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Technical Details</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Manufacturer, model specifications and hardware attributes</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[2] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
 
             {openSections[2] && (
-              <div className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
+              <fieldset disabled className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Brand</label>
                   <input type="text" value={formData.manufacturer} readOnly className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2" />
@@ -887,7 +768,7 @@ export function AssetEdit() {
                   <label className="font-bold text-slate-700 block mb-1">Operating System</label>
                   <input type="text" value={formData.operatingSystem} readOnly={formData.linkToDiscovery} onChange={(e) => setFormData({ ...formData, operatingSystem: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2" />
                 </div>
-              </div>
+              </fieldset>
             )}
           </div>
 
@@ -898,14 +779,9 @@ export function AssetEdit() {
               onClick={() => toggleSection(3)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  3
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Location &amp; Ownership</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Custodian assignment and physical site hierarchy</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Location &amp; Ownership</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Custodian assignment and physical site hierarchy</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[3] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
@@ -920,13 +796,10 @@ export function AssetEdit() {
                     <p className="text-[11px] text-amber-800">
                       To maintain audit compliance, physical transfers and custodian reassignment must be submitted through the dedicated Custody Transfer workflow so movement history is preserved.
                     </p>
-                    <button
-                      type="button"
-                      onClick={() => navigate('/movements')}
-                      className="mt-1.5 text-[11px] font-extrabold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
-                    >
-                      Initiate Custody Transfer Workflow &rarr;
-                    </button>
+                    <div className="mt-2 flex flex-wrap gap-4">
+                      <button type="button" onClick={() => navigate(`/movements/assign?assetId=${encodeURIComponent(formData.dbId)}`)} className="text-[11px] font-extrabold text-[#6C2BD9] hover:underline">Assign custodian &rarr;</button>
+                      <button type="button" onClick={() => navigate(`/movements/transfer?assetId=${encodeURIComponent(formData.dbId)}`)} className="text-[11px] font-extrabold text-[#6C2BD9] hover:underline">Transfer location &rarr;</button>
+                    </div>
                   </div>
                 </div>
 
@@ -955,6 +828,14 @@ export function AssetEdit() {
                     <label className="font-bold text-slate-700 block mb-1">Custodian</label>
                     <input type="text" disabled value={formData.custodian} className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-[#6C2BD9] font-bold" />
                   </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Cost Center</label>
+                    <input type="text" readOnly value={formData.costCenter} className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2" />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Assigned Date</label>
+                    <input type="text" readOnly value={formData.assignedDate} className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2" />
+                  </div>
                 </div>
               </div>
             )}
@@ -967,20 +848,15 @@ export function AssetEdit() {
               onClick={() => toggleSection(4)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  4
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Financial &amp; Warranty</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Acquisition cost, book value, depreciation method and warranty coverage</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Financial &amp; Warranty</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Acquisition cost, book value, depreciation method and warranty coverage</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[4] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
 
             {openSections[4] && (
-              <div className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
+              <fieldset disabled className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Acquisition Date</label>
                   <input type="date" value={formData.acquisitionDate} onChange={(e) => setFormData({ ...formData, acquisitionDate: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2" />
@@ -1032,7 +908,7 @@ export function AssetEdit() {
                     <option value="DECLINING_BALANCE">Declining Balance</option>
                   </select>
                 </div>
-              </div>
+              </fieldset>
             )}
           </div>
 
@@ -1043,20 +919,15 @@ export function AssetEdit() {
               onClick={() => toggleSection(5)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  5
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Maintenance Setup</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Preventive maintenance frequency, schedules and checklist</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Maintenance Setup</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Preventive maintenance frequency, schedules and checklist</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[5] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
 
             {openSections[5] && (
-              <div className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
+              <fieldset disabled className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
                 <label className="flex items-center gap-2 font-bold text-slate-700"><input type="checkbox" checked={formData.enablePm} onChange={(e) => setFormData({ ...formData, enablePm: e.target.checked })} /> Enable preventive maintenance</label>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Service Frequency</label>
@@ -1077,7 +948,7 @@ export function AssetEdit() {
                   <label className="font-bold text-slate-700 block mb-1">Schedule / Checklist</label>
                   <input disabled={!formData.enablePm} value={formData.checklist} onChange={(e) => setFormData({ ...formData, checklist: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2" />
                 </div>
-              </div>
+              </fieldset>
             )}
           </div>
 
@@ -1088,20 +959,15 @@ export function AssetEdit() {
               onClick={() => toggleSection(6)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  6
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Tagging &amp; Identification</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Barcode, QR code, RFID EPC and TID tagging data</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Tagging &amp; Identification</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Barcode, QR code, RFID EPC and TID tagging data</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[6] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
 
             {openSections[6] && (
-              <div className="p-4 space-y-3.5 text-xs animate-in fade-in duration-100">
+              <fieldset disabled className="p-4 space-y-3.5 text-xs animate-in fade-in duration-100">
                 <div className="p-3 bg-purple-50 border border-purple-100 rounded-xl text-purple-900 flex items-start gap-2">
                   <Info className="w-4 h-4 text-[#6C2BD9] shrink-0 mt-0.5" />
                   <div>
@@ -1122,7 +988,7 @@ export function AssetEdit() {
                   <div><label className="font-bold text-slate-700 block mb-1">Tag Number</label><input value={formData.tagNumber || ''} readOnly className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 font-mono" /></div>
                   <div><label className="font-bold text-slate-700 block mb-1">QR Code</label><input value={formData.qrCode || ''} readOnly className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 font-mono" /></div>
                 </div>
-              </div>
+              </fieldset>
             )}
           </div>
 
@@ -1133,36 +999,17 @@ export function AssetEdit() {
               onClick={() => toggleSection(7)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  7
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Auto Discovery</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Network scan matching, IP address and hostname telemetry</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Auto Discovery</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Network scan matching, IP address and hostname telemetry</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[7] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
 
             {openSections[7] && (
-              <div className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
-                <label className="md:col-span-3 flex items-center gap-2 font-bold text-slate-700">
-                  <input type="checkbox" checked={formData.linkToDiscovery} onChange={(e) => setFormData(prev => ({ ...prev,
-                    linkToDiscovery: e.target.checked, discoveryId: e.target.checked ? prev.discoveryId : '',
-                    discoverySource: e.target.checked ? prev.discoverySource : 'MANUAL_ENTRY'
-                  }))} /> Link an existing discovered device
-                </label>
-                {formData.linkToDiscovery && <div className="md:col-span-3">
-                  <label className="font-bold text-slate-700 block mb-1">Discovered Device</label>
-                  <select value={formData.discoveryId} onChange={(event) => selectDiscoveredDevice(event.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2">
-                    <option value="">Select a device</option>
-                    {formData.discoveryId && !discoveredDevices.some(device => device.id === formData.discoveryId) &&
-                      <option value={formData.discoveryId}>{[formData.hostname, formData.ipAddress].filter(Boolean).join(' · ') || formData.discoveryId}</option>}
-                    {discoveredDevices.filter(device => device.discoverySource !== 'MANUAL_ENTRY' && (!device.linkedAssetId || device.linkedAssetId === formData.dbId)).map(device =>
-                      <option key={device.id} value={device.id}>{[device.hostname, device.ipAddress, device.serialNumber].filter(Boolean).join(' · ') || device.id}</option>)}
-                  </select>
-                </div>}
+              <fieldset disabled className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="md:col-span-3 font-bold text-slate-700">{formData.linkToDiscovery ? 'Linked discovered device' : 'Manual discovery details'}</div>
+                {formData.discoveryId && <div className="md:col-span-3 text-slate-500">Discovery ID: {formData.discoveryId}</div>}
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Hostname</label>
                   <input type="text" value={formData.hostname} readOnly={formData.linkToDiscovery} onChange={(e) => setFormData({ ...formData, hostname: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-mono font-bold" />
@@ -1176,7 +1023,7 @@ export function AssetEdit() {
                   <input type="text" value={formData.macAddress} readOnly={formData.linkToDiscovery} onChange={(e) => setFormData({ ...formData, macAddress: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-mono" />
                 </div>
                 <div className="md:col-span-3 text-slate-500">Source: {formData.discoverySource || 'Manual entry'}{formData.lastSeen ? ` · Last seen ${formData.lastSeen}` : ''}</div>
-              </div>
+              </fieldset>
             )}
           </div>
 
@@ -1187,20 +1034,15 @@ export function AssetEdit() {
               onClick={() => toggleSection(8)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  8
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Additional Information</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Criticality score, health score and custom field parameters</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Additional Information</h3>
+                <p className="text-[11px] text-slate-400 font-medium">Criticality score, health score and custom field parameters</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[8] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
 
             {openSections[8] && (
-              <div className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
+              <fieldset disabled className="p-4 space-y-3 text-xs grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Criticality Level</label>
                   <select value={formData.criticality} onChange={(e) => setFormData({ ...formData, criticality: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 font-bold">
@@ -1218,7 +1060,7 @@ export function AssetEdit() {
                   <label className="font-bold text-slate-700 block mb-1">Registration Notes</label>
                   <textarea value={formData.registrationNotes || ''} readOnly rows={2} className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2" />
                 </div>
-              </div>
+              </fieldset>
             )}
           </div>
 
@@ -1229,20 +1071,15 @@ export function AssetEdit() {
               onClick={() => toggleSection(9)}
               className="w-full p-4 flex items-center justify-between bg-slate-50/80 hover:bg-purple-50/50 transition-colors cursor-pointer border-b border-slate-100"
             >
-              <div className="flex items-center gap-3">
-                <div className="w-6 h-6 rounded-full bg-[#6C2BD9] text-white font-black text-xs flex items-center justify-center">
-                  9
-                </div>
-                <div>
-                  <h3 className="font-extrabold text-slate-900 text-sm">Documents &amp; Attachments</h3>
-                  <p className="text-[11px] text-slate-400 font-medium">Upload and manage warranty certificates, invoices and photos</p>
-                </div>
+              <div className="text-left">
+                <h3 className="font-extrabold text-slate-900 text-sm">Documents &amp; Attachments</h3>
+                <p className="text-[11px] text-slate-400 font-medium">View registered warranty certificates, invoices and photos</p>
               </div>
               <ChevronDown className={`w-4 h-4 text-slate-500 transition-transform ${openSections[9] ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
 
             {openSections[9] && (
-              <div className="p-4 space-y-3 text-xs animate-in fade-in duration-100">
+              <fieldset disabled className="p-4 space-y-3 text-xs animate-in fade-in duration-100">
                 <div className="space-y-2">
                   {formData.documents.map((doc, index) => (
                     <div key={doc.id || `${doc.name}-${index}`} className="flex items-center justify-between p-3 bg-slate-50 rounded-xl border border-slate-200">
@@ -1258,171 +1095,12 @@ export function AssetEdit() {
                   ))}
                 </div>
 
-                <div className="pt-2 border-t border-slate-100 flex justify-end">
-                  <input ref={documentInputRef} type="file" multiple className="hidden" onChange={(event) => handleUpload(event)} />
-                  <button
-                    type="button"
-                    disabled={uploading}
-                    onClick={() => documentInputRef.current?.click()}
-                    className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
-                  >
-                    <Plus className="w-4 h-4 text-[#6C2BD9]" /> {uploading ? 'Uploading...' : 'Attach File'}
-                  </button>
-                </div>
-              </div>
+              </fieldset>
             )}
           </div>
 
         </div>
 
-        {/* RIGHT COLUMN: ASSET PREVIEW & QUICK ACTIONS SIDEBAR (4 COLS) */}
-        <div className="lg:col-span-4 space-y-4">
-
-          {/* Card 1: Asset Image Preview */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3">
-            <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center gap-2">
-              <SlidersHorizontal className="w-4 h-4 text-[#6C2BD9]" /> Asset Preview
-            </h3>
-            <div className="flex items-center gap-4">
-              <div className="w-36 h-28 bg-slate-50 border border-slate-200 rounded-xl p-2 flex items-center justify-center shrink-0">
-                {formData.image ? <img src={formData.image} alt={formData.assetName} className="max-h-full max-w-full object-contain" /> : <Package className="w-10 h-10 text-slate-300" />}
-              </div>
-              <div className="space-y-1.5 flex-1">
-                <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(event) => handleUpload(event, true)} />
-                <button
-                  type="button"
-                  disabled={uploading}
-                  onClick={() => imageInputRef.current?.click()}
-                  className="px-3 py-1.5 bg-white border border-purple-200 hover:bg-purple-50 text-[#6C2BD9] font-bold rounded-xl text-xs flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
-                >
-                  <Camera className="w-3.5 h-3.5 text-[#6C2BD9]" /> {uploading ? 'Uploading...' : 'Change Image'}
-                </button>
-                <span className="text-[10px] text-slate-400 font-medium block">JPG, PNG (Max 5MB)</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 2: Current Assignment */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 text-xs">
-            <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center gap-2">
-              <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                <UserCheck className="w-4 h-4 text-[#6C2BD9]" />
-              </div>
-              <span>Current Assignment</span>
-            </h3>
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <User className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="w-24 text-slate-500 font-medium">Custodian</span>
-                <span className="flex-1 font-bold text-[#6C2BD9] text-left">{formData.custodian}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <Building2 className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="w-24 text-slate-500 font-medium">Department</span>
-                <span className="flex-1 font-bold text-slate-900 text-left">{formData.department}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <Clock className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="w-24 text-slate-500 font-medium">Assigned Date</span>
-                <span className="flex-1 font-bold text-slate-900 text-left">{formData.assignedDate}</span>
-              </div>
-              <div className="flex items-start gap-2 text-xs">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0 mt-0.5">
-                  <MapPin className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="w-24 text-slate-500 font-medium">Location</span>
-                <span className="flex-1 font-bold text-slate-900 text-left">{formData.site}, {formData.floor} / {formData.room}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 3: Asset Identifications */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 text-xs">
-            <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-2 flex items-center gap-2">
-              <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                <QrCode className="w-4 h-4 text-[#6C2BD9]" />
-              </div>
-              <span>Asset Identifications</span>
-            </h3>
-            <div className="space-y-2.5">
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <Barcode className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="w-24 text-slate-500 font-medium">Barcode</span>
-                <span className="flex-1 font-mono font-bold text-[#6C2BD9] text-left">{formData.barcode}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <QrCode className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="w-24 text-slate-500 font-medium">QR Code</span>
-                <span className="flex-1 font-mono font-bold text-[#6C2BD9] text-left">{formData.qrCode}</span>
-              </div>
-              <div className="flex items-center gap-2 text-xs">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <Radio className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="w-24 text-slate-500 font-medium">RFID EPC</span>
-                <span className="flex-1 font-mono font-bold text-[#6C2BD9] text-left truncate">{formData.rfidEpc}</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Card 4: Quick Actions */}
-          <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-2 text-xs">
-            <h3 className="font-black text-slate-900 text-sm border-b border-slate-100 pb-2 mb-1 flex items-center gap-2">
-              <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                <Zap className="w-4 h-4 text-[#6C2BD9]" />
-              </div>
-              <span>Quick Actions</span>
-            </h3>
-
-            <div className="space-y-1">
-              <button onClick={() => navigate(`/assets/${encodeURIComponent(formData.assetId)}`)} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <RefreshCw className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="truncate text-xs font-bold leading-none">View Assignment History</span>
-              </button>
-
-              <button onClick={() => setOpenSections(prev => ({ ...prev, 5: true }))} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <Wrench className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="truncate text-xs font-bold leading-none">View Maintenance</span>
-              </button>
-
-              <button onClick={() => setOpenSections(prev => ({ ...prev, 9: true }))} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <FileText className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="truncate text-xs font-bold leading-none">View Documents</span>
-              </button>
-
-              <button onClick={() => navigate(`/assets/${encodeURIComponent(formData.assetId)}`)} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <MapPin className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="truncate text-xs font-bold leading-none">Locate on Map</span>
-              </button>
-
-              <button onClick={() => navigate('/tagging')} className="w-full h-9 -mx-2 px-2 hover:bg-purple-50 text-slate-800 hover:text-[#6C2BD9] rounded-lg font-bold text-left flex items-center gap-2 transition-colors cursor-pointer group">
-                <div className="w-5 h-5 flex items-center justify-center shrink-0">
-                  <Printer className="w-4 h-4 text-[#6C2BD9]" />
-                </div>
-                <span className="truncate text-xs font-bold leading-none">Open Tagging Workbench</span>
-              </button>
-            </div>
-          </div>
-
-        </div>
       </div>
 
 

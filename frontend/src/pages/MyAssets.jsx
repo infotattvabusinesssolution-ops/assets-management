@@ -34,8 +34,7 @@ import {
   Printer,
   CreditCard,
   Tv,
-  PenSquare,
-  Sparkles
+  PenSquare
 } from 'lucide-react';
 
 const INITIAL_MY_ASSETS = [];
@@ -1292,55 +1291,7 @@ export function MyAssets() {
         )}
       </div>
 
-      {/* 8. Bottom Informational Callout Cards Bar (Callouts 1 to 8 matching reference image 1-to-1) */}
-      <div className="bg-purple-50/50 border border-purple-100 rounded-xl p-4 space-y-3 mt-6">
-        <div className="flex items-center gap-2">
-          <Sparkles className="w-4 h-4 text-[#6C2BD9]" />
-          <h3 className="font-black text-slate-900 text-xs uppercase tracking-wide">FSD &amp; WaveTrack Specification Guide Summary</h3>
-        </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
-          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-            <span className="font-black text-[#6C2BD9] block">1. Summary Cards</span>
-            <p className="text-[11px] text-slate-500 font-medium">At-a-glance portfolio counts. Click any card to filter list.</p>
-          </div>
-
-          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-            <span className="font-black text-[#6C2BD9] block">2. Asset Lifecycle Tabs</span>
-            <p className="text-[11px] text-slate-500 font-medium">Switch between views: Assigned, Maintenance, Return, History.</p>
-          </div>
-
-          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-            <span className="font-black text-[#6C2BD9] block">3. Search &amp; Filters</span>
-            <p className="text-[11px] text-slate-500 font-medium">Search by name, ID, serial, tag. Apply multi-category filters.</p>
-          </div>
-
-          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-            <span className="font-black text-[#6C2BD9] block">4. Asset Register List</span>
-            <p className="text-[11px] text-slate-500 font-medium">Displays assigned assets with image, status badge, and location.</p>
-          </div>
-
-          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-            <span className="font-black text-[#6C2BD9] block">5. Actions Menu</span>
-            <p className="text-[11px] text-slate-500 font-medium">Three-dot menu for View 360°, Transfer, Return, Issue Report.</p>
-          </div>
-
-          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-            <span className="font-black text-[#6C2BD9] block">6. Asset 360° Panel</span>
-            <p className="text-[11px] text-slate-500 font-medium">Right-side drawer showing full details, location, warranty &amp; docs.</p>
-          </div>
-
-          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-            <span className="font-black text-[#6C2BD9] block">7. Top Actions</span>
-            <p className="text-[11px] text-slate-500 font-medium">Request Asset button to initiate self-service procurement.</p>
-          </div>
-
-          <div className="p-3 bg-white border border-slate-200 rounded-xl space-y-1">
-            <span className="font-black text-[#6C2BD9] block">8. Navigation Flow</span>
-            <p className="text-[11px] text-slate-500 font-medium">Search/Filter &rarr; Select Asset &rarr; View Details &rarr; Complete Action.</p>
-          </div>
-        </div>
-      </div>
 
       {/* ================= TRANSACTION MODALS ================= */}
 

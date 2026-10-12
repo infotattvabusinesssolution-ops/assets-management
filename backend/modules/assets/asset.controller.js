@@ -1,4 +1,24 @@
 import prisma from '../../config/prisma.js';
+import { randomUUID } from 'node:crypto';
+
+const assetPrefix = (value, fallback) => {
+  const words = String(value || '').toUpperCase().match(/[A-Z0-9]+/g) || [];
+  return (words.length > 1 ? (words[0].length <= 2 ? words[0] : words.map(word => word[0]).join('')) : words[0] || fallback).slice(0, 5);
+};
+const generatedAssetId = (assetType, categoryCode, subcategory) => {
+  const type = assetPrefix(assetType, 'AST');
+  const category = assetPrefix(String(categoryCode || '').replace(/^CAT[-_ ]?/i, ''), 'GEN');
+  const sub = assetPrefix(subcategory, 'GEN');
+  return `${type}-${category}-${sub}-${new Date().getUTCFullYear()}-${randomUUID().replaceAll('-', '').slice(0, 16).toUpperCase()}`;
+};
+const warrantyEndFor = (start, years) => {
+  const date = new Date(`${start}T00:00:00Z`);
+  const count = Number(years);
+  if (!start || Number.isNaN(date.getTime()) || !Number.isInteger(count) || count < 1 || count > 50) return null;
+  date.setUTCFullYear(date.getUTCFullYear() + count);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date;
+};
 
 export const ASSET_STATUSES = [
   'REQUESTED',
@@ -156,7 +176,8 @@ export async function getAsset360(req, res, next) {
       },
       manufacturer: true,
       model: true,
-      parentAsset: true
+      parentAsset: true,
+      customFieldValues: { include: { customFieldDef: true } }
     };
 
     let asset = await prisma.asset.findUnique({
@@ -328,6 +349,86 @@ export async function createAsset(req, res, next) {
       });
     }
     const categoryId = category.id;
+    const rawAssetClass = req.body.assetClassId || req.body.subcategory;
+    const assetClass = rawAssetClass ? await prisma.assetClass.findFirst({
+      where: { categoryId, active: true, OR: [{ id: rawAssetClass }, { code: rawAssetClass }, { name: rawAssetClass }] },
+      select: { id: true, code: true, name: true }
+    }) : null;
+    if (req.body.assetClassId && !assetClass) {
+      return res.status(400).json({ success: false, message: 'Choose a subcategory that belongs to the selected category.' });
+    }
+    const quantity = Number(req.body.quantity ?? 1);
+    if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) {
+      return res.status(400).json({ success: false, message: 'Quantity must be a whole number from 1 to 50.' });
+    }
+    const assetItems = quantity > 1
+      ? req.body.assetItems === undefined ? Array.from({ length: quantity }, () => ({})) : req.body.assetItems
+      : [];
+    if (quantity > 1 && (!Array.isArray(assetItems) || assetItems.length !== quantity ||
+        assetItems.some(item => !item || typeof item !== 'object' || Array.isArray(item)))) {
+      return res.status(400).json({ success: false, message: 'Provide details for each asset item.' });
+    }
+    const providedTags = assetItems.map(item => String(item.tagNumber || '').trim()).filter(Boolean);
+    const providedEpcs = assetItems.map(item => String(item.rfidEpc || '').trim()).filter(Boolean);
+    if (new Set(providedTags.map(value => value.toUpperCase())).size !== providedTags.length ||
+        new Set(providedEpcs.map(value => value.toUpperCase())).size !== providedEpcs.length) {
+      return res.status(400).json({ success: false, message: 'Each asset needs a different tag number and RFID EPC.' });
+    }
+    if (providedTags.length && await prisma.asset.findFirst({ where: { tagNumber: { in: providedTags } }, select: { id: true } })) {
+      return res.status(409).json({ success: false, message: 'A tag number is already assigned to another asset.' });
+    }
+    if (providedEpcs.length && await prisma.asset.findFirst({ where: { rfidEpc: { in: providedEpcs } }, select: { id: true } })) {
+      return res.status(409).json({ success: false, message: 'An RFID EPC is already assigned to another asset.' });
+    }
+    const discoveryItems = quantity > 1
+      ? req.body.discoveryItems === undefined ? Array.from({ length: quantity }, () => ({})) : req.body.discoveryItems
+      : [];
+    if (quantity > 1 && (!Array.isArray(discoveryItems) || discoveryItems.length !== quantity ||
+        discoveryItems.some(item => !item || typeof item !== 'object' || Array.isArray(item) ||
+          (item.linkToDiscovered && !item.discoveryId)))) {
+      return res.status(400).json({ success: false, message: 'Provide discovery details for each asset item.' });
+    }
+    const selectedDiscoveryIds = discoveryItems.map(item => String(item.discoveryId || '').trim()).filter(Boolean);
+    if (new Set(selectedDiscoveryIds).size !== selectedDiscoveryIds.length) {
+      return res.status(400).json({ success: false, message: 'Each asset must link to a different discovered device.' });
+    }
+    const selectedObservations = selectedDiscoveryIds.length ? await prisma.discoveryObservation.findMany({
+      where: { id: { in: selectedDiscoveryIds } }, include: { matches: true }
+    }) : [];
+    if (selectedObservations.length !== selectedDiscoveryIds.length) {
+      return res.status(400).json({ success: false, message: 'One or more selected discovered devices were not found.' });
+    }
+    const alreadyLinked = selectedDiscoveryIds.length ? await prisma.asset.findFirst({
+      where: { discoveryId: { in: selectedDiscoveryIds } }, select: { assetId: true }
+    }) : null;
+    if (alreadyLinked || selectedObservations.some(item => item.matches.some(match => match.status === 'CONFIRMED' && match.matchedAssetId))) {
+      return res.status(409).json({ success: false, message: 'One or more discovered devices are already linked to an asset.' });
+    }
+    const observationById = new Map(selectedObservations.map(item => [item.id, item]));
+    const serialNumbers = quantity === 1
+      ? [String(req.body.serialNumber || req.body.discoveredSerial || observation?.serialNumber || '').trim()]
+      : Array.isArray(req.body.serialNumbers) ? req.body.serialNumbers.map((value, index) => String(value || discoveryItems[index]?.discoveredSerial || observationById.get(discoveryItems[index]?.discoveryId)?.serialNumber || '').trim()) : [];
+    if (serialNumbers.length !== quantity || (quantity > 1 && category.isSerialized && serialNumbers.some(value => !value))) {
+      return res.status(400).json({ success: false, message: 'Enter a serial number for each asset in this category.' });
+    }
+    const suppliedSerials = serialNumbers.filter(Boolean);
+    if (new Set(suppliedSerials.map(value => value.toUpperCase())).size !== suppliedSerials.length) {
+      return res.status(400).json({ success: false, message: 'Each asset must have a different serial number.' });
+    }
+    if (quantity > 1 && (discoveryId || hasManualDiscovery)) {
+      return res.status(400).json({ success: false, message: 'Use discoveryItems to specify network details for each asset.' });
+    }
+    if (discoveryItems.some((item, index) => {
+      const deviceSerial = observationById.get(item.discoveryId)?.serialNumber;
+      return deviceSerial && serialNumbers[index] && deviceSerial.toUpperCase() !== serialNumbers[index].toUpperCase();
+    })) return res.status(400).json({ success: false, message: 'An item serial number does not match its selected discovered device.' });
+    if (quantity > 1 && req.body.rfidEpc) {
+      return res.status(400).json({ success: false, message: 'Assign a different RFID EPC to each asset after registration.' });
+    }
+    if (suppliedSerials.length) {
+      const existingSerial = await prisma.asset.findFirst({ where: { serialNumber: { in: suppliedSerials } }, select: { assetId: true, serialNumber: true } });
+      if (existingSerial) return res.status(409).json({ success: false, message: `Serial number ${existingSerial.serialNumber} is already registered to ${existingSerial.assetId}.` });
+    }
 
     // 2. Resolve or fallback Company
     let company = null;
@@ -453,23 +554,56 @@ export async function createAsset(req, res, next) {
       modelId = mdl.id;
     }
 
-    // Parse financial values safely
-    const rawVal = req.body.acquisitionValue || req.body.acquisitionCost || req.body.purchaseCost || 0;
-    const acqValue = typeof rawVal === 'string' ? parseFloat(rawVal.replace(/[^0-9.-]+/g, '')) || 0 : Number(rawVal) || 0;
+    const resolvedItems = await Promise.all(assetItems.map(async item => {
+      const [selectedCompany, selectedSite, selectedBuilding, selectedFloor, selectedRoom, selectedDepartment, selectedCostCenter, selectedCustodian] = await Promise.all([
+        item.companyId ? prisma.company.findFirst({ where: { id: item.companyId, active: true } }) : null,
+        item.siteId ? prisma.site.findFirst({ where: { id: item.siteId, active: true } }) : null,
+        item.buildingId ? prisma.building.findFirst({ where: { id: item.buildingId, active: true } }) : null,
+        item.floorId ? prisma.floor.findFirst({ where: { id: item.floorId, active: true } }) : null,
+        item.roomId ? prisma.room.findFirst({ where: { id: item.roomId, active: true } }) : null,
+        item.departmentId ? prisma.department.findFirst({ where: { id: item.departmentId, active: true } }) : null,
+        item.costCenterId ? prisma.costCenter.findFirst({ where: { id: item.costCenterId, active: true } }) : null,
+        item.custodianId ? prisma.employee.findFirst({ where: { id: item.custodianId, active: true } }) : null
+      ]);
+      const invalid = [['companyId', selectedCompany], ['siteId', selectedSite], ['buildingId', selectedBuilding],
+        ['floorId', selectedFloor], ['roomId', selectedRoom], ['departmentId', selectedDepartment],
+        ['costCenterId', selectedCostCenter], ['custodianId', selectedCustodian]]
+        .find(([key, result]) => item[key] && !result);
+      if (invalid) throw new Error(`Selected ${invalid[0]} is unavailable.`);
+      if (selectedCompany && selectedSite && selectedSite.companyId !== selectedCompany.id) throw new Error('Selected site does not belong to the item company.');
+      let itemSite = selectedSite;
+      if (selectedCompany && !itemSite) itemSite = await prisma.site.findFirst({ where: { companyId: selectedCompany.id, active: true }, orderBy: { name: 'asc' } });
+      if (selectedCompany && !itemSite) throw new Error('Selected company has no active site.');
+      if (selectedBuilding && selectedBuilding.siteId !== (itemSite?.id || siteId)) throw new Error('Selected building does not belong to the item site.');
+      if (selectedFloor && selectedFloor.buildingId !== selectedBuilding?.id) throw new Error('Selected floor does not belong to the item building.');
+      if (selectedRoom && selectedRoom.floorId !== selectedFloor?.id) throw new Error('Selected room does not belong to the item floor.');
+      const effectiveCompanyId = selectedCompany?.id || itemSite?.companyId || companyId;
+      if (selectedDepartment && selectedDepartment.companyId !== effectiveCompanyId) throw new Error('Selected department does not belong to the item company.');
+      if (selectedCostCenter && selectedCostCenter.companyId !== effectiveCompanyId) throw new Error('Selected cost center does not belong to the item company.');
+      if (selectedCustodian && selectedCustodian.companyId !== effectiveCompanyId) throw new Error('Selected custodian does not belong to the item company.');
+      return {
+        data: {
+          ...req.body,
+          ...item,
+          purchaseDate: item.acquisitionDate ?? item.purchaseDate ?? req.body.purchaseDate,
+          inServiceDate: item.inServiceDate ?? item.acquisitionDate ?? req.body.inServiceDate
+        },
+        companyId: effectiveCompanyId,
+        siteId: itemSite?.id || siteId,
+        buildingId: selectedBuilding?.id || null,
+        floorId: selectedFloor?.id || null,
+        roomId: selectedRoom?.id || null,
+        departmentId: selectedDepartment?.id || (effectiveCompanyId === companyId ? departmentId : null),
+        costCenterId: selectedCostCenter?.id || (effectiveCompanyId === companyId ? costCenterId : null),
+        custodianId: selectedCustodian?.id || null
+      };
+    }));
 
-    // Check / Generate Unique Asset ID
-    let assetId = req.body.assetId;
-    if (!assetId || assetId === 'AUTO') {
-      const count = await prisma.asset.count();
-      assetId = `AST-${new Date().getFullYear()}-${String(count + 1001).padStart(4, '0')}`;
+    const useGeneratedIds = req.body.autoGenerateId === true || quantity > 1 || !req.body.assetId || req.body.assetId === 'AUTO';
+    const requestedAssetId = useGeneratedIds ? null : String(req.body.assetId).trim();
+    if (requestedAssetId && await prisma.asset.findUnique({ where: { assetId: requestedAssetId } })) {
+      return res.status(409).json({ success: false, message: `Asset ID ${requestedAssetId} is already registered.` });
     }
-    const existingAssetWithId = await prisma.asset.findUnique({ where: { assetId } });
-    if (existingAssetWithId) {
-      assetId = `AST-${new Date().getFullYear()}-${Math.floor(Math.random() * 89999 + 10000)}`;
-    }
-
-    const tagNumber = req.body.tagNumber || req.body.assetTagBarcode || req.body.barcode || `TAG-${assetId}`;
-    const barcode = req.body.barcode || req.body.assetTagBarcode || tagNumber;
 
     // Map lifecycle status
     let lifecycleStatus = req.body.lifecycleStatus || 'IN_SERVICE';
@@ -491,41 +625,69 @@ export async function createAsset(req, res, next) {
       finalUserId = anyUser ? anyUser.id : null;
     }
 
-    const result = await prisma.$transaction(async (tx) => {
+    const results = await prisma.$transaction(async (tx) => {
+      const createdAssets = [];
+      for (let itemIndex = 0; itemIndex < quantity; itemIndex += 1) {
+      const itemRecord = quantity > 1 ? resolvedItems[itemIndex] : null;
+      const itemData = itemRecord?.data || req.body;
+      const itemWarrantyEnd = itemData.warrantyYears
+        ? warrantyEndFor(itemData.warrantyStartDate, itemData.warrantyYears)
+        : itemData.warrantyEndDate ? new Date(itemData.warrantyEndDate) : null;
+      if ((itemData.warrantyStartDate || itemData.warrantyYears || itemData.warrantyEndDate) &&
+          (!itemData.warrantyStartDate || !itemWarrantyEnd || Number.isNaN(itemWarrantyEnd.getTime()) ||
+            itemWarrantyEnd < new Date(itemData.warrantyStartDate))) {
+        throw new Error(`Invalid warranty dates for item ${itemIndex + 1}.`);
+      }
+      const itemCostRaw = itemData.acquisitionValue || itemData.acquisitionCost || itemData.purchaseCost || 0;
+      const itemAcqValue = typeof itemCostRaw === 'string' ? parseFloat(itemCostRaw.replace(/[^0-9.-]+/g, '')) || 0 : Number(itemCostRaw) || 0;
+      const itemCustodianId = itemRecord ? itemRecord.custodianId : custodianId;
+      const itemDiscovery = quantity > 1 ? discoveryItems[itemIndex] : req.body;
+      const itemDiscoveryId = quantity > 1 ? String(itemDiscovery.discoveryId || '').trim() || null : discoveryId;
+      const itemObservation = quantity > 1 ? observationById.get(itemDiscoveryId) || null : observation;
+      const itemHasManualDiscovery = quantity > 1
+        ? !itemDiscoveryId && ['hostname', 'ipAddress', 'macAddress', 'discoveredSerial'].some(key => String(itemDiscovery[key] || '').trim())
+        : hasManualDiscovery;
+      if (itemDiscoveryId && await tx.asset.findFirst({ where: { discoveryId: itemDiscoveryId }, select: { id: true } })) {
+        throw new Error(`Discovered device ${itemDiscoveryId} was linked while this batch was being saved.`);
+      }
+      const assetId = useGeneratedIds ? generatedAssetId(req.body.assetType, category.code, assetClass?.code?.replace(/^CLS[-_ ]?/i, '') || assetClass?.name) : requestedAssetId;
+      const tagNumber = String(itemData.tagNumber || itemData.assetTagBarcode || itemData.barcode || '').trim() || `TAG-${assetId}`;
+      const barcode = String(itemData.barcode || itemData.assetTagBarcode || '').trim() || tagNumber;
       const newAsset = await tx.asset.create({
         data: {
           assetId,
-          description: req.body.description || req.body.assetName || req.body.name || 'New Enterprise Asset',
+          description: itemData.description || itemData.assetName || itemData.name || 'New Enterprise Asset',
           categoryId,
-          companyId,
-          siteId,
-          buildingId: req.body.buildingId || null,
-          floorId: req.body.floorId || null,
-          roomId: req.body.roomId || null,
+          assetClassId: assetClass?.id || null,
+          companyId: itemRecord?.companyId || companyId,
+          siteId: itemRecord?.siteId || siteId,
+          buildingId: itemRecord ? itemRecord.buildingId : req.body.buildingId || null,
+          floorId: itemRecord ? itemRecord.floorId : req.body.floorId || null,
+          roomId: itemRecord ? itemRecord.roomId : req.body.roomId || null,
           zoneId: req.body.zoneId || null,
-          departmentId,
-          costCenterId,
-          custodianId,
+          departmentId: itemRecord ? itemRecord.departmentId : departmentId,
+          costCenterId: itemRecord ? itemRecord.costCenterId : costCenterId,
+          custodianId: itemCustodianId,
           manufacturerId,
           modelId,
           tagNumber,
           barcode,
-          qrCode: req.body.qrCode || barcode,
-          rfidEpc: req.body.rfidEpc || null,
-          serialNumber: req.body.serialNumber || req.body.discoveredSerial || observation?.serialNumber || null,
+          qrCode: itemData.qrCode || barcode,
+          rfidEpc: String(itemData.rfidEpc || '').trim() || null,
+          serialNumber: serialNumbers[itemIndex] || null,
           lifecycleStatus,
-          condition: req.body.condition || 'NEW',
+          condition: itemData.condition || 'NEW',
           criticality: req.body.criticality || 'MEDIUM',
-          acquisitionValue: acqValue,
-          currency: req.body.currency || 'USD',
-          poNumber: req.body.poNumber || req.body.poInvoiceNo || null,
-          supplierName: req.body.supplierName || req.body.supplier || req.body.vendorSupplier || null,
-          purchaseDate: req.body.purchaseDate ? new Date(req.body.purchaseDate) : null,
-          inServiceDate: req.body.inServiceDate ? new Date(req.body.inServiceDate) : null,
-          hostname: req.body.hostname || observation?.hostname || null,
-          macAddress: req.body.macAddress || observation?.macAddress || null,
-          ipAddress: req.body.ipAddress || observation?.ipAddress || null,
-          discoveryId,
+          acquisitionValue: itemAcqValue,
+          currency: itemData.currency || 'USD',
+          poNumber: itemData.poNumber || itemData.poInvoiceNo || null,
+          supplierName: itemData.supplierName || itemData.supplier || itemData.vendorSupplier || null,
+          purchaseDate: itemData.purchaseDate || itemData.acquisitionDate ? new Date(itemData.purchaseDate || itemData.acquisitionDate) : null,
+          inServiceDate: itemData.inServiceDate || itemData.purchaseDate || itemData.acquisitionDate ? new Date(itemData.inServiceDate || itemData.purchaseDate || itemData.acquisitionDate) : null,
+          hostname: itemObservation?.hostname || itemDiscovery.hostname || null,
+          macAddress: itemObservation?.macAddress || itemDiscovery.macAddress || null,
+          ipAddress: itemObservation?.ipAddress || itemDiscovery.ipAddress || null,
+          discoveryId: itemDiscoveryId,
           createdByUserId: finalUserId,
           updatedByUserId: finalUserId
         }
@@ -533,22 +695,22 @@ export async function createAsset(req, res, next) {
 
       const childOperations = [];
 
-      if (observation || hasManualDiscovery) {
-        const linkedObservation = observation || await tx.discoveryObservation.create({ data: {
+      if (itemObservation || itemHasManualDiscovery) {
+        const linkedObservation = itemObservation || await tx.discoveryObservation.create({ data: {
           discoverySource: 'MANUAL_ENTRY',
-          hostname: req.body.hostname || null,
-          ipAddress: req.body.ipAddress || null,
-          macAddress: req.body.macAddress || null,
-          serialNumber: req.body.discoveredSerial || req.body.serialNumber || null,
-          firstSeen: req.body.firstSeen ? new Date(req.body.firstSeen) : new Date(),
-          lastSeen: req.body.lastSeen ? new Date(req.body.lastSeen) : new Date()
+          hostname: itemDiscovery.hostname || null,
+          ipAddress: itemDiscovery.ipAddress || null,
+          macAddress: itemDiscovery.macAddress || null,
+          serialNumber: itemDiscovery.discoveredSerial || serialNumbers[itemIndex] || null,
+          firstSeen: itemDiscovery.firstSeen ? new Date(itemDiscovery.firstSeen) : new Date(),
+          lastSeen: itemDiscovery.lastSeen ? new Date(itemDiscovery.lastSeen) : new Date()
         } });
-        if (!observation) await tx.asset.update({ where: { id: newAsset.id }, data: { discoveryId: linkedObservation.id } });
+        if (!itemObservation) await tx.asset.update({ where: { id: newAsset.id }, data: { discoveryId: linkedObservation.id } });
         await tx.discoveryMatch.deleteMany({ where: { observationId: linkedObservation.id, status: { not: 'CONFIRMED' } } });
         await tx.discoveryMatch.create({ data: {
           observationId: linkedObservation.id, matchedAssetId: newAsset.id,
-          confidenceScore: observation ? 100 : 0,
-          matchRule: observation ? 'USER_SELECTED' : 'MANUAL_ENTRY', status: 'CONFIRMED',
+          confidenceScore: itemObservation ? 100 : 0,
+          matchRule: itemObservation ? 'USER_SELECTED' : 'MANUAL_ENTRY', status: 'CONFIRMED',
           reviewedByUserId: finalUserId, reviewedAt: new Date()
         } });
       }
@@ -575,7 +737,7 @@ export async function createAsset(req, res, next) {
       }
 
       // 1. Initial Corporate Book Value (only if capitalized value is provided)
-      if (acqValue > 0) {
+      if (itemAcqValue > 0) {
         const categoryRate = Number(category.annualDepreciationRatePercent || 0);
         const categoryLife = Number(category.defaultUsefulLifeMonths) || 60;
         const categoryResidualPercent = Number(category.defaultResidualValuePercent || 0);
@@ -585,13 +747,13 @@ export async function createAsset(req, res, next) {
               assetId: newAsset.id,
               bookType: 'CORPORATE',
               capitalizationDate: newAsset.inServiceDate || newAsset.purchaseDate || new Date(),
-              capitalizationValue: acqValue,
+              capitalizationValue: itemAcqValue,
               usefulLifeMonths: categoryRate > 0 ? Math.round(1200 / categoryRate) : categoryLife,
               depreciationMethod: category.depreciationMethod || 'STRAIGHT_LINE',
               annualDepreciationRatePercent: categoryRate > 0 ? categoryRate : null,
-              residualValue: acqValue * categoryResidualPercent / 100,
+              residualValue: itemAcqValue * categoryResidualPercent / 100,
               accumulatedDepreciation: 0,
-              netBookValue: acqValue
+              netBookValue: itemAcqValue
             }
           })
         );
@@ -623,12 +785,12 @@ export async function createAsset(req, res, next) {
       );
 
       // 4. Custody Assignment if Custodian is specified
-      if (custodianId && finalUserId) {
+      if (itemCustodianId && finalUserId) {
         childOperations.push(
           tx.custodyAssignment.create({
             data: {
               assetId: newAsset.id,
-              custodianId,
+              custodianId: itemCustodianId,
               issuedByUserId: finalUserId,
               issuedDate: new Date(),
               active: true,
@@ -640,17 +802,17 @@ export async function createAsset(req, res, next) {
       }
 
       // 5. Warranty Setup if specified
-      if (req.body.underWarranty && req.body.warrantyStartDate && req.body.warrantyEndDate) {
+      if (itemData.warrantyStartDate && itemWarrantyEnd) {
         childOperations.push(
           tx.warranty.create({
             data: {
               assetId: newAsset.id,
-              providerName: req.body.provider || req.body.providerName || rawMfr || 'Standard Warranty',
-              warrantyNumber: req.body.warrantyNumber || req.body.contractReference || `WAR-${assetId}`,
-              startDate: new Date(req.body.warrantyStartDate),
-              endDate: new Date(req.body.warrantyEndDate),
-              terms: req.body.coverage || 'Parts & Labour',
-              coverageType: req.body.warrantyType || 'FULL'
+              providerName: itemData.provider || itemData.providerName || rawMfr || 'Standard Warranty',
+              warrantyNumber: itemData.warrantyNumber || itemData.contractReference || `WAR-${assetId}`,
+              startDate: new Date(itemData.warrantyStartDate),
+              endDate: itemWarrantyEnd,
+              terms: itemData.coverage || 'Parts & Labour',
+              coverageType: itemData.warrantyType || 'FULL'
             }
           })
         );
@@ -658,15 +820,21 @@ export async function createAsset(req, res, next) {
 
       await Promise.all(childOperations);
 
-      return tx.asset.findUnique({
+      createdAssets.push(await tx.asset.findUnique({
         where: { id: newAsset.id },
         include: { category: true, bookValues: { where: { bookType: 'CORPORATE' }, take: 1 }, schedules: true }
-      });
-    }, { timeout: 30000, maxWait: 10000 });
+      }));
+      }
+      return createdAssets;
+    }, { timeout: Math.max(30000, quantity * 5000), maxWait: 10000 });
+
+    const result = results[0];
 
     res.status(201).json({
       success: true,
       asset: result,
+      assets: results.map(asset => ({ id: asset.id, assetId: asset.assetId, serialNumber: asset.serialNumber })),
+      createdCount: results.length,
       category: result.category,
       bookValue: result.bookValues[0] || null,
       maintenanceSchedule: result.schedules[0] || null

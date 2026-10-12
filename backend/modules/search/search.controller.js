@@ -9,21 +9,30 @@ export async function globalSearch(req, res, next) {
 
     const queryStr = q.trim();
 
+    const assetScope = req.dataScopeFilter || {};
     const [assets, workOrders, stocktakes, employees] = await Promise.all([
       prisma.asset.findMany({
         where: {
+          ...assetScope,
           OR: [
             { assetId: { contains: queryStr } },
             { tagNumber: { contains: queryStr } },
+            { barcode: { contains: queryStr } },
+            { rfidEpc: { contains: queryStr } },
             { serialNumber: { contains: queryStr } },
             { description: { contains: queryStr } },
-            { hostname: { contains: queryStr } }
+            { hostname: { contains: queryStr } },
+            { site: { is: { name: { contains: queryStr } } } },
+            { category: { is: { name: { contains: queryStr } } } }
           ]
         },
-        take: 10
+        select: { id: true, assetId: true, description: true, tagNumber: true, barcode: true, serialNumber: true, lifecycleStatus: true, site: { select: { name: true } }, category: { select: { name: true } } },
+        orderBy: { assetId: 'asc' },
+        take: 20
       }),
       prisma.maintenanceWorkOrder.findMany({
         where: {
+          asset: { is: assetScope },
           OR: [
             { workOrderNumber: { contains: queryStr } },
             { description: { contains: queryStr } }
@@ -33,6 +42,7 @@ export async function globalSearch(req, res, next) {
       }),
       prisma.stocktakeCampaign.findMany({
         where: {
+          ...assetScope,
           OR: [
             { campaignNumber: { contains: queryStr } },
             { title: { contains: queryStr } }
@@ -42,6 +52,7 @@ export async function globalSearch(req, res, next) {
       }),
       prisma.employee.findMany({
         where: {
+          ...assetScope,
           OR: [
             { fullName: { contains: queryStr } },
             { employeeCode: { contains: queryStr } },

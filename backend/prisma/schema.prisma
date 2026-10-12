@@ -5,7 +5,7 @@ datasource db {
 
 generator client {
   provider = "prisma-client-js"
-  output   = "../node_modules/.prisma/maintenance-client-v5"
+  output   = "../node_modules/.prisma/maintenance-client-v6"
 }
 
 // ------------------------------------------------------
@@ -778,6 +778,8 @@ model MaintenancePlan {
   custodianId          String?
   assetIdsJson         String?  @db.NVarChar(Max)
   frequencyMonths      Int      @default(6)
+  frequencyUnit        String   @default("MONTHS")
+  frequencyInterval    Int      @default(6)
   nextDueDate          DateTime
   active               Boolean  @default(true)
   autoCreateWorkOrders Boolean  @default(false)

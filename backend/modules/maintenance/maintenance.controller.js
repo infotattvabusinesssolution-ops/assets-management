@@ -264,7 +264,23 @@ export async function updateWorkOrder(req, res, next) {
       if (date && Number.isNaN(date.getTime())) return res.status(400).json({ success: false, message: 'Invalid due date.' });
       data.completionTargetDate = date;
     }
-    if ('vendorName' in req.body) data.vendorName = String(req.body.vendorName || '').trim() || null;
+    if ('vendorId' in req.body) {
+      if (req.body.vendorId) {
+        const provider = await prisma.serviceProvider.findFirst({ where: { id: req.body.vendorId, ...(req.body.vendorId === current.vendorId ? {} : { status: 'ACTIVE' }), ...(req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {}) }, select: { id: true, providerName: true } });
+        if (!provider) return res.status(400).json({ success: false, message: 'Choose an active service provider.' });
+        data.vendorId = provider.id;
+        data.vendorName = provider.providerName;
+      } else {
+        data.vendorId = null;
+        data.vendorName = null;
+      }
+    } else if ('vendorName' in req.body) {
+      const name = String(req.body.vendorName || '').trim();
+      const provider = name ? await prisma.serviceProvider.findFirst({ where: { providerName: name, status: 'ACTIVE', ...(req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {}) }, select: { id: true, providerName: true } }) : null;
+      if (name && !provider) return res.status(400).json({ success: false, message: 'Choose an active service provider.' });
+      data.vendorId = provider?.id || null;
+      data.vendorName = provider?.providerName || null;
+    }
     if ('notes' in req.body) data.notes = String(req.body.notes || '').trim() || null;
     if (Object.keys(data).length === 0) return res.status(400).json({ success: false, message: 'No work order changes were provided.' });
 
@@ -275,7 +291,7 @@ export async function updateWorkOrder(req, res, next) {
 
 export async function createWorkOrder(req, res, next) {
   try {
-    const { assetId, workType = 'CORRECTIVE', priority = 'MEDIUM', description, assignedTechnicianId, scheduledDate, dueTargetDate, failureCode, rootCause, vendorName, notes } = req.body;
+    const { assetId, workType = 'CORRECTIVE', priority = 'MEDIUM', description, assignedTechnicianId, scheduledDate, dueTargetDate, failureCode, rootCause, vendorId, vendorName, notes } = req.body;
     const allowedTypes = ['CORRECTIVE', 'PREVENTIVE', 'INSPECTION', 'EMERGENCY'];
     const allowedPriorities = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'];
     if (!assetId || !String(description || '').trim()) return res.status(400).json({ success: false, message: 'Select a database asset and enter a problem description.' });
@@ -289,6 +305,10 @@ export async function createWorkOrder(req, res, next) {
       const technician = await prisma.user.findFirst({ where: { id: assignedTechnicianId, active: true, ...(req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {}) }, select: { id: true } });
       if (!technician) return res.status(400).json({ success: false, message: 'Choose an active maintenance technician.' });
     }
+    const provider = vendorId
+      ? await prisma.serviceProvider.findFirst({ where: { id: vendorId, status: 'ACTIVE', ...(req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {}) }, select: { id: true, providerName: true } })
+      : vendorName ? await prisma.serviceProvider.findFirst({ where: { providerName: String(vendorName).trim(), status: 'ACTIVE', ...(req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {}) }, select: { id: true, providerName: true } }) : null;
+    if ((vendorId || vendorName) && !provider) return res.status(400).json({ success: false, message: 'Choose an active service provider.' });
     const activeOrder = await prisma.maintenanceWorkOrder.findFirst({ where: { assetId: asset.id, status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD'] } }, select: { workOrderNumber: true } });
     if (activeOrder) return res.status(409).json({ success: false, message: `Asset ${asset.assetId} already has open work order ${activeOrder.workOrderNumber}.` });
 
@@ -303,7 +323,7 @@ export async function createWorkOrder(req, res, next) {
         data: {
           workOrderNumber, assetId: asset.id, workType: String(workType).toUpperCase(), priority: String(priority).toUpperCase(),
           status, description: String(description).trim(), assignedTechnicianId: assignedTechnicianId || null,
-          vendorName: vendorName?.trim() || null, scheduledDate: scheduled, completionTargetDate: due,
+          vendorId: provider?.id || null, vendorName: provider?.providerName || null, scheduledDate: scheduled, completionTargetDate: due,
           failureCode: failureCode || null, rootCause: rootCause || null, notes: notes?.trim() || null, createdByUserId: userId
         }
       });

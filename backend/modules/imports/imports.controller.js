@@ -1,4 +1,5 @@
 import prisma from '../../config/prisma.js';
+import { expandBulkAssetRows, generatedImportAssetId } from './expandBulkAssetRows.js';
 
 function isCategoryMatch(c, catName) {
   if (!catName || !c) return false;
@@ -18,6 +19,14 @@ function isCategoryMatch(c, catName) {
 const filled = value => String(value ?? '').trim();
 const isYes = value => ['yes', 'true', '1', 'on'].includes(filled(value).toLowerCase());
 const validDate = value => !value || !Number.isNaN(Date.parse(value));
+const warrantyEndFor = (start, years) => {
+  const count = Number(years);
+  const date = new Date(`${start}T00:00:00Z`);
+  if (!start || !Number.isInteger(count) || count < 1 || count > 50 || Number.isNaN(date.getTime())) return null;
+  date.setUTCFullYear(date.getUTCFullYear() + count);
+  date.setUTCDate(date.getUTCDate() - 1);
+  return date.toISOString().slice(0, 10);
+};
 const findMaster = (list, value, keys = ['name', 'code']) => list.find(item =>
   keys.some(key => filled(item[key]).toLowerCase() === filled(value).toLowerCase()));
 
@@ -25,11 +34,18 @@ const extraRegistrationFields = [
   'assetType','subcategory','quantity','description','assetGroup','assetClass','brand','modelNumber',
   'businessUnit','storageArea','alternateCustodian','expectedUser','assetBook','depreciationMethod',
   'usefulLifeYears','residualValue','project','reference','notes','costAllocation',
-  'businessApplication','remarks','tagType','tagStatus','approvalRequired','approvalStatus'
+  'businessApplication','remarks','tagType','tagStatus','approvalRequired','approvalStatus',
+  'nextApprover','approvalRemarks'
 ];
 
 async function saveRegistrationDetails(asset, row, category, userId) {
   const assetId = asset.id;
+  if (filled(row.imageUrl)) {
+    const existingImage = await prisma.attachment.findFirst({ where: { entityType: 'Asset', entityId: assetId, fileType: 'ASSET_IMAGE' } });
+    const imageData = { fileName: `${asset.assetId}-image`, storageKey: filled(row.imageUrl), url: filled(row.imageUrl) };
+    if (existingImage) await prisma.attachment.update({ where: { id: existingImage.id }, data: imageData });
+    else await prisma.attachment.create({ data: { entityType: 'Asset', entityId: assetId, fileType: 'ASSET_IMAGE', uploadedByUserId: userId, ...imageData } });
+  }
   if (isYes(row.underWarranty)) {
     await prisma.warranty.upsert({ where: { assetId }, create: {
       assetId, providerName: filled(row.provider || row.manufacturer) || null,
@@ -77,15 +93,15 @@ async function saveRegistrationDetails(asset, row, category, userId) {
       } });
     }
   }
-  const valueFields = extraRegistrationFields.filter(key => filled(row[key]));
+  const valueFields = extraRegistrationFields.filter(key => filled(key === 'remarks' ? row.registrationRemarks : row[key]));
   for (const key of valueFields) {
     const name = `BULK_REG_${key}`;
     const definition = await prisma.customFieldDefinition.upsert({ where: { name },
       create: { name, label: key.replace(/([A-Z])/g, ' $1').trim(), fieldType: 'TEXT' }, update: {} });
     await prisma.assetCustomFieldValue.upsert({
       where: { assetId_customFieldDefId: { assetId, customFieldDefId: definition.id } },
-      create: { assetId, customFieldDefId: definition.id, textValue: filled(row[key]) },
-      update: { textValue: filled(row[key]) }
+      create: { assetId, customFieldDefId: definition.id, textValue: filled(key === 'remarks' ? row.registrationRemarks : row[key]) },
+      update: { textValue: filled(key === 'remarks' ? row.registrationRemarks : row[key]) }
     });
   }
   const book = await prisma.assetBookValue.findFirst({ where: { assetId, bookType: 'CORPORATE' } });
@@ -111,7 +127,7 @@ async function saveRegistrationDetails(asset, row, category, userId) {
  */
 export async function validateBulkImport(req, res, next) {
   try {
-    const { rows = [] } = req.body;
+    const rows = expandBulkAssetRows(Array.isArray(req.body.rows) ? req.body.rows : []);
 
     let validCount = 0;
     let warningCount = 0;
@@ -119,17 +135,24 @@ export async function validateBulkImport(req, res, next) {
     const records = [];
 
     // Pre-fetch existing master data for validation
-    const [existingAssets, categories, sites, employees] = await Promise.all([
+    const [existingAssets, categories, sites, employees, companies, departments, costCenters] = await Promise.all([
       prisma.asset.findMany({ select: { assetId: true, serialNumber: true, tagNumber: true, rfidEpc: true } }),
-      prisma.category.findMany({ select: { id: true, name: true, code: true } }),
+      prisma.category.findMany({ select: { id: true, name: true, code: true, isSerialized: true } }),
       prisma.site.findMany({ select: { id: true, name: true, code: true } }),
-      prisma.employee.findMany({ select: { id: true, fullName: true, employeeCode: true } })
+      prisma.employee.findMany({ select: { id: true, fullName: true, employeeCode: true } }),
+      prisma.company.findMany({ select: { id: true, name: true, code: true } }),
+      prisma.department.findMany({ select: { id: true, name: true, code: true } }),
+      prisma.costCenter.findMany({ select: { id: true, name: true, code: true } })
     ]);
 
     const existingAssetIds = new Set(existingAssets.map((a) => a.assetId));
     const existingSerials = new Set(existingAssets.map((a) => a.serialNumber).filter(Boolean));
+    const existingTags = new Set(existingAssets.map((a) => a.tagNumber).filter(Boolean));
+    const existingById = new Map(existingAssets.map(asset => [asset.assetId, asset]));
+    const existingBySerial = new Map(existingAssets.filter(asset => asset.serialNumber).map(asset => [asset.serialNumber, asset]));
     const seenBatchSerials = new Set();
     const seenBatchIds = new Set();
+    const seenBatchTags = new Set();
 
     for (let i = 0; i < rows.length; i++) {
       const row = rows[i];
@@ -137,7 +160,7 @@ export async function validateBulkImport(req, res, next) {
       let status = 'Valid';
       let remarks = '-';
 
-      const assetId = String(row.assetId || row.AssetID || '').trim() || `AST-BLK-${Date.now()}-${rowNum}`;
+      const assetId = String(row.assetId || row.AssetID || '').trim() || generatedImportAssetId(row);
       const name = row.assetName || row.name || row.Description || row.description || '';
       const category = String(row.category || row.Category || '').trim();
       const serialNumber = row.serialNumber || row.SerialNumber || row['Serial Number'] || '';
@@ -145,26 +168,41 @@ export async function validateBulkImport(req, res, next) {
       const custodian = row.custodian || row.Custodian || '';
       const rawCost = row.acquisitionCost || row.acquisitionValue || row['Acquisition Value'] || row.purchaseCost || row.cost || 0;
       const currency = row.currency || row.Currency || 'USD';
+      const tagNumber = filled(row.assetTagBarcode || row.tagNumber);
+      const computedWarrantyEnd = filled(row.warrantyYears) ? warrantyEndFor(row.warrantyStartDate, row.warrantyYears) : '';
 
       const errors = [];
       const warnings = [];
+      if (row.batchExpansionError) errors.push(row.batchExpansionError);
       if (!filled(name)) errors.push('Asset Name is required');
-      if (!category || !categories.some(c => isCategoryMatch(c, category))) errors.push('Category not found in master data');
+      const matchedCategory = categories.find(c => isCategoryMatch(c, category));
+      if (!matchedCategory) errors.push('Category not found in master data');
       if (location && !findMaster(sites, location)) errors.push('Site not found in master data');
       if (row.assetId && seenBatchIds.has(assetId)) errors.push('Duplicate Asset ID in upload');
-      if (!serialNumber && ['laptop', 'mobile device', 'server'].includes(category.toLowerCase())) errors.push('Serial number is required for this category');
+      if (!serialNumber && matchedCategory?.isSerialized) errors.push('Serial number is required for this category');
       if (serialNumber && seenBatchSerials.has(serialNumber)) errors.push('Duplicate serial number in upload');
+      if (existingById.has(assetId) && existingBySerial.has(serialNumber) && existingById.get(assetId) !== existingBySerial.get(serialNumber)) errors.push('Asset ID and serial number refer to different registered assets');
+      if (tagNumber && seenBatchTags.has(tagNumber)) errors.push('Duplicate tag number in upload');
+      if (tagNumber && existingTags.has(tagNumber) && !existingAssetIds.has(assetId) && !existingSerials.has(serialNumber)) errors.push('Tag number already belongs to another asset');
       if (rawCost !== '' && rawCost != null && (!Number.isFinite(Number(rawCost)) || Number(rawCost) < 0)) errors.push('Acquisition Cost must be a nonnegative number');
-      if (row.quantity && (!Number.isInteger(Number(row.quantity)) || Number(row.quantity) !== 1)) errors.push('Each asset row must have Quantity 1');
-      for (const key of ['acquisitionDate','purchaseDate','warrantyStartDate','warrantyEndDate','pmNextDueDate','firstSeen','lastSeen']) {
+      if (Number(row.quantity) !== 1) errors.push('Quantity could not be expanded into individual assets');
+      for (const key of ['acquisitionDate','inServiceDate','purchaseDate','warrantyStartDate','warrantyEndDate','pmNextDueDate','firstSeen','lastSeen']) {
         if (!validDate(row[key])) errors.push(`${key} must be a valid date`);
       }
-      if (isYes(row.underWarranty) && (!row.warrantyStartDate || !row.warrantyEndDate)) errors.push('Warranty start and end dates are required');
-      if (row.warrantyStartDate && row.warrantyEndDate && Date.parse(row.warrantyEndDate) < Date.parse(row.warrantyStartDate)) errors.push('Warranty end date precedes start date');
+      if (filled(row.warrantyYears) && !computedWarrantyEnd) errors.push('Warranty needs a valid start date and 1–50 whole years');
+      if (computedWarrantyEnd && filled(row.warrantyEndDate) && filled(row.warrantyEndDate).slice(0, 10) !== computedWarrantyEnd) errors.push('Warranty End Date does not match start date and years');
+      const warrantyEndDate = computedWarrantyEnd || row.warrantyEndDate;
+      const underWarranty = isYes(row.underWarranty) || Boolean(row.warrantyStartDate && (row.warrantyYears || row.warrantyEndDate));
+      if (underWarranty && (!row.warrantyStartDate || !warrantyEndDate)) errors.push('Warranty start and end dates are required');
+      if (row.warrantyStartDate && warrantyEndDate && Date.parse(warrantyEndDate) < Date.parse(row.warrantyStartDate)) errors.push('Warranty end date precedes start date');
       if (isYes(row.enablePm)) {
         if (!filled(row.pmTitle) || !row.pmNextDueDate) errors.push('PM Title and Next Due Date are required');
         if (!Number.isInteger(Number(row.pmFrequencyMonths)) || Number(row.pmFrequencyMonths) < 1 || Number(row.pmFrequencyMonths) > 120) errors.push('PM Frequency Months must be 1–120');
         if (row.pmAdvanceDays && (!Number.isInteger(Number(row.pmAdvanceDays)) || Number(row.pmAdvanceDays) < 0 || Number(row.pmAdvanceDays) > 90)) errors.push('PM Advance Days must be 0–90');
+        if (row.pmWorkType && !['PREVENTIVE','INSPECTION'].includes(filled(row.pmWorkType).toUpperCase())) errors.push('PM Work Type must be PREVENTIVE or INSPECTION');
+      }
+      for (const [field, list] of [['company', companies], ['department', departments], ['costCenter', costCenters]]) {
+        if (row[field] && !findMaster(list, row[field], ['id','name','code'])) errors.push(`${field} not found in master data`);
       }
       if (custodian && !findMaster(employees, custodian, ['id', 'fullName', 'employeeCode'])) warnings.push(`Custodian [${custodian}] not found; asset will be unassigned`);
       if (serialNumber && existingSerials.has(serialNumber)) warnings.push(`Existing serial [${serialNumber}] will update its asset`);
@@ -179,9 +217,11 @@ export async function validateBulkImport(req, res, next) {
       if (serialNumber) {
         seenBatchSerials.add(serialNumber);
       }
+      if (tagNumber) seenBatchTags.add(tagNumber);
 
       records.push({
         ...row,
+        registrationRemarks: row.registrationRemarks || row.remarks || '',
         row: rowNum,
         status,
         assetId,
@@ -192,6 +232,8 @@ export async function validateBulkImport(req, res, next) {
         custodian,
         acquisitionValue: Number(rawCost) || 0,
         currency,
+        underWarranty: underWarranty ? 'Yes' : row.underWarranty,
+        warrantyEndDate,
         assetStatus: row.assetStatus || row.lifecycleStatus || 'IN_SERVICE',
         condition: row.condition || 'NEW',
         remarks
@@ -257,7 +299,7 @@ export async function submitBulkImport(req, res, next) {
     let updatedCount = 0;
     const validationErrors = rows.filter(row => row.status === 'Error' || row.status === 'ERROR');
     let failedCount = validationErrors.length;
-    const errors = validationErrors.map(row => ({ row: row.row, remarks: row.remarks || 'Validation error' }));
+    const errors = validationErrors.map(row => ({ row: row.row, batchItemNumber: row.batchItemNumber || null, remarks: row.remarks || 'Validation error' }));
     const processedAssetIds = [];
 
     // Filter out rows marked as Error unless all are passed
@@ -266,12 +308,10 @@ export async function submitBulkImport(req, res, next) {
     for (let i = 0; i < rowsToProcess.length; i++) {
       const row = rowsToProcess[i];
       try {
+        if (row.batchExpansionError || Number(row.quantity || 1) !== 1) throw new Error(row.batchExpansionError || 'Validate and expand quantity before submitting.');
         const desc = row.name || row.assetName || row.description || row.Description;
-        const rawSerial = row.serialNumber !== '-' ? row.serialNumber : null;
-        if (!rawSerial && ['Laptop', 'Mobile Device', 'Server'].includes(row.category)) {
-          throw new Error('Serial number is required for this category.');
-        }
-        let assetId = String(row.assetId || row.AssetID || '').trim() || `AST-BLK-${Date.now()}-${row.row || i + 1}`;
+        const rawSerial = row.serialNumber !== '-' ? filled(row.serialNumber) || null : null;
+        let assetId = String(row.assetId || row.AssetID || '').trim() || generatedImportAssetId(row);
         if (!desc || !row.category) throw new Error('Asset name and category are required.');
         const tagNumber = filled(row.assetTagBarcode || row.tagNumber) || null;
         const rawAcq = row.acquisitionCost || row.acquisitionValue || row.purchaseCost || 0;
@@ -286,6 +326,7 @@ export async function submitBulkImport(req, res, next) {
           matchedCat = categories.find((c) => isCategoryMatch(c, rowCatName));
         }
         if (!matchedCat) throw new Error('Category not found in master data.');
+        if (matchedCat.isSerialized && !rawSerial) throw new Error('Serial number is required for this category.');
         const categoryId = matchedCat.id;
 
         // Resolve Site
@@ -337,7 +378,7 @@ export async function submitBulkImport(req, res, next) {
         let assetModel = modelName ? await prisma.assetModel.findFirst({ where: { OR: [{ name: modelName }, { modelNumber: modelName }] } }) : null;
         if (modelName && !assetModel && manufacturer) assetModel = await prisma.assetModel.create({ data: { name: modelName, modelNumber: filled(row.modelNumber) || modelName, manufacturerId: manufacturer.id, categoryId } });
         const assetFields = {
-          description: desc, categoryId, companyId: company.id, siteId,
+          description: filled(row.description) || desc, categoryId, companyId: company.id, siteId,
           buildingId, floorId, roomId, zoneId, departmentId, costCenterId, custodianId,
           manufacturerId: manufacturer?.id || null, modelId: assetModel?.id || null,
           serialNumber: rawSerial || null, tagNumber,
@@ -349,7 +390,7 @@ export async function submitBulkImport(req, res, next) {
           poNumber: filled(row.poInvoiceNo) || null,
           supplierName: filled(row.supplier || row.vendorSupplier) || null,
           purchaseDate: row.purchaseDate ? new Date(row.purchaseDate) : row.acquisitionDate ? new Date(row.acquisitionDate) : null,
-          inServiceDate: row.acquisitionDate ? new Date(row.acquisitionDate) : null,
+          inServiceDate: row.inServiceDate ? new Date(row.inServiceDate) : row.acquisitionDate ? new Date(row.acquisitionDate) : null,
           hostname: filled(row.hostname) || null, ipAddress: filled(row.ipAddress) || null,
           macAddress: filled(row.macAddress) || null, updatedByUserId: finalUserId
         };
@@ -362,12 +403,31 @@ export async function submitBulkImport(req, res, next) {
         if (!existingAsset && row.assetId) {
           existingAsset = await prisma.asset.findFirst({ where: { assetId: row.assetId } });
         }
+        if (existingAsset && row.assetId && existingAsset.assetId !== row.assetId && await prisma.asset.findUnique({ where: { assetId: row.assetId } })) {
+          throw new Error('Asset ID and serial number refer to different registered assets.');
+        }
 
         if (existingAsset) {
           // Update existing asset
+          const updateFields = { ...assetFields };
+          const sourceColumns = {
+            companyId: ['company'], siteId: ['site','location'],
+            buildingId: ['building'], floorId: ['floor'], roomId: ['room'], zoneId: ['zoneArea'],
+            departmentId: ['department'], costCenterId: ['costCenter'], custodianId: ['custodian'],
+            manufacturerId: ['manufacturer','brand'], modelId: ['model','modelNumber'],
+            serialNumber: ['serialNumber'], rfidEpc: ['rfidEpc'], rfidTid: ['tid'],
+            lifecycleStatus: ['assetStatus','lifecycleStatus'], condition: ['condition'],
+            criticality: ['criticality'], acquisitionValue: ['acquisitionCost','acquisitionValue','purchaseCost'],
+            currency: ['currency'], poNumber: ['poInvoiceNo'], supplierName: ['supplier','vendorSupplier'],
+            purchaseDate: ['purchaseDate','acquisitionDate'], inServiceDate: ['inServiceDate','acquisitionDate'],
+            hostname: ['hostname'], ipAddress: ['ipAddress'], macAddress: ['macAddress']
+          };
+          for (const [key, sourceKeys] of Object.entries(sourceColumns)) {
+            if (!sourceKeys.some(sourceKey => filled(row[sourceKey]))) updateFields[key] = existingAsset[key];
+          }
           const updated = await prisma.asset.update({
             where: { id: existingAsset.id },
-            data: { ...assetFields, tagNumber: tagNumber || existingAsset.tagNumber,
+            data: { ...updateFields, tagNumber: tagNumber || existingAsset.tagNumber,
               barcode: tagNumber || existingAsset.barcode, qrCode: tagNumber || existingAsset.qrCode }
           });
 
@@ -409,7 +469,7 @@ export async function submitBulkImport(req, res, next) {
         }
       } catch (rowErr) {
         failedCount++;
-        errors.push({ row: row.row || i + 1, remarks: rowErr.message });
+        errors.push({ row: row.row || i + 1, batchItemNumber: row.batchItemNumber || null, remarks: rowErr.message });
       }
     }
 
@@ -457,6 +517,7 @@ export async function submitBulkImport(req, res, next) {
       createdCount,
       updatedCount,
       failedCount,
+      errors,
       jobId: job.id,
       job
     });

@@ -175,26 +175,24 @@ export async function getCategories(req, res, next) {
     const where = req.query.includeInactive === 'true' ? {} : { active: true };
     const categories = await prisma.category.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, categories });
-  } catch (err) {
-    res.json({
-      success: true,
-      categories: [
-        { id: 'CAT-LAPTOP', code: 'LAPTOP', name: 'Laptop' },
-        { id: 'CAT-DESKTOP', code: 'DESKTOP', name: 'Desktop & Workstation' },
-        { id: 'CAT-SERVER', code: 'SERVER', name: 'Server & Compute' },
-        { id: 'CAT-NETWORKING', code: 'NETWORKING', name: 'Networking Equipment' },
-        { id: 'CAT-PERIPHERALS', code: 'PERIPHERALS', name: 'Peripherals & Displays' },
-        { id: 'CAT-ACCESSORIES', code: 'ACCESSORIES', name: 'Accessories & Docks' },
-        { id: 'CAT-MOBILE', code: 'MOBILE', name: 'Mobile Devices' }
-      ]
-    });
-  }
+  } catch (err) { next(err); }
 }
 
 export async function createCategory(req, res, next) {
   try {
     const category = await prisma.category.create({ data: req.body });
     res.status(201).json({ success: true, category });
+  } catch (err) { next(err); }
+}
+
+export async function getAssetClasses(req, res, next) {
+  try {
+    const assetClasses = await prisma.assetClass.findMany({
+      where: { active: true, ...(req.query.categoryId ? { categoryId: String(req.query.categoryId) } : {}) },
+      select: { id: true, code: true, name: true, categoryId: true },
+      orderBy: { name: 'asc' }
+    });
+    res.json({ success: true, assetClasses });
   } catch (err) { next(err); }
 }
 
