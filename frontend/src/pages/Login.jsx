@@ -188,11 +188,11 @@ const TRANSLATIONS = {
 const ROLE_DESTINATIONS = {
   SYS_ADMIN: '/',
   ASSET_ADMIN: '/assets',
-  FINANCE: '/finance',
+  FINANCE: '/reports?category=financial',
   IT_MANAGER: '/discovery',
   FACILITIES: '/rtls',
   RECEIVING: '/receiving',
-  CUSTODIAN: '/movements',
+  CUSTODIAN: '/assets/my-assets',
   TECHNICIAN: '/maintenance',
   AUDITOR: '/stocktakes',
   MANAGEMENT: '/'

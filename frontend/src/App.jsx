@@ -73,6 +73,17 @@ function ProtectedRoute({ children }) {
   return isAuthenticated ? children : <Navigate to="/login" replace />;
 }
 
+function RoleRoute({ children, allowedRoles }) {
+  const { user, isAuthenticated, loading } = useAuth();
+  if (loading) return <div className="p-8 text-sm text-slate-500">Loading account...</div>;
+  if (!isAuthenticated) return <Navigate to="/login" replace />;
+  const roleCode = user?.role?.code || 'SYS_ADMIN';
+  if (roleCode === 'SYS_ADMIN' || !allowedRoles || allowedRoles.includes('*') || allowedRoles.includes(roleCode)) {
+    return children;
+  }
+  return <Navigate to="/" replace />;
+}
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -187,26 +198,26 @@ export function App() {
                 <Route path="admin/asset-groups" element={<MasterDataSetup />} />
                 <Route path="classes" element={<MasterDataSetup />} />
                 <Route path="admin/classes" element={<MasterDataSetup />} />
-                <Route path="admin/integrations" element={<IntegrationsConsole />} />
-                <Route path="integrations" element={<IntegrationsConsole />} />
-                <Route path="admin/audit-logs" element={<AuditLogsConsole />} />
-                <Route path="admin/notifications" element={<EmailNotifications />} />
-                <Route path="notifications" element={<EmailNotifications />} />
-                <Route path="admin/backup-scheduler" element={<BackupScheduler />} />
-                <Route path="backup-scheduler" element={<BackupScheduler />} />
-                <Route path="admin/users" element={<UserManagement />} />
-                <Route path="admin/roles" element={<RolesPermissions />} />
-                <Route path="admin/roles-permissions" element={<RolesPermissions />} />
-                <Route path="admin/organization" element={<CompanyOrganization />} />
-                <Route path="admin/companies" element={<CompanyOrganization />} />
-                <Route path="admin/departments" element={<CompanyOrganization />} />
-                <Route path="admin/locations" element={<CompanyOrganization />} />
-                <Route path="admin/cost-centers" element={<CompanyOrganization />} />
-                <Route path="admin/system-config" element={<SystemConfiguration />} />
-                <Route path="admin/settings" element={<SystemConfiguration />} />
-                <Route path="admin/configuration" element={<SystemConfiguration />} />
-                <Route path="admin/workflows" element={<WorkflowDesigner />} />
-                <Route path="admin/workflow-configuration" element={<WorkflowDesigner />} />
+                <Route path="admin/integrations" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><IntegrationsConsole /></RoleRoute>} />
+                <Route path="integrations" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><IntegrationsConsole /></RoleRoute>} />
+                <Route path="admin/audit-logs" element={<RoleRoute allowedRoles={['SYS_ADMIN', 'AUDITOR']}><AuditLogsConsole /></RoleRoute>} />
+                <Route path="admin/notifications" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><EmailNotifications /></RoleRoute>} />
+                <Route path="notifications" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><EmailNotifications /></RoleRoute>} />
+                <Route path="admin/backup-scheduler" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><BackupScheduler /></RoleRoute>} />
+                <Route path="backup-scheduler" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><BackupScheduler /></RoleRoute>} />
+                <Route path="admin/users" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><UserManagement /></RoleRoute>} />
+                <Route path="admin/roles" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><RolesPermissions /></RoleRoute>} />
+                <Route path="admin/roles-permissions" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><RolesPermissions /></RoleRoute>} />
+                <Route path="admin/organization" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
+                <Route path="admin/companies" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
+                <Route path="admin/departments" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
+                <Route path="admin/locations" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
+                <Route path="admin/cost-centers" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
+                <Route path="admin/system-config" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><SystemConfiguration /></RoleRoute>} />
+                <Route path="admin/settings" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><SystemConfiguration /></RoleRoute>} />
+                <Route path="admin/configuration" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><SystemConfiguration /></RoleRoute>} />
+                <Route path="admin/workflows" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><WorkflowDesigner /></RoleRoute>} />
+                <Route path="admin/workflow-configuration" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><WorkflowDesigner /></RoleRoute>} />
                 <Route path="users" element={<Navigate to="/admin/users" replace />} />
                 <Route path="mobile-scan" element={<MobileScanWorkbench />} />
               </Route>

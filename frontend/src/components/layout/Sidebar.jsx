@@ -36,22 +36,22 @@ const NAV_STRUCTURE = [
     name: 'Dashboard',
     path: '/',
     icon: LayoutDashboard,
-    roles: ['*']
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'IT_MANAGER', 'FACILITIES', 'AUDITOR', 'MANAGEMENT']
   },
   {
     id: 'assets',
     name: 'Assets',
     path: '/assets',
     icon: Package,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'IT_MANAGER', 'FACILITIES', 'RECEIVING', 'CUSTODIAN', 'TECHNICIAN', 'AUDITOR', 'MANAGEMENT'],
     subItems: [
-      { name: 'Asset Register', path: '/assets' },
-      { name: 'New Asset Registration', path: '/assets/new' },
-      { name: 'My Assets', path: '/assets/my-assets' },
-      { name: 'Asset Edit / Update', path: '/assets/edit/AST-000128' },
-      { name: 'Bulk Upload', path: '/assets/bulk-upload' },
-      { name: 'Asset Hierarchy', path: '/assets/hierarchy' },
-      { name: 'Asset Approvals', path: '/assets/approvals' }
+      { name: 'Asset Register', path: '/assets', roles: ['*'] },
+      { name: 'New Asset Registration', path: '/assets/new', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'RECEIVING'] },
+      { name: 'My Assets', path: '/assets/my-assets', roles: ['CUSTODIAN', 'SYS_ADMIN', 'ASSET_ADMIN', 'MANAGEMENT'] },
+      { name: 'Asset Edit / Update', path: '/assets/edit/AST-000128', roles: ['SYS_ADMIN', 'ASSET_ADMIN'] },
+      { name: 'Bulk Upload', path: '/assets/bulk-upload', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'IT_MANAGER'] },
+      { name: 'Asset Hierarchy', path: '/assets/hierarchy', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'AUDITOR', 'IT_MANAGER', 'MANAGEMENT'] },
+      { name: 'Asset Approvals', path: '/assets/approvals', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'MANAGEMENT', 'FINANCE'] }
     ]
   },
   {
@@ -59,7 +59,7 @@ const NAV_STRUCTURE = [
     name: 'Receiving & Tagging',
     path: '/receiving',
     icon: Inbox,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'RECEIVING'],
     subItems: [
       { name: 'Receive with PO', path: '/receiving' },
       { name: 'Receive without PO', path: '/receiving/without-po' },
@@ -74,11 +74,11 @@ const NAV_STRUCTURE = [
     name: 'Tracking & Location',
     path: '/rtls',
     icon: MapPin,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FACILITIES', 'IT_MANAGER', 'TECHNICIAN'],
     subItems: [
       { name: 'Asset Tracking', path: '/rtls' },
       { name: 'RTLS Map & Location', path: '/rtls/map' },
-      { name: 'Geofencing', path: '/geofencing' },
+      { name: 'Geofencing', path: '/geofencing', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FACILITIES'] },
       { name: 'Location History', path: '/location-history' },
       { name: 'Proximity Search', path: '/proximity-search' }
     ]
@@ -88,7 +88,7 @@ const NAV_STRUCTURE = [
     name: 'Auto Discovery',
     path: '/discovery',
     icon: Cpu,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'IT_MANAGER'],
     subItems: [
       { name: 'Network Discovery', path: '/discovery' },
       { name: 'Discovery Jobs', path: '/discovery/jobs' },
@@ -102,12 +102,12 @@ const NAV_STRUCTURE = [
     name: 'Assignment & Movement',
     path: '/movements',
     icon: ArrowLeftRight,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'CUSTODIAN', 'FINANCE', 'MANAGEMENT', 'FACILITIES'],
     subItems: [
-      { name: 'Assign Asset', path: '/movements/assign' },
-      { name: 'Transfer / Movement', path: '/movements/transfer' },
-      { name: 'Movement Approvals', path: '/movements/approvals' },
-      { name: 'Movement History', path: '/movements/history' }
+      { name: 'Assign Asset', path: '/movements/assign', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FACILITIES'] },
+      { name: 'Transfer / Movement', path: '/movements/transfer', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'CUSTODIAN', 'FACILITIES'] },
+      { name: 'Movement Approvals', path: '/movements/approvals', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'MANAGEMENT', 'FINANCE'] },
+      { name: 'Movement History', path: '/movements/history', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'CUSTODIAN', 'MANAGEMENT', 'FINANCE', 'AUDITOR'] }
     ]
   },
   {
@@ -115,11 +115,11 @@ const NAV_STRUCTURE = [
     name: 'Verification & Audit',
     path: '/stocktakes',
     icon: ClipboardCheck,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'AUDITOR', 'FINANCE', 'MANAGEMENT'],
     subItems: [
       { name: 'Asset Verification', path: '/stocktakes/verify' },
-      { name: 'Audit Management', path: '/stocktakes/management' },
-      { name: 'Audit Execution', path: '/stocktakes/execution' },
+      { name: 'Audit Management', path: '/stocktakes/management', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'AUDITOR'] },
+      { name: 'Audit Execution', path: '/stocktakes/execution', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'AUDITOR'] },
       { name: 'Audit Reports', path: '/stocktakes/reports' }
     ]
   },
@@ -128,12 +128,12 @@ const NAV_STRUCTURE = [
     name: 'Maintenance',
     path: '/maintenance',
     icon: Wrench,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'TECHNICIAN', 'FACILITIES'],
     subItems: [
       { name: 'Work Orders', path: '/maintenance' },
-      { name: 'Maintenance Plans', path: '/maintenance/plans' },
+      { name: 'Maintenance Plans', path: '/maintenance/plans', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FACILITIES'] },
       { name: 'Preventive Maintenance', path: '/maintenance/preventive' },
-      { name: 'Service Providers', path: '/maintenance/providers' },
+      { name: 'Service Providers', path: '/maintenance/providers', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FACILITIES'] },
       { name: 'Spare Parts', path: '/maintenance/spare-parts' },
       { name: 'Inventory Items', path: '/inventory' },
       { name: 'Stock Levels', path: '/inventory/levels' },
@@ -145,16 +145,16 @@ const NAV_STRUCTURE = [
     name: 'Reports & Analytics',
     path: '/reports',
     icon: BarChart3,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'AUDITOR', 'MANAGEMENT', 'FACILITIES', 'IT_MANAGER'],
     subItems: [
       { name: 'Dashboard Reports', path: '/reports' },
       { name: 'Asset Reports', path: '/reports?category=assets' },
-      { name: 'Inventory Reports', path: '/reports?category=inventory' },
-      { name: 'Maintenance Reports', path: '/reports?category=maintenance' },
-      { name: 'Financial Reports', path: '/reports?category=financial' },
-      { name: 'Compliance Reports', path: '/reports?category=compliance' },
-      { name: 'Custom Reports', path: '/reports?category=custom' },
-      { name: 'Scheduled Reports', path: '/reports?category=scheduled' }
+      { name: 'Inventory Reports', path: '/reports?category=inventory', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'TECHNICIAN', 'FACILITIES'] },
+      { name: 'Maintenance Reports', path: '/reports?category=maintenance', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'TECHNICIAN', 'FACILITIES'] },
+      { name: 'Financial Reports', path: '/reports?category=financial', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'MANAGEMENT'] },
+      { name: 'Compliance Reports', path: '/reports?category=compliance', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'AUDITOR', 'FINANCE', 'MANAGEMENT'] },
+      { name: 'Custom Reports', path: '/reports?category=custom', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'AUDITOR', 'MANAGEMENT'] },
+      { name: 'Scheduled Reports', path: '/reports?category=scheduled', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'AUDITOR', 'MANAGEMENT'] }
     ]
   },
   {
@@ -162,14 +162,14 @@ const NAV_STRUCTURE = [
     name: 'AI Assistant & Insights',
     path: '/ai-insights',
     icon: Sparkles,
-    roles: ['*']
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'IT_MANAGER', 'MANAGEMENT']
   },
   {
     id: 'master-data',
     name: 'Master Data',
     path: '/admin/master-data',
     icon: Database,
-    roles: ['*'],
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN'],
     subItems: [
       { name: 'Asset Groups', path: '/admin/master-data' },
       { name: 'Asset Classes', path: '/admin/master-data?tab=classes' },
@@ -189,7 +189,7 @@ const NAV_STRUCTURE = [
     name: 'Administration',
     path: '/admin/users',
     icon: Settings,
-    roles: ['*'],
+    roles: ['SYS_ADMIN'],
     subItems: [
       { name: 'Workflow Configuration', path: '/admin/workflows' },
       { name: 'User Management', path: '/admin/users' },
@@ -295,6 +295,13 @@ export function Sidebar({ collapsed, setCollapsed }) {
     if (userRoleCode === 'SYS_ADMIN') return true;
     if (item.roles.includes('*')) return true;
     return item.roles.includes(userRoleCode);
+  }).map(item => {
+    if (!item.subItems) return item;
+    const filteredSubs = item.subItems.filter(sub => {
+      if (!sub.roles || sub.roles.includes('*') || userRoleCode === 'SYS_ADMIN') return true;
+      return sub.roles.includes(userRoleCode);
+    });
+    return { ...item, subItems: filteredSubs };
   });
 
   return (
@@ -416,21 +423,23 @@ export function Sidebar({ collapsed, setCollapsed }) {
 
       {/* Sidebar Footer matching reference screenshot */}
       <div className={clsx('p-3 border-t border-slate-200 shrink-0 bg-white space-y-2', collapsed && 'flex flex-col items-center p-2')}>
-        <NavLink
-          to="/admin/system-config"
-          className={({ isActive }) =>
-            clsx(
-              'flex items-center gap-2.5 py-2 px-3 rounded-xl text-xs font-semibold transition-all group cursor-pointer',
-              isActive
-                ? 'bg-purple-100 text-black font-extrabold border-l-2 border-[#6C2BD9]'
-                : 'text-black hover:text-black hover:bg-purple-50'
-            )
-          }
-          title="Settings"
-        >
-          <Settings className="w-4 h-4 text-[#6C2BD9] flex-shrink-0 group-hover:text-black" />
-          {!collapsed && <span className="text-black">Settings</span>}
-        </NavLink>
+        {(userRoleCode === 'SYS_ADMIN' || userRoleCode === 'ASSET_ADMIN') && (
+          <NavLink
+            to="/admin/system-config"
+            className={({ isActive }) =>
+              clsx(
+                'flex items-center gap-2.5 py-2 px-3 rounded-xl text-xs font-semibold transition-all group cursor-pointer',
+                isActive
+                  ? 'bg-purple-100 text-black font-extrabold border-l-2 border-[#6C2BD9]'
+                  : 'text-black hover:text-black hover:bg-purple-50'
+              )
+            }
+            title="Settings"
+          >
+            <Settings className="w-4 h-4 text-[#6C2BD9] flex-shrink-0 group-hover:text-black" />
+            {!collapsed && <span className="text-black">Settings</span>}
+          </NavLink>
+        )}
 
         <button
           onClick={logout}
