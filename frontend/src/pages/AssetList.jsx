@@ -531,7 +531,7 @@ export function AssetList() {
             onClick={handleExport}
             className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
           >
-            <Download className="w-4 h-4 text-slate-500" /> Export
+            <Upload className="w-4 h-4 text-slate-500" /> Export
           </button>
 
           <button
@@ -553,7 +553,7 @@ export function AssetList() {
             className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
             title="Bulk Upload"
           >
-            <Upload className="w-4 h-4 text-slate-500" /> Import
+            <Download className="w-4 h-4 text-slate-500" /> Import
           </button>
         </div>
       </div>
