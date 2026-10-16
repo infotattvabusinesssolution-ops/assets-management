@@ -206,6 +206,19 @@ model Employee {
 // CLASSIFICATIONS
 // ------------------------------------------------------
 
+model AssetGroup {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  assetType   String   @default("Both")
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("asset_groups")
+}
+
 model Category {
   id                          String             @id @default(uuid())
   legacyMongoId               String?

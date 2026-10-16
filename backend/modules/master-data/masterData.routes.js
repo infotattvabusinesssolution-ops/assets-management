@@ -1,16 +1,19 @@
 import { Router } from 'express';
 import {
   getMasterDataStats,
+  getAssetGroups, createAssetGroup, updateAssetGroup, deleteAssetGroup,
   getCompanies, createCompany,
-  getSites, createSite,
+  getSites, createSite, updateSite, deleteSite,
   getBuildings, createBuilding,
   getFloors, createFloor,
   getRooms, createRoom,
-  getCategories, createCategory, getAssetClasses, getDepreciationPolicies, updateDepreciationPolicy,
+  getCategories, createCategory, updateCategory, deleteCategory,
+  getAssetClasses, createAssetClass, updateAssetClass, deleteAssetClass,
+  getDepreciationPolicies, updateDepreciationPolicy,
   getManufacturers, createManufacturer,
   getModels, createModel,
-  getDepartments, createDepartment,
-  getCostCenters, createCostCenter,
+  getDepartments, createDepartment, updateDepartment, deleteDepartment,
+  getCostCenters, createCostCenter, updateCostCenter, deleteCostCenter,
   getEmployees, createEmployee,
   getCustomFields, createCustomField,
   updateMasterEntity,
@@ -25,11 +28,18 @@ router.use(authenticateToken);
 
 router.get('/stats', getMasterDataStats);
 
+router.get('/asset-groups', getAssetGroups);
+router.post('/asset-groups', createAssetGroup);
+router.put('/asset-groups/:id', updateAssetGroup);
+router.delete('/asset-groups/:id', deleteAssetGroup);
+
 router.get('/companies', getCompanies);
 router.post('/companies', createCompany);
 
 router.get('/sites', getSites);
 router.post('/sites', createSite);
+router.put('/sites/:id', updateSite);
+router.delete('/sites/:id', deleteSite);
 
 router.get('/buildings', getBuildings);
 router.post('/buildings', createBuilding);
@@ -42,7 +52,14 @@ router.post('/rooms', createRoom);
 
 router.get('/categories', getCategories);
 router.post('/categories', createCategory);
+router.put('/categories/:id', updateCategory);
+router.delete('/categories/:id', deleteCategory);
+
 router.get('/asset-classes', getAssetClasses);
+router.post('/asset-classes', createAssetClass);
+router.put('/asset-classes/:id', updateAssetClass);
+router.delete('/asset-classes/:id', deleteAssetClass);
+
 router.get('/depreciation-policies', getDepreciationPolicies);
 router.put('/depreciation-policies/:id', updateDepreciationPolicy);
 
@@ -54,9 +71,13 @@ router.post('/models', createModel);
 
 router.get('/departments', getDepartments);
 router.post('/departments', createDepartment);
+router.put('/departments/:id', updateDepartment);
+router.delete('/departments/:id', deleteDepartment);
 
 router.get('/cost-centers', getCostCenters);
 router.post('/cost-centers', createCostCenter);
+router.put('/cost-centers/:id', updateCostCenter);
+router.delete('/cost-centers/:id', deleteCostCenter);
 
 router.get('/employees', getEmployees);
 router.post('/employees', createEmployee);
