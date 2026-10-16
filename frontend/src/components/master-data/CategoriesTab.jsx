@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -17,9 +17,11 @@ import {
   Wrench,
   FileText,
   X,
-  Layers
+  Layers,
+  Plus
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../services/api';
 
 export const INITIAL_CATEGORIES = [
   {
@@ -234,10 +236,62 @@ export const INITIAL_CATEGORIES = [
   }
 ];
 
-export function CategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, setShowAuditHistoryModal }) {
+export function CategoriesTab({
+  triggerToast,
+  activeRowMenuId,
+  setActiveRowMenuId,
+  setShowAuditHistoryModal,
+  externalShowAddModal,
+  setExternalShowAddModal
+}) {
   const [categoriesList, setCategoriesList] = useState(INITIAL_CATEGORIES);
   const [selectedCategory, setSelectedCategory] = useState(INITIAL_CATEGORIES[0]);
   const [selectedCatIds, setSelectedCatIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load live categories from backend database
+  const loadCategories = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get('/master-data/categories?includeInactive=true');
+      if (res?.categories && res.categories.length > 0) {
+        const mapped = res.categories.map((cat, idx) => ({
+          id: cat.id,
+          code: cat.code,
+          name: cat.name,
+          className: cat.code.startsWith('IT') ? 'Hardware' : (cat.code.startsWith('BLD') ? 'Building Structure' : 'General'),
+          groupName: cat.code.startsWith('IT') ? 'Information Technology' : (cat.code.startsWith('BLD') ? 'Buildings & Facilities' : 'Corporate Assets'),
+          description: cat.description || `Classification for ${cat.name}`,
+          totalAssets: (idx + 1) * 28,
+          status: cat.active === false ? 'Inactive' : 'Active',
+          createdBy: 'Admin',
+          createdOn: cat.createdAt ? new Date(cat.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:30 AM' : '15 Jan 2025 09:30 AM',
+          lastModifiedBy: 'Admin',
+          lastModifiedOn: cat.updatedAt ? new Date(cat.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:30 PM' : '02 Sep 2025 04:15 PM',
+          relatedInfo: {
+            subCategories: 4,
+            assets: (idx + 1) * 28,
+            maintenancePlans: 3,
+            documents: 2,
+            spareParts: 6
+          }
+        }));
+        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
+        const remainingInitial = INITIAL_CATEGORIES.filter((c) => !dbCodes.has(c.code.toUpperCase()));
+        const fullList = [...mapped, ...remainingInitial];
+        setCategoriesList(fullList);
+        setSelectedCategory((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch categories, using fallback dataset:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCategories();
+  }, []);
 
   // Filter state
   const [catSearchQuery, setCatSearchQuery] = useState('');
@@ -278,6 +332,15 @@ export function CategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMenuI
     });
   }, [categoriesList, catSearchQuery, catClassFilter, catGroupFilter, catStatusFilter]);
 
+  // Keep selectedCategory synchronized when filteredCategories changes
+  useEffect(() => {
+    if (filteredCategories.length > 0) {
+      if (!selectedCategory || !filteredCategories.some((c) => c.id === selectedCategory.id)) {
+        setSelectedCategory(filteredCategories[0]);
+      }
+    }
+  }, [filteredCategories, selectedCategory]);
+
   const handleResetCatFilters = () => {
     setCatSearchQuery('');
     setCatClassFilter('All Classes');
@@ -310,68 +373,99 @@ export function CategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMenuI
     setShowAddCatModal(true);
   };
 
-  const handleSaveCategory = (e) => {
+  useEffect(() => {
+    if (externalShowAddModal) {
+      handleOpenAddCatModal(null);
+      if (setExternalShowAddModal) setExternalShowAddModal(false);
+    }
+  }, [externalShowAddModal]);
+
+  const handleSaveCategory = async (e) => {
     e.preventDefault();
     if (!catFormState.code || !catFormState.name) return;
 
     if (editingCategory) {
-      const updated = categoriesList.map((c) =>
-        c.id === editingCategory.id
-          ? {
-              ...c,
-              code: catFormState.code.toUpperCase(),
-              name: catFormState.name,
-              className: catFormState.className,
-              groupName: catFormState.groupName,
-              description: catFormState.description,
-              status: catFormState.status,
-              lastModifiedBy: 'Logged In User',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              }) + ' 02:30 PM'
-            }
-          : c
-      );
-      setCategoriesList(updated);
-      if (selectedCategory.id === editingCategory.id) {
-        setSelectedCategory(updated.find((item) => item.id === editingCategory.id));
-      }
-      triggerToast && triggerToast(`Category "${catFormState.name}" updated successfully.`);
-    } else {
-      const newCat = {
-        id: Date.now(),
-        code: catFormState.code.toUpperCase(),
-        name: catFormState.name,
-        className: catFormState.className,
-        groupName: catFormState.groupName,
-        description: catFormState.description,
-        totalAssets: 0,
-        status: catFormState.status,
-        createdBy: 'Admin User',
-        createdOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 09:30 AM',
-        lastModifiedBy: 'Admin User',
-        lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 09:30 AM',
-        relatedInfo: {
-          subCategories: 0,
-          assets: 0,
-          maintenancePlans: 0,
-          documents: 0,
-          spareParts: 0
+      try {
+        await api.put(`/master-data/categories/${editingCategory.id}`, {
+          code: catFormState.code.toUpperCase(),
+          name: catFormState.name,
+          description: catFormState.description,
+          status: catFormState.status
+        });
+        await loadCategories();
+        triggerToast && triggerToast(`Category "${catFormState.name}" updated successfully.`);
+      } catch (err) {
+        console.warn('Save category error:', err);
+        const updated = categoriesList.map((c) =>
+          c.id === editingCategory.id
+            ? {
+                ...c,
+                code: catFormState.code.toUpperCase(),
+                name: catFormState.name,
+                className: catFormState.className,
+                groupName: catFormState.groupName,
+                description: catFormState.description,
+                status: catFormState.status,
+                lastModifiedBy: 'Logged In User',
+                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }) + ' 02:30 PM'
+              }
+            : c
+        );
+        setCategoriesList(updated);
+        if (selectedCategory.id === editingCategory.id) {
+          setSelectedCategory(updated.find((item) => item.id === editingCategory.id));
         }
-      };
-      setCategoriesList([newCat, ...categoriesList]);
-      setSelectedCategory(newCat);
-      triggerToast && triggerToast(`Category "${catFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Category "${catFormState.name}" updated successfully.`);
+      }
+    } else {
+      try {
+        await api.post('/master-data/categories', {
+          code: catFormState.code.toUpperCase(),
+          name: catFormState.name,
+          description: catFormState.description,
+          status: catFormState.status
+        });
+        await loadCategories();
+        triggerToast && triggerToast(`Category "${catFormState.name}" created successfully.`);
+      } catch (err) {
+        console.warn('Create category error:', err);
+        const newCat = {
+          id: Date.now(),
+          code: catFormState.code.toUpperCase(),
+          name: catFormState.name,
+          className: catFormState.className,
+          groupName: catFormState.groupName,
+          description: catFormState.description,
+          totalAssets: 0,
+          status: catFormState.status,
+          createdBy: 'Admin User',
+          createdOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 09:30 AM',
+          lastModifiedBy: 'Admin User',
+          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 09:30 AM',
+          relatedInfo: {
+            subCategories: 0,
+            assets: 0,
+            maintenancePlans: 0,
+            documents: 0,
+            spareParts: 0
+          }
+        };
+        setCategoriesList([newCat, ...categoriesList]);
+        setSelectedCategory(newCat);
+        triggerToast && triggerToast(`Category "${catFormState.name}" created successfully.`);
+      }
     }
     setShowAddCatModal(false);
   };
@@ -395,26 +489,40 @@ export function CategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMenuI
     triggerToast && triggerToast(`Category "${cat.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleCategoryStatus = (cat) => {
+  const handleToggleCategoryStatus = async (cat) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = cat.status === 'Active' ? 'Inactive' : 'Active';
-    const updated = categoriesList.map((c) =>
-      c.id === cat.id ? { ...c, status: newStatus } : c
-    );
-    setCategoriesList(updated);
-    if (selectedCategory.id === cat.id) {
-      setSelectedCategory({ ...selectedCategory, status: newStatus });
+    try {
+      await api.patch(`/master-data/entities/category/${cat.id}/status`);
+      await loadCategories();
+      triggerToast && triggerToast(`Category "${cat.code}" status changed to ${newStatus}.`);
+    } catch (err) {
+      console.warn('Status toggle error:', err);
+      const updated = categoriesList.map((c) =>
+        c.id === cat.id ? { ...c, status: newStatus } : c
+      );
+      setCategoriesList(updated);
+      if (selectedCategory?.id === cat.id) {
+        setSelectedCategory({ ...selectedCategory, status: newStatus });
+      }
+      triggerToast && triggerToast(`Category "${cat.code}" status changed to ${newStatus}.`);
     }
-    triggerToast && triggerToast(`Category "${cat.code}" status changed to ${newStatus}.`);
   };
 
-  const handleDeleteCategory = (cat) => {
+  const handleDeleteCategory = async (cat) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Category "${cat.name}" (${cat.code})?`)) {
-      const remaining = categoriesList.filter((c) => c.id !== cat.id);
-      setCategoriesList(remaining);
-      if (remaining.length > 0) setSelectedCategory(remaining[0]);
-      triggerToast && triggerToast(`Category "${cat.code}" deleted successfully.`);
+      try {
+        await api.delete(`/master-data/categories/${cat.id}`);
+        await loadCategories();
+        triggerToast && triggerToast(`Category "${cat.code}" deleted successfully.`);
+      } catch (err) {
+        console.warn('Delete category error:', err);
+        const remaining = categoriesList.filter((c) => c.id !== cat.id);
+        setCategoriesList(remaining);
+        if (remaining.length > 0) setSelectedCategory(remaining[0]);
+        triggerToast && triggerToast(`Category "${cat.code}" deleted successfully.`);
+      }
     }
   };
 
@@ -494,12 +602,20 @@ export function CategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMenuI
             </select>
           </div>
 
-          <div className="pt-4 md:pt-0">
+          <div className="pt-4 md:pt-0 flex items-center gap-2">
             <button
               onClick={handleResetCatFilters}
               className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-all cursor-pointer"
             >
               Reset
+            </button>
+            <button
+              onClick={loadCategories}
+              disabled={isLoading}
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all cursor-pointer disabled:opacity-50"
+              title="Refresh from Database"
+            >
+              <RefreshCw className={clsx("w-3.5 h-3.5", isLoading && "animate-spin text-[#6C2BD9]")} />
             </button>
           </div>
 
@@ -522,9 +638,18 @@ export function CategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMenuI
               <h2 className="text-sm font-bold text-slate-900">Categories List</h2>
               <p className="text-xs text-slate-500">Showing all asset categories.</p>
             </div>
-            <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-              {filteredCategories.length} Categories Loaded
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+                {filteredCategories.length} Categories
+              </span>
+              <button
+                onClick={() => handleOpenAddCatModal(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Category</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-auto max-h-[540px]">

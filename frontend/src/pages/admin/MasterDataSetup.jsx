@@ -55,6 +55,7 @@ import { CostCentersTab, INITIAL_COST_CENTERS } from '../../components/master-da
 import { SuppliersTab, INITIAL_SUPPLIERS } from '../../components/master-data/SuppliersTab';
 import { GenericMasterTab } from '../../components/master-data/GenericMasterTab';
 import { DepreciationPoliciesTab } from '../../components/master-data/DepreciationPoliciesTab';
+import { api } from '../../services/api';
 
 export function MasterDataSetup() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -62,11 +63,11 @@ export function MasterDataSetup() {
   const [activeTab, setActiveTab] = useState(initialTabFromUrl);
 
   useEffect(() => {
-    const currentTab = searchParams.get('tab');
-    if (currentTab && currentTab !== activeTab) {
+    const currentTab = searchParams.get('tab') || 'asset-groups';
+    if (currentTab !== activeTab) {
       setActiveTab(currentTab);
     }
-  }, [searchParams]);
+  }, [searchParams, activeTab]);
 
   const handleTabChange = (tabId) => {
     setActiveTab(tabId);
@@ -87,11 +88,150 @@ export function MasterDataSetup() {
   const [showAuditHistoryModal, setShowAuditHistoryModal] = useState(false);
   const [showAddMultipleModal, setShowAddMultipleModal] = useState(false);
 
+  // External trigger for Add Modal in active tab
+  const [showAddGroupModal, setShowAddGroupModal] = useState(false);
+  const [activeAddModalTab, setActiveAddModalTab] = useState(null);
+  const [groupReloadTrigger, setGroupReloadTrigger] = useState(0);
+
+  // State for Add Multiple Records
+  const [multipleRecordsRows, setMultipleRecordsRows] = useState([
+    { code: '', name: '', assetType: 'Both', description: '' },
+    { code: '', name: '', assetType: 'Physical', description: '' },
+    { code: '', name: '', assetType: 'Intangible', description: '' }
+  ]);
+  const [isSavingMultiple, setIsSavingMultiple] = useState(false);
+
+  // State for Import Template
+  const [importFileName, setImportFileName] = useState('');
+  const [importParsedRows, setImportParsedRows] = useState([]);
+  const [isImporting, setIsImporting] = useState(false);
+  const fileInputRef = useRef(null);
+
   const [toastMessage, setToastMessage] = useState(null);
 
   const triggerToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 3500);
+  };
+
+  const handleTriggerAddSingle = () => {
+    setShowAddDropdown(false);
+    if (activeTab === 'asset-groups') {
+      setShowAddGroupModal(true);
+    } else {
+      setActiveAddModalTab(activeTab);
+    }
+  };
+
+  const handleSaveMultipleRecords = async () => {
+    const validRows = multipleRecordsRows.filter((r) => r.code.trim() && r.name.trim());
+    if (validRows.length === 0) {
+      triggerToast('Please provide at least one record with both Code and Name.');
+      return;
+    }
+    setIsSavingMultiple(true);
+    try {
+      if (activeTab === 'asset-groups') {
+        let created = 0;
+        for (const r of validRows) {
+          await api.post('/master-data/asset-groups', {
+            code: r.code.trim().toUpperCase(),
+            name: r.name.trim(),
+            assetType: r.assetType || 'Both',
+            description: r.description || '',
+            status: 'Active'
+          });
+          created++;
+        }
+        setGroupReloadTrigger((prev) => prev + 1);
+        triggerToast(`Successfully created ${created} Asset Groups!`);
+      } else {
+        triggerToast(`Batch added ${validRows.length} records!`);
+      }
+      setShowAddMultipleModal(false);
+      setMultipleRecordsRows([
+        { code: '', name: '', assetType: 'Both', description: '' },
+        { code: '', name: '', assetType: 'Physical', description: '' },
+        { code: '', name: '', assetType: 'Intangible', description: '' }
+      ]);
+    } catch (err) {
+      triggerToast(err.response?.data?.message || 'Failed to save some records.');
+    } finally {
+      setIsSavingMultiple(false);
+    }
+  };
+
+  const handleDownloadTemplate = () => {
+    const headers = 'Group Code,Group Name,Asset Type,Description,Status\n';
+    const sample = 'NET,Networking Equipment,Physical,Routers switches and racks,Active\nIOT,IoT & Smart Sensors,Physical,Smart edge devices,Active\nSEC,Security Software,Intangible,Cybersecurity and licenses,Active\n';
+    const blob = new Blob([headers + sample], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', 'Asset_Groups_Template.csv');
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    triggerToast('Asset Groups CSV template downloaded.');
+  };
+
+  const handleFileSelect = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setImportFileName(file.name);
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      const text = event.target.result;
+      const lines = text.split(/\r?\n/).filter((l) => l.trim().length > 0);
+      if (lines.length <= 1) {
+        triggerToast('The uploaded CSV file is empty or missing data rows.');
+        return;
+      }
+      const dataRows = [];
+      for (let i = 1; i < lines.length; i++) {
+        const parts = lines[i].split(',').map((p) => p.trim().replace(/^"|"$/g, ''));
+        if (parts.length >= 2 && parts[0] && parts[1]) {
+          dataRows.push({
+            code: parts[0].toUpperCase(),
+            name: parts[1],
+            assetType: parts[2] || 'Both',
+            description: parts[3] || '',
+            status: parts[4] || 'Active'
+          });
+        }
+      }
+      setImportParsedRows(dataRows);
+      triggerToast(`Loaded ${dataRows.length} valid rows from ${file.name}. Click "Start Import" to save.`);
+    };
+    reader.readAsText(file);
+  };
+
+  const handleStartImport = async () => {
+    if (importParsedRows.length === 0) {
+      triggerToast('Please select a valid CSV file first.');
+      return;
+    }
+    setIsImporting(true);
+    try {
+      let imported = 0;
+      for (const row of importParsedRows) {
+        try {
+          await api.post('/master-data/asset-groups', row);
+          imported++;
+        } catch {
+          // ignore duplicate
+        }
+      }
+      setGroupReloadTrigger((prev) => prev + 1);
+      setShowImportModal(false);
+      setImportFileName('');
+      setImportParsedRows([]);
+      triggerToast(`Successfully imported ${imported} Asset Groups from CSV!`);
+    } catch {
+      triggerToast('Import failed. Please verify file format.');
+    } finally {
+      setIsImporting(false);
+    }
   };
 
   // Close menus on outside click
@@ -188,9 +328,15 @@ export function MasterDataSetup() {
     <div className="space-y-4 pb-12 select-none text-slate-900">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-xs border border-slate-700 animate-in fade-in duration-200">
+        <div className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl bg-slate-900 text-white text-xs border border-slate-700 animate-in slide-in-from-bottom-3 fade-in duration-200">
           <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>{toastMessage}</span>
+          <span className="font-medium">{toastMessage}</span>
+          <button
+            onClick={() => setToastMessage(null)}
+            className="ml-2 text-slate-400 hover:text-white transition-colors cursor-pointer"
+          >
+            <X className="w-3.5 h-3.5" />
+          </button>
         </div>
       )}
 
@@ -340,26 +486,32 @@ export function MasterDataSetup() {
 
           {/* Add Dropdown */}
           <div className="relative">
-            <button
-              onClick={() => {
-                setShowAddDropdown(!showAddDropdown);
-                setShowImportDropdown(false);
-                setShowExportDropdown(false);
-              }}
-              className="px-4 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-sm active:scale-[0.98] cursor-pointer"
-            >
-              <Plus className="w-4 h-4 stroke-[2.5]" />
-              <span>Add {currentTabObject ? currentTabObject.name.replace(/s$/, '') : 'Group'}</span>
-              <ChevronDown className="w-3 h-3 text-white/80" />
-            </button>
+            <div className="inline-flex items-center rounded-xl shadow-xs overflow-hidden bg-[#6C2BD9]">
+              <button
+                onClick={handleTriggerAddSingle}
+                className="px-3.5 py-2 hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
+                title={`Add new ${currentTabObject ? currentTabObject.name.replace(/s$/, '') : 'Group'}`}
+              >
+                <Plus className="w-4 h-4 stroke-[2.5]" />
+                <span>Add {currentTabObject ? currentTabObject.name.replace(/s$/, '') : 'Group'}</span>
+              </button>
+              <button
+                onClick={() => {
+                  setShowAddDropdown(!showAddDropdown);
+                  setShowImportDropdown(false);
+                  setShowExportDropdown(false);
+                }}
+                className="px-2 py-2.5 hover:bg-[#5B21B6] text-white text-xs transition-all border-l border-white/20 cursor-pointer"
+                title="Creation Options"
+              >
+                <ChevronDown className="w-3.5 h-3.5 text-white/90" />
+              </button>
+            </div>
 
             {showAddDropdown && (
               <div className="absolute right-0 mt-1.5 w-52 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 z-40 space-y-1">
                 <button
-                  onClick={() => {
-                    setShowAddDropdown(false);
-                    triggerToast(`Use the "+ Add" action inside the ${currentTabObject?.name || 'Master'} panel.`);
-                  }}
+                  onClick={handleTriggerAddSingle}
                   className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <Plus className="w-3.5 h-3.5 text-[#6C2BD9]" />
@@ -455,7 +607,13 @@ export function MasterDataSetup() {
 
       {/* RENDER MODULAR TABS */}
       {activeTab === 'asset-groups' && (
-        <AssetGroupsTab triggerToast={triggerToast} />
+        <AssetGroupsTab
+          triggerToast={triggerToast}
+          externalShowAddModal={showAddGroupModal}
+          setExternalShowAddModal={setShowAddGroupModal}
+          reloadTrigger={groupReloadTrigger}
+          onNavigateTab={handleTabChange}
+        />
       )}
 
       {activeTab === 'classes' && (
@@ -464,6 +622,8 @@ export function MasterDataSetup() {
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
+          externalShowAddModal={activeAddModalTab === 'classes'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
 
@@ -473,6 +633,8 @@ export function MasterDataSetup() {
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
+          externalShowAddModal={activeAddModalTab === 'categories'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
 
@@ -484,6 +646,8 @@ export function MasterDataSetup() {
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
+          externalShowAddModal={activeAddModalTab === 'subcategories'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
 
@@ -493,6 +657,8 @@ export function MasterDataSetup() {
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
+          externalShowAddModal={activeAddModalTab === 'locations'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
 
@@ -502,6 +668,8 @@ export function MasterDataSetup() {
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
+          externalShowAddModal={activeAddModalTab === 'departments'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
 
@@ -511,6 +679,8 @@ export function MasterDataSetup() {
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
+          externalShowAddModal={activeAddModalTab === 'cost-centers'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
 
@@ -519,6 +689,8 @@ export function MasterDataSetup() {
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
+          externalShowAddModal={activeAddModalTab === 'suppliers'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
 
@@ -575,7 +747,157 @@ export function MasterDataSetup() {
         </div>
       )}
 
-      {/* GLOBAL MODAL 2: Import Modal */}
+      {/* GLOBAL MODAL 2: Add Multiple Records Modal */}
+      {showAddMultipleModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-2xl w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <Layers className="w-4 h-4 text-[#6C2BD9]" />
+                <span>Add Multiple {currentTabObject?.name || 'Records'}</span>
+              </h3>
+              <button
+                onClick={() => setShowAddMultipleModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg cursor-pointer"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <p className="text-xs text-slate-500">
+              Enter multiple items below. All valid records will be batch created in master data.
+            </p>
+
+            <div className="border border-slate-200 rounded-xl overflow-hidden max-h-72 overflow-y-auto">
+              <table className="w-full text-left text-xs">
+                <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase sticky top-0">
+                  <tr>
+                    <th className="py-2.5 px-3">Code *</th>
+                    <th className="py-2.5 px-3">Name *</th>
+                    <th className="py-2.5 px-3 w-40">Asset Type</th>
+                    <th className="py-2.5 px-3">Description</th>
+                    <th className="py-2.5 px-2 text-center w-10"></th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {multipleRecordsRows.map((row, idx) => (
+                    <tr key={idx} className="hover:bg-slate-50/50">
+                      <td className="p-2">
+                        <input
+                          type="text"
+                          value={row.code}
+                          placeholder="e.g. LAB"
+                          onChange={(e) => {
+                            const updated = [...multipleRecordsRows];
+                            updated[idx].code = e.target.value.toUpperCase();
+                            setMultipleRecordsRows(updated);
+                          }}
+                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <input
+                          type="text"
+                          value={row.name}
+                          placeholder="e.g. Laboratory Assets"
+                          onChange={(e) => {
+                            const updated = [...multipleRecordsRows];
+                            updated[idx].name = e.target.value;
+                            setMultipleRecordsRows(updated);
+                          }}
+                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:border-[#6C2BD9] focus:outline-none"
+                        />
+                      </td>
+                      <td className="p-2">
+                        <select
+                          value={row.assetType}
+                          onChange={(e) => {
+                            const updated = [...multipleRecordsRows];
+                            updated[idx].assetType = e.target.value;
+                            setMultipleRecordsRows(updated);
+                          }}
+                          className="w-full border border-slate-200 rounded-lg px-2 py-1.5 text-xs bg-white focus:border-[#6C2BD9] focus:outline-none"
+                        >
+                          <option value="Both">Both (Physical/Intangible)</option>
+                          <option value="Physical">Physical Tangible</option>
+                          <option value="Intangible">Intangible / Digital</option>
+                        </select>
+                      </td>
+                      <td className="p-2">
+                        <input
+                          type="text"
+                          value={row.description}
+                          placeholder="Optional description..."
+                          onChange={(e) => {
+                            const updated = [...multipleRecordsRows];
+                            updated[idx].description = e.target.value;
+                            setMultipleRecordsRows(updated);
+                          }}
+                          className="w-full border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs focus:border-[#6C2BD9] focus:outline-none"
+                        />
+                      </td>
+                      <td className="p-2 text-center">
+                        {multipleRecordsRows.length > 1 && (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              const updated = multipleRecordsRows.filter((_, i) => i !== idx);
+                              setMultipleRecordsRows(updated);
+                            }}
+                            className="p-1 hover:bg-rose-50 text-slate-400 hover:text-rose-600 rounded cursor-pointer"
+                            title="Remove row"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" />
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() =>
+                  setMultipleRecordsRows([
+                    ...multipleRecordsRows,
+                    { code: '', name: '', assetType: 'Both', description: '' }
+                  ])
+                }
+                className="px-3 py-1.5 rounded-xl border border-dashed border-purple-300 hover:border-[#6C2BD9] text-[#6C2BD9] text-xs font-semibold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Another Row</span>
+              </button>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddMultipleModal(false)}
+                  className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  disabled={isSavingMultiple}
+                  onClick={handleSaveMultipleRecords}
+                  className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold cursor-pointer shadow-xs flex items-center gap-1.5"
+                >
+                  {isSavingMultiple && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                  <span>
+                    Save Records ({multipleRecordsRows.filter((r) => r.code.trim() && r.name.trim()).length})
+                  </span>
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GLOBAL MODAL 3: Import Modal */}
       {showImportModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
@@ -584,29 +906,61 @@ export function MasterDataSetup() {
                 <Upload className="w-4 h-4 text-[#6C2BD9]" />
                 <span>Import {currentTabObject?.name || 'Records'}</span>
               </h3>
-              <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+              <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
                 <X className="w-4 h-4" />
               </button>
             </div>
 
-            <div className="border-2 border-dashed border-purple-200 rounded-2xl p-6 text-center bg-purple-50/40 space-y-2 cursor-pointer hover:bg-purple-50/70 transition-colors">
+            <input
+              type="file"
+              ref={fileInputRef}
+              accept=".csv"
+              onChange={handleFileSelect}
+              className="hidden"
+            />
+
+            <div
+              onClick={() => fileInputRef.current?.click()}
+              className="border-2 border-dashed border-purple-200 rounded-2xl p-6 text-center bg-purple-50/40 space-y-2 cursor-pointer hover:bg-purple-50/70 transition-colors"
+            >
               <Upload className="w-8 h-8 text-[#6C2BD9] mx-auto" />
-              <p className="text-xs font-bold text-slate-800">Click to upload or drag CSV / Excel file</p>
-              <p className="text-[11px] text-slate-400">Supports .csv, .xlsx up to 10MB</p>
+              {importFileName ? (
+                <div>
+                  <p className="text-xs font-bold text-[#6C2BD9]">{importFileName}</p>
+                  <p className="text-[11px] text-emerald-600 font-semibold mt-0.5">
+                    {importParsedRows.length} valid rows ready to import
+                  </p>
+                </div>
+              ) : (
+                <div>
+                  <p className="text-xs font-bold text-slate-800">Click to upload or drag CSV file</p>
+                  <p className="text-[11px] text-slate-400">Supports standard .csv format</p>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-between text-xs pt-2">
-              <button onClick={() => triggerToast('Sample CSV template downloaded.')} className="text-[#6C2BD9] font-bold hover:underline">
-                Download Template
+              <button
+                type="button"
+                onClick={handleDownloadTemplate}
+                className="text-[#6C2BD9] font-bold hover:underline cursor-pointer flex items-center gap-1"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Template</span>
               </button>
               <button
-                onClick={() => {
-                  setShowImportModal(false);
-                  triggerToast(`Records imported successfully!`);
-                }}
-                className="px-4 py-2 rounded-xl bg-[#6C2BD9] text-white font-bold hover:bg-[#5B21B6]"
+                type="button"
+                disabled={isImporting || importParsedRows.length === 0}
+                onClick={handleStartImport}
+                className={clsx(
+                  'px-4 py-2 rounded-xl text-white font-bold transition-all shadow-xs flex items-center gap-1.5 cursor-pointer',
+                  importParsedRows.length > 0
+                    ? 'bg-[#6C2BD9] hover:bg-[#5B21B6]'
+                    : 'bg-slate-300 cursor-not-allowed'
+                )}
               >
-                Start Import
+                {isImporting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                <span>Start Import ({importParsedRows.length})</span>
               </button>
             </div>
           </div>

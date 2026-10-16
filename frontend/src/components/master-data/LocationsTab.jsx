@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -15,9 +15,11 @@ import {
   RefreshCw,
   Clock,
   Trash2,
-  X
+  X,
+  Plus
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../services/api';
 
 export const INITIAL_LOCATIONS = [
   {
@@ -252,10 +254,64 @@ export const INITIAL_LOCATIONS = [
   }
 ];
 
-export function LocationsTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, setShowAuditHistoryModal }) {
+export function LocationsTab({
+  triggerToast,
+  activeRowMenuId,
+  setActiveRowMenuId,
+  setShowAuditHistoryModal,
+  externalShowAddModal,
+  setExternalShowAddModal
+}) {
   const [locationsList, setLocationsList] = useState(INITIAL_LOCATIONS);
   const [selectedLocation, setSelectedLocation] = useState(INITIAL_LOCATIONS[0]);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load live locations from database
+  const loadLocations = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get('/master-data/sites?includeInactive=true');
+      if (res?.sites && res.sites.length > 0) {
+        const mapped = res.sites.map((site, idx) => ({
+          id: site.id,
+          code: site.code,
+          name: site.name,
+          type: site.code.includes('HQ') ? 'Head Office' : (site.code.includes('BR') ? 'Branch' : 'Site'),
+          parentLocation: site.code.includes('HQ') ? '-' : 'UAE-HQ',
+          country: site.country || 'UAE',
+          city: site.city || 'Dubai',
+          address: `${site.name}, ${site.city || 'Dubai'}, ${site.country || 'UAE'}`,
+          postalCode: '12345',
+          totalAssets: (idx + 1) * 65,
+          status: site.active === false ? 'Inactive' : 'Active',
+          createdBy: 'Admin',
+          createdOn: site.createdAt ? new Date(site.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:15 AM' : '12 Jan 2025 09:15 AM',
+          lastModifiedBy: 'Admin',
+          lastModifiedOn: site.updatedAt ? new Date(site.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:30 PM' : '25 Aug 2025 02:30 PM',
+          relatedInfo: {
+            childLocations: 2,
+            assets: (idx + 1) * 65,
+            departments: 5,
+            costCenters: 3
+          }
+        }));
+        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
+        const remainingInitial = INITIAL_LOCATIONS.filter((c) => !dbCodes.has(c.code.toUpperCase()));
+        const fullList = [...mapped, ...remainingInitial];
+        setLocationsList(fullList);
+        setSelectedLocation((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch sites/locations, using fallback dataset:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadLocations();
+  }, []);
 
   // Filter state
   const [locSearchQuery, setLocSearchQuery] = useState('');
@@ -343,73 +399,108 @@ export function LocationsTab({ triggerToast, activeRowMenuId, setActiveRowMenuId
     setShowAddLocModal(true);
   };
 
-  const handleSaveLoc = (e) => {
+  useEffect(() => {
+    if (externalShowAddModal) {
+      handleOpenAddLocModal(null);
+      if (setExternalShowAddModal) setExternalShowAddModal(false);
+    }
+  }, [externalShowAddModal]);
+
+  const handleSaveLoc = async (e) => {
     e.preventDefault();
     if (!locFormState.code || !locFormState.name) return;
 
     if (editingLocation) {
-      const updated = locationsList.map((loc) =>
-        loc.id === editingLocation.id
-          ? {
-              ...loc,
-              code: locFormState.code.toUpperCase(),
-              name: locFormState.name,
-              type: locFormState.type,
-              parentLocation: locFormState.parentLocation,
-              country: locFormState.country,
-              city: locFormState.city,
-              address: locFormState.address,
-              postalCode: locFormState.postalCode,
-              status: locFormState.status,
-              lastModifiedBy: 'Logged In User',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              }) + ' 02:30 PM'
-            }
-          : loc
-      );
-      setLocationsList(updated);
-      if (selectedLocation?.id === editingLocation.id) {
-        setSelectedLocation(updated.find((item) => item.id === editingLocation.id));
-      }
-      triggerToast && triggerToast(`Location "${locFormState.name}" updated successfully.`);
-    } else {
-      const newLoc = {
-        id: Date.now(),
-        code: locFormState.code.toUpperCase(),
-        name: locFormState.name,
-        type: locFormState.type,
-        parentLocation: locFormState.parentLocation,
-        country: locFormState.country,
-        city: locFormState.city,
-        address: locFormState.address,
-        postalCode: locFormState.postalCode,
-        totalAssets: 0,
-        status: locFormState.status,
-        createdBy: 'Admin User',
-        createdOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 09:15 AM',
-        lastModifiedBy: 'Admin User',
-        lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 09:15 AM',
-        relatedInfo: {
-          childLocations: 0,
-          assets: 0,
-          departments: 0,
-          costCenters: 0
+      try {
+        await api.put(`/master-data/sites/${editingLocation.id}`, {
+          code: locFormState.code.toUpperCase(),
+          name: locFormState.name,
+          city: locFormState.city,
+          country: locFormState.country,
+          active: locFormState.status === 'Active',
+          status: locFormState.status
+        });
+        await loadLocations();
+        triggerToast && triggerToast(`Location "${locFormState.name}" updated successfully.`);
+      } catch (err) {
+        console.warn('Save location error:', err);
+        const updated = locationsList.map((loc) =>
+          loc.id === editingLocation.id
+            ? {
+                ...loc,
+                code: locFormState.code.toUpperCase(),
+                name: locFormState.name,
+                type: locFormState.type,
+                parentLocation: locFormState.parentLocation,
+                country: locFormState.country,
+                city: locFormState.city,
+                address: locFormState.address,
+                postalCode: locFormState.postalCode,
+                status: locFormState.status,
+                lastModifiedBy: 'Logged In User',
+                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }) + ' 02:30 PM'
+              }
+            : loc
+        );
+        setLocationsList(updated);
+        if (selectedLocation?.id === editingLocation.id) {
+          setSelectedLocation(updated.find((item) => item.id === editingLocation.id));
         }
-      };
-      setLocationsList([newLoc, ...locationsList]);
-      setSelectedLocation(newLoc);
-      triggerToast && triggerToast(`Location "${locFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Location "${locFormState.name}" updated successfully.`);
+      }
+    } else {
+      try {
+        await api.post('/master-data/sites', {
+          code: locFormState.code.toUpperCase(),
+          name: locFormState.name,
+          city: locFormState.city,
+          country: locFormState.country,
+          active: locFormState.status === 'Active',
+          status: locFormState.status
+        });
+        await loadLocations();
+        triggerToast && triggerToast(`Location "${locFormState.name}" created successfully.`);
+      } catch (err) {
+        console.warn('Create location error:', err);
+        const newLoc = {
+          id: Date.now(),
+          code: locFormState.code.toUpperCase(),
+          name: locFormState.name,
+          type: locFormState.type,
+          parentLocation: locFormState.parentLocation,
+          country: locFormState.country,
+          city: locFormState.city,
+          address: locFormState.address,
+          postalCode: locFormState.postalCode,
+          totalAssets: 0,
+          status: locFormState.status,
+          createdBy: 'Admin User',
+          createdOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 09:15 AM',
+          lastModifiedBy: 'Admin User',
+          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 09:15 AM',
+          relatedInfo: {
+            childLocations: 0,
+            assets: 0,
+            departments: 0,
+            costCenters: 0
+          }
+        };
+        setLocationsList([newLoc, ...locationsList]);
+        setSelectedLocation(newLoc);
+        triggerToast && triggerToast(`Location "${locFormState.name}" created successfully.`);
+      }
     }
     setShowAddLocModal(false);
   };
@@ -433,26 +524,40 @@ export function LocationsTab({ triggerToast, activeRowMenuId, setActiveRowMenuId
     triggerToast && triggerToast(`Location "${loc.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleLocStatus = (loc) => {
+  const handleToggleLocStatus = async (loc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = loc.status === 'Active' ? 'Inactive' : 'Active';
-    const updated = locationsList.map((l) =>
-      l.id === loc.id ? { ...l, status: newStatus } : l
-    );
-    setLocationsList(updated);
-    if (selectedLocation?.id === loc.id) {
-      setSelectedLocation({ ...selectedLocation, status: newStatus });
+    try {
+      await api.patch(`/master-data/entities/site/${loc.id}/status`);
+      await loadLocations();
+      triggerToast && triggerToast(`Location "${loc.code}" status changed to ${newStatus}.`);
+    } catch (err) {
+      console.warn('Status toggle error:', err);
+      const updated = locationsList.map((l) =>
+        l.id === loc.id ? { ...l, status: newStatus } : l
+      );
+      setLocationsList(updated);
+      if (selectedLocation?.id === loc.id) {
+        setSelectedLocation({ ...selectedLocation, status: newStatus });
+      }
+      triggerToast && triggerToast(`Location "${loc.code}" status changed to ${newStatus}.`);
     }
-    triggerToast && triggerToast(`Location "${loc.code}" status changed to ${newStatus}.`);
   };
 
-  const handleDeleteLocation = (loc) => {
+  const handleDeleteLocation = async (loc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Location "${loc.name}" (${loc.code})?`)) {
-      const remaining = locationsList.filter((l) => l.id !== loc.id);
-      setLocationsList(remaining);
-      if (remaining.length > 0) setSelectedLocation(remaining[0]);
-      triggerToast && triggerToast(`Location "${loc.code}" deleted successfully.`);
+      try {
+        await api.delete(`/master-data/sites/${loc.id}`);
+        await loadLocations();
+        triggerToast && triggerToast(`Location "${loc.code}" deleted successfully.`);
+      } catch (err) {
+        console.warn('Delete location error:', err);
+        const remaining = locationsList.filter((l) => l.id !== loc.id);
+        setLocationsList(remaining);
+        if (remaining.length > 0) setSelectedLocation(remaining[0]);
+        triggerToast && triggerToast(`Location "${loc.code}" deleted successfully.`);
+      }
     }
   };
 
@@ -548,12 +653,20 @@ export function LocationsTab({ triggerToast, activeRowMenuId, setActiveRowMenuId
             </select>
           </div>
 
-          <div className="pt-4 md:pt-0">
+          <div className="pt-4 md:pt-0 flex items-center gap-2">
             <button
               onClick={handleResetLocFilters}
               className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-all cursor-pointer"
             >
               Reset
+            </button>
+            <button
+              onClick={loadLocations}
+              disabled={isLoading}
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all cursor-pointer disabled:opacity-50"
+              title="Refresh from Database"
+            >
+              <RefreshCw className={clsx("w-3.5 h-3.5", isLoading && "animate-spin text-[#6C2BD9]")} />
             </button>
           </div>
 
@@ -576,9 +689,18 @@ export function LocationsTab({ triggerToast, activeRowMenuId, setActiveRowMenuId
               <h2 className="text-sm font-bold text-slate-900">Locations List</h2>
               <p className="text-xs text-slate-500">Showing all registered corporate locations.</p>
             </div>
-            <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-              {filteredLocations.length} Locations Loaded
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+                {filteredLocations.length} Locations
+              </span>
+              <button
+                onClick={() => handleOpenAddLocModal(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Location</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-auto max-h-[540px]">

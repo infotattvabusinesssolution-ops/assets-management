@@ -647,11 +647,11 @@ export function EmailNotifications() {
     <div className="min-h-screen bg-[#F8FAFC] pb-16 font-sans text-slate-800">
       {/* Toast Alert */}
       {toast && (
-        <div className="fixed bottom-6 right-6 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-xl bg-slate-900 text-white text-xs border border-slate-700 animate-in fade-in slide-in-from-bottom-3 duration-200">
+        <div className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl bg-slate-900 text-white text-xs border border-slate-700 animate-in fade-in slide-in-from-bottom-3 duration-200">
           {toast.type === 'success' && <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />}
           {toast.type === 'warning' && <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />}
           {toast.type === 'error' && <XCircle className="w-4 h-4 text-rose-400 shrink-0" />}
-          <span>{toast.message}</span>
+          <span className="font-medium">{toast.message}</span>
         </div>
       )}
 

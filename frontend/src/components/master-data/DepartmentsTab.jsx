@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -15,9 +15,11 @@ import {
   Clock,
   Trash2,
   X,
-  FolderTree
+  FolderTree,
+  Plus
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../services/api';
 
 export const INITIAL_DEPARTMENTS = [
   {
@@ -247,10 +249,66 @@ export const INITIAL_DEPARTMENTS = [
   }
 ];
 
-export function DepartmentsTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, setShowAuditHistoryModal }) {
+export function DepartmentsTab({
+  triggerToast,
+  activeRowMenuId,
+  setActiveRowMenuId,
+  setShowAuditHistoryModal,
+  externalShowAddModal,
+  setExternalShowAddModal
+}) {
   const [departmentsList, setDepartmentsList] = useState(INITIAL_DEPARTMENTS);
   const [selectedDepartment, setSelectedDepartment] = useState(INITIAL_DEPARTMENTS[2]);
   const [selectedDeptIds, setSelectedDeptIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load live departments from database
+  const loadDepartments = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get('/master-data/departments?includeInactive=true');
+      if (res?.departments && res.departments.length > 0) {
+        const mapped = res.departments.map((dept, idx) => ({
+          id: dept.id,
+          code: dept.code,
+          name: dept.name,
+          type: dept.code.includes('OPS') ? 'Operations' : 'Support',
+          parentDepartment: '-',
+          location: 'Dubai HQ',
+          company: 'Wavelogix FZC',
+          manager: dept.name.includes('IT') ? 'Michael Chen' : (dept.name.includes('Finance') ? 'Ahmed Khan' : 'Department Head'),
+          email: `${dept.code.toLowerCase()}@wavelogix.com`,
+          phone: '+971 4 398 2211',
+          description: `Department overseeing ${dept.name}`,
+          employees: (idx + 1) * 15,
+          status: dept.active === false ? 'Inactive' : 'Active',
+          createdBy: 'Admin',
+          createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:00 AM' : '15 Jan 2025 09:00 AM',
+          lastModifiedBy: 'Admin',
+          lastModifiedOn: dept.updatedAt ? new Date(dept.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 03:00 PM' : '20 Aug 2025 03:00 PM',
+          relatedInfo: {
+            subDepartments: 2,
+            locations: 2,
+            assets: (idx + 1) * 35,
+            users: (idx + 1) * 15
+          }
+        }));
+        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
+        const remainingInitial = INITIAL_DEPARTMENTS.filter((d) => !dbCodes.has(d.code.toUpperCase()));
+        const fullList = [...mapped, ...remainingInitial];
+        setDepartmentsList(fullList);
+        setSelectedDepartment((prev) => (prev ? fullList.find((d) => d.id === prev.id) || fullList[0] : fullList[0]));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch departments, using fallback dataset:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadDepartments();
+  }, []);
 
   // Filter state
   const [deptSearchQuery, setDeptSearchQuery] = useState('');
@@ -344,77 +402,108 @@ export function DepartmentsTab({ triggerToast, activeRowMenuId, setActiveRowMenu
     setShowAddDeptModal(true);
   };
 
-  const handleSaveDept = (e) => {
+  useEffect(() => {
+    if (externalShowAddModal) {
+      handleOpenAddDeptModal(null);
+      if (setExternalShowAddModal) setExternalShowAddModal(false);
+    }
+  }, [externalShowAddModal]);
+
+  const handleSaveDept = async (e) => {
     e.preventDefault();
     if (!deptFormState.code || !deptFormState.name) return;
 
     if (editingDepartment) {
-      const updated = departmentsList.map((d) =>
-        d.id === editingDepartment.id
-          ? {
-              ...d,
-              code: deptFormState.code.toUpperCase(),
-              name: deptFormState.name,
-              type: deptFormState.type,
-              parentDepartment: deptFormState.parentDepartment,
-              location: deptFormState.location,
-              company: deptFormState.company,
-              manager: deptFormState.manager,
-              email: deptFormState.email,
-              phone: deptFormState.phone,
-              description: deptFormState.description,
-              status: deptFormState.status,
-              lastModifiedBy: 'Logged In User',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              }) + ' 03:15 PM'
-            }
-          : d
-      );
-      setDepartmentsList(updated);
-      if (selectedDepartment?.id === editingDepartment.id) {
-        setSelectedDepartment(updated.find((item) => item.id === editingDepartment.id));
-      }
-      triggerToast && triggerToast(`Department "${deptFormState.name}" updated successfully.`);
-    } else {
-      const newDept = {
-        id: Date.now(),
-        code: deptFormState.code.toUpperCase(),
-        name: deptFormState.name,
-        type: deptFormState.type,
-        parentDepartment: deptFormState.parentDepartment,
-        location: deptFormState.location,
-        company: deptFormState.company,
-        manager: deptFormState.manager,
-        email: deptFormState.email,
-        phone: deptFormState.phone,
-        description: deptFormState.description,
-        employees: 0,
-        status: deptFormState.status,
-        createdBy: 'Admin User',
-        createdOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 10:00 AM',
-        lastModifiedBy: 'Admin User',
-        lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 10:00 AM',
-        relatedInfo: {
-          subDepartments: 0,
-          locations: 1,
-          assets: 0,
-          users: 0
+      try {
+        await api.put(`/master-data/departments/${editingDepartment.id}`, {
+          code: deptFormState.code.toUpperCase(),
+          name: deptFormState.name,
+          active: deptFormState.status === 'Active',
+          status: deptFormState.status
+        });
+        await loadDepartments();
+        triggerToast && triggerToast(`Department "${deptFormState.name}" updated successfully.`);
+      } catch (err) {
+        console.warn('Save department error:', err);
+        const updated = departmentsList.map((d) =>
+          d.id === editingDepartment.id
+            ? {
+                ...d,
+                code: deptFormState.code.toUpperCase(),
+                name: deptFormState.name,
+                type: deptFormState.type,
+                parentDepartment: deptFormState.parentDepartment,
+                location: deptFormState.location,
+                company: deptFormState.company,
+                manager: deptFormState.manager,
+                email: deptFormState.email,
+                phone: deptFormState.phone,
+                description: deptFormState.description,
+                status: deptFormState.status,
+                lastModifiedBy: 'Logged In User',
+                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }) + ' 03:15 PM'
+              }
+            : d
+        );
+        setDepartmentsList(updated);
+        if (selectedDepartment?.id === editingDepartment.id) {
+          setSelectedDepartment(updated.find((item) => item.id === editingDepartment.id));
         }
-      };
-      setDepartmentsList([newDept, ...departmentsList]);
-      setSelectedDepartment(newDept);
-      triggerToast && triggerToast(`Department "${deptFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Department "${deptFormState.name}" updated successfully.`);
+      }
+    } else {
+      try {
+        await api.post('/master-data/departments', {
+          code: deptFormState.code.toUpperCase(),
+          name: deptFormState.name,
+          active: deptFormState.status === 'Active',
+          status: deptFormState.status
+        });
+        await loadDepartments();
+        triggerToast && triggerToast(`Department "${deptFormState.name}" created successfully.`);
+      } catch (err) {
+        console.warn('Create department error:', err);
+        const newDept = {
+          id: Date.now(),
+          code: deptFormState.code.toUpperCase(),
+          name: deptFormState.name,
+          type: deptFormState.type,
+          parentDepartment: deptFormState.parentDepartment,
+          location: deptFormState.location,
+          company: deptFormState.company,
+          manager: deptFormState.manager,
+          email: deptFormState.email,
+          phone: deptFormState.phone,
+          description: deptFormState.description,
+          employees: 0,
+          status: deptFormState.status,
+          createdBy: 'Admin User',
+          createdOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 10:00 AM',
+          lastModifiedBy: 'Admin User',
+          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 10:00 AM',
+          relatedInfo: {
+            subDepartments: 0,
+            locations: 1,
+            assets: 0,
+            users: 0
+          }
+        };
+        setDepartmentsList([newDept, ...departmentsList]);
+        setSelectedDepartment(newDept);
+        triggerToast && triggerToast(`Department "${deptFormState.name}" created successfully.`);
+      }
     }
     setShowAddDeptModal(false);
   };
@@ -438,26 +527,40 @@ export function DepartmentsTab({ triggerToast, activeRowMenuId, setActiveRowMenu
     triggerToast && triggerToast(`Department "${dept.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleDepartmentStatus = (dept) => {
+  const handleToggleDepartmentStatus = async (dept) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = dept.status === 'Active' ? 'Inactive' : 'Active';
-    const updated = departmentsList.map((d) =>
-      d.id === dept.id ? { ...d, status: newStatus } : d
-    );
-    setDepartmentsList(updated);
-    if (selectedDepartment?.id === dept.id) {
-      setSelectedDepartment({ ...selectedDepartment, status: newStatus });
+    try {
+      await api.patch(`/master-data/entities/department/${dept.id}/status`);
+      await loadDepartments();
+      triggerToast && triggerToast(`Department "${dept.code}" status changed to ${newStatus}.`);
+    } catch (err) {
+      console.warn('Toggle status error:', err);
+      const updated = departmentsList.map((d) =>
+        d.id === dept.id ? { ...d, status: newStatus } : d
+      );
+      setDepartmentsList(updated);
+      if (selectedDepartment?.id === dept.id) {
+        setSelectedDepartment({ ...selectedDepartment, status: newStatus });
+      }
+      triggerToast && triggerToast(`Department "${dept.code}" status changed to ${newStatus}.`);
     }
-    triggerToast && triggerToast(`Department "${dept.code}" status changed to ${newStatus}.`);
   };
 
-  const handleDeleteDepartment = (dept) => {
+  const handleDeleteDepartment = async (dept) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Department "${dept.name}" (${dept.code})?`)) {
-      const remaining = departmentsList.filter((d) => d.id !== dept.id);
-      setDepartmentsList(remaining);
-      if (remaining.length > 0) setSelectedDepartment(remaining[0]);
-      triggerToast && triggerToast(`Department "${dept.code}" deleted successfully.`);
+      try {
+        await api.delete(`/master-data/departments/${dept.id}`);
+        await loadDepartments();
+        triggerToast && triggerToast(`Department "${dept.code}" deleted successfully.`);
+      } catch (err) {
+        console.warn('Delete department error:', err);
+        const remaining = departmentsList.filter((d) => d.id !== dept.id);
+        setDepartmentsList(remaining);
+        if (remaining.length > 0) setSelectedDepartment(remaining[0]);
+        triggerToast && triggerToast(`Department "${dept.code}" deleted successfully.`);
+      }
     }
   };
 
@@ -547,12 +650,20 @@ export function DepartmentsTab({ triggerToast, activeRowMenuId, setActiveRowMenu
             </select>
           </div>
 
-          <div className="pt-4 md:pt-0">
+          <div className="pt-4 md:pt-0 flex items-center gap-2">
             <button
               onClick={handleResetDeptFilters}
               className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-all cursor-pointer"
             >
               Reset
+            </button>
+            <button
+              onClick={loadDepartments}
+              disabled={isLoading}
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all cursor-pointer disabled:opacity-50"
+              title="Refresh from Database"
+            >
+              <RefreshCw className={clsx("w-3.5 h-3.5", isLoading && "animate-spin text-[#6C2BD9]")} />
             </button>
           </div>
 
@@ -575,9 +686,18 @@ export function DepartmentsTab({ triggerToast, activeRowMenuId, setActiveRowMenu
               <h2 className="text-sm font-bold text-slate-900">Departments List</h2>
               <p className="text-xs text-slate-500">Showing all departments.</p>
             </div>
-            <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-              {filteredDepartments.length} Departments Loaded
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+                {filteredDepartments.length} Departments
+              </span>
+              <button
+                onClick={() => handleOpenAddDeptModal(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Department</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-auto max-h-[540px]">

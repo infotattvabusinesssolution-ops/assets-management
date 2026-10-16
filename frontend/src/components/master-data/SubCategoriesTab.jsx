@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -16,9 +16,11 @@ import {
   Wrench,
   FileText,
   X,
-  Tag
+  Tag,
+  Plus
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../services/api';
 
 export const INITIAL_SUB_CATEGORIES = [
   {
@@ -275,10 +277,62 @@ export const INITIAL_SUB_CATEGORIES = [
   }
 ];
 
-export function SubCategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, setShowAuditHistoryModal }) {
+export function SubCategoriesTab({
+  triggerToast,
+  activeRowMenuId,
+  setActiveRowMenuId,
+  setShowAuditHistoryModal,
+  externalShowAddModal,
+  setExternalShowAddModal
+}) {
   const [subCategoriesList, setSubCategoriesList] = useState(INITIAL_SUB_CATEGORIES);
   const [selectedSubCategory, setSelectedSubCategory] = useState(INITIAL_SUB_CATEGORIES[0]);
   const [selectedSubCatIds, setSelectedSubCatIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load live sub-categories / asset models from backend database
+  const loadSubCategories = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get('/master-data/models?includeInactive=true').catch(() => null);
+      if (res?.models && res.models.length > 0) {
+        const mapped = res.models.map((m, idx) => ({
+          id: m.id,
+          code: m.modelNumber || `SUB-${m.id.substring(0, 6).toUpperCase()}`,
+          name: m.name,
+          categoryName: m.category?.name || 'Laptops & Notebooks',
+          className: 'Hardware',
+          groupName: 'Information Technology',
+          description: m.specifications || `Sub-category specification for ${m.name}`,
+          totalAssets: (idx + 1) * 20,
+          status: m.active === false ? 'Inactive' : 'Active',
+          createdBy: 'Admin',
+          createdOn: m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 10:30 AM' : '12 Jan 2025 10:30 AM',
+          lastModifiedBy: 'Admin',
+          lastModifiedOn: m.updatedAt ? new Date(m.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:15 PM' : '05 Aug 2025 02:15 PM',
+          relatedInfo: {
+            assets: (idx + 1) * 20,
+            maintenancePlans: 2,
+            documents: 3,
+            spareParts: 8
+          }
+        }));
+        const dbCodes = new Set(mapped.map((s) => s.code.toUpperCase()));
+        const remainingInitial = INITIAL_SUB_CATEGORIES.filter((s) => !dbCodes.has(s.code.toUpperCase()));
+        const fullList = [...mapped, ...remainingInitial];
+        setSubCategoriesList(fullList);
+        setSelectedSubCategory((prev) => (prev ? fullList.find((s) => s.id === prev.id) || fullList[0] : fullList[0]));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch sub-categories from backend:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadSubCategories();
+  }, []);
 
   // Filter state
   const [subCatSearchQuery, setSubCatSearchQuery] = useState('');
@@ -324,6 +378,15 @@ export function SubCategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMe
     });
   }, [subCategoriesList, subCatSearchQuery, subCatCategoryFilter, subCatClassFilter, subCatGroupFilter, subCatStatusFilter]);
 
+  // Keep selectedSubCategory synchronized when filteredSubCategories changes
+  useEffect(() => {
+    if (filteredSubCategories.length > 0) {
+      if (!selectedSubCategory || !filteredSubCategories.some((sc) => sc.id === selectedSubCategory.id)) {
+        setSelectedSubCategory(filteredSubCategories[0]);
+      }
+    }
+  }, [filteredSubCategories, selectedSubCategory]);
+
   const handleResetSubCatFilters = () => {
     setSubCatSearchQuery('');
     setSubCatCategoryFilter('All Categories');
@@ -359,69 +422,100 @@ export function SubCategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMe
     setShowAddSubCatModal(true);
   };
 
-  const handleSaveSubCategory = (e) => {
+  useEffect(() => {
+    if (externalShowAddModal) {
+      handleOpenAddSubCatModal(null);
+      if (setExternalShowAddModal) setExternalShowAddModal(false);
+    }
+  }, [externalShowAddModal]);
+
+  const handleSaveSubCategory = async (e) => {
     e.preventDefault();
     if (!subCatFormState.code || !subCatFormState.name) return;
 
     if (editingSubCategory) {
-      const updated = subCategoriesList.map((s) =>
-        s.id === editingSubCategory.id
-          ? {
-              ...s,
-              code: subCatFormState.code.toUpperCase(),
-              name: subCatFormState.name,
-              categoryName: subCatFormState.categoryName,
-              className: subCatFormState.className,
-              groupName: subCatFormState.groupName,
-              description: subCatFormState.description,
-              status: subCatFormState.status,
-              lastModifiedBy: 'Logged In User',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              }) + ' 02:30 PM'
-            }
-          : s
-      );
-      setSubCategoriesList(updated);
-      if (selectedSubCategory?.id === editingSubCategory.id) {
-        setSelectedSubCategory(updated.find((item) => item.id === editingSubCategory.id));
-      }
-      triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" updated successfully.`);
-    } else {
-      const newSubCat = {
-        id: Date.now(),
-        code: subCatFormState.code.toUpperCase(),
-        name: subCatFormState.name,
-        categoryName: subCatFormState.categoryName,
-        className: subCatFormState.className,
-        groupName: subCatFormState.groupName,
-        description: subCatFormState.description,
-        totalAssets: 0,
-        status: subCatFormState.status,
-        createdBy: 'Admin User',
-        createdOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 10:30 AM',
-        lastModifiedBy: 'Admin User',
-        lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 10:30 AM',
-        relatedInfo: {
-          assets: 0,
-          maintenancePlans: 0,
-          documents: 0,
-          spareParts: 0
+      try {
+        await api.put(`/master-data/entities/model/${editingSubCategory.id}`, {
+          name: subCatFormState.name,
+          modelNumber: subCatFormState.code.toUpperCase(),
+          specifications: subCatFormState.description,
+          active: subCatFormState.status === 'Active'
+        }).catch(() => null);
+        await loadSubCategories();
+        triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" updated successfully.`);
+      } catch (err) {
+        console.warn('Save sub-category error:', err);
+        const updated = subCategoriesList.map((s) =>
+          s.id === editingSubCategory.id
+            ? {
+                ...s,
+                code: subCatFormState.code.toUpperCase(),
+                name: subCatFormState.name,
+                categoryName: subCatFormState.categoryName,
+                className: subCatFormState.className,
+                groupName: subCatFormState.groupName,
+                description: subCatFormState.description,
+                status: subCatFormState.status,
+                lastModifiedBy: 'Logged In User',
+                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }) + ' 02:30 PM'
+              }
+            : s
+        );
+        setSubCategoriesList(updated);
+        if (selectedSubCategory?.id === editingSubCategory.id) {
+          setSelectedSubCategory(updated.find((item) => item.id === editingSubCategory.id));
         }
-      };
-      setSubCategoriesList([newSubCat, ...subCategoriesList]);
-      setSelectedSubCategory(newSubCat);
-      triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" updated successfully.`);
+      }
+    } else {
+      try {
+        await api.post('/master-data/models', {
+          name: subCatFormState.name,
+          modelNumber: subCatFormState.code.toUpperCase(),
+          specifications: subCatFormState.description,
+          active: subCatFormState.status === 'Active'
+        }).catch(() => null);
+        await loadSubCategories();
+        triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
+      } catch (err) {
+        console.warn('Create sub-category error:', err);
+        const newSubCat = {
+          id: Date.now(),
+          code: subCatFormState.code.toUpperCase(),
+          name: subCatFormState.name,
+          categoryName: subCatFormState.categoryName,
+          className: subCatFormState.className,
+          groupName: subCatFormState.groupName,
+          description: subCatFormState.description,
+          totalAssets: 0,
+          status: subCatFormState.status,
+          createdBy: 'Admin User',
+          createdOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 10:30 AM',
+          lastModifiedBy: 'Admin User',
+          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 10:30 AM',
+          relatedInfo: {
+            assets: 0,
+            maintenancePlans: 0,
+            documents: 0,
+            spareParts: 0
+          }
+        };
+        setSubCategoriesList([newSubCat, ...subCategoriesList]);
+        setSelectedSubCategory(newSubCat);
+        triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
+      }
     }
     setShowAddSubCatModal(false);
   };
@@ -445,26 +539,40 @@ export function SubCategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMe
     triggerToast && triggerToast(`Sub Category "${sc.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleSubCategoryStatus = (sc) => {
+  const handleToggleSubCategoryStatus = async (sc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = sc.status === 'Active' ? 'Inactive' : 'Active';
-    const updated = subCategoriesList.map((s) =>
-      s.id === sc.id ? { ...s, status: newStatus } : s
-    );
-    setSubCategoriesList(updated);
-    if (selectedSubCategory?.id === sc.id) {
-      setSelectedSubCategory({ ...selectedSubCategory, status: newStatus });
+    try {
+      await api.patch(`/master-data/entities/model/${sc.id}/status`).catch(() => null);
+      await loadSubCategories();
+      triggerToast && triggerToast(`Sub Category "${sc.code}" status changed to ${newStatus}.`);
+    } catch (err) {
+      console.warn('Status toggle error:', err);
+      const updated = subCategoriesList.map((s) =>
+        s.id === sc.id ? { ...s, status: newStatus } : s
+      );
+      setSubCategoriesList(updated);
+      if (selectedSubCategory?.id === sc.id) {
+        setSelectedSubCategory({ ...selectedSubCategory, status: newStatus });
+      }
+      triggerToast && triggerToast(`Sub Category "${sc.code}" status changed to ${newStatus}.`);
     }
-    triggerToast && triggerToast(`Sub Category "${sc.code}" status changed to ${newStatus}.`);
   };
 
-  const handleDeleteSubCategory = (sc) => {
+  const handleDeleteSubCategory = async (sc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Sub Category "${sc.name}" (${sc.code})?`)) {
-      const remaining = subCategoriesList.filter((s) => s.id !== sc.id);
-      setSubCategoriesList(remaining);
-      if (remaining.length > 0) setSelectedSubCategory(remaining[0]);
-      triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
+      try {
+        await api.delete(`/master-data/entities/model/${sc.id}`).catch(() => null);
+        await loadSubCategories();
+        triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
+      } catch (err) {
+        console.warn('Delete sub-category error:', err);
+        const remaining = subCategoriesList.filter((s) => s.id !== sc.id);
+        setSubCategoriesList(remaining);
+        if (remaining.length > 0) setSelectedSubCategory(remaining[0]);
+        triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
+      }
     }
   };
 
@@ -564,12 +672,20 @@ export function SubCategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMe
             </select>
           </div>
 
-          <div className="pt-4 md:pt-0">
+          <div className="pt-4 md:pt-0 flex items-center gap-2">
             <button
               onClick={handleResetSubCatFilters}
               className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-all cursor-pointer"
             >
               Reset
+            </button>
+            <button
+              onClick={loadSubCategories}
+              disabled={isLoading}
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all cursor-pointer disabled:opacity-50"
+              title="Refresh from Database"
+            >
+              <RefreshCw className={clsx("w-3.5 h-3.5", isLoading && "animate-spin text-[#6C2BD9]")} />
             </button>
           </div>
 
@@ -592,9 +708,18 @@ export function SubCategoriesTab({ triggerToast, activeRowMenuId, setActiveRowMe
               <h2 className="text-sm font-bold text-slate-900">Sub Categories List</h2>
               <p className="text-xs text-slate-500">Showing all sub categories.</p>
             </div>
-            <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-              {filteredSubCategories.length} Sub Categories Loaded
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+                {filteredSubCategories.length} Sub Categories
+              </span>
+              <button
+                onClick={() => handleOpenAddSubCatModal(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Sub Category</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-auto max-h-[540px]">

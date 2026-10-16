@@ -317,8 +317,8 @@ export function Asset360Detail() {
     <div className="space-y-5 pb-12">
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-2xl shadow-xl border text-xs font-bold flex items-center gap-2 animate-in slide-in-from-bottom duration-200 ${
-          toast.type === 'success' ? 'bg-emerald-50 text-emerald-800 border-emerald-200' : 'bg-rose-50 text-rose-800 border-rose-200'
+        <div className={`fixed bottom-6 right-6 z-[9999] px-4 py-3 rounded-2xl shadow-2xl border text-xs font-bold flex items-center gap-2 animate-in slide-in-from-bottom-3 duration-200 ${
+          toast.type === 'success' ? 'bg-emerald-50/95 text-emerald-800 border-emerald-200' : 'bg-rose-50/95 text-rose-800 border-rose-200'
         }`}>
           {toast.type === 'success' ? <CheckCircle2 className="w-4 h-4 text-emerald-600" /> : <AlertTriangle className="w-4 h-4 text-rose-600" />}
           {toast.message}

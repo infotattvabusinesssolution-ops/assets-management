@@ -171,7 +171,7 @@ const NAV_STRUCTURE = [
     icon: Database,
     roles: ['SYS_ADMIN', 'ASSET_ADMIN'],
     subItems: [
-      { name: 'Asset Groups', path: '/admin/master-data' },
+      { name: 'Asset Groups', path: '/admin/master-data?tab=asset-groups' },
       { name: 'Asset Classes', path: '/admin/master-data?tab=classes' },
       { name: 'Categories', path: '/admin/master-data?tab=categories' },
       { name: 'Sub Categories', path: '/admin/master-data?tab=subcategories' },
@@ -227,12 +227,17 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
     if (queryMatch) return queryMatch.path;
   }
 
+  // 2b. If on /admin/master-data without specific tab or with ?tab=asset-groups, match Asset Groups
+  if ((pathname === '/admin/master-data' || pathname === '/master-data') && (!search || !search.includes('tab=') || search.includes('tab=asset-groups'))) {
+    const agSub = subItems.find(sub => sub.name === 'Asset Groups');
+    if (agSub) return agSub.path;
+  }
+
   // 3. Match sub-item without query param if search is empty or no query match
   const exactPathMatch = subItems.find(sub => {
     if (sub.path.includes('?')) return false;
     return sub.path === pathname ||
       (sub.path === '/admin/organization' && pathname === '/admin/organization' && !search.includes('tab=')) ||
-      (sub.path === '/admin/master-data' && (pathname === '/admin/master-data' || pathname === '/master-data') && !search.includes('tab=')) ||
       (sub.path === '/admin/integrations' && (pathname === '/admin/integrations' || pathname === '/integrations')) ||
       (sub.path === '/admin/audit-logs' && (pathname === '/admin/audit-logs' || pathname === '/audit-logs' || pathname === '/audit-trail')) ||
       (sub.path === '/admin/notifications' && (pathname === '/admin/notifications' || pathname === '/notifications')) ||

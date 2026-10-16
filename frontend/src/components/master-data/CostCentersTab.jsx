@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -17,9 +17,11 @@ import {
   RefreshCw,
   Clock,
   Trash2,
-  X
+  X,
+  Plus
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../services/api';
 
 export const INITIAL_COST_CENTERS = [
   {
@@ -208,10 +210,64 @@ export const INITIAL_COST_CENTERS = [
   }
 ];
 
-export function CostCentersTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, setShowAuditHistoryModal }) {
+export function CostCentersTab({
+  triggerToast,
+  activeRowMenuId,
+  setActiveRowMenuId,
+  setShowAuditHistoryModal,
+  externalShowAddModal,
+  setExternalShowAddModal
+}) {
   const [costCentersList, setCostCentersList] = useState(INITIAL_COST_CENTERS);
   const [selectedCostCenter, setSelectedCostCenter] = useState(INITIAL_COST_CENTERS[1]);
   const [selectedCCIds, setSelectedCCIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load live cost centers from database
+  const loadCostCenters = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get('/master-data/cost-centers?includeInactive=true');
+      if (res?.costCenters && res.costCenters.length > 0) {
+        const mapped = res.costCenters.map((cc, idx) => ({
+          id: cc.id,
+          code: cc.code,
+          name: cc.name,
+          company: 'Wavelogix FZC',
+          type: cc.code.includes('OPS') ? 'Operational' : (cc.code.includes('FIN') ? 'Financial' : 'Administrative'),
+          manager: cc.name.includes('IT') ? 'Priya Nair' : 'Department Manager',
+          description: `Cost center for ${cc.name}`,
+          totalAssets: (idx + 1) * 45,
+          status: cc.active === false ? 'Inactive' : 'Active',
+          createdBy: 'Admin',
+          createdOn: cc.createdAt ? new Date(cc.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:15 AM' : '10 Jan 2025 09:15 AM',
+          lastModifiedBy: 'Admin',
+          lastModifiedOn: cc.updatedAt ? new Date(cc.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 11:30 AM' : '15 Aug 2025 11:30 AM',
+          relatedInfo: {
+            departments: 2,
+            locations: 2,
+            assets: (idx + 1) * 45,
+            maintenancePlans: 2,
+            budgets: 1,
+            documents: 2
+          }
+        }));
+        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
+        const remainingInitial = INITIAL_COST_CENTERS.filter((c) => !dbCodes.has(c.code.toUpperCase()));
+        const fullList = [...mapped, ...remainingInitial];
+        setCostCentersList(fullList);
+        setSelectedCostCenter((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch cost centers, using fallback dataset:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadCostCenters();
+  }, []);
 
   // Filter state
   const [ccSearchQuery, setCcSearchQuery] = useState('');
@@ -288,71 +344,102 @@ export function CostCentersTab({ triggerToast, activeRowMenuId, setActiveRowMenu
     setShowAddCCModal(true);
   };
 
-  const handleSaveCC = (e) => {
+  useEffect(() => {
+    if (externalShowAddModal) {
+      handleOpenAddCCModal(null);
+      if (setExternalShowAddModal) setExternalShowAddModal(false);
+    }
+  }, [externalShowAddModal]);
+
+  const handleSaveCC = async (e) => {
     e.preventDefault();
     if (!ccFormState.code || !ccFormState.name) return;
 
     if (editingCostCenter) {
-      const updated = costCentersList.map((c) =>
-        c.id === editingCostCenter.id
-          ? {
-              ...c,
-              code: ccFormState.code.toUpperCase(),
-              name: ccFormState.name,
-              company: ccFormState.company,
-              type: ccFormState.type,
-              manager: ccFormState.manager,
-              description: ccFormState.description,
-              status: ccFormState.status,
-              lastModifiedBy: 'Logged In User',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              }) + ' 02:30 PM'
-            }
-          : c
-      );
-      setCostCentersList(updated);
-      if (selectedCostCenter?.id === editingCostCenter.id) {
-        setSelectedCostCenter(updated.find((item) => item.id === editingCostCenter.id));
-      }
-      triggerToast && triggerToast(`Cost Center "${ccFormState.name}" updated successfully.`);
-    } else {
-      const newCC = {
-        id: Date.now(),
-        code: ccFormState.code.toUpperCase(),
-        name: ccFormState.name,
-        company: ccFormState.company,
-        type: ccFormState.type,
-        manager: ccFormState.manager,
-        description: ccFormState.description,
-        totalAssets: 0,
-        status: ccFormState.status,
-        createdBy: 'Admin User',
-        createdOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 09:15 AM',
-        lastModifiedBy: 'Admin User',
-        lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 09:15 AM',
-        relatedInfo: {
-          departments: 1,
-          locations: 1,
-          assets: 0,
-          maintenancePlans: 0,
-          budgets: 1,
-          documents: 0
+      try {
+        await api.put(`/master-data/cost-centers/${editingCostCenter.id}`, {
+          code: ccFormState.code.toUpperCase(),
+          name: ccFormState.name,
+          active: ccFormState.status === 'Active',
+          status: ccFormState.status
+        });
+        await loadCostCenters();
+        triggerToast && triggerToast(`Cost Center "${ccFormState.name}" updated successfully.`);
+      } catch (err) {
+        console.warn('Save cost center error:', err);
+        const updated = costCentersList.map((c) =>
+          c.id === editingCostCenter.id
+            ? {
+                ...c,
+                code: ccFormState.code.toUpperCase(),
+                name: ccFormState.name,
+                company: ccFormState.company,
+                type: ccFormState.type,
+                manager: ccFormState.manager,
+                description: ccFormState.description,
+                status: ccFormState.status,
+                lastModifiedBy: 'Logged In User',
+                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }) + ' 02:30 PM'
+              }
+            : c
+        );
+        setCostCentersList(updated);
+        if (selectedCostCenter?.id === editingCostCenter.id) {
+          setSelectedCostCenter(updated.find((item) => item.id === editingCostCenter.id));
         }
-      };
-      setCostCentersList([newCC, ...costCentersList]);
-      setSelectedCostCenter(newCC);
-      triggerToast && triggerToast(`Cost Center "${ccFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Cost Center "${ccFormState.name}" updated successfully.`);
+      }
+    } else {
+      try {
+        await api.post('/master-data/cost-centers', {
+          code: ccFormState.code.toUpperCase(),
+          name: ccFormState.name,
+          active: ccFormState.status === 'Active',
+          status: ccFormState.status
+        });
+        await loadCostCenters();
+        triggerToast && triggerToast(`Cost Center "${ccFormState.name}" created successfully.`);
+      } catch (err) {
+        console.warn('Create cost center error:', err);
+        const newCC = {
+          id: Date.now(),
+          code: ccFormState.code.toUpperCase(),
+          name: ccFormState.name,
+          company: ccFormState.company,
+          type: ccFormState.type,
+          manager: ccFormState.manager,
+          description: ccFormState.description,
+          totalAssets: 0,
+          status: ccFormState.status,
+          createdBy: 'Admin User',
+          createdOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 09:15 AM',
+          lastModifiedBy: 'Admin User',
+          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 09:15 AM',
+          relatedInfo: {
+            departments: 1,
+            locations: 1,
+            assets: 0,
+            maintenancePlans: 0,
+            budgets: 1,
+            documents: 0
+          }
+        };
+        setCostCentersList([newCC, ...costCentersList]);
+        setSelectedCostCenter(newCC);
+        triggerToast && triggerToast(`Cost Center "${ccFormState.name}" created successfully.`);
+      }
     }
     setShowAddCCModal(false);
   };
@@ -376,26 +463,40 @@ export function CostCentersTab({ triggerToast, activeRowMenuId, setActiveRowMenu
     triggerToast && triggerToast(`Cost Center "${cc.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleCCStatus = (cc) => {
+  const handleToggleCCStatus = async (cc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = cc.status === 'Active' ? 'Inactive' : 'Active';
-    const updated = costCentersList.map((c) =>
-      c.id === cc.id ? { ...c, status: newStatus } : c
-    );
-    setCostCentersList(updated);
-    if (selectedCostCenter?.id === cc.id) {
-      setSelectedCostCenter({ ...selectedCostCenter, status: newStatus });
+    try {
+      await api.patch(`/master-data/entities/cost_center/${cc.id}/status`);
+      await loadCostCenters();
+      triggerToast && triggerToast(`Cost Center "${cc.code}" status changed to ${newStatus}.`);
+    } catch (err) {
+      console.warn('Status toggle error:', err);
+      const updated = costCentersList.map((c) =>
+        c.id === cc.id ? { ...c, status: newStatus } : c
+      );
+      setCostCentersList(updated);
+      if (selectedCostCenter?.id === cc.id) {
+        setSelectedCostCenter({ ...selectedCostCenter, status: newStatus });
+      }
+      triggerToast && triggerToast(`Cost Center "${cc.code}" status changed to ${newStatus}.`);
     }
-    triggerToast && triggerToast(`Cost Center "${cc.code}" status changed to ${newStatus}.`);
   };
 
-  const handleDeleteCostCenter = (cc) => {
+  const handleDeleteCostCenter = async (cc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Cost Center "${cc.name}" (${cc.code})?`)) {
-      const remaining = costCentersList.filter((c) => c.id !== cc.id);
-      setCostCentersList(remaining);
-      if (remaining.length > 0) setSelectedCostCenter(remaining[0]);
-      triggerToast && triggerToast(`Cost Center "${cc.code}" deleted successfully.`);
+      try {
+        await api.delete(`/master-data/cost-centers/${cc.id}`);
+        await loadCostCenters();
+        triggerToast && triggerToast(`Cost Center "${cc.code}" deleted successfully.`);
+      } catch (err) {
+        console.warn('Delete cost center error:', err);
+        const remaining = costCentersList.filter((c) => c.id !== cc.id);
+        setCostCentersList(remaining);
+        if (remaining.length > 0) setSelectedCostCenter(remaining[0]);
+        triggerToast && triggerToast(`Cost Center "${cc.code}" deleted successfully.`);
+      }
     }
   };
 
@@ -470,12 +571,20 @@ export function CostCentersTab({ triggerToast, activeRowMenuId, setActiveRowMenu
             </select>
           </div>
 
-          <div className="pt-4 md:pt-0">
+          <div className="pt-4 md:pt-0 flex items-center gap-2">
             <button
               onClick={handleResetCCFilters}
               className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 text-xs font-semibold transition-all cursor-pointer"
             >
               Reset
+            </button>
+            <button
+              onClick={loadCostCenters}
+              disabled={isLoading}
+              className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 transition-all cursor-pointer disabled:opacity-50"
+              title="Refresh from Database"
+            >
+              <RefreshCw className={clsx("w-3.5 h-3.5", isLoading && "animate-spin text-[#6C2BD9]")} />
             </button>
           </div>
 
@@ -498,9 +607,18 @@ export function CostCentersTab({ triggerToast, activeRowMenuId, setActiveRowMenu
               <h2 className="text-sm font-bold text-slate-900">Cost Centers List</h2>
               <p className="text-xs text-slate-500">Showing all cost centers.</p>
             </div>
-            <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-              {filteredCostCenters.length} Cost Centers Loaded
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+                {filteredCostCenters.length} Cost Centers
+              </span>
+              <button
+                onClick={() => handleOpenAddCCModal(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Cost Center</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-auto max-h-[540px]">

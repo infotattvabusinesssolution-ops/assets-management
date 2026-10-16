@@ -6,6 +6,10 @@ import axios from 'axios';
 // 3. Defaults to the current origin's '/api/v1' when no URL is configured
 
 const getApiBaseUrl = () => {
+  // If running in browser on localhost or 127.0.0.1, connect directly to local backend so local development works without depending on remote deployment
+  if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
+    return 'http://localhost:5000/api/v1';
+  }
   if (import.meta.env.VITE_API_BASE_URL) {
     return import.meta.env.VITE_API_BASE_URL;
   }
@@ -16,8 +20,10 @@ const getApiBaseUrl = () => {
 };
 
 export const API_BASE_URL = getApiBaseUrl();
-export const BACKEND_URL = import.meta.env.VITE_BACKEND_URL ||
-  (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000');
+export const BACKEND_URL =
+  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+    ? 'http://localhost:5000'
+    : (import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000'));
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -31,13 +37,17 @@ api.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
+  console.log(`📡 [API Request] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`, config.data || '');
   return config;
 }, (error) => {
   return Promise.reject(error);
 });
 
 api.interceptors.response.use(
-  (response) => response.data,
+  (response) => {
+    console.log(`✅ [API Success] ${response.config.method?.toUpperCase()} ${response.config.url}`, response.data);
+    return response.data;
+  },
   async (error) => {
     const originalRequest = error.config;
 

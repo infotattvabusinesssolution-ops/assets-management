@@ -332,8 +332,8 @@ export function CreateWorkOrder() {
     <div className="space-y-4 text-xs font-sans bg-[#F8FAFC] min-h-screen p-2 sm:p-3">
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl border shadow-xl flex items-center gap-3 backdrop-blur-md transition-all ${
-          toast.type === 'success' ? 'bg-emerald-50 border-emerald-300 text-emerald-900' : 'bg-rose-50 border-rose-300 text-rose-900'
+        <div className={`fixed bottom-6 right-6 z-[9999] px-4 py-3 rounded-xl border shadow-2xl flex items-center gap-3 backdrop-blur-md transition-all animate-in slide-in-from-bottom-3 duration-200 ${
+          toast.type === 'success' ? 'bg-emerald-50/95 border-emerald-300 text-emerald-900' : 'bg-rose-50/95 border-rose-300 text-rose-900'
         }`}>
           <CheckCircle className="w-5 h-5 text-emerald-600" />
           <span className="text-xs font-bold">{toast.message}</span>

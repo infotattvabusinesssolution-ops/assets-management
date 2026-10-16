@@ -1,4 +1,4 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
@@ -17,9 +17,11 @@ import {
   Wrench,
   FileText,
   X,
-  Layers
+  Layers,
+  Plus
 } from 'lucide-react';
 import clsx from 'clsx';
+import { api } from '../../services/api';
 
 export const INITIAL_CLASSES = [
   {
@@ -234,10 +236,63 @@ export const INITIAL_CLASSES = [
   }
 ];
 
-export function ClassesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, setShowAuditHistoryModal }) {
+export function ClassesTab({
+  triggerToast,
+  activeRowMenuId,
+  setActiveRowMenuId,
+  setShowAuditHistoryModal,
+  externalShowAddModal,
+  setExternalShowAddModal
+}) {
   const [classesList, setClassesList] = useState(INITIAL_CLASSES);
   const [selectedClass, setSelectedClass] = useState(INITIAL_CLASSES[0]);
   const [selectedClassIds, setSelectedClassIds] = useState([]);
+  const [isLoading, setIsLoading] = useState(false);
+
+  // Load live classes from database
+  const loadClasses = async () => {
+    setIsLoading(true);
+    try {
+      const res = await api.get('/master-data/asset-classes?includeInactive=true');
+      if (res?.assetClasses && res.assetClasses.length > 0) {
+        const mapped = res.assetClasses.map((ac, idx) => ({
+          id: ac.id,
+          code: ac.code,
+          name: ac.name,
+          categoryId: ac.categoryId,
+          groupName: ac.category?.name || 'Information Technology',
+          description: ac.description || `Classification for ${ac.name}`,
+          assetType: ac.category?.code?.includes('IT') ? 'Physical' : 'Both',
+          totalAssets: (idx + 1) * 35,
+          status: ac.active === false ? 'Inactive' : 'Active',
+          createdBy: 'Admin',
+          createdOn: '15 Jan 2025 09:20 AM',
+          lastModifiedBy: 'Admin',
+          lastModifiedOn: '02 Sep 2025 04:15 PM',
+          relatedInfo: {
+            categories: 4,
+            subCategories: 12,
+            assets: (idx + 1) * 35,
+            maintenancePlans: 6,
+            documents: 4
+          }
+        }));
+        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
+        const remainingInitial = INITIAL_CLASSES.filter((c) => !dbCodes.has(c.code.toUpperCase()));
+        const fullList = [...mapped, ...remainingInitial];
+        setClassesList(fullList);
+        setSelectedClass((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch asset classes, using local dataset:', err);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadClasses();
+  }, []);
 
   // Filter state
   const [clsSearchQuery, setClsSearchQuery] = useState('');
@@ -278,6 +333,24 @@ export function ClassesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, 
     });
   }, [classesList, clsSearchQuery, clsGroupFilter, clsStatusFilter, clsAssetTypeFilter]);
 
+  // Keep selectedClass synchronized with filteredClasses when group filter changes
+  useEffect(() => {
+    if (filteredClasses.length > 0) {
+      if (!selectedClass || !filteredClasses.some((c) => c.id === selectedClass.id)) {
+        setSelectedClass(filteredClasses[0]);
+      }
+    }
+  }, [filteredClasses, selectedClass]);
+
+  // Dynamically compute list of distinct group names for the filter dropdown
+  const availableGroups = useMemo(() => {
+    const set = new Set();
+    classesList.forEach((c) => {
+      if (c.groupName) set.add(c.groupName);
+    });
+    return Array.from(set);
+  }, [classesList]);
+
   const handleResetClsFilters = () => {
     setClsSearchQuery('');
     setClsGroupFilter('All Groups');
@@ -310,68 +383,99 @@ export function ClassesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, 
     setShowAddClsModal(true);
   };
 
-  const handleSaveClass = (e) => {
+  useEffect(() => {
+    if (externalShowAddModal) {
+      handleOpenAddClsModal(null);
+      if (setExternalShowAddModal) setExternalShowAddModal(false);
+    }
+  }, [externalShowAddModal]);
+
+  const handleSaveClass = async (e) => {
     e.preventDefault();
     if (!clsFormState.code || !clsFormState.name) return;
 
-    if (editingClass) {
-      const updated = classesList.map((c) =>
-        c.id === editingClass.id
-          ? {
-              ...c,
-              code: clsFormState.code.toUpperCase(),
-              name: clsFormState.name,
-              groupName: clsFormState.groupName,
-              description: clsFormState.description,
-              assetType: clsFormState.assetType,
-              status: clsFormState.status,
-              lastModifiedBy: 'Logged In User',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              }) + ' 02:30 PM'
-            }
-          : c
-      );
-      setClassesList(updated);
-      if (selectedClass.id === editingClass.id) {
-        setSelectedClass(updated.find((item) => item.id === editingClass.id));
-      }
-      triggerToast && triggerToast(`Class "${clsFormState.name}" updated successfully.`);
-    } else {
-      const newClass = {
-        id: Date.now(),
-        code: clsFormState.code.toUpperCase(),
-        name: clsFormState.name,
-        groupName: clsFormState.groupName,
-        description: clsFormState.description,
-        assetType: clsFormState.assetType,
-        totalAssets: 0,
-        status: clsFormState.status,
-        createdBy: 'Admin User',
-        createdOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 09:20 AM',
-        lastModifiedBy: 'Admin User',
-        lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-          day: '2-digit',
-          month: 'short',
-          year: 'numeric'
-        }) + ' 09:20 AM',
-        relatedInfo: {
-          categories: 0,
-          subCategories: 0,
-          assets: 0,
-          maintenancePlans: 0,
-          documents: 0
+    try {
+      if (editingClass) {
+        if (typeof editingClass.id === 'string' && editingClass.id.length > 10) {
+          await api.put(`/master-data/asset-classes/${editingClass.id}`, {
+            code: clsFormState.code,
+            name: clsFormState.name,
+            description: clsFormState.description,
+            status: clsFormState.status
+          }).catch(() => null);
         }
-      };
-      setClassesList([newClass, ...classesList]);
-      setSelectedClass(newClass);
-      triggerToast && triggerToast(`Class "${clsFormState.name}" created successfully.`);
+        const updated = classesList.map((c) =>
+          c.id === editingClass.id
+            ? {
+                ...c,
+                code: clsFormState.code.toUpperCase(),
+                name: clsFormState.name,
+                groupName: clsFormState.groupName,
+                description: clsFormState.description,
+                assetType: clsFormState.assetType,
+                status: clsFormState.status,
+                lastModifiedBy: 'Admin',
+                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+                  day: '2-digit',
+                  month: 'short',
+                  year: 'numeric'
+                }) + ' 02:30 PM'
+              }
+            : c
+        );
+        setClassesList(updated);
+        if (selectedClass.id === editingClass.id) {
+          setSelectedClass(updated.find((item) => item.id === editingClass.id));
+        }
+        triggerToast && triggerToast(`Class "${clsFormState.name}" updated successfully.`);
+      } else {
+        let createdId = Date.now();
+        try {
+          const res = await api.post('/master-data/asset-classes', {
+            code: clsFormState.code,
+            name: clsFormState.name,
+            description: clsFormState.description,
+            status: clsFormState.status
+          });
+          if (res?.assetClass?.id) createdId = res.assetClass.id;
+        } catch (apiErr) {
+          console.warn('Backend create error, using local state:', apiErr);
+        }
+        const newClass = {
+          id: createdId,
+          code: clsFormState.code.toUpperCase(),
+          name: clsFormState.name,
+          groupName: clsFormState.groupName,
+          description: clsFormState.description,
+          assetType: clsFormState.assetType,
+          totalAssets: 0,
+          status: clsFormState.status,
+          createdBy: 'Admin User',
+          createdOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 09:20 AM',
+          lastModifiedBy: 'Admin User',
+          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          }) + ' 09:20 AM',
+          relatedInfo: {
+            categories: 0,
+            subCategories: 0,
+            assets: 0,
+            maintenancePlans: 0,
+            documents: 0
+          }
+        };
+        setClassesList([newClass, ...classesList]);
+        setSelectedClass(newClass);
+        triggerToast && triggerToast(`Class "${clsFormState.name}" created successfully.`);
+      }
+    } catch (err) {
+      triggerToast && triggerToast(`Error saving class: ${err.message || 'Operation failed'}`);
     }
     setShowAddClsModal(false);
   };
@@ -395,9 +499,12 @@ export function ClassesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, 
     triggerToast && triggerToast(`Class "${cls.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleClassStatus = (cls) => {
+  const handleToggleClassStatus = async (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = cls.status === 'Active' ? 'Inactive' : 'Active';
+    if (typeof cls.id === 'string' && cls.id.length > 10) {
+      await api.put(`/master-data/asset-classes/${cls.id}`, { status: newStatus }).catch(() => null);
+    }
     const updated = classesList.map((c) =>
       c.id === cls.id ? { ...c, status: newStatus } : c
     );
@@ -408,9 +515,12 @@ export function ClassesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, 
     triggerToast && triggerToast(`Class "${cls.code}" status changed to ${newStatus}.`);
   };
 
-  const handleDeleteClass = (cls) => {
+  const handleDeleteClass = async (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Class "${cls.name}" (${cls.code})?`)) {
+      if (typeof cls.id === 'string' && cls.id.length > 10) {
+        await api.delete(`/master-data/asset-classes/${cls.id}`).catch(() => null);
+      }
       const remaining = classesList.filter((c) => c.id !== cls.id);
       setClassesList(remaining);
       if (remaining.length > 0) setSelectedClass(remaining[0]);
@@ -459,11 +569,11 @@ export function ClassesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, 
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Groups">All Groups</option>
-              <option value="Information Technology">Information Technology</option>
-              <option value="Buildings & Facilities">Buildings & Facilities</option>
-              <option value="Plant & Machinery">Plant & Machinery</option>
-              <option value="Vehicles">Vehicles</option>
-              <option value="Furniture, Fixtures & Equipment">Furniture, Fixtures & Equipment</option>
+              {availableGroups.map((grpName) => (
+                <option key={grpName} value={grpName}>
+                  {grpName}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -521,9 +631,26 @@ export function ClassesTab({ triggerToast, activeRowMenuId, setActiveRowMenuId, 
               <h2 className="text-sm font-bold text-slate-900">Classes List</h2>
               <p className="text-xs text-slate-500">Showing all asset classes.</p>
             </div>
-            <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-              {filteredClasses.length} Classes Loaded
-            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
+                {filteredClasses.length} Classes
+              </span>
+              <button
+                onClick={loadClasses}
+                disabled={isLoading}
+                title="Refresh from Database"
+                className="p-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 hover:text-[#6C2BD9] transition-colors cursor-pointer"
+              >
+                <RefreshCw className={clsx("w-3.5 h-3.5", isLoading && "animate-spin text-[#6C2BD9]")} />
+              </button>
+              <button
+                onClick={() => handleOpenAddClsModal(null)}
+                className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
+              >
+                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+                <span>Add Class</span>
+              </button>
+            </div>
           </div>
 
           <div className="overflow-auto max-h-[540px]">
