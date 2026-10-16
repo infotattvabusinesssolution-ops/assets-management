@@ -303,6 +303,7 @@ export function SuppliersTab({
   activeRowMenuId,
   setActiveRowMenuId,
   handleOpenAddModal,
+  addModalTrigger,
   externalShowAddModal,
   setExternalShowAddModal
 }) {
@@ -422,7 +423,7 @@ export function SuppliersTab({
     setSupCompanyFilter('All Companies');
   };
 
-  const handleOpenAddSupModalInternal = (supToEdit = null) => {
+  const handleOpenAddSupModal = (supToEdit = null) => {
     if (supToEdit) {
       setEditingSupplier(supToEdit);
       setSupFormState({
@@ -463,12 +464,14 @@ export function SuppliersTab({
     setShowAddSupModal(true);
   };
 
+  const handleOpenAddSupModalInternal = handleOpenAddSupModal;
+
   useEffect(() => {
-    if (externalShowAddModal) {
+    if (addModalTrigger > 0 || externalShowAddModal) {
       handleOpenAddSupModal(null);
       if (setExternalShowAddModal) setExternalShowAddModal(false);
     }
-  }, [externalShowAddModal]);
+  }, [addModalTrigger, externalShowAddModal]);
 
   const handleSaveSup = async (e) => {
     e.preventDefault();

@@ -57,55 +57,163 @@ const dateStatus = item => {
   if (endDate < new Date()) return 'Expired';
   return endDate <= new Date(Date.now() + 30 * 86400000) ? 'Expiring' : 'Active';
 };
+const safeStr = (v, fallback = '') => (v === null || v === undefined ? fallback : String(v));
+
+const defaultContractForm = {
+  id: '', contractNo: '', contractName: '', contractType: 'AMC',
+  startDate: '', endDate: '', startDateInput: '', endDateInput: '',
+  value: '', contractValue: '', status: 'Active',
+  description: '', sla: '', referenceNo: '', paymentTerms: '30',
+  currency: 'AED', coverage: '', visitEntitlements: '',
+  coverageTarget: 'ALL', assetIds: []
+};
+
+const defaultDocForm = {
+  id: '', name: '', type: 'Trade License', refNo: '',
+  validTill: '', validTillInput: '', size: '—', fileSize: null,
+  status: 'Valid', fileType: '', issueDate: '', description: '', storageUrl: ''
+};
+
+const defaultNoteForm = {
+  id: '', type: 'General', subject: '', preview: '',
+  createdBy: '', createdOn: '', description: '',
+  relatedTo: 'General', reference: '',
+  lastModifiedBy: '', lastModifiedOn: ''
+};
+
 const legacyContract = item => ({
-  id: item.id, contractNo: item.contractNumber, contractName: item.title, contractType: item.contractType,
-  startDate: displayDate(item.startDate), endDate: displayDate(item.endDate), startDateInput: inputDate(item.startDate), endDateInput: inputDate(item.endDate),
-  value: Number(item.cost || 0).toLocaleString(), contractValue: Number(item.cost || 0), status: dateStatus(item),
-  description: item.slaDetails || '', sla: item.slaDetails || '', referenceNo: item.referenceNumber || '',
-  paymentTerms: item.paymentTermsDays ?? '', currency: item.currency || 'AED', coverage: item.coverageNotes || '',
-  visitEntitlements: item.visitEntitlements || '',
-  coveredAssets: item.coveredAssets || [], assetIds: (item.coveredAssets || []).map(x => x.assetId)
+  id: item?.id || '',
+  contractNo: safeStr(item?.contractNumber || item?.contractNo),
+  contractName: safeStr(item?.title || item?.contractName),
+  contractType: safeStr(item?.contractType, 'AMC'),
+  startDate: displayDate(item?.startDate),
+  endDate: displayDate(item?.endDate),
+  startDateInput: inputDate(item?.startDate),
+  endDateInput: inputDate(item?.endDate),
+  value: Number(item?.cost || 0).toLocaleString(),
+  contractValue: safeStr(item?.cost),
+  status: item ? dateStatus(item) : 'Active',
+  description: safeStr(item?.slaDetails || item?.description),
+  sla: safeStr(item?.slaDetails || item?.sla),
+  referenceNo: safeStr(item?.referenceNumber || item?.referenceNo),
+  paymentTerms: safeStr(item?.paymentTermsDays ?? item?.paymentTerms, '30'),
+  currency: safeStr(item?.currency, 'AED'),
+  coverage: safeStr(item?.coverageNotes || item?.coverage),
+  visitEntitlements: safeStr(item?.visitEntitlements),
+  coverageTarget: 'SPECIFIC',
+  coveredAssets: item?.coveredAssets || [],
+  assetIds: (item?.coveredAssets || []).map(x => x.assetId)
 });
+
 const legacyDocument = item => ({
-  id: item.id, name: item.name, type: item.type?.replaceAll('_', ' ') || 'Other', refNo: item.referenceNumber || '—',
-  validTill: displayDate(item.validUntil), validTillInput: inputDate(item.validUntil), size: item.fileSize == null ? '—' : (item.fileSize / 1048576).toFixed(1) + ' MB',
-  fileSize: item.fileSize, status: item.validUntil && new Date(item.validUntil) < new Date() ? 'Expired' : 'Valid',
-  fileType: item.name?.split('.').pop()?.toLowerCase(), issueDate: inputDate(item.issueDate), description: item.description || '', storageUrl: item.storageUrl
+  id: item?.id || '',
+  name: safeStr(item?.name),
+  type: item?.type?.replaceAll('_', ' ') || 'Other',
+  refNo: safeStr(item?.referenceNumber || item?.refNo),
+  validTill: displayDate(item?.validUntil),
+  validTillInput: inputDate(item?.validUntil),
+  size: item?.fileSize == null ? '—' : (item.fileSize / 1048576).toFixed(1) + ' MB',
+  fileSize: item?.fileSize ?? null,
+  status: item?.validUntil && new Date(item.validUntil) < new Date() ? 'Expired' : 'Valid',
+  fileType: safeStr(item?.name?.split('.').pop()?.toLowerCase()),
+  issueDate: inputDate(item?.issueDate),
+  description: safeStr(item?.description),
+  storageUrl: safeStr(item?.storageUrl)
 });
+
 const legacyHistory = item => ({
-  id: item.id, workOrderNo: item.workOrderNumber, serviceDate: displayDate(item.completedDate || item.createdAt),
-  asset: [item.asset?.assetId, item.asset?.description].filter(Boolean).join(' — '), assetCategory: item.asset?.category?.name || '—',
-  serviceType: ({ PREVENTIVE: 'Preventive Maintenance', CORRECTIVE: 'Corrective Maintenance', INSPECTION: 'Inspection', CERTIFICATION: 'Certification' })[item.workType] || item.workType?.replaceAll('_', ' ') || 'Service',
-  description: item.description || '', status: ({ COMPLETED: 'Completed', CLOSED: 'Completed', IN_PROGRESS: 'In Progress', CANCELLED: 'Cancelled' })[item.status] || item.status || '',
-  engineer: item.assignedTechnician?.fullName || '—', location: item.asset?.site?.name || '—', duration: '—',
-  fullDescription: item.description || '', resolution: item.workPerformed || '', nextDueDate: displayDate(item.completionTargetDate),
-  remarks: item.notes || '', attachments: String(item.photoUrls || '').split(',').map(url => url.trim()).filter(Boolean).map((url, index) => ({ id: index, name: `Attachment ${index + 1}`, url }))
+  id: item?.id || '',
+  workOrderNo: safeStr(item?.workOrderNumber || item?.workOrderNo),
+  serviceDate: displayDate(item?.completedDate || item?.createdAt),
+  asset: [item?.asset?.assetId, item?.asset?.description].filter(Boolean).join(' — ') || '—',
+  assetCategory: item?.asset?.category?.name || '—',
+  serviceType: ({ PREVENTIVE: 'Preventive Maintenance', CORRECTIVE: 'Corrective Maintenance', INSPECTION: 'Inspection', CERTIFICATION: 'Certification' })[item?.workType] || item?.workType?.replaceAll('_', ' ') || 'Service',
+  description: safeStr(item?.description),
+  status: ({ COMPLETED: 'Completed', CLOSED: 'Completed', IN_PROGRESS: 'In Progress', CANCELLED: 'Cancelled' })[item?.status] || item?.status || '',
+  engineer: item?.assignedTechnician?.fullName || '—',
+  location: item?.asset?.site?.name || '—',
+  duration: '—',
+  fullDescription: safeStr(item?.description),
+  resolution: safeStr(item?.workPerformed),
+  nextDueDate: displayDate(item?.completionTargetDate),
+  remarks: safeStr(item?.notes),
+  attachments: String(item?.photoUrls || '').split(',').map(url => url.trim()).filter(Boolean).map((url, index) => ({ id: index, name: `Attachment ${index + 1}`, url }))
 });
+
 const legacyNote = item => {
   let fields = {};
-  if (item.text?.startsWith('FAMS_NOTE_V1:')) {
+  if (item?.text?.startsWith('FAMS_NOTE_V1:')) {
     try { fields = JSON.parse(item.text.slice('FAMS_NOTE_V1:'.length)); } catch { fields = {}; }
   }
-  const description = fields.description || item.text || '';
+  const description = safeStr(fields.description || item?.text);
   return {
-    id: item.id, type: fields.type || 'General', subject: fields.subject || description.slice(0, 64) || 'Note', preview: description.slice(0, 90),
-    createdBy: item.authorName || 'System', createdOn: new Date(item.createdAt).toLocaleString(), description,
-    relatedTo: fields.relatedTo || 'General', reference: fields.reference || '—',
-    lastModifiedBy: item.authorName || 'System', lastModifiedOn: new Date(item.updatedAt || item.createdAt).toLocaleString()
+    id: item?.id || '',
+    type: safeStr(fields.type, 'General'),
+    subject: safeStr(fields.subject || description.slice(0, 64), 'Note'),
+    preview: description.slice(0, 90),
+    createdBy: safeStr(item?.authorName, 'System'),
+    createdOn: item?.createdAt ? new Date(item.createdAt).toLocaleString() : '',
+    description,
+    relatedTo: safeStr(fields.relatedTo, 'General'),
+    reference: safeStr(fields.reference),
+    lastModifiedBy: safeStr(item?.authorName, 'System'),
+    lastModifiedOn: (item?.updatedAt || item?.createdAt) ? new Date(item.updatedAt || item.createdAt).toLocaleString() : ''
   };
 };
-const legacyProvider = (detail, categories = []) => ({
-  ...emptyLegacyProvider(), ...detail,
-  ...Object.fromEntries(profileFields.map(key => [key, readProfile(detail.legacyDetails)[key] || ''])),
-  providerType: prettyType(detail.providerType), status: prettyStatus(detail.status),
-  primaryContact: detail.primaryContact || '', email: detail.email || '', phone: detail.phone || '',
-  defaultCurrency: detail.currency || 'AED', preferredProvider: Boolean(detail.preferred), emirate: detail.state || '',
-  rating: detail.rating == null ? '' : Number(detail.rating),
-  authorizedCategories: (detail.categories || []).map(x => categories.find(c => c.id === x.categoryId)?.name).filter(Boolean),
-  alternateContacts: (detail.contacts || []).filter(x => !x.isPrimary),
-  contracts: (detail.contracts || []).map(legacyContract), documents: (detail.documents || []).map(legacyDocument),
-  serviceHistory: (detail.serviceHistory || []).map(legacyHistory), notes: (detail.notes || []).map(legacyNote)
-});
+
+const legacyProvider = (detail = {}, categories = []) => {
+  const profile = readProfile(detail?.legacyDetails);
+  return {
+    ...emptyLegacyProvider(),
+    id: detail?.id ?? null,
+    providerCode: safeStr(detail?.providerCode),
+    autoGenerateCode: !detail?.providerCode,
+    providerName: safeStr(detail?.providerName),
+    providerType: prettyType(detail?.providerType),
+    status: prettyStatus(detail?.status),
+    companyRegistrationNo: safeStr(detail?.companyRegistrationNo),
+    taxRegistrationNo: safeStr(detail?.taxRegistrationNo),
+    website: safeStr(detail?.website),
+    yearEstablished: safeStr(profile.yearEstablished),
+    defaultCurrency: safeStr(detail?.currency, 'AED'),
+    paymentTermsDays: safeStr(detail?.paymentTermsDays, '30'),
+    remarks: safeStr(detail?.remarks),
+    logoUrl: safeStr(profile.logoUrl),
+    preferredProvider: Boolean(detail?.preferred),
+    leadTimeDays: safeStr(detail?.leadTimeDays, '7'),
+    rating: detail?.rating == null ? '' : Number(detail.rating),
+    primaryContact: safeStr(detail?.primaryContact),
+    designation: safeStr(profile.designation),
+    email: safeStr(detail?.email),
+    phone: safeStr(detail?.phone),
+    mobile: safeStr(profile.mobile),
+    department: safeStr(profile.department),
+    isPrimaryChecked: true,
+    alternateContact: safeStr(profile.alternateContact),
+    alternatePhone: safeStr(profile.alternatePhone),
+    addressLine1: safeStr(detail?.addressLine1),
+    addressLine2: safeStr(detail?.addressLine2),
+    city: safeStr(detail?.city),
+    emirate: safeStr(detail?.state, 'Dubai'),
+    country: safeStr(detail?.country, 'UAE'),
+    postalCode: safeStr(profile.postalCode),
+    authorizedCategories: (detail?.categories || []).map(x => categories.find(c => c.id === x.categoryId)?.name).filter(Boolean),
+    alternateContacts: (detail?.contacts || []).filter(x => !x.isPrimary).map(c => ({
+      id: c.id,
+      name: safeStr(c.name),
+      designation: safeStr(c.designation),
+      email: safeStr(c.email),
+      phone: safeStr(c.phone),
+      mobile: safeStr(c.mobile)
+    })),
+    contracts: (detail?.contracts || []).map(legacyContract),
+    documents: (detail?.documents || []).map(legacyDocument),
+    serviceHistory: (detail?.serviceHistory || []).map(legacyHistory),
+    notes: (detail?.notes || []).map(legacyNote),
+    contacts: detail?.contacts || [],
+    addresses: detail?.addresses || []
+  };
+};
 
 export function ServiceProviderAction() {
   // Mode State: 'FORM' (Add/Edit screen matching screenshot) or 'LIST' (Providers workspace grid)
@@ -160,7 +268,7 @@ export function ServiceProviderAction() {
 
   const [amcContractsList, setAmcContractsList] = useState([]);
 
-  const [selectedContractForm, setSelectedContractForm] = useState({});
+  const [selectedContractForm, setSelectedContractForm] = useState(defaultContractForm);
 
   // Tab 5 State variables matching screenshot media__1789559468502.png
   const [docSearchTerm, setDocSearchTerm] = useState('');
@@ -168,7 +276,7 @@ export function ServiceProviderAction() {
 
   const [providerDocumentsList, setProviderDocumentsList] = useState([]);
 
-  const [selectedDocForm, setSelectedDocForm] = useState({});
+  const [selectedDocForm, setSelectedDocForm] = useState(defaultDocForm);
 
   // Tab 6 State variables matching screenshot
   const [shDateRange, setShDateRange] = useState('');
@@ -189,7 +297,7 @@ export function ServiceProviderAction() {
 
   const [providerNotesList, setProviderNotesList] = useState([]);
 
-  const [selectedNoteForm, setSelectedNoteForm] = useState({});
+  const [selectedNoteForm, setSelectedNoteForm] = useState(defaultNoteForm);
 
   const [formData, setFormData] = useState(emptyLegacyProvider);
 
@@ -242,9 +350,9 @@ export function ServiceProviderAction() {
     setServiceHistoryRecordsList(provider.serviceHistory);
     setSelectedServiceRecord(provider.serviceHistory[0] || { attachments: [] });
     setProviderNotesList(provider.notes);
-    setSelectedNoteForm(provider.notes[0] || {});
-    setSelectedContractForm(provider.contracts[0] ? { ...provider.contracts[0], startDate: provider.contracts[0].startDateInput, endDate: provider.contracts[0].endDateInput, coverageTarget: 'SPECIFIC' } : {});
-    setSelectedDocForm(provider.documents[0] ? { ...provider.documents[0], validTill: provider.documents[0].validTillInput } : {});
+    setSelectedNoteForm(provider.notes[0] ? { ...defaultNoteForm, ...provider.notes[0] } : defaultNoteForm);
+    setSelectedContractForm(provider.contracts[0] ? { ...defaultContractForm, ...provider.contracts[0], startDate: provider.contracts[0].startDateInput || '', endDate: provider.contracts[0].endDateInput || '', coverageTarget: 'SPECIFIC' } : defaultContractForm);
+    setSelectedDocForm(provider.documents[0] ? { ...defaultDocForm, ...provider.documents[0], validTill: provider.documents[0].validTillInput || '' } : defaultDocForm);
   };
   const fetchProviders = async (respectRoute = true) => {
     setLoading(true);
@@ -496,6 +604,7 @@ export function ServiceProviderAction() {
     setAddressDrafts({});
     setServiceCategoriesList([]); setSupportedServicesList([]); setCertificationsList([]);
     setAmcContractsList([]); setProviderDocumentsList([]); setServiceHistoryRecordsList([]); setProviderNotesList([]);
+    setSelectedContractForm(defaultContractForm); setSelectedDocForm(defaultDocForm); setSelectedNoteForm(defaultNoteForm);
   };
 
   const filteredProviders = providers.filter(p => {
@@ -1968,7 +2077,7 @@ export function ServiceProviderAction() {
                       </div>
 
                       <button
-                        onClick={() => setSelectedContractForm({ contractNo: '', contractName: '', contractType: 'ANNUAL_MAINTENANCE', status: 'Active', startDate: '', endDate: '', contractValue: '', currency: formData.defaultCurrency || 'AED', description: '', assetIds: [], coverageTarget: 'SPECIFIC' })}
+                        onClick={() => setSelectedContractForm({ ...defaultContractForm, contractType: 'ANNUAL_MAINTENANCE', currency: formData.defaultCurrency || 'AED' })}
                         className="px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs whitespace-nowrap"
                       >
                         <Plus className="w-3.5 h-3.5 text-white" /> Add Contract / AMC
@@ -2044,13 +2153,13 @@ export function ServiceProviderAction() {
                               </td>
                               <td className="p-2.5 text-right space-x-1">
                                 <button
-                                  onClick={() => setSelectedContractForm({ ...cnt, startDate: cnt.startDateInput, endDate: cnt.endDateInput, assetIds: cnt.assetIds || [], coverageTarget: 'SPECIFIC' })}
+                                  onClick={() => setSelectedContractForm({ ...defaultContractForm, ...cnt, startDate: cnt.startDateInput || '', endDate: cnt.endDateInput || '', assetIds: cnt.assetIds || [], coverageTarget: 'SPECIFIC' })}
                                   className="text-slate-400 hover:text-[#6C2BD9] p-1"
                                   title="View Details"
                                 >
                                   <Eye className="w-3.5 h-3.5" />
                                 </button>
-                                <button onClick={() => setSelectedContractForm({ ...cnt, startDate: cnt.startDateInput, endDate: cnt.endDateInput, assetIds: cnt.assetIds || [], coverageTarget: 'SPECIFIC' })} className="text-slate-400 hover:text-[#6C2BD9] p-1" title="Edit contract">
+                                <button onClick={() => setSelectedContractForm({ ...defaultContractForm, ...cnt, startDate: cnt.startDateInput || '', endDate: cnt.endDateInput || '', assetIds: cnt.assetIds || [], coverageTarget: 'SPECIFIC' })} className="text-slate-400 hover:text-[#6C2BD9] p-1" title="Edit contract">
                                   <Edit3 className="w-3.5 h-3.5" />
                                 </button>
                                 <button
@@ -2151,7 +2260,7 @@ export function ServiceProviderAction() {
                               <td className="p-2.5 font-mono text-slate-700">{c.endDate}</td>
                               <td className="p-2.5">{Math.ceil((new Date(c.endDateInput) - new Date()) / 86400000)}</td>
                               <td className="p-2.5 font-semibold text-slate-900">{c.value}</td>
-                              <td className="p-2.5 text-right"><button onClick={() => setSelectedContractForm({ ...c, startDate: c.startDateInput, endDate: c.endDateInput })} className="text-slate-400 hover:text-[#6C2BD9] p-1"><Eye className="w-3.5 h-3.5" /></button></td>
+                              <td className="p-2.5 text-right"><button onClick={() => setSelectedContractForm({ ...defaultContractForm, ...c, startDate: c.startDateInput || '', endDate: c.endDateInput || '' })} className="text-slate-400 hover:text-[#6C2BD9] p-1"><Eye className="w-3.5 h-3.5" /></button></td>
                             </tr>
                           ))}
                         </tbody>
@@ -2178,7 +2287,7 @@ export function ServiceProviderAction() {
                           </label>
                           <input
                             type="text"
-                            value={selectedContractForm.contractNo}
+                            value={selectedContractForm.contractNo || ''}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, contractNo: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono font-bold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
@@ -2190,7 +2299,7 @@ export function ServiceProviderAction() {
                           </label>
                           <input
                             type="text"
-                            value={selectedContractForm.contractName}
+                            value={selectedContractForm.contractName || ''}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, contractName: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
@@ -2203,7 +2312,7 @@ export function ServiceProviderAction() {
                             Contract Type <span className="text-red-500">*</span>
                           </label>
                           <select
-                            value={selectedContractForm.contractType}
+                            value={selectedContractForm.contractType || 'AMC'}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, contractType: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                           >
@@ -2219,7 +2328,7 @@ export function ServiceProviderAction() {
                             Status <span className="text-red-500">*</span>
                           </label>
                           <select
-                            value={selectedContractForm.status}
+                            value={selectedContractForm.status || 'Active'}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, status: e.target.value })}
                             className="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500"
                           >
@@ -2238,7 +2347,7 @@ export function ServiceProviderAction() {
                           <div className="relative">
                             <input
                               type="date"
-                              value={selectedContractForm.startDate}
+                              value={selectedContractForm.startDate || ''}
                               onChange={(e) => setSelectedContractForm({ ...selectedContractForm, startDate: e.target.value })}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                             />
@@ -2252,7 +2361,7 @@ export function ServiceProviderAction() {
                           <div className="relative">
                             <input
                               type="date"
-                              value={selectedContractForm.endDate}
+                              value={selectedContractForm.endDate || ''}
                               onChange={(e) => setSelectedContractForm({ ...selectedContractForm, endDate: e.target.value })}
                               className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                             />
@@ -2267,7 +2376,7 @@ export function ServiceProviderAction() {
                           </label>
                           <input
                             type="text"
-                            value={selectedContractForm.contractValue}
+                            value={selectedContractForm.contractValue || ''}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, contractValue: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
@@ -2296,7 +2405,7 @@ export function ServiceProviderAction() {
                           </label>
                           <input
                             type="text"
-                            value={selectedContractForm.referenceNo}
+                            value={selectedContractForm.referenceNo || ''}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, referenceNo: e.target.value })}
                             placeholder="PO-458712"
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
@@ -2309,7 +2418,7 @@ export function ServiceProviderAction() {
                           </label>
                           <input
                             type="number"
-                            value={selectedContractForm.paymentTerms}
+                            value={selectedContractForm.paymentTerms || ''}
                             onChange={(e) => setSelectedContractForm({ ...selectedContractForm, paymentTerms: e.target.value })}
                             placeholder="30"
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
@@ -2328,7 +2437,7 @@ export function ServiceProviderAction() {
                         </div>
                         <textarea
                           rows={3}
-                          value={selectedContractForm.description}
+                          value={selectedContractForm.description || ''}
                           onChange={(e) => setSelectedContractForm({ ...selectedContractForm, description: e.target.value })}
                           placeholder="Contract coverage description..."
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
@@ -2364,7 +2473,7 @@ export function ServiceProviderAction() {
                   <div className="flex justify-end items-center gap-2 pt-3 border-t border-slate-100">
                     <button
                       type="button"
-                      onClick={() => setSelectedContractForm({})}
+                      onClick={() => setSelectedContractForm(defaultContractForm)}
                       className="px-3.5 py-1.5 border border-slate-300 text-slate-700 rounded-lg text-xs font-semibold hover:bg-slate-50"
                     >
                       Cancel
@@ -2499,7 +2608,7 @@ export function ServiceProviderAction() {
 
                               <td className="p-2.5 text-right space-x-1">
                                 <button
-                                  onClick={() => setSelectedDocForm({ ...doc, validTill: doc.validTillInput })}
+                                  onClick={() => setSelectedDocForm({ ...defaultDocForm, ...doc, validTill: doc.validTillInput || '' })}
                                   className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="View Document Details"
                                 >
@@ -2583,7 +2692,7 @@ export function ServiceProviderAction() {
                         </label>
                         <input
                           type="text"
-                          value={selectedDocForm.name}
+                          value={selectedDocForm.name || ''}
                           onChange={(e) => setSelectedDocForm({ ...selectedDocForm, name: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                         />
@@ -2595,7 +2704,7 @@ export function ServiceProviderAction() {
                             Document Type <span className="text-red-500">*</span>
                           </label>
                           <select
-                            value={selectedDocForm.type}
+                            value={selectedDocForm.type || 'Trade License'}
                             onChange={(e) => setSelectedDocForm({ ...selectedDocForm, type: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-semibold focus:outline-none focus:border-[#6C2BD9]"
                           >
@@ -2616,7 +2725,7 @@ export function ServiceProviderAction() {
                           </label>
                           <input
                             type="text"
-                            value={selectedDocForm.refNo}
+                            value={selectedDocForm.refNo || ''}
                             onChange={(e) => setSelectedDocForm({ ...selectedDocForm, refNo: e.target.value })}
                             placeholder="TL-2024-001"
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
@@ -2631,7 +2740,7 @@ export function ServiceProviderAction() {
                           </label>
                           <input
                             type="date"
-                            value={selectedDocForm.issueDate}
+                            value={selectedDocForm.issueDate || ''}
                             onChange={(e) => setSelectedDocForm({ ...selectedDocForm, issueDate: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
@@ -2643,7 +2752,7 @@ export function ServiceProviderAction() {
                           </label>
                           <input
                             type="date"
-                            value={selectedDocForm.validTill}
+                            value={selectedDocForm.validTill || ''}
                             onChange={(e) => setSelectedDocForm({ ...selectedDocForm, validTill: e.target.value })}
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                           />
@@ -2655,7 +2764,7 @@ export function ServiceProviderAction() {
                           Status <span className="text-red-500">*</span>
                         </label>
                         <select
-                          value={selectedDocForm.status}
+                          value={selectedDocForm.status || 'Valid'}
                           onChange={(e) => setSelectedDocForm({ ...selectedDocForm, status: e.target.value })}
                           className="w-full bg-emerald-50 border border-emerald-200 text-emerald-800 font-bold rounded-lg px-2.5 py-1.5 text-xs focus:outline-none focus:border-emerald-500"
                         >
@@ -2677,7 +2786,7 @@ export function ServiceProviderAction() {
                         </div>
                         <textarea
                           rows={3}
-                          value={selectedDocForm.description}
+                          value={selectedDocForm.description || ''}
                           onChange={(e) => setSelectedDocForm({ ...selectedDocForm, description: e.target.value })}
                           placeholder="Document description..."
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
@@ -3161,7 +3270,7 @@ export function ServiceProviderAction() {
                     </div>
 
                     <button
-                      onClick={() => setSelectedNoteForm({ type: 'General', subject: '', description: '', relatedTo: 'General', reference: '' })}
+                      onClick={() => setSelectedNoteForm(defaultNoteForm)}
                       className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs shrink-0 self-start sm:self-auto"
                     >
                       <Plus className="w-3.5 h-3.5 text-white" /> Add Note
@@ -3255,7 +3364,7 @@ export function ServiceProviderAction() {
                           .map((n, idx) => (
                             <tr 
                               key={n.id} 
-                              onClick={() => setSelectedNoteForm(n)}
+                              onClick={() => setSelectedNoteForm({ ...defaultNoteForm, ...n })}
                               className={`cursor-pointer transition-colors ${
                                 selectedNoteForm.id === n.id ? 'bg-purple-50/80 font-bold' : 'hover:bg-slate-50/70'
                               }`}
@@ -3285,7 +3394,7 @@ export function ServiceProviderAction() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedNoteForm(n);
+                                    setSelectedNoteForm({ ...defaultNoteForm, ...n });
                                   }}
                                   className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="View Note Details"
@@ -3295,7 +3404,7 @@ export function ServiceProviderAction() {
                                 <button
                                   onClick={(e) => {
                                     e.stopPropagation();
-                                    setSelectedNoteForm(n);
+                                    setSelectedNoteForm({ ...defaultNoteForm, ...n });
                                   }}
                                   className="text-[#6C2BD9] hover:text-purple-900 p-1"
                                   title="Edit Note"
@@ -3358,7 +3467,7 @@ export function ServiceProviderAction() {
                       </label>
                       <input
                         type="text"
-                        value={selectedNoteForm.subject}
+                        value={selectedNoteForm.subject || ''}
                         onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, subject: e.target.value })}
                         placeholder="Note subject..."
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-1.5 text-xs font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
@@ -3377,7 +3486,7 @@ export function ServiceProviderAction() {
                       </div>
                       <textarea
                         rows={5}
-                        value={selectedNoteForm.description}
+                        value={selectedNoteForm.description || ''}
                         onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, description: e.target.value })}
                         placeholder="Enter note description..."
                         className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-xs text-slate-900 focus:outline-none focus:border-[#6C2BD9] leading-relaxed"
@@ -3391,7 +3500,7 @@ export function ServiceProviderAction() {
                           Related To (Optional)
                         </label>
                         <select
-                          value={selectedNoteForm.relatedTo}
+                          value={selectedNoteForm.relatedTo || 'General'}
                           onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, relatedTo: e.target.value })}
                           className="w-full bg-slate-50 border border-slate-200 rounded-lg px-2.5 py-1.5 text-xs text-slate-900 font-medium focus:outline-none focus:border-[#6C2BD9]"
                         >
@@ -3409,7 +3518,7 @@ export function ServiceProviderAction() {
                         <div className="relative">
                           <input
                             type="text"
-                            value={selectedNoteForm.reference}
+                            value={selectedNoteForm.reference || ''}
                             onChange={(e) => setSelectedNoteForm({ ...selectedNoteForm, reference: e.target.value })}
                             placeholder="AMC-2025-001"
                             className="w-full bg-slate-50 border border-slate-200 rounded-lg pl-2.5 pr-7 py-1.5 text-xs font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"

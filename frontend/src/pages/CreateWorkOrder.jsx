@@ -51,6 +51,7 @@ export function CreateWorkOrder() {
   const [employees, setEmployees] = useState([]);
   const [categories, setCategories] = useState([]);
   const [vendors, setVendors] = useState([]);
+  const [technicians, setTechnicians] = useState([]);
   const [loading, setLoading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
@@ -147,15 +148,28 @@ export function CreateWorkOrder() {
     const loadMasterData = async () => {
       setLoading(true);
       try {
-        const [assRes, empRes, catRes] = await Promise.all([
+        const [assRes, empRes, catRes, techRes, provRes] = await Promise.all([
           api.get('/assets?limit=300').catch(() => null),
           api.get('/master-data/employees').catch(() => null),
-          api.get('/master-data/categories').catch(() => null)
+          api.get('/master-data/categories').catch(() => null),
+          api.get('/maintenance/technicians').catch(() => null),
+          api.get('/maintenance/service-providers').catch(() => null)
         ]);
 
-        if (assRes?.success) setAssets(assRes.assets || []);
+        if (assRes?.success && assRes.assets?.length > 0) {
+          setAssets(assRes.assets);
+          handleSelectAsset(assRes.assets[0]);
+        }
         if (empRes?.success) setEmployees(empRes.employees || []);
         if (catRes?.success) setCategories(catRes.categories || []);
+        if (techRes?.success && techRes.technicians?.length > 0) {
+          setTechnicians(techRes.technicians);
+          setFormData(prev => ({ ...prev, assignTo: techRes.technicians[0].fullName || techRes.technicians[0].name }));
+        }
+        if (provRes?.success && provRes.providers?.length > 0) {
+          setVendors(provRes.providers);
+          setFormData(prev => ({ ...prev, vendor: provRes.providers[0].providerName }));
+        }
       } catch (err) {
         console.warn('Master data load note:', err.message);
       } finally {
@@ -573,10 +587,20 @@ export function CreateWorkOrder() {
                   onChange={(e) => setFormData({ ...formData, assignTo: e.target.value })}
                   className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-900"
                 >
-                  <option value="Ahmed Ali">Ahmed Ali</option>
-                  <option value="Suresh Nair">Suresh Nair</option>
-                  <option value="Ramesh Kumar">Ramesh Kumar</option>
-                  <option value="Sameer Khan">Sameer Khan</option>
+                  {technicians.length > 0 ? (
+                    technicians.map((t) => (
+                      <option key={t.id} value={t.fullName || t.name}>
+                        {t.fullName || t.name} ({t.role || 'Technician'})
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Ahmed Ali">Ahmed Ali</option>
+                      <option value="Suresh Nair">Suresh Nair</option>
+                      <option value="Ramesh Kumar">Ramesh Kumar</option>
+                      <option value="Sameer Khan">Sameer Khan</option>
+                    </>
+                  )}
                 </select>
               </div>
 
@@ -600,9 +624,19 @@ export function CreateWorkOrder() {
                   onChange={(e) => setFormData({ ...formData, vendor: e.target.value })}
                   className="w-full bg-white border border-slate-300 rounded-lg p-2 text-xs font-medium text-slate-900"
                 >
-                  <option value="Al Futtaim Engineering">Al Futtaim Engineering</option>
-                  <option value="Daikin Middle East">Daikin Middle East</option>
-                  <option value="None">None (Internal Only)</option>
+                  {vendors.length > 0 ? (
+                    vendors.map((v) => (
+                      <option key={v.id} value={v.providerName || v.name}>
+                        {v.providerName || v.name}
+                      </option>
+                    ))
+                  ) : (
+                    <>
+                      <option value="Al Futtaim Engineering">Al Futtaim Engineering</option>
+                      <option value="Daikin Middle East">Daikin Middle East</option>
+                      <option value="None">None (Internal Only)</option>
+                    </>
+                  )}
                 </select>
               </div>
             </div>
