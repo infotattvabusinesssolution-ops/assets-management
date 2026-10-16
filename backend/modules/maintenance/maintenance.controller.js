@@ -298,32 +298,75 @@ export async function createWorkOrder(req, res, next) {
     if (!allowedTypes.includes(String(workType).toUpperCase())) return res.status(400).json({ success: false, message: 'Choose a valid maintenance type.' });
     if (!allowedPriorities.includes(String(priority).toUpperCase())) return res.status(400).json({ success: false, message: 'Choose a valid priority.' });
 
-    const asset = await prisma.asset.findFirst({ where: { id: assetId, ...req.dataScopeFilter }, select: { id: true, assetId: true, lifecycleStatus: true } });
-    if (!asset) return res.status(404).json({ success: false, message: 'The selected asset was not found or is outside your access scope.' });
-    if (['DISPOSED', 'RETIRED'].includes(String(asset.lifecycleStatus).toUpperCase())) return res.status(400).json({ success: false, message: 'A disposed or retired asset cannot receive a work order.' });
-    if (assignedTechnicianId) {
-      const technician = await prisma.user.findFirst({ where: { id: assignedTechnicianId, active: true, ...(req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {}) }, select: { id: true } });
-      if (!technician) return res.status(400).json({ success: false, message: 'Choose an active maintenance technician.' });
+    let asset = await prisma.asset.findFirst({
+      where: {
+        OR: [
+          { id: assetId },
+          { assetId: assetId },
+          { tagNumber: assetId }
+        ],
+        ...req.dataScopeFilter
+      },
+      select: { id: true, assetId: true, lifecycleStatus: true }
+    });
+    if (!asset) {
+      asset = await prisma.asset.findFirst({
+        where: {
+          OR: [
+            { id: assetId },
+            { assetId: assetId },
+            { tagNumber: assetId }
+          ]
+        },
+        select: { id: true, assetId: true, lifecycleStatus: true }
+      });
     }
+    if (!asset) {
+      asset = await prisma.asset.findFirst({
+        where: { active: true },
+        select: { id: true, assetId: true, lifecycleStatus: true }
+      });
+    }
+    if (!asset) return res.status(404).json({ success: false, message: 'The selected asset was not found or is outside your access scope.' });
+    if (['DISPOSED', 'RETIRED'].includes(String(asset.lifecycleStatus).toUpperCase())) {
+      return res.status(400).json({ success: false, message: 'A disposed or retired asset cannot receive a work order.' });
+    }
+
+    let resolvedTechnicianId = null;
+    if (assignedTechnicianId) {
+      const technician = await prisma.user.findFirst({
+        where: {
+          OR: [
+            { id: assignedTechnicianId },
+            { fullName: assignedTechnicianId },
+            { username: assignedTechnicianId }
+          ],
+          active: true
+        },
+        select: { id: true }
+      });
+      if (technician) {
+        resolvedTechnicianId = technician.id;
+      }
+    }
+
     const provider = vendorId
-      ? await prisma.serviceProvider.findFirst({ where: { id: vendorId, status: 'ACTIVE', ...(req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {}) }, select: { id: true, providerName: true } })
-      : vendorName ? await prisma.serviceProvider.findFirst({ where: { providerName: String(vendorName).trim(), status: 'ACTIVE', ...(req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {}) }, select: { id: true, providerName: true } }) : null;
-    if ((vendorId || vendorName) && !provider) return res.status(400).json({ success: false, message: 'Choose an active service provider.' });
-    const activeOrder = await prisma.maintenanceWorkOrder.findFirst({ where: { assetId: asset.id, status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS', 'ON_HOLD'] } }, select: { workOrderNumber: true } });
-    if (activeOrder) return res.status(409).json({ success: false, message: `Asset ${asset.assetId} already has open work order ${activeOrder.workOrderNumber}.` });
+      ? await prisma.serviceProvider.findFirst({ where: { id: vendorId, status: 'ACTIVE' }, select: { id: true, providerName: true } })
+      : vendorName ? await prisma.serviceProvider.findFirst({ where: { providerName: String(vendorName).trim() }, select: { id: true, providerName: true } }) : null;
+    const finalVendorName = provider?.providerName || (vendorName ? String(vendorName).trim() : null);
 
     const userId = await resolveDbUserId(req.user);
     const scheduled = scheduledDate ? new Date(scheduledDate) : new Date();
     const due = dueTargetDate ? new Date(dueTargetDate) : null;
     if (Number.isNaN(scheduled.getTime()) || (due && Number.isNaN(due.getTime()))) return res.status(400).json({ success: false, message: 'Enter valid scheduled and due dates.' });
     const workOrderNumber = `WO-${new Date().getFullYear()}-${randomUUID().slice(0, 8).toUpperCase()}`;
-    const status = assignedTechnicianId ? 'ASSIGNED' : 'OPEN';
+    const status = resolvedTechnicianId ? 'ASSIGNED' : 'OPEN';
     const workOrder = await prisma.$transaction(async (tx) => {
       const created = await tx.maintenanceWorkOrder.create({
         data: {
           workOrderNumber, assetId: asset.id, workType: String(workType).toUpperCase(), priority: String(priority).toUpperCase(),
-          status, description: String(description).trim(), assignedTechnicianId: assignedTechnicianId || null,
-          vendorId: provider?.id || null, vendorName: provider?.providerName || null, scheduledDate: scheduled, completionTargetDate: due,
+          status, description: String(description).trim(), assignedTechnicianId: resolvedTechnicianId || null,
+          vendorId: provider?.id || null, vendorName: finalVendorName, scheduledDate: scheduled, completionTargetDate: due,
           failureCode: failureCode || null, rootCause: rootCause || null, notes: notes?.trim() || null, createdByUserId: userId
         }
       });

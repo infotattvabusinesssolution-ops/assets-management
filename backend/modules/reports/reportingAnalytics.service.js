@@ -277,7 +277,7 @@ export async function getDashboardAnalytics({
   let statusChart = [...ASSET_STATUS_DATA];
 
   // If live SQL Server is connected, supplement with live database aggregates
-  if (isSqlServerConnected && isSqlServerConnected()) {
+  if (isSqlServerConnected) {
     try {
       const dbTotal = await prisma.asset.count({ where: { active: true } });
       if (dbTotal > 0) {
