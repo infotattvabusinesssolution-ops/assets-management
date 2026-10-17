@@ -192,6 +192,16 @@ export async function updateAssetGroup(req, res, next) {
     }
 
     const cleanCode = code ? code.trim().toUpperCase() : existing[0].code;
+
+    if (code) {
+      const duplicate = await prisma.$queryRawUnsafe(
+        `SELECT id FROM asset_groups WHERE code = '${cleanCode.replace(/'/g, "''")}' AND id != '${id.replace(/'/g, "''")}'`
+      );
+      if (duplicate && duplicate.length > 0) {
+        return res.status(400).json({ success: false, message: `Asset Group code "${cleanCode}" already exists.` });
+      }
+    }
+
     const isAct = status ? (status === 'Inactive' ? 0 : 1) : 1;
     const cleanType = assetType || 'Both';
     const cleanDesc = description ? `'${description.replace(/'/g, "''")}'` : 'NULL';
