@@ -262,6 +262,7 @@ export function AssetGroupsTab({
 
   const [showAddGrpModal, setShowAddGrpModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
+  const [modalError, setModalError] = useState('');
   const [grpFormState, setGrpFormState] = useState({
     code: '',
     name: '',
@@ -401,6 +402,7 @@ export function AssetGroupsTab({
   }, [selectedRelatedType, relatedClassesList, relatedCategoriesList, relatedSubCategoriesList, relatedSearchQuery]);
 
   const handleOpenAddGrpModal = (grpToEdit = null) => {
+    setModalError('');
     if (grpToEdit) {
       setEditingGroup(grpToEdit);
       setGrpFormState({
@@ -425,35 +427,62 @@ export function AssetGroupsTab({
 
   const handleSaveGroup = async (e) => {
     e.preventDefault();
+    setModalError('');
     console.log('📝 [AssetGroupsTab] Submitting Asset Group form:', grpFormState);
 
-    if (!grpFormState.code?.trim() || !grpFormState.name?.trim()) {
+    const cleanCode = grpFormState.code?.trim().toUpperCase();
+    const cleanName = grpFormState.name?.trim();
+
+    if (!cleanCode || !cleanName) {
       console.warn('⚠️ [AssetGroupsTab] Validation failed: Code and Name are required.', grpFormState);
-      triggerToast && triggerToast('Group Code and Name are required.');
+      const msg = 'Group Code and Name are required.';
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
       return;
     }
+
+    // Client-side pre-validation: check for duplicate group code
+    const duplicate = assetGroups.find(
+      (g) => g.code?.toUpperCase() === cleanCode && (!editingGroup || g.id !== editingGroup.id)
+    );
+    if (duplicate) {
+      const msg = `Asset Group code "${cleanCode}" already exists (used by "${duplicate.name}"). Please use a different code.`;
+      console.warn('⚠️ [AssetGroupsTab] Duplicate Code detected:', msg);
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
     setIsSaving(true);
 
     try {
       if (editingGroup) {
         console.log(`📡 [AssetGroupsTab] Updating Asset Group ID ${editingGroup.id}:`, grpFormState);
-        const res = await api.put(`/master-data/asset-groups/${editingGroup.id}`, grpFormState);
+        const res = await api.put(`/master-data/asset-groups/${editingGroup.id}`, {
+          ...grpFormState,
+          code: cleanCode,
+          name: cleanName
+        });
         console.log('✅ [AssetGroupsTab] Update Success:', res);
-        const saved = res?.assetGroup || { ...editingGroup, ...grpFormState };
+        const saved = res?.assetGroup || { ...editingGroup, ...grpFormState, code: cleanCode, name: cleanName };
         const updated = assetGroups.map((g) => (g.id === editingGroup.id ? { ...g, ...saved } : g));
         setAssetGroups(updated);
         if (selectedGroup?.id === editingGroup.id) {
           setSelectedGroup(updated.find((g) => g.id === editingGroup.id) || saved);
         }
-        triggerToast && triggerToast(`Asset Group "${grpFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Asset Group "${cleanName}" updated successfully.`);
       } else {
         console.log('📡 [AssetGroupsTab] Creating new Asset Group via POST /master-data/asset-groups:', grpFormState);
-        const res = await api.post('/master-data/asset-groups', grpFormState);
+        const res = await api.post('/master-data/asset-groups', {
+          ...grpFormState,
+          code: cleanCode,
+          name: cleanName
+        });
         console.log('🎉 [AssetGroupsTab] Create Success Response:', res);
         const newGroup = res?.assetGroup || {
           id: Date.now(),
-          code: grpFormState.code.toUpperCase(),
-          name: grpFormState.name,
+          code: cleanCode,
+          name: cleanName,
           description: grpFormState.description,
           assetType: grpFormState.assetType,
           assetTypeLabel:
@@ -473,12 +502,14 @@ export function AssetGroupsTab({
         const updated = [newGroup, ...assetGroups];
         setAssetGroups(updated);
         setSelectedGroup(newGroup);
-        triggerToast && triggerToast(`Asset Group "${grpFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Asset Group "${cleanName}" created successfully.`);
       }
       setShowAddGrpModal(false);
     } catch (err) {
       console.error('❌ [AssetGroupsTab] Save Asset Group Failed:', err);
-      triggerToast && triggerToast(err.response?.data?.message || 'Failed to save asset group.');
+      const errMsg = err?.message || err?.response?.data?.message || 'Failed to save asset group.';
+      setModalError(errMsg);
+      triggerToast && triggerToast(errMsg);
     } finally {
       setIsSaving(false);
     }
@@ -934,15 +965,25 @@ export function AssetGroupsTab({
             </div>
 
             <form onSubmit={handleSaveGroup} className="space-y-3.5 text-xs">
+              {modalError && (
+                <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-start gap-2.5">
+                  <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0 mt-0.5" />
+                  <span className="leading-snug font-medium">{modalError}</span>
+                </div>
+              )}
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Group Code *</label>
                 <input
                   type="text"
                   required
                   value={grpFormState.code}
-                  onChange={(e) => setGrpFormState({ ...grpFormState, code: e.target.value })}
+                  onChange={(e) => {
+                    setModalError('');
+                    setGrpFormState({ ...grpFormState, code: e.target.value });
+                  }}
                   placeholder="e.g. IT, BLD, PLANT"
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
                 />
               </div>
 
@@ -952,7 +993,10 @@ export function AssetGroupsTab({
                   type="text"
                   required
                   value={grpFormState.name}
-                  onChange={(e) => setGrpFormState({ ...grpFormState, name: e.target.value })}
+                  onChange={(e) => {
+                    setModalError('');
+                    setGrpFormState({ ...grpFormState, name: e.target.value });
+                  }}
                   placeholder="e.g. Information Technology"
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
                 />

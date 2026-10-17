@@ -23,7 +23,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-const DEFAULT_MANUFACTURERS = [
+export const DEFAULT_MANUFACTURERS = [
   { id: '1', code: 'MFG-DELL', name: 'Dell Technologies', website: 'https://www.dell.com', supportContact: 'prosupport@dell.com', country: 'United States', status: 'Active', totalAssets: 480 },
   { id: '2', code: 'MFG-AAPL', name: 'Apple Inc.', website: 'https://www.apple.com', supportContact: 'enterprise@apple.com', country: 'United States', status: 'Active', totalAssets: 320 },
   { id: '3', code: 'MFG-CSCO', name: 'Cisco Systems', website: 'https://www.cisco.com', supportContact: 'tac@cisco.com', country: 'United States', status: 'Active', totalAssets: 145 },
@@ -34,7 +34,7 @@ const DEFAULT_MANUFACTURERS = [
   { id: '8', code: 'MFG-CAT', name: 'Caterpillar Inc.', website: 'https://www.cat.com', supportContact: 'machinery@cat.com', country: 'United States', status: 'Active', totalAssets: 42 }
 ];
 
-const DEFAULT_UOM = [
+export const DEFAULT_UOM = [
   { id: '1', code: 'EA', name: 'Each / Pieces', symbol: 'ea', category: 'Discrete Count', description: 'Individual units, parts, or pieces', status: 'Active' },
   { id: '2', code: 'SET', name: 'Set / Kit', symbol: 'set', category: 'Bundle', description: 'Coordinated set of multiple matched components', status: 'Active' },
   { id: '3', code: 'BOX', name: 'Box', symbol: 'box', category: 'Packaging', description: 'Standard packaged box containing components', status: 'Active' },
@@ -45,7 +45,7 @@ const DEFAULT_UOM = [
   { id: '8', code: 'ROLL', name: 'Roll', symbol: 'rl', category: 'Dimension', description: 'Continuous roll of cable, wiring, or RFID labels', status: 'Active' }
 ];
 
-const DEFAULT_STATUS_CODES = [
+export const DEFAULT_STATUS_CODES = [
   { id: '1', code: 'ACTIVE', name: 'In Service / Operational', stage: 'Operational', color: 'emerald', description: 'Asset is actively deployed, operating, and assigned.', status: 'Active' },
   { id: '2', code: 'IN_STORE', name: 'In Stock / Warehouse', stage: 'Inventory', color: 'blue', description: 'Asset is in warehouse, tested and ready for assignment.', status: 'Active' },
   { id: '3', code: 'UNDER_MAINTENANCE', name: 'Under Repair', stage: 'Maintenance', color: 'purple', description: 'Asset undergoing scheduled service or maintenance repair.', status: 'Active' },

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
-import { useSearchParams } from 'react-router-dom';
+import { useSearchParams, useNavigate } from 'react-router-dom';
 import {
   Box,
   Layers,
@@ -53,27 +53,74 @@ import { LocationsTab, INITIAL_LOCATIONS } from '../../components/master-data/Lo
 import { DepartmentsTab, INITIAL_DEPARTMENTS } from '../../components/master-data/DepartmentsTab';
 import { CostCentersTab, INITIAL_COST_CENTERS } from '../../components/master-data/CostCentersTab';
 import { SuppliersTab, INITIAL_SUPPLIERS } from '../../components/master-data/SuppliersTab';
-import { GenericMasterTab } from '../../components/master-data/GenericMasterTab';
+import {
+  GenericMasterTab,
+  DEFAULT_MANUFACTURERS,
+  DEFAULT_UOM,
+  DEFAULT_STATUS_CODES
+} from '../../components/master-data/GenericMasterTab';
 import { DepreciationPoliciesTab } from '../../components/master-data/DepreciationPoliciesTab';
 import { api } from '../../services/api';
 
-export function MasterDataSetup() {
-  const [searchParams, setSearchParams] = useSearchParams();
-  const initialTabFromUrl = searchParams.get('tab') || 'asset-groups';
-  const [activeTab, setActiveTab] = useState(initialTabFromUrl);
+const getSingularName = (name = '') => {
+  if (name.endsWith('Classes')) return name.slice(0, -2);
+  if (name.endsWith('Categories')) return name.slice(0, -3) + 'y';
+  if (name === 'Status Codes') return 'Status Code';
+  if (name === 'UOM' || name === 'UOM (Units)') return 'UOM';
+  if (name.endsWith('s')) return name.slice(0, -1);
+  return name;
+};
 
-  useEffect(() => {
-    const currentTab = searchParams.get('tab') || 'asset-groups';
-    if (currentTab !== activeTab) {
-      setActiveTab(currentTab);
-    }
-  }, [searchParams, activeTab]);
+export function MasterDataSetup() {
+  const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  const activeTab = searchParams.get('tab') || 'asset-groups';
 
   const handleTabChange = (tabId) => {
-    setActiveTab(tabId);
-    setSearchParams({ tab: tabId });
+    const moreItem = MORE_TABS.find((t) => t.id === tabId);
+    if (moreItem && moreItem.action === 'audit') {
+      setShowAuditHistoryModal(true);
+      setShowMoreMenu(false);
+      return;
+    }
+    if (moreItem && moreItem.action === 'guidelines') {
+      setShowImportGuidelinesModal(true);
+      setShowMoreMenu(false);
+      return;
+    }
     setShowMoreMenu(false);
+    navigate(`/admin/master-data?tab=${tabId}`, { replace: true });
   };
+
+  const tabsContainerRef = useRef(null);
+  const moreMenuRef = useRef(null);
+  const importDropdownRef = useRef(null);
+  const exportDropdownRef = useRef(null);
+  const addDropdownRef = useRef(null);
+
+  // Auto-scroll active tab into view only if it is outside visible bounds
+  // (Prevents jarring page jumping and forced center-snapping when clicking tabs directly)
+  useEffect(() => {
+    if (tabsContainerRef.current) {
+      const container = tabsContainerRef.current;
+      const activeEl = container.querySelector('[data-active="true"]');
+      if (activeEl) {
+        const containerRect = container.getBoundingClientRect();
+        const activeRect = activeEl.getBoundingClientRect();
+
+        const isLeftHidden = activeRect.left < containerRect.left;
+        const isRightHidden = activeRect.right > containerRect.right;
+
+        if (isLeftHidden || isRightHidden) {
+          const scrollTarget = activeEl.offsetLeft - (container.clientWidth / 2) + (activeEl.clientWidth / 2);
+          container.scrollTo({
+            left: Math.max(0, scrollTarget),
+            behavior: 'smooth'
+          });
+        }
+      }
+    }
+  }, [activeTab]);
 
   const [activeRowMenuId, setActiveRowMenuId] = useState(null);
   const [showImportDropdown, setShowImportDropdown] = useState(false);
@@ -239,6 +286,18 @@ export function MasterDataSetup() {
   // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
+        setShowMoreMenu(false);
+      }
+      if (importDropdownRef.current && !importDropdownRef.current.contains(e.target)) {
+        setShowImportDropdown(false);
+      }
+      if (exportDropdownRef.current && !exportDropdownRef.current.contains(e.target)) {
+        setShowExportDropdown(false);
+      }
+      if (addDropdownRef.current && !addDropdownRef.current.contains(e.target)) {
+        setShowAddDropdown(false);
+      }
       if (activeRowMenuId && !e.target.closest('.relative')) {
         setActiveRowMenuId(null);
       }
@@ -258,6 +317,9 @@ export function MasterDataSetup() {
     const isDepts = activeTab === 'departments';
     const isCostCenters = activeTab === 'cost-centers';
     const isSuppliers = activeTab === 'suppliers';
+    const isMfg = activeTab === 'manufacturers';
+    const isUom = activeTab === 'uom';
+    const isStatusCodes = activeTab === 'status-codes';
     let headers, rows, filename;
 
     if (isGroups) {
@@ -288,6 +350,18 @@ export function MasterDataSetup() {
       headers = ['Category Code', 'Category Name', 'Asset Class', 'Asset Group', 'Description', 'Total Assets', 'Status'];
       rows = INITIAL_CATEGORIES.map((c) => [c.code, c.name, `"${c.className}"`, `"${c.groupName}"`, `"${c.description}"`, c.totalAssets, c.status]);
       filename = 'Asset_Categories';
+    } else if (isMfg) {
+      headers = ['Manufacturer Code', 'Manufacturer Name', 'Website', 'Support Contact', 'Country', 'Status'];
+      rows = DEFAULT_MANUFACTURERS.map((m) => [m.code, `"${m.name}"`, m.website, m.supportContact, m.country, m.status]);
+      filename = 'Asset_Manufacturers';
+    } else if (isUom) {
+      headers = ['UOM Code', 'UOM Name', 'Symbol', 'Category', 'Description', 'Status'];
+      rows = DEFAULT_UOM.map((u) => [u.code, `"${u.name}"`, u.symbol, u.category, `"${u.description}"`, u.status]);
+      filename = 'Asset_UOM';
+    } else if (isStatusCodes) {
+      headers = ['Status Code', 'Status Name', 'Lifecycle Stage', 'Description', 'Status'];
+      rows = DEFAULT_STATUS_CODES.map((s) => [s.code, `"${s.name}"`, s.stage, `"${s.description}"`, s.status]);
+      filename = 'Asset_StatusCodes';
     } else {
       headers = ['Class Code', 'Class Name', 'Asset Group', 'Description', 'Asset Type', 'Total Assets', 'Status'];
       rows = INITIAL_CLASSES.map((c) => [c.code, c.name, `"${c.groupName}"`, `"${c.description}"`, c.assetType, c.totalAssets, c.status]);
@@ -305,23 +379,25 @@ export function MasterDataSetup() {
     triggerToast(`Exported to CSV successfully!`);
   };
 
+  // Exact 11 items matching the Master Data section in the left sidebar
   const TABS = [
-    { id: 'asset-groups', name: 'Asset Groups', icon: Box },
-    { id: 'classes', name: 'Classes', icon: Layers },
-    { id: 'categories', name: 'Categories', icon: Tag },
-    { id: 'depreciation', name: 'Depreciation', icon: BarChart3 },
-    { id: 'subcategories', name: 'Sub Categories', icon: FolderTree },
-    { id: 'locations', name: 'Locations', icon: MapPin },
-    { id: 'departments', name: 'Departments', icon: Users },
-    { id: 'cost-centers', name: 'Cost Centers', icon: BarChart3 },
-    { id: 'suppliers', name: 'Suppliers', icon: Truck }
+    { id: 'asset-groups', name: 'Asset Groups', icon: Box, desc: 'Define and manage asset groups to classify your assets across the Asset360 enterprise platform.' },
+    { id: 'classes', name: 'Asset Classes', icon: Layers, desc: 'Define and manage asset classes within each asset group for classification and lifecycle control.' },
+    { id: 'categories', name: 'Categories', icon: Tag, desc: 'Define and manage asset categories within each class.' },
+    { id: 'subcategories', name: 'Sub Categories', icon: FolderTree, desc: 'Define and manage granular asset sub categories within each category.' },
+    { id: 'locations', name: 'Locations', icon: MapPin, desc: 'Define and manage physical sites, campuses, buildings, and rooms where assets are deployed.' },
+    { id: 'departments', name: 'Departments', icon: Users, desc: 'Define and manage organizational departments for asset ownership and financial accountability.' },
+    { id: 'cost-centers', name: 'Cost Centers', icon: BarChart3, desc: 'Define and manage cost centers for budget allocation, depreciation charging, and financial reporting.' },
+    { id: 'suppliers', name: 'Suppliers', icon: Truck, desc: 'Manage approved vendors and suppliers for asset procurement, warranties, and maintenance services.' },
+    { id: 'manufacturers', name: 'Manufacturers', icon: Factory, desc: 'Manage approved equipment manufacturers, OEM specs, vendor portals, and technical support.' },
+    { id: 'uom', name: 'UOM', icon: Scale, desc: 'Define standard Units of Measure (UOM) for inventory parts, bulk materials, and asset counting.' },
+    { id: 'status-codes', name: 'Status Codes', icon: ShieldCheck, desc: 'Configure lifecycle status codes, operational states, and workflow status indicators.' }
   ];
 
   const MORE_TABS = [
-    { id: 'manufacturers', name: 'Manufacturers', icon: Factory },
-    { id: 'uom', name: 'UOM (Units)', icon: Scale },
-    { id: 'status-codes', name: 'Status Codes', icon: ShieldCheck },
-    { id: 'users-roles', name: 'Users & Roles', icon: UserCheck }
+    { id: 'depreciation', name: 'Depreciation Policies', icon: BarChart3, desc: 'Configure accounting depreciation methods, asset useful lives, and salvage value policies.' },
+    { id: 'audit-log', name: 'Audit History Log', icon: Clock, desc: 'Inspect system-wide change audit trails and master data modification logs.', action: 'audit' },
+    { id: 'import-guidelines', name: 'Import Guidelines', icon: BookOpen, desc: 'Read standard CSV data guidelines and column specifications for master data bulk imports.', action: 'guidelines' }
   ];
 
   const currentTabObject = TABS.find((t) => t.id === activeTab) || MORE_TABS.find((t) => t.id === activeTab);
@@ -357,33 +433,20 @@ export function MasterDataSetup() {
             {currentTabObject ? currentTabObject.name : 'Asset Groups'}
           </h1>
           <p className="text-xs text-slate-500 font-medium mt-0.5">
-            {activeTab === 'suppliers'
-              ? 'Manage supplier information for procurement, assets and maintenance'
-              : activeTab === 'cost-centers'
-                ? 'Define and manage cost centers for financial and organizational reporting'
-                : activeTab === 'departments'
-                  ? 'Define and manage departments for asset ownership and organizational structure'
-                  : activeTab === 'locations'
-                    ? 'Define and manage locations where assets are deployed'
-                    : activeTab === 'subcategories'
-                      ? 'Define and manage asset sub categories within each category'
-                      : activeTab === 'categories'
-                        ? 'Define and manage asset categories within each class'
-                        : activeTab === 'classes'
-                          ? 'Define and manage asset classes within each asset group'
-                          : 'Define and manage asset groups to classify your assets across the Asset360 enterprise platform.'}
+            {currentTabObject?.desc || 'Define and manage master data records to classify your assets across the Asset360 enterprise platform.'}
           </p>
         </div>
 
         {/* Action Buttons Top Right */}
         {activeTab !== 'depreciation' && <div className="flex items-center gap-2 relative">
           {/* Import Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={importDropdownRef}>
             <button
               onClick={() => {
                 setShowImportDropdown(!showImportDropdown);
                 setShowExportDropdown(false);
                 setShowAddDropdown(false);
+                setShowMoreMenu(false);
               }}
               className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             >
@@ -439,12 +502,13 @@ export function MasterDataSetup() {
           </div>
 
           {/* Export Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={exportDropdownRef}>
             <button
               onClick={() => {
                 setShowExportDropdown(!showExportDropdown);
                 setShowImportDropdown(false);
                 setShowAddDropdown(false);
+                setShowMoreMenu(false);
               }}
               className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             >
@@ -487,21 +551,22 @@ export function MasterDataSetup() {
           </div>
 
           {/* Add Dropdown */}
-          <div className="relative">
+          <div className="relative" ref={addDropdownRef}>
             <div className="inline-flex items-center rounded-xl shadow-xs overflow-hidden bg-[#6C2BD9]">
               <button
                 onClick={handleTriggerAddSingle}
                 className="px-3.5 py-2 hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all cursor-pointer"
-                title={`Add new ${currentTabObject ? currentTabObject.name.replace(/s$/, '') : 'Group'}`}
+                title={`Add new ${getSingularName(currentTabObject?.name || 'Group')}`}
               >
                 <Plus className="w-4 h-4 stroke-[2.5]" />
-                <span>Add {currentTabObject ? currentTabObject.name.replace(/s$/, '') : 'Group'}</span>
+                <span>Add {getSingularName(currentTabObject?.name || 'Group')}</span>
               </button>
               <button
                 onClick={() => {
                   setShowAddDropdown(!showAddDropdown);
                   setShowImportDropdown(false);
                   setShowExportDropdown(false);
+                  setShowMoreMenu(false);
                 }}
                 className="px-2 py-2.5 hover:bg-[#5B21B6] text-white text-xs transition-all border-l border-white/20 cursor-pointer"
                 title="Creation Options"
@@ -545,46 +610,62 @@ export function MasterDataSetup() {
         </div>}
       </div>
 
-      {/* Horizontal Master Data Navigation Tabs */}
-      <div className="flex items-center gap-2 overflow-x-auto pb-1 scrollbar-none border-b border-slate-200/80">
-        {TABS.map((t) => {
-          const IconComponent = t.icon;
-          const isActive = activeTab === t.id;
-          return (
-            <button
-              key={t.id}
-              onClick={() => handleTabChange(t.id)}
-              className={clsx(
-                'px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-all cursor-pointer border',
-                isActive
-                  ? 'bg-purple-50 text-[#6C2BD9] border-[#6C2BD9] font-bold shadow-2xs'
-                  : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-              )}
-            >
-              <IconComponent className={clsx('w-4 h-4', isActive ? 'text-[#6C2BD9]' : 'text-slate-400')} />
-              <span>{t.name}</span>
-            </button>
-          );
-        })}
+      {/* Horizontal Master Data Navigation Bar */}
+      <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 pb-1">
+        {/* Scrollable Tabs matching Left Sidebar */}
+        <div
+          ref={tabsContainerRef}
+          className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none flex-1 py-0.5"
+        >
+          {TABS.map((t) => {
+            const IconComponent = t.icon;
+            const isActive = activeTab === t.id;
+            return (
+              <button
+                key={t.id}
+                data-active={isActive ? 'true' : undefined}
+                onClick={() => handleTabChange(t.id)}
+                className={clsx(
+                  'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer border shrink-0',
+                  isActive
+                    ? 'bg-purple-50 text-[#6C2BD9] border-[#6C2BD9] font-bold shadow-2xs'
+                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                )}
+              >
+                <IconComponent className={clsx('w-3.5 h-3.5', isActive ? 'text-[#6C2BD9]' : 'text-slate-400')} />
+                <span>{t.name}</span>
+              </button>
+            );
+          })}
+        </div>
 
-        {/* More Dropdown */}
-        <div className="relative">
+        {/* More Dropdown (Placed OUTSIDE overflow container so dropdown is fully visible) */}
+        <div className="relative shrink-0 pb-0.5" ref={moreMenuRef}>
           <button
-            onClick={() => setShowMoreMenu(!showMoreMenu)}
+            onClick={() => {
+              setShowMoreMenu((prev) => !prev);
+              setShowImportDropdown(false);
+              setShowExportDropdown(false);
+              setShowAddDropdown(false);
+            }}
             className={clsx(
-              'px-4 py-2.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer border',
+              'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer border shadow-2xs',
               MORE_TABS.some((mt) => mt.id === activeTab)
                 ? 'bg-purple-50 text-[#6C2BD9] border-[#6C2BD9] font-bold'
-                : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
+                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
             )}
+            title="More Options"
           >
-            <MoreHorizontal className="w-4 h-4 text-slate-400" />
+            <MoreHorizontal className="w-4 h-4 text-slate-500" />
             <span>More</span>
-            <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
+            <ChevronDown className={clsx('w-3.5 h-3.5 text-slate-400 transition-transform duration-200', showMoreMenu && 'rotate-180')} />
           </button>
 
           {showMoreMenu && (
-            <div className="absolute right-0 mt-1.5 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1.5 z-40 space-y-1">
+            <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 z-[100] space-y-1 animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase text-slate-400 border-b border-slate-100 mb-1">
+                More Tools & Policies
+              </div>
               {MORE_TABS.map((mt) => {
                 const MtIcon = mt.icon;
                 const isMtActive = activeTab === mt.id;
@@ -593,12 +674,14 @@ export function MasterDataSetup() {
                     key={mt.id}
                     onClick={() => handleTabChange(mt.id)}
                     className={clsx(
-                      'w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2 transition-colors cursor-pointer',
+                      'w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors cursor-pointer',
                       isMtActive ? 'bg-purple-50 text-[#6C2BD9] font-bold' : 'text-slate-700 hover:bg-slate-50'
                     )}
                   >
-                    <MtIcon className="w-3.5 h-3.5 text-slate-400" />
-                    <span>{mt.name}</span>
+                    <MtIcon className={clsx('w-4 h-4 shrink-0', isMtActive ? 'text-[#6C2BD9]' : 'text-slate-400')} />
+                    <div className="flex-1 truncate">
+                      <div className="truncate">{mt.name}</div>
+                    </div>
                   </button>
                 );
               })}
@@ -697,8 +780,9 @@ export function MasterDataSetup() {
         />
       )}
 
-      {/* SECONDARY MORE TABS VIEW */}
-      {MORE_TABS.some((mt) => mt.id === activeTab) && (
+      {/* GENERIC MASTER DATA TABS (Manufacturers, UOM, Status Codes & Custom Views) */}
+      {(['manufacturers', 'uom', 'status-codes'].includes(activeTab) ||
+        (MORE_TABS.some((mt) => mt.id === activeTab) && activeTab !== 'depreciation')) && (
         <GenericMasterTab
           activeTab={activeTab}
           tabName={currentTabObject?.name}

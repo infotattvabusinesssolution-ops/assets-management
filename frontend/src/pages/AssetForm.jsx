@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import JsBarcode from 'jsbarcode';
 import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
@@ -82,6 +82,109 @@ function BarcodePreview({ value }) {
     </div>
   );
 }
+
+const matchesAssetType = (category, assetType) => {
+  if (!assetType || assetType === 'All') return true;
+  const name = (category.name || '').toLowerCase();
+  const code = (category.code || '').toLowerCase();
+
+  switch (assetType) {
+    case 'IT Equipment':
+      return (
+        code.startsWith('it-') ||
+        code.startsWith('cat-it') ||
+        code.startsWith('cat-lap') ||
+        code.startsWith('cat-dsk') ||
+        code.startsWith('cat-srv') ||
+        code.startsWith('cat-disp') ||
+        code.startsWith('cat-prn') ||
+        code.startsWith('cat-acc') ||
+        code.startsWith('cat-mob') ||
+        code.startsWith('cat-tab') ||
+        name.includes('laptop') ||
+        name.includes('desktop') ||
+        name.includes('server') ||
+        name.includes('infrastructure') ||
+        name.includes('compute') ||
+        name.includes('monitor') ||
+        name.includes('display') ||
+        name.includes('printer') ||
+        name.includes('scanner') ||
+        name.includes('mobile') ||
+        name.includes('tablet') ||
+        name.includes('accessory') ||
+        name.includes('network') ||
+        name.includes('switch') ||
+        name.includes('router') ||
+        name.includes('firewall') ||
+        name.includes('hardware')
+      ) && !name.includes('furniture') && !name.includes('vehicle') && !name.includes('hvac') && !name.includes('chiller') && !name.includes('generator');
+
+    case 'Office Equipment':
+      return (
+        name.includes('printer') ||
+        name.includes('scanner') ||
+        name.includes('copier') ||
+        name.includes('office') ||
+        name.includes('projector') ||
+        name.includes('shredder') ||
+        name.includes('telephony') ||
+        name.includes('furniture')
+      );
+
+    case 'Machinery':
+      return (
+        (name.includes('hvac') ||
+        name.includes('chiller') ||
+        name.includes('generator') ||
+        name.includes('machine') ||
+        name.includes('cnc') ||
+        name.includes('plant') ||
+        name.includes('pump') ||
+        name.includes('compressor') ||
+        name.includes('boiler') ||
+        code.includes('hvac') ||
+        code.includes('chiller') ||
+        code.includes('gen') ||
+        code.includes('plant')) && !name.includes('mobile')
+      );
+
+    case 'Vehicle':
+      return (
+        name.includes('vehicle') ||
+        name.includes('car') ||
+        name.includes('truck') ||
+        name.includes('van') ||
+        name.includes('fleet') ||
+        name.includes('forklift') ||
+        code.includes('veh')
+      );
+
+    case 'Furniture':
+      return (
+        name.includes('furniture') ||
+        (name.includes('desk') && !name.includes('desktop')) ||
+        name.includes('chair') ||
+        name.includes('cabinet') ||
+        name.includes('seating') ||
+        code.includes('furn')
+      );
+
+    case 'Facility & Building':
+      return (
+        name.includes('building') ||
+        name.includes('facility') ||
+        name.includes('civil') ||
+        (name.includes('structure') && !name.includes('infra')) ||
+        name.includes('hvac') ||
+        name.includes('electrical') ||
+        code.includes('bld')
+      );
+
+    default:
+      return true;
+  }
+};
 
 export function AssetForm() {
   const navigate = useNavigate();
@@ -305,8 +408,101 @@ export function AssetForm() {
   };
   const categoryCode = categories.find(category => category.id === formData.categoryId)?.code?.replace(/^CAT[-_ ]?/i, '') || formData.category;
   const subcategoryCode = assetClasses.find(assetClass => assetClass.id === formData.assetClassId)?.code?.replace(/^CLS[-_ ]?/i, '') || formData.subcategory;
+  // 1. Cascading Categories based on selected Asset Type
+  const availableCategories = useMemo(() => {
+    const filtered = categories.filter(c => matchesAssetType(c, formData.assetType));
+    const seen = new Set();
+    const unique = [];
+    for (const c of filtered) {
+      const cleanName = (c.name || '').trim();
+      if (cleanName && !seen.has(cleanName.toLowerCase())) {
+        seen.add(cleanName.toLowerCase());
+        unique.push(c);
+      }
+    }
+    return unique;
+  }, [categories, formData.assetType]);
+
+  // 2. Cascading Sub Categories / Asset Classes based on selected Category
+  const availableAssetClasses = useMemo(() => {
+    if (!formData.categoryId && !formData.category) return [];
+
+    const selectedCatName = (formData.category || '').trim().toLowerCase();
+    const matched = assetClasses.filter(cls => {
+      if (formData.categoryId && cls.categoryId === formData.categoryId) return true;
+      if (selectedCatName) {
+        const clsCatName = (cls.category?.name || cls.categoryName || '').trim().toLowerCase();
+        if (clsCatName === selectedCatName) return true;
+        const selectedBase = selectedCatName.split(' ')[0];
+        if (selectedBase && selectedBase.length >= 3 && clsCatName.includes(selectedBase)) return true;
+      }
+      return false;
+    });
+
+    const seen = new Set();
+    const unique = [];
+    for (const item of matched) {
+      const cleanName = (item.name || '').trim();
+      if (cleanName && !seen.has(cleanName.toLowerCase())) {
+        seen.add(cleanName.toLowerCase());
+        unique.push(item);
+      }
+    }
+    return unique;
+  }, [assetClasses, formData.categoryId, formData.category]);
+
+  // Handlers for cascading state updates
+  const handleAssetTypeChange = (newType) => {
+    const nextCategories = categories.filter(c => matchesAssetType(c, newType));
+    const isCatStillValid = nextCategories.some(c => 
+      c.id === formData.categoryId || (c.name || '').trim().toLowerCase() === (formData.category || '').trim().toLowerCase()
+    );
+
+    setFormData(prev => ({
+      ...prev,
+      assetType: newType,
+      category: isCatStillValid ? prev.category : '',
+      categoryId: isCatStillValid ? prev.categoryId : '',
+      subcategory: isCatStillValid ? prev.subcategory : '',
+      assetClassId: isCatStillValid ? prev.assetClassId : ''
+    }));
+  };
+
+  const handleCategoryChange = (catName) => {
+    if (!catName) {
+      setFormData(prev => ({
+        ...prev,
+        category: '',
+        categoryId: '',
+        subcategory: '',
+        assetClassId: ''
+      }));
+      return;
+    }
+    const matchingCats = categories.filter(c => (c.name || '').trim().toLowerCase() === catName.trim().toLowerCase());
+    let targetCat = matchingCats.find(c => assetClasses.some(ac => ac.categoryId === c.id)) || matchingCats[0];
+    if (!targetCat) {
+      targetCat = categories.find(c => (c.name || '').toLowerCase().includes(catName.toLowerCase()));
+    }
+
+    setFormData(prev => ({
+      ...prev,
+      category: catName,
+      categoryId: targetCat?.id || '',
+      subcategory: '',
+      assetClassId: ''
+    }));
+  };
+
+  const handleSubCategoryChange = (selectedClassIdOrName) => {
+    const matchedClass = availableAssetClasses.find(item => item.id === selectedClassIdOrName || item.name === selectedClassIdOrName);
+    setFormData(prev => ({
+      ...prev,
+      subcategory: matchedClass?.name || selectedClassIdOrName,
+      assetClassId: matchedClass?.id || ''
+    }));
+  };
   const assetIdPreview = `${previewPrefix(formData.assetType)}-${previewPrefix(categoryCode)}-${previewPrefix(subcategoryCode)}-${new Date().getFullYear()}-…`;
-  const availableAssetClasses = assetClasses.filter(assetClass => assetClass.categoryId === formData.categoryId);
   const updateQuantity = value => {
     setFormData(previous => ({ ...previous, quantity: value, serialNumber: serialNumbers[0] || '' }));
     const count = Number(value);
@@ -940,13 +1136,15 @@ export function AssetForm() {
           <label className="font-bold text-slate-700 block mb-1">Asset Type *</label>
           <select
             value={formData.assetType}
-            onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
+            onChange={(e) => handleAssetTypeChange(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
             <option value="IT Equipment">IT Equipment</option>
             <option value="Office Equipment">Office Equipment</option>
             <option value="Machinery">Machinery</option>
             <option value="Vehicle">Vehicle</option>
+            <option value="Furniture">Furniture & Fixtures</option>
+            <option value="Facility & Building">Facility & Building</option>
           </select>
         </div>
 
@@ -954,33 +1152,31 @@ export function AssetForm() {
           <label className="font-bold text-slate-700 block mb-1">Category *</label>
           <select
             value={formData.category}
-            onChange={(e) => {
-              const selectedCat = categories.find(c => c.name === e.target.value);
-              setFormData({
-                ...formData,
-                category: e.target.value,
-                categoryId: selectedCat?.id || '',
-                subcategory: '', assetClassId: ''
-              });
-            }}
+            onChange={(e) => handleCategoryChange(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
             <option value="">Select Category</option>
-            {categories.map(c => (
+            {availableCategories.map(c => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
           </select>
+          {availableCategories.length === 0 && (
+            <p className="text-[11px] text-amber-600 mt-1">No categories found for {formData.assetType}.</p>
+          )}
         </div>
 
         <div>
           <label className="font-bold text-slate-700 block mb-1">Sub Category</label>
           <select
-            value={formData.assetClassId}
-            onChange={(e) => { const assetClass = availableAssetClasses.find(item => item.id === e.target.value); setFormData({ ...formData, subcategory: assetClass?.name || '', assetClassId: assetClass?.id || '' }); }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            value={formData.assetClassId || formData.subcategory}
+            onChange={(e) => handleSubCategoryChange(e.target.value)}
+            disabled={!formData.category}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none disabled:bg-slate-100 disabled:text-slate-400"
           >
-            <option value="">Select Subcategory (Optional)</option>
-            {availableAssetClasses.map(assetClass => <option key={assetClass.id} value={assetClass.id}>{assetClass.name}</option>)}
+            <option value="">{formData.category ? 'Select Subcategory (Optional)' : 'Select a Category first'}</option>
+            {availableAssetClasses.map(assetClass => (
+              <option key={assetClass.id} value={assetClass.id}>{assetClass.name}</option>
+            ))}
           </select>
         </div>
 
@@ -2256,14 +2452,18 @@ export function AssetForm() {
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Asset Class *</label>
+                  <label className="font-bold text-slate-700 block">Asset Type *</label>
                   <select
-                    value={formData.assetClass}
-                    onChange={(e) => setFormData({ ...formData, assetClass: e.target.value })}
+                    value={formData.assetType}
+                    onChange={(e) => handleAssetTypeChange(e.target.value)}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
                     <option value="IT Equipment">IT Equipment</option>
                     <option value="Office Equipment">Office Equipment</option>
+                    <option value="Machinery">Machinery</option>
+                    <option value="Vehicle">Vehicle</option>
+                    <option value="Furniture">Furniture & Fixtures</option>
+                    <option value="Facility & Building">Facility & Building</option>
                   </select>
                 </div>
 
@@ -2272,24 +2472,25 @@ export function AssetForm() {
                     <label className="font-bold text-slate-700 block mb-1">Category *</label>
                     <select
                       value={formData.category}
-                      onChange={(e) => {
-                        const selectedCat = categories.find(category => category.name === e.target.value);
-                        setFormData({ ...formData, category: e.target.value, categoryId: selectedCat?.id || '', subcategory: '', assetClassId: '' });
-                      }}
+                      onChange={(e) => handleCategoryChange(e.target.value)}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
                       <option value="">Select Category</option>
-                      {categories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
+                      {availableCategories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
                     </select>
+                    {availableCategories.length === 0 && (
+                      <p className="text-[10px] text-amber-600 mt-0.5">No categories for {formData.assetType}</p>
+                    )}
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Subcategory</label>
                     <select
-                      value={formData.assetClassId}
-                      onChange={(e) => { const assetClass = availableAssetClasses.find(item => item.id === e.target.value); setFormData({ ...formData, subcategory: assetClass?.name || '', assetClassId: assetClass?.id || '' }); }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                      value={formData.assetClassId || formData.subcategory}
+                      onChange={(e) => handleSubCategoryChange(e.target.value)}
+                      disabled={!formData.category}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none disabled:bg-slate-100 disabled:text-slate-400"
                     >
-                      <option value="">Select Subcategory (Optional)</option>
+                      <option value="">{formData.category ? 'Select Subcategory' : 'Select Category first'}</option>
                       {availableAssetClasses.map(assetClass => <option key={assetClass.id} value={assetClass.id}>{assetClass.name}</option>)}
                     </select>
                   </div>
