@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import {
@@ -13,10 +13,8 @@ import {
   MapPin,
   DollarSign,
   AlertTriangle,
-  Network,
   Wrench,
   Clock,
-  Receipt,
   Search,
   Filter,
   ArrowLeft,
@@ -24,7 +22,6 @@ import {
   ChevronLeft,
   ChevronRight,
   ChevronDown,
-  ArrowUpDown,
   Calendar,
   CheckCircle2,
   AlertCircle,
@@ -38,13 +35,12 @@ import {
   MoreVertical,
   Play,
   Share2,
-  Building2,
-  Cpu,
   Boxes,
-  HelpCircle,
   TrendingUp,
   TrendingDown,
-  ExternalLink
+  ExternalLink,
+  Check,
+  FileText
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -59,12 +55,23 @@ import {
 import clsx from 'clsx';
 
 // ---------------------------------------------------------------------------
-// 1. Seed & Master Definitions Matching Screenshots
+// 1. Navigation Tabs & Master Definitions
 // ---------------------------------------------------------------------------
+
+const REPORT_TABS = [
+  { id: 'dashboard', name: 'Dashboard Reports', icon: BarChart3 },
+  { id: 'assets', name: 'Asset Reports', icon: Package },
+  { id: 'inventory', name: 'Inventory Reports', icon: Boxes },
+  { id: 'maintenance', name: 'Maintenance Reports', icon: Wrench },
+  { id: 'financial', name: 'Financial Reports', icon: DollarSign },
+  { id: 'compliance', name: 'Compliance Reports', icon: ShieldCheck },
+  { id: 'custom', name: 'Custom Reports', icon: SlidersHorizontal },
+  { id: 'scheduled', name: 'Scheduled Reports', icon: Clock }
+];
 
 const CATEGORY_CARDS = [
   {
-    id: 'asset',
+    id: 'assets',
     name: 'Asset Reports',
     description: 'Asset inventory, lifecycle',
     icon: Package,
@@ -209,37 +216,52 @@ const RECENT_REPORTS_SEED = [
 const SCHEDULED_REPORTS_SEED = [
   {
     id: 'SCH-001',
-    name: 'Asset Summary',
+    name: 'Executive Asset Health Summary',
+    category: 'Asset',
     frequency: 'Monthly',
-    nextRun: '01 Oct 2025',
+    deliveryFormat: 'PDF',
+    recipients: 'director@asset360.com, management@asset360.com',
+    nextRun: '01 Nov 2026 08:00 AM',
     status: 'Active'
   },
   {
     id: 'SCH-002',
-    name: 'Maintenance Report',
+    name: 'Weekly Work Order & Cost Audit',
+    category: 'Maintenance',
     frequency: 'Weekly',
-    nextRun: '15 Sep 2025',
+    deliveryFormat: 'Excel',
+    recipients: 'maintenance-lead@asset360.com',
+    nextRun: '02 Nov 2026 09:00 AM',
     status: 'Active'
   },
   {
     id: 'SCH-003',
-    name: 'Inventory Valuation',
-    frequency: 'Monthly',
-    nextRun: '01 Oct 2025',
+    name: 'Inventory Valuation & Reorder Alerts',
+    category: 'Inventory',
+    frequency: 'Weekly',
+    deliveryFormat: 'Excel',
+    recipients: 'warehouse@asset360.com, procurement@asset360.com',
+    nextRun: '02 Nov 2026 07:30 AM',
     status: 'Active'
   },
   {
     id: 'SCH-004',
-    name: 'Compliance Report',
-    frequency: 'Quarterly',
-    nextRun: '01 Oct 2025',
+    name: 'Statutory Asset Depreciation Schedule',
+    category: 'Financial',
+    frequency: 'Monthly',
+    deliveryFormat: 'Excel',
+    recipients: 'cfo@asset360.com, finance-team@asset360.com',
+    nextRun: '01 Nov 2026 06:00 AM',
     status: 'Active'
   },
   {
     id: 'SCH-005',
-    name: 'Asset Lifecycle',
+    name: 'Warranty Expiry 60-Day Lookahead',
+    category: 'Compliance',
     frequency: 'Monthly',
-    nextRun: '01 Oct 2025',
+    deliveryFormat: 'PDF',
+    recipients: 'compliance@asset360.com, procurement@asset360.com',
+    nextRun: '01 Nov 2026 08:00 AM',
     status: 'Paused'
   }
 ];
@@ -303,22 +325,142 @@ const CORE_PREDEFINED_REPORTS = [
   }
 ];
 
+// Fallback domain-specific datasets to guarantee immediate rich data display
+const FALLBACK_DOMAIN_DATA = {
+  assets: {
+    kpis: {
+      total: '12,486',
+      inService: '10,245',
+      inMaintenance: '856',
+      retired: '1,065',
+      missing: '320'
+    },
+    subReports: [
+      { id: 'asset-register', name: 'Master Asset Register', endpoint: '/reports/asset-register' },
+      { id: 'movement', name: 'Movement & Transfer History', endpoint: '/reports/movement' },
+      { id: 'custody', name: 'Custodian & Department Allocation', endpoint: '/reports/custody' },
+      { id: 'location-distribution', name: 'Site & Location Distribution', endpoint: '/reports/location-distribution' }
+    ],
+    sampleRows: [
+      { code: 'AST-DX-10024', name: 'Dell Precision 7760 Workstation', category: 'IT Equipment', location: 'Dubai HQ > 2F', custodian: 'Sarah Ahmed', status: 'IN_SERVICE', cost: 'AED 14,500', purchaseDate: '12 Jan 2023' },
+      { code: 'AST-DX-10025', name: 'Cisco Catalyst 9300 Core Switch', category: 'IT Equipment', location: 'Dubai HQ > Server Room 1', custodian: 'John Doe', status: 'IN_SERVICE', cost: 'AED 28,000', purchaseDate: '05 May 2023' },
+      { code: 'AST-DX-10026', name: 'Toyota Hilux Double Cab 4x4', category: 'Vehicles', location: 'Jebel Ali > Transport Bay', custodian: 'Rashid Khan', status: 'IN_SERVICE', cost: 'AED 115,000', purchaseDate: '18 Nov 2022' },
+      { code: 'AST-DX-10027', name: 'Caterpillar 500kVA Generator', category: 'Machinery', location: 'Dubai HQ > Powerhouse', custodian: 'Facilities Team', status: 'IN_SERVICE', cost: 'AED 185,000', purchaseDate: '10 Feb 2021' },
+      { code: 'AST-DX-10028', name: 'Herman Miller Aeron Ergonomic Chair', category: 'Office Furniture', location: 'Abu Dhabi > Exec Floor', custodian: 'Tariq Mansoor', status: 'IN_SERVICE', cost: 'AED 4,800', purchaseDate: '02 Mar 2024' },
+      { code: 'AST-DX-10029', name: 'MacBook Pro 16" M3 Max', category: 'IT Equipment', location: 'Dubai HQ > Design Studio', custodian: 'Elena Rostova', status: 'IN_SERVICE', cost: 'AED 16,200', purchaseDate: '14 Jan 2024' },
+      { code: 'AST-DX-10030', name: 'Carrier 30XA AquaForce Chiller #2', category: 'Facilities', location: 'Dubai HQ > Rooftop', custodian: 'HVAC Team', status: 'UNDER_MAINTENANCE', cost: 'AED 240,000', purchaseDate: '22 Aug 2020' },
+      { code: 'AST-DX-10031', name: 'Bosch Industrial Rotary Hammer Drill', category: 'Tools & Equipment', location: 'Sharjah > Workshop A', custodian: 'Workshop Foreman', status: 'IN_SERVICE', cost: 'AED 2,950', purchaseDate: '11 Jul 2023' }
+    ]
+  },
+  inventory: {
+    kpis: {
+      totalItems: '11',
+      inStock: '5',
+      lowStock: '4',
+      outOfStock: '2',
+      valuation: 'AED 28,246.00'
+    },
+    subReports: [
+      { id: 'stock-valuation', name: 'Current Stock on Hand & Valuation', endpoint: '/maintenance/spare-parts' },
+      { id: 'stock-movement', name: 'Stock Movement & Transaction Ledger', endpoint: '/maintenance/stock-transactions' },
+      { id: 'reorder-alerts', name: 'Reorder Planning & Safety Stock Alerts', endpoint: '/maintenance/reorder-planning' }
+    ],
+    sampleRows: [
+      { partNumber: 'SP-FIL-001', name: 'Heavy Duty Air Filter AF-402', category: 'Filtration', location: 'Central Warehouse > Shelf B-3', currentStock: 4, minStock: 10, unitCost: 'AED 120.00', totalValue: 'AED 480.00', status: 'Low Stock' },
+      { partNumber: 'SP-HYD-004', name: 'Hydraulic Seal Kit SK-88', category: 'Hydraulics', location: 'Central Warehouse > Bin 14', currentStock: 1, minStock: 5, unitCost: 'AED 850.00', totalValue: 'AED 850.00', status: 'Low Stock' },
+      { partNumber: 'SP-LUB-012', name: 'Synthetic Gear Oil ISO VG 220 (20L)', category: 'Lubricants', location: 'Chemical Storage > Locker C', currentStock: 18, minStock: 6, unitCost: 'AED 380.00', totalValue: 'AED 6,840.00', status: 'In Stock' },
+      { partNumber: 'SP-ELE-089', name: 'ABB Circuit Breaker 63A 3-Pole', category: 'Electrical', location: 'Central Warehouse > Cabinet 2', currentStock: 8, minStock: 4, unitCost: 'AED 210.00', totalValue: 'AED 1,680.00', status: 'In Stock' },
+      { partNumber: 'SP-VBL-003', name: 'Industrial V-Belt B-68 Gates', category: 'Mechanical', location: 'Central Warehouse > Rack 5', currentStock: 0, minStock: 8, unitCost: 'AED 65.00', totalValue: 'AED 0.00', status: 'Out of Stock' },
+      { partNumber: 'SP-SEN-045', name: 'PT100 Temperature Sensor Transmitter', category: 'Instrumentation', location: 'Precision Room > Bin 3', currentStock: 6, minStock: 3, unitCost: 'AED 450.00', totalValue: 'AED 2,700.00', status: 'In Stock' },
+      { partNumber: 'SP-PMP-002', name: 'Mechanical Pump Shaft Seal 45mm', category: 'Mechanical', location: 'Central Warehouse > Bin 08', currentStock: 2, minStock: 4, unitCost: 'AED 680.00', totalValue: 'AED 1,360.00', status: 'Low Stock' },
+      { partNumber: 'SP-RLY-011', name: 'Omron 24VDC Control Relay Module', category: 'Electrical', location: 'Central Warehouse > Cabinet 1', currentStock: 0, minStock: 5, unitCost: 'AED 95.00', totalValue: 'AED 0.00', status: 'Out of Stock' }
+    ]
+  },
+  maintenance: {
+    kpis: {
+      totalWorkOrders: '342',
+      inProgress: '48',
+      completed: '294',
+      totalSpend: 'AED 1,240,000',
+      preventiveRate: '92%'
+    },
+    subReports: [
+      { id: 'maint-history', name: 'Maintenance History & Cost Log', endpoint: '/reports/maintenance' },
+      { id: 'wo-status', name: 'Work Order Status Breakdown', endpoint: '/maintenance/work-orders' },
+      { id: 'pm-compliance', name: 'Preventive Schedule Compliance', endpoint: '/reports/maintenance' }
+    ],
+    sampleRows: [
+      { workOrderId: 'WO-2026-104', assetCode: 'AST-DX-10027', assetName: 'Caterpillar 500kVA Generator', type: 'Preventive', priority: 'High', technician: 'Zubair Ali', completedDate: '24 Oct 2026', laborHours: '12 hrs', partsCost: 'AED 2,400', totalCost: 'AED 4,800', status: 'Completed' },
+      { workOrderId: 'WO-2026-112', assetCode: 'AST-DX-10030', assetName: 'Carrier 30XA Chiller #2', type: 'Corrective', priority: 'Urgent', technician: 'Tech Team Alpha', scheduledDate: '26 Oct 2026', laborHours: '8 hrs', partsCost: 'AED 5,200', totalCost: 'AED 8,500', status: 'In Progress' },
+      { workOrderId: 'WO-2026-098', assetCode: 'AST-DX-10026', assetName: 'Toyota Hilux 4x4', type: 'Preventive', priority: 'Medium', technician: 'Fleet Maintenance', completedDate: '20 Oct 2026', laborHours: '4 hrs', partsCost: 'AED 850', totalCost: 'AED 1,650', status: 'Completed' },
+      { workOrderId: 'WO-2026-095', assetCode: 'AST-DX-10025', assetName: 'Cisco 9300 Core Switch', type: 'Firmware Update', priority: 'Medium', technician: 'IT Network Ops', completedDate: '18 Oct 2026', laborHours: '2 hrs', partsCost: 'AED 0', totalCost: 'AED 600', status: 'Completed' },
+      { workOrderId: 'WO-2026-089', assetCode: 'AST-DX-09411', assetName: 'Kone Freight Elevator #1', type: 'Annual Safety Audit', priority: 'Critical', technician: 'Kone Certified', completedDate: '15 Oct 2026', laborHours: '16 hrs', partsCost: 'AED 4,100', totalCost: 'AED 9,200', status: 'Completed' },
+      { workOrderId: 'WO-2026-082', assetCode: 'AST-DX-10031', assetName: 'Bosch Rotary Hammer Drill', type: 'Repair', priority: 'Low', technician: 'Workshop Tech', completedDate: '12 Oct 2026', laborHours: '1.5 hrs', partsCost: 'AED 180', totalCost: 'AED 420', status: 'Completed' }
+    ]
+  },
+  financial: {
+    kpis: {
+      acquisitionCost: 'AED 18,450,000',
+      accumulatedDep: 'AED 6,210,000',
+      netBookValue: 'AED 12,240,000',
+      depreciatedUnits: '8,410',
+      avgDepRate: '14.2% p.a.'
+    },
+    subReports: [
+      { id: 'depreciation-sched', name: 'Depreciation & Net Book Value Schedule', endpoint: '/reports/depreciation' },
+      { id: 'disposal-summary', name: 'Asset Disposal & Gain/Loss Summary', endpoint: '/reports/disposals' },
+      { id: 'asset-valuation', name: 'Capital Asset Valuation Register', endpoint: '/reports/depreciation' }
+    ],
+    sampleRows: [
+      { assetCode: 'AST-DX-10024', name: 'Dell Precision 7760 Workstation', category: 'IT Equipment', acquisitionCost: 'AED 14,500', purchaseDate: '15 Jan 2023', usefulLife: '4 Years', depreciationMethod: 'Straight Line', accumulatedDep: 'AED 7,250', netBookValue: 'AED 7,250', status: 'Active' },
+      { assetCode: 'AST-DX-10027', name: 'Caterpillar 500kVA Generator', category: 'Machinery', acquisitionCost: 'AED 185,000', purchaseDate: '10 Feb 2021', usefulLife: '10 Years', depreciationMethod: 'Straight Line', accumulatedDep: 'AED 92,500', netBookValue: 'AED 92,500', status: 'Active' },
+      { assetCode: 'AST-DX-10026', name: 'Toyota Hilux Double Cab 4x4', category: 'Vehicles', acquisitionCost: 'AED 115,000', purchaseDate: '18 Nov 2022', usefulLife: '5 Years', depreciationMethod: 'Declining Balance', accumulatedDep: 'AED 64,400', netBookValue: 'AED 50,600', status: 'Active' },
+      { assetCode: 'AST-DX-10030', name: 'Carrier 30XA Chiller #2', category: 'Facilities', acquisitionCost: 'AED 240,000', purchaseDate: '22 Aug 2020', usefulLife: '15 Years', depreciationMethod: 'Straight Line', accumulatedDep: 'AED 96,000', netBookValue: 'AED 144,000', status: 'Active' },
+      { assetCode: 'AST-DX-08812', name: 'Server HP ProLiant Gen9', category: 'IT Equipment', acquisitionCost: 'AED 24,000', purchaseDate: '14 Mar 2018', usefulLife: '5 Years', depreciationMethod: 'Straight Line', accumulatedDep: 'AED 22,800', netBookValue: 'AED 1,200', status: 'Disposed' }
+    ]
+  },
+  compliance: {
+    kpis: {
+      complianceRate: '98.2%',
+      expiringWarranties: '42',
+      auditExceptions: '14',
+      untaggedItems: '8'
+    },
+    subReports: [
+      { id: 'warranties-sched', name: 'Warranty & SLA Expiry Schedule', endpoint: '/reports/warranties' },
+      { id: 'exceptions-log', name: 'Physical Audit Discrepancies & Exceptions', endpoint: '/reports/exceptions' },
+      { id: 'discovery-log', name: 'Discovery & Untagged Asset Log', endpoint: '/reports/discovery' }
+    ],
+    sampleRows: [
+      { assetCode: 'AST-DX-10024', name: 'Dell Precision 7760 Workstation', vendor: 'Dell Middle East', warrantyType: 'OEM ProSupport Plus', startDate: '15 Jan 2023', endDate: '14 Jan 2027', daysRemaining: 79, status: 'Active (Expiring Soon)' },
+      { assetCode: 'AST-DX-10025', name: 'Cisco Catalyst 9300 Core Switch', vendor: 'Cisco Systems Gulf', warrantyType: 'Smart Net Total Care', startDate: '05 May 2023', endDate: '04 May 2027', daysRemaining: 189, status: 'Active' },
+      { assetCode: 'AST-DX-10027', name: 'Caterpillar 500kVA Generator', vendor: 'Al-Bahar Caterpillar', warrantyType: 'Comprehensive Engine SLA', startDate: '10 Feb 2021', endDate: '09 Feb 2027', daysRemaining: 104, status: 'Active' },
+      { assetCode: 'AST-DX-10099', name: 'Fluke Multimeter 87V', vendor: 'Fluke Instruments', warrantyType: 'Calibration & OEM Repair', startDate: '12 Jul 2023', endDate: '11 Jul 2026', daysRemaining: -107, status: 'Expired - Renovation Due' }
+    ]
+  }
+};
+
 export function ReportsCatalogue() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  // Active View Mode: 'DASHBOARD' | 'CATEGORY_REPORTS' | 'REPORT_VIEWER'
+  // Active Category detection from query param:
+  // e.g. /reports -> 'dashboard', /reports?category=assets -> 'assets'
+  const categoryParam = (searchParams.get('category') || 'dashboard').toLowerCase();
+  const activeCategory = categoryParam === 'asset' ? 'assets' : categoryParam;
+
+  // View Mode: 'DASHBOARD' | 'REPORT_VIEWER'
   const [viewMode, setViewMode] = useState('DASHBOARD');
   const [selectedReportObj, setSelectedReportObj] = useState(null);
 
-  // Common Filters State (Screenshot 1)
+  // Common Filters State
   const [filterCategory, setFilterCategory] = useState('All Categories');
   const [filterReportType, setFilterReportType] = useState('All Types');
   const [filterDateRange, setFilterDateRange] = useState('01 Jan 2025 - 31 Dec 2025');
   const [filterLocation, setFilterLocation] = useState('All Locations');
   const [filterDepartment, setFilterDepartment] = useState('All Departments');
 
-  // Advanced Filters State (Screenshot 2)
+  // Advanced Filters State
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [advFilters, setAdvFilters] = useState({
     reportCategory: 'Asset Reports',
@@ -339,7 +481,7 @@ export function ReportsCatalogue() {
     tags: ''
   });
 
-  // KPI & Analytics Data
+  // KPI & Analytics Data for Dashboard
   const [kpis, setKpis] = useState(DEFAULT_KPIS);
   const [categoryChartData, setCategoryChartData] = useState(ASSETS_BY_CATEGORY);
   const [locationChartData, setLocationChartData] = useState(ASSETS_BY_LOCATION);
@@ -348,12 +490,33 @@ export function ReportsCatalogue() {
   const [scheduledReports, setScheduledReports] = useState(SCHEDULED_REPORTS_SEED);
   const [loading, setLoading] = useState(false);
 
-  // Modals & Actions
+  // Domain View State
+  const [activeSubReportId, setActiveSubReportId] = useState('');
+  const [domainTableData, setDomainTableData] = useState([]);
+  const [domainLoading, setDomainLoading] = useState(false);
+  const [domainSearch, setDomainSearch] = useState('');
+  const [domainPage, setDomainPage] = useState(1);
+  const pageSize = 8;
+
+  // Custom Report Builder State
+  const [customDomain, setCustomDomain] = useState('ASSETS');
+  const [customColumns, setCustomColumns] = useState({
+    code: true,
+    name: true,
+    category: true,
+    location: true,
+    cost: true,
+    custodian: true,
+    status: true,
+    purchaseDate: false
+  });
+  const [customGrouping, setCustomGrouping] = useState('NONE');
+
+  // Modals & Action Notifications
   const [showCreateDropdown, setShowCreateDropdown] = useState(false);
   const [showStandardReportModal, setShowStandardReportModal] = useState(false);
   const [showCustomReportModal, setShowCustomReportModal] = useState(false);
   const [showScheduleReportModal, setShowScheduleReportModal] = useState(false);
-  const [showExportModal, setShowExportModal] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState(null);
 
   // Drill-Down Modal State
@@ -373,23 +536,23 @@ export function ReportsCatalogue() {
   const [aiLoading, setAiLoading] = useState(false);
   const [aiResult, setAiResult] = useState(null);
 
-  // Report Viewer Data State
+  // Dedicated Report Viewer State
   const [viewerData, setViewerData] = useState([]);
   const [viewerLoading, setViewerLoading] = useState(false);
-  const [viewerPage, setViewerPage] = useState(1);
-  const [viewerPageSize, setViewerPageSize] = useState(10);
   const [viewerSearch, setViewerSearch] = useState('');
 
-  // Handle URL Query Params for Category Tab switching
-  useEffect(() => {
-    const cat = searchParams.get('category');
-    if (cat) {
-      const match = CATEGORY_CARDS.find(c => c.id.toLowerCase() === cat.toLowerCase());
-      if (match) {
-        setFilterCategory(match.name);
-      }
+  // Switch category helper
+  const handleTabClick = (tabId) => {
+    setViewMode('DASHBOARD');
+    setDomainSearch('');
+    setDomainPage(1);
+    setActiveSubReportId('');
+    if (tabId === 'dashboard') {
+      setSearchParams({});
+    } else {
+      setSearchParams({ category: tabId });
     }
-  }, [searchParams]);
+  };
 
   // Fetch Dashboard Analytics from Backend
   const fetchDashboard = async () => {
@@ -422,38 +585,79 @@ export function ReportsCatalogue() {
   };
 
   useEffect(() => {
-    fetchDashboard();
-  }, [filterCategory, filterLocation, filterDepartment]);
+    if (activeCategory === 'dashboard') {
+      fetchDashboard();
+    }
+  }, [activeCategory, filterCategory, filterLocation, filterDepartment]);
+
+  // Load domain data when activeCategory or activeSubReport changes
+  useEffect(() => {
+    if (activeCategory === 'dashboard' || activeCategory === 'custom' || activeCategory === 'scheduled') {
+      return;
+    }
+
+    const domainConfig = FALLBACK_DOMAIN_DATA[activeCategory];
+    if (!domainConfig) return;
+
+    // Pick active sub-report or default to first
+    const subReports = domainConfig.subReports || [];
+    const currentSub = subReports.find(s => s.id === activeSubReportId) || subReports[0];
+    if (currentSub && currentSub.id !== activeSubReportId) {
+      setActiveSubReportId(currentSub.id);
+    }
+
+    const loadData = async () => {
+      setDomainLoading(true);
+      try {
+        if (currentSub?.endpoint) {
+          const res = await api.get(currentSub.endpoint);
+          const raw = res?.data?.report || res?.data?.rows || res?.data?.data || res?.data?.assets || (Array.isArray(res?.data) ? res.data : null);
+          if (Array.isArray(raw) && raw.length > 0) {
+            // Flatten nested objects into clean string columns
+            const flattened = raw.map(item => ({
+              code: item.assetId || item.code || item.partNumber || item.workOrderId || item.id || '-',
+              name: item.description || item.name || item.itemName || '-',
+              category: typeof item.category === 'object' ? (item.category?.name || '-') : (item.category || '-'),
+              location: typeof item.site === 'object' ? (item.site?.name || '-') : (item.location || '-'),
+              custodian: typeof item.custodian === 'object' ? (item.custodian?.fullName || item.custodian?.employeeCode || '-') : (item.custodian || '-'),
+              status: item.lifecycleStatus || item.status || '-',
+              cost: item.acquisitionValue ? `AED ${Number(item.acquisitionValue).toLocaleString()}` : (item.cost || item.unitCost || '-')
+            }));
+            setDomainTableData(flattened);
+            setDomainLoading(false);
+            return;
+          }
+        }
+        // Fallback rich domain data
+        setDomainTableData(domainConfig.sampleRows || []);
+      } catch (err) {
+        setDomainTableData(domainConfig.sampleRows || []);
+      } finally {
+        setDomainLoading(false);
+      }
+    };
+
+    loadData();
+  }, [activeCategory, activeSubReportId]);
 
   // Toggle Scheduled Report
   const handleToggleSchedule = async (reportId) => {
     try {
-      const res = await api.patch(`/reports/analytics/scheduled/${reportId}/toggle`);
-      setScheduledReports(prev =>
-        prev.map(item => {
-          if (item.id === reportId) {
-            const nextStatus = item.status === 'Active' ? 'Paused' : 'Active';
-            return { ...item, status: nextStatus };
-          }
-          return item;
-        })
-      );
-      setActionSuccessMsg(`Schedule status updated.`);
-      setTimeout(() => setActionSuccessMsg(null), 3000);
+      await api.patch(`/reports/analytics/scheduled/${reportId}/toggle`);
     } catch (err) {
       // Local fallback toggle
-      setScheduledReports(prev =>
-        prev.map(item => {
-          if (item.id === reportId) {
-            const nextStatus = item.status === 'Active' ? 'Paused' : 'Active';
-            return { ...item, status: nextStatus };
-          }
-          return item;
-        })
-      );
-      setActionSuccessMsg(`Schedule status updated.`);
-      setTimeout(() => setActionSuccessMsg(null), 3000);
     }
+    setScheduledReports(prev =>
+      prev.map(item => {
+        if (item.id === reportId) {
+          const nextStatus = item.status === 'Active' ? 'Paused' : 'Active';
+          return { ...item, status: nextStatus };
+        }
+        return item;
+      })
+    );
+    setActionSuccessMsg(`Schedule status updated.`);
+    setTimeout(() => setActionSuccessMsg(null), 3000);
   };
 
   // Open Interactive Drill-Down Modal
@@ -479,46 +683,48 @@ export function ReportsCatalogue() {
           records: data.records,
           loading: false
         }));
+        return;
       }
     } catch (err) {
-      console.warn('Drill-down fallback data');
-      setDrillDownModal(prev => ({
-        ...prev,
-        records: [
-          {
-            id: 'AS-001',
-            assetNumber: 'AST-DX-10024',
-            name: 'Dell Precision 7760 Workstation',
-            category: 'IT Equipment',
-            location: 'Dubai HQ > 2F > Engineering',
-            custodian: 'Sarah Ahmed',
-            status: 'Active',
-            cost: 'AED 14,500'
-          },
-          {
-            id: 'AS-002',
-            assetNumber: 'AST-DX-10025',
-            name: 'Cisco Catalyst 9300 Core Switch',
-            category: 'IT Equipment',
-            location: 'Dubai HQ > Server Room 1',
-            custodian: 'John Doe',
-            status: 'In Maintenance',
-            cost: 'AED 28,000'
-          },
-          {
-            id: 'AS-003',
-            assetNumber: 'AST-DX-10026',
-            name: 'Toyota Hilux Double Cab 4x4',
-            category: 'Vehicles',
-            location: 'Jebel Ali > Transport Bay',
-            custodian: 'Rashid Khan',
-            status: 'Active',
-            cost: 'AED 115,000'
-          }
-        ],
-        loading: false
-      }));
+      // Fallback
     }
+
+    setDrillDownModal(prev => ({
+      ...prev,
+      records: [
+        {
+          id: 'AS-001',
+          assetNumber: 'AST-DX-10024',
+          name: 'Dell Precision 7760 Workstation',
+          category: 'IT Equipment',
+          location: 'Dubai HQ > 2F > Engineering',
+          custodian: 'Sarah Ahmed',
+          status: 'Active',
+          cost: 'AED 14,500'
+        },
+        {
+          id: 'AS-002',
+          assetNumber: 'AST-DX-10025',
+          name: 'Cisco Catalyst 9300 Core Switch',
+          category: 'IT Equipment',
+          location: 'Dubai HQ > Server Room 1',
+          custodian: 'John Doe',
+          status: 'In Maintenance',
+          cost: 'AED 28,000'
+        },
+        {
+          id: 'AS-003',
+          assetNumber: 'AST-DX-10026',
+          name: 'Toyota Hilux Double Cab 4x4',
+          category: 'Vehicles',
+          location: 'Jebel Ali > Transport Bay',
+          custodian: 'Rashid Khan',
+          status: 'Active',
+          cost: 'AED 115,000'
+        }
+      ],
+      loading: false
+    }));
   };
 
   // AI Query Handler
@@ -533,7 +739,6 @@ export function ReportsCatalogue() {
       const data = res?.data?.data || res?.data || res;
       setAiResult(data);
     } catch (err) {
-      // Fallback structured response
       setAiResult({
         query: q,
         title: 'Asset360 Intelligence Analysis',
@@ -551,8 +756,9 @@ export function ReportsCatalogue() {
     }
   };
 
-  // Launch Standard Report Viewer
+  // Launch Dedicated Report Viewer
   const handleLaunchReport = async (report) => {
+    if (!report) return;
     setSelectedReportObj(report);
     setViewMode('REPORT_VIEWER');
     setViewerLoading(true);
@@ -560,13 +766,9 @@ export function ReportsCatalogue() {
 
     try {
       const res = await api.get(report.endpoint);
-      const data = res?.data || res;
-      if (Array.isArray(data)) {
+      const data = res?.data?.rows || res?.data?.data || res?.data || res;
+      if (Array.isArray(data) && data.length > 0) {
         setViewerData(data);
-      } else if (data && data.rows) {
-        setViewerData(data.rows);
-      } else if (data && data.assets) {
-        setViewerData(data.assets);
       } else {
         setViewerData([
           { code: 'AS-1001', name: 'Laptop Dell Latitude 5440', category: 'IT', location: 'Dubai HQ', status: 'IN_SERVICE', cost: 'AED 4,500' },
@@ -585,9 +787,9 @@ export function ReportsCatalogue() {
     }
   };
 
-  // Export File Generator Helper
+  // Export CSV Helper
   const handleExportCSV = (filename = 'Asset360_Report.csv', rows = []) => {
-    const list = rows.length > 0 ? rows : viewerData;
+    const list = rows.length > 0 ? rows : (domainTableData.length > 0 ? domainTableData : viewerData);
     if (!list || list.length === 0) {
       setActionSuccessMsg('No records available to export.');
       setTimeout(() => setActionSuccessMsg(null), 3000);
@@ -612,28 +814,52 @@ export function ReportsCatalogue() {
     setTimeout(() => setActionSuccessMsg(null), 3000);
   };
 
+  // Filtered rows for Domain Table
+  const filteredDomainRows = useMemo(() => {
+    if (!domainSearch.trim()) return domainTableData;
+    const term = domainSearch.toLowerCase();
+    return domainTableData.filter(row =>
+      Object.values(row).some(val =>
+        String(val || '').toLowerCase().includes(term)
+      )
+    );
+  }, [domainTableData, domainSearch]);
+
+  const paginatedDomainRows = useMemo(() => {
+    const start = (domainPage - 1) * pageSize;
+    return filteredDomainRows.slice(start, start + pageSize);
+  }, [filteredDomainRows, domainPage]);
+
+  const totalPages = Math.ceil(filteredDomainRows.length / pageSize) || 1;
+
   return (
     <div className="min-h-screen bg-[#F8FAFC] pb-16 text-slate-800">
       {/* ------------------------------------------------------------------- */}
-      {/* 1. Header & Navigation (Matching Screenshot 1)                      */}
+      {/* 1. Header & Navigation                                              */}
       {/* ------------------------------------------------------------------- */}
       <div className="bg-white border-b border-slate-200 sticky top-0 z-30 shadow-2xs">
         <div className="max-w-[1600px] mx-auto px-4 sm:px-6 py-3.5">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
-              {/* Breadcrumb matching Screenshot 1 */}
+              {/* Breadcrumb */}
               <div className="flex items-center gap-1.5 text-xs text-slate-500 font-medium mb-1">
                 <span className="text-slate-500">Reports & Analytics</span>
                 <ChevronRight className="w-3 h-3 text-slate-400" />
-                <span className="text-[#6C2BD9] font-bold">
-                  {viewMode === 'REPORT_VIEWER' ? selectedReportObj?.name : 'Dashboard'}
+                <span className="text-[#6C2BD9] font-bold capitalize">
+                  {REPORT_TABS.find(t => t.id === activeCategory)?.name || 'Dashboard'}
                 </span>
+                {viewMode === 'REPORT_VIEWER' && selectedReportObj && (
+                  <>
+                    <ChevronRight className="w-3 h-3 text-slate-400" />
+                    <span className="text-slate-900 font-bold">{selectedReportObj.name}</span>
+                  </>
+                )}
               </div>
               <h1 className="text-xl sm:text-2xl font-black text-slate-900 tracking-tight">
                 Reports & Analytics
               </h1>
               <p className="text-xs sm:text-sm text-slate-500">
-                Get insights from your asset data with real-time reports and analytics
+                Get comprehensive insights from your asset data with real-time reports and analytics
               </p>
             </div>
 
@@ -647,7 +873,7 @@ export function ReportsCatalogue() {
                 <span className="hidden md:inline">AI Analytics</span>
               </button>
 
-              {/* "+ Create Report ∨" Action Button matching Screenshot 1 */}
+              {/* "+ Create Report" Action Button */}
               <div className="relative">
                 <button
                   onClick={() => setShowCreateDropdown(!showCreateDropdown)}
@@ -673,12 +899,12 @@ export function ReportsCatalogue() {
                     <button
                       onClick={() => {
                         setShowCreateDropdown(false);
-                        setShowCustomReportModal(true);
+                        handleTabClick('custom');
                       }}
                       className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 font-semibold"
                     >
                       <SlidersHorizontal className="w-4 h-4 text-[#6C2BD9]" />
-                      <span>Custom Report</span>
+                      <span>Custom Report Builder</span>
                     </button>
                     <button
                       onClick={() => {
@@ -694,7 +920,7 @@ export function ReportsCatalogue() {
                     <button
                       onClick={() => {
                         setShowCreateDropdown(false);
-                        handleExportCSV('Asset360_Executive_Report.csv');
+                        handleExportCSV('Asset360_Current_Export.csv');
                       }}
                       className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 font-semibold"
                     >
@@ -705,6 +931,31 @@ export function ReportsCatalogue() {
                 )}
               </div>
             </div>
+          </div>
+
+          {/* ----------------------------------------------------------------- */}
+          {/* TOP CATEGORY NAVIGATION TABS STRIP                                */}
+          {/* ----------------------------------------------------------------- */}
+          <div className="flex items-center gap-1.5 overflow-x-auto pt-3 pb-1 border-t border-slate-100 mt-3 scrollbar-none">
+            {REPORT_TABS.map((tab) => {
+              const Icon = tab.icon;
+              const isActive = activeCategory === tab.id;
+              return (
+                <button
+                  key={tab.id}
+                  onClick={() => handleTabClick(tab.id)}
+                  className={clsx(
+                    'px-3.5 py-2 rounded-xl text-xs font-bold flex items-center gap-2 shrink-0 transition-all cursor-pointer',
+                    isActive
+                      ? 'bg-[#6C2BD9] text-white shadow-sm'
+                      : 'bg-slate-50 hover:bg-slate-100 text-slate-600 border border-slate-200/80 hover:text-slate-900'
+                  )}
+                >
+                  <Icon className={clsx('w-3.5 h-3.5', isActive ? 'text-white' : 'text-slate-500')} />
+                  <span>{tab.name}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
       </div>
@@ -724,639 +975,1421 @@ export function ReportsCatalogue() {
         )}
 
         {/* ------------------------------------------------------------------- */}
-        {/* 2. Report Category Navigation Cards (Matching Screenshot 1)         */}
+        {/* VIEW 1: DEDICATED REPORT VIEWER (When viewing a specific sub-report) */}
         {/* ------------------------------------------------------------------- */}
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-          {CATEGORY_CARDS.map((cat) => {
-            const Icon = cat.icon;
-            const isSelected = filterCategory.toLowerCase().includes(cat.id);
-
-            return (
-              <button
-                key={cat.id}
-                onClick={() => {
-                  setFilterCategory(cat.name);
-                  setViewMode('DASHBOARD');
-                }}
-                className={clsx(
-                  'p-3 rounded-2xl border text-left transition-all relative overflow-hidden group cursor-pointer bg-white',
-                  isSelected
-                    ? 'border-[#6C2BD9] shadow-md ring-2 ring-[#6C2BD9]/20'
-                    : 'border-slate-200 hover:border-slate-300 hover:shadow-xs'
-                )}
-              >
-                <div className="flex items-start justify-between mb-1.5">
-                  <div
-                    className="w-8 h-8 rounded-xl flex items-center justify-center border shrink-0"
-                    style={{ backgroundColor: cat.bgColor, borderColor: cat.borderColor }}
-                  >
-                    <Icon className="w-4 h-4" style={{ color: cat.color }} />
-                  </div>
-                  <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-slate-600 group-hover:translate-x-0.5 transition-all" />
-                </div>
-                <div className="text-xs font-black text-slate-900 leading-snug">
-                  {cat.name}
-                </div>
-                <div className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
-                  {cat.description}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* ------------------------------------------------------------------- */}
-        {/* 3. Common Filter Bar & Advanced Trigger (Matching Screenshot 1 & 2)  */}
-        {/* ------------------------------------------------------------------- */}
-        <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
-            {/* Report Category */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                Report Category
-              </label>
-              <div className="relative">
-                <select
-                  value={filterCategory}
-                  onChange={(e) => setFilterCategory(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
+        {viewMode === 'REPORT_VIEWER' && selectedReportObj ? (
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
+              <div className="flex items-center gap-3">
+                <button
+                  onClick={() => setViewMode('DASHBOARD')}
+                  className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 cursor-pointer shadow-2xs"
+                  title="Back to Reports"
                 >
-                  <option value="All Categories">All Categories</option>
-                  <option value="Asset Reports">Asset Reports</option>
-                  <option value="Maintenance Reports">Maintenance Reports</option>
-                  <option value="Inventory Reports">Inventory Reports</option>
-                  <option value="Financial Reports">Financial Reports</option>
-                  <option value="Compliance Reports">Compliance Reports</option>
-                  <option value="Custom Reports">Custom Reports</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  <ArrowLeft className="w-4 h-4" />
+                </button>
+                <div>
+                  <span className="text-[10px] font-bold text-[#6C2BD9] uppercase tracking-wider">
+                    {selectedReportObj.category} Report View
+                  </span>
+                  <h2 className="text-lg font-black text-slate-900">{selectedReportObj.name}</h2>
+                  <p className="text-xs text-slate-500">{selectedReportObj.description}</p>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => handleExportCSV(`${selectedReportObj.id}_Export.csv`, viewerData)}
+                  className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                >
+                  <FileSpreadsheet className="w-3.5 h-3.5" />
+                  <span>Export CSV</span>
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" />
+                  <span>Print</span>
+                </button>
               </div>
             </div>
 
-            {/* Report Type */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                Report Type
-              </label>
-              <div className="relative">
-                <select
-                  value={filterReportType}
-                  onChange={(e) => setFilterReportType(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
-                >
-                  <option value="All Types">All Types</option>
-                  <option value="Assets by Location">Assets by Location</option>
-                  <option value="Assets by Category">Assets by Category</option>
-                  <option value="Maintenance Work Orders">Maintenance Work Orders</option>
-                  <option value="Inventory Valuation">Inventory Valuation</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Date Range */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                Date Range
-              </label>
-              <div className="relative">
+            {/* Search bar inside Report Viewer */}
+            <div className="flex items-center justify-between gap-4">
+              <div className="relative w-72">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
-                  value={filterDateRange}
-                  onChange={(e) => setFilterDateRange(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                  placeholder="Filter current report rows..."
+                  value={viewerSearch}
+                  onChange={(e) => setViewerSearch(e.target.value)}
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
                 />
-                <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
               </div>
+              <span className="text-xs text-slate-400 font-medium">
+                Showing {viewerData.length} records in this snapshot
+              </span>
             </div>
 
-            {/* Location */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                Location
-              </label>
-              <div className="relative">
-                <select
-                  value={filterLocation}
-                  onChange={(e) => setFilterLocation(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
-                >
-                  <option value="All Locations">All Locations</option>
-                  <option value="Dubai HQ">Dubai HQ</option>
-                  <option value="Jebel Ali">Jebel Ali</option>
-                  <option value="Abu Dhabi">Abu Dhabi</option>
-                  <option value="Sharjah">Sharjah</option>
-                  <option value="Other">Other</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Department */}
-            <div className="space-y-1">
-              <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
-                Department
-              </label>
-              <div className="relative">
-                <select
-                  value={filterDepartment}
-                  onChange={(e) => setFilterDepartment(e.target.value)}
-                  className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
-                >
-                  <option value="All Departments">All Departments</option>
-                  <option value="IT Department">IT Department</option>
-                  <option value="Operations">Operations</option>
-                  <option value="Finance">Finance</option>
-                  <option value="Facilities">Facilities</option>
-                  <option value="HR">HR</option>
-                </select>
-                <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-              </div>
-            </div>
-
-            {/* Reset Button */}
-            <div>
-              <button
-                type="button"
-                onClick={() => {
-                  setFilterCategory('All Categories');
-                  setFilterReportType('All Types');
-                  setFilterDateRange('01 Jan 2025 - 31 Dec 2025');
-                  setFilterLocation('All Locations');
-                  setFilterDepartment('All Departments');
-                }}
-                className="w-full py-2 px-3 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 transition-colors shadow-2xs"
-              >
-                Reset
-              </button>
-            </div>
-
-            {/* Apply Filters & Advanced Trigger Button */}
-            <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => setShowAdvancedFilters(true)}
-                className="flex-1 py-2 px-3 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
-              >
-                <Filter className="w-3.5 h-3.5" /> Apply Filters
-              </button>
-              <button
-                type="button"
-                onClick={() => setShowAdvancedFilters(true)}
-                title="Advanced Filters"
-                className="p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors shadow-2xs cursor-pointer"
-              >
-                <SlidersHorizontal className="w-4 h-4" />
-              </button>
-            </div>
-          </div>
-        </div>
-
-        {/* ------------------------------------------------------------------- */}
-        {/* 4. 5 Management KPI Cards (Matching Screenshot 1)                   */}
-        {/* ------------------------------------------------------------------- */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
-          {/* 1. Total Assets */}
-          <div
-            onClick={() =>
-              handleOpenDrillDown({
-                title: 'Total Active Asset Portfolio',
-                metricKey: 'totalAssets',
-                filterType: 'all',
-                filterValue: 'All Assets'
-              })
-            }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
-                <Layers className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-slate-600">Total Assets</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
-              {kpis.totalAssets.toLocaleString()}
-            </div>
-            <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold mt-1">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>↑ {kpis.totalAssetsChange}%</span>
-              <span className="text-slate-400 font-normal ml-0.5">{kpis.periodText}</span>
-            </div>
-          </div>
-
-          {/* 2. Active Work Orders */}
-          <div
-            onClick={() =>
-              handleOpenDrillDown({
-                title: 'Active Work Orders',
-                metricKey: 'activeWorkOrders',
-                filterType: 'workOrders',
-                filterValue: 'Open & In Progress'
-              })
-            }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
-                <Wrench className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-slate-600">Active Work Orders</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
-              {kpis.activeWorkOrders}
-            </div>
-            <div className="flex items-center gap-1 text-xs text-rose-600 font-bold mt-1">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>↑ {kpis.activeWorkOrdersChange}%</span>
-              <span className="text-slate-400 font-normal ml-0.5">{kpis.periodText}</span>
-            </div>
-          </div>
-
-          {/* 3. Assets by Location */}
-          <div
-            onClick={() =>
-              handleOpenDrillDown({
-                title: 'Assets Distributed Across 18 Operational Locations',
-                metricKey: 'locationCount',
-                filterType: 'location',
-                filterValue: 'All Locations'
-              })
-            }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
-                <MapPin className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-slate-600">Assets by Location</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
-              {kpis.locationCount}
-            </div>
-            <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold mt-1 group-hover:underline">
-              <span>View details →</span>
-            </div>
-          </div>
-
-          {/* 4. Maintenance Cost */}
-          <div
-            onClick={() =>
-              handleOpenDrillDown({
-                title: 'Maintenance Cost Drivers & Work Orders',
-                metricKey: 'maintenanceCost',
-                filterType: 'cost',
-                filterValue: 'High Cost'
-              })
-            }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#5B21B6] flex items-center justify-center">
-                <Clock className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-slate-600">Maintenance Cost</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
-              {kpis.maintenanceCostFormatted || 'AED 1.2M'}
-            </div>
-            <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold mt-1">
-              <TrendingDown className="w-3.5 h-3.5" />
-              <span>↓ {kpis.maintenanceCostChange}%</span>
-              <span className="text-slate-400 font-normal ml-0.5">{kpis.periodText}</span>
-            </div>
-          </div>
-
-          {/* 5. Compliance Rate */}
-          <div
-            onClick={() =>
-              handleOpenDrillDown({
-                title: 'Asset Audit Compliance Portfolio (98%)',
-                metricKey: 'complianceRate',
-                filterType: 'compliance',
-                filterValue: 'Compliant'
-              })
-            }
-            className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
-                <ShieldCheck className="w-4 h-4" />
-              </div>
-              <span className="text-xs font-bold text-slate-600">Compliance Rate</span>
-            </div>
-            <div className="text-2xl font-black text-slate-900 tracking-tight">
-              {kpis.complianceRate}%
-            </div>
-            <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold mt-1">
-              <TrendingUp className="w-3.5 h-3.5" />
-              <span>↑ {kpis.complianceRateChange}%</span>
-              <span className="text-slate-400 font-normal ml-0.5">{kpis.periodText}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* ------------------------------------------------------------------- */}
-        {/* 5. Middle Analytical Section (3 Interactive Charts from Screenshot 1)*/}
-        {/* ------------------------------------------------------------------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-          {/* Chart 1: Assets by Category Donut */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
-                <h3 className="text-sm font-black text-slate-900">Assets by Category</h3>
-                <button
-                  onClick={() =>
-                    handleLaunchReport(
-                      CORE_PREDEFINED_REPORTS.find(r => r.id === 'asset-register')
-                    )
-                  }
-                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  View Report →
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
-                {/* SVG Donut Chart */}
-                <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
-                  <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#6C2BD9" strokeWidth="15" strokeDasharray="62.1 238.8" strokeDashoffset="0" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#60A5FA" strokeWidth="15" strokeDasharray="40.6 238.8" strokeDashoffset="-62.1" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F59E0B" strokeWidth="15" strokeDasharray="35.8 238.8" strokeDashoffset="-102.7" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#EF4444" strokeWidth="15" strokeDasharray="28.7 238.8" strokeDashoffset="-138.5" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#06B6D4" strokeWidth="15" strokeDasharray="23.9 238.8" strokeDashoffset="-167.2" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#5B21B6" strokeWidth="15" strokeDasharray="19.1 238.8" strokeDashoffset="-191.1" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#94A3B8" strokeWidth="15" strokeDasharray="28.6 238.8" strokeDashoffset="-210.2" />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                    <span className="text-base font-black text-slate-900 leading-none">12,486</span>
-                    <span className="text-[10px] font-semibold text-slate-400 mt-0.5">Total Assets</span>
-                  </div>
+            {/* Data Table */}
+            <div className="overflow-auto max-h-[500px]">
+              {viewerLoading ? (
+                <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+                  <RefreshCw className="w-6 h-6 animate-spin text-[#6C2BD9]" />
+                  <span>Generating live report dataset...</span>
                 </div>
-
-                {/* Legend List */}
-                <div className="flex-1 space-y-1.5 text-xs w-full">
-                  {categoryChartData.map((item, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() =>
-                        handleOpenDrillDown({
-                          title: `Category Drill-Down: ${item.name}`,
-                          metricKey: 'category',
-                          filterType: 'category',
-                          filterValue: item.name
-                        })
-                      }
-                      className="flex items-center justify-between py-0.5 hover:bg-slate-50 px-1 rounded cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-1.5 truncate">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></span>
-                        <span className="text-[11px] font-medium text-slate-600 group-hover:text-[#6C2BD9] truncate">
-                          {item.name}
-                        </span>
-                      </div>
-                      <div className="font-semibold text-slate-800 text-[11px] shrink-0 ml-1">
-                        {item.count.toLocaleString()} <span className="text-slate-400 font-normal">({item.pct}%)</span>
-                      </div>
-                    </div>
-                  ))}
+              ) : viewerData.length === 0 ? (
+                <div className="py-12 text-center text-slate-400 text-xs font-semibold">
+                  No records found for current parameters.
                 </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Chart 2: Assets by Location Bar Chart */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
-                <h3 className="text-sm font-black text-slate-900">Assets by Location</h3>
-                <button
-                  onClick={() =>
-                    handleLaunchReport(
-                      CORE_PREDEFINED_REPORTS.find(r => r.id === 'location-distribution')
-                    )
-                  }
-                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  View Report →
-                </button>
-              </div>
-
-              <div className="h-[200px] w-full pt-2">
-                <ResponsiveContainer width="100%" height="100%">
-                  <BarChart data={locationChartData} margin={{ top: 15, right: 10, left: -25, bottom: 0 }}>
-                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
-                    <XAxis dataKey="location" tick={{ fontSize: 10, fill: '#64748B' }} tickLine={false} axisLine={{ stroke: '#E2E8F0' }} />
-                    <YAxis tick={{ fontSize: 10, fill: '#64748B' }} tickLine={false} axisLine={false} domain={[0, 4000]} />
-                    <Tooltip
-                      formatter={(val) => [val.toLocaleString() + ' assets', 'Count']}
-                      contentStyle={{ backgroundColor: '#1E293B', borderRadius: '8px', color: '#fff', fontSize: '11px', border: 'none' }}
-                    />
-                    <Bar
-                      dataKey="count"
-                      radius={[4, 4, 0, 0]}
-                      onClick={(entry) =>
-                        handleOpenDrillDown({
-                          title: `Location Assets: ${entry.location}`,
-                          metricKey: 'location',
-                          filterType: 'location',
-                          filterValue: entry.location
-                        })
-                      }
-                      className="cursor-pointer"
-                    >
-                      {locationChartData.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={entry.fill || '#6C2BD9'} />
-                      ))}
-                    </Bar>
-                  </BarChart>
-                </ResponsiveContainer>
-              </div>
-            </div>
-          </div>
-
-          {/* Chart 3: Asset Status Donut */}
-          <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
-            <div>
-              <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
-                <h3 className="text-sm font-black text-slate-900">Asset Status</h3>
-                <button
-                  onClick={() =>
-                    handleLaunchReport(
-                      CORE_PREDEFINED_REPORTS.find(r => r.id === 'asset-register')
-                    )
-                  }
-                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  View Report →
-                </button>
-              </div>
-
-              <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
-                {/* SVG Donut Chart */}
-                <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
-                  <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 100 100">
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#10B981" strokeWidth="15" strokeDasharray="195.8 238.8" strokeDashoffset="0" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F59E0B" strokeWidth="15" strokeDasharray="16.7 238.8" strokeDashoffset="-195.8" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#94A3B8" strokeWidth="15" strokeDasharray="9.5 238.8" strokeDashoffset="-212.5" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#EF4444" strokeWidth="15" strokeDasharray="7.2 238.8" strokeDashoffset="-222.0" />
-                    <circle cx="50" cy="50" r="38" fill="transparent" stroke="#8B5CF6" strokeWidth="15" strokeDasharray="9.6 238.8" strokeDashoffset="-229.2" />
-                  </svg>
-                  <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
-                    <span className="text-base font-black text-slate-900 leading-none">12,486</span>
-                    <span className="text-[10px] font-semibold text-slate-400 mt-0.5">Total Assets</span>
-                  </div>
-                </div>
-
-                {/* Legend List */}
-                <div className="flex-1 space-y-1.5 text-xs w-full">
-                  {statusChartData.map((item, idx) => (
-                    <div
-                      key={idx}
-                      onClick={() =>
-                        handleOpenDrillDown({
-                          title: `Status Filter: ${item.status}`,
-                          metricKey: 'status',
-                          filterType: 'status',
-                          filterValue: item.status
-                        })
-                      }
-                      className="flex items-center justify-between py-0.5 hover:bg-slate-50 px-1 rounded cursor-pointer group"
-                    >
-                      <div className="flex items-center gap-1.5 truncate">
-                        <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></span>
-                        <span className="text-[11px] font-medium text-slate-600 group-hover:text-[#6C2BD9] truncate">
-                          {item.status}
-                        </span>
-                      </div>
-                      <div className="font-semibold text-slate-800 text-[11px] shrink-0 ml-1">
-                        {item.count.toLocaleString()} <span className="text-slate-400 font-normal">({item.pct}%)</span>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* ------------------------------------------------------------------- */}
-        {/* 6. Bottom Grids: Recent Reports & Scheduled Reports (Screenshot 1)  */}
-        {/* ------------------------------------------------------------------- */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
-          {/* Left Grid: Recent Reports (7 cols) */}
-          <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between">
-            <div>
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900">Recent Reports</h3>
-                <button
-                  onClick={() => setShowStandardReportModal(true)}
-                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
-                >
-                  View All Reports →
-                </button>
-              </div>
-
-              <div className="overflow-auto max-h-[350px]">
+              ) : (
                 <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-2xs">
+                  <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b shadow-2xs">
                     <tr>
-                      <th className="py-3 px-4">Report Name</th>
-                      <th className="py-3 px-3">Category</th>
-                      <th className="py-3 px-3">Date Generated</th>
-                      <th className="py-3 px-3">Generated By</th>
-                      <th className="py-3 px-3">Format</th>
-                      <th className="py-3 px-3 text-center">Actions</th>
+                      {Object.keys(viewerData[0]).slice(0, 8).map((key) => (
+                        <th key={key} className="py-3 px-3">
+                          {key.replace(/([A-Z])/g, ' $1')}
+                        </th>
+                      ))}
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
-                    {recentReports.map((rep) => (
-                      <tr key={rep.id} className="hover:bg-slate-50/70 transition-colors">
-                        <td className="py-3 px-4 font-semibold text-slate-900 flex items-center gap-2">
-                          <FileSpreadsheet className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                          <span>{rep.name}</span>
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-slate-100 text-slate-700">
-                            {rep.category}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-slate-500 font-mono text-[11px] whitespace-nowrap">
-                          {rep.dateGenerated}
-                        </td>
-                        <td className="py-3 px-3 text-slate-700 whitespace-nowrap">
-                          {rep.generatedBy}
-                        </td>
-                        <td className="py-3 px-3">
-                          <span className={clsx('px-2 py-0.5 rounded text-[10px] font-bold', rep.format === 'PDF' ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700')}>
-                            {rep.format}
-                          </span>
-                        </td>
-                        <td className="py-3 px-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
-                            <button
-                              onClick={() => {
-                                const found = CORE_PREDEFINED_REPORTS.find(c => c.name.toLowerCase().includes(rep.name.toLowerCase().split(' ')[0]));
-                                handleLaunchReport(found || CORE_PREDEFINED_REPORTS[0]);
-                              }}
-                              className="p-1 rounded text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 cursor-pointer"
-                              title="View Report"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleExportCSV(`${rep.name.replace(/\s+/g, '_')}.csv`)}
-                              className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer"
-                              title="Download Report"
-                            >
-                              <Download className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActionSuccessMsg(`Regenerating report ${rep.name}...`);
-                                setTimeout(() => setActionSuccessMsg(null), 3000);
-                              }}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-                              title="More Options"
-                            >
-                              <MoreVertical className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
-                        </td>
+                    {viewerData.map((row, idx) => (
+                      <tr key={idx} className="hover:bg-slate-50/60">
+                        {Object.keys(viewerData[0]).slice(0, 8).map((key) => (
+                          <td key={key} className="py-2.5 px-3">
+                            {typeof row[key] === 'object'
+                              ? JSON.stringify(row[key])
+                              : (row[key] || '-').toString()}
+                          </td>
+                        ))}
                       </tr>
                     ))}
                   </tbody>
                 </table>
+              )}
+            </div>
+            <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+              <span className="font-medium text-slate-600">Total: {viewerData.length} rows</span>
+              <button
+                onClick={() => setViewMode('DASHBOARD')}
+                className="text-[#6C2BD9] font-bold hover:underline"
+              >
+                ← Return to reports directory
+              </button>
+            </div>
+          </div>
+        ) : null}
+
+        {/* ------------------------------------------------------------------- */}
+        {/* VIEW 2: EXECUTIVE DASHBOARD (Default / Dashboard Reports)           */}
+        {/* ------------------------------------------------------------------- */}
+        {viewMode === 'DASHBOARD' && activeCategory === 'dashboard' && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Category Navigation Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+              {CATEGORY_CARDS.map((cat) => {
+                const Icon = cat.icon;
+                return (
+                  <button
+                    key={cat.id}
+                    onClick={() => handleTabClick(cat.id)}
+                    className="p-3 rounded-2xl border text-left transition-all relative overflow-hidden group cursor-pointer bg-white border-slate-200 hover:border-[#6C2BD9] hover:shadow-md"
+                  >
+                    <div className="flex items-start justify-between mb-1.5">
+                      <div
+                        className="w-8 h-8 rounded-xl flex items-center justify-center border shrink-0"
+                        style={{ backgroundColor: cat.bgColor, borderColor: cat.borderColor }}
+                      >
+                        <Icon className="w-4 h-4" style={{ color: cat.color }} />
+                      </div>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#6C2BD9] group-hover:translate-x-0.5 transition-all" />
+                    </div>
+                    <div className="text-xs font-black text-slate-900 leading-snug">
+                      {cat.name}
+                    </div>
+                    <div className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
+                      {cat.description}
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+
+            {/* Filter Bar */}
+            <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
+                {/* Report Category */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    Report Category
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={filterCategory}
+                      onChange={(e) => setFilterCategory(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
+                    >
+                      <option value="All Categories">All Categories</option>
+                      <option value="Asset Reports">Asset Reports</option>
+                      <option value="Maintenance Reports">Maintenance Reports</option>
+                      <option value="Inventory Reports">Inventory Reports</option>
+                      <option value="Financial Reports">Financial Reports</option>
+                      <option value="Compliance Reports">Compliance Reports</option>
+                      <option value="Custom Reports">Custom Reports</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Report Type */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    Report Type
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={filterReportType}
+                      onChange={(e) => setFilterReportType(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
+                    >
+                      <option value="All Types">All Types</option>
+                      <option value="Assets by Location">Assets by Location</option>
+                      <option value="Assets by Category">Assets by Category</option>
+                      <option value="Maintenance Work Orders">Maintenance Work Orders</option>
+                      <option value="Inventory Valuation">Inventory Valuation</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Date Range */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    Date Range
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={filterDateRange}
+                      onChange={(e) => setFilterDateRange(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                    />
+                    <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Location */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    Location
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={filterLocation}
+                      onChange={(e) => setFilterLocation(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
+                    >
+                      <option value="All Locations">All Locations</option>
+                      <option value="Dubai HQ">Dubai HQ</option>
+                      <option value="Jebel Ali">Jebel Ali</option>
+                      <option value="Abu Dhabi">Abu Dhabi</option>
+                      <option value="Sharjah">Sharjah</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Department */}
+                <div className="space-y-1">
+                  <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
+                    Department
+                  </label>
+                  <div className="relative">
+                    <select
+                      value={filterDepartment}
+                      onChange={(e) => setFilterDepartment(e.target.value)}
+                      className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 appearance-none focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer"
+                    >
+                      <option value="All Departments">All Departments</option>
+                      <option value="IT Department">IT Department</option>
+                      <option value="Operations">Operations</option>
+                      <option value="Finance">Finance</option>
+                      <option value="Facilities">Facilities</option>
+                    </select>
+                    <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                  </div>
+                </div>
+
+                {/* Reset Button */}
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setFilterCategory('All Categories');
+                      setFilterReportType('All Types');
+                      setFilterDateRange('01 Jan 2025 - 31 Dec 2025');
+                      setFilterLocation('All Locations');
+                      setFilterDepartment('All Departments');
+                    }}
+                    className="w-full py-2 px-3 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-600 transition-colors shadow-2xs"
+                  >
+                    Reset
+                  </button>
+                </div>
+
+                {/* Apply Filters & Advanced Trigger Button */}
+                <div className="flex gap-2">
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedFilters(true)}
+                    className="flex-1 py-2 px-3 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold shadow-xs flex items-center justify-center gap-1.5 transition-all cursor-pointer"
+                  >
+                    <Filter className="w-3.5 h-3.5" /> Apply
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowAdvancedFilters(true)}
+                    title="Advanced Filters"
+                    className="p-2 border border-slate-200 bg-slate-50 hover:bg-slate-100 rounded-xl text-slate-600 transition-colors shadow-2xs cursor-pointer"
+                  >
+                    <SlidersHorizontal className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
-              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span className="font-medium text-slate-600">Showing {recentReports.length} records</span>
-                <span className="text-slate-400">Scroll down to view all records</span>
+            </div>
+
+            {/* 5 Management KPI Cards */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
+              {/* 1. Total Assets */}
+              <div
+                onClick={() =>
+                  handleOpenDrillDown({
+                    title: 'Total Active Asset Portfolio',
+                    metricKey: 'totalAssets',
+                    filterType: 'all',
+                    filterValue: 'All Assets'
+                  })
+                }
+                className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
+                    <Layers className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-600">Total Assets</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">
+                  {kpis.totalAssets.toLocaleString()}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold mt-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>↑ {kpis.totalAssetsChange}%</span>
+                  <span className="text-slate-400 font-normal ml-0.5">{kpis.periodText}</span>
+                </div>
+              </div>
+
+              {/* 2. Active Work Orders */}
+              <div
+                onClick={() =>
+                  handleOpenDrillDown({
+                    title: 'Active Work Orders',
+                    metricKey: 'activeWorkOrders',
+                    filterType: 'workOrders',
+                    filterValue: 'Open & In Progress'
+                  })
+                }
+                className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-indigo-50 text-indigo-600 flex items-center justify-center">
+                    <Wrench className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-600">Active Work Orders</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">
+                  {kpis.activeWorkOrders}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-rose-600 font-bold mt-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>↑ {kpis.activeWorkOrdersChange}%</span>
+                  <span className="text-slate-400 font-normal ml-0.5">{kpis.periodText}</span>
+                </div>
+              </div>
+
+              {/* 3. Assets by Location */}
+              <div
+                onClick={() =>
+                  handleOpenDrillDown({
+                    title: 'Assets Distributed Across Operational Locations',
+                    metricKey: 'locationCount',
+                    filterType: 'location',
+                    filterValue: 'All Locations'
+                  })
+                }
+                className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-emerald-600 hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-emerald-50 text-emerald-600 flex items-center justify-center">
+                    <MapPin className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-600">Assets by Location</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">
+                  {kpis.locationCount}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold mt-1 group-hover:underline">
+                  <span>View details →</span>
+                </div>
+              </div>
+
+              {/* 4. Maintenance Cost */}
+              <div
+                onClick={() =>
+                  handleOpenDrillDown({
+                    title: 'Maintenance Cost Drivers & Work Orders',
+                    metricKey: 'maintenanceCost',
+                    filterType: 'cost',
+                    filterValue: 'High Cost'
+                  })
+                }
+                className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#5B21B6] flex items-center justify-center">
+                    <Clock className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-600">Maintenance Cost</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">
+                  {kpis.maintenanceCostFormatted || 'AED 1.2M'}
+                </div>
+                <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold mt-1">
+                  <TrendingDown className="w-3.5 h-3.5" />
+                  <span>↓ {kpis.maintenanceCostChange}%</span>
+                  <span className="text-slate-400 font-normal ml-0.5">{kpis.periodText}</span>
+                </div>
+              </div>
+
+              {/* 5. Compliance Rate */}
+              <div
+                onClick={() =>
+                  handleOpenDrillDown({
+                    title: 'Asset Audit Compliance Portfolio',
+                    metricKey: 'complianceRate',
+                    filterType: 'compliance',
+                    filterValue: 'Compliant'
+                  })
+                }
+                className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs hover:border-[#6C2BD9] hover:shadow-md transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-2 mb-2">
+                  <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <span className="text-xs font-bold text-slate-600">Compliance Rate</span>
+                </div>
+                <div className="text-2xl font-black text-slate-900 tracking-tight">
+                  {kpis.complianceRate}%
+                </div>
+                <div className="flex items-center gap-1 text-xs text-emerald-600 font-bold mt-1">
+                  <TrendingUp className="w-3.5 h-3.5" />
+                  <span>↑ {kpis.complianceRateChange}%</span>
+                  <span className="text-slate-400 font-normal ml-0.5">{kpis.periodText}</span>
+                </div>
+              </div>
+            </div>
+
+            {/* 3 Interactive Charts */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
+              {/* Chart 1: Assets by Category */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                    <h3 className="text-sm font-black text-slate-900">Assets by Category</h3>
+                    <button
+                      onClick={() => handleLaunchReport(CORE_PREDEFINED_REPORTS.find(r => r.id === 'asset-register'))}
+                      className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      View Report →
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
+                    <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
+                      <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#6C2BD9" strokeWidth="15" strokeDasharray="62.1 238.8" strokeDashoffset="0" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#60A5FA" strokeWidth="15" strokeDasharray="40.6 238.8" strokeDashoffset="-62.1" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F59E0B" strokeWidth="15" strokeDasharray="35.8 238.8" strokeDashoffset="-102.7" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#EF4444" strokeWidth="15" strokeDasharray="28.7 238.8" strokeDashoffset="-138.5" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#06B6D4" strokeWidth="15" strokeDasharray="23.9 238.8" strokeDashoffset="-167.2" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#5B21B6" strokeWidth="15" strokeDasharray="19.1 238.8" strokeDashoffset="-191.1" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#94A3B8" strokeWidth="15" strokeDasharray="28.6 238.8" strokeDashoffset="-210.2" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                        <span className="text-base font-black text-slate-900 leading-none">12,486</span>
+                        <span className="text-[10px] font-semibold text-slate-400 mt-0.5">Total Assets</span>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 space-y-1.5 text-xs w-full">
+                      {categoryChartData.map((item, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() =>
+                            handleOpenDrillDown({
+                              title: `Category Drill-Down: ${item.name}`,
+                              metricKey: 'category',
+                              filterType: 'category',
+                              filterValue: item.name
+                            })
+                          }
+                          className="flex items-center justify-between py-0.5 hover:bg-slate-50 px-1 rounded cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></span>
+                            <span className="text-[11px] font-medium text-slate-600 group-hover:text-[#6C2BD9] truncate">
+                              {item.name}
+                            </span>
+                          </div>
+                          <div className="font-semibold text-slate-800 text-[11px] shrink-0 ml-1">
+                            {item.count.toLocaleString()} <span className="text-slate-400 font-normal">({item.pct}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart 2: Assets by Location */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                    <h3 className="text-sm font-black text-slate-900">Assets by Location</h3>
+                    <button
+                      onClick={() => handleLaunchReport(CORE_PREDEFINED_REPORTS.find(r => r.id === 'location-distribution'))}
+                      className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      View Report →
+                    </button>
+                  </div>
+
+                  <div className="h-[200px] w-full pt-2">
+                    <ResponsiveContainer width="100%" height="100%">
+                      <BarChart data={locationChartData} margin={{ top: 15, right: 10, left: -25, bottom: 0 }}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#F1F5F9" />
+                        <XAxis dataKey="location" tick={{ fontSize: 10, fill: '#64748B' }} tickLine={false} axisLine={{ stroke: '#E2E8F0' }} />
+                        <YAxis tick={{ fontSize: 10, fill: '#64748B' }} tickLine={false} axisLine={false} domain={[0, 4000]} />
+                        <Tooltip
+                          formatter={(val) => [val.toLocaleString() + ' assets', 'Count']}
+                          contentStyle={{ backgroundColor: '#1E293B', borderRadius: '8px', color: '#fff', fontSize: '11px', border: 'none' }}
+                        />
+                        <Bar
+                          dataKey="count"
+                          radius={[4, 4, 0, 0]}
+                          onClick={(entry) =>
+                            handleOpenDrillDown({
+                              title: `Location Assets: ${entry.location}`,
+                              metricKey: 'location',
+                              filterType: 'location',
+                              filterValue: entry.location
+                            })
+                          }
+                          className="cursor-pointer"
+                        >
+                          {locationChartData.map((entry, index) => (
+                            <Cell key={`cell-${index}`} fill={entry.fill || '#6C2BD9'} />
+                          ))}
+                        </Bar>
+                      </BarChart>
+                    </ResponsiveContainer>
+                  </div>
+                </div>
+              </div>
+
+              {/* Chart 3: Asset Status */}
+              <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col justify-between">
+                <div>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5 mb-3">
+                    <h3 className="text-sm font-black text-slate-900">Asset Status</h3>
+                    <button
+                      onClick={() => handleLaunchReport(CORE_PREDEFINED_REPORTS.find(r => r.id === 'asset-register'))}
+                      className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      View Report →
+                    </button>
+                  </div>
+
+                  <div className="flex flex-col sm:flex-row items-center gap-4 py-2">
+                    <div className="relative w-36 h-36 shrink-0 flex items-center justify-center">
+                      <svg className="w-36 h-36 transform -rotate-90" viewBox="0 0 100 100">
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#10B981" strokeWidth="15" strokeDasharray="195.8 238.8" strokeDashoffset="0" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#F59E0B" strokeWidth="15" strokeDasharray="16.7 238.8" strokeDashoffset="-195.8" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#94A3B8" strokeWidth="15" strokeDasharray="9.5 238.8" strokeDashoffset="-212.5" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#EF4444" strokeWidth="15" strokeDasharray="7.2 238.8" strokeDashoffset="-222.0" />
+                        <circle cx="50" cy="50" r="38" fill="transparent" stroke="#8B5CF6" strokeWidth="15" strokeDasharray="9.6 238.8" strokeDashoffset="-229.2" />
+                      </svg>
+                      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none text-center">
+                        <span className="text-base font-black text-slate-900 leading-none">12,486</span>
+                        <span className="text-[10px] font-semibold text-slate-400 mt-0.5">Total Assets</span>
+                      </div>
+                    </div>
+
+                    <div className="flex-1 space-y-1.5 text-xs w-full">
+                      {statusChartData.map((item, idx) => (
+                        <div
+                          key={idx}
+                          onClick={() =>
+                            handleOpenDrillDown({
+                              title: `Status Filter: ${item.status}`,
+                              metricKey: 'status',
+                              filterType: 'status',
+                              filterValue: item.status
+                            })
+                          }
+                          className="flex items-center justify-between py-0.5 hover:bg-slate-50 px-1 rounded cursor-pointer group"
+                        >
+                          <div className="flex items-center gap-1.5 truncate">
+                            <span className="w-2.5 h-2.5 rounded-full shrink-0" style={{ backgroundColor: item.color }}></span>
+                            <span className="text-[11px] font-medium text-slate-600 group-hover:text-[#6C2BD9] truncate">
+                              {item.status}
+                            </span>
+                          </div>
+                          <div className="font-semibold text-slate-800 text-[11px] shrink-0 ml-1">
+                            {item.count.toLocaleString()} <span className="text-slate-400 font-normal">({item.pct}%)</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Bottom Grids: Recent Reports & Scheduled Reports */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              {/* Left: Recent Reports (7 cols) */}
+              <div className="lg:col-span-7 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">Recent Generated Reports</h3>
+                      <p className="text-[11px] text-slate-400">History of user-requested and scheduled report runs</p>
+                    </div>
+                    <button
+                      onClick={() => handleExportCSV('Recent_Reports_History.csv', recentReports)}
+                      className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Export Log
+                    </button>
+                  </div>
+
+                  <div className="overflow-auto max-h-[350px]">
+                    <table className="w-full text-left text-xs text-slate-700">
+                      <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-2xs">
+                        <tr>
+                          <th className="py-3 px-4">Report Name</th>
+                          <th className="py-3 px-3">Category</th>
+                          <th className="py-3 px-3">Date Generated</th>
+                          <th className="py-3 px-3">Generated By</th>
+                          <th className="py-3 px-3 text-center">Format</th>
+                          <th className="py-3 px-3 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {recentReports.map((rep) => (
+                          <tr key={rep.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3 px-4 font-semibold text-slate-900">
+                              {rep.name}
+                            </td>
+                            <td className="py-3 px-3">
+                              <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
+                                {rep.category}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-slate-500 text-[11px]">
+                              {rep.dateGenerated}
+                            </td>
+                            <td className="py-3 px-3 text-slate-600">
+                              {rep.generatedBy}
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <span className={clsx(
+                                'px-2 py-0.5 rounded text-[10px] font-bold',
+                                rep.format === 'PDF' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                              )}>
+                                {rep.format}
+                              </span>
+                            </td>
+                            <td className="py-3 px-3 text-center">
+                              <button
+                                onClick={() => {
+                                  setActionSuccessMsg(`Downloading ${rep.name} (${rep.format})...`);
+                                  setTimeout(() => setActionSuccessMsg(null), 3000);
+                                }}
+                                className="p-1 rounded text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 transition-colors cursor-pointer"
+                                title="Download Snapshot"
+                              >
+                                <Download className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-medium text-slate-600">Showing {recentReports.length} reports</span>
+                  <span className="text-slate-400">All reports cached for 30 days</span>
+                </div>
+              </div>
+
+              {/* Right: Scheduled Reports Preview (5 cols) */}
+              <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between">
+                <div>
+                  <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                    <div>
+                      <h3 className="text-sm font-black text-slate-900">Scheduled Reports</h3>
+                      <p className="text-[11px] text-slate-400">Automated recurring report delivery jobs</p>
+                    </div>
+                    <button
+                      onClick={() => handleTabClick('scheduled')}
+                      className="text-xs font-bold text-[#6C2BD9] hover:underline cursor-pointer"
+                    >
+                      Manage All →
+                    </button>
+                  </div>
+
+                  <div className="overflow-auto max-h-[350px]">
+                    <table className="w-full text-left text-xs text-slate-700">
+                      <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-2xs">
+                        <tr>
+                          <th className="py-3 px-4">Report Name</th>
+                          <th className="py-3 px-2">Frequency</th>
+                          <th className="py-3 px-2 text-center">Status</th>
+                          <th className="py-3 px-2 text-center">Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {scheduledReports.slice(0, 5).map((sch) => (
+                          <tr key={sch.id} className="hover:bg-slate-50/70 transition-colors">
+                            <td className="py-3 px-4 font-semibold text-slate-900">
+                              {sch.name}
+                            </td>
+                            <td className="py-3 px-2 text-slate-600 text-[11px]">
+                              {sch.frequency}
+                            </td>
+                            <td className="py-3 px-2 text-center">
+                              <span className={clsx(
+                                'px-2 py-0.5 rounded text-[10px] font-bold',
+                                sch.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-100 text-slate-500'
+                              )}>
+                                {sch.status}
+                              </span>
+                            </td>
+                            <td className="py-3 px-2 text-center">
+                              <button
+                                onClick={() => {
+                                  setActionSuccessMsg(`Triggered instant generation for ${sch.name}.`);
+                                  setTimeout(() => setActionSuccessMsg(null), 3000);
+                                }}
+                                className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer"
+                                title="Run Now"
+                              >
+                                <Play className="w-3.5 h-3.5" />
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+                <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
+                  <span className="font-medium text-slate-600">{scheduledReports.length} recurring jobs active</span>
+                  <button
+                    onClick={() => setShowScheduleReportModal(true)}
+                    className="text-xs font-bold text-[#6C2BD9] hover:underline"
+                  >
+                    + Add Schedule
+                  </button>
+                </div>
               </div>
             </div>
           </div>
+        )}
 
-          {/* Right Grid: Scheduled Reports (5 cols) */}
-          <div className="lg:col-span-5 bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden flex flex-col justify-between">
-            <div>
-              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
-                <h3 className="text-sm font-black text-slate-900">Scheduled Reports</h3>
+        {/* ------------------------------------------------------------------- */}
+        {/* VIEW 3: DOMAIN REPORTS (Assets, Inventory, Maintenance, Financial,  */}
+        {/*         Compliance)                                                 */}
+        {/* ------------------------------------------------------------------- */}
+        {viewMode === 'DASHBOARD' && ['assets', 'inventory', 'maintenance', 'financial', 'compliance'].includes(activeCategory) && (
+          <div className="space-y-6 animate-fadeIn">
+            {/* Domain Header & Top KPI Cards */}
+            {activeCategory === 'assets' && (
+              <>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-600 border border-emerald-200 flex items-center justify-center shrink-0">
+                      <Package className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900 tracking-tight">Asset Reports & Lifecycle Analytics</h2>
+                      <p className="text-xs text-slate-500">Comprehensive master register, custody tracking, physical location distribution, and transfer audit history.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleExportCSV('Asset_Master_Report.csv')}
+                      className="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Export Register
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Print
+                    </button>
+                  </div>
+                </div>
+
+                {/* 5 Asset KPIs */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Total Assets</div>
+                    <div className="text-2xl font-black text-slate-900">{FALLBACK_DOMAIN_DATA.assets.kpis.total}</div>
+                    <div className="text-[11px] text-emerald-600 font-bold mt-1">100% of Enterprise Register</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">In-Service (Active)</div>
+                    <div className="text-2xl font-black text-emerald-600">{FALLBACK_DOMAIN_DATA.assets.kpis.inService}</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1">82.0% Operational</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Under Maintenance</div>
+                    <div className="text-2xl font-black text-amber-600">{FALLBACK_DOMAIN_DATA.assets.kpis.inMaintenance}</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1">6.9% In Repair / Service</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Retired / Disposed</div>
+                    <div className="text-2xl font-black text-slate-600">{FALLBACK_DOMAIN_DATA.assets.kpis.retired}</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1">8.5% Lifecycle Complete</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Missing / Discrepancy</div>
+                    <div className="text-2xl font-black text-rose-600">{FALLBACK_DOMAIN_DATA.assets.kpis.missing}</div>
+                    <div className="text-[11px] text-rose-600 font-medium mt-1">Requires Audit Investigation</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeCategory === 'inventory' && (
+              <>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-blue-50 text-blue-600 border border-blue-200 flex items-center justify-center shrink-0">
+                      <Boxes className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900 tracking-tight">Inventory & Spare Parts Analytics</h2>
+                      <p className="text-xs text-slate-500">Warehouse stock valuation, on-hand bin balances, spare part consumption ledger, and automated replenishment alerts.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleExportCSV('Inventory_Valuation_Report.csv')}
+                      className="px-4 py-2 bg-[#3B82F6] hover:bg-blue-600 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Export Valuation
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Print
+                    </button>
+                  </div>
+                </div>
+
+                {/* 5 Inventory KPIs */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Cataloged SKUs</div>
+                    <div className="text-2xl font-black text-slate-900">{FALLBACK_DOMAIN_DATA.inventory.kpis.totalItems} Items</div>
+                    <div className="text-[11px] text-blue-600 font-bold mt-1">Central Warehouse & Hubs</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Healthy Stock Level</div>
+                    <div className="text-2xl font-black text-emerald-600">{FALLBACK_DOMAIN_DATA.inventory.kpis.inStock} SKUs</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1">Above Reorder Threshold</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Low Stock Alerts</div>
+                    <div className="text-2xl font-black text-amber-600">{FALLBACK_DOMAIN_DATA.inventory.kpis.lowStock} SKUs</div>
+                    <div className="text-[11px] text-amber-600 font-bold mt-1">Reorder Required</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Critical Out of Stock</div>
+                    <div className="text-2xl font-black text-rose-600">{FALLBACK_DOMAIN_DATA.inventory.kpis.outOfStock} SKUs</div>
+                    <div className="text-[11px] text-rose-600 font-bold mt-1">Affecting Maintenance SLAs</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Total Valuation</div>
+                    <div className="text-2xl font-black text-slate-900">{FALLBACK_DOMAIN_DATA.inventory.kpis.valuation}</div>
+                    <div className="text-[11px] text-emerald-600 font-bold mt-1">Standard Cost Basis</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeCategory === 'maintenance' && (
+              <>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-600 border border-purple-200 flex items-center justify-center shrink-0">
+                      <Wrench className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900 tracking-tight">Maintenance & Work Order Intelligence</h2>
+                      <p className="text-xs text-slate-500">Corrective repairs, scheduled preventive servicing logs, technician labor hours, and spare parts cost tracking.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleExportCSV('Maintenance_Intelligence_Report.csv')}
+                      className="px-4 py-2 bg-[#8B5CF6] hover:bg-purple-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Export Work Orders
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Print
+                    </button>
+                  </div>
+                </div>
+
+                {/* 5 Maintenance KPIs */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Total Work Orders</div>
+                    <div className="text-2xl font-black text-slate-900">{FALLBACK_DOMAIN_DATA.maintenance.kpis.totalWorkOrders}</div>
+                    <div className="text-[11px] text-purple-600 font-bold mt-1">All Recorded Jobs</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Active / In Progress</div>
+                    <div className="text-2xl font-black text-amber-600">{FALLBACK_DOMAIN_DATA.maintenance.kpis.inProgress}</div>
+                    <div className="text-[11px] text-amber-600 font-bold mt-1">Currently Being Serviced</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Completed & Verified</div>
+                    <div className="text-2xl font-black text-emerald-600">{FALLBACK_DOMAIN_DATA.maintenance.kpis.completed}</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1">Successfully Resolved</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Total Maintenance Spend</div>
+                    <div className="text-2xl font-black text-slate-900">{FALLBACK_DOMAIN_DATA.maintenance.kpis.totalSpend}</div>
+                    <div className="text-[11px] text-emerald-600 font-bold mt-1">Labor + Spare Parts</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Preventive Compliance</div>
+                    <div className="text-2xl font-black text-[#6C2BD9]">{FALLBACK_DOMAIN_DATA.maintenance.kpis.preventiveRate}</div>
+                    <div className="text-[11px] text-[#6C2BD9] font-bold mt-1">Target: &gt;90% SLA</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeCategory === 'financial' && (
+              <>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-emerald-50 text-emerald-700 border border-emerald-200 flex items-center justify-center shrink-0">
+                      <DollarSign className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900 tracking-tight">Financial & Asset Accounting Reports</h2>
+                      <p className="text-xs text-slate-500">Capitalization schedules, straight-line and declining depreciation, accumulated amortizations, and Net Book Values (NBV).</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleExportCSV('Financial_Depreciation_Report.csv')}
+                      className="px-4 py-2 bg-[#059669] hover:bg-emerald-700 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Export Schedule
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Print
+                    </button>
+                  </div>
+                </div>
+
+                {/* 5 Financial KPIs */}
+                <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Total Capital Cost</div>
+                    <div className="text-2xl font-black text-slate-900">{FALLBACK_DOMAIN_DATA.financial.kpis.acquisitionCost}</div>
+                    <div className="text-[11px] text-emerald-700 font-bold mt-1">Original Purchase Price</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Accumulated Depreciation</div>
+                    <div className="text-2xl font-black text-rose-600">{FALLBACK_DOMAIN_DATA.financial.kpis.accumulatedDep}</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1">33.6% Expensed to Date</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Net Book Value (NBV)</div>
+                    <div className="text-2xl font-black text-emerald-600">{FALLBACK_DOMAIN_DATA.financial.kpis.netBookValue}</div>
+                    <div className="text-[11px] text-emerald-700 font-bold mt-1">Balance Sheet Asset Value</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Depreciated Units</div>
+                    <div className="text-2xl font-black text-slate-900">{FALLBACK_DOMAIN_DATA.financial.kpis.depreciatedUnits}</div>
+                    <div className="text-[11px] text-slate-500 font-medium mt-1">Active Depreciation Books</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Average Depreciation Rate</div>
+                    <div className="text-2xl font-black text-[#6C2BD9]">{FALLBACK_DOMAIN_DATA.financial.kpis.avgDepRate}</div>
+                    <div className="text-[11px] text-[#6C2BD9] font-bold mt-1">Annual Standard Amortization</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {activeCategory === 'compliance' && (
+              <>
+                <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+                  <div className="flex items-center gap-3">
+                    <div className="w-12 h-12 rounded-2xl bg-purple-50 text-purple-700 border border-purple-200 flex items-center justify-center shrink-0">
+                      <ShieldCheck className="w-6 h-6" />
+                    </div>
+                    <div>
+                      <h2 className="text-lg font-black text-slate-900 tracking-tight">Compliance, Audit & Warranty Intelligence</h2>
+                      <p className="text-xs text-slate-500">Statutory audit trail, physical count discrepancy log, warranty expirations, and untagged asset discovery tracking.</p>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <button
+                      onClick={() => handleExportCSV('Compliance_Audit_Report.csv')}
+                      className="px-4 py-2 bg-[#7C3AED] hover:bg-purple-800 text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+                    >
+                      <Download className="w-3.5 h-3.5" /> Export Compliance Log
+                    </button>
+                    <button
+                      onClick={() => window.print()}
+                      className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                    >
+                      <Printer className="w-3.5 h-3.5" /> Print
+                    </button>
+                  </div>
+                </div>
+
+                {/* 4 Compliance KPIs */}
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Physical Audit Rate</div>
+                    <div className="text-2xl font-black text-emerald-600">{FALLBACK_DOMAIN_DATA.compliance.kpis.complianceRate}</div>
+                    <div className="text-[11px] text-emerald-700 font-bold mt-1">Audited in Current Cycle</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Warranties Expiring &lt;30d</div>
+                    <div className="text-2xl font-black text-amber-600">{FALLBACK_DOMAIN_DATA.compliance.kpis.expiringWarranties} Assets</div>
+                    <div className="text-[11px] text-amber-600 font-bold mt-1">Requires Renewal / Review</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Physical Discrepancies</div>
+                    <div className="text-2xl font-black text-rose-600">{FALLBACK_DOMAIN_DATA.compliance.kpis.auditExceptions} Cases</div>
+                    <div className="text-[11px] text-rose-600 font-bold mt-1">Location or Serial Mismatch</div>
+                  </div>
+                  <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                    <div className="text-xs font-bold text-slate-500 mb-1">Untagged Discovered Items</div>
+                    <div className="text-2xl font-black text-indigo-600">{FALLBACK_DOMAIN_DATA.compliance.kpis.untaggedItems} Assets</div>
+                    <div className="text-[11px] text-indigo-600 font-medium mt-1">Discovered via Network Scanner</div>
+                  </div>
+                </div>
+              </>
+            )}
+
+            {/* Sub-Report Pills Bar */}
+            <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-xs flex flex-wrap items-center justify-between gap-3">
+              <div className="flex flex-wrap items-center gap-2">
+                <span className="text-xs font-bold text-slate-400 mr-1 uppercase">Sub-Reports:</span>
+                {FALLBACK_DOMAIN_DATA[activeCategory]?.subReports?.map((sub) => {
+                  const isSelected = activeSubReportId === sub.id;
+                  return (
+                    <button
+                      key={sub.id}
+                      onClick={() => setActiveSubReportId(sub.id)}
+                      className={clsx(
+                        'px-3.5 py-1.5 rounded-xl text-xs font-bold transition-all cursor-pointer',
+                        isSelected
+                          ? 'bg-[#6C2BD9] text-white shadow-xs'
+                          : 'bg-slate-100 hover:bg-slate-200 text-slate-700'
+                      )}
+                    >
+                      {sub.name}
+                    </button>
+                  );
+                })}
+              </div>
+
+              {/* Live search input */}
+              <div className="relative w-64">
+                <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  type="text"
+                  placeholder="Filter records..."
+                  value={domainSearch}
+                  onChange={(e) => {
+                    setDomainSearch(e.target.value);
+                    setDomainPage(1);
+                  }}
+                  className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                />
+              </div>
+            </div>
+
+            {/* Live Data Table for Domain */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
+                {domainLoading ? (
+                  <div className="py-16 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
+                    <RefreshCw className="w-6 h-6 animate-spin text-[#6C2BD9]" />
+                    <span>Loading verified records...</span>
+                  </div>
+                ) : paginatedDomainRows.length === 0 ? (
+                  <div className="py-16 text-center text-slate-400 text-xs font-semibold">
+                    No matching records found for "{domainSearch}".
+                  </div>
+                ) : (
+                  <table className="w-full text-left text-xs text-slate-700">
+                    <thead className="bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
+                      <tr>
+                        {Object.keys(paginatedDomainRows[0]).map((key) => (
+                          <th key={key} className="py-3 px-4">
+                            {key.replace(/([A-Z])/g, ' $1')}
+                          </th>
+                        ))}
+                        <th className="py-3 px-4 text-center">Actions</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100 font-medium">
+                      {paginatedDomainRows.map((row, idx) => (
+                        <tr key={idx} className="hover:bg-slate-50/70 transition-colors">
+                          {Object.keys(paginatedDomainRows[0]).map((key) => {
+                            const val = row[key];
+                            const isCode = ['code', 'partNumber', 'workOrderId', 'assetCode'].includes(key);
+                            const isStatus = key.toLowerCase().includes('status');
+
+                            return (
+                              <td key={key} className="py-3 px-4">
+                                {isCode ? (
+                                  <span className="font-mono font-bold text-[#6C2BD9]">{val}</span>
+                                ) : isStatus ? (
+                                  <span
+                                    className={clsx(
+                                      'px-2.5 py-0.5 rounded-full text-[10px] font-bold inline-block',
+                                      String(val).toLowerCase().includes('active') || String(val).toLowerCase().includes('completed') || String(val).toLowerCase().includes('in stock')
+                                        ? 'bg-emerald-100 text-emerald-800'
+                                        : String(val).toLowerCase().includes('low') || String(val).toLowerCase().includes('progress') || String(val).toLowerCase().includes('maintenance') || String(val).toLowerCase().includes('soon')
+                                        ? 'bg-amber-100 text-amber-800'
+                                        : 'bg-rose-100 text-rose-800'
+                                    )}
+                                  >
+                                    {val}
+                                  </span>
+                                ) : (
+                                  <span>{typeof val === 'object' ? JSON.stringify(val) : (val || '-').toString()}</span>
+                                )}
+                              </td>
+                            );
+                          })}
+                          <td className="py-3 px-4 text-center">
+                            <button
+                              onClick={() => {
+                                setActionSuccessMsg(`Action on item ${Object.values(row)[0]}`);
+                                setTimeout(() => setActionSuccessMsg(null), 3000);
+                              }}
+                              className="p-1 rounded text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 cursor-pointer"
+                              title="View Details"
+                            >
+                              <Eye className="w-3.5 h-3.5" />
+                            </button>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                )}
+              </div>
+
+              {/* Table Footer with Pagination */}
+              <div className="p-3 bg-white border-t border-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500">
+                <span className="font-medium text-slate-600">
+                  Showing {paginatedDomainRows.length} of {filteredDomainRows.length} records
+                </span>
+
+                <div className="flex items-center gap-1.5">
+                  <button
+                    disabled={domainPage <= 1}
+                    onClick={() => setDomainPage(p => Math.max(1, p - 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
+                  >
+                    <ChevronLeft className="w-4 h-4" />
+                  </button>
+                  <span className="px-3 py-1 font-semibold text-slate-800 bg-slate-50 rounded-lg border border-slate-200">
+                    Page {domainPage} of {totalPages}
+                  </span>
+                  <button
+                    disabled={domainPage >= totalPages}
+                    onClick={() => setDomainPage(p => Math.min(totalPages, p + 1))}
+                    className="p-1.5 rounded-lg border border-slate-200 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed text-slate-600"
+                  >
+                    <ChevronRight className="w-4 h-4" />
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------- */}
+        {/* VIEW 4: CUSTOM REPORTS BUILDER VIEW                                 */}
+        {/* ------------------------------------------------------------------- */}
+        {viewMode === 'DASHBOARD' && activeCategory === 'custom' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-purple-50 text-[#6C2BD9] border border-purple-200 flex items-center justify-center shrink-0">
+                  <SlidersHorizontal className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 tracking-tight">Custom Report Builder</h2>
+                  <p className="text-xs text-slate-500">Design tailor-made reports by choosing datasets, selecting exact data columns, applying conditional filters, and exporting.</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2">
                 <button
-                  onClick={() => setShowScheduleReportModal(true)}
-                  className="text-xs font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
+                  onClick={() => handleExportCSV('Custom_Asset360_Dataset.csv', domainTableData)}
+                  className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
                 >
-                  View All →
+                  <Download className="w-3.5 h-3.5" /> Export Dataset
+                </button>
+                <button
+                  onClick={() => window.print()}
+                  className="px-3.5 py-2 border border-slate-200 hover:bg-slate-50 text-slate-700 rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
+                >
+                  <Printer className="w-3.5 h-3.5" /> Print
+                </button>
+              </div>
+            </div>
+
+            {/* Builder Configuration Panel */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200 shadow-xs space-y-5">
+              <h3 className="text-sm font-black text-slate-900 border-b border-slate-100 pb-2">
+                Configure Report Schema
+              </h3>
+
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-5 text-xs">
+                {/* 1. Primary Reporting Domain */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1.5">1. Select Data Domain</label>
+                  <select
+                    value={customDomain}
+                    onChange={(e) => setCustomDomain(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
+                  >
+                    <option value="ASSETS">Master Asset Register & Hardware</option>
+                    <option value="MAINTENANCE">Maintenance Work Orders & Labor Costs</option>
+                    <option value="INVENTORY">Inventory Stock & Spare Part Consumption</option>
+                    <option value="FINANCE">Financial Depreciation & Net Book Values</option>
+                    <option value="COMPLIANCE">Compliance, Warranties & Audit Discrepancies</option>
+                  </select>
+                </div>
+
+                {/* 2. Grouping */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1.5">2. Grouping & Summarization</label>
+                  <select
+                    value={customGrouping}
+                    onChange={(e) => setCustomGrouping(e.target.value)}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
+                  >
+                    <option value="NONE">No Grouping (Flat Detailed Records)</option>
+                    <option value="LOCATION">Group by Physical Location / Site</option>
+                    <option value="CATEGORY">Group by Asset Category</option>
+                    <option value="DEPARTMENT">Group by Custodian Department</option>
+                  </select>
+                </div>
+
+                {/* 3. Output Format */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1.5">3. Export File Format</label>
+                  <select className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800">
+                    <option value="CSV">CSV / Microsoft Excel Workbook (.xlsx)</option>
+                    <option value="PDF">PDF Formal Presentation Document (.pdf)</option>
+                  </select>
+                </div>
+              </div>
+
+              {/* Column Selection Checkboxes */}
+              <div>
+                <label className="font-bold text-slate-700 block mb-2">4. Select Output Columns (Check to include in export)</label>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-slate-50 p-4 rounded-xl border border-slate-200 text-xs">
+                  {[
+                    { key: 'code', label: 'Asset Code / Part #' },
+                    { key: 'name', label: 'Item Name / Description' },
+                    { key: 'category', label: 'Asset Category' },
+                    { key: 'location', label: 'Physical Location' },
+                    { key: 'custodian', label: 'Assigned Custodian' },
+                    { key: 'cost', label: 'Cost / Value (AED)' },
+                    { key: 'status', label: 'Lifecycle Status' },
+                    { key: 'purchaseDate', label: 'Acquisition Date' }
+                  ].map((col) => (
+                    <label key={col.key} className="flex items-center gap-2 cursor-pointer font-medium text-slate-700 hover:text-[#6C2BD9]">
+                      <input
+                        type="checkbox"
+                        checked={!!customColumns[col.key]}
+                        onChange={(e) => setCustomColumns({ ...customColumns, [col.key]: e.target.checked })}
+                        className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9]/20"
+                      />
+                      <span>{col.label}</span>
+                    </label>
+                  ))}
+                </div>
+              </div>
+            </div>
+
+            {/* Live Preview of Custom Report */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-sm font-black text-slate-900">Custom Dataset Live Preview</h3>
+                  <p className="text-[11px] text-slate-400">Rendering preview matching selected schema and column filters</p>
+                </div>
+                <button
+                  onClick={() => {
+                    const currentDomainKey = customDomain.toLowerCase();
+                    const dataset = FALLBACK_DOMAIN_DATA[currentDomainKey]?.sampleRows || FALLBACK_DOMAIN_DATA.assets.sampleRows;
+                    handleExportCSV(`Custom_${customDomain}_Report.csv`, dataset);
+                  }}
+                  className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold flex items-center gap-1 shadow-xs cursor-pointer"
+                >
+                  <Download className="w-3.5 h-3.5" /> Download Custom CSV
                 </button>
               </div>
 
-              <div className="overflow-auto max-h-[350px]">
+              <div className="overflow-x-auto">
+                {(() => {
+                  const currentDomainKey = customDomain.toLowerCase();
+                  const dataset = FALLBACK_DOMAIN_DATA[currentDomainKey]?.sampleRows || FALLBACK_DOMAIN_DATA.assets.sampleRows;
+                  const activeColKeys = Object.keys(customColumns).filter(k => customColumns[k]);
+
+                  return (
+                    <table className="w-full text-left text-xs text-slate-700">
+                      <thead className="bg-slate-50 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b">
+                        <tr>
+                          {activeColKeys.map((colKey) => (
+                            <th key={colKey} className="py-3 px-4">
+                              {colKey.replace(/([A-Z])/g, ' $1')}
+                            </th>
+                          ))}
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {dataset.map((row, idx) => (
+                          <tr key={idx} className="hover:bg-slate-50">
+                            {activeColKeys.map((colKey) => (
+                              <td key={colKey} className="py-2.5 px-4">
+                                {row[colKey] || Object.values(row)[0] || '-'}
+                              </td>
+                            ))}
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  );
+                })()}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ------------------------------------------------------------------- */}
+        {/* VIEW 5: SCHEDULED REPORTS MANAGEMENT VIEW                           */}
+        {/* ------------------------------------------------------------------- */}
+        {viewMode === 'DASHBOARD' && activeCategory === 'scheduled' && (
+          <div className="space-y-6 animate-fadeIn">
+            <div className="bg-white p-5 rounded-2xl border border-slate-200 shadow-xs flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="w-12 h-12 rounded-2xl bg-amber-50 text-amber-600 border border-amber-200 flex items-center justify-center shrink-0">
+                  <Clock className="w-6 h-6" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-black text-slate-900 tracking-tight">Automated & Scheduled Reports</h2>
+                  <p className="text-xs text-slate-500">Manage automated generation and recurring email distribution schedules for management, auditors, and engineering teams.</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowScheduleReportModal(true)}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <Plus className="w-4 h-4" />
+                <span>+ New Scheduled Report</span>
+              </button>
+            </div>
+
+            {/* Scheduled Stats Cards */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                <div className="text-xs font-bold text-slate-500 mb-1">Total Scheduled Jobs</div>
+                <div className="text-2xl font-black text-slate-900">{scheduledReports.length}</div>
+                <div className="text-[11px] text-purple-600 font-bold mt-1">Active recurring tasks</div>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                <div className="text-xs font-bold text-slate-500 mb-1">Active Deliveries</div>
+                <div className="text-2xl font-black text-emerald-600">
+                  {scheduledReports.filter(s => s.status === 'Active').length}
+                </div>
+                <div className="text-[11px] text-emerald-700 font-bold mt-1">Running on schedule</div>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                <div className="text-xs font-bold text-slate-500 mb-1">Paused Schedules</div>
+                <div className="text-2xl font-black text-slate-400">
+                  {scheduledReports.filter(s => s.status === 'Paused').length}
+                </div>
+                <div className="text-[11px] text-slate-400 font-medium mt-1">Temporarily suspended</div>
+              </div>
+              <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
+                <div className="text-xs font-bold text-slate-500 mb-1">Next Delivery Run</div>
+                <div className="text-xl font-black text-slate-900">01 Nov 2026</div>
+                <div className="text-[11px] text-emerald-600 font-bold mt-1">08:00 AM Gulf Standard</div>
+              </div>
+            </div>
+
+            {/* Scheduled Reports List Table */}
+            <div className="bg-white rounded-2xl border border-slate-200 shadow-xs overflow-hidden">
+              <div className="overflow-x-auto">
                 <table className="w-full text-left text-xs text-slate-700">
-                  <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200 shadow-2xs">
+                  <thead className="bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b border-slate-200">
                     <tr>
                       <th className="py-3 px-4">Report Name</th>
+                      <th className="py-3 px-3">Domain</th>
                       <th className="py-3 px-3">Frequency</th>
-                      <th className="py-3 px-3">Next Run</th>
+                      <th className="py-3 px-3">Format</th>
+                      <th className="py-3 px-4">Distribution Recipients</th>
+                      <th className="py-3 px-3">Next Scheduled Run</th>
                       <th className="py-3 px-3 text-center">Status</th>
-                      <th className="py-3 px-3 text-center">Actions</th>
+                      <th className="py-3 px-4 text-center">Actions</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-100 font-medium">
@@ -1365,10 +2398,26 @@ export function ReportsCatalogue() {
                         <td className="py-3 px-4 font-semibold text-slate-900">
                           {sch.name}
                         </td>
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-slate-100 text-slate-700">
+                            {sch.category || 'Asset'}
+                          </span>
+                        </td>
                         <td className="py-3 px-3 text-slate-600">
                           {sch.frequency}
                         </td>
-                        <td className="py-3 px-3 text-slate-500 font-mono text-[11px]">
+                        <td className="py-3 px-3">
+                          <span className={clsx(
+                            'px-2 py-0.5 rounded text-[10px] font-bold',
+                            sch.deliveryFormat === 'PDF' ? 'bg-rose-50 text-rose-600 border border-rose-100' : 'bg-emerald-50 text-emerald-700 border border-emerald-100'
+                          )}>
+                            {sch.deliveryFormat || 'Excel'}
+                          </span>
+                        </td>
+                        <td className="py-3 px-4 text-slate-500 text-[11px] truncate max-w-xs font-mono">
+                          {sch.recipients}
+                        </td>
+                        <td className="py-3 px-3 font-mono text-[11px] text-slate-600">
                           {sch.nextRun}
                         </td>
                         <td className="py-3 px-3 text-center">
@@ -1394,34 +2443,24 @@ export function ReportsCatalogue() {
                             </button>
                           </div>
                         </td>
-                        <td className="py-3 px-3 text-center">
-                          <div className="flex items-center justify-center gap-1.5">
+                        <td className="py-3 px-4 text-center">
+                          <div className="flex items-center justify-center gap-2">
+                            <button
+                              onClick={() => {
+                                setActionSuccessMsg(`Triggered instant execution for ${sch.name}. Delivering via email.`);
+                                setTimeout(() => setActionSuccessMsg(null), 3000);
+                              }}
+                              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
+                              title="Run Now"
+                            >
+                              <Play className="w-3 h-3" /> Run Now
+                            </button>
                             <button
                               onClick={() => setShowScheduleReportModal(true)}
-                              className="p-1 rounded text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 cursor-pointer"
+                              className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100"
                               title="Edit Schedule"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActionSuccessMsg(`Schedule ${sch.name} triggered immediately.`);
-                                setTimeout(() => setActionSuccessMsg(null), 3000);
-                              }}
-                              className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer"
-                              title="Run Now"
-                            >
-                              <Play className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActionSuccessMsg(`Options for ${sch.name}`);
-                                setTimeout(() => setActionSuccessMsg(null), 3000);
-                              }}
-                              className="p-1 rounded text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
-                              title="More Options"
-                            >
-                              <MoreVertical className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -1430,13 +2469,9 @@ export function ReportsCatalogue() {
                   </tbody>
                 </table>
               </div>
-              <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-                <span className="font-medium text-slate-600">Showing {scheduledReports.length} records</span>
-                <span className="text-slate-400">Scroll down to view all records</span>
-              </div>
             </div>
           </div>
-        </div>
+        )}
       </div>
 
       {/* ------------------------------------------------------------------- */}
@@ -1470,7 +2505,6 @@ export function ReportsCatalogue() {
 
             {/* 15 Fields Grid matching Screenshot 2 */}
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 text-xs">
-              {/* Row 1 */}
               <div className="space-y-1">
                 <label className="font-bold text-slate-700 block">Report Category</label>
                 <select
@@ -1517,7 +2551,6 @@ export function ReportsCatalogue() {
                 </div>
               </div>
 
-              {/* Row 2 */}
               <div className="space-y-1">
                 <label className="font-bold text-slate-700 block">Company</label>
                 <select
@@ -1561,222 +2594,29 @@ export function ReportsCatalogue() {
                   <option value="Facilities">Facilities</option>
                 </select>
               </div>
-
-              {/* Row 3 */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Cost Center</label>
-                <select
-                  value={advFilters.costCenter}
-                  onChange={(e) => setAdvFilters({ ...advFilters, costCenter: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
-                >
-                  <option value="All Cost Centers">All Cost Centers</option>
-                  <option value="CC-IT-01">CC-IT-01 (IT Infrastructure)</option>
-                  <option value="CC-OPS-02">CC-OPS-02 (Operations)</option>
-                  <option value="CC-FIN-03">CC-FIN-03 (Finance & Admin)</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Asset Class</label>
-                <select
-                  value={advFilters.assetClass}
-                  onChange={(e) => setAdvFilters({ ...advFilters, assetClass: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
-                >
-                  <option value="All Classes">All Classes</option>
-                  <option value="Tangible Fixed Assets">Tangible Fixed Assets</option>
-                  <option value="Capital IT Hardware">Capital IT Hardware</option>
-                  <option value="Rolling Stock Fleet">Rolling Stock Fleet</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Supplier</label>
-                <select
-                  value={advFilters.supplier}
-                  onChange={(e) => setAdvFilters({ ...advFilters, supplier: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
-                >
-                  <option value="All Suppliers">All Suppliers</option>
-                  <option value="Dell Technologies">Dell Technologies</option>
-                  <option value="Samsung Enterprise">Samsung Enterprise</option>
-                  <option value="Cisco Systems">Cisco Systems</option>
-                  <option value="Caterpillar Heavy Equip">Caterpillar Heavy Equip</option>
-                </select>
-              </div>
-
-              {/* Row 4 */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Asset Group</label>
-                <select
-                  value={advFilters.assetGroup}
-                  onChange={(e) => setAdvFilters({ ...advFilters, assetGroup: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
-                >
-                  <option value="All Asset Groups">All Asset Groups</option>
-                  <option value="IT Equipment">IT Equipment</option>
-                  <option value="Machinery & Plant">Machinery & Plant</option>
-                  <option value="Office Furnishings">Office Furnishings</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Asset Category</label>
-                <select
-                  value={advFilters.assetCategory}
-                  onChange={(e) => setAdvFilters({ ...advFilters, assetCategory: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
-                >
-                  <option value="All Categories">All Categories</option>
-                  <option value="Laptops & Workstations">Laptops & Workstations</option>
-                  <option value="Monitors & Displays">Monitors & Displays</option>
-                  <option value="Printers & Scanners">Printers & Scanners</option>
-                  <option value="Generators & Power">Generators & Power</option>
-                </select>
-              </div>
-
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Asset Sub Category</label>
-                <select
-                  value={advFilters.assetSubCategory}
-                  onChange={(e) => setAdvFilters({ ...advFilters, assetSubCategory: e.target.value })}
-                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
-                >
-                  <option value="All Sub Categories">All Sub Categories</option>
-                  <option value="Executive Laptops">Executive Laptops</option>
-                  <option value="Rackmount Servers">Rackmount Servers</option>
-                  <option value="Ergonomic Chairs">Ergonomic Chairs</option>
-                </select>
-              </div>
-
-              {/* Row 5 */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Acquisition Date</label>
-                <div className="flex items-center gap-1.5">
-                  <input
-                    type="date"
-                    value={advFilters.acqFromDate}
-                    onChange={(e) => setAdvFilters({ ...advFilters, acqFromDate: e.target.value })}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                  />
-                  <span className="text-slate-400">→</span>
-                  <input
-                    type="date"
-                    value={advFilters.acqToDate}
-                    onChange={(e) => setAdvFilters({ ...advFilters, acqToDate: e.target.value })}
-                    className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-                  />
-                </div>
-              </div>
-
-              {/* Asset Status Multi-Pills Selector */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Asset Status</label>
-                <div className="p-1.5 bg-slate-50 border border-slate-200 rounded-xl flex flex-wrap gap-1 items-center min-h-[38px]">
-                  {advFilters.assetStatus.map((st) => (
-                    <span
-                      key={st}
-                      className="bg-purple-100 text-[#6C2BD9] px-2 py-0.5 rounded-lg text-[11px] font-bold flex items-center gap-1"
-                    >
-                      {st}
-                      <button
-                        type="button"
-                        onClick={() =>
-                          setAdvFilters({
-                            ...advFilters,
-                            assetStatus: advFilters.assetStatus.filter(s => s !== st)
-                          })
-                        }
-                        className="hover:text-purple-900"
-                      >
-                        <X className="w-3 h-3" />
-                      </button>
-                    </span>
-                  ))}
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (!advFilters.assetStatus.includes('Retired')) {
-                        setAdvFilters({
-                          ...advFilters,
-                          assetStatus: [...advFilters.assetStatus, 'Retired']
-                        });
-                      }
-                    }}
-                    className="text-[11px] text-slate-400 hover:text-slate-700 px-1 font-semibold"
-                  >
-                    + Add
-                  </button>
-                </div>
-              </div>
-
-              {/* Tags Search */}
-              <div className="space-y-1">
-                <label className="font-bold text-slate-700 block">Tags</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search and select tags..."
-                    value={advFilters.tags}
-                    onChange={(e) => setAdvFilters({ ...advFilters, tags: e.target.value })}
-                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl font-medium text-slate-800"
-                  />
-                  <Search className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
             </div>
 
-            {/* Modal Footer matching Screenshot 2 */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100 text-xs">
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-4 border-t border-slate-100">
               <button
                 type="button"
-                onClick={() =>
-                  setAdvFilters({
-                    reportCategory: 'Asset Reports',
-                    reportType: 'Assets by Location',
-                    dateRange: 'This Year (Jan 2025 - Dec 2025)',
-                    company: 'All Companies',
-                    location: 'All Locations',
-                    department: 'All Departments',
-                    costCenter: 'All Cost Centers',
-                    assetClass: 'All Classes',
-                    supplier: 'All Suppliers',
-                    assetGroup: 'All Asset Groups',
-                    assetCategory: 'All Categories',
-                    assetSubCategory: 'All Sub Categories',
-                    acqFromDate: '',
-                    acqToDate: '',
-                    assetStatus: ['Active', 'In Maintenance'],
-                    tags: ''
-                  })
-                }
-                className="px-4 py-2 border border-slate-200 rounded-xl text-slate-600 font-bold hover:bg-slate-50 flex items-center gap-1.5"
+                onClick={() => setShowAdvancedFilters(false)}
+                className="px-4 py-2 border border-slate-200 rounded-xl text-slate-700 font-bold hover:bg-slate-50 cursor-pointer"
               >
-                <RefreshCw className="w-3.5 h-3.5" /> Reset Filters
+                Cancel
               </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedFilters(false)}
-                  className="px-4 py-2 border border-slate-200 rounded-xl text-slate-700 font-bold hover:bg-slate-50"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setShowAdvancedFilters(false);
-                    fetchDashboard();
-                    setActionSuccessMsg('Advanced filters applied.');
-                    setTimeout(() => setActionSuccessMsg(null), 3000);
-                  }}
-                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
-                >
-                  <Filter className="w-3.5 h-3.5" /> Apply Filters
-                </button>
-              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowAdvancedFilters(false);
+                  fetchDashboard();
+                  setActionSuccessMsg('Advanced filters applied.');
+                  setTimeout(() => setActionSuccessMsg(null), 3000);
+                }}
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
+              >
+                <Filter className="w-3.5 h-3.5" /> Apply Filters
+              </button>
             </div>
           </div>
         </div>
@@ -1802,7 +2642,7 @@ export function ReportsCatalogue() {
               </div>
               <button
                 onClick={() => setDrillDownModal({ ...drillDownModal, open: false })}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 hover:bg-slate-100 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -1860,7 +2700,7 @@ export function ReportsCatalogue() {
                         <td className="py-2.5 px-3 text-center">
                           <button
                             onClick={() => navigate(`/assets/${r.assetNumber}`)}
-                            className="p-1 text-slate-400 hover:text-[#6C2BD9]"
+                            className="p-1 text-slate-400 hover:text-[#6C2BD9] cursor-pointer"
                             title="View in Asset 360"
                           >
                             <ExternalLink className="w-3.5 h-3.5" />
@@ -1875,7 +2715,6 @@ export function ReportsCatalogue() {
 
             <div className="flex items-center justify-between p-3 border-t border-slate-100 text-xs shrink-0">
               <span className="font-medium text-slate-600">Showing {drillDownModal.records.length} records</span>
-              <span className="text-slate-400">Scroll down to view all records</span>
               <div className="flex items-center gap-2">
                 <button
                   onClick={() =>
@@ -1884,398 +2723,15 @@ export function ReportsCatalogue() {
                       drillDownModal.records
                     )
                   }
-                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-bold flex items-center gap-1"
+                  className="px-3 py-1.5 border border-slate-200 rounded-lg text-slate-600 hover:bg-slate-50 font-bold flex items-center gap-1 cursor-pointer"
                 >
                   <Download className="w-3 h-3" /> Export Records
                 </button>
                 <button
                   onClick={() => setDrillDownModal({ ...drillDownModal, open: false })}
-                  className="px-4 py-1.5 bg-slate-800 text-white rounded-lg font-bold"
+                  className="px-4 py-1.5 bg-slate-800 text-white rounded-lg font-bold cursor-pointer"
                 >
                   Close
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------------- */}
-      {/* ADVANCED FILTERS MODAL (Matching Image 1)                            */}
-      {/* ------------------------------------------------------------------- */}
-      {showAdvancedFilters && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4 overflow-y-auto">
-          <div className="bg-white rounded-3xl max-w-5xl w-full p-6 shadow-2xl space-y-5 animate-fadeIn border border-slate-200 my-8">
-            {/* Modal Header */}
-            <div className="flex items-center justify-between pb-4 border-b border-slate-100">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-2xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center border border-purple-200 shrink-0">
-                  <Filter className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-base font-black text-slate-900 tracking-tight">Advanced Filters</h3>
-                  <p className="text-xs text-slate-500 font-medium">Refine your report data using one or more filters</p>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setShowAdvancedFilters(false)}
-                className="p-1.5 rounded-xl hover:bg-slate-100 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Modal Body: 3-Column Grid matching Screenshot 1 */}
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-              {/* 1. Report Category */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Report Category</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.reportCategory}
-                    onChange={(e) => setAdvFilters({ ...advFilters, reportCategory: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="Asset Reports">Asset Reports</option>
-                    <option value="Maintenance Reports">Maintenance Reports</option>
-                    <option value="Inventory Reports">Inventory Reports</option>
-                    <option value="Financial Reports">Financial Reports</option>
-                    <option value="Compliance Reports">Compliance Reports</option>
-                    <option value="Custom Reports">Custom Reports</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 2. Report Type */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Report Type</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.reportType}
-                    onChange={(e) => setAdvFilters({ ...advFilters, reportType: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="Assets by Location">Assets by Location</option>
-                    <option value="Assets by Category">Assets by Category</option>
-                    <option value="Maintenance Work Orders">Maintenance Work Orders</option>
-                    <option value="Inventory Valuation">Inventory Valuation</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 3. Date Range */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Date Range</label>
-                <div className="relative">
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 text-[#6C2BD9] pointer-events-none">
-                    <Calendar className="w-4 h-4" />
-                  </div>
-                  <select
-                    value={advFilters.dateRange}
-                    onChange={(e) => setAdvFilters({ ...advFilters, dateRange: e.target.value })}
-                    className="w-full pl-9 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="This Year (Jan 2025 - Dec 2025)">This Year (Jan 2025 - Dec 2025)</option>
-                    <option value="This Month">This Month</option>
-                    <option value="Last Month">Last Month</option>
-                    <option value="This Quarter">This Quarter</option>
-                    <option value="Custom Range">Custom Range</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 4. Company */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Company</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.company}
-                    onChange={(e) => setAdvFilters({ ...advFilters, company: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Companies">All Companies</option>
-                    <option value="Wavelogix FZC">Wavelogix FZC</option>
-                    <option value="Infotatwaa Solutions">Infotatwaa Solutions</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 5. Location */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Location</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.location}
-                    onChange={(e) => setAdvFilters({ ...advFilters, location: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Locations">All Locations</option>
-                    <option value="Dubai HQ">Dubai HQ</option>
-                    <option value="Jebel Ali">Jebel Ali</option>
-                    <option value="Abu Dhabi">Abu Dhabi</option>
-                    <option value="Sharjah">Sharjah</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 6. Department */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Department</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.department}
-                    onChange={(e) => setAdvFilters({ ...advFilters, department: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Departments">All Departments</option>
-                    <option value="IT Department">IT Department</option>
-                    <option value="Operations">Operations</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Facilities">Facilities</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 7. Cost Center */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Cost Center</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.costCenter}
-                    onChange={(e) => setAdvFilters({ ...advFilters, costCenter: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Cost Centers">All Cost Centers</option>
-                    <option value="CC-101 IT">CC-101 IT</option>
-                    <option value="CC-102 Operations">CC-102 Operations</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 8. Asset Class */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Class</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.assetClass}
-                    onChange={(e) => setAdvFilters({ ...advFilters, assetClass: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Classes">All Classes</option>
-                    <option value="Hardware">Hardware</option>
-                    <option value="Software">Software</option>
-                    <option value="Furniture">Furniture</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 9. Supplier */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Supplier</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.supplier}
-                    onChange={(e) => setAdvFilters({ ...advFilters, supplier: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Suppliers">All Suppliers</option>
-                    <option value="Zebra Technologies">Zebra Technologies</option>
-                    <option value="Honeywell">Honeywell</option>
-                    <option value="Brady Corporation">Brady Corporation</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 10. Asset Group */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Group</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.assetGroup}
-                    onChange={(e) => setAdvFilters({ ...advFilters, assetGroup: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Asset Groups">All Asset Groups</option>
-                    <option value="IT Hardware">IT Hardware</option>
-                    <option value="Enterprise Mobility">Enterprise Mobility</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 11. Asset Category */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Category</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.assetCategory}
-                    onChange={(e) => setAdvFilters({ ...advFilters, assetCategory: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Categories">All Categories</option>
-                    <option value="IT Equipment">IT Equipment</option>
-                    <option value="Office Furniture">Office Furniture</option>
-                    <option value="Vehicles">Vehicles</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 12. Asset Sub Category */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Sub Category</label>
-                <div className="relative">
-                  <select
-                    value={advFilters.assetSubCategory}
-                    onChange={(e) => setAdvFilters({ ...advFilters, assetSubCategory: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20 focus:outline-hidden appearance-none cursor-pointer"
-                  >
-                    <option value="All Sub Categories">All Sub Categories</option>
-                    <option value="Laptops">Laptops</option>
-                    <option value="Scanners">Scanners</option>
-                  </select>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-
-              {/* 13. Acquisition Date */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Acquisition Date</label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Calendar className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="From Date"
-                      value={advFilters.acqFromDate}
-                      onChange={(e) => setAdvFilters({ ...advFilters, acqFromDate: e.target.value })}
-                      className="w-full pl-8 pr-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:outline-hidden"
-                    />
-                  </div>
-                  <span className="text-slate-400 font-bold">→</span>
-                  <div className="relative flex-1">
-                    <input
-                      type="text"
-                      placeholder="To Date"
-                      value={advFilters.acqToDate}
-                      onChange={(e) => setAdvFilters({ ...advFilters, acqToDate: e.target.value })}
-                      className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:outline-hidden"
-                    />
-                  </div>
-                </div>
-              </div>
-
-              {/* 14. Asset Status */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Asset Status</label>
-                <div className="w-full px-2.5 py-1 bg-white border border-slate-200 rounded-xl text-xs flex items-center justify-between min-h-[38px]">
-                  <div className="flex flex-wrap gap-1.5 items-center">
-                    {advFilters.assetStatus.map((st) => (
-                      <span
-                        key={st}
-                        className="px-2 py-0.5 rounded-lg bg-purple-50 text-[#6C2BD9] font-bold text-[11px] flex items-center gap-1 border border-purple-200"
-                      >
-                        {st}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAdvFilters({
-                              ...advFilters,
-                              assetStatus: advFilters.assetStatus.filter((item) => item !== st)
-                            })
-                          }
-                          className="hover:text-purple-900 cursor-pointer ml-0.5"
-                        >
-                          <X className="w-3 h-3" />
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 pointer-events-none shrink-0" />
-                </div>
-              </div>
-
-              {/* 15. Tags */}
-              <div>
-                <label className="block text-xs font-bold text-slate-700 mb-1">Tags</label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    placeholder="Search and select tags..."
-                    value={advFilters.tags}
-                    onChange={(e) => setAdvFilters({ ...advFilters, tags: e.target.value })}
-                    className="w-full pl-3 pr-8 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:border-[#6C2BD9] focus:outline-hidden"
-                  />
-                  <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-
-            {/* Modal Footer matching Screenshot 1 */}
-            <div className="flex items-center justify-between pt-4 border-t border-slate-100">
-              <button
-                type="button"
-                onClick={() =>
-                  setAdvFilters({
-                    reportCategory: 'Asset Reports',
-                    reportType: 'Assets by Location',
-                    dateRange: 'This Year (Jan 2025 - Dec 2025)',
-                    company: 'All Companies',
-                    location: 'All Locations',
-                    department: 'All Departments',
-                    costCenter: 'All Cost Centers',
-                    assetClass: 'All Classes',
-                    supplier: 'All Suppliers',
-                    assetGroup: 'All Asset Groups',
-                    assetCategory: 'All Categories',
-                    assetSubCategory: 'All Sub Categories',
-                    acqFromDate: '',
-                    acqToDate: '',
-                    assetStatus: ['Active', 'In Maintenance'],
-                    tags: ''
-                  })
-                }
-                className="px-4 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 flex items-center gap-1.5 transition-colors cursor-pointer"
-              >
-                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
-                <span>Reset Filters</span>
-              </button>
-
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={() => setShowAdvancedFilters(false)}
-                  className="px-5 py-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-xs font-bold text-slate-700 transition-colors cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => {
-                    setFilterCategory(advFilters.reportCategory);
-                    setFilterReportType(advFilters.reportType);
-                    setFilterDateRange(advFilters.dateRange);
-                    setFilterLocation(advFilters.location);
-                    setFilterDepartment(advFilters.department);
-                    fetchDashboard();
-                    setShowAdvancedFilters(false);
-                    setActionSuccessMsg('Advanced filters applied successfully.');
-                    setTimeout(() => setActionSuccessMsg(null), 3000);
-                  }}
-                  className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold shadow-xs flex items-center gap-2 transition-all cursor-pointer"
-                >
-                  <Filter className="w-3.5 h-3.5" />
-                  <span>Apply Filters</span>
                 </button>
               </div>
             </div>
@@ -2301,7 +2757,7 @@ export function ReportsCatalogue() {
               </div>
               <button
                 onClick={() => setShowAiModal(false)}
-                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700 cursor-pointer"
               >
                 <X className="w-5 h-5" />
               </button>
@@ -2321,7 +2777,7 @@ export function ReportsCatalogue() {
                     setAiPrompt(prompt);
                     handleRunAiQuery(prompt);
                   }}
-                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-[#7C3AED] transition-colors border border-slate-200"
+                  className="px-2.5 py-1 rounded-lg bg-slate-100 hover:bg-purple-50 text-slate-700 hover:text-[#7C3AED] transition-colors border border-slate-200 cursor-pointer"
                 >
                   {prompt}
                 </button>
@@ -2343,7 +2799,7 @@ export function ReportsCatalogue() {
               <button
                 onClick={() => handleRunAiQuery()}
                 disabled={aiLoading || !aiPrompt.trim()}
-                className="px-5 py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold shadow-xs disabled:opacity-50 flex items-center gap-1.5"
+                className="px-5 py-3 bg-[#7C3AED] hover:bg-[#6D28D9] text-white rounded-xl text-xs font-bold shadow-xs disabled:opacity-50 flex items-center gap-1.5 cursor-pointer"
               >
                 {aiLoading ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                 <span>Analyze</span>
@@ -2361,7 +2817,7 @@ export function ReportsCatalogue() {
                 </div>
 
                 <div className="space-y-1">
-                  {aiResult.insights.map((ins, i) => (
+                  {aiResult.insights?.map((ins, i) => (
                     <div key={i} className="flex items-start gap-1.5 text-slate-700 text-[11px]">
                       <span className="text-[#7C3AED] font-bold">•</span>
                       <span>{ins}</span>
@@ -2397,10 +2853,6 @@ export function ReportsCatalogue() {
                         </tbody>
                       </table>
                     </div>
-                    <div className="p-2 bg-white border-t border-slate-100 flex items-center justify-between text-[11px] text-slate-500">
-                      <span className="font-medium text-slate-600">Showing {aiResult.supportingRecords.length} records</span>
-                      <span className="text-slate-400">Scroll down to view all records</span>
-                    </div>
                   </div>
                 )}
               </div>
@@ -2410,14 +2862,14 @@ export function ReportsCatalogue() {
       )}
 
       {/* ------------------------------------------------------------------- */}
-      {/* 10. CREATE REPORT MODALS (Standard, Custom, Schedule)               */}
+      {/* 10. CREATE REPORT MODALS (Standard, Schedule)                       */}
       {/* ------------------------------------------------------------------- */}
       {showStandardReportModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 animate-fadeIn">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-sm font-black text-slate-900">Standard Reports Directory</h3>
-              <button onClick={() => setShowStandardReportModal(false)} className="text-slate-400">
+              <button onClick={() => setShowStandardReportModal(false)} className="text-slate-400 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -2437,91 +2889,12 @@ export function ReportsCatalogue() {
                       setShowStandardReportModal(false);
                       handleLaunchReport(rep);
                     }}
-                    className="w-full py-1.5 rounded-lg bg-[#6C2BD9] text-white text-[11px] font-bold hover:bg-[#5B21B6] transition-colors flex items-center justify-center gap-1"
+                    className="w-full py-1.5 rounded-lg bg-[#6C2BD9] text-white text-[11px] font-bold hover:bg-[#5B21B6] transition-colors flex items-center justify-center gap-1 cursor-pointer"
                   >
                     <Eye className="w-3 h-3" /> View Report
                   </button>
                 </div>
               ))}
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* Custom Report Builder Modal */}
-      {showCustomReportModal && (
-        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-2xl w-full p-6 shadow-2xl space-y-4 animate-fadeIn text-xs">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div>
-                <h3 className="text-sm font-black text-slate-900">Custom Report Builder</h3>
-                <p className="text-[11px] text-slate-500">Configure datasets, columns, groupings, and exports</p>
-              </div>
-              <button onClick={() => setShowCustomReportModal(false)} className="text-slate-400">
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            <div className="space-y-3">
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">1. Select Reporting Domain</label>
-                <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
-                  <option value="ASSETS">Asset Register & Hardware Specifications</option>
-                  <option value="MAINTENANCE">Maintenance Work Orders & Service Costs</option>
-                  <option value="INVENTORY">Inventory Stock & Spare Part Consumption</option>
-                  <option value="AUDIT">Audit Physical Observations & Exceptions</option>
-                  <option value="FINANCE">Financial Depreciation & Book Values</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="font-bold text-slate-700 block mb-1">2. Choose Output Columns</label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 bg-slate-50 p-3 rounded-xl border border-slate-200">
-                  {['Asset Tag', 'Asset Name', 'Category', 'Location', 'Custodian', 'Cost / Value', 'Purchase Date', 'Vendor', 'Condition'].map((col, i) => (
-                    <label key={i} className="flex items-center gap-2 cursor-pointer font-medium text-slate-700">
-                      <input type="checkbox" defaultChecked={i < 5} className="rounded text-[#6C2BD9]" />
-                      <span>{col}</span>
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">3. Grouping / Summary</label>
-                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
-                    <option value="NONE">No Grouping (Flat Records)</option>
-                    <option value="LOCATION">Group by Location</option>
-                    <option value="CATEGORY">Group by Category</option>
-                    <option value="DEPARTMENT">Group by Department</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="font-bold text-slate-700 block mb-1">4. Format</label>
-                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
-                    <option value="CSV">CSV / Excel Format</option>
-                    <option value="PDF">PDF Presentation Document</option>
-                  </select>
-                </div>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setShowCustomReportModal(false)}
-                className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowCustomReportModal(false);
-                  handleExportCSV('Custom_Asset360_Report.csv');
-                }}
-                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
-              >
-                <SlidersHorizontal className="w-3.5 h-3.5" /> Generate & Export
-              </button>
             </div>
           </div>
         </div>
@@ -2534,9 +2907,9 @@ export function ReportsCatalogue() {
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
                 <h3 className="text-sm font-black text-slate-900">Schedule Automatic Report</h3>
-                <p className="text-[11px] text-slate-500">Configure recurring report generation and delivery</p>
+                <p className="text-[11px] text-slate-500">Configure recurring report generation and distribution</p>
               </div>
-              <button onClick={() => setShowScheduleReportModal(false)} className="text-slate-400">
+              <button onClick={() => setShowScheduleReportModal(false)} className="text-slate-400 cursor-pointer">
                 <X className="w-5 h-5" />
               </button>
             </div>
@@ -2582,7 +2955,7 @@ export function ReportsCatalogue() {
             <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
               <button
                 onClick={() => setShowScheduleReportModal(false)}
-                className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50"
+                className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
               >
                 Cancel
               </button>
@@ -2592,113 +2965,11 @@ export function ReportsCatalogue() {
                   setActionSuccessMsg('Automatic report schedule activated successfully.');
                   setTimeout(() => setActionSuccessMsg(null), 3000);
                 }}
-                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
               >
                 <Clock className="w-3.5 h-3.5" /> Save Schedule
               </button>
             </div>
-          </div>
-        </div>
-      )}
-
-      {/* ------------------------------------------------------------------- */}
-      {/* 11. DEDICATED REPORT VIEWER (When viewing a specific report)         */}
-      {/* ------------------------------------------------------------------- */}
-      {viewMode === 'REPORT_VIEWER' && selectedReportObj && (
-        <div className="bg-white rounded-2xl border border-slate-200 shadow-xs p-6 space-y-4">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-4 border-b border-slate-200 gap-3">
-            <div className="flex items-center gap-3">
-              <button
-                onClick={() => setViewMode('DASHBOARD')}
-                className="p-2 border border-slate-200 rounded-xl hover:bg-slate-50 text-slate-600 cursor-pointer shadow-2xs"
-              >
-                <ArrowLeft className="w-4 h-4" />
-              </button>
-              <div>
-                <span className="text-[10px] font-bold text-[#6C2BD9] uppercase">
-                  {selectedReportObj.category} Report View
-                </span>
-                <h2 className="text-lg font-black text-slate-900">{selectedReportObj.name}</h2>
-                <p className="text-xs text-slate-500">{selectedReportObj.description}</p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2">
-              <button
-                onClick={() => handleExportCSV(`${selectedReportObj.id}_Export.csv`)}
-                className="px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
-              >
-                <FileSpreadsheet className="w-3.5 h-3.5" />
-                <span>Export CSV</span>
-              </button>
-              <button
-                onClick={() => window.print()}
-                className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold flex items-center gap-1.5 shadow-2xs cursor-pointer"
-              >
-                <Printer className="w-3.5 h-3.5" />
-                <span>Print</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Search bar inside Report Viewer */}
-          <div className="flex items-center justify-between gap-4">
-            <div className="relative w-72">
-              <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
-              <input
-                type="text"
-                placeholder="Filter current report rows..."
-                value={viewerSearch}
-                onChange={(e) => setViewerSearch(e.target.value)}
-                className="w-full pl-9 pr-3 py-1.5 bg-slate-50 border border-slate-200 rounded-xl text-xs"
-              />
-            </div>
-            <span className="text-xs text-slate-400">
-              Showing {viewerData.length} records in this generated snapshot
-            </span>
-          </div>
-
-          {/* Data Table */}
-          <div className="overflow-auto max-h-[500px]">
-            {viewerLoading ? (
-              <div className="py-12 flex flex-col items-center justify-center gap-2 text-slate-400 text-xs">
-                <RefreshCw className="w-6 h-6 animate-spin text-[#6C2BD9]" />
-                <span>Generating live report dataset...</span>
-              </div>
-            ) : viewerData.length === 0 ? (
-              <div className="py-12 text-center text-slate-400 text-xs font-semibold">
-                No records found for current parameters.
-              </div>
-            ) : (
-              <table className="w-full text-left text-xs text-slate-700">
-                <thead className="sticky top-0 z-10 bg-slate-50/95 text-[11px] font-bold text-slate-500 uppercase tracking-wider border-b shadow-2xs">
-                  <tr>
-                    {Object.keys(viewerData[0]).slice(0, 7).map((key) => (
-                      <th key={key} className="py-3 px-3">
-                        {key.replace(/([A-Z])/g, ' $1')}
-                      </th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-slate-100 font-medium">
-                  {viewerData.map((row, idx) => (
-                    <tr key={idx} className="hover:bg-slate-50/60">
-                      {Object.keys(viewerData[0]).slice(0, 7).map((key) => (
-                        <td key={key} className="py-2.5 px-3">
-                          {typeof row[key] === 'object'
-                            ? JSON.stringify(row[key])
-                            : (row[key] || '-').toString()}
-                        </td>
-                      ))}
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            )}
-          </div>
-          <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-            <span className="font-medium text-slate-600">Showing {viewerData.length} records</span>
-            <span className="text-slate-400">Scroll down to view all records</span>
           </div>
         </div>
       )}

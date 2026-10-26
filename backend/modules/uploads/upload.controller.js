@@ -1,5 +1,11 @@
 import path from 'path';
+import fs from 'fs';
 import cloudinary from '../../config/cloudinary.js';
+
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
 
 function formatBytes(bytes, decimals = 1) {
   if (!bytes || bytes === 0) return '0 B';
@@ -35,6 +41,33 @@ function uploadBuffer(fileBuffer, options) {
   });
 }
 
+async function saveFileLocally(file, req) {
+  const { originalname, buffer, mimetype, size } = file;
+  const resourceType = getResourceType(originalname, mimetype);
+  const ext = path.extname(originalname) || '';
+  const cleanBase = path.parse(originalname).name.replace(/[^a-zA-Z0-9_-]/g, '_');
+  const uniqueFilename = `${cleanBase}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}${ext}`;
+  const targetFilePath = path.join(uploadsDir, uniqueFilename);
+
+  await fs.promises.writeFile(targetFilePath, buffer);
+
+  const protocol = req.protocol || 'http';
+  const host = req.get('host') || 'localhost:5000';
+  const fileUrl = `${protocol}://${host}/uploads/${uniqueFilename}`;
+
+  return {
+    name: originalname,
+    size: size,
+    formattedSize: formatBytes(size),
+    url: fileUrl,
+    secure_url: fileUrl,
+    public_id: uniqueFilename,
+    format: ext.replace('.', '').toLowerCase(),
+    resource_type: resourceType,
+    storage: 'local'
+  };
+}
+
 export async function uploadSingleFile(req, res, next) {
   try {
     if (!req.file) {
@@ -56,27 +89,37 @@ export async function uploadSingleFile(req, res, next) {
       unique_filename: true
     };
 
-    const result = await uploadBuffer(buffer, uploadOptions);
-
-    return res.json({
-      success: true,
-      message: 'File uploaded to Cloudinary successfully',
-      file: {
-        name: originalname,
-        size: size,
-        formattedSize: formatBytes(size),
-        url: result.secure_url,
-        secure_url: result.secure_url,
-        public_id: result.public_id,
-        format: result.format || path.extname(originalname).replace('.', '').toLowerCase(),
-        resource_type: result.resource_type || resourceType
-      }
-    });
+    try {
+      const result = await uploadBuffer(buffer, uploadOptions);
+      return res.json({
+        success: true,
+        message: 'File uploaded successfully',
+        file: {
+          name: originalname,
+          size: size,
+          formattedSize: formatBytes(size),
+          url: result.secure_url,
+          secure_url: result.secure_url,
+          public_id: result.public_id,
+          format: result.format || path.extname(originalname).replace('.', '').toLowerCase(),
+          resource_type: result.resource_type || resourceType,
+          storage: 'cloudinary'
+        }
+      });
+    } catch (cloudErr) {
+      console.warn('[Cloudinary Upload Error, saving file locally]:', cloudErr?.message || cloudErr);
+      const localFile = await saveFileLocally(req.file, req);
+      return res.json({
+        success: true,
+        message: 'File saved locally successfully (Cloudinary fallback)',
+        file: localFile
+      });
+    }
   } catch (err) {
-    console.error('[Cloudinary Upload Error]:', err);
+    console.error('[Upload Handler Error]:', err);
     return res.status(500).json({
       success: false,
-      message: err.message || 'Failed to upload document to Cloudinary.'
+      message: err.message || 'Failed to process file upload.'
     });
   }
 }
@@ -92,39 +135,45 @@ export async function uploadMultipleFiles(req, res, next) {
 
     const uploaded = await Promise.all(
       files.map(async (file) => {
-        const resourceType = getResourceType(file.originalname, file.mimetype);
-        const cleanFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
-        const publicId = `${path.parse(cleanFilename).name}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
+        try {
+          const resourceType = getResourceType(file.originalname, file.mimetype);
+          const cleanFilename = file.originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
+          const publicId = `${path.parse(cleanFilename).name}_${Date.now()}_${Math.random().toString(36).slice(2, 6)}`;
 
-        const result = await uploadBuffer(file.buffer, {
-          folder,
-          resource_type: resourceType,
-          public_id: publicId
-        });
+          const result = await uploadBuffer(file.buffer, {
+            folder,
+            resource_type: resourceType,
+            public_id: publicId
+          });
 
-        return {
-          name: file.originalname,
-          size: file.size,
-          formattedSize: formatBytes(file.size),
-          url: result.secure_url,
-          secure_url: result.secure_url,
-          public_id: result.public_id,
-          format: result.format || path.extname(file.originalname).replace('.', '').toLowerCase(),
-          resource_type: result.resource_type || resourceType
-        };
+          return {
+            name: file.originalname,
+            size: file.size,
+            formattedSize: formatBytes(file.size),
+            url: result.secure_url,
+            secure_url: result.secure_url,
+            public_id: result.public_id,
+            format: result.format || path.extname(file.originalname).replace('.', '').toLowerCase(),
+            resource_type: result.resource_type || resourceType,
+            storage: 'cloudinary'
+          };
+        } catch (cloudErr) {
+          console.warn(`[Cloudinary Multi-Upload Error for ${file.originalname}, falling back to local]:`, cloudErr?.message || cloudErr);
+          return await saveFileLocally(file, req);
+        }
       })
     );
 
     return res.json({
       success: true,
-      message: `${uploaded.length} file(s) uploaded to Cloudinary successfully`,
+      message: `${uploaded.length} file(s) uploaded successfully`,
       files: uploaded
     });
   } catch (err) {
-    console.error('[Cloudinary Multi-Upload Error]:', err);
+    console.error('[Multi-Upload Error]:', err);
     return res.status(500).json({
       success: false,
-      message: err.message || 'Failed to upload documents to Cloudinary.'
+      message: err.message || 'Failed to upload documents.'
     });
   }
 }

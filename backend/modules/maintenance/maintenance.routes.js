@@ -29,7 +29,17 @@ import {
   saveProviderChild,
   deleteProviderChild
 } from './serviceProvider.controller.js';
-import { getSpareParts, createSparePart } from './spareParts.controller.js';
+import {
+  getSpareParts,
+  createSparePart,
+  updateSparePart,
+  deleteSparePart,
+  bulkDeleteSpareParts,
+  getStockTransactions,
+  createStockTransaction,
+  getReorderPlanning,
+  createPurchaseRequisition
+} from './spareParts.controller.js';
 import { listPlans, getPlan, createPlan, updatePlan, addPlanTask, deletePlanTask, addPlanComment, generatePlan } from './maintenancePlans.controller.js';
 import { getPreventiveDashboard, generatePreventiveWorkOrders } from './preventive.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
@@ -85,9 +95,20 @@ router.post('/service-providers/:id/:section', saveProviderChild);
 router.put('/service-providers/:id/:section/:itemId', saveProviderChild);
 router.delete('/service-providers/:id/:section/:itemId', deleteProviderChild);
 
-// Spare Parts Routes
+// Spare Parts & Stock Ledger Routes
 router.get('/spare-parts', getSpareParts);
 router.post('/spare-parts', createSparePart);
+router.put('/spare-parts/:id', updateSparePart);
+router.delete('/spare-parts/:id', deleteSparePart);
+router.post('/spare-parts/bulk-delete', bulkDeleteSpareParts);
+
+// Stock Transactions / Ledger Routes
+router.get('/stock-transactions', getStockTransactions);
+router.post('/stock-transactions', createStockTransaction);
+
+// Reorder Planning Routes
+router.get('/reorder-planning', getReorderPlanning);
+router.post('/reorder/create-pr', createPurchaseRequisition);
 
 export default router;
 

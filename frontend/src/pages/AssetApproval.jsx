@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
@@ -31,7 +31,9 @@ import {
   Send,
   Bell,
   FileCheck,
-  AlertCircle
+  AlertCircle,
+  Copy,
+  ExternalLink
 } from 'lucide-react';
 
 export function AssetApproval() {
@@ -55,6 +57,25 @@ export function AssetApproval() {
   const [toast, setToast] = useState(null);
   const [assets, setAssets] = useState([]);
   const [saving, setSaving] = useState(false);
+  const [activeDropdownRowId, setActiveDropdownRowId] = useState(null);
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const headerMenuRef = useRef(null);
+
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setActiveDropdownRowId(null);
+      }
+      if (headerMenuRef.current && !headerMenuRef.current.contains(event.target)) {
+        setHeaderMenuOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -387,7 +408,7 @@ export function AssetApproval() {
 
                 <tbody className="divide-y divide-slate-100 font-semibold text-slate-800">
                   {filteredRequests.length === 0 && <tr><td colSpan={11} className="p-8 text-center text-slate-500">No approval requests found.</td></tr>}
-                  {filteredRequests.map(r => {
+                  {filteredRequests.map((r, index) => {
                     const isSelected = selectedRequestNo === r.requestNo;
                     return (
                       <tr
@@ -441,18 +462,127 @@ export function AssetApproval() {
                         </td>
 
                         {/* Actions */}
-                        <td className="p-3 text-center whitespace-nowrap">
-                          <div className="flex items-center justify-center gap-1">
+                        <td className="p-3 text-center whitespace-nowrap" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1 relative">
                             <button
                               type="button"
-                              onClick={(e) => { e.stopPropagation(); setSelectedRequestNo(r.requestNo); }}
+                              onClick={() => setSelectedRequestNo(r.requestNo)}
                               className="px-2.5 py-1 bg-purple-50 hover:bg-purple-100 text-[#6C2BD9] font-bold rounded-lg text-[11px] transition-all cursor-pointer"
                             >
                               View
                             </button>
-                            <button type="button" className="p-1 text-slate-400 hover:text-slate-700">
-                              <MoreVertical className="w-3.5 h-3.5" />
-                            </button>
+                            <div className="relative inline-block text-left">
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setSelectedRequestNo(r.requestNo);
+                                  setActiveDropdownRowId(activeDropdownRowId === r.requestNo ? null : r.requestNo);
+                                }}
+                                className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                                  activeDropdownRowId === r.requestNo ? 'bg-purple-100 text-[#6C2BD9]' : 'text-slate-400 hover:text-slate-700 hover:bg-slate-100'
+                                }`}
+                                title="More actions"
+                              >
+                                <MoreVertical className="w-3.5 h-3.5" />
+                              </button>
+
+                              {activeDropdownRowId === r.requestNo && (
+                                <div
+                                  ref={dropdownRef}
+                                  className={`absolute right-0 w-52 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 text-left font-medium text-xs text-slate-700 ${
+                                    index >= Math.max(1, filteredRequests.length - 2) ? 'bottom-full mb-1' : 'top-full mt-1'
+                                  }`}
+                                >
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setSelectedRequestNo(r.requestNo);
+                                      setActiveModal('FULL_DETAILS');
+                                      setActiveDropdownRowId(null);
+                                    }}
+                                    className="w-full px-3 py-2 hover:bg-purple-50 hover:text-[#6C2BD9] flex items-center gap-2 transition-colors cursor-pointer text-left"
+                                  >
+                                    <Eye className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>View Full Details</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      navigator.clipboard?.writeText(r.requestNo);
+                                      showToast('success', `Copied request ${r.requestNo} to clipboard.`);
+                                      setActiveDropdownRowId(null);
+                                    }}
+                                    className="w-full px-3 py-2 hover:bg-purple-50 hover:text-[#6C2BD9] flex items-center gap-2 transition-colors cursor-pointer text-left"
+                                  >
+                                    <Copy className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Copy Request No</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveDropdownRowId(null);
+                                      navigate('/assets');
+                                    }}
+                                    className="w-full px-3 py-2 hover:bg-purple-50 hover:text-[#6C2BD9] flex items-center gap-2 transition-colors cursor-pointer text-left"
+                                  >
+                                    <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                                    <span>Open Asset Register</span>
+                                  </button>
+
+                                  {(r.status === 'Pending' || r.status === 'Escalated') && (
+                                    <>
+                                      <div className="my-1 border-t border-slate-100" />
+                                      <div className="px-3 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                                        Workflow Decisions
+                                      </div>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedRequestNo(r.requestNo);
+                                          setDecisionType('APPROVE');
+                                          setActiveModal('DECISION_COMMENT');
+                                          setActiveDropdownRowId(null);
+                                        }}
+                                        className="w-full px-3 py-2 hover:bg-emerald-50 text-emerald-700 font-bold flex items-center gap-2 transition-colors cursor-pointer text-left"
+                                      >
+                                        <Check className="w-3.5 h-3.5 text-emerald-600" />
+                                        <span>Approve Request</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedRequestNo(r.requestNo);
+                                          setDecisionType('REJECT');
+                                          setActiveModal('DECISION_COMMENT');
+                                          setActiveDropdownRowId(null);
+                                        }}
+                                        className="w-full px-3 py-2 hover:bg-rose-50 text-rose-700 font-bold flex items-center gap-2 transition-colors cursor-pointer text-left"
+                                      >
+                                        <X className="w-3.5 h-3.5 text-rose-600" />
+                                        <span>Reject Request</span>
+                                      </button>
+
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setSelectedRequestNo(r.requestNo);
+                                          setDecisionType('RETURN');
+                                          setActiveModal('DECISION_COMMENT');
+                                          setActiveDropdownRowId(null);
+                                        }}
+                                        className="w-full px-3 py-2 hover:bg-purple-50 text-[#6C2BD9] font-bold flex items-center gap-2 transition-colors cursor-pointer text-left"
+                                      >
+                                        <RotateCcw className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                                        <span>Return for Correction</span>
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              )}
+                            </div>
                           </div>
                         </td>
                       </tr>
@@ -480,9 +610,106 @@ export function AssetApproval() {
               <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
                 <FileText className="w-4 h-4 text-[#6C2BD9]" /> Request Details
               </h3>
-              <button type="button" className="p-1 hover:bg-slate-100 rounded-lg text-slate-400">
-                <MoreVertical className="w-4 h-4" />
-              </button>
+              <div className="relative inline-block text-left" ref={headerMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => setHeaderMenuOpen(!headerMenuOpen)}
+                  className={`p-1.5 rounded-lg transition-colors cursor-pointer ${
+                    headerMenuOpen ? 'bg-purple-100 text-[#6C2BD9]' : 'hover:bg-slate-100 text-slate-400'
+                  }`}
+                  title="More options"
+                >
+                  <MoreVertical className="w-4 h-4" />
+                </button>
+
+                {headerMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1 w-52 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-50 text-left font-medium text-xs text-slate-700">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setActiveModal('FULL_DETAILS');
+                        setHeaderMenuOpen(false);
+                      }}
+                      className="w-full px-3 py-2 hover:bg-purple-50 hover:text-[#6C2BD9] flex items-center gap-2 transition-colors cursor-pointer text-left"
+                    >
+                      <Eye className="w-3.5 h-3.5 text-slate-400" />
+                      <span>View Full Details</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        navigator.clipboard?.writeText(selectedRequest.requestNo);
+                        showToast('success', `Copied request ${selectedRequest.requestNo} to clipboard.`);
+                        setHeaderMenuOpen(false);
+                      }}
+                      className="w-full px-3 py-2 hover:bg-purple-50 hover:text-[#6C2BD9] flex items-center gap-2 transition-colors cursor-pointer text-left"
+                    >
+                      <Copy className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Copy Request No</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setHeaderMenuOpen(false);
+                        navigate('/assets');
+                      }}
+                      className="w-full px-3 py-2 hover:bg-purple-50 hover:text-[#6C2BD9] flex items-center gap-2 transition-colors cursor-pointer text-left"
+                    >
+                      <ExternalLink className="w-3.5 h-3.5 text-slate-400" />
+                      <span>Open Asset Register</span>
+                    </button>
+
+                    {(selectedRequest.status === 'Pending' || selectedRequest.status === 'Escalated') && (
+                      <>
+                        <div className="my-1 border-t border-slate-100" />
+                        <div className="px-3 py-1 text-[10px] uppercase font-bold text-slate-400 tracking-wider">
+                          Workflow Decisions
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDecisionType('APPROVE');
+                            setActiveModal('DECISION_COMMENT');
+                            setHeaderMenuOpen(false);
+                          }}
+                          className="w-full px-3 py-2 hover:bg-emerald-50 text-emerald-700 font-bold flex items-center gap-2 transition-colors cursor-pointer text-left"
+                        >
+                          <Check className="w-3.5 h-3.5 text-emerald-600" />
+                          <span>Approve Request</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDecisionType('REJECT');
+                            setActiveModal('DECISION_COMMENT');
+                            setHeaderMenuOpen(false);
+                          }}
+                          className="w-full px-3 py-2 hover:bg-rose-50 text-rose-700 font-bold flex items-center gap-2 transition-colors cursor-pointer text-left"
+                        >
+                          <X className="w-3.5 h-3.5 text-rose-600" />
+                          <span>Reject Request</span>
+                        </button>
+
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setDecisionType('RETURN');
+                            setActiveModal('DECISION_COMMENT');
+                            setHeaderMenuOpen(false);
+                          }}
+                          className="w-full px-3 py-2 hover:bg-purple-50 text-[#6C2BD9] font-bold flex items-center gap-2 transition-colors cursor-pointer text-left"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                          <span>Return for Correction</span>
+                        </button>
+                      </>
+                    )}
+                  </div>
+                )}
+              </div>
             </div>
 
             {/* Asset Photo & ID Banner */}

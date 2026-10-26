@@ -309,8 +309,15 @@ export async function createAsset(req, res, next) {
       if (description.length > 500 || !Array.isArray(checklist) || checklist.length > 30 ||
           checklist.some(task => !String(task).trim() || String(task).length > 200))
         return res.status(400).json({ success: false, message: 'Description is limited to 500 characters and checklist to 30 nonempty tasks of 200 characters each.' });
+      const scheduleNo = String(maintenance.scheduleNo || '').trim();
+      const finalTitle = scheduleNo ? `[${scheduleNo}] ${title}`.slice(0, 200) : title;
+      const finalDesc = scheduleNo
+        ? (description ? `Schedule No: ${scheduleNo} · ${description}`.slice(0, 500) : `Schedule No: ${scheduleNo}`)
+        : (description || null);
       scheduleInput = {
-        title, description: description || null, workType: maintenance.workType,
+        title: finalTitle,
+        description: finalDesc,
+        workType: maintenance.workType,
         frequencyMonths: months, nextDueDate: due,
         active: maintenance.active !== false,
         autoGenerateWorkOrders: Boolean(maintenance.autoGenerateWorkOrders),
@@ -324,6 +331,9 @@ export async function createAsset(req, res, next) {
     const rawDept = req.body.departmentId || req.body.department;
     const rawCostCenter = req.body.costCenterId || req.body.costCenter;
     const rawCustodian = req.body.custodianId || req.body.custodian;
+    const rawBuilding = req.body.buildingId || req.body.building;
+    const rawFloor = req.body.floorId || req.body.floor;
+    const rawRoom = req.body.roomId || req.body.room;
     const rawMfr = req.body.manufacturerId || req.body.manufacturer || req.body.brand || null;
     const rawModel = req.body.modelId || req.body.model || req.body.modelNumber || null;
 
@@ -515,6 +525,39 @@ export async function createAsset(req, res, next) {
       if (emp) custodianId = emp.id;
     }
 
+    let buildingId = null;
+    if (rawBuilding) {
+      const bld = await prisma.building.findFirst({
+        where: {
+          siteId,
+          OR: [{ id: rawBuilding }, { code: rawBuilding }, { name: rawBuilding }]
+        }
+      }) || await prisma.building.findFirst({
+        where: { OR: [{ id: rawBuilding }, { code: rawBuilding }, { name: rawBuilding }] }
+      });
+      if (bld) buildingId = bld.id;
+    }
+
+    let floorId = null;
+    if (rawFloor) {
+      const flr = await prisma.floor.findFirst({
+        where: {
+          OR: [{ id: rawFloor }, { code: rawFloor }, { name: rawFloor }]
+        }
+      });
+      if (flr) floorId = flr.id;
+    }
+
+    let roomId = null;
+    if (rawRoom) {
+      const rm = await prisma.room.findFirst({
+        where: {
+          OR: [{ id: rawRoom }, { code: rawRoom }, { name: rawRoom }]
+        }
+      });
+      if (rm) roomId = rm.id;
+    }
+
     // 6. Resolve or auto-create Manufacturer
     let manufacturerId = null;
     if (rawMfr) {
@@ -605,10 +648,14 @@ export async function createAsset(req, res, next) {
       return res.status(409).json({ success: false, message: `Asset ID ${requestedAssetId} is already registered.` });
     }
 
-    // Map lifecycle status
-    let lifecycleStatus = req.body.lifecycleStatus || 'IN_SERVICE';
-    if (lifecycleStatus === 'New' || lifecycleStatus === 'Active') lifecycleStatus = 'IN_SERVICE';
-    if (lifecycleStatus === 'Draft') lifecycleStatus = 'RECEIVED';
+    // Map lifecycle status and approval submission
+    const isSubmittedForApproval = req.body.targetStatus === 'SUBMITTED' ||
+      req.body.lifecycleStatus === 'PENDING_APPROVAL' ||
+      req.body.submitForApproval === true;
+
+    let lifecycleStatus = isSubmittedForApproval ? 'PENDING_APPROVAL' : (req.body.lifecycleStatus || 'IN_SERVICE');
+    if (!isSubmittedForApproval && (lifecycleStatus === 'New' || lifecycleStatus === 'Active')) lifecycleStatus = 'IN_SERVICE';
+    if (!isSubmittedForApproval && lifecycleStatus === 'Draft') lifecycleStatus = 'RECEIVED';
     // Resolve DB user for foreign key audit & transaction integrity
     let finalUserId = req.user?.id;
     const userInDb = await prisma.user.findFirst({
@@ -626,6 +673,48 @@ export async function createAsset(req, res, next) {
     }
 
     const results = await prisma.$transaction(async (tx) => {
+      let wfDef = null;
+      if (isSubmittedForApproval) {
+        wfDef = await tx.workflowDefinition.findFirst({
+          where: {
+            OR: [
+              { transactionType: 'New Asset Registration' },
+              { name: 'New Asset Approval - CapEx' },
+              { name: 'New Asset Registration' }
+            ]
+          },
+          include: { steps: { orderBy: { stepNumber: 'asc' } } }
+        });
+
+        if (!wfDef) {
+          wfDef = await tx.workflowDefinition.create({
+            data: {
+              name: 'New Asset Approval Workflow',
+              transactionType: 'New Asset Registration',
+              valueThreshold: 0,
+              active: true
+            }
+          });
+          const standardSteps = [
+            { stepNumber: 1, name: 'Asset Manager', approverRoleCode: 'ASSET_ADMIN', slaHours: 24 },
+            { stepNumber: 2, name: 'Department Head', approverRoleCode: 'MANAGEMENT', slaHours: 48 },
+            { stepNumber: 3, name: 'Finance', approverRoleCode: 'FINANCE', slaHours: 48 },
+            { stepNumber: 4, name: 'Final Approval', approverRoleCode: 'SYS_ADMIN', slaHours: 72 }
+          ];
+          for (const s of standardSteps) {
+            await tx.workflowStep.create({
+              data: {
+                workflowDefinitionId: wfDef.id,
+                stepNumber: s.stepNumber,
+                name: s.name,
+                approverRoleCode: s.approverRoleCode,
+                slaHours: s.slaHours
+              }
+            });
+          }
+        }
+      }
+
       const createdAssets = [];
       for (let itemIndex = 0; itemIndex < quantity; itemIndex += 1) {
       const itemRecord = quantity > 1 ? resolvedItems[itemIndex] : null;
@@ -661,9 +750,9 @@ export async function createAsset(req, res, next) {
           assetClassId: assetClass?.id || null,
           companyId: itemRecord?.companyId || companyId,
           siteId: itemRecord?.siteId || siteId,
-          buildingId: itemRecord ? itemRecord.buildingId : req.body.buildingId || null,
-          floorId: itemRecord ? itemRecord.floorId : req.body.floorId || null,
-          roomId: itemRecord ? itemRecord.roomId : req.body.roomId || null,
+          buildingId: itemRecord ? itemRecord.buildingId : (buildingId || req.body.buildingId || null),
+          floorId: itemRecord ? itemRecord.floorId : (floorId || req.body.floorId || null),
+          roomId: itemRecord ? itemRecord.roomId : (roomId || req.body.roomId || null),
           zoneId: req.body.zoneId || null,
           departmentId: itemRecord ? itemRecord.departmentId : departmentId,
           costCenterId: itemRecord ? itemRecord.costCenterId : costCenterId,
@@ -694,6 +783,35 @@ export async function createAsset(req, res, next) {
       });
 
       const childOperations = [];
+
+      // Create workflow approval instance if submitted for approval
+      let requestNo = null;
+      if (isSubmittedForApproval && wfDef) {
+        requestNo = 'APR-' + new Date().getFullYear() + '-' + Math.floor(10000 + Math.random() * 90000);
+        const wfInst = await tx.workflowInstance.create({
+          data: {
+            legacyMongoId: requestNo,
+            workflowDefinitionId: wfDef.id,
+            entityType: 'Asset',
+            entityId: newAsset.id,
+            requestedByUserId: finalUserId,
+            status: 'PENDING',
+            currentStepNumber: 1
+          }
+        });
+
+        childOperations.push(
+          tx.auditEvent.create({
+            data: {
+              userId: finalUserId,
+              action: 'WORKFLOW_CREATE',
+              entityType: 'WorkflowInstance',
+              entityId: wfInst.id,
+              afterState: JSON.stringify({ requestNo, transactionType: 'New Asset Registration', assetId: newAsset.assetId }).slice(0, 240)
+            }
+          })
+        );
+      }
 
       if (itemObservation || itemHasManualDiscovery) {
         const linkedObservation = itemObservation || await tx.discoveryObservation.create({ data: {
@@ -764,11 +882,13 @@ export async function createAsset(req, res, next) {
         tx.assetTransaction.create({
           data: {
             assetId: newAsset.id,
-            transactionType: 'RECEIVE',
+            transactionType: isSubmittedForApproval ? 'SUBMIT_FOR_APPROVAL' : 'RECEIVE',
             fromStatus: 'NONE',
             toStatus: newAsset.lifecycleStatus,
             performedByUserId: finalUserId,
-            notes: req.body.notes || 'Asset Registration via Asset 360 Form'
+            notes: isSubmittedForApproval
+              ? `Submitted for registration approval [${requestNo || 'APR'}]`
+              : (req.body.notes || 'Asset Registration via Asset 360 Form')
           }
         }),
 
@@ -924,7 +1044,9 @@ export async function updateAsset(req, res, next) {
         room: true,
         custodian: true,
         manufacturer: true,
-        model: true
+        model: true,
+        department: true,
+        costCenter: true
       }
     });
 
@@ -940,7 +1062,9 @@ export async function updateAsset(req, res, next) {
           room: true,
           custodian: true,
           manufacturer: true,
-          model: true
+          model: true,
+          department: true,
+          costCenter: true
         }
       });
     }
@@ -983,6 +1107,10 @@ export async function updateAsset(req, res, next) {
       modelId,
       custodian,
       custodianId,
+      department,
+      departmentId,
+      costCenter,
+      costCenterId,
       site,
       siteId,
       buildingId,
@@ -1206,6 +1334,42 @@ export async function updateAsset(req, res, next) {
       if (emp) updateData.custodianId = emp.id;
     }
 
+    // Relational lookups: Department
+    const rawDept = departmentId || department;
+    if (rawDept) {
+      let dept = await prisma.department.findFirst({
+        where: { OR: [{ id: rawDept }, { code: rawDept }, { name: rawDept }] }
+      });
+      if (!dept && typeof rawDept === 'string' && (updateData.companyId || oldAsset.companyId)) {
+        dept = await prisma.department.create({
+          data: {
+            name: rawDept,
+            code: rawDept.slice(0, 10).toUpperCase().replace(/[^A-Z0-9]/g, '') || `DEP-${Date.now().toString().slice(-4)}`,
+            companyId: updateData.companyId || oldAsset.companyId
+          }
+        });
+      }
+      if (dept) updateData.departmentId = dept.id;
+    }
+
+    // Relational lookups: CostCenter
+    const rawCostCenter = costCenterId || costCenter;
+    if (rawCostCenter) {
+      let cc = await prisma.costCenter.findFirst({
+        where: { OR: [{ id: rawCostCenter }, { code: rawCostCenter }, { name: rawCostCenter }] }
+      });
+      if (!cc && typeof rawCostCenter === 'string' && (updateData.companyId || oldAsset.companyId)) {
+        cc = await prisma.costCenter.create({
+          data: {
+            name: rawCostCenter,
+            code: rawCostCenter.slice(0, 10).toUpperCase().replace(/[^A-Z0-9]/g, '') || `CC-${Date.now().toString().slice(-4)}`,
+            companyId: updateData.companyId || oldAsset.companyId
+          }
+        });
+      }
+      if (cc) updateData.costCenterId = cc.id;
+    }
+
     // Relational lookups: Site / Building / Room
     const rawSite = siteId || site;
     if (rawSite) {
@@ -1246,7 +1410,9 @@ export async function updateAsset(req, res, next) {
         room: true,
         custodian: true,
         manufacturer: true,
-        model: true
+        model: true,
+        department: true,
+        costCenter: true
       }
     });
 

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Search,
   Filter,
@@ -15,18 +15,27 @@ import {
   ArrowRight,
   X,
   CheckCircle2,
-  Package
+  Package,
+  RefreshCw
 } from 'lucide-react';
+import { api } from '../../services/api';
 
-export function StockTransactionsTab({ onShowToast }) {
+export function StockTransactionsTab({
+  sparePartsList = [],
+  onStockUpdated,
+  onShowToast,
+  triggerNewTxn,
+  triggerExport
+}) {
   const [txnSearch, setTxnSearch] = useState('');
   const [txnTypeFilter, setTxnTypeFilter] = useState('All');
   const [fromDate, setFromDate] = useState('2025-08-01');
   const [toDate, setToDate] = useState('2025-08-31');
   const [locationFilter, setLocationFilter] = useState('All Locations');
   const [showNewTxnModal, setShowNewTxnModal] = useState(false);
+  const [loading, setLoading] = useState(false);
 
-  // Mock Stock Transactions matching exact screenshot data
+  // Stock Transactions State
   const [transactionsList, setTransactionsList] = useState([
     {
       id: 1,
@@ -293,18 +302,104 @@ export function StockTransactionsTab({ onShowToast }) {
   // Selected Transaction for Details Side Panel (Default: ST-2025-0002 matching screenshot)
   const [selectedTxn, setSelectedTxn] = useState(transactionsList[1]);
 
+  // Fetch transactions from backend API
+  const fetchTransactions = async () => {
+    setLoading(true);
+    try {
+      const res = await api.get('/maintenance/stock-transactions');
+      if (res.success && res.transactions) {
+        setTransactionsList(res.transactions);
+        if (res.transactions.length > 0) {
+          setSelectedTxn(res.transactions[0]);
+        }
+      }
+    } catch (err) {
+      console.warn('Fallback to local transactions list:', err);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTransactions();
+  }, []);
+
   // New Transaction Form State for Modal
   const [newTxnForm, setNewTxnForm] = useState({
     type: 'Issue',
     itemCode: 'SP-ELEC-002',
     itemName: 'Circuit Breaker 63A',
     qty: 1,
+    unitCost: 225.00,
     location: 'Main Warehouse',
-    refNo: 'WO-2025-0150',
+    refNo: 'WO-2026-0150',
     workOrder: 'Emergency Generator Maintenance',
     issuedTo: 'Ramesh Nair',
     remarks: 'Urgent stock issue for preventive maintenance'
   });
+
+  // When sparePartsList loads or modal opens, sync default if needed
+  const handleSelectItemForTxn = (itemCode) => {
+    const part = sparePartsList.find(p => p.itemCode === itemCode || p.id === itemCode);
+    if (part) {
+      setNewTxnForm(prev => ({
+        ...prev,
+        itemCode: part.itemCode,
+        itemName: part.itemName,
+        unitCost: part.unitCost,
+        location: part.location || prev.location
+      }));
+    } else {
+      setNewTxnForm(prev => ({ ...prev, itemCode }));
+    }
+  };
+
+  // Export Stock Ledger CSV
+  const handleExportLedgerCSV = () => {
+    const headers = ['Txn No', 'Date', 'Type', 'Item Code', 'Item Name', 'Qty', 'Unit Cost (AED)', 'Total Value (AED)', 'Location', 'Ref No', 'Work Order', 'User', 'Issued To', 'Remarks'];
+    const rows = filteredTxns.map(t => [
+      t.txnNo,
+      t.date,
+      t.type,
+      t.itemCode,
+      `"${(t.itemName || '').replace(/"/g, '""')}"`,
+      t.qty,
+      t.unitCost,
+      t.totalValue,
+      `"${(t.locationDisplay || '').replace(/"/g, '""')}"`,
+      t.refNo,
+      `"${(t.workOrder || '').replace(/"/g, '""')}"`,
+      `"${(t.user || '').replace(/"/g, '""')}"`,
+      `"${(t.issuedTo || '').replace(/"/g, '""')}"`,
+      `"${(t.remarks || '').replace(/"/g, '""')}"`
+    ]);
+    const csvContent = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = 'stock_transactions_ledger.csv';
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    onShowToast?.('Stock transactions ledger exported to CSV.');
+  };
+
+  // Header action trigger listeners
+  useEffect(() => {
+    if (triggerNewTxn) {
+      if (sparePartsList.length > 0 && !newTxnForm.itemCode) {
+        handleSelectItemForTxn(sparePartsList[0].itemCode);
+      }
+      setShowNewTxnModal(true);
+    }
+  }, [triggerNewTxn]);
+
+  useEffect(() => {
+    if (triggerExport) {
+      handleExportLedgerCSV();
+    }
+  }, [triggerExport]);
 
   // Filtering Logic
   const filteredTxns = transactionsList.filter(t => {
@@ -332,44 +427,27 @@ export function StockTransactionsTab({ onShowToast }) {
     onShowToast?.('Filters reset to default.');
   };
 
-  const handleCreateTransactionSubmit = (e) => {
+  const handleCreateTransactionSubmit = async (e) => {
     e.preventDefault();
-    const newId = transactionsList.length + 1;
-    const newTxnNo = `ST-2025-${String(newId).padStart(4, '0')}`;
-    const todayStr = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
-    const fullDateStr = `${todayStr} 10:00 AM`;
+    if (!newTxnForm.itemCode || !newTxnForm.qty) {
+      onShowToast?.('Please specify item and quantity.', 'error');
+      return;
+    }
 
-    const created = {
-      id: newId,
-      txnNo: newTxnNo,
-      date: todayStr,
-      fullDate: fullDateStr,
-      type: newTxnForm.type,
-      itemCode: newTxnForm.itemCode,
-      itemName: newTxnForm.itemName,
-      category: 'Electrical',
-      unitOfMeasure: 'Piece',
-      qty: parseInt(newTxnForm.qty || 1),
-      unitCost: 225.00,
-      totalValue: parseInt(newTxnForm.qty || 1) * 225.00,
-      fromLocation: newTxnForm.location,
-      toLocation: '-',
-      locationDisplay: newTxnForm.location,
-      refNo: newTxnForm.refNo,
-      workOrder: newTxnForm.workOrder,
-      user: 'John Doe',
-      issuedTo: newTxnForm.issuedTo,
-      remarks: newTxnForm.remarks,
-      createdBy: 'John Doe',
-      createdOn: fullDateStr,
-      lastModifiedBy: 'John Doe',
-      lastModifiedOn: fullDateStr
-    };
-
-    setTransactionsList([created, ...transactionsList]);
-    setSelectedTxn(created);
-    setShowNewTxnModal(false);
-    onShowToast?.(`Stock Transaction ${newTxnNo} recorded successfully!`);
+    try {
+      const res = await api.post('/maintenance/stock-transactions', newTxnForm);
+      if (res.success && res.transaction) {
+        setTransactionsList(prev => [res.transaction, ...prev]);
+        setSelectedTxn(res.transaction);
+        setShowNewTxnModal(false);
+        onShowToast?.(res.message || `Transaction ${res.transaction.txnNo} recorded!`);
+        onStockUpdated?.(); // sync parent inventory stock
+      } else {
+        onShowToast?.(res.message || 'Error recording transaction', 'error');
+      }
+    } catch (err) {
+      onShowToast?.('Server error recording stock transaction.', 'error');
+    }
   };
 
   // Helper Badge Style
@@ -804,21 +882,26 @@ export function StockTransactionsTab({ onShowToast }) {
 
         <div className="flex items-center gap-2">
           <button
-            onClick={() => onShowToast?.('Printing transaction register...')}
+            onClick={() => window.print()}
             className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
           >
             <Printer className="w-4 h-4 text-slate-600" /> Print
           </button>
 
           <button
-            onClick={() => onShowToast?.('Exporting transactions to Excel...')}
+            onClick={handleExportLedgerCSV}
             className="px-4 py-2 border border-slate-300 text-slate-700 hover:bg-slate-50 rounded-lg font-semibold text-xs flex items-center gap-1.5 transition-colors shadow-2xs"
           >
             <Download className="w-4 h-4 text-slate-600" /> Export
           </button>
 
           <button
-            onClick={() => setShowNewTxnModal(true)}
+            onClick={() => {
+              if (sparePartsList.length > 0 && !newTxnForm.itemCode) {
+                handleSelectItemForTxn(sparePartsList[0].itemCode);
+              }
+              setShowNewTxnModal(true);
+            }}
             className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg font-bold text-xs flex items-center gap-1.5 transition-all shadow-xs"
           >
             <Plus className="w-4 h-4 text-white" /> New Transaction
@@ -851,22 +934,38 @@ export function StockTransactionsTab({ onShowToast }) {
                     onChange={(e) => setNewTxnForm({ ...newTxnForm, type: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                   >
-                    <option value="Issue">Issue (Work Order)</option>
-                    <option value="Receipt">Receipt (Supplier PO)</option>
+                    <option value="Issue">Issue (Work Order / Usage)</option>
+                    <option value="Receipt">Receipt (Supplier Delivery)</option>
                     <option value="Transfer">Inter-Warehouse Transfer</option>
                     <option value="Adjustment">Audit Adjustment</option>
+                    <option value="Return">Return to Stock</option>
+                    <option value="Scrap">Scrap / Write-Off</option>
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Item Code *</label>
-                  <input
-                    type="text"
-                    required
-                    value={newTxnForm.itemCode}
-                    onChange={(e) => setNewTxnForm({ ...newTxnForm, itemCode: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
-                  />
+                  <label className="block font-bold text-slate-700 mb-1">Select Spare Part *</label>
+                  {sparePartsList.length > 0 ? (
+                    <select
+                      value={newTxnForm.itemCode}
+                      onChange={(e) => handleSelectItemForTxn(e.target.value)}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
+                    >
+                      {sparePartsList.map(p => (
+                        <option key={p.id} value={p.itemCode}>
+                          {p.itemCode} - {p.itemName} ({p.currentStock} {p.unit})
+                        </option>
+                      ))}
+                    </select>
+                  ) : (
+                    <input
+                      type="text"
+                      required
+                      value={newTxnForm.itemCode}
+                      onChange={(e) => setNewTxnForm({ ...newTxnForm, itemCode: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
+                    />
+                  )}
                 </div>
               </div>
 
@@ -879,6 +978,18 @@ export function StockTransactionsTab({ onShowToast }) {
                   onChange={(e) => setNewTxnForm({ ...newTxnForm, itemName: e.target.value })}
                   className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-semibold text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
                 />
+                {(() => {
+                  const part = sparePartsList.find(p => p.itemCode === newTxnForm.itemCode);
+                  if (part) {
+                    return (
+                      <p className="text-[11px] text-slate-500 mt-1 flex items-center justify-between">
+                        <span>Current Stock on Hand: <strong className={part.currentStock <= part.reorderLevel ? 'text-amber-600' : 'text-emerald-600'}>{part.currentStock} {part.unit}</strong></span>
+                        <span>Unit Cost: <strong className="text-slate-900 font-mono">AED {Number(part.unitCost).toFixed(2)}</strong></span>
+                      </p>
+                    );
+                  }
+                  return null;
+                })()}
               </div>
 
               <div className="grid grid-cols-2 gap-3">

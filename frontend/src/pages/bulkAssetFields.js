@@ -71,13 +71,33 @@ export const bulkAssetSampleRows = [
 ];
 
 export function parseBulkAssetRows(rows) {
-  const headers = (rows[0] || []).map(normalizeBulkHeader);
+  if (!Array.isArray(rows) || !rows.length) return [];
+
+  // 1. Locate the header row: find the first non-empty row that contains known column headers
+  let headerRowIndex = rows.findIndex(row => {
+    if (!Array.isArray(row) || !row.some(Boolean)) return false;
+    const normalized = row.map(normalizeBulkHeader);
+    return normalized.some(cell => 
+      ['assetname', 'name', 'category', 'serialnumber', 'assetid', 'site', 'location', 'description'].includes(cell)
+    );
+  });
+
+  // Fallback: If no recognized header names found, pick the first row that has non-empty values
+  if (headerRowIndex < 0) {
+    headerRowIndex = rows.findIndex(row => Array.isArray(row) && row.some(Boolean));
+  }
+  if (headerRowIndex < 0) return [];
+
+  const headers = (rows[headerRowIndex] || []).map(normalizeBulkHeader);
   const field = (values, ...names) => {
     const index = headers.findIndex(header => names.includes(header));
     return index < 0 ? '' : (values[index] || '');
   };
-  return rows.slice(1).map((values, index) => ({ values, row: index + 2 }))
-    .filter(({ values }) => values.some(Boolean)).map(({ values, row }) => {
+
+  return rows.slice(headerRowIndex + 1)
+    .map((values, index) => ({ values, row: headerRowIndex + index + 2 }))
+    .filter(({ values }) => Array.isArray(values) && values.some(Boolean))
+    .map(({ values, row }) => {
       const details = Object.fromEntries(bulkAssetFields.map(([key, header]) =>
         [key, field(values, normalizeBulkHeader(header), normalizeBulkHeader(key))]));
       return {

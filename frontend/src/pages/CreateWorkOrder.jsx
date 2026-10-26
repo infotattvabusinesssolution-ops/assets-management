@@ -195,8 +195,8 @@ export function CreateWorkOrder() {
       floor: assetObj.floor?.name || '2F',
       room: assetObj.room?.name || 'IT-201',
       status: assetObj.lifecycleStatus || 'Active',
-      warrantyStatus: assetObj.warranty ? 'Under Warranty' : 'Under Warranty',
-      amcContract: 'Al Futtaim AMC - 2026'
+      warrantyStatus: assetObj.warranty ? 'Under Warranty' : 'Expired / None',
+      amcContract: assetObj.contract?.title || assetObj.contract?.contractNumber || 'Standard Support'
     };
 
     setFormData(prev => ({
@@ -322,16 +322,15 @@ export function CreateWorkOrder() {
         notes: formData.remarks
       };
 
-      const res = await api.post('/maintenance/work-orders', payload).catch(() => null);
+      const res = await api.post('/maintenance/work-orders', payload);
       if (res?.success) {
         showToast('success', `Work Order ${res.workOrder?.workOrderNumber || formData.workOrderNumber} submitted successfully!`);
+        setTimeout(() => navigate('/maintenance'), 1200);
       } else {
-        showToast('success', `Work Order ${formData.workOrderNumber} created and assigned to ${formData.assignTo}!`);
+        throw new Error(res?.message || 'Failed to create work order.');
       }
-      
-      setTimeout(() => navigate('/maintenance'), 1500);
     } catch (err) {
-      alert(err.message || 'Failed to submit work order');
+      showToast('error', err.message || 'Failed to submit work order');
     } finally {
       setSubmitting(false);
     }

@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   CheckCircle2,
   AlertTriangle,
+  AlertCircle,
   Plus,
   RefreshCw,
   Search,
@@ -222,6 +223,16 @@ export function AssetForm() {
   // Stepper Flow State
   const [currentStep, setCurrentStep] = useState(1);
   const [stepMode, setStepMode] = useState('wizard'); // 'wizard' | 'all'
+  const [fieldErrors, setFieldErrors] = useState({});
+
+  const clearFieldError = (fieldName) => {
+    setFieldErrors(prev => {
+      if (!prev[fieldName]) return prev;
+      const next = { ...prev };
+      delete next[fieldName];
+      return next;
+    });
+  };
 
   const FORM_STEPS = [
     { id: 1, name: 'Basic Information', desc: 'Primary asset details & photo', icon: FileText },
@@ -352,6 +363,7 @@ export function AssetForm() {
 
     // 7. Maintenance Setup
     enablePm: false,
+    pmScheduleNo: '',
     pmTitle: '',
     pmDescription: '',
     pmWorkType: 'PREVENTIVE',
@@ -361,6 +373,8 @@ export function AssetForm() {
     pmActive: true,
     pmAutoGenerateWorkOrders: false,
     pmAdvanceDays: 7,
+    pmLocation: '',
+    pmLastServiceDate: '',
 
     // 8. Auto Discovery
     linkToDiscovered: false,
@@ -479,15 +493,13 @@ export function AssetForm() {
       }));
       return;
     }
-    const matchingCats = categories.filter(c => (c.name || '').trim().toLowerCase() === catName.trim().toLowerCase());
-    let targetCat = matchingCats.find(c => assetClasses.some(ac => ac.categoryId === c.id)) || matchingCats[0];
-    if (!targetCat) {
-      targetCat = categories.find(c => (c.name || '').toLowerCase().includes(catName.toLowerCase()));
-    }
+    const targetCat = availableCategories.find(c => c.name === catName || c.id === catName)
+      || categories.find(c => (c.name || '').trim().toLowerCase() === catName.trim().toLowerCase())
+      || categories.find(c => (c.name || '').toLowerCase().includes(catName.toLowerCase()));
 
     setFormData(prev => ({
       ...prev,
-      category: catName,
+      category: targetCat?.name || catName,
       categoryId: targetCat?.id || '',
       subcategory: '',
       assetClassId: ''
@@ -627,10 +639,10 @@ export function AssetForm() {
         documents: [...prev.documents, ...uploadedDocs]
       }));
 
-      showToast('success', `${uploadedDocs.length} document(s) uploaded to Cloudinary successfully!`);
+      showToast('success', `${uploadedDocs.length} document(s) uploaded successfully!`);
     } catch (err) {
-      console.error('Cloudinary document upload error:', err);
-      showToast('error', err.message || 'Failed to upload document to Cloudinary');
+      console.error('Document upload error:', err);
+      showToast('error', err.message || 'Failed to upload document');
     } finally {
       setUploadingDoc(false);
       if (e.target) e.target.value = '';
@@ -642,7 +654,7 @@ export function AssetForm() {
     if (!file) return;
 
     setUploadingImage(true);
-    showToast('info', 'Uploading asset photo to Cloudinary...');
+    showToast('info', 'Uploading asset photo...');
 
     try {
       const result = await uploadToCloudinary(file, { folder: 'fams_assets' });
@@ -651,14 +663,23 @@ export function AssetForm() {
         assetImage: result.secure_url || result.url,
         imageUrl: result.secure_url || result.url
       }));
-      showToast('success', 'Asset photo uploaded to Cloudinary successfully!');
+      showToast('success', 'Asset photo uploaded successfully!');
     } catch (err) {
-      console.error('Cloudinary image upload error:', err);
-      showToast('error', err.message || 'Failed to upload photo to Cloudinary');
+      console.error('Image upload error:', err);
+      showToast('error', err.message || 'Failed to upload photo');
     } finally {
       setUploadingImage(false);
       if (e.target) e.target.value = '';
     }
+  };
+
+  const handleRemoveImage = () => {
+    setFormData(prev => ({
+      ...prev,
+      assetImage: '',
+      imageUrl: ''
+    }));
+    showToast('info', 'Asset photo removed.');
   };
 
   const handleAddDoc = () => {
@@ -791,6 +812,7 @@ export function AssetForm() {
   };
 
   const handleTagInputChange = async (value) => {
+    clearFieldError('tag');
     setFormData(prev => ({
       ...prev,
       assetTagBarcode: value,
@@ -824,10 +846,181 @@ export function AssetForm() {
     }
   };
 
+  const validateStep = (stepNumber) => {
+    const errors = {};
+    let firstWarning = null;
+
+    if (stepNumber === 1) {
+      if (uploadingImage) {
+        showToast('warning', 'Asset image is currently uploading. Please wait for upload to finish.');
+        return false;
+      }
+      if (!formData.assetName?.trim()) {
+        errors.assetName = 'Asset Name is required.';
+        if (!firstWarning) firstWarning = 'Warning: Asset Name is required. Please fill in the Asset Name before proceeding.';
+      }
+      if (!formData.assetType) {
+        errors.assetType = 'Asset Type is required.';
+        if (!firstWarning) firstWarning = 'Warning: Asset Type is required. Please select an Asset Type.';
+      }
+      if (!formData.category?.trim()) {
+        errors.category = 'Category is required.';
+        if (!firstWarning) firstWarning = 'Warning: Category is required. Please select a Category.';
+      } else {
+        if (!formData.categoryId) {
+          const found = categories.find(c => c.name === formData.category || c.id === formData.category);
+          if (found) {
+            setFormData(prev => ({ ...prev, categoryId: found.id }));
+          }
+        }
+      }
+
+      if (availableAssetClasses.length > 0 && !formData.subcategory && !formData.assetClassId) {
+        errors.subcategory = 'Sub Category is required.';
+        if (!firstWarning) firstWarning = 'Warning: Sub Category is required for this Category. Please select a Sub Category.';
+      }
+
+      const qty = Number(formData.quantity);
+      if (!formData.quantity || isNaN(qty) || !Number.isInteger(qty) || qty < 1 || qty > 50) {
+        errors.quantity = 'Quantity must be between 1 and 50.';
+        if (!firstWarning) firstWarning = 'Warning: Quantity must be a valid number between 1 and 50.';
+      }
+
+      if (quantityCount > 1 && selectedDepreciationCategory?.isSerialized) {
+        const itemSerialNumbers = serialNumbers.map(s => (s || '').trim());
+        if (itemSerialNumbers.some(s => !s)) {
+          errors.serialNumber = 'Each item in this serialized category requires a serial number.';
+          if (!firstWarning) firstWarning = 'Warning: Each item in this serialized category requires a serial number.';
+        }
+      }
+    }
+
+    if (stepNumber === 2) {
+      if (formData.enablePm) {
+        if (!formData.pmTitle?.trim()) {
+          errors.pmTitle = 'Schedule Title is required.';
+          if (!firstWarning) firstWarning = 'Warning: Maintenance Task Title is required when maintenance schedule is enabled.';
+        }
+        if (!formData.pmNextDueDate) {
+          errors.pmNextDueDate = 'First Due Date is required.';
+          if (!firstWarning) firstWarning = 'Warning: First Due Date is required for the maintenance schedule.';
+        }
+        const freq = Number(formData.pmFrequencyMonths);
+        if (!formData.pmFrequencyMonths || isNaN(freq) || !Number.isInteger(freq) || freq < 1 || freq > 120) {
+          errors.pmFrequencyMonths = 'Interval must be between 1 and 120 months.';
+          if (!firstWarning) firstWarning = 'Warning: Repeat interval must be between 1 and 120 months.';
+        }
+      }
+
+      if (formData.linkToDiscovered) {
+        if (quantityCount === 1) {
+          if (!formData.discoveryId) {
+            errors.discoveryId = 'Please select a discovered device.';
+            if (!firstWarning) firstWarning = 'Warning: Please select a discovered device or disable auto-discovery linking.';
+          }
+        } else {
+          if (discoveryItems.some(item => item.linkToDiscovered && !item.discoveryId)) {
+            errors.discoveryId = 'Please select a discovered device for each linked asset item.';
+            if (!firstWarning) firstWarning = 'Warning: Please select a discovered device for each linked asset item.';
+          }
+        }
+      }
+
+      if (formData.warrantyStartDate || formData.warrantyYears) {
+        if (!formData.warrantyStartDate || !formData.warrantyYears || !warrantyEndFor(formData.warrantyStartDate, formData.warrantyYears)) {
+          errors.warranty = 'Enter a valid warranty start date and period (1–50 years).';
+          if (!firstWarning) firstWarning = 'Warning: Both a valid Warranty Start Date and period (1–50 years) are required.';
+        }
+      }
+    }
+
+    if (stepNumber === 3) {
+      if (tagValidationStatus === 'CONFLICT') {
+        errors.tag = 'Asset Tag is already assigned to another asset.';
+        if (!firstWarning) firstWarning = 'Warning: The entered Asset Tag is already in use. Please enter or generate an available tag.';
+      }
+      if (quantityCount > 1) {
+        const tags = assetItems.map(item => item.tagNumber?.trim().toUpperCase()).filter(Boolean);
+        const epcs = assetItems.map(item => item.rfidEpc?.trim().toUpperCase()).filter(Boolean);
+        if (new Set(tags).size !== tags.length || new Set(epcs).size !== epcs.length) {
+          errors.tag = 'Each asset in the batch must have a unique tag number and RFID EPC.';
+          if (!firstWarning) firstWarning = 'Warning: Each asset in the batch must have a unique tag number and RFID EPC.';
+        }
+      }
+    }
+
+    if (stepNumber === 4) {
+      if (uploadingDoc) {
+        showToast('warning', 'Documents are currently uploading. Please wait for upload to finish before proceeding.');
+        return false;
+      }
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(prev => ({ ...prev, ...errors }));
+      showToast('warning', firstWarning || 'Please fill up all required fields before proceeding.');
+      return false;
+    }
+
+    // Clear previous errors for this step
+    setFieldErrors(prev => {
+      const next = { ...prev };
+      if (stepNumber === 1) {
+        delete next.assetName;
+        delete next.assetType;
+        delete next.category;
+        delete next.subcategory;
+        delete next.quantity;
+        delete next.serialNumber;
+      } else if (stepNumber === 2) {
+        delete next.pmTitle;
+        delete next.pmNextDueDate;
+        delete next.pmFrequencyMonths;
+        delete next.discoveryId;
+        delete next.warranty;
+      } else if (stepNumber === 3) {
+        delete next.tag;
+      }
+      return next;
+    });
+
+    return true;
+  };
+
+  const handleNextStep = () => {
+    if (!validateStep(currentStep)) return;
+    setCurrentStep(prev => Math.min(5, prev + 1));
+    window.scrollTo({ top: 280, behavior: 'smooth' });
+  };
+
+  const handleStepClick = (targetStepId) => {
+    if (targetStepId <= currentStep) {
+      setCurrentStep(targetStepId);
+      setStepMode('wizard');
+      window.scrollTo({ top: 280, behavior: 'smooth' });
+      return;
+    }
+    for (let s = currentStep; s < targetStepId; s++) {
+      if (!validateStep(s)) {
+        return;
+      }
+    }
+    setCurrentStep(targetStepId);
+    setStepMode('wizard');
+    window.scrollTo({ top: 280, behavior: 'smooth' });
+  };
+
   const handleSubmit = async (targetStatus) => {
     if (createdAssets.length) {
       showToast('success', 'These assets are already saved. Open Asset Register to view them.');
       return;
+    }
+    for (let s = 1; s <= 4; s++) {
+      if (!validateStep(s)) {
+        setCurrentStep(s);
+        setStepMode('wizard');
+        return;
+      }
     }
     setLoading(true);
     try {
@@ -838,6 +1031,10 @@ export function AssetForm() {
       }
       if (!formData.categoryId || !categories.some(category => category.id === formData.categoryId)) {
         showToast('error', 'Select a registered category so its depreciation policy can be applied.');
+        return;
+      }
+      if (availableAssetClasses.length > 0 && !formData.subcategory && !formData.assetClassId) {
+        showToast('error', 'Select a Sub Category before saving.');
         return;
       }
       const itemSerialNumbers = serialNumbers.map(serial => serial.trim());
@@ -907,18 +1104,28 @@ export function AssetForm() {
         barcode: quantity === 1 ? formData.assetTagBarcode?.trim() || undefined : undefined,
         rfidEpc: quantity === 1 ? formData.rfidEpc?.trim() || undefined : undefined,
         company: formData.company || undefined,
+        companyId: formData.companyId || undefined,
         site: formData.site || undefined,
+        siteId: formData.siteId || undefined,
         building: formData.building || undefined,
+        buildingId: formData.buildingId || undefined,
         floor: formData.floor || undefined,
+        floorId: formData.floorId || undefined,
         room: formData.room || undefined,
+        roomId: formData.roomId || undefined,
         department: formData.department || undefined,
+        departmentId: formData.departmentId || undefined,
         costCenter: formData.costCenter || undefined,
+        costCenterId: formData.costCenterId || undefined,
         custodian: formData.custodian?.trim() || undefined,
+        custodianId: formData.custodianId || undefined,
         acquisitionCost: formData.acquisitionCost || formData.purchaseCost || undefined,
         currency: formData.currency || 'USD',
         condition: formData.condition || 'NEW',
         criticality: formData.criticality || 'MEDIUM',
-        lifecycleStatus: targetStatus === 'SUBMITTED' ? 'IN_SERVICE' : 'RECEIVED',
+        targetStatus,
+        submitForApproval: targetStatus === 'SUBMITTED',
+        lifecycleStatus: targetStatus === 'SUBMITTED' ? 'PENDING_APPROVAL' : 'RECEIVED',
         poInvoiceNo: formData.poInvoiceNo?.trim() || undefined,
         supplier: formData.supplier?.trim() || formData.vendorSupplier?.trim() || undefined,
         purchaseDate: formData.purchaseDate || formData.acquisitionDate || undefined,
@@ -942,11 +1149,14 @@ export function AssetForm() {
         lastSeen: quantity === 1 && !formData.linkToDiscovered ? formData.lastSeen || undefined : undefined,
         maintenance: formData.enablePm ? {
           enabled: true,
+          scheduleNo: formData.pmScheduleNo?.trim() || undefined,
           title: formData.pmTitle.trim(),
           description: formData.pmDescription.trim(),
           workType: formData.pmWorkType,
           frequencyMonths: Number(formData.pmFrequencyMonths),
           nextDueDate: formData.pmNextDueDate,
+          lastServiceDate: formData.pmLastServiceDate || undefined,
+          location: formData.pmLocation?.trim() || [formData.site, formData.building, formData.floor, formData.room].filter(Boolean).join(' · ') || undefined,
           checklist: pmTasks,
           active: formData.pmActive,
           autoGenerateWorkOrders: formData.pmAutoGenerateWorkOrders,
@@ -960,9 +1170,17 @@ export function AssetForm() {
         showToast('success', quantity > 1
           ? `${res.createdCount || quantity} assets created with separate IDs and serial numbers.`
           : targetStatus === 'SUBMITTED'
-            ? `Asset ${res.asset?.assetId} registered in ${res.category?.name || formData.category}.`
+            ? `Asset ${res.asset?.assetId} submitted for approval successfully.`
             : `Asset draft ${res.asset?.assetId} saved in ${res.category?.name || formData.category}.`);
-        if (quantity === 1) setTimeout(() => navigate(res.asset?.id ? `/assets/${encodeURIComponent(res.asset.id)}?tab=financial` : '/assets'), 1200);
+        if (quantity === 1) {
+          setTimeout(() => {
+            if (targetStatus === 'SUBMITTED') {
+              navigate('/assets/approvals');
+            } else {
+              navigate(res.asset?.id ? `/assets/${encodeURIComponent(res.asset.id)}?tab=financial` : '/assets');
+            }
+          }, 1200);
+        }
       } else {
         showToast('error', res?.message || 'Error submitting asset form.');
       }
@@ -1004,31 +1222,132 @@ export function AssetForm() {
     }));
   };
 
-  const renderPreventiveMaintenanceFields = (compact = false) => (
-    <div className={`grid gap-3 text-xs ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
-      <label className="space-y-1 font-semibold">Schedule No.
-        <input readOnly value="Assigned on save" className="w-full rounded-lg border bg-slate-100 p-2" />
-      </label>
-      <label className="space-y-1 font-semibold">Asset / Category
-        <input readOnly value={[assetIdPreview, formData.category].filter(Boolean).join(' · ')} className="w-full rounded-lg border bg-slate-100 p-2" />
-      </label>
-      <label className="space-y-1 font-semibold">Location
-        <input readOnly value={[formData.site, formData.building, formData.floor, formData.room].filter(Boolean).join(' · ')} className="w-full rounded-lg border bg-slate-100 p-2" />
-      </label>
-      <label className="space-y-1 font-semibold">Last Service Date
-        <input readOnly value="Not serviced yet" className="w-full rounded-lg border bg-slate-100 p-2" />
-      </label>
-      <label className="space-y-1 font-semibold">Schedule Title *
-        <input value={formData.pmTitle} maxLength={200} onChange={e => setFormData(prev => ({ ...prev, pmTitle: e.target.value }))} className="w-full rounded-lg border p-2" placeholder="e.g. Laptop quarterly inspection" />
+  const renderPreventiveMaintenanceFields = (compact = false) => {
+    const assetDisplay = [formData.assetName || assetIdPreview, formData.category || formData.subcategory].filter(Boolean).join(' · ')
+      + (formData.assetName && assetIdPreview ? ` (${assetIdPreview})` : '');
+    const currentAssetLocation = [formData.site, formData.building, formData.floor, formData.room].filter(Boolean).join(' · ');
+
+    return (
+      <div className={`grid gap-3 text-xs ${compact ? 'grid-cols-1' : 'grid-cols-1 sm:grid-cols-2'}`}>
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+            <span>Schedule No.</span>
+            <span className="text-[10px] text-purple-700 bg-purple-50 font-bold px-2 py-0.5 rounded-full border border-purple-200">
+              Auto-assigned on save
+            </span>
+          </div>
+          <div className="w-full rounded-lg border border-slate-200 bg-slate-100/80 p-2.5 text-slate-500 font-mono text-xs flex items-center justify-between cursor-not-allowed select-none">
+            <span className="flex items-center gap-1.5">
+              <ShieldCheck className="w-3.5 h-3.5 text-[#6C2BD9] shrink-0" />
+              <span>Assigned automatically on save</span>
+            </span>
+            <span className="text-[10px] bg-slate-200 text-slate-600 font-bold px-1.5 py-0.5 rounded">System ID</span>
+          </div>
+        </div>
+
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-xs font-semibold text-slate-700">
+            <span>Asset / Category</span>
+            <span className="text-[10px] text-slate-600 bg-slate-100 font-bold px-2 py-0.5 rounded-full border border-slate-200">
+              Linked to Step 1
+            </span>
+          </div>
+          <div className="w-full rounded-lg border border-slate-200 bg-slate-100/80 p-2.5 text-slate-800 font-semibold text-xs flex items-center justify-between cursor-not-allowed select-none">
+            <span className="truncate flex items-center gap-1.5">
+              <Layers className="w-3.5 h-3.5 text-[#6C2BD9] shrink-0" />
+              <span className="truncate">{assetDisplay || 'Asset record from Step 1'}</span>
+            </span>
+            <span className="text-[10px] bg-purple-100 text-[#6C2BD9] font-bold px-1.5 py-0.5 rounded shrink-0">Step 1 Ref</span>
+          </div>
+        </div>
+        <label className="space-y-1 font-semibold">
+          <div className="flex items-center justify-between">
+            <span>Location</span>
+            <span className="text-[10px] text-slate-400 font-normal">Editable / defaults to asset location</span>
+          </div>
+          <input
+            type="text"
+            value={formData.pmLocation !== undefined && formData.pmLocation !== '' ? formData.pmLocation : currentAssetLocation}
+            onChange={e => setFormData(prev => ({ ...prev, pmLocation: e.target.value }))}
+            placeholder="e.g. Server Room, Floor 2, Building A (or assigned in Step 3)"
+            className="w-full rounded-lg border p-2 bg-white text-slate-900 font-medium focus:border-[#6C2BD9] outline-none"
+          />
+        </label>
+        <label className="space-y-1 font-semibold">
+          <div className="flex items-center justify-between">
+            <span>Last Service Date</span>
+            <span className="text-[10px] text-slate-400 font-normal">{formData.pmLastServiceDate ? 'Recorded' : 'Optional / Not serviced yet'}</span>
+          </div>
+          <input
+            type="date"
+            value={formData.pmLastServiceDate || ''}
+            onChange={e => setFormData(prev => ({ ...prev, pmLastServiceDate: e.target.value }))}
+            className="w-full rounded-lg border p-2 bg-white text-slate-900 font-medium focus:border-[#6C2BD9] outline-none"
+          />
+        </label>
+      <label className="space-y-1 font-semibold">
+        <span>Schedule Title <span className="text-rose-500">*</span></span>
+        <input
+          value={formData.pmTitle}
+          maxLength={200}
+          onChange={e => {
+            setFormData(prev => ({ ...prev, pmTitle: e.target.value }));
+            if (e.target.value.trim()) clearFieldError('pmTitle');
+          }}
+          className={`w-full rounded-lg border p-2 outline-none transition-colors ${
+            fieldErrors.pmTitle ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+          }`}
+          placeholder="e.g. Laptop quarterly inspection"
+        />
+        {fieldErrors.pmTitle && (
+          <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmTitle}
+          </p>
+        )}
       </label>
       <label className="space-y-1 font-semibold">Schedule Type
-        <select value={formData.pmWorkType} onChange={e => setFormData(prev => ({ ...prev, pmWorkType: e.target.value }))} className="w-full rounded-lg border p-2"><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option></select>
+        <select value={formData.pmWorkType} onChange={e => setFormData(prev => ({ ...prev, pmWorkType: e.target.value }))} className="w-full rounded-lg border border-slate-200 p-2"><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option></select>
       </label>
-      <label className="space-y-1 font-semibold">Repeat Every (Months) *
-        <input type="number" min="1" max="120" value={formData.pmFrequencyMonths} onChange={e => setFormData(prev => ({ ...prev, pmFrequencyMonths: e.target.value }))} className="w-full rounded-lg border p-2" />
+      <label className="space-y-1 font-semibold">
+        <span>Repeat Every (Months) <span className="text-rose-500">*</span></span>
+        <input
+          type="number"
+          min="1"
+          max="120"
+          value={formData.pmFrequencyMonths}
+          onChange={e => {
+            setFormData(prev => ({ ...prev, pmFrequencyMonths: e.target.value }));
+            const val = Number(e.target.value);
+            if (Number.isInteger(val) && val >= 1 && val <= 120) clearFieldError('pmFrequencyMonths');
+          }}
+          className={`w-full rounded-lg border p-2 outline-none transition-colors ${
+            fieldErrors.pmFrequencyMonths ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+          }`}
+        />
+        {fieldErrors.pmFrequencyMonths && (
+          <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmFrequencyMonths}
+          </p>
+        )}
       </label>
-      <label className="space-y-1 font-semibold">Next Due Date *
-        <input type="date" value={formData.pmNextDueDate} onChange={e => setFormData(prev => ({ ...prev, pmNextDueDate: e.target.value }))} className="w-full rounded-lg border p-2" />
+      <label className="space-y-1 font-semibold">
+        <span>Next Due Date <span className="text-rose-500">*</span></span>
+        <input
+          type="date"
+          value={formData.pmNextDueDate}
+          onChange={e => {
+            setFormData(prev => ({ ...prev, pmNextDueDate: e.target.value }));
+            if (e.target.value) clearFieldError('pmNextDueDate');
+          }}
+          className={`w-full rounded-lg border p-2 outline-none transition-colors ${
+            fieldErrors.pmNextDueDate ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+          }`}
+        />
+        {fieldErrors.pmNextDueDate && (
+          <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
+            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmNextDueDate}
+          </p>
+        )}
       </label>
       <label className={`space-y-1 font-semibold ${compact ? '' : 'sm:col-span-2'}`}>Description
         <textarea rows={2} maxLength={500} value={formData.pmDescription} onChange={e => setFormData(prev => ({ ...prev, pmDescription: e.target.value }))} className="w-full rounded-lg border p-2" />
@@ -1044,6 +1363,7 @@ export function AssetForm() {
       <p className="self-end text-slate-500">The schedule will appear under Preventive Maintenance after this asset is saved.</p>
     </div>
   );
+};
 
   const renderBatchDiscovery = () => {
     const item = discoveryItems[selectedItemIndex] || {};
@@ -1081,7 +1401,23 @@ export function AssetForm() {
     <div className="space-y-4">
       <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
         <h3 className="font-extrabold text-slate-900 flex items-center gap-2"><Wrench className="w-4 h-4 text-[#6C2BD9]" /> Preventive Maintenance</h3>
-        <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.enablePm} onChange={e => setFormData(prev => ({ ...prev, enablePm: e.target.checked }))} /> Enable maintenance schedule</label>
+        <label className="flex items-center gap-2 font-semibold">
+          <input
+            type="checkbox"
+            checked={formData.enablePm}
+            onChange={e => {
+              const checked = e.target.checked;
+              setFormData(prev => ({
+                ...prev,
+                enablePm: checked,
+                pmTitle: checked && !prev.pmTitle ? `${prev.assetName || prev.category || 'Asset'} Preventive Maintenance` : prev.pmTitle,
+                pmNextDueDate: checked && !prev.pmNextDueDate ? new Date(Date.now() + 90 * 86400000).toISOString().slice(0, 10) : prev.pmNextDueDate,
+                pmLocation: prev.pmLocation || [prev.site, prev.building, prev.floor, prev.room].filter(Boolean).join(' · ') || ''
+              }));
+            }}
+          />
+          Enable maintenance schedule
+        </label>
         {formData.enablePm && renderPreventiveMaintenanceFields()}
       </div>
       {quantityCount > 1 ? renderBatchDiscovery() : <div className="bg-white border border-slate-200 rounded-xl p-4 space-y-3 text-xs">
@@ -1114,6 +1450,15 @@ export function AssetForm() {
         </span>
       </div>
 
+      {Object.keys(fieldErrors).some(k => ['assetName', 'assetType', 'category', 'subcategory', 'quantity', 'serialNumber'].includes(k)) && (
+        <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <div>
+            <span className="font-bold">Required Fields Missing:</span> Please fill in all required fields marked with <span className="text-rose-600 font-bold">*</span> before continuing to the next step.
+          </div>
+        </div>
+      )}
+
       <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl text-xs">
         <label className="font-bold text-slate-700 block mb-1">Asset ID</label>
         <input readOnly value={assetIdPreview} className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold" />
@@ -1122,22 +1467,46 @@ export function AssetForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Asset Name *</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Asset Name <span className="text-rose-500">*</span>
+          </label>
           <input
             type="text"
             value={formData.assetName}
-            onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            onChange={(e) => {
+              setFormData({ ...formData, assetName: e.target.value });
+              if (e.target.value.trim()) clearFieldError('assetName');
+            }}
+            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
+              fieldErrors.assetName
+                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                : 'border-slate-200 focus:border-[#6C2BD9]'
+            }`}
             placeholder="e.g. Dell Latitude 5420"
           />
+          {fieldErrors.assetName && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.assetName}
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Asset Type *</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Asset Type <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.assetType}
-            onChange={(e) => handleAssetTypeChange(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            onChange={(e) => {
+              handleAssetTypeChange(e.target.value);
+              if (e.target.value) clearFieldError('assetType');
+            }}
+            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
+              fieldErrors.assetType
+                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                : 'border-slate-200 focus:border-[#6C2BD9]'
+            }`}
           >
             <option value="IT Equipment">IT Equipment</option>
             <option value="Office Equipment">Office Equipment</option>
@@ -1146,38 +1515,75 @@ export function AssetForm() {
             <option value="Furniture">Furniture & Fixtures</option>
             <option value="Facility & Building">Facility & Building</option>
           </select>
+          {fieldErrors.assetType && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.assetType}
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Category *</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Category <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.category}
-            onChange={(e) => handleCategoryChange(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            onChange={(e) => {
+              handleCategoryChange(e.target.value);
+              if (e.target.value) clearFieldError('category');
+            }}
+            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
+              fieldErrors.category
+                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                : 'border-slate-200 focus:border-[#6C2BD9]'
+            }`}
           >
             <option value="">Select Category</option>
             {availableCategories.map(c => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
           </select>
-          {availableCategories.length === 0 && (
+          {fieldErrors.category ? (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.category}
+            </p>
+          ) : availableCategories.length === 0 ? (
             <p className="text-[11px] text-amber-600 mt-1">No categories found for {formData.assetType}.</p>
-          )}
+          ) : null}
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Sub Category</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Sub Category {availableAssetClasses.length > 0 ? <span className="text-rose-500">*</span> : null}
+          </label>
           <select
             value={formData.assetClassId || formData.subcategory}
-            onChange={(e) => handleSubCategoryChange(e.target.value)}
+            onChange={(e) => {
+              handleSubCategoryChange(e.target.value);
+              if (e.target.value) clearFieldError('subcategory');
+            }}
             disabled={!formData.category}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none disabled:bg-slate-100 disabled:text-slate-400"
+            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-400 transition-colors ${
+              fieldErrors.subcategory
+                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                : 'border-slate-200 focus:border-[#6C2BD9]'
+            }`}
           >
-            <option value="">{formData.category ? 'Select Subcategory (Optional)' : 'Select a Category first'}</option>
+            <option value="">{formData.category ? (availableAssetClasses.length > 0 ? 'Select Sub Category *' : 'No sub categories (optional)') : 'Select a Category first'}</option>
             {availableAssetClasses.map(assetClass => (
               <option key={assetClass.id} value={assetClass.id}>{assetClass.name}</option>
             ))}
           </select>
+          {fieldErrors.subcategory ? (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.subcategory}
+            </p>
+          ) : formData.category && availableAssetClasses.length === 0 ? (
+            <p className="text-[11px] text-slate-400 mt-1">No sub categories under {formData.category}.</p>
+          ) : null}
         </div>
 
         <div>
@@ -1207,22 +1613,51 @@ export function AssetForm() {
           <input
             type="text"
             value={serialNumbers[selectedItemIndex] || ''}
-            onChange={(e) => updateSerialNumber(e.target.value)}
+            onChange={(e) => {
+              updateSerialNumber(e.target.value);
+              if (e.target.value.trim()) clearFieldError('serialNumber');
+            }}
             placeholder="e.g. SN-892118 (optional)"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none"
+            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-mono font-bold outline-none transition-colors ${
+              fieldErrors.serialNumber
+                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                : 'border-slate-200 focus:border-[#6C2BD9]'
+            }`}
           />
+          {fieldErrors.serialNumber && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.serialNumber}
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Quantity *</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Quantity <span className="text-rose-500">*</span>
+          </label>
           <input
             type="number"
             min="1"
             max="50"
             value={formData.quantity}
-            onChange={(e) => updateQuantity(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none"
+            onChange={(e) => {
+              updateQuantity(e.target.value);
+              const val = Number(e.target.value);
+              if (Number.isInteger(val) && val >= 1 && val <= 50) clearFieldError('quantity');
+            }}
+            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-bold outline-none transition-colors ${
+              fieldErrors.quantity
+                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                : 'border-slate-200 focus:border-[#6C2BD9]'
+            }`}
           />
+          {fieldErrors.quantity && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.quantity}
+            </p>
+          )}
         </div>
       </div>
       {quantityCount > 1 && <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-3 text-xs space-y-2">
@@ -1244,52 +1679,94 @@ export function AssetForm() {
   );
 
   // Step 1: Asset Image with Cloudinary
-  const renderAssetImage = () => (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-        <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
-          <Package className="w-4 h-4 text-[#6C2BD9]" /> Asset Image
-        </h3>
-        <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-full border border-purple-200 flex items-center gap-1">
-          <Cloud className="w-3 h-3" /> Cloudinary
-        </span>
-      </div>
+  const renderAssetImage = () => {
+    const hasImage = Boolean(formData.assetImage || formData.imageUrl);
 
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-        <div className="h-40 bg-slate-50 border border-slate-200 rounded-xl p-2 flex items-center justify-center overflow-hidden">
-          <img
-            src={formData.assetImage || formData.imageUrl || '/laptop.png'}
-            alt="Asset Preview"
-            className="h-full object-contain"
-          />
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+          <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+            <Package className="w-4 h-4 text-[#6C2BD9]" /> Asset Image
+          </h3>
+          <div className="flex items-center gap-2">
+            {hasImage && (
+              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200 flex items-center gap-1">
+                <Check className="w-3 h-3" /> Photo Attached
+              </span>
+            )}
+            <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-full border border-purple-200 flex items-center gap-1">
+              <Cloud className="w-3 h-3" /> Cloudinary CDN
+            </span>
+          </div>
         </div>
-        <input
-          type="file"
-          ref={imageInputRef}
-          onChange={handleUploadImage}
-          className="hidden"
-          accept="image/*"
-        />
-        <div
-          onClick={() => imageInputRef.current?.click()}
-          className="h-40 bg-slate-50 border-2 border-dashed border-slate-200 hover:border-[#6C2BD9] rounded-xl p-2 flex flex-col items-center justify-center text-center cursor-pointer transition-colors"
-        >
-          {uploadingImage ? (
-            <>
-              <RefreshCw className="w-5 h-5 text-purple-600 mb-1 animate-spin" />
-              <span className="text-[10px] font-bold text-[#6C2BD9] leading-tight">Uploading...</span>
-            </>
-          ) : (
-            <>
-              <Upload className="w-5 h-5 text-purple-600 mb-1" />
-              <span className="text-[10px] font-bold text-slate-700 leading-tight">Click to upload photo</span>
-              <span className="text-[8px] text-slate-400 mt-1">Cloudinary CDN (JPG, PNG)</span>
-            </>
-          )}
+
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
+          <div className="h-44 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center overflow-hidden relative group">
+            {hasImage ? (
+              <>
+                <img
+                  src={formData.assetImage || formData.imageUrl}
+                  alt="Asset Preview"
+                  className="h-full w-full object-contain"
+                />
+                <button
+                  type="button"
+                  onClick={handleRemoveImage}
+                  className="absolute top-2 right-2 bg-white/95 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg px-2 py-1 shadow-sm border border-slate-200 text-xs transition-colors cursor-pointer flex items-center gap-1 font-bold"
+                  title="Remove asset photo"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span className="text-[10px]">Remove</span>
+                </button>
+              </>
+            ) : (
+              <div className="text-center p-3 text-slate-400 flex flex-col items-center">
+                <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center mb-2 border border-purple-100">
+                  <Package className="w-6 h-6 stroke-[1.5]" />
+                </div>
+                <span className="text-xs font-bold text-slate-700">No Photo Uploaded</span>
+                <span className="text-[10px] text-slate-400 mt-0.5 max-w-[210px] leading-tight">
+                  Optional — add a photo to visually identify this asset in audits and field scans
+                </span>
+              </div>
+            )}
+          </div>
+
+          <input
+            type="file"
+            ref={imageInputRef}
+            onChange={handleUploadImage}
+            className="hidden"
+            accept="image/*"
+          />
+
+          <div
+            onClick={() => imageInputRef.current?.click()}
+            className="h-44 bg-slate-50 border-2 border-dashed border-purple-200 hover:border-[#6C2BD9] hover:bg-purple-50/20 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
+          >
+            {uploadingImage ? (
+              <>
+                <RefreshCw className="w-6 h-6 text-[#6C2BD9] mb-2 animate-spin" />
+                <span className="text-xs font-bold text-[#6C2BD9] leading-tight">Uploading Photo...</span>
+                <span className="text-[10px] text-slate-400 mt-1">Storing securely in Cloudinary</span>
+              </>
+            ) : (
+              <>
+                <div className="w-10 h-10 rounded-full bg-purple-100 text-[#6C2BD9] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
+                  <Upload className="w-5 h-5" />
+                </div>
+                <span className="text-xs font-bold text-slate-800 leading-tight">
+                  {hasImage ? 'Replace Asset Photo' : 'Upload Asset Photo'}
+                </span>
+                <span className="text-[10px] text-slate-500 mt-1">Click to browse file from device</span>
+                <span className="text-[9px] text-slate-400 mt-0.5">JPG, PNG, WebP up to 10MB</span>
+              </>
+            )}
+          </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Step 2: Financial Information
   const renderFinancialInfo = () => (
@@ -1498,42 +1975,76 @@ export function AssetForm() {
         <div>
           <label className="font-bold text-slate-700 block mb-1">Company</label>
           <select
-            value={formData.company}
-            onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+            value={formData.companyId || (companies.find(c => c.name === formData.company || c.code === formData.company)?.id || '')}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              const found = companies.find(c => c.id === selectedId);
+              setFormData(prev => ({
+                ...prev,
+                companyId: selectedId,
+                company: found ? (found.name || found.code) : '',
+                siteId: '',
+                site: '',
+                buildingId: '',
+                building: ''
+              }));
+            }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
             <option value="">Select Company (Optional)</option>
-            <option value="Dubai HQ">Dubai HQ</option>
-            <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
-            <option value="Sharjah Hub">Sharjah Hub</option>
+            {companies.map(c => (
+              <option key={c.id} value={c.id}>{c.name || c.code}</option>
+            ))}
           </select>
         </div>
 
         <div>
           <label className="font-bold text-slate-700 block mb-1">Site</label>
           <select
-            value={formData.site}
-            onChange={(e) => setFormData({ ...formData, site: e.target.value })}
+            value={formData.siteId || (sites.find(s => s.name === formData.site || s.code === formData.site)?.id || '')}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              const found = sites.find(s => s.id === selectedId);
+              setFormData(prev => ({
+                ...prev,
+                siteId: selectedId,
+                site: found ? (found.name || found.code) : '',
+                buildingId: '',
+                building: ''
+              }));
+            }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
             <option value="">Select Site (Optional)</option>
-            {sites.map(s => (
-              <option key={s.id} value={s.name}>{s.name}</option>
-            ))}
+            {sites
+              .filter(s => !formData.companyId || s.companyId === formData.companyId)
+              .map(s => (
+                <option key={s.id} value={s.id}>{s.name || s.code}</option>
+              ))}
           </select>
         </div>
 
         <div>
           <label className="font-bold text-slate-700 block mb-1">Building</label>
           <select
-            value={formData.building}
-            onChange={(e) => setFormData({ ...formData, building: e.target.value })}
+            value={formData.buildingId || (buildings.find(b => b.name === formData.building || b.code === formData.building)?.id || '')}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              const found = buildings.find(b => b.id === selectedId);
+              setFormData(prev => ({
+                ...prev,
+                buildingId: selectedId,
+                building: found ? (found.name || found.code) : ''
+              }));
+            }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
             <option value="">Select Building (Optional)</option>
-            <option value="Building A">Building A</option>
-            <option value="Building B">Building B</option>
-            <option value="Headquarters Tower">Headquarters Tower</option>
+            {buildings
+              .filter(b => !formData.siteId || b.siteId === formData.siteId)
+              .map(b => (
+                <option key={b.id} value={b.id}>{b.name || b.code}</option>
+              ))}
           </select>
         </div>
 
@@ -1542,7 +2053,7 @@ export function AssetForm() {
           <input
             type="text"
             value={formData.floor}
-            placeholder="Floor 3, Room 312 (optional)"
+            placeholder="e.g. Floor 2, Room 204 (optional)"
             onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           />
@@ -1551,28 +2062,48 @@ export function AssetForm() {
         <div>
           <label className="font-bold text-slate-700 block mb-1">Department</label>
           <select
-            value={formData.department}
-            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+            value={formData.departmentId || (departments.find(d => d.name === formData.department || d.code === formData.department)?.id || '')}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              const found = departments.find(d => d.id === selectedId);
+              setFormData(prev => ({
+                ...prev,
+                departmentId: selectedId,
+                department: found ? (found.name || found.code) : ''
+              }));
+            }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
             <option value="">Select Department (Optional)</option>
-            {departments.map(d => (
-              <option key={d.id} value={d.name}>{d.name}</option>
-            ))}
+            {departments
+              .filter(d => !formData.companyId || d.companyId === formData.companyId)
+              .map(d => (
+                <option key={d.id} value={d.id}>{d.name || d.code}</option>
+              ))}
           </select>
         </div>
 
         <div>
           <label className="font-bold text-slate-700 block mb-1">Cost Center</label>
           <select
-            value={formData.costCenter}
-            onChange={(e) => setFormData({ ...formData, costCenter: e.target.value })}
+            value={formData.costCenterId || (costCenters.find(cc => cc.name === formData.costCenter || cc.code === formData.costCenter)?.id || '')}
+            onChange={(e) => {
+              const selectedId = e.target.value;
+              const found = costCenters.find(cc => cc.id === selectedId);
+              setFormData(prev => ({
+                ...prev,
+                costCenterId: selectedId,
+                costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
+              }));
+            }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
             <option value="">Select Cost Center (Optional)</option>
-            {costCenters.map(cc => (
-              <option key={cc.id} value={cc.code || cc.name}>{cc.code} - {cc.name}</option>
-            ))}
+            {costCenters
+              .filter(cc => !formData.companyId || cc.companyId === formData.companyId)
+              .map(cc => (
+                <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
+              ))}
           </select>
         </div>
 
@@ -1580,12 +2111,28 @@ export function AssetForm() {
           <label className="font-bold text-slate-700 block mb-1">Custodian</label>
           <div className="relative">
             <input
+              list="stepper-custodian-list"
               type="text"
               value={formData.custodian}
-              placeholder="e.g. EMP-1002 or Full Name (optional)"
-              onChange={(e) => setFormData({ ...formData, custodian: e.target.value })}
+              placeholder="e.g. EMP-1002 or select employee..."
+              onChange={(e) => {
+                const val = e.target.value;
+                const emp = employees.find(emp => emp.fullName === val || emp.name === val || emp.employeeCode === val || emp.id === val);
+                setFormData(prev => ({
+                  ...prev,
+                  custodian: val,
+                  custodianId: emp ? emp.id : prev.custodianId
+                }));
+              }}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
             />
+            <datalist id="stepper-custodian-list">
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.fullName || emp.name || emp.employeeCode}>
+                  {emp.employeeCode ? `${emp.employeeCode} - ` : ''}{emp.department?.name || ''}
+                </option>
+              ))}
+            </datalist>
             <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
           </div>
         </div>
@@ -1594,12 +2141,20 @@ export function AssetForm() {
           <label className="font-bold text-slate-700 block mb-1">Expected User</label>
           <div className="relative">
             <input
+              list="stepper-expected-user-list"
               type="text"
               value={formData.expectedUser}
-              placeholder="e.g. EMP-1002 (optional)"
-              onChange={(e) => setFormData({ ...formData, expectedUser: e.target.value })}
+              placeholder="e.g. EMP-1002 or select employee..."
+              onChange={(e) => setFormData(prev => ({ ...prev, expectedUser: e.target.value }))}
               className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
             />
+            <datalist id="stepper-expected-user-list">
+              {employees.map(emp => (
+                <option key={emp.id} value={emp.fullName || emp.name || emp.employeeCode}>
+                  {emp.employeeCode ? `${emp.employeeCode} - ` : ''}{emp.department?.name || ''}
+                </option>
+              ))}
+            </datalist>
             <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
           </div>
         </div>
@@ -1666,7 +2221,9 @@ export function AssetForm() {
               value={formData.assetTagBarcode}
               onChange={(e) => handleTagInputChange(e.target.value)}
               placeholder={isRfid ? '24-character hexadecimal EPC' : isQr ? 'QR-AST-...' : 'BC-AST-...'}
-              className="min-w-0 flex-1 bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-semibold focus:border-[#6C2BD9] outline-none text-xs"
+              className={`min-w-0 flex-1 bg-slate-50 border rounded-lg px-3 py-2 text-slate-900 font-mono font-semibold outline-none text-xs transition-colors ${
+                fieldErrors.tag ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+              }`}
             />
             <button
               type="button"
@@ -1679,6 +2236,12 @@ export function AssetForm() {
               {generatingTag ? 'Generating' : 'Generate'}
             </button>
           </div>
+          {fieldErrors.tag && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.tag}
+            </p>
+          )}
           <div className="flex items-center justify-between gap-2 min-w-0" aria-live="polite">
             <span className="text-[11px] text-slate-500 truncate">{isRfid ? 'EPC Gen2 · 96-bit hex' : isQr ? 'Scannable QR code' : 'Scannable Code 128'}</span>
             <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
@@ -1933,11 +2496,16 @@ export function AssetForm() {
         <p className="mt-1 text-xs text-purple-800">This is a preview of your entries. Empty fields are marked “Not provided.” Use Edit step to correct details before saving.</p>
         <p className="mt-2 text-xs font-semibold text-purple-900">{quantityCount} asset{quantityCount === 1 ? '' : 's'} will be created. Unique asset IDs are assigned when saved.</p>
       </div>
+      {/* Step 1 Review: Basic Information */}
       {reviewSection('Basic information', 1, [
-        ['Asset ID format', assetIdPreview], ['Asset name', formData.assetName], ['Asset type', formData.assetType],
-        ['Category', formData.category], ['Subcategory', formData.subcategory], ['Manufacturer', formData.manufacturer],
-        ['Brand', formData.brand], ['Model', formData.model], ['Model number', formData.modelNumber],
-        ['Quantity', formData.quantity], ['Criticality', formData.criticality]
+        ['Asset ID format', assetIdPreview],
+        ['Asset name', formData.assetName],
+        ['Asset type', formData.assetType],
+        ['Category', formData.category],
+        ['Subcategory', formData.subcategory],
+        ['Manufacturer', formData.manufacturer],
+        ['Model', formData.model],
+        ['Quantity', formData.quantity]
       ], <div className="space-y-2">
         {quantityCount > 1 && <div className="space-y-2">
           <p className="text-xs font-bold text-slate-700">Name and description by item</p>
@@ -1949,28 +2517,57 @@ export function AssetForm() {
         </dl>
         <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-2">
           {formData.assetImage || formData.imageUrl ? <img src={formData.assetImage || formData.imageUrl} alt="Selected asset" className="h-16 w-20 rounded object-contain bg-white" /> : <Package className="h-8 w-8 text-slate-300" />}
-          <span className="text-xs font-semibold text-slate-700">Asset image: {formData.assetImage || formData.imageUrl ? 'Uploaded' : 'Not provided'}</span>
+          <span className="text-xs font-semibold text-slate-700">Asset image: {formData.assetImage || formData.imageUrl ? 'Uploaded' : 'Not provided (Optional)'}</span>
         </div>
       </div>)}
+
+      {/* Step 2 Review: Financial Details & Warranty */}
       {reviewSection('Financial details and warranty', 2, [
-        ['Acquisition date', formData.acquisitionDate], ['Acquisition cost', formData.acquisitionCost ? `${formData.currency} ${formData.acquisitionCost}` : ''],
-        ['Currency', formData.currency], ['PO / invoice', formData.poInvoiceNo], ['Supplier', formData.supplier],
-        ['Warranty start', formData.warrantyStartDate], ['Warranty in years', formData.warrantyYears], ['Warranty end', formData.warrantyEndDate], ['Condition', formData.condition],
-        ['Warranty provider', formData.provider], ['Warranty type', formData.warrantyType], ['Coverage', formData.coverage],
-        ['Contract reference', formData.contractReference], ['Description / remarks', formData.description],
-        ['Additional notes', formData.notes], ['Project', formData.project], ['Reference', formData.reference]
+        ['Acquisition date', formData.acquisitionDate],
+        ['Acquisition cost', formData.acquisitionCost ? `${formData.currency || 'AED'} ${formData.acquisitionCost}` : ''],
+        ['Currency', formData.currency],
+        ['Purchase order / invoice', formData.poInvoiceNo],
+        ['Supplier', formData.supplier],
+        ['Warranty start', formData.warrantyStartDate],
+        ['Warranty (years)', formData.warrantyYears],
+        ['Warranty end', formData.warrantyEndDate],
+        ['Condition', formData.condition],
+        ['Description / remarks', formData.description],
+        ...(formData.provider ? [['Warranty provider', formData.provider]] : []),
+        ...(formData.warrantyType ? [['Warranty type', formData.warrantyType]] : []),
+        ...(formData.coverage ? [['Coverage', formData.coverage]] : []),
+        ...(formData.contractReference ? [['Contract reference', formData.contractReference]] : [])
       ], reviewItemDetails('financial'))}
+
+      {/* Step 2 Review: Preventive Maintenance & Auto Discovery */}
       {reviewSection('Preventive maintenance and discovery', 2, [
-        ['Maintenance enabled', formData.enablePm], ['Schedule title', formData.enablePm ? formData.pmTitle : ''],
-        ['Work type', formData.enablePm ? formData.pmWorkType : ''], ['Frequency in months', formData.enablePm ? formData.pmFrequencyMonths : ''],
-        ['Next due date', formData.enablePm ? formData.pmNextDueDate : ''], ['Advance days', formData.enablePm ? formData.pmAdvanceDays : ''],
-        ['Automatic work orders', formData.enablePm ? formData.pmAutoGenerateWorkOrders : ''], ['Schedule active', formData.enablePm ? formData.pmActive : ''],
-        ['Schedule description', formData.enablePm ? formData.pmDescription : ''], ['Checklist', formData.enablePm ? formData.pmChecklistText : ''],
+        ['Maintenance enabled', formData.enablePm ? 'Yes' : 'No'],
+        ...(formData.enablePm ? [
+          ['Schedule No.', formData.pmScheduleNo || 'Auto-assigned on save'],
+          ['Schedule title', formData.pmTitle],
+          ['Work type', formData.pmWorkType || 'Preventive'],
+          ['Frequency (months)', formData.pmFrequencyMonths],
+          ['Next due date', formData.pmNextDueDate],
+          ['Advance days', formData.pmAdvanceDays],
+          ['Last service date', formData.pmLastServiceDate || 'Not serviced yet'],
+          ['Service location', formData.pmLocation || 'Asset location'],
+          ['Auto work orders', formData.pmAutoGenerateWorkOrders ? 'Yes' : 'No'],
+          ['Schedule active', formData.pmActive ? 'Yes' : 'No'],
+          ['Schedule description', formData.pmDescription],
+          ['Checklist tasks', formData.pmChecklistText ? `${formData.pmChecklistText.split('\n').filter(Boolean).length} tasks` : 'None']
+        ] : []),
         ...(quantityCount === 1 ? [
-          ['Linked to discovery', formData.linkToDiscovered], ['Discovered device', formData.discoveryId],
-          ['Hostname', formData.hostname], ['IP address', formData.ipAddress], ['MAC address', formData.macAddress],
-          ['Device serial', formData.discoveredSerial], ['First seen', formData.firstSeen], ['Last seen', formData.lastSeen]
-        ] : [['Linked devices', discoveryItems.filter(item => item.discoveryId).length]])
+          ['Auto discovery', formData.linkToDiscovered ? 'Linked device' : (formData.hostname || formData.ipAddress || formData.macAddress ? 'Manual details' : 'Disabled')],
+          ...(formData.linkToDiscovered ? [['Discovered device', formData.discoveryId]] : []),
+          ...(formData.hostname ? [['Hostname', formData.hostname]] : []),
+          ...(formData.ipAddress ? [['IP address', formData.ipAddress]] : []),
+          ...(formData.macAddress ? [['MAC address', formData.macAddress]] : []),
+          ...(formData.discoveredSerial ? [['Device serial', formData.discoveredSerial]] : []),
+          ...(formData.firstSeen ? [['First seen', formData.firstSeen]] : []),
+          ...(formData.lastSeen ? [['Last seen', formData.lastSeen]] : [])
+        ] : [
+          ['Linked devices', `${discoveryItems.filter(item => item.discoveryId).length} of ${discoveryItems.length} items linked`]
+        ])
       ], quantityCount > 1 && <div className="space-y-2">
         <p className="text-xs font-bold text-slate-700">Discovery details by item</p>
         {discoveryItems.map((item, index) => <div key={index} className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs">
@@ -1978,18 +2575,26 @@ export function AssetForm() {
           <p className="mt-1 break-words text-slate-600">{item.discoveryId ? `Linked device: ${item.hostname || item.discoveryId}` : item.hostname || item.ipAddress || item.macAddress ? 'Manual details' : 'No discovery details'} · IP: {item.ipAddress || 'Not provided'} · MAC: {item.macAddress || 'Not provided'}</p>
         </div>)}
       </div>)}
+
+      {/* Step 3 Review: Location, Ownership and Tagging */}
       {reviewSection('Location, ownership and tagging', 3, [
-        ['Company', formData.company], ['Business unit', formData.businessUnit], ['Site', formData.site],
-        ['Building', formData.building], ['Floor', formData.floor], ['Room', formData.room],
-        ['Zone / area', formData.zoneArea], ['Storage area', formData.storageArea], ['Department', formData.department],
-        ['Cost center', formData.costCenter], ['Custodian', formData.custodian],
-        ['Alternate custodian', formData.alternateCustodian], ['Expected user', formData.expectedUser],
+        ['Company', formData.company],
+        ['Site', formData.site],
+        ['Building', formData.building],
+        ['Floor / Room', formData.floor],
+        ['Department', formData.department],
+        ['Cost center', formData.costCenter],
+        ['Custodian', formData.custodian],
+        ['Expected user', formData.expectedUser],
         ['Tag type', quantityCount === 1 ? formData.tagType : 'Individual barcodes assigned on save'],
-        ['Barcode / tag', quantityCount === 1 ? formData.assetTagBarcode || 'Generated on save' : 'Generated per asset on save'],
-        ['RFID EPC', quantityCount === 1 ? formData.rfidEpc : ''], ['TID', formData.tid]
+        ['Barcode / tag', quantityCount === 1 ? (formData.assetTagBarcode || 'Generated on save') : 'Generated per asset on save'],
+        ...(formData.tagType === 'RFID' || formData.rfidEpc ? [['RFID EPC', formData.rfidEpc || 'Generated on save']] : [])
       ], reviewItemDetails('location'))}
-      {reviewSection('Documents', 4, [['Attached documents', formData.documents.length]],
-        <ul className="space-y-1 text-xs text-slate-700">{formData.documents.length ? formData.documents.map((doc, index) => <li key={`${doc.name}-${index}`} className="break-all rounded-lg bg-slate-50 px-3 py-2">{doc.name || 'Unnamed document'}</li>) : <li className="italic text-slate-400">Not provided</li>}</ul>)}
+
+      {/* Step 4 Review: Documents */}
+      {reviewSection('Documents', 4, [
+        ['Attached documents', formData.documents.length ? `${formData.documents.length} document(s)` : 'None (Optional)']
+      ], <ul className="space-y-1 text-xs text-slate-700">{formData.documents.length ? formData.documents.map((doc, index) => <li key={`${doc.name}-${index}`} className="break-all rounded-lg bg-slate-50 px-3 py-2 flex items-center justify-between"><span>{doc.name || 'Unnamed document'}</span><span className="text-[10px] text-emerald-600 font-bold">Uploaded</span></li>) : <li className="italic text-slate-400">No documents uploaded (Optional)</li>}</ul>)}
     </div>
   );
   return (
@@ -1998,10 +2603,28 @@ export function AssetForm() {
       {/* Toast Notification */}
       {toast && (
         <div className={`fixed bottom-6 right-6 z-[9999] px-4 py-3 rounded-xl border shadow-2xl flex items-center gap-3 backdrop-blur-md transition-all animate-in slide-in-from-bottom-3 duration-200 ${
-          toast.type === 'success' ? 'bg-emerald-50/95 border-emerald-200 text-emerald-800' : 'bg-rose-50/95 border-rose-200 text-rose-800'
+          toast.type === 'success'
+            ? 'bg-emerald-50/95 border-emerald-300 text-emerald-900 shadow-emerald-500/10'
+            : toast.type === 'warning'
+            ? 'bg-amber-50/95 border-amber-300 text-amber-900 shadow-amber-500/10 ring-2 ring-amber-200/60'
+            : 'bg-rose-50/95 border-rose-300 text-rose-900 shadow-rose-500/10 ring-2 ring-rose-200/60'
         }`}>
-          {toast.type === 'success' ? <CheckCircle2 className="w-5 h-5 text-emerald-600" /> : <AlertTriangle className="w-5 h-5 text-rose-600" />}
-          <span className="text-xs font-semibold">{toast.message}</span>
+          {toast.type === 'success' ? (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          ) : toast.type === 'warning' ? (
+            <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+          ) : (
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+          )}
+          <div className="flex flex-col">
+            {toast.type === 'warning' && (
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-amber-700">Warning</span>
+            )}
+            {toast.type === 'error' && (
+              <span className="text-[10px] font-extrabold uppercase tracking-wider text-rose-700">Error</span>
+            )}
+            <span className="text-xs font-bold leading-snug">{toast.message}</span>
+          </div>
         </div>
       )}
 
@@ -2058,15 +2681,25 @@ export function AssetForm() {
                 >
                   Save as Draft
                 </button>
-                <button
-                  type="button"
-                  onClick={() => handleSubmit('SUBMITTED')}
-                  disabled={loading}
-                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
-                >
-                  {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  Submit for Approval
-                </button>
+                {stepMode === 'wizard' && currentStep < 5 ? (
+                  <button
+                    type="button"
+                    onClick={handleNextStep}
+                    className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    Next Step ({FORM_STEPS[currentStep]?.name}) <ChevronRight className="w-3.5 h-3.5" />
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSubmit('SUBMITTED')}
+                    disabled={loading}
+                    className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
+                  >
+                    {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
+                    Submit for Approval
+                  </button>
+                )}
               </div>
             </div>
 
@@ -2093,10 +2726,7 @@ export function AssetForm() {
                     <React.Fragment key={step.id}>
                       <button
                         type="button"
-                        onClick={() => {
-                          setCurrentStep(step.id);
-                          setStepMode('wizard');
-                        }}
+                        onClick={() => handleStepClick(step.id)}
                         className={`flex items-center gap-2.5 shrink-0 p-1.5 rounded-xl transition-all cursor-pointer text-left ${
                           isCurrent
                             ? 'bg-purple-50/80 ring-2 ring-[#6C2BD9]/30'
@@ -2287,7 +2917,7 @@ export function AssetForm() {
               {stepMode === 'wizard' && currentStep < 5 ? (
                 <button
                   type="button"
-                  onClick={() => setCurrentStep(prev => Math.min(5, prev + 1))}
+                  onClick={handleNextStep}
                   className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
                 >
                   Next Step ({FORM_STEPS[currentStep]?.name}) <ChevronRight className="w-3.5 h-3.5" />
@@ -2406,8 +3036,25 @@ export function AssetForm() {
                   <span className="text-[9px] font-bold text-[#6C2BD9]">Cloudinary</span>
                 </div>
                 <div className="grid grid-cols-2 gap-2 items-center">
-                  <div className="h-20 bg-slate-50 border border-slate-200 rounded-xl p-1 flex items-center justify-center overflow-hidden">
-                    <img src={formData.assetImage || formData.imageUrl || '/laptop.png'} alt="Laptop" className="h-full object-contain" />
+                  <div className="h-20 bg-slate-50 border border-slate-200 rounded-xl p-1 flex items-center justify-center overflow-hidden relative group">
+                    {formData.assetImage || formData.imageUrl ? (
+                      <>
+                        <img src={formData.assetImage || formData.imageUrl} alt="Asset" className="h-full object-contain" />
+                        <button
+                          type="button"
+                          onClick={handleRemoveImage}
+                          className="absolute top-1 right-1 bg-white/90 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded p-1 text-[9px] shadow font-bold"
+                          title="Remove photo"
+                        >
+                          ✕
+                        </button>
+                      </>
+                    ) : (
+                      <div className="text-center text-slate-400">
+                        <Package className="w-5 h-5 mx-auto text-[#6C2BD9]/60 mb-0.5" />
+                        <span className="text-[9px] block font-medium">No photo</span>
+                      </div>
+                    )}
                   </div>
                   <div
                     onClick={() => imageInputRef.current?.click()}
@@ -2483,14 +3130,14 @@ export function AssetForm() {
                     )}
                   </div>
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Subcategory</label>
+                    <label className="font-bold text-slate-700 block mb-1">Subcategory *</label>
                     <select
                       value={formData.assetClassId || formData.subcategory}
                       onChange={(e) => handleSubCategoryChange(e.target.value)}
                       disabled={!formData.category}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none disabled:bg-slate-100 disabled:text-slate-400"
                     >
-                      <option value="">{formData.category ? 'Select Subcategory' : 'Select Category first'}</option>
+                      <option value="">{formData.category ? 'Select Sub Category *' : 'Select Category first'}</option>
                       {availableAssetClasses.map(assetClass => <option key={assetClass.id} value={assetClass.id}>{assetClass.name}</option>)}
                     </select>
                   </div>
@@ -2665,26 +3312,37 @@ export function AssetForm() {
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Company</label>
                     <select
-                      value={formData.company}
-                      onChange={(e) => setFormData({ ...formData, company: e.target.value })}
+                      value={formData.companyId || (companies.find(c => c.name === formData.company || c.code === formData.company)?.id || '')}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        const found = companies.find(c => c.id === selectedId);
+                        setFormData(prev => ({
+                          ...prev,
+                          companyId: selectedId,
+                          company: found ? (found.name || found.code) : '',
+                          siteId: '',
+                          site: '',
+                          buildingId: '',
+                          building: ''
+                        }));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
                       <option value="">Select Company (Optional)</option>
-                      <option value="Dubai HQ">Dubai HQ</option>
-                      <option value="Abu Dhabi Branch">Abu Dhabi Branch</option>
-                      <option value="Sharjah Hub">Sharjah Hub</option>
+                      {companies.map(c => (
+                        <option key={c.id} value={c.id}>{c.name || c.code}</option>
+                      ))}
                     </select>
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Business Unit</label>
-                    <select
+                    <input
+                      type="text"
+                      placeholder="e.g. Enterprise Solutions"
                       value={formData.businessUnit}
                       onChange={(e) => setFormData({ ...formData, businessUnit: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    >
-                      <option value="">Select Business Unit (Optional)</option>
-                      <option value="Enterprise Solutions">Enterprise Solutions</option>
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -2692,27 +3350,47 @@ export function AssetForm() {
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Department</label>
                     <select
-                      value={formData.department}
-                      onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+                      value={formData.departmentId || (departments.find(d => d.name === formData.department || d.code === formData.department)?.id || '')}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        const found = departments.find(d => d.id === selectedId);
+                        setFormData(prev => ({
+                          ...prev,
+                          departmentId: selectedId,
+                          department: found ? (found.name || found.code) : ''
+                        }));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
                       <option value="">Select Department (Optional)</option>
-                      {departments.map(d => (
-                        <option key={d.id} value={d.name}>{d.name}</option>
-                      ))}
+                      {departments
+                        .filter(d => !formData.companyId || d.companyId === formData.companyId)
+                        .map(d => (
+                          <option key={d.id} value={d.id}>{d.name || d.code}</option>
+                        ))}
                     </select>
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Cost Center</label>
                     <select
-                      value={formData.costCenter}
-                      onChange={(e) => setFormData({ ...formData, costCenter: e.target.value })}
+                      value={formData.costCenterId || (costCenters.find(cc => cc.name === formData.costCenter || cc.code === formData.costCenter)?.id || '')}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        const found = costCenters.find(cc => cc.id === selectedId);
+                        setFormData(prev => ({
+                          ...prev,
+                          costCenterId: selectedId,
+                          costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
+                        }));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
                       <option value="">Select Cost Center (Optional)</option>
-                      {costCenters.map(cc => (
-                        <option key={cc.id} value={cc.code || cc.name}>{cc.code} - {cc.name}</option>
-                      ))}
+                      {costCenters
+                        .filter(cc => !formData.companyId || cc.companyId === formData.companyId)
+                        .map(cc => (
+                          <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
+                        ))}
                     </select>
                   </div>
                 </div>
@@ -2721,27 +3399,49 @@ export function AssetForm() {
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Site</label>
                     <select
-                      value={formData.site}
-                      onChange={(e) => setFormData({ ...formData, site: e.target.value })}
+                      value={formData.siteId || (sites.find(s => s.name === formData.site || s.code === formData.site)?.id || '')}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        const found = sites.find(s => s.id === selectedId);
+                        setFormData(prev => ({
+                          ...prev,
+                          siteId: selectedId,
+                          site: found ? (found.name || found.code) : '',
+                          buildingId: '',
+                          building: ''
+                        }));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
                       <option value="">Select Site (Optional)</option>
-                      {sites.map(s => (
-                        <option key={s.id} value={s.name}>{s.name}</option>
-                      ))}
+                      {sites
+                        .filter(s => !formData.companyId || s.companyId === formData.companyId)
+                        .map(s => (
+                          <option key={s.id} value={s.id}>{s.name || s.code}</option>
+                        ))}
                     </select>
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Building</label>
                     <select
-                      value={formData.building}
-                      onChange={(e) => setFormData({ ...formData, building: e.target.value })}
+                      value={formData.buildingId || (buildings.find(b => b.name === formData.building || b.code === formData.building)?.id || '')}
+                      onChange={(e) => {
+                        const selectedId = e.target.value;
+                        const found = buildings.find(b => b.id === selectedId);
+                        setFormData(prev => ({
+                          ...prev,
+                          buildingId: selectedId,
+                          building: found ? (found.name || found.code) : ''
+                        }));
+                      }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
                       <option value="">Select Building (Optional)</option>
-                      <option value="Building A">Building A</option>
-                      <option value="Building B">Building B</option>
-                      <option value="Headquarters Tower">Headquarters Tower</option>
+                      {buildings
+                        .filter(b => !formData.siteId || b.siteId === formData.siteId)
+                        .map(b => (
+                          <option key={b.id} value={b.id}>{b.name || b.code}</option>
+                        ))}
                     </select>
                   </div>
                 </div>
@@ -2749,54 +3449,46 @@ export function AssetForm() {
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Floor</label>
-                    <select
+                    <input
+                      type="text"
+                      placeholder="e.g. Floor 2"
                       value={formData.floor}
                       onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    >
-                      <option value="">Select Floor (Optional)</option>
-                      <option value="Floor 1">Floor 1</option>
-                      <option value="Floor 2">Floor 2</option>
-                      <option value="Floor 3">Floor 3</option>
-                    </select>
+                    />
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Room</label>
-                    <select
+                    <input
+                      type="text"
+                      placeholder="e.g. Room 204"
                       value={formData.room}
                       onChange={(e) => setFormData({ ...formData, room: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    >
-                      <option value="">Select Room (Optional)</option>
-                      <option value="Room 101">Room 101</option>
-                      <option value="Room 205">Room 205</option>
-                      <option value="Room 312">Room 312</option>
-                    </select>
+                    />
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Zone / Area</label>
-                    <select
+                    <input
+                      type="text"
+                      placeholder="e.g. Main Office / Server Hall"
                       value={formData.zoneArea}
                       onChange={(e) => setFormData({ ...formData, zoneArea: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    >
-                      <option value="">Select Zone (Optional)</option>
-                      <option value="Office Zone">Office Zone</option>
-                      <option value="Warehouse Zone">Warehouse Zone</option>
-                    </select>
+                    />
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Storage Area</label>
-                    <select
+                    <input
+                      type="text"
+                      placeholder="e.g. Rack B4 / Shelf 2"
                       value={formData.storageArea}
                       onChange={(e) => setFormData({ ...formData, storageArea: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    >
-                      <option value="">Select Storage Area (Optional)</option>
-                    </select>
+                    />
                   </div>
                 </div>
 
@@ -2805,12 +3497,28 @@ export function AssetForm() {
                     <label className="font-bold text-slate-700 block mb-1">Custodian / Owner</label>
                     <div className="relative">
                       <input
+                        list="grid-custodian-list"
                         type="text"
                         value={formData.custodian}
-                        placeholder="e.g. EMP-1002 or Full Name (optional)"
-                        onChange={(e) => setFormData({ ...formData, custodian: e.target.value })}
+                        placeholder="e.g. EMP-1002 or select employee..."
+                        onChange={(e) => {
+                          const val = e.target.value;
+                          const emp = employees.find(emp => emp.fullName === val || emp.name === val || emp.employeeCode === val || emp.id === val);
+                          setFormData(prev => ({
+                            ...prev,
+                            custodian: val,
+                            custodianId: emp ? emp.id : prev.custodianId
+                          }));
+                        }}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                       />
+                      <datalist id="grid-custodian-list">
+                        {employees.map(emp => (
+                          <option key={emp.id} value={emp.fullName || emp.name || emp.employeeCode}>
+                            {emp.employeeCode ? `${emp.employeeCode} - ` : ''}{emp.department?.name || ''}
+                          </option>
+                        ))}
+                      </datalist>
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
                     </div>
                   </div>
@@ -2819,12 +3527,20 @@ export function AssetForm() {
                     <label className="font-bold text-slate-700 block mb-1">Alternate Custodian</label>
                     <div className="relative">
                       <input
+                        list="grid-alt-custodian-list"
                         type="text"
-                        placeholder="Select"
+                        placeholder="e.g. EMP-1003 or select employee..."
                         value={formData.alternateCustodian}
                         onChange={(e) => setFormData({ ...formData, alternateCustodian: e.target.value })}
                         className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                       />
+                      <datalist id="grid-alt-custodian-list">
+                        {employees.map(emp => (
+                          <option key={emp.id} value={emp.fullName || emp.name || emp.employeeCode}>
+                            {emp.employeeCode ? `${emp.employeeCode} - ` : ''}{emp.department?.name || ''}
+                          </option>
+                        ))}
+                      </datalist>
                       <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
                     </div>
                   </div>

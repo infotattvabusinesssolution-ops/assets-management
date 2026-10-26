@@ -134,8 +134,7 @@ const NAV_STRUCTURE = [
       { name: 'Maintenance Plans', path: '/maintenance/plans', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FACILITIES'] },
       { name: 'Preventive Maintenance', path: '/maintenance/preventive' },
       { name: 'Service Providers', path: '/maintenance/providers', roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FACILITIES'] },
-      { name: 'Spare Parts', path: '/maintenance/spare-parts' },
-      { name: 'Inventory Items', path: '/inventory' },
+      { name: 'Spare Parts & Inventory', path: '/maintenance/spare-parts' },
       { name: 'Stock Levels', path: '/inventory/levels' },
       { name: 'Stock Ledger', path: '/inventory/ledger' }
     ]
@@ -257,8 +256,7 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
       (sub.path === '/maintenance/plans' && (pathname === '/maintenance/plans' || pathname === '/maintenance-plans')) ||
       (sub.path === '/maintenance/preventive' && (pathname === '/maintenance/preventive' || pathname === '/preventive-maintenance')) ||
       (sub.path === '/maintenance/providers' && (pathname === '/maintenance/providers' || pathname === '/service-providers')) ||
-      (sub.path === '/maintenance/spare-parts' && (pathname === '/maintenance/spare-parts' || pathname === '/spare-parts')) ||
-      ((sub.path === '/inventory' || sub.path === '/maintenance/inventory') && (pathname === '/inventory' || pathname === '/maintenance/inventory')) ||
+      (sub.path === '/maintenance/spare-parts' && (pathname === '/maintenance/spare-parts' || pathname === '/spare-parts' || pathname === '/inventory' || pathname === '/maintenance/inventory')) ||
       ((sub.path === '/inventory/levels' || sub.path === '/maintenance/inventory/levels') && (pathname === '/inventory/levels' || pathname === '/maintenance/inventory/levels')) ||
       ((sub.path === '/inventory/ledger' || sub.path === '/maintenance/inventory/ledger') && (pathname === '/inventory/ledger' || pathname === '/maintenance/inventory/ledger')) ||
       ((sub.path === '/rtls/map' || sub.path === '/location-map') && (pathname === '/rtls/map' || pathname === '/location-map')) ||

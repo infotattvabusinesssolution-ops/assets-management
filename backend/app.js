@@ -33,11 +33,23 @@ import uploadRoutes from './modules/uploads/upload.routes.js';
 
 import { errorHandler } from './middleware/errorHandler.js';
 
+import path from 'path';
+import fs from 'fs';
+
 const app = express();
 
+// Ensure local uploads directory exists
+const uploadsDir = path.resolve(process.cwd(), 'uploads');
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir, { recursive: true });
+}
+
 // Security Middlewares
-app.use(helmet());
+app.use(helmet({
+  crossOriginResourcePolicy: false
+}));
 app.use(cors());
+app.use('/uploads', express.static(uploadsDir));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.urlencoded({ extended: true, limit: '10mb' }));
 

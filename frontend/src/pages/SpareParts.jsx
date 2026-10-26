@@ -46,12 +46,12 @@ export function SpareParts() {
     const search = (location.search || '').toLowerCase();
     if (path.includes('levels') || search.includes('tab=reorder') || search.includes('tab=levels')) return 'REORDER';
     if (path.includes('ledger') || search.includes('tab=transactions') || search.includes('tab=ledger')) return 'TRANSACTIONS';
-    if (search.includes('tab=suppliers')) return 'SUPPLIERS';
-    if (search.includes('tab=categories')) return 'CATEGORIES';
-    if (search.includes('tab=locations')) return 'LOCATIONS';
-    if (search.includes('tab=reports')) return 'REPORTS';
-    if (path.endsWith('/inventory') || path.endsWith('/inventory/') || search.includes('tab=list')) return 'LIST';
-    return 'SUPPLIERS';
+    if (search.includes('tab=suppliers') || path.endsWith('/suppliers')) return 'SUPPLIERS';
+    if (search.includes('tab=categories') || path.endsWith('/categories')) return 'CATEGORIES';
+    if (search.includes('tab=locations') || path.endsWith('/locations')) return 'LOCATIONS';
+    if (search.includes('tab=reports') || path.endsWith('/reports')) return 'REPORTS';
+    if (path.includes('spare-parts') || path.includes('inventory') || search.includes('tab=list')) return 'LIST';
+    return 'LIST';
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
@@ -65,15 +65,17 @@ export function SpareParts() {
       setActiveTab('REORDER');
     } else if (path.includes('ledger') || search.includes('tab=transactions') || search.includes('tab=ledger')) {
       setActiveTab('TRANSACTIONS');
-    } else if (search.includes('tab=suppliers')) {
+    } else if (search.includes('tab=suppliers') || path.endsWith('/suppliers')) {
       setActiveTab('SUPPLIERS');
-    } else if (search.includes('tab=categories')) {
+    } else if (search.includes('tab=categories') || path.endsWith('/categories')) {
       setActiveTab('CATEGORIES');
-    } else if (search.includes('tab=locations')) {
+    } else if (search.includes('tab=locations') || path.endsWith('/locations')) {
       setActiveTab('LOCATIONS');
-    } else if (search.includes('tab=reports')) {
+    } else if (search.includes('tab=reports') || path.endsWith('/reports')) {
       setActiveTab('REPORTS');
-    } else if (path.endsWith('/inventory') || path.endsWith('/inventory/') || search.includes('tab=list')) {
+    } else if (path.includes('spare-parts') || path.includes('inventory') || search.includes('tab=list')) {
+      setActiveTab('LIST');
+    } else {
       setActiveTab('LIST');
     }
   }, [location.pathname, location.search]);
@@ -82,44 +84,55 @@ export function SpareParts() {
   const [sparePartsList, setSparePartsList] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [showAddModal, setShowAddModal] = useState(false);
+  const [editingPart, setEditingPart] = useState(null);
 
   // Summary KPIs state for Inventory
   const [kpiSummary, setKpiSummary] = useState({
-    totalItems: 1248,
-    inStock: 892,
-    lowStock: 78,
-    outOfStock: 12,
-    totalValueAED: 245630.00
+    totalItems: 0,
+    inStock: 0,
+    lowStock: 0,
+    outOfStock: 0,
+    totalValueAED: 0
   });
 
   // Stock Transactions summary KPIs
-  const txnKpiSummary = {
-    totalTxns: '3,482',
-    stockIn: '1,982',
-    stockOut: '1,350',
-    transfers: '120',
-    adjustments: '30'
-  };
+  const [txnKpiSummary, setTxnKpiSummary] = useState({
+    totalTxns: '10',
+    stockIn: '3',
+    stockOut: '3',
+    transfers: '2',
+    adjustments: '2'
+  });
 
   // Reorder Planning summary KPIs matching screenshot
-  const reorderKpiSummary = {
-    partsToReorder: '32',
-    pendingPRs: '12',
-    onOrder: '18',
-    expected30Days: '24',
-    estimatedValueAED: '78,450'
-  };
+  const [reorderKpiSummary, setReorderKpiSummary] = useState({
+    partsToReorder: '0',
+    pendingPRs: '0',
+    onOrder: '3',
+    expected30Days: '0',
+    estimatedValueAED: '0.00'
+  });
+
+  // State triggers for actions from header buttons
+  const [selectedCategory, setSelectedCategory] = useState(null);
+  const [listTrigger, setListTrigger] = useState(null);
+  const [txnTrigger, setTxnTrigger] = useState(null);
+  const [reorderTrigger, setReorderTrigger] = useState(null);
+  const [supplierTrigger, setSupplierTrigger] = useState(null);
+  const [categoryTrigger, setCategoryTrigger] = useState(null);
+  const [locationTrigger, setLocationTrigger] = useState(null);
+  const [reportsTrigger, setReportsTrigger] = useState(null);
+  const [supplierCount, setSupplierCount] = useState(24);
 
   // Suppliers summary KPIs matching screenshot
   const suppliersKpiSummary = {
-    totalSuppliers: '24',
-    activeSuppliers: '20',
+    totalSuppliers: String(supplierCount),
+    activeSuppliers: String(Math.max(0, supplierCount - 4)),
     inactiveSuppliers: '4',
     preferredSuppliers: '8'
   };
 
-  // New Part Form State
-  const [newPartForm, setNewPartForm] = useState({
+  const initialPartForm = {
     itemCode: '',
     itemName: '',
     category: 'HVAC',
@@ -134,11 +147,52 @@ export function SpareParts() {
     leadTimeDays: '7',
     description: '',
     remarks: ''
-  });
+  };
+
+  // New/Edit Part Form State
+  const [newPartForm, setNewPartForm] = useState(initialPartForm);
 
   const showToastMsg = (msg, type = 'success') => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 4000);
+  };
+
+  // Download CSV helper
+  const downloadCSV = (filename, content) => {
+    const blob = new Blob([content], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.setAttribute('href', url);
+    link.setAttribute('download', filename);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
+
+  // Export CSV handler
+  const handleExportCSV = () => {
+    if (activeTab === 'LIST' && sparePartsList.length > 0) {
+      const headers = ['Item Code', 'Item Name', 'Category', 'Unit', 'Current Stock', 'Reorder Level', 'Max Level', 'Unit Cost (AED)', 'Total Value (AED)', 'Status', 'Supplier', 'Location', 'Storage Bin'];
+      const rows = sparePartsList.map(p => [
+        p.itemCode,
+        `"${(p.itemName || '').replace(/"/g, '""')}"`,
+        p.category,
+        p.unit,
+        p.currentStock,
+        p.reorderLevel,
+        p.maxLevel,
+        p.unitCost,
+        p.totalValue,
+        p.status,
+        `"${(p.supplier || '').replace(/"/g, '""')}"`,
+        `"${(p.location || '').replace(/"/g, '""')}"`,
+        p.storageBin
+      ]);
+      downloadCSV('spare_parts_inventory.csv', [headers.join(','), ...rows.map(r => r.join(','))].join('\n'));
+      showToastMsg('Spare parts inventory exported to CSV.');
+    } else {
+      showToastMsg(`Export initiated for ${activeTab.toLowerCase()}.`);
+    }
   };
 
   // Fetch spare parts from API
@@ -149,7 +203,9 @@ export function SpareParts() {
       if (res.success && res.parts) {
         setSparePartsList(res.parts);
         if (res.summary) setKpiSummary(res.summary);
-        if (res.parts.length > 0) setSelectedItem(res.parts[0]);
+        if (res.parts.length > 0 && !selectedItem) {
+          setSelectedItem(res.parts[0]);
+        }
       }
     } catch (err) {
       console.warn('Fallback to local spare parts store:', err);
@@ -162,6 +218,66 @@ export function SpareParts() {
     fetchParts();
   }, []);
 
+  const handleOpenAddModal = () => {
+    setEditingPart(null);
+    setNewPartForm(initialPartForm);
+    setShowAddModal(true);
+  };
+
+  const handleOpenEditModal = (part) => {
+    if (!part) return;
+    setEditingPart(part);
+    setSelectedItem(part);
+    setNewPartForm({
+      itemCode: part.itemCode || '',
+      itemName: part.itemName || '',
+      category: part.category || 'HVAC',
+      unit: part.unit || 'Piece',
+      currentStock: String(part.currentStock ?? 0),
+      reorderLevel: String(part.reorderLevel ?? 10),
+      maxLevel: String(part.maxLevel ?? 100),
+      unitCost: String(part.unitCost ?? 0),
+      supplier: part.supplier || '',
+      location: part.location || '',
+      storageBin: part.storageBin || '',
+      leadTimeDays: String(part.leadTimeDays ?? 7),
+      description: part.description || '',
+      remarks: part.remarks || ''
+    });
+    setShowAddModal(true);
+  };
+
+  const handleDeletePart = async (partId) => {
+    if (!window.confirm('Are you sure you want to delete this spare part?')) return;
+    try {
+      const res = await api.delete(`/maintenance/spare-parts/${partId}`);
+      if (res.success) {
+        setSparePartsList(prev => prev.filter(p => p.id !== partId && p.itemCode !== partId));
+        showToastMsg('Spare part deleted successfully.');
+        fetchParts();
+      } else {
+        showToastMsg(res.message || 'Error deleting part', 'error');
+      }
+    } catch (err) {
+      showToastMsg('Failed to delete spare part.', 'error');
+    }
+  };
+
+  const handleBulkDeleteParts = async (ids) => {
+    if (!ids || ids.length === 0) return;
+    if (!window.confirm(`Delete ${ids.length} selected spare part(s)?`)) return;
+    try {
+      const res = await api.post('/maintenance/spare-parts/bulk-delete', { ids });
+      if (res.success) {
+        setSparePartsList(prev => prev.filter(p => !ids.includes(p.id) && !ids.includes(p.itemCode)));
+        showToastMsg(`${ids.length} spare parts deleted successfully.`);
+        fetchParts();
+      }
+    } catch (err) {
+      showToastMsg('Failed to delete selected parts.', 'error');
+    }
+  };
+
   const handleAddPartSubmit = async (e) => {
     e.preventDefault();
     if (!newPartForm.itemName) {
@@ -170,56 +286,35 @@ export function SpareParts() {
     }
 
     try {
-      const res = await api.post('/maintenance/spare-parts', newPartForm);
-      if (res.success && res.part) {
-        setSparePartsList(prev => [res.part, ...prev]);
-        setSelectedItem(res.part);
-        showToastMsg(`Spare Part ${res.part.itemCode} added successfully!`);
+      if (editingPart) {
+        // UPDATE EXISTING SPARE PART
+        const res = await api.put(`/maintenance/spare-parts/${editingPart.id}`, newPartForm);
+        if (res.success && res.part) {
+          setSparePartsList(prev => prev.map(p => p.id === editingPart.id ? res.part : p));
+          setSelectedItem(res.part);
+          showToastMsg(`Spare Part ${res.part.itemCode} updated successfully!`);
+          fetchParts();
+        } else {
+          showToastMsg(res.message || 'Error updating spare part', 'error');
+        }
       } else {
-        const createdLocally = {
-          id: `sp-${Date.now()}`,
-          itemCode: newPartForm.itemCode || `SP-${newPartForm.category.substring(0, 4).toUpperCase()}-${Math.floor(100 + Math.random() * 900)}`,
-          itemName: newPartForm.itemName,
-          category: newPartForm.category,
-          unit: newPartForm.unit,
-          currentStock: parseInt(newPartForm.currentStock || 0),
-          reorderLevel: parseInt(newPartForm.reorderLevel || 10),
-          maxLevel: parseInt(newPartForm.maxLevel || 100),
-          unitCost: parseFloat(newPartForm.unitCost || 0),
-          totalValue: parseInt(newPartForm.currentStock || 0) * parseFloat(newPartForm.unitCost || 0),
-          status: parseInt(newPartForm.currentStock || 0) === 0 ? 'Out of Stock' : (parseInt(newPartForm.currentStock || 0) <= parseInt(newPartForm.reorderLevel || 10) ? 'Low Stock' : 'In Stock'),
-          supplier: newPartForm.supplier,
-          location: newPartForm.location,
-          storageBin: newPartForm.storageBin,
-          leadTimeDays: parseInt(newPartForm.leadTimeDays || 7),
-          description: newPartForm.description,
-          remarks: newPartForm.remarks,
-          attachments: []
-        };
-        setSparePartsList(prev => [createdLocally, ...prev]);
-        setSelectedItem(createdLocally);
-        showToastMsg(`Spare Part ${createdLocally.itemCode} created!`);
+        // CREATE NEW SPARE PART
+        const res = await api.post('/maintenance/spare-parts', newPartForm);
+        if (res.success && res.part) {
+          setSparePartsList(prev => [res.part, ...prev]);
+          setSelectedItem(res.part);
+          showToastMsg(`Spare Part ${res.part.itemCode} added successfully!`);
+          fetchParts();
+        } else {
+          showToastMsg(res.message || 'Error creating spare part', 'error');
+        }
       }
     } catch (err) {
-      showToastMsg('Spare part saved successfully!');
+      showToastMsg('Failed to save spare part.', 'error');
     } finally {
       setShowAddModal(false);
-      setNewPartForm({
-        itemCode: '',
-        itemName: '',
-        category: 'HVAC',
-        unit: 'Piece',
-        currentStock: '50',
-        reorderLevel: '10',
-        maxLevel: '100',
-        unitCost: '85.00',
-        supplier: 'Al Futtaim Trading LLC',
-        location: 'Main Warehouse - Dubai HQ',
-        storageBin: 'A1-R1-B1',
-        leadTimeDays: '7',
-        description: '',
-        remarks: ''
-      });
+      setEditingPart(null);
+      setNewPartForm(initialPartForm);
     }
   };
 
@@ -259,10 +354,28 @@ export function SpareParts() {
                 <span className="text-[#6C2BD9] font-bold">Suppliers</span>
               </>
             )}
+            {activeTab === 'CATEGORIES' && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[#6C2BD9] font-bold">Categories</span>
+              </>
+            )}
+            {activeTab === 'LOCATIONS' && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[#6C2BD9] font-bold">Locations</span>
+              </>
+            )}
+            {activeTab === 'REPORTS' && (
+              <>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
+                <span className="text-[#6C2BD9] font-bold">Reports</span>
+              </>
+            )}
             {activeTab === 'LIST' && (
               <>
                 <ChevronRight className="w-3.5 h-3.5 text-slate-400" />
-                <span className="text-[#6C2BD9] font-bold">Inventory Items</span>
+                <span className="text-[#6C2BD9] font-bold">Spare Parts List</span>
               </>
             )}
           </div>
@@ -275,9 +388,13 @@ export function SpareParts() {
               ? 'Stock Levels & Reorder Planning'
               : activeTab === 'SUPPLIERS'
               ? 'Suppliers'
-              : activeTab === 'LIST'
-              ? 'Inventory Items'
-              : 'Spare Parts & Inventory'}
+              : activeTab === 'CATEGORIES'
+              ? 'Spare Part Categories'
+              : activeTab === 'LOCATIONS'
+              ? 'Warehouses & Locations'
+              : activeTab === 'REPORTS'
+              ? 'Analytical Reports & Valuation'
+              : 'Spare Parts List'}
           </h1>
           <p className="text-xs text-slate-500 mt-0.5">
             {activeTab === 'TRANSACTIONS'
@@ -286,81 +403,154 @@ export function SpareParts() {
               ? 'Identify and plan spare part replenishments based on stock levels, usage, and lead time'
               : activeTab === 'SUPPLIERS'
               ? 'Manage suppliers for spare parts and services'
-              : activeTab === 'LIST'
-              ? 'Manage spare parts inventory, stock on hand, bin locations, and unit costs'
-              : 'Manage spare parts, stock levels, and issue/return transactions'}
+              : activeTab === 'CATEGORIES'
+              ? 'Configure spare parts classification and reorder policies'
+              : activeTab === 'LOCATIONS'
+              ? 'Manage warehouses, storage zones, shelves, and bin allocations'
+              : activeTab === 'REPORTS'
+              ? 'Generate and download detailed inventory analysis and valuation statements'
+              : 'Manage spare parts inventory, stock on hand, bin locations, and unit costs'}
           </p>
         </div>
 
-        {/* Top Header Actions */}
+        {/* Top Header Actions dynamically adapting to Active Tab */}
         <div className="flex items-center gap-2.5">
-          {activeTab === 'SUPPLIERS' ? (
+          {activeTab === 'LIST' && (
             <>
               <button
-                onClick={() => showToastMsg('Importing supplier catalog...')}
-                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold transition-colors shadow-2xs"
-              >
-                Import
-              </button>
-
-              <button
-                onClick={() => showToastMsg('Exporting suppliers directory...')}
+                onClick={() => setListTrigger({ type: 'import', timestamp: Date.now() })}
                 className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export
+                <Upload className="w-4 h-4 text-[#6C2BD9]" /> Import CSV
               </button>
 
               <button
-                onClick={() => showToastMsg('Adding new supplier...')}
+                onClick={handleExportCSV}
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export CSV
+              </button>
+
+              <button
+                onClick={handleOpenAddModal}
                 className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
               >
-                <Plus className="w-4 h-4 text-white" /> Add Supplier
+                <Plus className="w-4 h-4 text-white" /> Add Spare Part
               </button>
             </>
-          ) : activeTab === 'REORDER' ? (
+          )}
+
+          {activeTab === 'TRANSACTIONS' && (
             <>
               <button
-                onClick={() => showToastMsg('Generating Purchase Request...')}
+                onClick={() => setTxnTrigger({ type: 'export', timestamp: Date.now() })}
                 className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <FileText className="w-4 h-4 text-[#6C2BD9]" /> Generate Purchase Request
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export Ledger
               </button>
 
               <button
-                onClick={() => showToastMsg('Exporting reorder plan...')}
+                onClick={() => setTxnTrigger({ type: 'newTxn', timestamp: Date.now() })}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Plus className="w-4 h-4 text-white" /> New Transaction
+              </button>
+            </>
+          )}
+
+          {activeTab === 'REORDER' && (
+            <>
+              <button
+                onClick={() => setReorderTrigger({ type: 'createPR', timestamp: Date.now() })}
                 className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export
+                <FileText className="w-4 h-4 text-[#6C2BD9]" /> Generate PR
               </button>
 
               <button
-                onClick={() => showToastMsg('Running AI Reorder Analysis...')}
+                onClick={() => setReorderTrigger({ type: 'export', timestamp: Date.now() })}
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export Plan
+              </button>
+
+              <button
+                onClick={() => setReorderTrigger({ type: 'runAnalysis', timestamp: Date.now() })}
                 className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
               >
                 <RefreshCw className="w-4 h-4 text-white" /> Run Reorder Analysis
               </button>
             </>
-          ) : (
+          )}
+
+          {activeTab === 'SUPPLIERS' && (
             <>
               <button
-                onClick={() => showToastMsg('Bulk spare parts import initiated...')}
+                onClick={() => setSupplierTrigger({ type: 'import', timestamp: Date.now() })}
                 className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <Upload className="w-4 h-4 text-[#6C2BD9]" /> Import
+                <Upload className="w-4 h-4 text-[#6C2BD9]" /> Import Catalog
               </button>
 
               <button
-                onClick={() => showToastMsg('Exporting spare parts inventory...')}
+                onClick={() => setSupplierTrigger({ type: 'export', timestamp: Date.now() })}
                 className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
               >
-                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export Directory
               </button>
 
               <button
-                onClick={() => setShowAddModal(true)}
+                onClick={() => setSupplierTrigger({ type: 'add', timestamp: Date.now() })}
                 className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
               >
-                <Plus className="w-4 h-4 text-white" /> Add Spare Part
+                <Plus className="w-4 h-4 text-white" /> Add Supplier
+              </button>
+            </>
+          )}
+
+          {activeTab === 'CATEGORIES' && (
+            <>
+              <button
+                onClick={() => setCategoryTrigger({ type: 'export', timestamp: Date.now() })}
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export CSV
+              </button>
+
+              <button
+                onClick={() => setCategoryTrigger({ type: 'add', timestamp: Date.now() })}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Plus className="w-4 h-4 text-white" /> Add Category
+              </button>
+            </>
+          )}
+
+          {activeTab === 'LOCATIONS' && (
+            <>
+              <button
+                onClick={() => setLocationTrigger({ type: 'export', timestamp: Date.now() })}
+                className="px-3.5 py-2 bg-white hover:bg-purple-50 border border-[#6C2BD9] text-black rounded-lg text-xs font-semibold flex items-center gap-1.5 transition-colors shadow-2xs"
+              >
+                <Download className="w-4 h-4 text-[#6C2BD9]" /> Export CSV
+              </button>
+
+              <button
+                onClick={() => setLocationTrigger({ type: 'add', timestamp: Date.now() })}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Plus className="w-4 h-4 text-white" /> Add Location
+              </button>
+            </>
+          )}
+
+          {activeTab === 'REPORTS' && (
+            <>
+              <button
+                onClick={() => setReportsTrigger({ type: 'downloadAll', timestamp: Date.now() })}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+              >
+                <Download className="w-4 h-4 text-white" /> Download All Reports
               </button>
             </>
           )}
@@ -595,7 +785,10 @@ export function SpareParts() {
       <div className="bg-white rounded-xl border border-slate-200 shadow-2xs p-1 overflow-x-auto">
         <div className="flex items-center min-w-max text-xs font-semibold">
           {[
-            { id: 'LIST', name: 'Spare Parts List' },
+            {
+              id: 'LIST',
+              name: 'Spare Parts List'
+            },
             { id: 'TRANSACTIONS', name: 'Stock Transactions' },
             { id: 'REORDER', name: 'Reorder Planning' },
             { id: 'SUPPLIERS', name: 'Suppliers' },
@@ -624,36 +817,77 @@ export function SpareParts() {
           sparePartsList={sparePartsList}
           selectedItem={selectedItem}
           onSelectItem={setSelectedItem}
-          onEditItem={(part) => {
-            setSelectedItem(part);
-            setShowAddModal(true);
-          }}
+          onEditItem={handleOpenEditModal}
+          onDeletePart={handleDeletePart}
+          onBulkDelete={handleBulkDeleteParts}
+          onExportCSV={handleExportCSV}
           onShowToast={showToastMsg}
+          onRefresh={fetchParts}
+          categoryFilterProp={selectedCategory}
+          triggerImport={listTrigger}
         />
       )}
 
       {activeTab === 'TRANSACTIONS' && (
-        <StockTransactionsTab onShowToast={showToastMsg} />
+        <StockTransactionsTab
+          sparePartsList={sparePartsList}
+          onStockUpdated={fetchParts}
+          onShowToast={showToastMsg}
+          triggerNewTxn={txnTrigger?.type === 'newTxn' ? txnTrigger : null}
+          triggerExport={txnTrigger?.type === 'export' ? txnTrigger : null}
+        />
       )}
 
       {activeTab === 'REORDER' && (
-        <ReorderPlanningTab onShowToast={showToastMsg} />
+        <ReorderPlanningTab
+          sparePartsList={sparePartsList}
+          onReorderUpdated={fetchParts}
+          onShowToast={showToastMsg}
+          triggerCreatePR={reorderTrigger?.type === 'createPR' ? reorderTrigger : null}
+          triggerExport={reorderTrigger?.type === 'export' ? reorderTrigger : null}
+          triggerRunAnalysis={reorderTrigger?.type === 'runAnalysis' ? reorderTrigger : null}
+        />
       )}
 
       {activeTab === 'SUPPLIERS' && (
-        <SuppliersTab onShowToast={showToastMsg} />
+        <SuppliersTab
+          onShowToast={showToastMsg}
+          triggerAdd={supplierTrigger?.type === 'add' ? supplierTrigger : null}
+          triggerExport={supplierTrigger?.type === 'export' ? supplierTrigger : null}
+          triggerImport={supplierTrigger?.type === 'import' ? supplierTrigger : null}
+          onSupplierCountChange={setSupplierCount}
+        />
       )}
 
       {activeTab === 'CATEGORIES' && (
-        <CategoriesTab onShowToast={showToastMsg} />
+        <CategoriesTab
+          sparePartsList={sparePartsList}
+          onSelectCategory={(catName) => {
+            setSelectedCategory(catName);
+            setActiveTab('LIST');
+          }}
+          onShowToast={showToastMsg}
+          triggerAdd={categoryTrigger?.type === 'add' ? categoryTrigger : null}
+          triggerExport={categoryTrigger?.type === 'export' ? categoryTrigger : null}
+        />
       )}
 
       {activeTab === 'LOCATIONS' && (
-        <LocationsTab onShowToast={showToastMsg} />
+        <LocationsTab
+          sparePartsList={sparePartsList}
+          onShowToast={showToastMsg}
+          triggerAdd={locationTrigger?.type === 'add' ? locationTrigger : null}
+          triggerExport={locationTrigger?.type === 'export' ? locationTrigger : null}
+        />
       )}
 
       {activeTab === 'REPORTS' && (
-        <ReportsTab onShowToast={showToastMsg} />
+        <ReportsTab
+          sparePartsList={sparePartsList}
+          kpiSummary={kpiSummary}
+          onShowToast={showToastMsg}
+          triggerDownloadAll={reportsTrigger?.type === 'downloadAll' ? reportsTrigger : null}
+        />
       )}
 
       {/* MODAL: ADD / EDIT SPARE PART */}
@@ -662,7 +896,7 @@ export function SpareParts() {
           <div className="bg-white rounded-xl border border-slate-200 shadow-xl max-w-xl w-full p-6 space-y-4">
             <div className="flex justify-between items-center border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Package className="w-4 h-4 text-[#6C2BD9]" /> Create / Edit Spare Part Master
+                <Package className="w-4 h-4 text-[#6C2BD9]" /> {editingPart ? `Edit Spare Part: ${editingPart.itemCode}` : 'Create Spare Part Master'}
               </h3>
               <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-4 h-4" />
@@ -818,7 +1052,7 @@ export function SpareParts() {
                   type="submit"
                   className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-xs font-bold shadow-xs"
                 >
-                  Save Spare Part
+                  {editingPart ? 'Update Spare Part' : 'Save Spare Part'}
                 </button>
               </div>
             </form>

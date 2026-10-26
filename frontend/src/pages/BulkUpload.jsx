@@ -213,15 +213,43 @@ export function BulkUpload() {
       if (/\.xlsx$/i.test(file.name)) {
         const workbook = new ExcelJS.Workbook();
         await workbook.xlsx.load(await file.arrayBuffer());
-        const sheet = workbook.worksheets[0];
-        if (!sheet) throw new Error('The workbook has no sheets.');
-        rows = [];
-        sheet.eachRow({ includeEmpty: false }, row => {
-          rows.push(Array.from({ length: sheet.columnCount }, (_, i) => {
-            const value = row.getCell(i + 1).value;
-            return String(value?.text ?? value?.result ?? value ?? '').trim();
-          }));
-        });
+        if (!workbook.worksheets?.length) throw new Error('The workbook has no sheets.');
+        
+        // Find the best worksheet: check if named 'Asset Upload Template' or has data, otherwise iterate
+        let targetSheet = workbook.worksheets.find(s => 
+          /asset|upload|template|data/i.test(s.name) && !/instruction|guide|master/i.test(s.name)
+        ) || workbook.worksheets[0];
+
+        // Helper to extract rows from a worksheet
+        const extractSheetRows = (sheet) => {
+          const sheetRows = [];
+          sheet.eachRow({ includeEmpty: false }, row => {
+            sheetRows.push(Array.from({ length: Math.max(sheet.columnCount || 0, row.cellCount || 0) }, (_, i) => {
+              const cell = row.getCell(i + 1);
+              const val = cell.value;
+              if (val === null || val === undefined) return '';
+              if (typeof val === 'object') {
+                return String(val.text ?? val.result ?? val.richText?.map(t => t.text).join('') ?? '').trim();
+              }
+              return String(val).trim();
+            }));
+          });
+          return sheetRows;
+        };
+
+        rows = extractSheetRows(targetSheet);
+
+        // If the selected sheet has no parsed asset rows, search other sheets in the workbook
+        if (parseBulkAssetRows(rows).length === 0) {
+          for (const altSheet of workbook.worksheets) {
+            if (altSheet === targetSheet) continue;
+            const altRows = extractSheetRows(altSheet);
+            if (parseBulkAssetRows(altRows).length > 0) {
+              rows = altRows;
+              break;
+            }
+          }
+        }
       } else {
         const source = await file.text();
         rows = [[]];
@@ -240,7 +268,9 @@ export function BulkUpload() {
         rows.at(-1).push(cell.trim());
       }
       const parsed = parseBulkAssetRows(rows);
-      if (!parsed.length) throw new Error('The file has no asset rows.');
+      if (!parsed.length) {
+        throw new Error('The file has no asset data rows. Please ensure you have added asset rows starting from Row 2 under the column headers.');
+      }
       setSelectedFile({ name: file.name, size: (file.size / 1024).toFixed(1) + ' KB' });
       setRecords(parsed);
       showToast('info', 'Loaded ' + parsed.length + ' rows. Validate the file before submitting.');
