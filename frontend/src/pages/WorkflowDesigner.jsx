@@ -159,7 +159,7 @@ export function WorkflowDesigner() {
       {/* Toast Notification */}
       {toast && (
         <div
-          className={`fixed bottom-6 right-6 z-50 px-4 py-3 rounded-xl border shadow-xl flex items-center gap-3 backdrop-blur-md transition-all animate-bounce ${
+          className={`fixed top-5 right-5 z-50 px-4 py-3 rounded-xl border shadow-xl flex items-center gap-3 backdrop-blur-md transition-all duration-300 ${
             toast.type === 'success'
               ? 'bg-emerald-50 border-emerald-300 text-emerald-800'
               : 'bg-rose-50 border-rose-300 text-rose-800'

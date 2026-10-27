@@ -23,9 +23,14 @@ import {
   ChevronLeft,
   Camera,
   PenTool,
-  Type
+  Type,
+  Trash2,
+  Eye,
+  Loader2,
+  Paperclip
 } from 'lucide-react';
 import { api } from '../services/api';
+import { uploadToCloudinary } from '../services/cloudinary';
 import clsx from 'clsx';
 
 
@@ -50,6 +55,9 @@ export function AssignAsset() {
   const [employeesList, setEmployeesList] = useState([]);
   const [departmentsList, setDepartmentsList] = useState([]);
   const [locationsList, setLocationsList] = useState([]);
+  const [buildingsList, setBuildingsList] = useState([]);
+  const [floorsList, setFloorsList] = useState([]);
+  const [roomsList, setRoomsList] = useState([]);
 
   // Fetch live assets and master references from database API
   useEffect(() => {
@@ -78,8 +86,11 @@ export function AssignAsset() {
           setDepartmentsList(refRes.value.departments);
         }
 
-        if (hierRes.status === 'fulfilled' && hierRes.value?.sites?.length) {
-          setLocationsList(hierRes.value.sites);
+        if (hierRes.status === 'fulfilled' && hierRes.value) {
+          if (Array.isArray(hierRes.value.sites)) setLocationsList(hierRes.value.sites);
+          if (Array.isArray(hierRes.value.buildings)) setBuildingsList(hierRes.value.buildings);
+          if (Array.isArray(hierRes.value.floors)) setFloorsList(hierRes.value.floors);
+          if (Array.isArray(hierRes.value.rooms)) setRoomsList(hierRes.value.rooms);
         }
 
         if (assetsRes.status === 'fulfilled' && assetsRes.value?.assets?.length) {
@@ -312,6 +323,77 @@ export function AssignAsset() {
     evidenceFile: null
   });
 
+  // Upload Evidence State & Handlers
+  const [isUploadingEvidence, setIsUploadingEvidence] = useState(false);
+  const [uploadError, setUploadError] = useState('');
+  const [isDragging, setIsDragging] = useState(false);
+  const fileInputRef = useRef(null);
+
+  const handleEvidenceFile = async (file) => {
+    if (!file) return;
+    setUploadError('');
+
+    // Check size limit: 5MB
+    if (file.size > 5 * 1024 * 1024) {
+      setUploadError('File size exceeds the 5 MB limit. Please select a smaller file.');
+      return;
+    }
+
+    // Check type: jpg, jpeg, png, pdf
+    const validExtensions = ['jpg', 'jpeg', 'png', 'pdf'];
+    const ext = file.name.split('.').pop()?.toLowerCase();
+    if (!validExtensions.includes(ext)) {
+      setUploadError('Unsupported file type. Only JPG, PNG, and PDF files are allowed.');
+      return;
+    }
+
+    setIsUploadingEvidence(true);
+    try {
+      const uploaded = await uploadToCloudinary(file, { folder: 'asset_assignment_evidence' });
+      setFormData(prev => ({
+        ...prev,
+        evidenceFile: {
+          name: file.name,
+          size: file.size,
+          formattedSize: uploaded.formattedSize || `${(file.size / 1024).toFixed(1)} KB`,
+          url: uploaded.url || uploaded.secure_url,
+          format: ext
+        }
+      }));
+    } catch (err) {
+      setUploadError(err.message || 'Failed to upload evidence file. Please try again.');
+    } finally {
+      setIsUploadingEvidence(false);
+    }
+  };
+
+  const handleEvidenceDrop = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+    if (e.dataTransfer.files && e.dataTransfer.files[0]) {
+      handleEvidenceFile(e.dataTransfer.files[0]);
+    }
+  };
+
+  const handleEvidenceDragOver = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(true);
+  };
+
+  const handleEvidenceDragLeave = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDragging(false);
+  };
+
+  const handleRemoveEvidence = () => {
+    setFormData(prev => ({ ...prev, evidenceFile: null }));
+    setUploadError('');
+    if (fileInputRef.current) fileInputRef.current.value = '';
+  };
+
   // Acknowledgement State
   const [requireAcknowledgement, setRequireAcknowledgement] = useState(true);
   const [ackMethod, setAckMethod] = useState('digital_signature'); // 'digital_signature' | 'photo_capture'
@@ -343,6 +425,18 @@ export function AssignAsset() {
   );
   const eligibleLocations = locationsList.filter(site =>
     !selectedAsset.companyId || !site.companyId || site.companyId === selectedAsset.companyId
+  );
+  const selectedSiteObj = eligibleLocations.find(s => s.name === formData.location || s.id === formData.location);
+  const eligibleBuildings = buildingsList.filter(b => 
+    !selectedSiteObj ? true : b.siteId === selectedSiteObj.id
+  );
+  const selectedBuildingObj = eligibleBuildings.find(b => b.name === formData.building || b.id === formData.building);
+  const eligibleFloors = floorsList.filter(f =>
+    !selectedBuildingObj ? true : f.buildingId === selectedBuildingObj.id
+  );
+  const selectedFloorObj = eligibleFloors.find(f => f.name === formData.floor || f.id === formData.floor);
+  const eligibleRooms = roomsList.filter(r =>
+    !selectedFloorObj ? true : r.floorId === selectedFloorObj.id
   );
 
   // Handle canvas drawing
@@ -497,6 +591,8 @@ export function AssignAsset() {
         room: formData.room,
         accessoriesIncluded: formData.accessoriesIncluded,
         remarks: formData.remarks,
+        evidenceFile: formData.evidenceFile,
+        evidenceUrl: formData.evidenceFile?.url || null,
         acknowledged: requireAcknowledgement && isConfirmedCheckbox,
         acknowledgedBy,
         signatureData
@@ -519,6 +615,7 @@ export function AssignAsset() {
         location: [savedAsset.site?.name, savedAsset.building?.name, savedAsset.floor?.name, savedAsset.room?.name].filter(Boolean).join(' > '),
         date: formData.assignmentDate,
         acknowledgedBy,
+        evidence: formData.evidenceFile,
         status: 'Assigned'
       });
       setCurrentStep(4);
@@ -725,10 +822,24 @@ export function AssignAsset() {
                 <span className="text-slate-500">Location:</span>
                 <span className="font-semibold text-slate-800">{completionResult.location}</span>
               </div>
-              <div className="flex justify-between py-1">
+              <div className="flex justify-between py-1 border-b border-slate-200/60">
                 <span className="text-slate-500">Acknowledged By:</span>
-                <span className="font-semibold text-emerald-700">{completionResult.acknowledgedBy}</span>
+                <span className="font-semibold text-emerald-700">{completionResult.acknowledgedBy || 'Self-Acknowledged'}</span>
               </div>
+              {completionResult.evidence && (
+                <div className="flex justify-between py-1 items-center">
+                  <span className="text-slate-500">Evidence Document:</span>
+                  <a
+                    href={completionResult.evidence.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="font-semibold text-[#6C2BD9] hover:underline flex items-center gap-1 max-w-[240px] truncate"
+                  >
+                    <Paperclip className="w-3 h-3 shrink-0" />
+                    <span className="truncate">{completionResult.evidence.name}</span>
+                  </a>
+                </div>
+              )}
             </div>
 
             <div className="flex items-center justify-center gap-3 pt-2">
@@ -999,44 +1110,125 @@ export function AssignAsset() {
 
                     {/* Building */}
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">
-                        Building
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-semibold text-slate-700">
+                          Building
+                        </label>
+                        {eligibleBuildings.length > 0 && (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {eligibleBuildings.length} available
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
+                        list="buildings-datalist"
                         value={formData.building}
                         onChange={(e) => setFormData({ ...formData, building: e.target.value, floor: '', room: '' })}
-                        placeholder="e.g. Executive Tower A"
+                        placeholder={eligibleBuildings.length > 0 ? "Select or type building..." : "e.g. Executive Tower A"}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       />
+                      <datalist id="buildings-datalist">
+                        {eligibleBuildings.map(b => (
+                          <option key={b.id} value={b.name}>{b.name}</option>
+                        ))}
+                      </datalist>
+                      {eligibleBuildings.length > 0 && !formData.building && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {eligibleBuildings.slice(0, 3).map(b => (
+                            <button
+                              key={b.id}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, building: b.name, floor: '', room: '' })}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 font-semibold cursor-pointer border border-purple-100 transition-colors"
+                            >
+                              + {b.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Floor */}
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">
-                        Floor
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-semibold text-slate-700">
+                          Floor
+                        </label>
+                        {eligibleFloors.length > 0 && (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {eligibleFloors.length} available
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
+                        list="floors-datalist"
                         value={formData.floor}
                         onChange={(e) => setFormData({ ...formData, floor: e.target.value, room: '' })}
-                        placeholder="e.g. Floor 2"
+                        placeholder={eligibleFloors.length > 0 ? "Select or type floor..." : "e.g. Floor 2"}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       />
+                      <datalist id="floors-datalist">
+                        {eligibleFloors.map(f => (
+                          <option key={f.id} value={f.name}>{f.name}</option>
+                        ))}
+                      </datalist>
+                      {eligibleFloors.length > 0 && !formData.floor && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {eligibleFloors.slice(0, 3).map(f => (
+                            <button
+                              key={f.id}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, floor: f.name, room: '' })}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 font-semibold cursor-pointer border border-purple-100 transition-colors"
+                            >
+                              + {f.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Room / Zone */}
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">
-                        Room / Zone
-                      </label>
+                      <div className="flex items-center justify-between mb-1">
+                        <label className="block font-semibold text-slate-700">
+                          Room / Zone
+                        </label>
+                        {eligibleRooms.length > 0 && (
+                          <span className="text-[10px] text-slate-400 font-medium">
+                            {eligibleRooms.length} available
+                          </span>
+                        )}
+                      </div>
                       <input
                         type="text"
+                        list="rooms-datalist"
                         value={formData.room}
                         onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-                        placeholder="e.g. Room 204"
+                        placeholder={eligibleRooms.length > 0 ? "Select or type room..." : "e.g. Room 204"}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       />
+                      <datalist id="rooms-datalist">
+                        {eligibleRooms.map(r => (
+                          <option key={r.id} value={r.name}>{r.name}</option>
+                        ))}
+                      </datalist>
+                      {eligibleRooms.length > 0 && !formData.room && (
+                        <div className="flex flex-wrap gap-1 mt-1.5">
+                          {eligibleRooms.slice(0, 3).map(r => (
+                            <button
+                              key={r.id}
+                              type="button"
+                              onClick={() => setFormData({ ...formData, room: r.name })}
+                              className="text-[10px] px-2 py-0.5 rounded-md bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 font-semibold cursor-pointer border border-purple-100 transition-colors"
+                            >
+                              + {r.name}
+                            </button>
+                          ))}
+                        </div>
+                      )}
                     </div>
 
                     {/* Assignment Date */}
@@ -1140,15 +1332,104 @@ export function AssignAsset() {
                       <label className="block font-semibold text-slate-700 mb-1">
                         Upload Evidence
                       </label>
-                      <div className="border-2 border-dashed border-slate-200 hover:border-purple-400 rounded-xl p-4 text-center cursor-pointer transition-colors bg-slate-50/50">
-                        <UploadCloud className="w-6 h-6 text-[#6C2BD9] mx-auto mb-1.5" />
-                        <p className="text-xs font-semibold text-slate-700">
-                          Drag and drop files here or <span className="text-[#6C2BD9] underline">click to browse</span>
-                        </p>
-                        <p className="text-[10px] text-slate-400 mt-0.5">
-                          Supported files: JPG, PNG, PDF (Max 5 MB)
-                        </p>
-                      </div>
+
+                      {/* Hidden Native File Input */}
+                      <input
+                        type="file"
+                        ref={fileInputRef}
+                        onChange={(e) => {
+                          if (e.target.files && e.target.files[0]) {
+                            handleEvidenceFile(e.target.files[0]);
+                          }
+                        }}
+                        accept=".jpg,.jpeg,.png,.pdf,image/jpeg,image/png,application/pdf"
+                        className="hidden"
+                      />
+
+                      {formData.evidenceFile ? (
+                        /* Uploaded Evidence File Card */
+                        <div className="border border-purple-200 bg-purple-50/50 rounded-xl p-3.5 flex items-center justify-between gap-3 shadow-2xs">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-9 h-9 rounded-lg bg-purple-100 border border-purple-200 text-[#6C2BD9] flex items-center justify-center shrink-0">
+                              <Paperclip className="w-4 h-4" />
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-bold text-slate-800 truncate" title={formData.evidenceFile.name}>
+                                {formData.evidenceFile.name}
+                              </p>
+                              <div className="flex items-center gap-2 mt-0.5">
+                                <span className="text-[10px] text-slate-500 font-medium">
+                                  {formData.evidenceFile.formattedSize}
+                                </span>
+                                <span className="inline-flex items-center gap-1 text-[9px] font-bold text-emerald-700 bg-emerald-100/70 px-1.5 py-0.5 rounded-full border border-emerald-200">
+                                  <CheckCircle2 className="w-2.5 h-2.5" /> Uploaded
+                                </span>
+                              </div>
+                            </div>
+                          </div>
+
+                          <div className="flex items-center gap-1 shrink-0">
+                            {formData.evidenceFile.url && (
+                              <a
+                                href={formData.evidenceFile.url}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="p-1.5 rounded-lg text-[#6C2BD9] hover:bg-purple-100 transition-colors"
+                                title="View / Download Evidence"
+                              >
+                                <Eye className="w-4 h-4" />
+                              </a>
+                            )}
+                            <button
+                              type="button"
+                              onClick={handleRemoveEvidence}
+                              className="p-1.5 rounded-lg text-rose-500 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Remove file"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Interactive Drag & Drop Box */
+                        <div
+                          onClick={() => !isUploadingEvidence && fileInputRef.current?.click()}
+                          onDragOver={handleEvidenceDragOver}
+                          onDragLeave={handleEvidenceDragLeave}
+                          onDrop={handleEvidenceDrop}
+                          className={clsx(
+                            'border-2 border-dashed rounded-xl p-4 text-center cursor-pointer transition-all',
+                            isDragging
+                              ? 'border-[#6C2BD9] bg-purple-50/80 ring-2 ring-purple-200'
+                              : 'border-slate-200 hover:border-purple-400 bg-slate-50/50 hover:bg-purple-50/20'
+                          )}
+                        >
+                          {isUploadingEvidence ? (
+                            <div className="py-1">
+                              <Loader2 className="w-6 h-6 text-[#6C2BD9] animate-spin mx-auto mb-1.5" />
+                              <p className="text-xs font-semibold text-slate-700">Uploading evidence to secure storage...</p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">Please wait a moment</p>
+                            </div>
+                          ) : (
+                            <>
+                              <UploadCloud className="w-6 h-6 text-[#6C2BD9] mx-auto mb-1.5" />
+                              <p className="text-xs font-semibold text-slate-700">
+                                Drag and drop files here or <span className="text-[#6C2BD9] underline font-bold cursor-pointer">click to browse</span>
+                              </p>
+                              <p className="text-[10px] text-slate-400 mt-0.5">
+                                Supported files: JPG, PNG, PDF (Max 5 MB)
+                              </p>
+                            </>
+                          )}
+                        </div>
+                      )}
+
+                      {uploadError && (
+                        <div className="mt-2 p-2 bg-rose-50 border border-rose-200 rounded-lg flex items-center gap-2 text-rose-700 text-[11px] font-medium">
+                          <AlertCircle className="w-3.5 h-3.5 shrink-0 text-rose-600" />
+                          <span>{uploadError}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 </div>

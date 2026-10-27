@@ -18,10 +18,11 @@ import DepartmentsTab from '../../components/company-organization/DepartmentsTab
 import LocationsTab from '../../components/company-organization/LocationsTab';
 import CostCentersTab from '../../components/company-organization/CostCentersTab';
 
-import { useLocation } from 'react-router-dom';
+import { useLocation, useNavigate } from 'react-router-dom';
 
 export function CompanyOrganization() {
   const location = useLocation();
+  const navigate = useNavigate();
   const getInitialTab = () => {
     const path = location.pathname.toLowerCase();
     if (path.includes('department')) return 'departments';
@@ -33,6 +34,7 @@ export function CompanyOrganization() {
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
   const [toastMsg, setToastMsg] = useState('');
+  const [openAddModal, setOpenAddModal] = useState(0);
 
   React.useEffect(() => {
     const path = location.pathname.toLowerCase();
@@ -109,8 +111,7 @@ export function CompanyOrganization() {
           <div className="flex items-center gap-2.5">
             <button
               onClick={() => {
-                const activeLabel = TABS.find((t) => t.id === activeTab)?.label;
-                triggerToast(`Add ${activeLabel} window opened.`);
+                setOpenAddModal(Date.now());
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
             >
@@ -131,7 +132,14 @@ export function CompanyOrganization() {
           return (
             <button
               key={tab.id}
-              onClick={() => setActiveTab(tab.id)}
+              onClick={() => {
+                setActiveTab(tab.id);
+                if (tab.id === 'companies') navigate('/admin/companies');
+                else if (tab.id === 'businessUnits') navigate('/admin/organization?tab=businessUnits');
+                else if (tab.id === 'departments') navigate('/admin/departments');
+                else if (tab.id === 'locations') navigate('/admin/locations');
+                else if (tab.id === 'costCenters') navigate('/admin/cost-centers');
+              }}
               className={clsx(
                 'flex items-center justify-center gap-2.5 px-4 py-3 rounded-2xl text-xs font-bold transition-all cursor-pointer border',
                 isActive
@@ -148,23 +156,23 @@ export function CompanyOrganization() {
 
       {/* Render Active Tab Component */}
       {activeTab === 'companies' && (
-        <CompaniesTab triggerToast={triggerToast} onSwitchTab={(tabId) => setActiveTab(tabId)} />
+        <CompaniesTab triggerToast={triggerToast} onSwitchTab={(tabId) => setActiveTab(tabId)} openAddModalTrigger={openAddModal} />
       )}
 
       {activeTab === 'businessUnits' && (
-        <BusinessUnitsTab triggerToast={triggerToast} />
+        <BusinessUnitsTab triggerToast={triggerToast} openAddModalTrigger={openAddModal} />
       )}
 
       {activeTab === 'departments' && (
-        <DepartmentsTab triggerToast={triggerToast} onSwitchTab={(tabId) => setActiveTab(tabId)} />
+        <DepartmentsTab triggerToast={triggerToast} onSwitchTab={(tabId) => setActiveTab(tabId)} openAddModalTrigger={openAddModal} />
       )}
 
       {activeTab === 'locations' && (
-        <LocationsTab triggerToast={triggerToast} onSwitchTab={(tabId) => setActiveTab(tabId)} />
+        <LocationsTab triggerToast={triggerToast} onSwitchTab={(tabId) => setActiveTab(tabId)} openAddModalTrigger={openAddModal} />
       )}
 
       {activeTab === 'costCenters' && (
-        <CostCentersTab triggerToast={triggerToast} onSwitchTab={(tabId) => setActiveTab(tabId)} />
+        <CostCentersTab triggerToast={triggerToast} onSwitchTab={(tabId) => setActiveTab(tabId)} openAddModalTrigger={openAddModal} />
       )}
     </div>
   );

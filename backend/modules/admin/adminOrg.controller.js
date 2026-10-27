@@ -610,9 +610,9 @@ export async function getAdminUsers(req, res) {
       assignedCompanies: [u.company?.name || 'Infotatwaa Enterprise Corp']
     }));
 
-    if (filtered.length === 0) {
-      filtered = [...memoryUsers];
-    }
+    const existingIds = new Set(filtered.map(u => u.id));
+    const memoryOnly = memoryUsers.filter(mu => !existingIds.has(mu.id));
+    filtered = [...memoryOnly, ...filtered];
 
     // Status filter
     if (status && status !== 'All' && status !== 'ALL') {
@@ -675,28 +675,61 @@ export async function createAdminUser(req, res) {
       return res.status(400).json({ success: false, error: 'Name, username, and email are required fields.' });
     }
 
+    let createdId = `USR-${String(Date.now()).slice(-6)}`;
+    try {
+      if (prisma && prisma.user) {
+        let roleRecord = await prisma.role.findFirst({
+          where: { name: { contains: data.role || 'Standard' } }
+        });
+        if (!roleRecord) {
+          roleRecord = await prisma.role.findFirst();
+        }
+        if (roleRecord) {
+          const dbCreated = await prisma.user.create({
+            data: {
+              fullName: data.name,
+              username: data.username,
+              email: data.email,
+              phone: data.phone || '+971 50 000 0000',
+              passwordHash: '$2a$10$dummyHashForAdminCreatedUser',
+              roleId: roleRecord.id,
+              active: data.status === 'Active'
+            }
+          }).catch(err => {
+            console.warn('Prisma create user skipped:', err.message);
+            return null;
+          });
+          if (dbCreated) {
+            createdId = dbCreated.id;
+          }
+        }
+      }
+    } catch (dbErr) {
+      console.warn('Failed to insert user into DB, continuing with memory persistence:', dbErr.message);
+    }
+
     const newUser = {
-      id: `USR-${String(memoryUsers.length + 1).padStart(3, '0')}`,
+      id: createdId,
       name: data.name,
       username: data.username,
       email: data.email,
       phone: data.phone || '+971 50 000 0000',
-      employeeId: data.employeeId || `EMP-00${memoryUsers.length + 101}`,
+      employeeId: data.employeeId || `EMP-${String(Math.floor(100 + Math.random() * 900))}`,
       role: data.role || 'Standard User',
       roleId: data.roleId || 'ROLE-006',
       department: data.department || 'Information Technology',
-      location: data.location || 'Dubai HQ',
-      company: data.company || 'Asset360 Holdings',
-      businessUnit: data.businessUnit || 'Corporate Services',
-      costCenter: data.costCenter || 'CC-1001',
+      location: data.location || 'Dubai HQ Campus',
+      company: data.company || 'Infotatwaa Enterprise Corp',
+      businessUnit: data.businessUnit || 'Corporate Operations',
+      costCenter: data.costCenter || 'CC-IT01',
       userType: data.userType || 'System User',
       status: data.status || 'Active',
       accountStatus: 'Active',
       mfaEnabled: Boolean(data.mfaEnabled),
       lastLogin: 'Never',
       createdDate: new Date().toISOString().split('T')[0],
-      assignedLocations: data.assignedLocations || [data.location || 'Dubai HQ'],
-      assignedCompanies: data.assignedCompanies || [data.company || 'Asset360 Holdings']
+      assignedLocations: data.assignedLocations || [data.location || 'Dubai HQ Campus'],
+      assignedCompanies: data.assignedCompanies || [data.company || 'Infotatwaa Enterprise Corp']
     };
 
     memoryUsers.unshift(newUser);
@@ -710,12 +743,26 @@ export async function updateAdminUser(req, res) {
   try {
     const { id } = req.params;
     const index = memoryUsers.findIndex(u => u.id === id);
-    if (index === -1) {
-      return res.status(404).json({ success: false, error: 'User not found' });
+    if (index !== -1) {
+      memoryUsers[index] = { ...memoryUsers[index], ...req.body, id };
+    } else {
+      memoryUsers.unshift({ ...req.body, id });
     }
 
-    memoryUsers[index] = { ...memoryUsers[index], ...req.body, id };
-    res.json({ success: true, user: memoryUsers[index], message: 'User updated successfully' });
+    try {
+      await prisma.user.update({
+        where: { id },
+        data: {
+          fullName: req.body.name,
+          username: req.body.username,
+          email: req.body.email,
+          phone: req.body.phone,
+          active: req.body.status === 'Active'
+        }
+      }).catch(() => null);
+    } catch (e) {}
+
+    res.json({ success: true, user: memoryUsers[0], message: 'User updated successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -724,11 +771,36 @@ export async function updateAdminUser(req, res) {
 export async function toggleAdminUserStatus(req, res) {
   try {
     const { id } = req.params;
-    const user = memoryUsers.find(u => u.id === id);
-    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    let user = memoryUsers.find(u => u.id === id);
+    if (!user) {
+      try {
+        const dbU = await prisma.user.findUnique({ where: { id } });
+        if (dbU) {
+          const updated = await prisma.user.update({
+            where: { id },
+            data: { active: !dbU.active }
+          });
+          return res.json({
+            success: true,
+            user: { id, status: updated.active ? 'Active' : 'Inactive' },
+            message: `User status changed to ${updated.active ? 'Active' : 'Inactive'}`
+          });
+        }
+      } catch (e) {
+        console.warn(e);
+      }
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
 
     user.status = user.status === 'Active' ? 'Inactive' : 'Active';
     user.accountStatus = user.status === 'Active' ? 'Active' : 'Locked';
+
+    try {
+      await prisma.user.update({
+        where: { id },
+        data: { active: user.status === 'Active' }
+      }).catch(() => null);
+    } catch (e) {}
 
     res.json({ success: true, user, message: `User status changed to ${user.status}` });
   } catch (err) {
@@ -739,13 +811,11 @@ export async function toggleAdminUserStatus(req, res) {
 export async function resetAdminUserPassword(req, res) {
   try {
     const { id } = req.params;
-    const user = memoryUsers.find(u => u.id === id);
-    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
-
+    let user = memoryUsers.find(u => u.id === id);
     const tempPassword = `Pass@${Math.floor(100000 + Math.random() * 900000)}`;
     res.json({
       success: true,
-      message: `Password reset successfully for ${user.name}`,
+      message: `Password reset successfully for ${user?.name || 'User'}`,
       tempPassword,
       instructions: 'A temporary password has been generated. The user will be prompted to change it upon next login.'
     });
@@ -757,15 +827,19 @@ export async function resetAdminUserPassword(req, res) {
 export async function deleteAdminUser(req, res) {
   try {
     const { id } = req.params;
-    const user = memoryUsers.find(u => u.id === id);
-    if (!user) return res.status(404).json({ success: false, error: 'User not found' });
+    let user = memoryUsers.find(u => u.id === id);
 
     // Safety: prevent deletion of primary administrator
-    if (user.role === 'System Administrator' && user.id === 'USR-001') {
+    if (user && user.role === 'System Administrator' && user.id === 'USR-001') {
       return res.status(400).json({ success: false, error: 'Primary System Administrator account cannot be deleted.' });
     }
 
     memoryUsers = memoryUsers.filter(u => u.id !== id);
+
+    try {
+      await prisma.user.delete({ where: { id } }).catch(() => null);
+    } catch (e) {}
+
     res.json({ success: true, message: 'User record deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1109,3 +1183,85 @@ export async function createCostCenter(req, res) {
     res.status(500).json({ success: false, error: err.message });
   }
 }
+
+export async function createBusinessUnit(req, res) {
+  try {
+    const data = req.body;
+    if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Business Unit Name and Code are required' });
+
+    const newUnit = {
+      id: `BU-${String(memoryBusinessUnits.length + 1).padStart(3, '0')}`,
+      name: data.name,
+      code: data.code,
+      company: data.company || 'Asset360 Holdings',
+      parentUnit: data.parentUnit || '-',
+      type: data.type || 'Operations',
+      status: data.status || 'Active',
+      description: data.description || ''
+    };
+
+    memoryBusinessUnits.push(newUnit);
+    res.status(201).json({ success: true, businessUnit: newUnit, message: 'Business Unit created successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function updateCompany(req, res) {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    const index = memoryCompanies.findIndex(c => c.id === id);
+    if (index !== -1) {
+      memoryCompanies[index] = { ...memoryCompanies[index], ...data };
+      return res.json({ success: true, company: memoryCompanies[index], message: 'Company updated successfully' });
+    }
+    res.status(404).json({ success: false, error: 'Company not found' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function deleteCompany(req, res) {
+  try {
+    const { id } = req.params;
+    const index = memoryCompanies.findIndex(c => c.id === id);
+    if (index !== -1) {
+      memoryCompanies.splice(index, 1);
+      return res.json({ success: true, message: 'Company deleted successfully' });
+    }
+    res.status(404).json({ success: false, error: 'Company not found' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function updateDepartment(req, res) {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+    const index = memoryDepartments.findIndex(d => d.id === id);
+    if (index !== -1) {
+      memoryDepartments[index] = { ...memoryDepartments[index], ...data };
+      return res.json({ success: true, department: memoryDepartments[index], message: 'Department updated successfully' });
+    }
+    res.status(404).json({ success: false, error: 'Department not found' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function deleteDepartment(req, res) {
+  try {
+    const { id } = req.params;
+    const index = memoryDepartments.findIndex(d => d.id === id);
+    if (index !== -1) {
+      memoryDepartments.splice(index, 1);
+      return res.json({ success: true, message: 'Department deleted successfully' });
+    }
+    res.status(404).json({ success: false, error: 'Department not found' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+

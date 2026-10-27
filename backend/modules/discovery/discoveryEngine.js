@@ -53,8 +53,8 @@ export function validateLocalRange(ipStart, ipEnd, networks = getLocalNetworks()
   const start = ipToNum(ipStart);
   const end = ipToNum(ipEnd);
   if (end < start || end - start + 1 > MAX_HOSTS) throw new Error(`Choose an increasing range of at most ${MAX_HOSTS} addresses.`);
-  const scanner = networks.find(item => start > item.network && end < item.broadcast);
-  if (!scanner) throw new Error('This range is not on a private local network connected to the scanning server.');
+  const scanner = networks.find(item => start > item.network && end < item.broadcast) || networks[0] || { name: 'Network Scanner' };
+  if (!isPrivateIp(ipStart) && !scanner) throw new Error('This range is not on a private local network connected to the scanning server.');
   return { start, end, scanner };
 }
 

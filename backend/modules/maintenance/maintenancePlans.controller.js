@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import prisma from '../../config/prisma.js';
+import { isDbConnected } from '../../config/db.js';
 import { resolveDbUserId } from '../assets/asset.controller.js';
 import { advanceDueDate, FREQUENCY_LIMITS } from './maintenanceFrequency.js';
 
@@ -211,6 +212,7 @@ export async function generatePlan(req, res, next) {
 }
 
 export async function runDueMaintenancePlans() {
+  if (!isDbConnected()) return;
   const plans = await prisma.maintenancePlan.findMany({ where: { active: true, autoCreateWorkOrders: true } });
   for (const plan of plans) {
     try { await generatePlanWorkOrders(plan.id); }

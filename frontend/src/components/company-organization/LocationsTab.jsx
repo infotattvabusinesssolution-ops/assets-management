@@ -26,7 +26,13 @@ import clsx from 'clsx';
 
 export const INITIAL_LOCATIONS = [];
 
-export function LocationsTab({ triggerToast, onSwitchTab }) {
+export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger }) {
+  React.useEffect(() => {
+    if (openAddModalTrigger) {
+      handleOpenAddModal();
+    }
+  }, [openAddModalTrigger]);
+
   React.useEffect(() => {
     const fetchLocationsFromDb = async () => {
       try {
@@ -215,11 +221,23 @@ export function LocationsTab({ triggerToast, onSwitchTab }) {
     setShowAddLocModal(true);
   };
 
-  const handleSaveLoc = (e) => {
+  const handleSaveLoc = async (e) => {
     e.preventDefault();
     if (!locForm.name || !locForm.code) return;
 
     if (editingLoc) {
+      try {
+        await api.put(`/admin/organization/locations/${editingLoc.id}`, {
+          name: locForm.name,
+          code: locForm.code.toUpperCase(),
+          address: locForm.address,
+          city: locForm.city,
+          country: locForm.country,
+          active: locForm.status === 'Active'
+        }).catch(() => null);
+      } catch (err) {
+        console.error(err);
+      }
       setLocations(
         locations.map((loc) =>
           loc.id === editingLoc.id
@@ -241,8 +259,24 @@ export function LocationsTab({ triggerToast, onSwitchTab }) {
       );
       triggerToast && triggerToast(`Location "${locForm.name}" updated.`);
     } else {
+      let createdId = Date.now();
+      try {
+        const res = await api.post('/admin/organization/locations', {
+          name: locForm.name,
+          code: locForm.code.toUpperCase(),
+          address: locForm.address,
+          city: locForm.city,
+          country: locForm.country,
+          active: locForm.status === 'Active'
+        }).catch(() => null);
+        if (res && res.location && res.location.id) {
+          createdId = res.location.id;
+        }
+      } catch (err) {
+        console.error(err);
+      }
       const newLoc = {
-        id: Date.now(),
+        id: createdId,
         name: locForm.name,
         code: locForm.code.toUpperCase(),
         company: locForm.company,
@@ -261,16 +295,28 @@ export function LocationsTab({ triggerToast, onSwitchTab }) {
     setShowAddLocModal(false);
   };
 
-  const handleToggleStatus = (loc) => {
+  const handleToggleStatus = async (loc) => {
     setActiveDropdownId(null);
     const nextStatus = loc.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await api.put(`/admin/organization/locations/${loc.id}`, {
+        active: nextStatus === 'Active'
+      }).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setLocations(locations.map((l) => (l.id === loc.id ? { ...l, status: nextStatus } : l)));
     triggerToast && triggerToast(`Location "${loc.name}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteLoc = (loc) => {
+  const handleDeleteLoc = async (loc) => {
     setActiveDropdownId(null);
     if (!window.confirm(`Are you sure you want to delete location "${loc.name}"?`)) return;
+    try {
+      await api.delete(`/admin/organization/locations/${loc.id}`).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setLocations(locations.filter((l) => l.id !== loc.id));
     triggerToast && triggerToast(`Location "${loc.name}" deleted.`);
   };
@@ -527,14 +573,23 @@ export function LocationsTab({ triggerToast, onSwitchTab }) {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900">Locations ({filteredLocations.length})</h2>
-          <button
-            onClick={() => triggerToast && triggerToast('Exporting Locations data...')}
-            className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Export</span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleOpenAddModal()}
+              className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Location</span>
+            </button>
+            <button
+              onClick={() => triggerToast && triggerToast('Exporting Locations data...')}
+              className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-auto max-h-[540px]">

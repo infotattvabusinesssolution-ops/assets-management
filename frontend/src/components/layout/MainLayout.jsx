@@ -4,6 +4,7 @@ import { Sidebar } from './Sidebar';
 import { Topbar } from './Topbar';
 import { CommandPaletteModal } from '../common/CommandPaletteModal';
 import { FloatingAIAssistant } from '../common/FloatingAIAssistant';
+import { ErrorBoundary } from '../common/ErrorBoundary';
 
 export function MainLayout() {
   const [collapsed, setCollapsed] = useState(false);
@@ -14,7 +15,9 @@ export function MainLayout() {
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden bg-white">
         <Topbar />
         <main className="flex-1 overflow-y-auto p-6 space-y-6 bg-white text-black">
-          <Outlet />
+          <ErrorBoundary>
+            <Outlet />
+          </ErrorBoundary>
         </main>
       </div>
       <CommandPaletteModal />
@@ -22,3 +25,4 @@ export function MainLayout() {
     </div>
   );
 }
+

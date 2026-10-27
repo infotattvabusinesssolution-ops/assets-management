@@ -33,7 +33,8 @@ import {
   RotateCcw,
   Eye,
   Crosshair,
-  MoreHorizontal
+  MoreHorizontal,
+  Wifi
 } from 'lucide-react';
 
 export function DiscoveryJobs({ onNavigateToDevices }) {
@@ -65,21 +66,170 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
     schedule: 'Manual'
   });
 
+  // New Discovery Job Form State
+  const [newJobForm, setNewJobForm] = useState({
+    jobName: '',
+    discoveryType: 'IP Range Scan',
+    ipStart: '192.168.1.1',
+    ipEnd: '192.168.1.254',
+    profile: 'Local ICMP/TCP',
+    schedule: 'Manual',
+    credentials: 'Use Saved Credentials',
+    runImmediately: false
+  });
+  const [creatingJob, setCreatingJob] = useState(false);
+  const [newJobError, setNewJobError] = useState('');
+  const [localSubnets, setLocalSubnets] = useState([]);
+
   const showToast = (msg) => {
     setToastMessage(msg);
     setTimeout(() => setToastMessage(null), 4000);
   };
 
-  useEffect(() => {
-    let alive = true;
-    api.get('/discovery/jobs').then(result => {
-      if (!alive) return;
+  const fetchJobs = async () => {
+    try {
+      const result = await api.get('/discovery/jobs');
       const list = Array.isArray(result?.jobs) ? result.jobs : [];
       setJobs(list);
       setSelectedJobId(previous => list.some(job => job.id === previous) ? previous : list[0]?.id || null);
-    }).catch(error => { if (alive) { setJobs([]); showToast(error.message || 'Could not load discovery jobs.'); } });
-    return () => { alive = false; };
+    } catch (error) {
+      setJobs([]);
+      showToast(error.message || 'Could not load discovery jobs.');
+    }
+  };
+
+  useEffect(() => {
+    fetchJobs();
+    api.get('/discovery/local-networks')
+      .then(res => {
+        const nets = Array.isArray(res?.networks) ? res.networks : [];
+        setLocalSubnets(nets);
+        if (nets.length > 0 && nets[0].ipStart && nets[0].ipEnd) {
+          setNewJobForm(prev => ({
+            ...prev,
+            ipStart: prev.ipStart === '192.168.1.1' ? nets[0].ipStart : prev.ipStart,
+            ipEnd: prev.ipEnd === '192.168.1.254' ? nets[0].ipEnd : prev.ipEnd
+          }));
+        }
+      })
+      .catch(() => {});
   }, []);
+
+  const handleCreateJobSubmit = async (e) => {
+    e?.preventDefault();
+    if (!newJobForm.jobName.trim()) {
+      setNewJobError('Job Name is required.');
+      return;
+    }
+    if (!newJobForm.ipStart.trim() || !newJobForm.ipEnd.trim()) {
+      setNewJobError('Start IP and End IP are required.');
+      return;
+    }
+
+    setCreatingJob(true);
+    setNewJobError('');
+
+    try {
+      const res = await api.post('/discovery/jobs', {
+        jobName: newJobForm.jobName.trim(),
+        discoveryType: newJobForm.discoveryType,
+        ipStart: newJobForm.ipStart.trim(),
+        ipEnd: newJobForm.ipEnd.trim(),
+        profile: newJobForm.profile,
+        schedule: newJobForm.schedule,
+        runImmediately: newJobForm.runImmediately
+      });
+
+      if (!res?.success || !res?.job) {
+        throw new Error(res?.message || 'Failed to create discovery job.');
+      }
+
+      showToast(`Discovery job "${res.job.jobName}" created successfully!`);
+      setIsNewJobOpen(false);
+      setNewJobForm({
+        jobName: '',
+        discoveryType: 'IP Range Scan',
+        ipStart: localSubnets[0]?.ipStart || '192.168.1.1',
+        ipEnd: localSubnets[0]?.ipEnd || '192.168.1.254',
+        profile: 'Local ICMP/TCP',
+        schedule: 'Manual',
+        credentials: 'Use Saved Credentials',
+        runImmediately: false
+      });
+
+      await fetchJobs();
+      if (res.job?.id) {
+        setSelectedJobId(res.job.id);
+      }
+    } catch (err) {
+      setNewJobError(err?.response?.data?.message || err?.message || 'Could not create discovery job.');
+    } finally {
+      setCreatingJob(false);
+    }
+  };
+
+  const handleRerunJob = async () => {
+    if (!selectedJob) return;
+    try {
+      setJobBusy(true);
+      showToast(`Initiating discovery scan for "${selectedJob.jobName}"...`);
+      setIsRerunJobModalOpen(false);
+      const res = await api.post(`/discovery/jobs/${encodeURIComponent(selectedJob.id)}/rerun`);
+      showToast(res?.message || `Discovery scan finished! Found ${res?.execution?.devicesFound || 0} devices.`);
+      await fetchJobs();
+    } catch (err) {
+      showToast(err?.response?.data?.message || err?.message || 'Discovery run failed.');
+    } finally {
+      setJobBusy(false);
+    }
+  };
+
+  const handleDeleteJob = async (jobId) => {
+    const id = jobId || selectedJob?.id;
+    if (!id) return;
+    if (!window.confirm(`Are you sure you want to delete discovery job "${selectedJob?.jobName || id}"?`)) return;
+    try {
+      const res = await api.delete(`/discovery/jobs/${encodeURIComponent(id)}`);
+      showToast(res?.message || 'Discovery job deleted.');
+      await fetchJobs();
+    } catch (err) {
+      showToast(err?.response?.data?.message || err?.message || 'Failed to delete job.');
+    }
+  };
+
+  const handleCloneJob = async (jobId) => {
+    const id = jobId || selectedJob?.id;
+    if (!id) return;
+    try {
+      const res = await api.post(`/discovery/jobs/${encodeURIComponent(id)}/clone`);
+      showToast(res?.message || 'Discovery job cloned successfully.');
+      await fetchJobs();
+      if (res?.job?.id) setSelectedJobId(res.job.id);
+    } catch (err) {
+      showToast(err?.response?.data?.message || err?.message || 'Failed to clone job.');
+    }
+  };
+
+  const handleEditJobSave = async () => {
+    if (!selectedJob) return;
+    try {
+      const [ipStart, ipEnd] = (editJobForm.ipRange || '').split(/\s*-\s*/);
+      const res = await api.put(`/discovery/jobs/${encodeURIComponent(selectedJob.id)}`, {
+        jobName: editJobForm.jobName,
+        discoveryType: editJobForm.discoveryType,
+        ipRange: editJobForm.ipRange,
+        ipStart,
+        ipEnd,
+        profile: editJobForm.profile,
+        schedule: editJobForm.schedule
+      });
+      showToast(res?.message || 'Job configuration updated successfully!');
+      setIsEditJobModalOpen(false);
+      await fetchJobs();
+    } catch (err) {
+      showToast(err?.response?.data?.message || err?.message || 'Failed to update job.');
+    }
+  };
 
   useEffect(() => {
     if (!isJobDevicesModalOpen || !selectedJobId) return;
@@ -539,7 +689,18 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
 
               <div className="flex items-center gap-2 pt-1">
                 <button
-                  onClick={() => setIsEditJobModalOpen(true)}
+                  onClick={() => {
+                    if (selectedJob) {
+                      setEditJobForm({
+                        jobName: selectedJob.jobName || '',
+                        discoveryType: selectedJob.discoveryType || 'IP Range Scan',
+                        ipRange: selectedJob.ipRange || '',
+                        profile: selectedJob.profile || 'Default',
+                        schedule: selectedJob.schedule || 'Manual'
+                      });
+                    }
+                    setIsEditJobModalOpen(true);
+                  }}
                   className="flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer"
                 >
                   <Edit className="w-3.5 h-3.5" />
@@ -547,7 +708,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
                 </button>
 
                 <button
-                  onClick={() => showToast(`Cloned job ${selectedJob.id}`)}
+                  onClick={() => handleCloneJob(selectedJob?.id)}
                   className="flex-1 flex items-center justify-center gap-1 py-2 px-2 rounded-xl border border-slate-200 bg-slate-50 hover:bg-slate-100 text-slate-700 text-xs font-bold transition-all cursor-pointer"
                 >
                   <Copy className="w-3.5 h-3.5" />
@@ -556,7 +717,7 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
               </div>
 
               <button
-                onClick={() => showToast(`Job ${selectedJob.id} deleted.`)}
+                onClick={() => handleDeleteJob(selectedJob?.id)}
                 className="w-full flex items-center justify-center gap-1.5 py-2 px-3 rounded-xl border border-rose-300 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all cursor-pointer shadow-2xs mt-2"
               >
                 <Trash2 className="w-4 h-4" />
@@ -699,19 +860,17 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
             <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
               <button
                 onClick={() => setIsRerunJobModalOpen(false)}
-                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold cursor-pointer"
+                className="px-4 py-2 border border-slate-300 text-slate-700 rounded-xl text-xs font-bold cursor-pointer hover:bg-slate-100 transition-colors"
               >
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  showToast(`Discovery scan for '${selectedJob.jobName}' initiated successfully!`);
-                  setIsRerunJobModalOpen(false);
-                }}
-                className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 shadow-sm"
+                onClick={handleRerunJob}
+                disabled={jobBusy}
+                className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold cursor-pointer flex items-center gap-1.5 shadow-sm disabled:opacity-50 transition-all"
               >
-                <Play className="w-4 h-4 fill-white" />
-                <span>Run Now</span>
+                {jobBusy ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Play className="w-4 h-4 fill-white" />}
+                <span>{jobBusy ? 'Running...' : 'Run Now'}</span>
               </button>
             </div>
           </div>
@@ -800,15 +959,214 @@ export function DiscoveryJobs({ onNavigateToDevices }) {
                 Cancel
               </button>
               <button
-                onClick={() => {
-                  showToast(`Job configuration updated successfully!`);
-                  setIsEditJobModalOpen(false);
-                }}
+                onClick={handleEditJobSave}
                 className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm"
               >
                 Save Changes
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* NEW DISCOVERY JOB MODAL */}
+      {isNewJobOpen && (
+        <div className="fixed inset-0 z-50 bg-slate-900/50 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="w-full max-w-lg bg-white rounded-3xl shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            {/* Modal Header */}
+            <div className="px-6 py-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/60">
+              <div className="flex items-center gap-3">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#6C2BD9] flex items-center justify-center shadow-xs">
+                  <Plus className="w-5 h-5" />
+                </div>
+                <div>
+                  <h2 className="text-base font-extrabold text-slate-900">New Discovery Job</h2>
+                  <p className="text-xs text-slate-500 font-medium">Configure network range discovery scan</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => { setIsNewJobOpen(false); setNewJobError(''); }}
+                className="p-1.5 rounded-xl hover:bg-slate-200 text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* Modal Form */}
+            <form onSubmit={handleCreateJobSubmit}>
+              <div className="p-6 space-y-4 text-xs max-h-[75vh] overflow-y-auto">
+                {newJobError && (
+                  <div role="alert" className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 flex items-center gap-2 font-medium">
+                    <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                    <span>{newJobError}</span>
+                  </div>
+                )}
+
+                {/* Job Name */}
+                <div>
+                  <label className="font-bold text-slate-700 block mb-1">
+                    Job Name <span className="text-rose-500">*</span>
+                  </label>
+                  <input
+                    type="text"
+                    value={newJobForm.jobName}
+                    onChange={(e) => setNewJobForm({ ...newJobForm, jobName: e.target.value })}
+                    placeholder="e.g. Branch Office Scan, HQ Core Subnet"
+                    className="w-full px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl font-semibold text-xs text-slate-800 focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
+                    required
+                  />
+                </div>
+
+                {/* Discovery Type & Profile Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      Discovery Type <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={newJobForm.discoveryType}
+                      onChange={(e) => setNewJobForm({ ...newJobForm, discoveryType: e.target.value })}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
+                    >
+                      <option value="IP Range Scan">IP Range Scan</option>
+                      <option value="SNMP Scan">SNMP Scan</option>
+                      <option value="WMI Scan">WMI Scan</option>
+                      <option value="Agent Based">Agent Based</option>
+                      <option value="SSH Scan">SSH Scan</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">
+                      Discovery Profile <span className="text-rose-500">*</span>
+                    </label>
+                    <select
+                      value={newJobForm.profile}
+                      onChange={(e) => setNewJobForm({ ...newJobForm, profile: e.target.value })}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
+                    >
+                      <option value="Local ICMP/TCP">Local ICMP/TCP</option>
+                      <option value="Default (All Devices)">Default (All Devices)</option>
+                      <option value="DataCenter">DataCenter</option>
+                      <option value="Branch Profile">Branch Profile</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* IP Range Start & End */}
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-bold text-slate-700">
+                      IP Range / Target Scope <span className="text-rose-500">*</span>
+                    </label>
+                    {localSubnets.length > 0 && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const net = localSubnets[0];
+                          if (net) {
+                            setNewJobForm(prev => ({ ...prev, ipStart: net.ipStart, ipEnd: net.ipEnd }));
+                          }
+                        }}
+                        className="text-[11px] text-[#6C2BD9] hover:underline font-bold flex items-center gap-1 cursor-pointer"
+                      >
+                        <Wifi className="w-3 h-3" /> Auto-fill Local Subnet ({localSubnets[0]?.ipStart?.split('.').slice(0,3).join('.')}.x)
+                      </button>
+                    )}
+                  </div>
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <span className="block text-[10px] text-slate-400 font-semibold mb-0.5">Start IP Address</span>
+                      <input
+                        type="text"
+                        value={newJobForm.ipStart}
+                        onChange={(e) => setNewJobForm({ ...newJobForm, ipStart: e.target.value.trim() })}
+                        placeholder="192.168.1.1"
+                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs font-bold text-[#6C2BD9] focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
+                        required
+                      />
+                    </div>
+                    <div>
+                      <span className="block text-[10px] text-slate-400 font-semibold mb-0.5">End IP Address</span>
+                      <input
+                        type="text"
+                        value={newJobForm.ipEnd}
+                        onChange={(e) => setNewJobForm({ ...newJobForm, ipEnd: e.target.value.trim() })}
+                        placeholder="192.168.1.254"
+                        className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl font-mono text-xs font-bold text-[#6C2BD9] focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
+                        required
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Schedule & Credentials Grid */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Schedule</label>
+                    <select
+                      value={newJobForm.schedule}
+                      onChange={(e) => setNewJobForm({ ...newJobForm, schedule: e.target.value })}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
+                    >
+                      <option value="Manual">Manual (Run on Demand)</option>
+                      <option value="Daily (2 AM)">Daily (2 AM)</option>
+                      <option value="Weekly (Sun)">Weekly (Sun)</option>
+                      <option value="Monthly">Monthly</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Credentials</label>
+                    <select
+                      value={newJobForm.credentials}
+                      onChange={(e) => setNewJobForm({ ...newJobForm, credentials: e.target.value })}
+                      className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9]"
+                    >
+                      <option value="Use Saved Credentials">Use Saved Credentials</option>
+                      <option value="Public (ICMP only)">Public (ICMP only)</option>
+                      <option value="SNMP v2c Community">SNMP v2c Community</option>
+                    </select>
+                  </div>
+                </div>
+
+                {/* Run immediately checkbox */}
+                <div className="p-3 bg-purple-50/70 border border-purple-200/80 rounded-2xl">
+                  <label className="flex items-start gap-2.5 cursor-pointer select-none">
+                    <input
+                      type="checkbox"
+                      checked={newJobForm.runImmediately}
+                      onChange={(e) => setNewJobForm({ ...newJobForm, runImmediately: e.target.checked })}
+                      className="mt-0.5 rounded text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                    />
+                    <div>
+                      <span className="font-bold text-slate-900 block text-xs">Run scan immediately upon creation</span>
+                      <span className="text-[11px] text-slate-500 font-medium">The scanner will ping targets and detect active hardware as soon as you save.</span>
+                    </div>
+                  </label>
+                </div>
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-slate-100 flex items-center justify-between bg-slate-50/50">
+                <button
+                  type="button"
+                  onClick={() => { setIsNewJobOpen(false); setNewJobError(''); }}
+                  className="px-4 py-2 border border-slate-300 hover:bg-slate-100 text-slate-700 rounded-xl text-xs font-bold cursor-pointer transition-all"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={creatingJob}
+                  className="px-6 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold cursor-pointer shadow-sm flex items-center gap-2 transition-all disabled:opacity-50"
+                >
+                  {creatingJob ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Plus className="w-4 h-4" />}
+                  <span>{creatingJob ? 'Creating Job...' : 'Create Discovery Job'}</span>
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}

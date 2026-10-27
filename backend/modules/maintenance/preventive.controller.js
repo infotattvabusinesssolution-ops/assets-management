@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import prisma from '../../config/prisma.js';
+import { isDbConnected } from '../../config/db.js';
 import { resolveDbUserId } from '../assets/asset.controller.js';
 
 const scope = req => req.dataScopeFilter || {};
@@ -79,6 +80,7 @@ export async function generatePreventiveWorkOrders(req, res, next) {
 }
 
 export async function runDuePreventiveSchedules() {
+  if (!isDbConnected()) return;
   const schedules = await prisma.maintenanceSchedule.findMany({ where: { active: true, autoGenerateWorkOrders: true }, select: { id: true } });
   for (const schedule of schedules) {
     try { await generateScheduleWorkOrder(schedule.id); }

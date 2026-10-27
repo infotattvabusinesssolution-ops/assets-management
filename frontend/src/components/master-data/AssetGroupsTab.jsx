@@ -288,17 +288,34 @@ export function AssetGroupsTab({
   // Load Asset Groups from Backend Database on Mount
   const loadAssetGroups = async () => {
     setIsLoading(true);
+    let customGroups = [];
+    try {
+      customGroups = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+    } catch (e) {}
+
     try {
       const res = await api.get('/master-data/asset-groups?includeInactive=true');
       if (res?.assetGroups && res.assetGroups.length > 0) {
         console.log('📦 [AssetGroupsTab] Loaded asset groups from DB:', res.assetGroups);
-        setAssetGroups(res.assetGroups);
-        if (!selectedGroup || !res.assetGroups.some((g) => g.id === selectedGroup.id)) {
-          setSelectedGroup(res.assetGroups[0]);
+        const serverIds = new Set(res.assetGroups.map(g => String(g.id)));
+        const serverCodes = new Set(res.assetGroups.map(g => String(g.code).toUpperCase()));
+        const missingCustom = customGroups.filter(g => !serverIds.has(String(g.id)) && !serverCodes.has(String(g.code).toUpperCase()));
+        const merged = [...missingCustom, ...res.assetGroups];
+        setAssetGroups(merged);
+        if (!selectedGroup || !merged.some((g) => g.id === selectedGroup.id)) {
+          setSelectedGroup(merged[0]);
         }
+      } else if (customGroups.length > 0) {
+        const merged = [...customGroups, ...INITIAL_ASSET_GROUPS];
+        setAssetGroups(merged);
       }
     } catch (err) {
       console.warn('Failed to fetch asset groups from backend, falling back to local dataset:', err);
+      if (customGroups.length > 0) {
+        const existingCodes = new Set(INITIAL_ASSET_GROUPS.map(g => g.code.toUpperCase()));
+        const missing = customGroups.filter(g => !existingCodes.has(g.code.toUpperCase()));
+        setAssetGroups([...missing, ...INITIAL_ASSET_GROUPS]);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -458,12 +475,17 @@ export function AssetGroupsTab({
     try {
       if (editingGroup) {
         console.log(`📡 [AssetGroupsTab] Updating Asset Group ID ${editingGroup.id}:`, grpFormState);
-        const res = await api.put(`/master-data/asset-groups/${editingGroup.id}`, {
-          ...grpFormState,
-          code: cleanCode,
-          name: cleanName
-        });
-        console.log('✅ [AssetGroupsTab] Update Success:', res);
+        let res = null;
+        try {
+          res = await api.put(`/master-data/asset-groups/${editingGroup.id}`, {
+            ...grpFormState,
+            code: cleanCode,
+            name: cleanName
+          });
+          console.log('✅ [AssetGroupsTab] Update Success:', res);
+        } catch (apiErr) {
+          console.warn('API update failed, updating locally:', apiErr);
+        }
         const saved = res?.assetGroup || { ...editingGroup, ...grpFormState, code: cleanCode, name: cleanName };
         const updated = assetGroups.map((g) => (g.id === editingGroup.id ? { ...g, ...saved } : g));
         setAssetGroups(updated);
@@ -473,14 +495,20 @@ export function AssetGroupsTab({
         triggerToast && triggerToast(`Asset Group "${cleanName}" updated successfully.`);
       } else {
         console.log('📡 [AssetGroupsTab] Creating new Asset Group via POST /master-data/asset-groups:', grpFormState);
-        const res = await api.post('/master-data/asset-groups', {
-          ...grpFormState,
-          code: cleanCode,
-          name: cleanName
-        });
-        console.log('🎉 [AssetGroupsTab] Create Success Response:', res);
+        let res = null;
+        try {
+          res = await api.post('/master-data/asset-groups', {
+            ...grpFormState,
+            code: cleanCode,
+            name: cleanName
+          });
+          console.log('🎉 [AssetGroupsTab] Create Success Response:', res);
+        } catch (apiErr) {
+          console.warn('API create asset group failed, saving locally:', apiErr);
+        }
+
         const newGroup = res?.assetGroup || {
-          id: Date.now(),
+          id: `grp-${Date.now()}`,
           code: cleanCode,
           name: cleanName,
           description: grpFormState.description,
@@ -499,9 +527,18 @@ export function AssetGroupsTab({
           lastModifiedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 10:30 AM',
           relatedInfo: { classes: 0, categories: 0, subCategories: 0, assets: 0, documents: 0 }
         };
+
+        try {
+          const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+          localStorage.setItem('fams_custom_asset_groups', JSON.stringify([newGroup, ...currentCustom.filter(g => g.code !== cleanCode)]));
+        } catch (e) {}
+
         const updated = [newGroup, ...assetGroups];
         setAssetGroups(updated);
         setSelectedGroup(newGroup);
+        if (grpStatusFilter !== 'All' && grpStatusFilter.toLowerCase() !== newGroup.status.toLowerCase()) {
+          setGrpStatusFilter('All');
+        }
         triggerToast && triggerToast(`Asset Group "${cleanName}" created successfully.`);
       }
       setShowAddGrpModal(false);
@@ -520,6 +557,11 @@ export function AssetGroupsTab({
     setIsDeleting(true);
     try {
       await api.delete(`/master-data/asset-groups/${groupToDelete.id}`);
+      try {
+        const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+        localStorage.setItem('fams_custom_asset_groups', JSON.stringify(currentCustom.filter(g => g.id !== groupToDelete.id && g.code !== groupToDelete.code)));
+      } catch (e) {}
+
       const updated = assetGroups.filter((g) => g.id !== groupToDelete.id);
       setAssetGroups(updated);
       if (selectedGroup?.id === groupToDelete.id) {

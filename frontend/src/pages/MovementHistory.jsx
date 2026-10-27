@@ -229,7 +229,34 @@ export function MovementHistory() {
             </p>
           </div>
 
-          <div className="flex items-center gap-3">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Tab Switcher */}
+            <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg border border-gray-200 text-xs font-medium">
+              <button
+                onClick={() => navigate('/movements/transfer')}
+                className="px-3.5 py-1.5 rounded-md text-gray-600 hover:text-gray-900 transition-all font-medium"
+              >
+                Transfer Form
+              </button>
+              <button
+                onClick={() => navigate('/movements/approvals')}
+                className="px-3.5 py-1.5 rounded-md flex items-center gap-1.5 text-gray-600 hover:text-gray-900 transition-all font-medium"
+              >
+                Movement Approvals
+              </button>
+              <button
+                onClick={() => navigate('/movements/transfer?tab=transit')}
+                className="px-3.5 py-1.5 rounded-md text-gray-600 hover:text-gray-900 transition-all font-medium"
+              >
+                Dispatch & In-Transit
+              </button>
+              <button
+                className="px-3.5 py-1.5 rounded-md bg-[#6C2BD9] text-white shadow-sm font-semibold transition-all"
+              >
+                Movement History
+              </button>
+            </div>
+
             <button
               onClick={handleExport}
               className="flex items-center gap-2 px-4 py-2 text-xs font-semibold text-slate-700 bg-white border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors cursor-pointer shadow-xs"

@@ -659,7 +659,12 @@ export default function TransferMovement({ defaultTab = 'form' }) {
           {/* Tab Switcher */}
           <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg border border-gray-200 text-xs font-medium">
             <button
-              onClick={() => setActiveTab('form')}
+              onClick={() => {
+                setActiveTab('form');
+                if (location.pathname !== '/movements/transfer' || location.search) {
+                  navigate('/movements/transfer');
+                }
+              }}
               className={`px-3.5 py-1.5 rounded-md transition-all ${
                 activeTab === 'form'
                   ? 'bg-[#6C2BD9] text-white shadow-sm font-semibold'
@@ -669,7 +674,9 @@ export default function TransferMovement({ defaultTab = 'form' }) {
               Transfer Form
             </button>
             <button
-              onClick={() => setActiveTab('approvals')}
+              onClick={() => {
+                navigate('/movements/approvals');
+              }}
               className={`px-3.5 py-1.5 rounded-md flex items-center gap-1.5 transition-all ${
                 activeTab === 'approvals'
                   ? 'bg-[#6C2BD9] text-white shadow-sm font-semibold'
@@ -694,7 +701,9 @@ export default function TransferMovement({ defaultTab = 'form' }) {
               Dispatch & In-Transit
             </button>
             <button
-              onClick={() => setActiveTab('history')}
+              onClick={() => {
+                navigate('/movements/history');
+              }}
               className={`px-3.5 py-1.5 rounded-md transition-all ${
                 activeTab === 'history'
                   ? 'bg-[#6C2BD9] text-white shadow-sm font-semibold'

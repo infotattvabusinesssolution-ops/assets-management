@@ -235,17 +235,31 @@ export class DiscoveryService {
   static async createJob(data = {}, user) {
     requireDb();
     if (!data.jobName?.trim()) throw new Error('Job name is required.');
-    if (data.discoveryType !== 'IP Range Scan') throw new Error('Only local IP range scans can be run.');
-    validateLocalRange(data.ipStart, data.ipEnd);
+    const discType = data.discoveryType || 'IP Range Scan';
+    const [rangeStart, rangeEnd] = String(data.ipRange || '').split(/\s*-\s*/);
+    const ipStart = data.ipStart || rangeStart || '192.168.1.1';
+    const ipEnd = data.ipEnd || rangeEnd || '192.168.1.254';
+    validateLocalRange(ipStart, ipEnd);
     const job = {
-      id: `JOB-${Date.now()}`, jobName: data.jobName.trim(),
-      discoveryType: 'IP Range Scan', ipRange: `${data.ipStart} - ${data.ipEnd}`,
-      ipStart: data.ipStart, ipEnd: data.ipEnd,
-      profile: 'Local ICMP/TCP', schedule: 'Manual',
+      id: `JOB-${Date.now()}`,
+      jobName: data.jobName.trim(),
+      discoveryType: discType,
+      ipRange: `${ipStart} - ${ipEnd}`,
+      ipStart,
+      ipEnd,
+      profile: data.profile || 'Local ICMP/TCP',
+      schedule: data.schedule || 'Manual',
       status: 'Ready',
-      createdBy: user?.fullName || user?.username || '', createdOn: new Date().toISOString(),
-      startedOn: null, completedOn: null, duration: '', devicesFound: 0,
-      newAssets: 0, matchedAssets: 0, requiresReview: 0, stages: []
+      createdBy: user?.fullName || user?.username || 'System Administrator',
+      createdOn: new Date().toISOString(),
+      startedOn: null,
+      completedOn: null,
+      duration: '',
+      devicesFound: 0,
+      newAssets: 0,
+      matchedAssets: 0,
+      requiresReview: 0,
+      stages: []
     };
     await saveSnapshot('DISCOVERY_JOB', job.id, job);
     return data.runImmediately ? this.rerunJob(job.id) : job;

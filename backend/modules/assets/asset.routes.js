@@ -34,10 +34,10 @@ router.get('/', requirePermission('ASSETS_VIEW'), getAssets);
 router.get('/my-assets', requirePermission('ASSETS_VIEW'), getMyAssets);
 router.get('/hierarchy/tree', requirePermission('ASSETS_VIEW'), getAssetHierarchyTree);
 router.get('/hierarchy/history', requirePermission('ASSETS_VIEW'), getHierarchyAuditHistory);
-router.post('/hierarchy/assign-parent', requirePermission('ASSETS_EDIT'), assignParentAsset);
-router.post('/hierarchy/add-child', requirePermission('ASSETS_EDIT'), addChildAsset);
-router.post('/hierarchy/create-child', requirePermission('ASSETS_EDIT'), createChildAsset);
-router.delete('/hierarchy/:id/remove-parent', requirePermission('ASSETS_EDIT'), removeParentRelationship);
+router.post('/hierarchy/assign-parent', requirePermission('ASSETS_EDIT', 'ASSETS_CREATE'), assignParentAsset);
+router.post('/hierarchy/add-child', requirePermission('ASSETS_EDIT', 'ASSETS_CREATE'), addChildAsset);
+router.post('/hierarchy/create-child', requirePermission('ASSETS_CREATE', 'ASSETS_EDIT'), createChildAsset);
+router.delete('/hierarchy/:id/remove-parent', requirePermission('ASSETS_EDIT', 'ASSETS_CREATE'), removeParentRelationship);
 
 router.post('/request-asset', requirePermission('ASSETS_VIEW'), requestNewAsset);
 router.get('/:id/360', requirePermission('ASSETS_VIEW'), getAsset360);

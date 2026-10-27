@@ -102,11 +102,15 @@ router.post('/backup-scheduler/backups/:id/verify', verifyBackupIntegrity);
 router.delete('/backup-scheduler/backups/:id', deleteBackupRecord);
 router.get('/backup/jobs', getScheduledJobs);
 router.get('/backup-scheduler/jobs', getScheduledJobs);
+router.get('/scheduled-jobs', getScheduledJobs);
 router.post('/backup-scheduler/jobs', createScheduledJob);
+router.post('/scheduled-jobs', createScheduledJob);
 router.patch('/backup/jobs/:id/toggle', toggleJobStatus);
 router.patch('/backup-scheduler/jobs/:id/toggle', toggleJobStatus);
+router.patch('/scheduled-jobs/:id/toggle', toggleJobStatus);
 router.post('/backup/jobs/:id/run-now', triggerJobRunNow);
 router.post('/backup-scheduler/jobs/:id/run', triggerJobRunNow);
+router.post('/scheduled-jobs/:id/run', triggerJobRunNow);
 
 export default router;
 

@@ -24,7 +24,13 @@ import clsx from 'clsx';
 
 export const INITIAL_COMPANIES = [];
 
-export function CompaniesTab({ triggerToast, onSwitchTab }) {
+export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger }) {
+  React.useEffect(() => {
+    if (openAddModalTrigger) {
+      handleOpenAddModal();
+    }
+  }, [openAddModalTrigger]);
+
   React.useEffect(() => {
     const fetchCompaniesFromDb = async () => {
       try {
@@ -162,11 +168,22 @@ export function CompaniesTab({ triggerToast, onSwitchTab }) {
     setShowAddCompanyModal(true);
   };
 
-  const handleSaveCompany = (e) => {
+  const handleSaveCompany = async (e) => {
     e.preventDefault();
     if (!companyForm.name || !companyForm.code) return;
 
     if (editingCompany) {
+      try {
+        await api.put(`/admin/organization/companies/${editingCompany.id}`, {
+          name: companyForm.name,
+          code: companyForm.code.toUpperCase(),
+          description: companyForm.description,
+          active: companyForm.status === 'Active'
+        }).catch(() => null);
+      } catch (err) {
+        console.error('Failed to update company on backend:', err);
+      }
+
       setCompanies(
         companies.map((c) =>
           c.id === editingCompany.id
@@ -185,8 +202,23 @@ export function CompaniesTab({ triggerToast, onSwitchTab }) {
       );
       triggerToast && triggerToast(`Company "${companyForm.name}" updated successfully.`);
     } else {
+      let createdId = Date.now();
+      try {
+        const res = await api.post('/admin/organization/companies', {
+          name: companyForm.name,
+          code: companyForm.code.toUpperCase(),
+          description: companyForm.description,
+          active: companyForm.status === 'Active'
+        }).catch(() => null);
+        if (res && res.company && res.company.id) {
+          createdId = res.company.id;
+        }
+      } catch (err) {
+        console.error('Failed to create company on backend:', err);
+      }
+
       const newCompany = {
-        id: Date.now(),
+        id: createdId,
         name: companyForm.name,
         code: companyForm.code.toUpperCase(),
         type: companyForm.type,
@@ -205,22 +237,34 @@ export function CompaniesTab({ triggerToast, onSwitchTab }) {
     setShowAddCompanyModal(false);
   };
 
-  const handleToggleStatus = (company) => {
+  const handleToggleStatus = async (company) => {
     setActiveDropdownId(null);
     const nextStatus = company.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await api.put(`/admin/organization/companies/${company.id}`, {
+        active: nextStatus === 'Active'
+      }).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setCompanies(
       companies.map((c) => (c.id === company.id ? { ...c, status: nextStatus } : c))
     );
     triggerToast && triggerToast(`Company "${company.name}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteCompany = (company) => {
+  const handleDeleteCompany = async (company) => {
     setActiveDropdownId(null);
     if (company.businessUnitsCount > 0 || company.locationsCount > 0) {
       alert(`Dependency Notice: "${company.name}" has ${company.businessUnitsCount} Business Units and ${company.locationsCount} Locations attached. Please reassign or remove child entities before deleting.`);
       return;
     }
     if (!window.confirm(`Are you sure you want to delete company "${company.name}"?`)) return;
+    try {
+      await api.delete(`/admin/organization/companies/${company.id}`).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setCompanies(companies.filter((c) => c.id !== company.id));
     triggerToast && triggerToast(`Company "${company.name}" deleted.`);
   };
@@ -403,6 +447,13 @@ export function CompaniesTab({ triggerToast, onSwitchTab }) {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900">Companies ({filteredCompanies.length})</h2>
+          <button
+            onClick={() => handleOpenAddModal()}
+            className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+          >
+            <Plus className="w-3.5 h-3.5" />
+            <span>Add Company</span>
+          </button>
         </div>
 
         <div className="overflow-auto max-h-[540px]">

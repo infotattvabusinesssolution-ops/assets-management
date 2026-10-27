@@ -17,7 +17,12 @@ import {
   getLocationsList,
   getCostCentersList,
   createCompany,
+  updateCompany,
+  deleteCompany,
+  createBusinessUnit,
   createDepartment,
+  updateDepartment,
+  deleteDepartment,
   createLocation,
   createCostCenter
 } from './adminOrg.controller.js';
@@ -47,11 +52,16 @@ router.delete('/roles/:id', deleteAdminRole);
 // Organization Hierarchy Routes
 router.get('/organization/companies', getCompaniesList);
 router.post('/organization/companies', createCompany);
+router.put('/organization/companies/:id', updateCompany);
+router.delete('/organization/companies/:id', deleteCompany);
 
 router.get('/organization/business-units', getBusinessUnitsList);
+router.post('/organization/business-units', createBusinessUnit);
 
 router.get('/organization/departments', getDepartmentsList);
 router.post('/organization/departments', createDepartment);
+router.put('/organization/departments/:id', updateDepartment);
+router.delete('/organization/departments/:id', deleteDepartment);
 
 router.get('/organization/locations', getLocationsList);
 router.post('/organization/locations', createLocation);

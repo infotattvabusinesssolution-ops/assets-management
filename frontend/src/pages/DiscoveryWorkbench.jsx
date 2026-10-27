@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useSearchParams, useNavigate, useLocation } from 'react-router-dom';
 import { api } from '../services/api';
 import {
   Cpu,
@@ -50,8 +50,10 @@ import { DiscoverySettings } from './DiscoverySettings';
 
 export function DiscoveryWorkbench({ defaultTab }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const [searchParams, setSearchParams] = useSearchParams();
-  const activeNavTab = searchParams.get('tab') || defaultTab || 'network';
+  const searchTab = searchParams.get('tab');
+  const activeNavTab = searchTab || (location.pathname === '/discovery/jobs' ? 'jobs' : location.pathname === '/discovery/devices' ? 'devices' : defaultTab || 'network');
 
   // Config State
   const [discoveryType, setDiscoveryType] = useState('IP Range Scan');
@@ -265,13 +267,15 @@ export function DiscoveryWorkbench({ defaultTab }) {
         {/* Sub-tabs: Network Discovery | Discovery Jobs | Discovered Devices */}
         <div className="flex items-center gap-2">
           {[
-            { id: 'network', label: 'Network Discovery' },
-            { id: 'jobs', label: 'Discovery Jobs' },
-            { id: 'devices', label: 'Discovered Devices' }
+            { id: 'network', label: 'Network Discovery', path: '/discovery' },
+            { id: 'jobs', label: 'Discovery Jobs', path: '/discovery/jobs' },
+            { id: 'devices', label: 'Discovered Devices', path: '/discovery/devices' }
           ].map((tab) => (
             <button
               key={tab.id}
-              onClick={() => setSearchParams({ tab: tab.id })}
+              onClick={() => {
+                navigate(tab.path);
+              }}
               className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
                 activeNavTab === tab.id
                   ? 'bg-purple-50 text-[#6C2BD9] border border-purple-200 shadow-2xs'
@@ -294,7 +298,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
           </button>
 
           <button
-            onClick={() => setIsSettingsOpen(true)}
+            onClick={() => navigate('/discovery/settings')}
             className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
           >
             <Settings className="w-3.5 h-3.5" />
@@ -310,7 +314,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
         {activeNavTab === 'jobs' && (
           <DiscoveryJobs
             onNavigateToDevices={(jobName) => {
-              setSearchParams({ tab: 'devices' });
+              navigate('/discovery/devices');
             }}
           />
         )}

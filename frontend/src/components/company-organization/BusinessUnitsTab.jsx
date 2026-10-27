@@ -25,14 +25,34 @@ import clsx from 'clsx';
 
 export const INITIAL_BUSINESS_UNITS = [];
 
-export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
+export function BusinessUnitsTab({ triggerToast, onSwitchTab, openAddModalTrigger }) {
+  React.useEffect(() => {
+    if (openAddModalTrigger) {
+      handleOpenAddModal();
+    }
+  }, [openAddModalTrigger]);
+
   React.useEffect(() => {
     const fetchBusinessUnitsFromDb = async () => {
       try {
         const res = await api.get('/admin/organization/business-units').catch(() => null);
         if (res && (res.businessUnits || Array.isArray(res))) {
           const list = res.businessUnits || res;
-          setBusinessUnits(list);
+          const mapped = list.map(u => ({
+            id: u.id,
+            name: u.name,
+            code: u.code,
+            company: u.company?.name || u.company || 'Asset360 Holdings',
+            parentUnit: u.parentUnit || '-',
+            type: u.type || 'Operations',
+            departmentsCount: u._count?.departments || u.departmentsCount || 0,
+            locationsCount: u._count?.sites || u.locationsCount || 0,
+            status: u.active ? 'Active' : 'Inactive',
+            createdOn: new Date(u.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            createdBy: u.createdBy || 'System Admin',
+            description: u.description || ''
+          }));
+          setUnits(mapped);
         }
       } catch (e) {
         console.error('Failed to load business units from DB:', e);
@@ -159,11 +179,21 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
     setShowAddUnitModal(true);
   };
 
-  const handleSaveUnit = (e) => {
+  const handleSaveUnit = async (e) => {
     e.preventDefault();
     if (!unitForm.name || !unitForm.code) return;
 
     if (editingUnit) {
+      try {
+        await api.put(`/admin/organization/business-units/${editingUnit.id}`, {
+          name: unitForm.name,
+          code: unitForm.code.toUpperCase(),
+          description: unitForm.description,
+          active: unitForm.status === 'Active'
+        }).catch(() => null);
+      } catch (err) {
+        console.error(err);
+      }
       setUnits(
         units.map((u) =>
           u.id === editingUnit.id
@@ -182,8 +212,22 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
       );
       triggerToast && triggerToast(`Business Unit "${unitForm.name}" updated.`);
     } else {
+      let createdId = Date.now();
+      try {
+        const res = await api.post('/admin/organization/business-units', {
+          name: unitForm.name,
+          code: unitForm.code.toUpperCase(),
+          description: unitForm.description,
+          active: unitForm.status === 'Active'
+        }).catch(() => null);
+        if (res && res.businessUnit && res.businessUnit.id) {
+          createdId = res.businessUnit.id;
+        }
+      } catch (err) {
+        console.error(err);
+      }
       const newUnit = {
-        id: Date.now(),
+        id: createdId,
         name: unitForm.name,
         code: unitForm.code.toUpperCase(),
         company: unitForm.company,
@@ -202,20 +246,32 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
     setShowAddUnitModal(false);
   };
 
-  const handleToggleStatus = (unit) => {
+  const handleToggleStatus = async (unit) => {
     setActiveDropdownId(null);
     const nextStatus = unit.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await api.put(`/admin/organization/business-units/${unit.id}`, {
+        active: nextStatus === 'Active'
+      }).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setUnits(units.map((u) => (u.id === unit.id ? { ...u, status: nextStatus } : u)));
     triggerToast && triggerToast(`Business Unit "${unit.name}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteUnit = (unit) => {
+  const handleDeleteUnit = async (unit) => {
     setActiveDropdownId(null);
     if (unit.departmentsCount > 0 || unit.locationsCount > 0) {
       alert(`Dependency Notice: "${unit.name}" has ${unit.departmentsCount} Departments and ${unit.locationsCount} Locations assigned. Reassign child entities before deletion.`);
       return;
     }
     if (!window.confirm(`Are you sure you want to delete "${unit.name}"?`)) return;
+    try {
+      await api.delete(`/admin/organization/business-units/${unit.id}`).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setUnits(units.filter((u) => u.id !== unit.id));
     triggerToast && triggerToast(`Business Unit "${unit.name}" deleted.`);
   };
@@ -407,14 +463,23 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab }) {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900">Business Units ({filteredUnits.length})</h2>
-          <button
-            onClick={() => triggerToast && triggerToast('Exporting Business Units data...')}
-            className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Export</span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleOpenAddModal()}
+              className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Business Unit</span>
+            </button>
+            <button
+              onClick={() => triggerToast && triggerToast('Exporting Business Units data...')}
+              className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-auto max-h-[540px]">

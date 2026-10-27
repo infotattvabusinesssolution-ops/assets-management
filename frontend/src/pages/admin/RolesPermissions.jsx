@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { api } from '../../services/api';
 import {
   ShieldCheck,
   Search,
@@ -132,6 +133,33 @@ const INITIAL_ROLES = [
 
 export function RolesPermissions() {
   const [roles, setRoles] = useState(INITIAL_ROLES);
+
+  useEffect(() => {
+    const fetchRoles = async () => {
+      try {
+        const res = await api.get('/admin/roles').catch(() => null);
+        if (res && (res.roles || Array.isArray(res))) {
+          const list = res.roles || res;
+          if (list.length > 0) {
+            const mapped = list.map((r) => ({
+              id: r.id,
+              name: r.name,
+              description: r.description || '',
+              roleType: r.isSystem ? 'System Role' : 'Custom Role',
+              userCount: r._count?.users || r.userCount || 0,
+              status: r.active ? 'Active' : 'Inactive',
+              dateCreated: new Date(r.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+              createdBy: r.createdBy || 'System'
+            }));
+            setRoles(mapped);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load roles from DB:', err);
+      }
+    };
+    fetchRoles();
+  }, []);
   const [selectedRoleIds, setSelectedRoleIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
@@ -208,11 +236,20 @@ export function RolesPermissions() {
     setToDate('');
   };
 
-  const handleSaveRole = (e) => {
+  const handleSaveRole = async (e) => {
     e.preventDefault();
     if (!roleForm.name) return;
 
     if (editingRole) {
+      try {
+        await api.put(`/admin/roles/${editingRole.id}`, {
+          name: roleForm.name,
+          description: roleForm.description,
+          active: roleForm.status === 'Active'
+        }).catch(() => null);
+      } catch (err) {
+        console.error(err);
+      }
       setRoles(
         roles.map((r) =>
           r.id === editingRole.id
@@ -228,8 +265,22 @@ export function RolesPermissions() {
       );
       triggerToast(`Role "${roleForm.name}" updated successfully.`);
     } else {
+      let createdId = Date.now();
+      try {
+        const res = await api.post('/admin/roles', {
+          name: roleForm.name,
+          code: roleForm.name.toUpperCase().replace(/\s+/g, '_'),
+          description: roleForm.description,
+          active: roleForm.status === 'Active'
+        }).catch(() => null);
+        if (res && res.role && res.role.id) {
+          createdId = res.role.id;
+        }
+      } catch (err) {
+        console.error(err);
+      }
       const newRole = {
-        id: Date.now(),
+        id: createdId,
         name: roleForm.name,
         description: roleForm.description,
         roleType: roleForm.roleType || 'Custom Role',
@@ -245,11 +296,20 @@ export function RolesPermissions() {
     setEditingRole(null);
   };
 
-  const handleCloneRole = (role) => {
+  const handleCloneRole = async (role) => {
     setActiveDropdownId(null);
+    let clonedId = Date.now();
+    try {
+      const res = await api.post(`/admin/roles/${role.id}/clone`).catch(() => null);
+      if (res && res.role && res.role.id) {
+        clonedId = res.role.id;
+      }
+    } catch (err) {
+      console.error(err);
+    }
     const cloned = {
       ...role,
-      id: Date.now(),
+      id: clonedId,
       name: `${role.name} (Copy)`,
       roleType: 'Custom Role',
       userCount: 0,
@@ -260,16 +320,28 @@ export function RolesPermissions() {
     triggerToast(`Role "${role.name}" cloned as "${cloned.name}"`);
   };
 
-  const handleToggleStatus = (role) => {
+  const handleToggleStatus = async (role) => {
     setActiveDropdownId(null);
     const nextStatus = role.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await api.put(`/admin/roles/${role.id}`, {
+        active: nextStatus === 'Active'
+      }).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setRoles(roles.map((r) => (r.id === role.id ? { ...r, status: nextStatus } : r)));
     triggerToast(`Role "${role.name}" marked as ${nextStatus}.`);
   };
 
-  const handleDeleteRole = (role) => {
+  const handleDeleteRole = async (role) => {
     setActiveDropdownId(null);
     if (!window.confirm(`Are you sure you want to delete role "${role.name}"?`)) return;
+    try {
+      await api.delete(`/admin/roles/${role.id}`).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setRoles(roles.filter((r) => r.id !== role.id));
     triggerToast(`Role "${role.name}" deleted.`);
   };

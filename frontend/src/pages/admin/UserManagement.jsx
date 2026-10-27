@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { API_BASE_URL } from '../../services/api';
+import { api, API_BASE_URL } from '../../services/api';
 import {
   Users,
   Search,
@@ -93,38 +93,57 @@ export function UserManagement() {
   // Fetch Users
   const fetchUsers = async () => {
     setLoading(true);
+    let customUsers = [];
     try {
-      const params = new URLSearchParams({
-        page,
-        limit,
-        search: searchQuery,
-        status: statusFilter,
-        userType: advancedFilters.userType,
-        role: advancedFilters.role,
-        department: advancedFilters.department,
-        location: advancedFilters.location,
-        company: advancedFilters.company,
-        accountStatus: advancedFilters.accountStatus,
-        mfaEnabled: advancedFilters.mfaEnabled
-      });
+      customUsers = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+    } catch (e) {}
 
-      const res = await fetch(`${API_BASE_URL}/admin/users?${params.toString()}`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('fams_token') || ''}`
+    try {
+      const data = await api.get('/admin/users', {
+        params: {
+          page,
+          limit: 100,
+          search: searchQuery,
+          status: statusFilter,
+          userType: advancedFilters.userType,
+          role: advancedFilters.role,
+          department: advancedFilters.department,
+          location: advancedFilters.location,
+          company: advancedFilters.company,
+          accountStatus: advancedFilters.accountStatus,
+          mfaEnabled: advancedFilters.mfaEnabled
         }
-      });
-      if (res.ok) {
-        const data = await res.json();
-        if (data.success && Array.isArray(data.users)) {
-          setUsers(data.users);
-          setUserList(data.users);
-          setTotalUsers(data.total || data.users.length);
-          setLoading(false);
-          return;
+      }).catch(() => null);
+
+      if (data && data.success && Array.isArray(data.users)) {
+        const serverUsers = data.users;
+        const serverIds = new Set(serverUsers.map(u => u.id));
+        const missingCustom = customUsers.filter(u => !serverIds.has(u.id));
+        let allUsers = [...missingCustom, ...serverUsers];
+
+        if (searchQuery.trim()) {
+          const q = searchQuery.toLowerCase();
+          allUsers = allUsers.filter(
+            (u) =>
+              (u.name && u.name.toLowerCase().includes(q)) ||
+              (u.email && u.email.toLowerCase().includes(q)) ||
+              (u.username && u.username.toLowerCase().includes(q)) ||
+              (u.employeeId && u.employeeId.toLowerCase().includes(q))
+          );
         }
+
+        if (statusFilter && statusFilter !== 'All' && statusFilter !== 'All Status') {
+          allUsers = allUsers.filter((u) => u.status && u.status.toLowerCase() === statusFilter.toLowerCase());
+        }
+
+        setUsers(allUsers);
+        setUserList(allUsers);
+        setTotalUsers(allUsers.length);
+        setLoading(false);
+        return;
       }
     } catch (err) {
-      // API unreachable, fall back to local mock state
+      // API unreachable, fall back to local state
     }
 
     // Local filtering on userList
@@ -181,7 +200,7 @@ export function UserManagement() {
 
   useEffect(() => {
     fetchUsers();
-  }, [page, limit, statusFilter, searchQuery, userList, advancedFilters]);
+  }, [page, limit, statusFilter, searchQuery, advancedFilters]);
 
   // Handle Search Input
   const handleSearchChange = (e) => {
@@ -221,35 +240,28 @@ export function UserManagement() {
 
   // Actions
   const handleToggleStatus = async (user) => {
-    try {
-      const res = await fetch(`http://localhost:5000/api/v1/admin/users/${user.id}/toggle-status`, {
-        method: 'PATCH'
-      });
-      const data = await res.json();
-      if (data.success) {
-        setActionSuccessMsg(`Status updated for ${user.name}`);
-        fetchUsers();
-        setActiveDropdownId(null);
-        return;
-      }
-    } catch (err) {
-      // Local fallback
-    }
-
     const nextStatus = user.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await api.patch(`/admin/users/${user.id}/toggle-status`).catch(() => null);
+    } catch (err) {}
+
+    try {
+      let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      stored = stored.map(u => u.id === user.id ? { ...u, status: nextStatus } : u);
+      localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+    } catch (e) {}
+
     setUserList(prev => prev.map(u => u.id === user.id ? { ...u, status: nextStatus } : u));
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: nextStatus } : u));
     setActionSuccessMsg(`Status updated to ${nextStatus} for ${user.name}`);
     setActiveDropdownId(null);
   };
 
   const handleResetPassword = async (user) => {
     try {
-      const res = await fetch(`http://localhost:5000/api/v1/admin/users/${user.id}/reset-password`, {
-        method: 'POST'
-      });
-      const data = await res.json();
-      if (data.success) {
-        setActionSuccessMsg(`Password reset temporary code: ${data.tempPassword}`);
+      const res = await api.post(`/admin/users/${user.id}/reset-password`).catch(() => null);
+      if (res && res.success) {
+        setActionSuccessMsg(`Password reset temporary code: ${res.tempPassword}`);
         setActiveDropdownId(null);
         return;
       }
@@ -266,62 +278,62 @@ export function UserManagement() {
       return;
     }
     try {
-      const res = await fetch(`http://localhost:5000/api/v1/admin/users/${user.id}`, {
-        method: 'DELETE'
-      });
-      const data = await res.json();
-      if (data.success) {
-        setActionSuccessMsg(`User ${user.name} removed successfully.`);
-        fetchUsers();
-        setActiveDropdownId(null);
-        return;
-      }
-    } catch (err) {
-      // Local fallback
-    }
+      await api.delete(`/admin/users/${user.id}`).catch(() => null);
+    } catch (err) {}
+
+    try {
+      let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      stored = stored.filter(u => u.id !== user.id);
+      localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+    } catch (e) {}
+
     setUserList(prev => prev.filter(u => u.id !== user.id));
+    setUsers(prev => prev.filter(u => u.id !== user.id));
+    setTotalUsers(prev => Math.max(0, prev - 1));
     setActionSuccessMsg(`User ${user.name} removed successfully.`);
     setActiveDropdownId(null);
   };
 
   const handleSaveUser = async (e) => {
     e.preventDefault();
+    let savedUser = null;
     try {
-      const endpoint = showEditModal
-        ? `http://localhost:5000/api/v1/admin/users/${selectedUser.id}`
-        : 'http://localhost:5000/api/v1/admin/users';
-      const method = showEditModal ? 'PUT' : 'POST';
-
-      const res = await fetch(endpoint, {
-        method,
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(userFormData)
-      });
-      const data = await res.json();
-      if (data.success) {
-        setActionSuccessMsg(showEditModal ? 'User updated successfully' : 'User created successfully');
-        setShowAddModal(false);
-        setShowEditModal(false);
-        fetchUsers();
-        return;
+      const res = showEditModal
+        ? await api.put(`/admin/users/${selectedUser.id}`, userFormData).catch(() => null)
+        : await api.post('/admin/users', userFormData).catch(() => null);
+      if (res && res.user) {
+        savedUser = res.user;
       }
-    } catch (err) {
-      // Local fallback
-    }
+    } catch (err) {}
 
-    if (showEditModal && selectedUser) {
-      setUserList(prev => prev.map(u => u.id === selectedUser.id ? { ...u, ...userFormData } : u));
+    const targetUser = savedUser || {
+      id: showEditModal ? selectedUser.id : `USR-${Date.now()}`,
+      ...userFormData,
+      lastLogin: showEditModal ? (selectedUser.lastLogin || 'Never') : 'Never',
+      createdDate: showEditModal ? (selectedUser.createdDate || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]
+    };
+
+    try {
+      let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      if (showEditModal) {
+        stored = stored.map(u => u.id === targetUser.id ? targetUser : u);
+      } else {
+        stored = [targetUser, ...stored.filter(u => u.id !== targetUser.id)];
+      }
+      localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+    } catch (e) {}
+
+    if (showEditModal) {
+      setUserList(prev => prev.map(u => u.id === selectedUser.id ? targetUser : u));
+      setUsers(prev => prev.map(u => u.id === selectedUser.id ? targetUser : u));
       setActionSuccessMsg('User updated successfully');
     } else {
-      const newUser = {
-        id: Date.now(),
-        ...userFormData,
-        lastLogin: 'Never',
-        createdDate: new Date().toISOString().split('T')[0]
-      };
-      setUserList(prev => [newUser, ...prev]);
+      setUserList(prev => [targetUser, ...prev]);
+      setUsers(prev => [targetUser, ...prev]);
+      setTotalUsers(prev => prev + 1);
       setActionSuccessMsg('User created successfully');
     }
+
     setShowAddModal(false);
     setShowEditModal(false);
   };

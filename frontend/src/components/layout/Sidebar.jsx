@@ -204,7 +204,7 @@ const NAV_STRUCTURE = [
       { name: 'Integrations', path: '/admin/integrations' },
       { name: 'Audit Logs', path: '/admin/audit-logs' },
       { name: 'Email Notifications', path: '/admin/notifications' },
-      { name: 'Notification Templates', path: '/admin/notifications' },
+      { name: 'Notification Templates', path: '/admin/notifications?tab=TEMPLATES' },
       { name: 'Backup & Scheduler', path: '/admin/backup-scheduler' },
       { name: 'Data Import / Export', path: '/admin/master-data' }
     ]
@@ -244,11 +244,15 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
       (sub.path === '/assets' && pathname === '/assets' && !search) ||
       (sub.path === '/tagging' && (pathname === '/tagging' || pathname === '/receiving/tag-assets')) ||
       (sub.path === '/receiving/without-po' && (pathname === '/receiving/without-po' || pathname === '/receive-without-po')) ||
-      (sub.path === '/discovery' && (pathname === '/discovery' || pathname === '/discovery/devices')) ||
+      (sub.path === '/discovery' && (pathname === '/discovery' || pathname === '/discovery/network') && (!search || search.includes('tab=network') || (!search.includes('tab=jobs') && !search.includes('tab=devices')))) ||
+      (sub.path === '/discovery/jobs' && (pathname === '/discovery/jobs' || (pathname === '/discovery' && search.includes('tab=jobs')))) ||
+      (sub.path === '/discovery/devices' && (pathname === '/discovery/devices' || (pathname === '/discovery' && search.includes('tab=devices')))) ||
+      (sub.path === '/discovery/import' && pathname === '/discovery/import') ||
+      (sub.path === '/discovery/settings' && pathname === '/discovery/settings') ||
       (sub.path === '/movements/assign' && pathname === '/movements/assign') ||
-      (sub.path === '/movements/transfer' && (pathname === '/movements/transfer' || (pathname === '/movements' && search.includes('transfer')))) ||
-      (sub.path === '/movements/approvals' && (pathname === '/movements/approvals' || pathname === '/movement-approvals')) ||
-      (sub.path === '/movements/history' && pathname === '/movements/history') ||
+      (sub.path === '/movements/transfer' && ((pathname === '/movements/transfer' && !search.includes('approvals') && !search.includes('history')) || (pathname === '/movements' && search.includes('transfer')))) ||
+      (sub.path === '/movements/approvals' && (pathname === '/movements/approvals' || pathname === '/movement-approvals' || (pathname === '/movements/transfer' && search.includes('approvals')))) ||
+      (sub.path === '/movements/history' && (pathname === '/movements/history' || pathname === '/movement-history' || (pathname === '/movements/transfer' && search.includes('history')))) ||
       (sub.path === '/stocktakes/verify' && (pathname === '/stocktakes/verify' || pathname === '/stocktakes' || pathname.startsWith('/verification'))) ||
       (sub.path === '/stocktakes/management' && pathname === '/stocktakes/management') ||
       (sub.path === '/stocktakes/execution' && pathname === '/stocktakes/execution') ||
@@ -265,9 +269,16 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
 
   if (exactPathMatch) return exactPathMatch.path;
 
-  // 4. Fallback: first prefix match if no exact match
-  const prefixMatch = subItems.find(sub => !sub.path.includes('?') && pathname.startsWith(sub.path) && sub.path !== '/');
-  return prefixMatch ? prefixMatch.path : null;
+  // 4. Fallback: longest prefix match if no exact match
+  const matchingSubs = subItems.filter(sub => {
+    if (sub.path.includes('?') || sub.path === '/') return false;
+    return pathname === sub.path || pathname.startsWith(sub.path + '/');
+  });
+  if (matchingSubs.length > 0) {
+    matchingSubs.sort((a, b) => b.path.length - a.path.length);
+    return matchingSubs[0].path;
+  }
+  return null;
 };
 
 export function Sidebar({ collapsed, setCollapsed }) {
@@ -280,7 +291,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
     receiving: location.pathname.startsWith('/receiving') || location.pathname.startsWith('/tagging') || location.pathname === '/receiving',
     tracking: location.pathname.startsWith('/rtls') || location.pathname.startsWith('/geofencing') || location.pathname.startsWith('/location-history') || location.pathname.startsWith('/proximity-search') || location.pathname.startsWith('/maps') || location.pathname.startsWith('/asset-tracking') || location.pathname.startsWith('/location-map'),
     discovery: location.pathname.startsWith('/discovery'),
-    movements: location.pathname.startsWith('/movements') || location.pathname.startsWith('/movement-approvals'),
+    movements: location.pathname.startsWith('/movements') || location.pathname.startsWith('/movement-approvals') || location.pathname.startsWith('/movement-history'),
     stocktakes: location.pathname.startsWith('/stocktakes') || location.pathname.startsWith('/verification'),
     maintenance: location.pathname.startsWith('/maintenance') || location.pathname.startsWith('/service-providers') || location.pathname.startsWith('/spare-parts') || location.pathname.startsWith('/preventive-maintenance') || location.pathname.startsWith('/inventory'),
     reports: location.pathname.startsWith('/reports'),

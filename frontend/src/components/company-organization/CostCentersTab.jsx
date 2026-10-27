@@ -4,6 +4,7 @@ import {
   Coins,
   Search,
   Filter,
+  Plus,
   MoreHorizontal,
   Eye,
   Edit2,
@@ -25,7 +26,13 @@ import clsx from 'clsx';
 
 export const INITIAL_COST_CENTERS = [];
 
-export function CostCentersTab({ triggerToast, onSwitchTab }) {
+export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger }) {
+  React.useEffect(() => {
+    if (openAddModalTrigger) {
+      handleOpenAddModal();
+    }
+  }, [openAddModalTrigger]);
+
   React.useEffect(() => {
     const fetchCostCentersFromDb = async () => {
       try {
@@ -216,11 +223,21 @@ export function CostCentersTab({ triggerToast, onSwitchTab }) {
     setShowAddCcModal(true);
   };
 
-  const handleSaveCc = (e) => {
+  const handleSaveCc = async (e) => {
     e.preventDefault();
     if (!ccForm.code || !ccForm.name) return;
 
     if (editingCc) {
+      try {
+        await api.put(`/admin/organization/cost-centers/${editingCc.id}`, {
+          code: ccForm.code.toUpperCase(),
+          name: ccForm.name,
+          description: ccForm.description,
+          active: ccForm.status === 'Active'
+        }).catch(() => null);
+      } catch (err) {
+        console.error(err);
+      }
       setCostCenters(
         costCenters.map((cc) =>
           cc.id === editingCc.id
@@ -242,8 +259,22 @@ export function CostCentersTab({ triggerToast, onSwitchTab }) {
       );
       triggerToast && triggerToast(`Cost center "${ccForm.code} - ${ccForm.name}" updated.`);
     } else {
+      let createdId = Date.now();
+      try {
+        const res = await api.post('/admin/organization/cost-centers', {
+          code: ccForm.code.toUpperCase(),
+          name: ccForm.name,
+          description: ccForm.description,
+          active: ccForm.status === 'Active'
+        }).catch(() => null);
+        if (res && res.costCenter && res.costCenter.id) {
+          createdId = res.costCenter.id;
+        }
+      } catch (err) {
+        console.error(err);
+      }
       const newCc = {
-        id: Date.now(),
+        id: createdId,
         code: ccForm.code,
         name: ccForm.name,
         company: ccForm.company,
@@ -263,16 +294,28 @@ export function CostCentersTab({ triggerToast, onSwitchTab }) {
     setShowAddCcModal(false);
   };
 
-  const handleToggleStatus = (cc) => {
+  const handleToggleStatus = async (cc) => {
     setActiveDropdownId(null);
     const nextStatus = cc.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await api.put(`/admin/organization/cost-centers/${cc.id}`, {
+        active: nextStatus === 'Active'
+      }).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setCostCenters(costCenters.map((c) => (c.id === cc.id ? { ...c, status: nextStatus } : c)));
     triggerToast && triggerToast(`Cost center "${cc.code}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteCc = (cc) => {
+  const handleDeleteCc = async (cc) => {
     setActiveDropdownId(null);
     if (!window.confirm(`Are you sure you want to delete cost center "${cc.code} - ${cc.name}"?`)) return;
+    try {
+      await api.delete(`/admin/organization/cost-centers/${cc.id}`).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setCostCenters(costCenters.filter((c) => c.id !== cc.id));
     triggerToast && triggerToast(`Cost center "${cc.code}" deleted.`);
   };
@@ -528,14 +571,23 @@ export function CostCentersTab({ triggerToast, onSwitchTab }) {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900">Cost Centers ({filteredCostCenters.length})</h2>
-          <button
-            onClick={() => triggerToast && triggerToast('Exporting Cost Centers data...')}
-            className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Export</span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleOpenAddModal()}
+              className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Cost Center</span>
+            </button>
+            <button
+              onClick={() => triggerToast && triggerToast('Exporting Cost Centers data...')}
+              className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-auto max-h-[540px]">

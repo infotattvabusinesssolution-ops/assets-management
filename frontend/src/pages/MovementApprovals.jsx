@@ -387,7 +387,39 @@ export function MovementApprovals() {
         </div>
 
         {/* Top Right Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* Tab Switcher */}
+          <div className="flex items-center gap-2 bg-gray-100 p-1 rounded-lg border border-gray-200 text-xs font-medium">
+            <button
+              onClick={() => navigate('/movements/transfer')}
+              className="px-3.5 py-1.5 rounded-md text-gray-600 hover:text-gray-900 transition-all font-medium"
+            >
+              Transfer Form
+            </button>
+            <button
+              className="px-3.5 py-1.5 rounded-md flex items-center gap-1.5 bg-[#6C2BD9] text-white shadow-sm font-semibold transition-all"
+            >
+              Movement Approvals
+              {kpis.pendingApprovals > 0 && (
+                <span className="bg-amber-400 text-gray-950 px-1.5 py-0.2 rounded-full text-[10px] font-bold">
+                  {kpis.pendingApprovals}
+                </span>
+              )}
+            </button>
+            <button
+              onClick={() => navigate('/movements/transfer?tab=transit')}
+              className="px-3.5 py-1.5 rounded-md text-gray-600 hover:text-gray-900 transition-all font-medium"
+            >
+              Dispatch & In-Transit
+            </button>
+            <button
+              onClick={() => navigate('/movements/history')}
+              className="px-3.5 py-1.5 rounded-md text-gray-600 hover:text-gray-900 transition-all font-medium"
+            >
+              Movement History
+            </button>
+          </div>
+
           <button
             onClick={handleExport}
             className="px-4 py-2 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 rounded-xl text-xs font-bold transition-colors flex items-center gap-2 shadow-xs"

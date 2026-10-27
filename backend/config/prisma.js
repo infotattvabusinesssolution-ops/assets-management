@@ -25,6 +25,32 @@ if (PrismaClient) {
   // Extend PrismaClient to fast-fail operations when database is offline in resilient mode,
   // preventing 10-second pool timeout hangs and unhandled connection errors
   prismaInstance = basePrisma.$extends({
+    client: {
+      async $queryRawUnsafe(...args) {
+        if (!isConnected) {
+          throw new Error('Database is offline (Resilient mode active). Skipping $queryRawUnsafe.');
+        }
+        return basePrisma.$queryRawUnsafe(...args);
+      },
+      async $executeRawUnsafe(...args) {
+        if (!isConnected) {
+          throw new Error('Database is offline (Resilient mode active). Skipping $executeRawUnsafe.');
+        }
+        return basePrisma.$executeRawUnsafe(...args);
+      },
+      async $queryRaw(...args) {
+        if (!isConnected) {
+          throw new Error('Database is offline (Resilient mode active). Skipping $queryRaw.');
+        }
+        return basePrisma.$queryRaw(...args);
+      },
+      async $executeRaw(...args) {
+        if (!isConnected) {
+          throw new Error('Database is offline (Resilient mode active). Skipping $executeRaw.');
+        }
+        return basePrisma.$executeRaw(...args);
+      }
+    },
     query: {
       $allModels: {
         async $allOperations({ model, operation, args, query }) {

@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useMemo } from 'react';
+import { useSearchParams } from 'react-router-dom';
 import {
   Mail,
   Send,
@@ -426,8 +427,25 @@ const FALLBACK_LOGS = [
 ];
 
 export function EmailNotifications() {
+  const [searchParams, setSearchParams] = useSearchParams();
+  const tabParam = searchParams.get('tab');
+  const validTabs = ['TEMPLATES', 'RULES', 'GROUPS', 'SETTINGS', 'LOGS'];
+  const initialTab = tabParam && validTabs.includes(tabParam.toUpperCase()) ? tabParam.toUpperCase() : 'TEMPLATES';
+
   // Top Navigation Tabs
-  const [activeTab, setActiveTab] = useState('TEMPLATES'); // 'TEMPLATES' | 'RULES' | 'GROUPS' | 'SETTINGS' | 'LOGS'
+  const [activeTab, setActiveTabState] = useState(initialTab);
+
+  const setActiveTab = (tab) => {
+    setActiveTabState(tab);
+    setSearchParams({ tab });
+  };
+
+  useEffect(() => {
+    const t = searchParams.get('tab');
+    if (t && validTabs.includes(t.toUpperCase())) {
+      setActiveTabState(t.toUpperCase());
+    }
+  }, [searchParams]);
   const [templates, setTemplates] = useState(INITIAL_TEMPLATES);
   const [selectedTemplateId, setSelectedTemplateId] = useState('TMPL-001');
 

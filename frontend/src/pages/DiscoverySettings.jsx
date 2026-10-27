@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Key, Sparkles, X, Network, Radio, Cpu, Database } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { Key, Sparkles, X, Network, Radio, Cpu, Database, Settings } from 'lucide-react';
 import { api } from '../services/api';
 
 export function DiscoverySettings() {
+  const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState('security');
   const [toastMessage, setToastMessage] = useState(null);
 
@@ -40,6 +42,36 @@ export function DiscoverySettings() {
           </button>
         </div>
       )}
+
+      {/* Top Header Navigation Bar matching DiscoveryWorkbench */}
+      <div className="bg-white border border-slate-200 rounded-2xl px-6 py-3 flex items-center justify-between shrink-0 shadow-2xs">
+        {/* Sub-tabs: Network Discovery | Discovery Jobs | Discovered Devices */}
+        <div className="flex items-center gap-2">
+          {[
+            { id: 'network', label: 'Network Discovery', path: '/discovery' },
+            { id: 'jobs', label: 'Discovery Jobs', path: '/discovery/jobs' },
+            { id: 'devices', label: 'Discovered Devices', path: '/discovery/devices' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => navigate(tab.path)}
+              className="px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer text-slate-600 hover:text-slate-900 hover:bg-slate-100"
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Right Header Action Buttons */}
+        <div className="flex items-center gap-3">
+          <button
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#6C2BD9] bg-purple-50 text-[#6C2BD9] text-xs font-bold transition-all shadow-2xs"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Discovery Settings</span>
+          </button>
+        </div>
+      </div>
 
       {/* Screen Header */}
       <div className="border-b border-slate-200 pb-4">

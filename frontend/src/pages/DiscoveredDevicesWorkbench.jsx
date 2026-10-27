@@ -614,6 +614,41 @@ export function DiscoveredDevicesWorkbench() {
         </div>
       )}
 
+      {/* Top Header Navigation Bar matching DiscoveryWorkbench */}
+      <div className="bg-white border border-slate-200 rounded-2xl px-6 py-3 flex items-center justify-between shrink-0 shadow-2xs">
+        {/* Sub-tabs: Network Discovery | Discovery Jobs | Discovered Devices */}
+        <div className="flex items-center gap-2">
+          {[
+            { id: 'network', label: 'Network Discovery', path: '/discovery' },
+            { id: 'jobs', label: 'Discovery Jobs', path: '/discovery/jobs' },
+            { id: 'devices', label: 'Discovered Devices', path: '/discovery/devices' }
+          ].map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => navigate(tab.path)}
+              className={`px-4 py-2 rounded-xl text-xs font-bold transition-all whitespace-nowrap cursor-pointer ${
+                tab.id === 'devices'
+                  ? 'bg-purple-50 text-[#6C2BD9] border border-purple-200 shadow-2xs'
+                  : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Right Header Action Buttons */}
+        <div className="flex items-center gap-3">
+          <button
+            onClick={() => navigate('/discovery/settings')}
+            className="flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold transition-all cursor-pointer shadow-2xs"
+          >
+            <Settings className="w-3.5 h-3.5" />
+            <span>Discovery Settings</span>
+          </button>
+        </div>
+      </div>
+
       {/* TOP KPI CARDS + EXPORT BUTTON (Screenshot #19) */}
       <div className="flex flex-col lg:flex-row items-stretch justify-between gap-4">
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 flex-1">

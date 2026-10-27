@@ -407,15 +407,20 @@ export async function createScheduledReport(payload) {
   const newReport = {
     id: `SCH-${String(SCHEDULED_REPORTS_STORE.length + 1).padStart(3, '0')}`,
     name: payload.name || 'New Custom Schedule',
+    category: payload.category || 'Asset',
     frequency: payload.frequency || 'Monthly',
-    nextRun: payload.nextRun || '01 Nov 2025',
+    nextRun: payload.nextRun || '01 Nov 2026 08:00 AM',
     lastRun: 'Pending First Run',
     status: 'Active',
-    format: payload.format || 'PDF',
-    recipients: payload.recipients || ['admin@asset360.com']
+    format: payload.format || payload.deliveryFormat || 'PDF',
+    deliveryFormat: payload.deliveryFormat || payload.format || 'PDF',
+    recipients: typeof payload.recipients === 'string'
+      ? payload.recipients
+      : (Array.isArray(payload.recipients) ? payload.recipients.join(', ') : 'admin@asset360.com')
   };
 
   SCHEDULED_REPORTS_STORE.unshift(newReport);
+  console.log('🗓️ [Backend Scheduled Reports Engine] Successfully Registered New Schedule:', newReport);
   return newReport;
 }
 

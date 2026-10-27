@@ -1646,30 +1646,105 @@ export async function assignAssetCustodian(req, res, next) {
     }
     const siteId = site?.id || asset.siteId;
     const requestedBuilding = String(building || '').trim();
-    const targetBuilding = requestedBuilding ? await prisma.building.findFirst({ where: {
-      siteId, active: true,
-      OR: [{ id: requestedBuilding }, { name: requestedBuilding }, { code: requestedBuilding }]
-    } }) : null;
-    if (requestedBuilding && !targetBuilding) {
-      return res.status(400).json({ success: false, message: 'Select a building in the chosen site.' });
+    let targetBuilding = null;
+    if (requestedBuilding) {
+      targetBuilding = await prisma.building.findFirst({
+        where: {
+          siteId,
+          active: true,
+          OR: [{ id: requestedBuilding }, { name: requestedBuilding }, { code: requestedBuilding }]
+        }
+      }) || await prisma.building.findFirst({
+        where: {
+          active: true,
+          OR: [{ id: requestedBuilding }, { name: requestedBuilding }, { code: requestedBuilding }]
+        }
+      });
+      if (!targetBuilding && siteId) {
+        try {
+          targetBuilding = await prisma.building.create({
+            data: {
+              siteId,
+              name: requestedBuilding,
+              code: (requestedBuilding.slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'BLD') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase()
+            }
+          });
+        } catch {
+          targetBuilding = null;
+        }
+      }
     }
     const buildingId = targetBuilding?.id || (siteId === asset.siteId ? asset.buildingId : null);
+
     const requestedFloor = String(floor || '').trim();
-    const targetFloor = requestedFloor && buildingId ? await prisma.floor.findFirst({ where: {
-      buildingId, active: true,
-      OR: [{ id: requestedFloor }, { name: requestedFloor }, { code: requestedFloor }]
-    } }) : null;
-    if (requestedFloor && !targetFloor) {
-      return res.status(400).json({ success: false, message: 'Select a floor in the chosen building.' });
+    let targetFloor = null;
+    if (requestedFloor) {
+      if (buildingId) {
+        targetFloor = await prisma.floor.findFirst({
+          where: {
+            buildingId,
+            active: true,
+            OR: [{ id: requestedFloor }, { name: requestedFloor }, { code: requestedFloor }]
+          }
+        });
+      }
+      if (!targetFloor) {
+        targetFloor = await prisma.floor.findFirst({
+          where: {
+            active: true,
+            OR: [{ id: requestedFloor }, { name: requestedFloor }, { code: requestedFloor }]
+          }
+        });
+      }
+      if (!targetFloor && buildingId) {
+        try {
+          targetFloor = await prisma.floor.create({
+            data: {
+              buildingId,
+              name: requestedFloor,
+              code: (requestedFloor.slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'FLR') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase()
+            }
+          });
+        } catch {
+          targetFloor = null;
+        }
+      }
     }
     const floorId = targetFloor?.id || (buildingId === asset.buildingId ? asset.floorId : null);
+
     const requestedRoom = String(room || '').trim();
-    const targetRoom = requestedRoom && floorId ? await prisma.room.findFirst({ where: {
-      floorId, active: true,
-      OR: [{ id: requestedRoom }, { name: requestedRoom }, { code: requestedRoom }]
-    } }) : null;
-    if (requestedRoom && !targetRoom) {
-      return res.status(400).json({ success: false, message: 'Select a room in the chosen floor.' });
+    let targetRoom = null;
+    if (requestedRoom) {
+      if (floorId) {
+        targetRoom = await prisma.room.findFirst({
+          where: {
+            floorId,
+            active: true,
+            OR: [{ id: requestedRoom }, { name: requestedRoom }, { code: requestedRoom }]
+          }
+        });
+      }
+      if (!targetRoom) {
+        targetRoom = await prisma.room.findFirst({
+          where: {
+            active: true,
+            OR: [{ id: requestedRoom }, { name: requestedRoom }, { code: requestedRoom }]
+          }
+        });
+      }
+      if (!targetRoom && floorId) {
+        try {
+          targetRoom = await prisma.room.create({
+            data: {
+              floorId,
+              name: requestedRoom,
+              code: (requestedRoom.slice(0, 8).toUpperCase().replace(/[^A-Z0-9]/g, '') || 'RM') + '-' + Math.random().toString(36).slice(2, 6).toUpperCase()
+            }
+          });
+        } catch {
+          targetRoom = null;
+        }
+      }
     }
     const roomId = targetRoom?.id || (floorId === asset.floorId ? asset.roomId : null);
     const conditionMap = { Good: 'GOOD', 'Brand New': 'NEW', 'New / Sealed': 'NEW', Excellent: 'EXCELLENT', Fair: 'FAIR' };
@@ -1701,15 +1776,32 @@ export async function assignAssetCustodian(req, res, next) {
         acknowledgementDate: acknowledged ? assignedDate : null,
         active: true
       } });
+      const evidence = req.body.evidenceFile || (req.body.evidenceUrl ? { url: req.body.evidenceUrl, name: 'Handover_Evidence' } : null);
+      if (evidence?.url) {
+        await tx.attachment.create({
+          data: {
+            entityType: 'Asset',
+            entityId: asset.id,
+            fileName: evidence.name || 'Handover_Evidence',
+            fileType: evidence.name?.split('.').pop()?.toUpperCase() || 'EVIDENCE',
+            fileSize: Number.isFinite(Number(evidence.size)) ? Number(evidence.size) : null,
+            storageKey: evidence.url,
+            url: evidence.url,
+            uploadedByUserId: actor.id
+          }
+        });
+      }
+
       const assignmentTransaction = await tx.assetTransaction.create({ data: {
         assetId: asset.id, transactionType: employee ? 'ASSIGN' : 'UNASSIGN',
         fromStatus: asset.lifecycleStatus, toStatus: updated.lifecycleStatus,
         performedByUserId: actor.id,
-        notes: `${employee ? `Assigned to ${employee.fullName}` : 'Custodian removed'}${assignmentPurpose ? ` · ${assignmentPurpose}` : ''}${accessoriesIncluded ? ` · Accessories: ${accessoriesIncluded}` : ''}${remarks ? ` · ${remarks}` : ''}`,
+        notes: `${employee ? `Assigned to ${employee.fullName}` : 'Custodian removed'}${assignmentPurpose ? ` · ${assignmentPurpose}` : ''}${accessoriesIncluded ? ` · Accessories: ${accessoriesIncluded}` : ''}${remarks ? ` · ${remarks}` : ''}${evidence?.name ? ` · Evidence: ${evidence.name}` : ''}`,
         payload: JSON.stringify({ fromCustodianId: asset.custodianId,
           toCustodianId: employee?.id || null, assignmentDate: assignedDate.toISOString(),
           expectedReturnDate: returnDate?.toISOString() || null, conditionAtIssue: normalizedCondition,
-          fromSiteId: asset.siteId, toSiteId: siteId, fromRoomId: asset.roomId, toRoomId: roomId })
+          fromSiteId: asset.siteId, toSiteId: siteId, fromRoomId: asset.roomId, toRoomId: roomId,
+          evidenceUrl: evidence?.url || null, evidenceFileName: evidence?.name || null })
       } });
       await tx.auditEvent.create({ data: {
         userId: actor.id, action: employee ? 'ASSET_CUSTODIAN_ASSIGNED' : 'ASSET_CUSTODIAN_REMOVED',
@@ -2490,6 +2582,30 @@ export async function getAssetHierarchyTree(req, res, next) {
   }
 }
 
+// Resolve valid user ID in DB for audit & foreign-key references
+async function getDbUserId(user) {
+  if (user?.id) {
+    try {
+      const byId = await prisma.user.findUnique({ where: { id: user.id } });
+      if (byId) return byId.id;
+    } catch (_) {}
+  }
+  if (user?.username) {
+    try {
+      const byName = await prisma.user.findFirst({ where: { username: user.username } });
+      if (byName) return byName.id;
+    } catch (_) {}
+  }
+  try {
+    const admin = await prisma.user.findFirst({ where: { username: 'admin' } });
+    if (admin) return admin.id;
+    const anyUser = await prisma.user.findFirst();
+    return anyUser?.id || null;
+  } catch (_) {
+    return null;
+  }
+}
+
 export async function assignParentAsset(req, res, next) {
   try {
     const { assetId, parentAssetId } = req.body;
@@ -2506,16 +2622,7 @@ export async function assignParentAsset(req, res, next) {
     }
 
     // Resolve User for audit
-    let finalUserId = req.user?.id;
-    const userInDb = await prisma.user.findFirst({
-      where: {
-        OR: [
-          ...(finalUserId ? [{ id: finalUserId }] : []),
-          { username: req.user?.username || 'admin' }
-        ]
-      }
-    });
-    finalUserId = userInDb ? userInDb.id : (await prisma.user.findFirst())?.id || null;
+    const finalUserId = await getDbUserId(req.user);
 
     const asset = await prisma.asset.findFirst({
       where: { OR: [{ id: assetId }, { assetId: assetId }] }
@@ -2583,19 +2690,21 @@ export async function assignParentAsset(req, res, next) {
       }
     });
 
-    // Record Asset Transaction
-    await prisma.assetTransaction.create({
-      data: {
-        assetId: asset.id,
-        transactionType: 'HIERARCHY_CHANGE',
-        fromStatus: asset.lifecycleStatus,
-        toStatus: asset.lifecycleStatus,
-        performedByUserId: finalUserId || 'usr-default',
-        notes: parentAsset
-          ? `Hierarchy updated: Assigned under parent [${parentAsset.assetId}] (${parentAsset.description})`
-          : `Hierarchy updated: Removed parent relationship`
-      }
-    });
+    // Record Asset Transaction safely
+    if (finalUserId) {
+      await prisma.assetTransaction.create({
+        data: {
+          assetId: asset.id,
+          transactionType: 'HIERARCHY_CHANGE',
+          fromStatus: asset.lifecycleStatus,
+          toStatus: asset.lifecycleStatus,
+          performedByUserId: finalUserId,
+          notes: parentAsset
+            ? `Hierarchy updated: Assigned under parent [${parentAsset.assetId}] (${parentAsset.description})`
+            : `Hierarchy updated: Removed parent relationship`
+        }
+      }).catch(e => console.warn('Non-fatal transaction log error:', e.message));
+    }
 
     // Record Audit Log for relationship change
     await prisma.auditEvent.create({
@@ -2607,7 +2716,7 @@ export async function assignParentAsset(req, res, next) {
         beforeState: JSON.stringify({ parentAssetId: previousParentId }),
         afterState: JSON.stringify({ parentAssetId: parentAsset ? parentAsset.id : null, parentAssetIdCode: parentAsset?.assetId })
       }
-    });
+    }).catch(e => console.warn('Non-fatal audit log error:', e.message));
 
     res.json({
       success: true,
@@ -2632,16 +2741,7 @@ export async function addChildAsset(req, res, next) {
     }
 
     // Resolve User for audit
-    let finalUserId = req.user?.id;
-    const userInDb = await prisma.user.findFirst({
-      where: {
-        OR: [
-          ...(finalUserId ? [{ id: finalUserId }] : []),
-          { username: req.user?.username || 'admin' }
-        ]
-      }
-    });
-    finalUserId = userInDb ? userInDb.id : (await prisma.user.findFirst())?.id || null;
+    const finalUserId = await getDbUserId(req.user);
 
     const [parent, child] = await Promise.all([
       prisma.asset.findFirst({ where: { OR: [{ id: parentAssetId }, { assetId: parentAssetId }] } }),
@@ -2697,19 +2797,21 @@ export async function addChildAsset(req, res, next) {
       }
     });
 
-    // Write Asset Transaction
-    await prisma.assetTransaction.create({
-      data: {
-        assetId: child.id,
-        transactionType: 'HIERARCHY_ATTACH_CHILD',
-        fromStatus: child.lifecycleStatus,
-        toStatus: child.lifecycleStatus,
-        performedByUserId: finalUserId || 'usr-default',
-        notes: `Attached as child asset under parent [${parent.assetId}] (${parent.description})`
-      }
-    });
+    // Write Asset Transaction safely
+    if (finalUserId) {
+      await prisma.assetTransaction.create({
+        data: {
+          assetId: child.id,
+          transactionType: 'HIERARCHY_ATTACH_CHILD',
+          fromStatus: child.lifecycleStatus,
+          toStatus: child.lifecycleStatus,
+          performedByUserId: finalUserId,
+          notes: `Attached as child asset under parent [${parent.assetId}] (${parent.description})`
+        }
+      }).catch(e => console.warn('Non-fatal transaction log error:', e.message));
+    }
 
-    // Write Audit Log
+    // Write Audit Log safely
     await prisma.auditEvent.create({
       data: {
         userId: finalUserId,
@@ -2719,7 +2821,7 @@ export async function addChildAsset(req, res, next) {
         beforeState: JSON.stringify({ parentAssetId: previousParentId }),
         afterState: JSON.stringify({ parentAssetId: parent.id, parentAssetIdCode: parent.assetId })
       }
-    });
+    }).catch(e => console.warn('Non-fatal audit log error:', e.message));
 
     res.json({
       success: true,
@@ -2798,16 +2900,7 @@ export async function createChildAsset(req, res, next) {
     }
 
     // 2. Resolve User for audit & createdBy
-    let finalUserId = req.user?.id;
-    const userInDb = await prisma.user.findFirst({
-      where: {
-        OR: [
-          ...(finalUserId ? [{ id: finalUserId }] : []),
-          { username: req.user?.username || 'admin' }
-        ]
-      }
-    });
-    finalUserId = userInDb ? userInDb.id : (await prisma.user.findFirst())?.id || null;
+    const finalUserId = await getDbUserId(req.user);
 
     // 3. Resolve Category
     const categoryQuery = rawCategory || parent.categoryId;
@@ -2846,6 +2939,8 @@ export async function createChildAsset(req, res, next) {
         mfr = await prisma.manufacturer.create({ data: { name: rawMfr } });
       }
       manufacturerId = mfr.id;
+    } else if (parent.manufacturerId) {
+      manufacturerId = parent.manufacturerId;
     }
 
     let modelId = null;
@@ -2854,6 +2949,14 @@ export async function createChildAsset(req, res, next) {
         where: { OR: [{ id: rawModel }, { name: rawModel }, { modelNumber: rawModel }] }
       });
       if (!mdl) {
+        // AssetModel table requires manufacturerId String
+        if (!manufacturerId) {
+          let defMfr = await prisma.manufacturer.findFirst();
+          if (!defMfr) {
+            defMfr = await prisma.manufacturer.create({ data: { name: 'Generic OEM' } });
+          }
+          manufacturerId = defMfr.id;
+        }
         mdl = await prisma.assetModel.create({
           data: {
             name: rawModel,
@@ -2901,7 +3004,7 @@ export async function createChildAsset(req, res, next) {
     // 7. Parse financial values safely
     const acqValue = typeof rawVal === 'string' ? parseFloat(rawVal.replace(/[^0-9.-]+/g, '')) || 0 : Number(rawVal) || 0;
 
-    // 8. Create child asset in Transaction
+    // 8. Create child asset in Transaction (with 25s timeout)
     const newChild = await prisma.$transaction(async (tx) => {
       const created = await tx.asset.create({
         data: {
@@ -2934,22 +3037,10 @@ export async function createChildAsset(req, res, next) {
           purchaseDate: purchaseDate ? new Date(purchaseDate) : (parent.purchaseDate || new Date()),
           createdByUserId: finalUserId,
           updatedByUserId: finalUserId
-        },
-        include: {
-          parentAsset: true,
-          category: true,
-          custodian: true,
-          department: true,
-          costCenter: true,
-          site: true,
-          building: true,
-          floor: true,
-          room: true,
-          warranty: true
         }
       });
 
-      if (custodianId) {
+      if (custodianId && finalUserId) {
         await tx.custodyAssignment.create({
           data: {
             assetId: created.id,
@@ -2993,37 +3084,58 @@ export async function createChildAsset(req, res, next) {
         });
       }
 
-      await tx.assetTransaction.create({
+      return created;
+    }, { timeout: 25000, maxWait: 10000 });
+
+    // 9. Fetch populated child asset with all associations outside the transaction
+    const populatedChild = await prisma.asset.findUnique({
+      where: { id: newChild.id },
+      include: {
+        parentAsset: true,
+        category: true,
+        custodian: true,
+        department: true,
+        costCenter: true,
+        site: true,
+        building: true,
+        floor: true,
+        room: true,
+        warranty: true
+      }
+    }) || newChild;
+
+    // 10. Audit logging & transaction tracking outside critical transaction
+    if (finalUserId) {
+      await prisma.assetTransaction.create({
         data: {
-          assetId: created.id,
+          assetId: newChild.id,
           transactionType: 'HIERARCHY_ATTACH_CHILD',
           fromStatus: 'NEW',
           toStatus: 'IN_SERVICE',
-          performedByUserId: finalUserId || 'usr-default',
+          performedByUserId: finalUserId,
           notes: `Created and linked as child asset under parent [${parent.assetId}] (${parent.description})`
         }
-      });
+      }).catch(e => console.warn('Non-fatal assetTransaction error:', e.message));
+    }
 
-      await tx.auditEvent.create({
-        data: {
-          userId: finalUserId,
-          action: 'ASSET_HIERARCHY_ADD_CHILD',
-          entityType: 'Asset',
-          entityId: created.id,
-          beforeState: JSON.stringify({ parentAssetId: null }),
-          afterState: JSON.stringify({ parentAssetId: parent.id, parentAssetIdCode: parent.assetId, name: assetTitle })
-        }
-      });
-
-      return created;
-    });
+    await prisma.auditEvent.create({
+      data: {
+        userId: finalUserId,
+        action: 'ASSET_HIERARCHY_ADD_CHILD',
+        entityType: 'Asset',
+        entityId: newChild.id,
+        beforeState: JSON.stringify({ parentAssetId: null }),
+        afterState: JSON.stringify({ parentAssetId: parent.id, parentAssetIdCode: parent.assetId, name: assetTitle })
+      }
+    }).catch(e => console.warn('Non-fatal auditEvent error:', e.message));
 
     res.status(201).json({
       success: true,
-      message: `Child asset [${newChild.assetId}] successfully created and linked under parent [${parent.assetId}].`,
-      asset: newChild
+      message: `Child asset [${populatedChild.assetId}] successfully created and linked under parent [${parent.assetId}].`,
+      asset: populatedChild
     });
   } catch (err) {
+    console.error('Error in createChildAsset:', err);
     next(err);
   }
 }
@@ -3033,16 +3145,7 @@ export async function removeParentRelationship(req, res, next) {
     const { id } = req.params;
 
     // Resolve User for audit
-    let finalUserId = req.user?.id;
-    const userInDb = await prisma.user.findFirst({
-      where: {
-        OR: [
-          ...(finalUserId ? [{ id: finalUserId }] : []),
-          { username: req.user?.username || 'admin' }
-        ]
-      }
-    });
-    finalUserId = userInDb ? userInDb.id : (await prisma.user.findFirst())?.id || null;
+    const finalUserId = await getDbUserId(req.user);
 
     const asset = await prisma.asset.findFirst({
       where: { OR: [{ id }, { assetId: id }] }
@@ -3061,19 +3164,21 @@ export async function removeParentRelationship(req, res, next) {
       }
     });
 
-    // Record Asset Transaction
-    await prisma.assetTransaction.create({
-      data: {
-        assetId: asset.id,
-        transactionType: 'HIERARCHY_REMOVE_PARENT',
-        fromStatus: asset.lifecycleStatus,
-        toStatus: asset.lifecycleStatus,
-        performedByUserId: finalUserId || 'usr-default',
-        notes: `Detached from parent asset. Now a standalone root asset.`
-      }
-    });
+    // Record Asset Transaction safely
+    if (finalUserId) {
+      await prisma.assetTransaction.create({
+        data: {
+          assetId: asset.id,
+          transactionType: 'HIERARCHY_REMOVE_PARENT',
+          fromStatus: asset.lifecycleStatus,
+          toStatus: asset.lifecycleStatus,
+          performedByUserId: finalUserId,
+          notes: `Detached from parent asset. Now a standalone root asset.`
+        }
+      }).catch(e => console.warn('Non-fatal transaction log error:', e.message));
+    }
 
-    // Record Audit Log
+    // Record Audit Log safely
     await prisma.auditEvent.create({
       data: {
         userId: finalUserId,
@@ -3083,7 +3188,7 @@ export async function removeParentRelationship(req, res, next) {
         beforeState: JSON.stringify({ parentAssetId: previousParentId }),
         afterState: JSON.stringify({ parentAssetId: null })
       }
-    });
+    }).catch(e => console.warn('Non-fatal audit log error:', e.message));
 
     res.json({
       success: true,

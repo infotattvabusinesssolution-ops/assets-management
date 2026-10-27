@@ -26,7 +26,13 @@ import clsx from 'clsx';
 
 export const INITIAL_DEPARTMENTS = [];
 
-export function DepartmentsTab({ triggerToast, onSwitchTab }) {
+export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger }) {
+  React.useEffect(() => {
+    if (openAddModalTrigger) {
+      handleOpenAddModal();
+    }
+  }, [openAddModalTrigger]);
+
   React.useEffect(() => {
     const fetchDepartmentsFromDb = async () => {
       try {
@@ -185,11 +191,21 @@ export function DepartmentsTab({ triggerToast, onSwitchTab }) {
     setShowAddDeptModal(true);
   };
 
-  const handleSaveDept = (e) => {
+  const handleSaveDept = async (e) => {
     e.preventDefault();
     if (!deptForm.name || !deptForm.code) return;
 
     if (editingDept) {
+      try {
+        await api.put(`/admin/organization/departments/${editingDept.id}`, {
+          name: deptForm.name,
+          code: deptForm.code.toUpperCase(),
+          description: deptForm.description,
+          active: deptForm.status === 'Active'
+        }).catch(() => null);
+      } catch (err) {
+        console.error(err);
+      }
       setDepartments(
         departments.map((d) =>
           d.id === editingDept.id
@@ -210,8 +226,22 @@ export function DepartmentsTab({ triggerToast, onSwitchTab }) {
       );
       triggerToast && triggerToast(`Department "${deptForm.name}" updated.`);
     } else {
+      let createdId = Date.now();
+      try {
+        const res = await api.post('/admin/organization/departments', {
+          name: deptForm.name,
+          code: deptForm.code.toUpperCase(),
+          description: deptForm.description,
+          active: deptForm.status === 'Active'
+        }).catch(() => null);
+        if (res && res.department && res.department.id) {
+          createdId = res.department.id;
+        }
+      } catch (err) {
+        console.error(err);
+      }
       const newDept = {
-        id: Date.now(),
+        id: createdId,
         name: deptForm.name,
         code: deptForm.code.toUpperCase(),
         company: deptForm.company,
@@ -230,16 +260,28 @@ export function DepartmentsTab({ triggerToast, onSwitchTab }) {
     setShowAddDeptModal(false);
   };
 
-  const handleToggleStatus = (dept) => {
+  const handleToggleStatus = async (dept) => {
     setActiveDropdownId(null);
     const nextStatus = dept.status === 'Active' ? 'Inactive' : 'Active';
+    try {
+      await api.put(`/admin/organization/departments/${dept.id}`, {
+        active: nextStatus === 'Active'
+      }).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setDepartments(departments.map((d) => (d.id === dept.id ? { ...d, status: nextStatus } : d)));
     triggerToast && triggerToast(`Department "${dept.name}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteDept = (dept) => {
+  const handleDeleteDept = async (dept) => {
     setActiveDropdownId(null);
     if (!window.confirm(`Are you sure you want to delete department "${dept.name}"?`)) return;
+    try {
+      await api.delete(`/admin/organization/departments/${dept.id}`).catch(() => null);
+    } catch (err) {
+      console.error(err);
+    }
     setDepartments(departments.filter((d) => d.id !== dept.id));
     triggerToast && triggerToast(`Department "${dept.name}" deleted.`);
   };
@@ -452,14 +494,23 @@ export function DepartmentsTab({ triggerToast, onSwitchTab }) {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
           <h2 className="text-sm font-black text-slate-900">Departments ({filteredDepartments.length})</h2>
-          <button
-            onClick={() => triggerToast && triggerToast('Exporting Departments data...')}
-            className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
-          >
-            <Download className="w-3.5 h-3.5 text-slate-500" />
-            <span>Export</span>
-            <ChevronDown className="w-3 h-3 text-slate-400" />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => handleOpenAddModal()}
+              className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Department</span>
+            </button>
+            <button
+              onClick={() => triggerToast && triggerToast('Exporting Departments data...')}
+              className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
+            >
+              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <span>Export</span>
+              <ChevronDown className="w-3 h-3 text-slate-400" />
+            </button>
+          </div>
         </div>
 
         <div className="overflow-auto max-h-[540px]">

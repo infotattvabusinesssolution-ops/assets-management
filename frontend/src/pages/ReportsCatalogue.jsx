@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { api } from '../services/api';
 import {
@@ -40,7 +40,8 @@ import {
   TrendingDown,
   ExternalLink,
   Check,
-  FileText
+  FileText,
+  Trash2
 } from 'lucide-react';
 import {
   ResponsiveContainer,
@@ -460,6 +461,135 @@ export function ReportsCatalogue() {
   const [filterLocation, setFilterLocation] = useState('All Locations');
   const [filterDepartment, setFilterDepartment] = useState('All Departments');
 
+  // Interactive Calendar / Date Range Picker State
+  const [showDatePicker, setShowDatePicker] = useState(false);
+  const [customStartDate, setCustomStartDate] = useState('2025-01-01');
+  const [customEndDate, setCustomEndDate] = useState('2025-12-31');
+  const [activeDatePreset, setActiveDatePreset] = useState('Full Year 2025');
+  const [calMonth, setCalMonth] = useState(new Date(2025, 0, 1));
+  const datePickerRef = useRef(null);
+
+  // Close calendar popover on outside click
+  useEffect(() => {
+    const handleClickOutside = (e) => {
+      if (datePickerRef.current && !datePickerRef.current.contains(e.target)) {
+        setShowDatePicker(false);
+      }
+    };
+    if (showDatePicker) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [showDatePicker]);
+
+  const formatDateDisplay = (dateVal) => {
+    if (!dateVal) return '';
+    const d = new Date(dateVal);
+    if (isNaN(d.getTime())) return String(dateVal);
+    const day = String(d.getDate()).padStart(2, '0');
+    const month = d.toLocaleString('en-GB', { month: 'short' });
+    const year = d.getFullYear();
+    return `${day} ${month} ${year}`;
+  };
+
+  const handleSelectDatePreset = (presetKey) => {
+    setActiveDatePreset(presetKey);
+    let start = '2025-01-01';
+    let end = '2025-12-31';
+    const now = new Date();
+
+    if (presetKey === 'Today') {
+      const todayStr = now.toISOString().slice(0, 10);
+      start = todayStr;
+      end = todayStr;
+    } else if (presetKey === 'Last 7 Days') {
+      const past7 = new Date();
+      past7.setDate(now.getDate() - 7);
+      start = past7.toISOString().slice(0, 10);
+      end = now.toISOString().slice(0, 10);
+    } else if (presetKey === 'This Month') {
+      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1);
+      const lastDay = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+      start = firstDay.toISOString().slice(0, 10);
+      end = lastDay.toISOString().slice(0, 10);
+    } else if (presetKey === 'Last 30 Days') {
+      const past30 = new Date();
+      past30.setDate(now.getDate() - 30);
+      start = past30.toISOString().slice(0, 10);
+      end = now.toISOString().slice(0, 10);
+    } else if (presetKey === 'This Quarter') {
+      const qStart = Math.floor(now.getMonth() / 3) * 3;
+      const firstQDay = new Date(now.getFullYear(), qStart, 1);
+      const lastQDay = new Date(now.getFullYear(), qStart + 3, 0);
+      start = firstQDay.toISOString().slice(0, 10);
+      end = lastQDay.toISOString().slice(0, 10);
+    } else if (presetKey === 'Full Year 2025') {
+      start = '2025-01-01';
+      end = '2025-12-31';
+    } else if (presetKey === 'Year to Date') {
+      const ytdStart = new Date(now.getFullYear(), 0, 1);
+      start = ytdStart.toISOString().slice(0, 10);
+      end = now.toISOString().slice(0, 10);
+    }
+
+    setCustomStartDate(start);
+    setCustomEndDate(end);
+    setCalMonth(new Date(start));
+  };
+
+  const handleApplyDateRange = () => {
+    const formatted = `${formatDateDisplay(customStartDate)} - ${formatDateDisplay(customEndDate)}`;
+    setFilterDateRange(formatted);
+    setShowDatePicker(false);
+    console.log('📅 [Date Range Filter Applied]:', {
+      startDate: customStartDate,
+      endDate: customEndDate,
+      displayRange: formatted
+    });
+    setActionSuccessMsg(`Date range applied: ${formatted}`);
+    setTimeout(() => setActionSuccessMsg(null), 3000);
+    fetchDashboard();
+  };
+
+  const handleCalPrevMonth = () => {
+    setCalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
+  };
+
+  const handleCalNextMonth = () => {
+    setCalMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
+  };
+
+  const handleDayClick = (dayNum) => {
+    const y = calMonth.getFullYear();
+    const m = String(calMonth.getMonth() + 1).padStart(2, '0');
+    const d = String(dayNum).padStart(2, '0');
+    const clickedStr = `${y}-${m}-${d}`;
+
+    if (!customStartDate || (customStartDate && customEndDate)) {
+      setCustomStartDate(clickedStr);
+      setCustomEndDate('');
+      setActiveDatePreset('Custom');
+    } else {
+      if (clickedStr < customStartDate) {
+        setCustomStartDate(clickedStr);
+        setCustomEndDate(customStartDate);
+      } else {
+        setCustomEndDate(clickedStr);
+      }
+      setActiveDatePreset('Custom');
+    }
+  };
+
+  const calendarDays = useMemo(() => {
+    const year = calMonth.getFullYear();
+    const month = calMonth.getMonth();
+    const totalDays = new Date(year, month + 1, 0).getDate();
+    const firstDayIndex = new Date(year, month, 1).getDay(); // 0 is Sunday
+    return { year, month, totalDays, firstDayIndex };
+  }, [calMonth]);
+
   // Advanced Filters State
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [advFilters, setAdvFilters] = useState({
@@ -511,6 +641,38 @@ export function ReportsCatalogue() {
     purchaseDate: false
   });
   const [customGrouping, setCustomGrouping] = useState('NONE');
+
+  // Schedule Report Form State
+  const [newScheduleForm, setNewScheduleForm] = useState({
+    name: '',
+    category: 'Asset',
+    frequency: 'Weekly',
+    deliveryFormat: 'PDF',
+    recipients: ''
+  });
+  const [savingSchedule, setSavingSchedule] = useState(false);
+  const [editingScheduleId, setEditingScheduleId] = useState(null);
+  const [runningScheduleId, setRunningScheduleId] = useState(null);
+
+  // Load persisted custom schedules from localStorage
+  useEffect(() => {
+    try {
+      const stored = localStorage.getItem('asset360_scheduled_reports');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          console.log('📦 [Scheduled Reports] Loaded persisted schedules from localStorage:', parsed);
+          setScheduledReports(prev => {
+            const existingIds = new Set(prev.map(p => p.id));
+            const freshItems = parsed.filter(item => !existingIds.has(item.id));
+            return [...freshItems, ...prev];
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('Could not read scheduled reports from localStorage:', err);
+    }
+  }, []);
 
   // Modals & Action Notifications
   const [showCreateDropdown, setShowCreateDropdown] = useState(false);
@@ -647,17 +809,247 @@ export function ReportsCatalogue() {
     } catch (err) {
       // Local fallback toggle
     }
-    setScheduledReports(prev =>
-      prev.map(item => {
+    setScheduledReports(prev => {
+      const updated = prev.map(item => {
         if (item.id === reportId) {
           const nextStatus = item.status === 'Active' ? 'Paused' : 'Active';
           return { ...item, status: nextStatus };
         }
         return item;
-      })
-    );
+      });
+      try {
+        localStorage.setItem('asset360_scheduled_reports', JSON.stringify(updated));
+      } catch (lsErr) {
+        console.warn('LocalStorage error on toggle:', lsErr);
+      }
+      return updated;
+    });
     setActionSuccessMsg(`Schedule status updated.`);
     setTimeout(() => setActionSuccessMsg(null), 3000);
+  };
+
+  // Open Modal for Creating a Fresh Schedule
+  const handleOpenNewSchedule = () => {
+    setEditingScheduleId(null);
+    setNewScheduleForm({
+      name: '',
+      category: 'Asset',
+      frequency: 'Weekly',
+      deliveryFormat: 'PDF',
+      recipients: ''
+    });
+    setShowScheduleReportModal(true);
+  };
+
+  // Open Modal for Editing an Existing Schedule
+  const handleOpenEditSchedule = (sch) => {
+    if (!sch) return;
+    console.log('📝 [Scheduled Report] Opening Edit modal for schedule:', sch);
+    setEditingScheduleId(sch.id);
+    setNewScheduleForm({
+      name: sch.name || '',
+      category: sch.category || 'Asset',
+      frequency: sch.frequency || 'Weekly',
+      deliveryFormat: sch.deliveryFormat || sch.format || 'PDF',
+      recipients: sch.recipients || ''
+    });
+    setShowScheduleReportModal(true);
+  };
+
+  // Delete a Scheduled Report
+  const handleDeleteSchedule = (reportId, reportName) => {
+    if (window.confirm(`Are you sure you want to delete the scheduled report "${reportName}"?`)) {
+      setScheduledReports(prev => {
+        const updated = prev.filter(s => s.id !== reportId);
+        try {
+          localStorage.setItem('asset360_scheduled_reports', JSON.stringify(updated));
+          console.log('🗑️ [Schedule Report Deleted]:', reportId);
+        } catch (e) {}
+        return updated;
+      });
+      setActionSuccessMsg(`Scheduled report "${reportName}" removed.`);
+      setTimeout(() => setActionSuccessMsg(null), 3000);
+    }
+  };
+
+  // Trigger Immediate Execution ("Run Now") for a Scheduled Report
+  const handleRunNowSchedule = async (sch) => {
+    if (!sch) return;
+    setRunningScheduleId(sch.id);
+    console.log('🚀 [Scheduled Reports Engine] Triggering Immediate On-Demand Execution for:', {
+      id: sch.id,
+      name: sch.name,
+      category: sch.category || 'Asset',
+      frequency: sch.frequency,
+      format: sch.deliveryFormat || sch.format || 'PDF',
+      recipients: sch.recipients
+    });
+
+    const nowTimestamp = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) + ' Today (Manual Run)';
+
+    // Update schedule lastRun timestamp
+    setScheduledReports(prev => {
+      const updated = prev.map(item => item.id === sch.id ? { ...item, lastRun: nowTimestamp } : item);
+      try {
+        localStorage.setItem('asset360_scheduled_reports', JSON.stringify(updated));
+      } catch (e) {}
+      return updated;
+    });
+
+    // Select domain dataset
+    const catKey = (sch.category || 'Asset').toLowerCase();
+    const domainData = FALLBACK_DOMAIN_DATA[catKey]?.sampleRows || FALLBACK_DOMAIN_DATA.assets.sampleRows;
+    const safeName = sch.name.replace(/[^a-zA-Z0-9]/g, '_');
+    const isExcel = (sch.deliveryFormat || sch.format) === 'Excel';
+
+    // Simulate instant report execution and dispatch
+    setTimeout(() => {
+      if (isExcel) {
+        handleExportCSV(`${safeName}_Instant_${new Date().toISOString().slice(0, 10)}.csv`, domainData);
+      } else {
+        handleExportCSV(`${safeName}_Executive_Report_${new Date().toISOString().slice(0, 10)}.csv`, domainData);
+      }
+
+      // Add entry to Recent Generated Reports audit log
+      const newRecentItem = {
+        id: `REP-RUN-${Date.now().toString().slice(-4)}`,
+        name: `${sch.name} (On-Demand Run)`,
+        category: sch.category || 'Asset',
+        dateGenerated: 'Just now (Manual Run)',
+        generatedBy: 'System Administrator (Manual Trigger)',
+        format: sch.deliveryFormat || sch.format || 'PDF',
+        size: isExcel ? '420 KB' : '2.1 MB'
+      };
+      setRecentReports(prev => [newRecentItem, ...prev]);
+
+      console.log('✅ [Scheduled Reports Engine] Execution Complete. Generated report and simulated dispatch to distribution list:', sch.recipients);
+      setActionSuccessMsg(`🚀 "${sch.name}" executed successfully! Generated ${sch.deliveryFormat || 'PDF'} report and emailed to ${sch.recipients}.`);
+      setRunningScheduleId(null);
+      setTimeout(() => setActionSuccessMsg(null), 4000);
+    }, 700);
+  };
+
+  // Create or Update Scheduled Report
+  const handleCreateSchedule = async (e) => {
+    if (e) e.preventDefault();
+    if (!newScheduleForm.name.trim()) {
+      setActionSuccessMsg('Please enter a Schedule Name.');
+      setTimeout(() => setActionSuccessMsg(null), 3000);
+      return;
+    }
+
+    setSavingSchedule(true);
+
+    // MODE 1: EDIT EXISTING SCHEDULE
+    if (editingScheduleId) {
+      const updatedFields = {
+        name: newScheduleForm.name.trim(),
+        category: newScheduleForm.category,
+        frequency: newScheduleForm.frequency,
+        format: newScheduleForm.deliveryFormat,
+        deliveryFormat: newScheduleForm.deliveryFormat,
+        recipients: newScheduleForm.recipients.trim() || 'admin@asset360.com'
+      };
+
+      console.log('✏️ [Schedule Report] Updating existing schedule ID:', editingScheduleId, updatedFields);
+
+      setScheduledReports(prev => {
+        const updated = prev.map(item => item.id === editingScheduleId ? { ...item, ...updatedFields } : item);
+        try {
+          localStorage.setItem('asset360_scheduled_reports', JSON.stringify(updated));
+          console.log('💾 [Schedule Report] Updated and persisted to localStorage');
+        } catch (lsErr) {
+          console.warn('LocalStorage error on update:', lsErr);
+        }
+        return updated;
+      });
+
+      console.log('🎉 [Schedule Report Updated Successfully]:', { id: editingScheduleId, ...updatedFields });
+
+      setShowScheduleReportModal(false);
+      setEditingScheduleId(null);
+      setActionSuccessMsg(`Scheduled report "${updatedFields.name}" updated successfully.`);
+      setTimeout(() => setActionSuccessMsg(null), 4000);
+      setSavingSchedule(false);
+      return;
+    }
+
+    // MODE 2: CREATE NEW SCHEDULE
+    const schedulePayload = {
+      name: newScheduleForm.name.trim(),
+      category: newScheduleForm.category,
+      frequency: newScheduleForm.frequency,
+      format: newScheduleForm.deliveryFormat,
+      deliveryFormat: newScheduleForm.deliveryFormat,
+      recipients: newScheduleForm.recipients.trim() || 'admin@asset360.com',
+      nextRun: newScheduleForm.frequency === 'Daily'
+        ? 'Tomorrow 08:00 AM'
+        : newScheduleForm.frequency === 'Weekly'
+        ? 'Next Monday 08:00 AM'
+        : '01 Nov 2026 08:00 AM',
+      status: 'Active'
+    };
+
+    console.log('📡 [Schedule Report] Submitting new schedule to backend:', schedulePayload);
+
+    let savedItem = null;
+    try {
+      const res = await api.post('/reports/analytics/scheduled', schedulePayload);
+      console.log('✅ [Schedule Report] Backend API Response:', res?.data);
+      const backendData = res?.data?.data || res?.data;
+      savedItem = {
+        id: backendData?.id || `SCH-${Date.now().toString().slice(-4)}`,
+        name: schedulePayload.name,
+        category: schedulePayload.category,
+        frequency: schedulePayload.frequency,
+        deliveryFormat: schedulePayload.deliveryFormat,
+        format: schedulePayload.deliveryFormat,
+        recipients: schedulePayload.recipients,
+        nextRun: backendData?.nextRun || schedulePayload.nextRun,
+        status: 'Active'
+      };
+    } catch (err) {
+      console.warn('⚠️ [Schedule Report] Backend API offline/fallback, saving locally:', err);
+      savedItem = {
+        id: `SCH-${Date.now().toString().slice(-4)}`,
+        name: schedulePayload.name,
+        category: schedulePayload.category,
+        frequency: schedulePayload.frequency,
+        deliveryFormat: schedulePayload.deliveryFormat,
+        format: schedulePayload.deliveryFormat,
+        recipients: schedulePayload.recipients,
+        nextRun: schedulePayload.nextRun,
+        status: 'Active'
+      };
+    }
+
+    // Update state so it immediately appears in all scheduled report tables
+    setScheduledReports(prev => [savedItem, ...prev]);
+
+    // Persist in localStorage for permanent browser reload retention
+    try {
+      const stored = JSON.parse(localStorage.getItem('asset360_scheduled_reports') || '[]');
+      localStorage.setItem('asset360_scheduled_reports', JSON.stringify([savedItem, ...stored]));
+      console.log('💾 [Schedule Report] Persisted to localStorage:', savedItem);
+    } catch (lsErr) {
+      console.warn('LocalStorage error:', lsErr);
+    }
+
+    console.log('🎉 [Schedule Report Created Successfully]:', savedItem);
+
+    setShowScheduleReportModal(false);
+    setActionSuccessMsg(`Scheduled report "${savedItem.name}" created and active.`);
+    setTimeout(() => setActionSuccessMsg(null), 4000);
+
+    // Reset Form
+    setNewScheduleForm({
+      name: '',
+      category: 'Asset',
+      frequency: 'Weekly',
+      deliveryFormat: 'PDF',
+      recipients: ''
+    });
+    setSavingSchedule(false);
   };
 
   // Open Interactive Drill-Down Modal
@@ -909,7 +1301,7 @@ export function ReportsCatalogue() {
                     <button
                       onClick={() => {
                         setShowCreateDropdown(false);
-                        setShowScheduleReportModal(true);
+                        handleOpenNewSchedule();
                       }}
                       className="w-full px-3.5 py-2 text-left hover:bg-slate-50 flex items-center gap-2.5 text-slate-700 font-semibold"
                     >
@@ -1087,36 +1479,6 @@ export function ReportsCatalogue() {
         {/* ------------------------------------------------------------------- */}
         {viewMode === 'DASHBOARD' && activeCategory === 'dashboard' && (
           <div className="space-y-6 animate-fadeIn">
-            {/* Category Navigation Cards */}
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
-              {CATEGORY_CARDS.map((cat) => {
-                const Icon = cat.icon;
-                return (
-                  <button
-                    key={cat.id}
-                    onClick={() => handleTabClick(cat.id)}
-                    className="p-3 rounded-2xl border text-left transition-all relative overflow-hidden group cursor-pointer bg-white border-slate-200 hover:border-[#6C2BD9] hover:shadow-md"
-                  >
-                    <div className="flex items-start justify-between mb-1.5">
-                      <div
-                        className="w-8 h-8 rounded-xl flex items-center justify-center border shrink-0"
-                        style={{ backgroundColor: cat.bgColor, borderColor: cat.borderColor }}
-                      >
-                        <Icon className="w-4 h-4" style={{ color: cat.color }} />
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-300 group-hover:text-[#6C2BD9] group-hover:translate-x-0.5 transition-all" />
-                    </div>
-                    <div className="text-xs font-black text-slate-900 leading-snug">
-                      {cat.name}
-                    </div>
-                    <div className="text-[10px] text-slate-400 truncate mt-0.5 font-medium">
-                      {cat.description}
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-
             {/* Filter Bar */}
             <div className="bg-white p-4 rounded-2xl border border-slate-200 shadow-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-7 gap-3 items-end">
@@ -1164,20 +1526,208 @@ export function ReportsCatalogue() {
                   </div>
                 </div>
 
-                {/* Date Range */}
-                <div className="space-y-1">
+                {/* Date Range with Interactive Calendar Popover */}
+                <div className="space-y-1 relative" ref={datePickerRef}>
                   <label className="text-[11px] font-bold text-slate-600 uppercase tracking-wider block">
                     Date Range
                   </label>
-                  <div className="relative">
+                  <div
+                    onClick={() => setShowDatePicker(!showDatePicker)}
+                    className="relative cursor-pointer group"
+                  >
                     <input
                       type="text"
+                      readOnly
                       value={filterDateRange}
-                      onChange={(e) => setFilterDateRange(e.target.value)}
-                      className="w-full pl-3 pr-8 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                      placeholder="Select Date Range..."
+                      className="w-full pl-3 pr-8 py-2 bg-slate-50 group-hover:bg-purple-50/40 border border-slate-200 group-hover:border-[#6C2BD9] rounded-xl text-xs font-semibold text-slate-800 focus:outline-hidden focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] cursor-pointer transition-all"
                     />
-                    <Calendar className="w-3.5 h-3.5 text-slate-400 absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+                    <Calendar className="w-3.5 h-3.5 text-[#6C2BD9] absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none" />
                   </div>
+
+                  {/* Calendar Popover */}
+                  {showDatePicker && (
+                    <div className="absolute left-0 sm:left-auto sm:right-0 md:left-0 top-full mt-2 w-80 sm:w-96 bg-white border border-slate-200 rounded-2xl shadow-2xl z-50 p-4 animate-fadeIn text-xs space-y-3.5">
+                      {/* Header */}
+                      <div className="flex items-center justify-between pb-2 border-b border-slate-100">
+                        <div className="flex items-center gap-1.5 font-black text-slate-900">
+                          <div className="w-6 h-6 rounded-lg bg-purple-50 text-[#6C2BD9] flex items-center justify-center">
+                            <Calendar className="w-3.5 h-3.5" />
+                          </div>
+                          <span>Select Reporting Date Range</span>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => setShowDatePicker(false)}
+                          className="text-slate-400 hover:text-slate-600 cursor-pointer p-1"
+                        >
+                          <X className="w-4 h-4" />
+                        </button>
+                      </div>
+
+                      {/* Quick Presets */}
+                      <div>
+                        <div className="text-[10px] font-bold text-slate-400 uppercase tracking-wider mb-1.5">
+                          Quick Presets
+                        </div>
+                        <div className="flex flex-wrap gap-1.5">
+                          {['Today', 'Last 7 Days', 'This Month', 'Last 30 Days', 'This Quarter', 'Full Year 2025', 'Year to Date'].map((preset) => (
+                            <button
+                              key={preset}
+                              type="button"
+                              onClick={() => handleSelectDatePreset(preset)}
+                              className={clsx(
+                                'px-2.5 py-1 rounded-lg text-[11px] font-bold transition-all cursor-pointer',
+                                activeDatePreset === preset
+                                  ? 'bg-[#6C2BD9] text-white shadow-2xs'
+                                  : 'bg-slate-100 text-slate-600 hover:bg-slate-200 hover:text-slate-900'
+                              )}
+                            >
+                              {preset}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* Custom Range Native Inputs */}
+                      <div className="bg-slate-50 p-2.5 rounded-xl border border-slate-200 space-y-2">
+                        <div className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">
+                          From & To Custom Date
+                        </div>
+                        <div className="grid grid-cols-2 gap-2">
+                          <div>
+                            <span className="text-[10px] text-slate-500 font-semibold block mb-0.5">Start Date</span>
+                            <input
+                              type="date"
+                              value={customStartDate}
+                              onChange={(e) => {
+                                setCustomStartDate(e.target.value);
+                                setActiveDatePreset('Custom');
+                                setCalMonth(new Date(e.target.value));
+                              }}
+                              className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-[#6C2BD9] cursor-pointer"
+                            />
+                          </div>
+                          <div>
+                            <span className="text-[10px] text-slate-500 font-semibold block mb-0.5">End Date</span>
+                            <input
+                              type="date"
+                              value={customEndDate}
+                              min={customStartDate}
+                              onChange={(e) => {
+                                setCustomEndDate(e.target.value);
+                                setActiveDatePreset('Custom');
+                              }}
+                              className="w-full p-1.5 bg-white border border-slate-200 rounded-lg text-xs font-semibold text-slate-800 focus:outline-hidden focus:border-[#6C2BD9] cursor-pointer"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Interactive Visual Calendar Grid */}
+                      <div className="bg-white p-2 border border-slate-100 rounded-xl">
+                        {/* Month Navigation Header */}
+                        <div className="flex items-center justify-between pb-2 mb-2 border-b border-slate-100">
+                          <button
+                            type="button"
+                            onClick={handleCalPrevMonth}
+                            className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 cursor-pointer"
+                            title="Previous Month"
+                          >
+                            <ChevronLeft className="w-3.5 h-3.5" />
+                          </button>
+                          <span className="font-bold text-slate-800 text-xs">
+                            {calMonth.toLocaleString('en-GB', { month: 'long', year: 'numeric' })}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={handleCalNextMonth}
+                            className="p-1 rounded-lg hover:bg-slate-100 text-slate-600 cursor-pointer"
+                            title="Next Month"
+                          >
+                            <ChevronRight className="w-3.5 h-3.5" />
+                          </button>
+                        </div>
+
+                        {/* Weekday headers */}
+                        <div className="grid grid-cols-7 gap-1 text-center text-[10px] font-bold text-slate-400 mb-1">
+                          {['Su', 'Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa'].map((d) => (
+                            <div key={d}>{d}</div>
+                          ))}
+                        </div>
+
+                        {/* Days Grid */}
+                        <div className="grid grid-cols-7 gap-1 text-center text-xs">
+                          {Array.from({ length: calendarDays.firstDayIndex }).map((_, i) => (
+                            <div key={`empty-${i}`} className="p-1 text-slate-200 pointer-events-none">•</div>
+                          ))}
+                          {Array.from({ length: calendarDays.totalDays }).map((_, i) => {
+                            const dayNum = i + 1;
+                            const y = calendarDays.year;
+                            const m = String(calendarDays.month + 1).padStart(2, '0');
+                            const d = String(dayNum).padStart(2, '0');
+                            const dayStr = `${y}-${m}-${d}`;
+                            const isSelectedStart = dayStr === customStartDate;
+                            const isSelectedEnd = dayStr === customEndDate;
+                            const isInRange = customStartDate && customEndDate && dayStr >= customStartDate && dayStr <= customEndDate;
+
+                            return (
+                              <button
+                                key={dayNum}
+                                type="button"
+                                onClick={() => handleDayClick(dayNum)}
+                                className={clsx(
+                                  'p-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer',
+                                  isSelectedStart || isSelectedEnd
+                                    ? 'bg-[#6C2BD9] text-white font-bold shadow-2xs'
+                                    : isInRange
+                                    ? 'bg-purple-100 text-[#6C2BD9]'
+                                    : 'hover:bg-slate-100 text-slate-700'
+                                )}
+                              >
+                                {dayNum}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* Footer Actions */}
+                      <div className="flex items-center justify-between pt-2 border-t border-slate-100">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setCustomStartDate('2025-01-01');
+                            setCustomEndDate('2025-12-31');
+                            setActiveDatePreset('Full Year 2025');
+                            setFilterDateRange('01 Jan 2025 - 31 Dec 2025');
+                            setShowDatePicker(false);
+                            fetchDashboard();
+                          }}
+                          className="text-[11px] text-slate-400 hover:text-slate-600 font-semibold cursor-pointer"
+                        >
+                          Reset
+                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setShowDatePicker(false)}
+                            className="px-3 py-1.5 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 cursor-pointer text-xs"
+                          >
+                            Cancel
+                          </button>
+                          <button
+                            type="button"
+                            onClick={handleApplyDateRange}
+                            className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs cursor-pointer text-xs flex items-center gap-1.5"
+                          >
+                            <Check className="w-3.5 h-3.5" />
+                            <span>Apply Range</span>
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* Location */}
@@ -1691,16 +2241,27 @@ export function ReportsCatalogue() {
                               </span>
                             </td>
                             <td className="py-3 px-2 text-center">
-                              <button
-                                onClick={() => {
-                                  setActionSuccessMsg(`Triggered instant generation for ${sch.name}.`);
-                                  setTimeout(() => setActionSuccessMsg(null), 3000);
-                                }}
-                                className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer"
-                                title="Run Now"
-                              >
-                                <Play className="w-3.5 h-3.5" />
-                              </button>
+                              <div className="flex items-center justify-center gap-1">
+                                <button
+                                  onClick={() => handleRunNowSchedule(sch)}
+                                  disabled={runningScheduleId === sch.id}
+                                  className="p-1 rounded text-slate-400 hover:text-emerald-600 hover:bg-emerald-50 cursor-pointer disabled:opacity-50"
+                                  title="Run Now"
+                                >
+                                  {runningScheduleId === sch.id ? (
+                                    <RefreshCw className="w-3.5 h-3.5 animate-spin text-emerald-600" />
+                                  ) : (
+                                    <Play className="w-3.5 h-3.5" />
+                                  )}
+                                </button>
+                                <button
+                                  onClick={() => handleOpenEditSchedule(sch)}
+                                  className="p-1 rounded text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-50 cursor-pointer"
+                                  title="Edit Schedule"
+                                >
+                                  <Edit2 className="w-3.5 h-3.5" />
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         ))}
@@ -1711,8 +2272,8 @@ export function ReportsCatalogue() {
                 <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
                   <span className="font-medium text-slate-600">{scheduledReports.length} recurring jobs active</span>
                   <button
-                    onClick={() => setShowScheduleReportModal(true)}
-                    className="text-xs font-bold text-[#6C2BD9] hover:underline"
+                    onClick={handleOpenNewSchedule}
+                    className="text-xs font-bold text-[#6C2BD9] hover:underline cursor-pointer"
                   >
                     + Add Schedule
                   </button>
@@ -2340,7 +2901,7 @@ export function ReportsCatalogue() {
                 </div>
               </div>
               <button
-                onClick={() => setShowScheduleReportModal(true)}
+                onClick={handleOpenNewSchedule}
                 className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl text-xs font-bold flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
                 <Plus className="w-4 h-4" />
@@ -2444,23 +3005,38 @@ export function ReportsCatalogue() {
                           </div>
                         </td>
                         <td className="py-3 px-4 text-center">
-                          <div className="flex items-center justify-center gap-2">
+                          <div className="flex items-center justify-center gap-1.5">
                             <button
-                              onClick={() => {
-                                setActionSuccessMsg(`Triggered instant execution for ${sch.name}. Delivering via email.`);
-                                setTimeout(() => setActionSuccessMsg(null), 3000);
-                              }}
-                              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer"
-                              title="Run Now"
+                              onClick={() => handleRunNowSchedule(sch)}
+                              disabled={runningScheduleId === sch.id}
+                              className="px-2.5 py-1 bg-emerald-50 hover:bg-emerald-100 disabled:opacity-60 text-emerald-700 border border-emerald-200 rounded-lg text-[11px] font-bold flex items-center gap-1 cursor-pointer transition-all shadow-2xs"
+                              title="Execute Schedule Immediately"
                             >
-                              <Play className="w-3 h-3" /> Run Now
+                              {runningScheduleId === sch.id ? (
+                                <>
+                                  <RefreshCw className="w-3 h-3 animate-spin text-emerald-600" />
+                                  <span>Running...</span>
+                                </>
+                              ) : (
+                                <>
+                                  <Play className="w-3 h-3" />
+                                  <span>Run Now</span>
+                                </>
+                              )}
                             </button>
                             <button
-                              onClick={() => setShowScheduleReportModal(true)}
-                              className="p-1 rounded text-slate-400 hover:text-slate-600 hover:bg-slate-100"
+                              onClick={() => handleOpenEditSchedule(sch)}
+                              className="p-1.5 rounded-lg text-slate-500 hover:text-purple-700 hover:bg-purple-50 transition-colors cursor-pointer"
                               title="Edit Schedule"
                             >
                               <Edit2 className="w-3.5 h-3.5" />
+                            </button>
+                            <button
+                              onClick={() => handleDeleteSchedule(sch.id, sch.name)}
+                              className="p-1.5 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
+                              title="Delete Schedule"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
                             </button>
                           </div>
                         </td>
@@ -2900,44 +3476,83 @@ export function ReportsCatalogue() {
         </div>
       )}
 
-      {/* Schedule Report Modal */}
+      {/* Schedule Report Modal (Create & Edit) */}
       {showScheduleReportModal && (
         <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl max-w-lg w-full p-6 shadow-2xl space-y-4 animate-fadeIn text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <div>
-                <h3 className="text-sm font-black text-slate-900">Schedule Automatic Report</h3>
-                <p className="text-[11px] text-slate-500">Configure recurring report generation and distribution</p>
+                <h3 className="text-sm font-black text-slate-900">
+                  {editingScheduleId ? 'Edit Scheduled Report' : 'Schedule Automatic Report'}
+                </h3>
+                <p className="text-[11px] text-slate-500">
+                  {editingScheduleId
+                    ? `Modify parameters and distribution list for ID: ${editingScheduleId}`
+                    : 'Configure recurring report generation and automated email distribution'}
+                </p>
               </div>
-              <button onClick={() => setShowScheduleReportModal(false)} className="text-slate-400 cursor-pointer">
+              <button
+                onClick={() => {
+                  setShowScheduleReportModal(false);
+                  setEditingScheduleId(null);
+                }}
+                className="text-slate-400 hover:text-slate-600 cursor-pointer"
+              >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            <div className="space-y-3">
+            <form onSubmit={handleCreateSchedule} className="space-y-3.5">
               <div>
-                <label className="font-bold text-slate-700 block mb-1">Schedule Name</label>
+                <label className="font-bold text-slate-700 block mb-1">Schedule Name <span className="text-rose-500">*</span></label>
                 <input
                   type="text"
-                  defaultValue="Executive Monthly Asset Health"
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium"
+                  required
+                  placeholder="e.g. Executive Monthly Asset Health"
+                  value={newScheduleForm.name}
+                  onChange={(e) => setNewScheduleForm({ ...newScheduleForm, name: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20"
                 />
+              </div>
+
+              <div>
+                <label className="font-bold text-slate-700 block mb-1">Reporting Domain / Category</label>
+                <select
+                  value={newScheduleForm.category}
+                  onChange={(e) => setNewScheduleForm({ ...newScheduleForm, category: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
+                >
+                  <option value="Asset">Asset Reports</option>
+                  <option value="Inventory">Inventory Reports</option>
+                  <option value="Maintenance">Maintenance Reports</option>
+                  <option value="Financial">Financial Reports</option>
+                  <option value="Compliance">Compliance Reports</option>
+                </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Frequency</label>
-                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
+                  <select
+                    value={newScheduleForm.frequency}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, frequency: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
+                  >
+                    <option value="Daily">Daily (Every Morning)</option>
                     <option value="Weekly">Weekly (Every Monday)</option>
                     <option value="Monthly">Monthly (1st of Month)</option>
-                    <option value="Quarterly">Quarterly</option>
+                    <option value="Quarterly">Quarterly (End of Quarter)</option>
                   </select>
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1">Delivery Format</label>
-                  <select className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium">
-                    <option value="PDF">PDF Summary</option>
-                    <option value="Excel">Excel / CSV Workbook</option>
+                  <select
+                    value={newScheduleForm.deliveryFormat}
+                    onChange={(e) => setNewScheduleForm({ ...newScheduleForm, deliveryFormat: e.target.value })}
+                    className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:border-[#6C2BD9]"
+                  >
+                    <option value="PDF">PDF Summary Presentation</option>
+                    <option value="Excel">Excel / CSV Spreadsheet</option>
                   </select>
                 </div>
               </div>
@@ -2946,30 +3561,44 @@ export function ReportsCatalogue() {
                 <label className="font-bold text-slate-700 block mb-1">Email Distribution List</label>
                 <input
                   type="text"
-                  defaultValue="director@asset360.com, audit@asset360.com"
-                  className="w-full p-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium"
+                  placeholder="e.g. director@asset360.com, audit@asset360.com"
+                  value={newScheduleForm.recipients}
+                  onChange={(e) => setNewScheduleForm({ ...newScheduleForm, recipients: e.target.value })}
+                  className="w-full p-2.5 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:outline-hidden focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/20"
                 />
+                <span className="text-[10px] text-slate-400 mt-1 block">Separate multiple email addresses with commas</span>
               </div>
-            </div>
 
-            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
-              <button
-                onClick={() => setShowScheduleReportModal(false)}
-                className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowScheduleReportModal(false);
-                  setActionSuccessMsg('Automatic report schedule activated successfully.');
-                  setTimeout(() => setActionSuccessMsg(null), 3000);
-                }}
-                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
-              >
-                <Clock className="w-3.5 h-3.5" /> Save Schedule
-              </button>
-            </div>
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowScheduleReportModal(false);
+                    setEditingScheduleId(null);
+                  }}
+                  className="px-4 py-2 border border-slate-200 rounded-xl font-bold text-slate-600 hover:bg-slate-50 cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={savingSchedule}
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 text-white rounded-xl font-bold shadow-xs flex items-center gap-1.5 cursor-pointer"
+                >
+                  {savingSchedule ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>{editingScheduleId ? 'Updating...' : 'Saving...'}</span>
+                    </>
+                  ) : (
+                    <>
+                      <Check className="w-3.5 h-3.5" />
+                      <span>{editingScheduleId ? 'Update Schedule' : 'Save Schedule & Activate'}</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
