@@ -823,12 +823,12 @@ export function DiscoveryWorkbench({ defaultTab }) {
                               />
                             </td>
                             <td className="py-2.5 px-3 font-mono text-[#6C2BD9] font-bold">{dev.ipAddress}</td>
-                            <td className="py-2.5 px-3 font-bold text-slate-900">{dev.hostname}</td>
-                            <td className="py-2.5 px-3 font-mono text-slate-500">{dev.macAddress}</td>
-                            <td className="py-2.5 px-3">{dev.deviceType}</td>
-                            <td className="py-2.5 px-3">{dev.manufacturer}</td>
-                            <td className="py-2.5 px-3">{dev.model}</td>
-                            <td className="py-2.5 px-3 font-mono text-slate-600">{dev.serialNumber}</td>
+                            <td className="py-2.5 px-3 font-bold text-slate-900">{dev.hostname || "—"}</td>
+                            <td className="py-2.5 px-3 font-mono text-slate-500">{dev.macAddress || "—"}</td>
+                            <td className="py-2.5 px-3">{dev.deviceType || "Device"}</td>
+                            <td className="py-2.5 px-3 font-medium">{dev.manufacturer || "—"}</td>
+                            <td className="py-2.5 px-3 font-medium">{dev.model || "—"}</td>
+                            <td className="py-2.5 px-3 font-mono font-semibold text-slate-700">{dev.serialNumber || "—"}</td>
                             <td className="py-2.5 px-3">{getStatusBadge(dev.status)}</td>
                             <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">

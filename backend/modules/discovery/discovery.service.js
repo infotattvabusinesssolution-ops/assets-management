@@ -13,7 +13,7 @@ const parse = (value) => {
 const observationInclude = {
   matches: {
     orderBy: { updatedAt: 'desc' },
-    include: { matchedAsset: { include: { site: true, department: true } } }
+    include: { matchedAsset: { include: { site: true, department: true, model: true, manufacturer: true } } }
   }
 };
 
@@ -29,9 +29,9 @@ const mapDevice = (observation) => {
     hostname: observation.hostname || '',
     macAddress: observation.macAddress || '',
     deviceType: metadata.deviceType || 'Device',
-    manufacturer: observation.manufacturer || '',
-    model: observation.modelName || '',
-    serialNumber: observation.serialNumber || '',
+    manufacturer: observation.manufacturer || asset?.manufacturer?.name || '',
+    model: observation.modelName || asset?.model?.name || '',
+    serialNumber: observation.serialNumber || asset?.serialNumber || '',
     operatingSystem: [observation.osFamily, observation.osVersion].filter(Boolean).join(' '),
     domain: metadata.domain || '',
     discoverySource: observation.discoverySource || '',
