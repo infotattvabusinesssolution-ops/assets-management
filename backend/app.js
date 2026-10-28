@@ -38,6 +38,9 @@ import fs from 'fs';
 
 const app = express();
 
+// Trust reverse proxy (Nginx) for proper rate limiting and IP forwarding
+app.set('trust proxy', 1);
+
 // Ensure local uploads directory exists
 const uploadsDir = path.resolve(process.cwd(), 'uploads');
 if (!fs.existsSync(uploadsDir)) {

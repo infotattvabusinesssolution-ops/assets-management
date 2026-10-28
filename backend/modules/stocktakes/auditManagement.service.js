@@ -234,9 +234,6 @@ export async function getAudits({ search = '', status = 'ALL', auditType = 'ALL'
   try {
     const dbCampaigns = await prisma.stocktakeCampaign.findMany({
       include: {
-        site: true,
-        building: true,
-        floor: true,
         expectedAssets: true
       },
       orderBy: { createdAt: 'desc' }
@@ -319,9 +316,6 @@ export async function getAuditById(id) {
         ]
       },
       include: {
-        site: true,
-        building: true,
-        floor: true,
         expectedAssets: true
       }
     });

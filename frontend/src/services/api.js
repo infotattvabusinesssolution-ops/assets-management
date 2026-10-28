@@ -1,16 +1,20 @@
 import axios from 'axios';
 
-// Dynamic URL configuration to support both Local Development and Live Server environments:
-// 1. Uses VITE_API_BASE_URL if set in .env
-// 2. Uses relative '/api/v1' in local dev mode (via Vite proxy)
-// 3. Defaults to the current origin's '/api/v1' when no URL is configured
-
+// Dynamic URL configuration:
+// 1. If running on asset.milkmen.online (or any milkmen.online subdomain), always route to https://apiasset.milkmen.online/api/v1
+// 2. If running locally on localhost/127.0.0.1, connect to http://localhost:5000/api/v1
+// 3. Otherwise use VITE_API_BASE_URL or origin fallback
 const getApiBaseUrl = () => {
-  // If running in browser on localhost or 127.0.0.1, connect directly to local backend so local development works without depending on remote deployment
+  if (typeof window !== 'undefined' && window.location.hostname.includes('milkmen.online')) {
+    return 'https://apiasset.milkmen.online/api/v1';
+  }
   if (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')) {
     return 'http://localhost:5000/api/v1';
   }
   if (import.meta.env.VITE_API_BASE_URL) {
+    if (typeof window !== 'undefined' && window.location.protocol === 'https:' && import.meta.env.VITE_API_BASE_URL.startsWith('http://localhost')) {
+      return 'https://apiasset.milkmen.online/api/v1';
+    }
     return import.meta.env.VITE_API_BASE_URL;
   }
   if (typeof window !== 'undefined' && window.location && window.location.origin) {
@@ -21,9 +25,11 @@ const getApiBaseUrl = () => {
 
 export const API_BASE_URL = getApiBaseUrl();
 export const BACKEND_URL =
-  typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
-    ? 'http://localhost:5000'
-    : (import.meta.env.VITE_BACKEND_URL || (typeof window !== 'undefined' ? window.location.origin : 'http://localhost:5000'));
+  typeof window !== 'undefined' && window.location.hostname.includes('milkmen.online')
+    ? 'https://apiasset.milkmen.online'
+    : (typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1')
+        ? 'http://localhost:5000'
+        : (import.meta.env.VITE_BACKEND_URL || 'https://apiasset.milkmen.online'));
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
@@ -51,9 +57,10 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    // Resilient fallback: if deployed/remote server encounters an error (500, 502, 503, 504, 404 or network failure),
-    // automatically fall back to local backend so developer workflows and dynamic actions never fail.
+    // Resilient fallback only for local development (do not attempt insecure localhost calls from production HTTPS)
+    const isLocalhost = typeof window !== 'undefined' && (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1');
     if (
+      isLocalhost &&
       originalRequest &&
       !originalRequest._retriedLocal &&
       (!error.response || error.response.status >= 500 || error.response.status === 404)
@@ -71,7 +78,7 @@ api.interceptors.response.use(
         });
         return localResponse.data;
       } catch (localErr) {
-        // If local is also unavailable, continue to reject with original error
+        // Continue to reject with original error
       }
     }
 
