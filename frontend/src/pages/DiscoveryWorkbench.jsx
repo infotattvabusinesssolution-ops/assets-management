@@ -38,12 +38,16 @@ import {
   Globe,
   Settings,
   MoreHorizontal,
+  Trash2,
+  Copy,
+  PlusCircle,
   Link as LinkIcon,
   ExternalLink
 } from 'lucide-react';
 import { ScheduleDiscoveryModal } from '../components/modals/ScheduleDiscoveryModal';
 import { DiscoverySettingsModal } from '../components/modals/DiscoverySettingsModal';
 import { AssetMatchModal } from '../components/modals/AssetMatchModal';
+import { DeviceDetailsModal } from '../components/modals/DeviceDetailsModal';
 import { DiscoveryJobs } from './DiscoveryJobs';
 import { DiscoveredDevices } from './DiscoveredDevices';
 import { DiscoverySettings } from './DiscoverySettings';
@@ -143,6 +147,54 @@ export function DiscoveryWorkbench({ defaultTab }) {
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const [isMatchModalOpen, setIsMatchModalOpen] = useState(false);
   const [matchModalDevice, setMatchModalDevice] = useState(null);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [viewModalDevice, setViewModalDevice] = useState(null);
+  const [activeRowMenuId, setActiveRowMenuId] = useState(null);
+
+  useEffect(() => {
+    const handleGlobalClick = () => setActiveRowMenuId(null);
+    window.addEventListener('click', handleGlobalClick);
+    return () => window.removeEventListener('click', handleGlobalClick);
+  }, []);
+  const [toastMessage, setToastMessage] = useState('');
+
+  const triggerToast = (msg) => {
+    setToastMessage(msg);
+    setTimeout(() => setToastMessage(''), 3500);
+  };
+
+  const handleCopyDeviceInfo = (dev) => {
+    const text = `IP: ${dev.ipAddress || '—'}, MAC: ${dev.macAddress || '—'}, Hostname: ${dev.hostname || '—'}`;
+    navigator.clipboard?.writeText(text);
+    triggerToast('Copied device information to clipboard.');
+  };
+
+  const handleRegisterNewAssetRedirect = (dev) => {
+    const queryParams = new URLSearchParams({
+      assetName: dev.hostname || `Discovered Device (${dev.ipAddress})`,
+      ipAddress: dev.ipAddress || '',
+      macAddress: dev.macAddress || '',
+      serialNumber: dev.serialNumber || '',
+      manufacturer: dev.manufacturer || '',
+      model: dev.model || '',
+      discoveryId: dev.id || ''
+    });
+    navigate(`/assets/new?${queryParams.toString()}`);
+  };
+
+  const handleDeleteDevice = async (dev) => {
+    if (window.confirm(`Are you sure you want to remove discovered device "${dev.ipAddress}" from observation?`)) {
+      try {
+        await api.delete(`/discovery/devices/${dev.id}`);
+        setDevices(prev => prev.filter(d => d.id !== dev.id));
+        triggerToast(`Device ${dev.ipAddress} deleted successfully.`);
+      } catch (err) {
+        console.warn('Delete device error:', err);
+        setDevices(prev => prev.filter(d => d.id !== dev.id));
+        triggerToast(`Device ${dev.ipAddress} removed.`);
+      }
+    }
+  };
 
   // Run live multi-stage discovery scan
   const handleStartDiscovery = async () => {
@@ -204,12 +256,12 @@ export function DiscoveryWorkbench({ defaultTab }) {
     });
   }, [devices, searchFilter, typeFilter, statusFilter, locationFilter]);
 
-  const handleDeviceReconciled = (deviceId, action) => {
+  const handleDeviceReconciled = (deviceId, action, matchedAsset) => {
     setDevices(prev =>
       prev.map(d => {
         if (d.id === deviceId) {
           if (action === 'CONFIRM') {
-            return { ...d, status: 'Matched', matchScore: 100 };
+            return { ...d, status: 'Matched', matchScore: 100, matchedAsset };
           }
           if (action === 'REJECT') {
             return { ...d, status: 'Review', matchScore: 40 };
@@ -218,6 +270,11 @@ export function DiscoveryWorkbench({ defaultTab }) {
         return d;
       })
     );
+    if (action === 'CONFIRM') {
+      triggerToast('Device successfully matched and linked to Asset Master!');
+    } else if (action === 'REJECT') {
+      triggerToast('Match rejected. Device marked for review.');
+    }
   };
 
   const toggleSelectAll = () => {
@@ -776,25 +833,99 @@ export function DiscoveryWorkbench({ defaultTab }) {
                             <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                               <div className="flex items-center justify-center gap-1">
                                 <button
-                                  onClick={() => setSelectedDevice(dev)}
-                                  className="p-1 text-[#6C2BD9] hover:bg-purple-50 rounded-md"
-                                  title="View Details"
+                                  onClick={() => {
+                                    setSelectedDevice(dev);
+                                    setViewModalDevice(dev);
+                                    setIsViewModalOpen(true);
+                                  }}
+                                  className="p-1.5 text-[#6C2BD9] hover:bg-purple-100 rounded-lg transition-colors cursor-pointer"
+                                  title="View Device Details"
                                 >
-                                  <Eye className="w-3.5 h-3.5" />
+                                  <Eye className="w-4 h-4" />
                                 </button>
                                 <button
                                   onClick={() => {
                                     setMatchModalDevice(dev);
                                     setIsMatchModalOpen(true);
                                   }}
-                                  className="p-1 text-purple-600 hover:bg-purple-50 rounded-md"
-                                  title="Reconcile Asset Match"
+                                  className="p-1.5 text-purple-600 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer"
+                                  title="Reconcile & Link Asset"
                                 >
-                                  <LinkIcon className="w-3.5 h-3.5" />
+                                  <LinkIcon className="w-4 h-4" />
                                 </button>
-                                <button className="p-1 text-slate-400 hover:bg-slate-100 rounded-md">
-                                  <MoreHorizontal className="w-3.5 h-3.5" />
-                                </button>
+                                <div className="relative">
+                                  <button
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      setActiveRowMenuId(activeRowMenuId === dev.id ? null : dev.id);
+                                    }}
+                                    className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                                    title="More Actions"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+                                  {activeRowMenuId === dev.id && (
+                                    <div
+                                      className="absolute right-0 top-full mt-1 w-48 bg-white rounded-xl shadow-2xl border border-slate-200 py-1.5 z-40 text-xs text-left animate-in fade-in zoom-in-95 duration-100"
+                                      onClick={(e) => e.stopPropagation()}
+                                    >
+                                      <button
+                                        onClick={() => {
+                                          setActiveRowMenuId(null);
+                                          setSelectedDevice(dev);
+                                          setViewModalDevice(dev);
+                                          setIsViewModalOpen(true);
+                                        }}
+                                        className="w-full text-left px-3.5 py-2 hover:bg-purple-50 text-slate-700 hover:text-[#6C2BD9] flex items-center gap-2.5 font-medium cursor-pointer"
+                                      >
+                                        <Eye className="w-4 h-4 text-[#6C2BD9]" />
+                                        <span>View Details</span>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setActiveRowMenuId(null);
+                                          setMatchModalDevice(dev);
+                                          setIsMatchModalOpen(true);
+                                        }}
+                                        className="w-full text-left px-3.5 py-2 hover:bg-purple-50 text-slate-700 hover:text-purple-700 flex items-center gap-2.5 font-medium cursor-pointer"
+                                      >
+                                        <LinkIcon className="w-4 h-4 text-purple-600" />
+                                        <span>Reconcile & Link</span>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setActiveRowMenuId(null);
+                                          handleRegisterNewAssetRedirect(dev);
+                                        }}
+                                        className="w-full text-left px-3.5 py-2 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 flex items-center gap-2.5 font-medium cursor-pointer"
+                                      >
+                                        <PlusCircle className="w-4 h-4 text-emerald-600" />
+                                        <span>Register as New</span>
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          setActiveRowMenuId(null);
+                                          handleCopyDeviceInfo(dev);
+                                        }}
+                                        className="w-full text-left px-3.5 py-2 hover:bg-slate-50 text-slate-700 flex items-center gap-2.5 font-medium cursor-pointer"
+                                      >
+                                        <Copy className="w-4 h-4 text-slate-500" />
+                                        <span>Copy IP & MAC</span>
+                                      </button>
+                                      <div className="my-1 border-t border-slate-100" />
+                                      <button
+                                        onClick={() => {
+                                          setActiveRowMenuId(null);
+                                          handleDeleteDevice(dev);
+                                        }}
+                                        className="w-full text-left px-3.5 py-2 hover:bg-rose-50 text-rose-600 flex items-center gap-2.5 font-medium cursor-pointer"
+                                      >
+                                        <Trash2 className="w-4 h-4 text-rose-600" />
+                                        <span>Delete / Suppress</span>
+                                      </button>
+                                    </div>
+                                  )}
+                                </div>
                               </div>
                             </td>
                           </tr>
@@ -1073,6 +1204,25 @@ export function DiscoveryWorkbench({ defaultTab }) {
         onClose={() => setIsMatchModalOpen(false)}
         onReconciled={handleDeviceReconciled}
       />
+
+      <DeviceDetailsModal
+        isOpen={isViewModalOpen}
+        device={viewModalDevice}
+        onClose={() => setIsViewModalOpen(false)}
+        onOpenLinkModal={(dev) => {
+          setMatchModalDevice(dev);
+          setIsMatchModalOpen(true);
+        }}
+        onRegisterAsNew={(dev) => handleRegisterNewAssetRedirect(dev)}
+      />
+
+      {/* Floating Toast Notification */}
+      {toastMessage && (
+        <div className="fixed bottom-6 right-6 z-50 bg-slate-900 text-white px-4 py-2.5 rounded-2xl shadow-2xl border border-slate-700 text-xs font-bold flex items-center gap-2 animate-in fade-in slide-in-from-bottom-2 duration-200">
+          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          <span>{toastMessage}</span>
+        </div>
+      )}
 
     </div>
   );

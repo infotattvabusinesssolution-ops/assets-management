@@ -251,6 +251,33 @@ export function AssetForm() {
     return () => { active = false; };
   }, []);
 
+  useEffect(() => {
+    const qName = searchParams.get('assetName') || searchParams.get('name');
+    const qSerial = searchParams.get('serialNumber') || searchParams.get('serial');
+    const qMfr = searchParams.get('manufacturer') || searchParams.get('mfr');
+    const qModel = searchParams.get('model');
+    const qIp = searchParams.get('ipAddress') || searchParams.get('ip');
+    const qMac = searchParams.get('macAddress') || searchParams.get('mac');
+    const qDiscId = searchParams.get('discoveryId');
+
+    if (qName || qSerial || qMfr || qModel || qIp || qMac || qDiscId) {
+      setFormData(prev => ({
+        ...prev,
+        assetName: qName || prev.assetName,
+        serialNumber: qSerial || prev.serialNumber,
+        manufacturer: qMfr || prev.manufacturer,
+        model: qModel || prev.model,
+        ipAddress: qIp || prev.ipAddress,
+        macAddress: qMac || prev.macAddress,
+        discoveryId: qDiscId || prev.discoveryId,
+        linkToDiscovered: Boolean(qDiscId)
+      }));
+      if (qSerial) {
+        setSerialNumbers([qSerial]);
+      }
+    }
+  }, [searchParams]);
+
   // Shared Form State across both form designs
   const [formData, setFormData] = useState({
     // 1. Basic Information
