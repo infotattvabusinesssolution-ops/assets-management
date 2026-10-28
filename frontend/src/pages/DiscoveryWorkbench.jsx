@@ -261,7 +261,7 @@ export function DiscoveryWorkbench({ defaultTab }) {
       prev.map(d => {
         if (d.id === deviceId) {
           if (action === 'CONFIRM') {
-            return { ...d, status: 'Matched', matchScore: 100, matchedAsset };
+            return { ...d, status: 'Matched', assetStatus: 'Matched', matchScore: 100, manufacturer: matchedAsset?.manufacturer?.name || matchedAsset?.manufacturer || d.manufacturer || '', model: matchedAsset?.model?.name || matchedAsset?.model?.modelNumber || matchedAsset?.model || d.model || '', serialNumber: matchedAsset?.serialNumber || d.serialNumber || '', matchedAsset };
           }
           if (action === 'REJECT') {
             return { ...d, status: 'Review', matchScore: 40 };

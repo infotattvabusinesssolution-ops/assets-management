@@ -30,7 +30,7 @@ const mapDevice = (observation) => {
     macAddress: observation.macAddress || '',
     deviceType: metadata.deviceType || 'Device',
     manufacturer: observation.manufacturer || asset?.manufacturer?.name || '',
-    model: observation.modelName || asset?.model?.name || '',
+    model: observation.modelName || asset?.model?.name || asset?.model?.modelNumber || '',
     serialNumber: observation.serialNumber || asset?.serialNumber || '',
     operatingSystem: [observation.osFamily, observation.osVersion].filter(Boolean).join(' '),
     domain: metadata.domain || '',
