@@ -86,105 +86,65 @@ function BarcodePreview({ value }) {
 
 const matchesAssetType = (category, assetType) => {
   if (!assetType || assetType === 'All') return true;
-  const name = (category.name || '').toLowerCase();
-  const code = (category.code || '').toLowerCase();
+  const name = (category.name || '').toLowerCase().trim();
+  const code = (category.code || '').toLowerCase().trim();
+  const desc = (category.description || '').toLowerCase().trim();
 
-  switch (assetType) {
-    case 'IT Equipment':
-      return (
-        code.startsWith('it-') ||
-        code.startsWith('cat-it') ||
-        code.startsWith('cat-lap') ||
-        code.startsWith('cat-dsk') ||
-        code.startsWith('cat-srv') ||
-        code.startsWith('cat-disp') ||
-        code.startsWith('cat-prn') ||
-        code.startsWith('cat-acc') ||
-        code.startsWith('cat-mob') ||
-        code.startsWith('cat-tab') ||
-        name.includes('laptop') ||
-        name.includes('desktop') ||
-        name.includes('server') ||
-        name.includes('infrastructure') ||
-        name.includes('compute') ||
-        name.includes('monitor') ||
-        name.includes('display') ||
-        name.includes('printer') ||
-        name.includes('scanner') ||
-        name.includes('mobile') ||
-        name.includes('tablet') ||
-        name.includes('accessory') ||
-        name.includes('network') ||
-        name.includes('switch') ||
-        name.includes('router') ||
-        name.includes('firewall') ||
-        name.includes('hardware')
-      ) && !name.includes('furniture') && !name.includes('vehicle') && !name.includes('hvac') && !name.includes('chiller') && !name.includes('generator');
+  const normalized = assetType.toLowerCase().trim();
 
-    case 'Office Equipment':
-      return (
-        name.includes('printer') ||
-        name.includes('scanner') ||
-        name.includes('copier') ||
-        name.includes('office') ||
-        name.includes('projector') ||
-        name.includes('shredder') ||
-        name.includes('telephony') ||
-        name.includes('furniture')
-      );
-
-    case 'Machinery':
-      return (
-        (name.includes('hvac') ||
-        name.includes('chiller') ||
-        name.includes('generator') ||
-        name.includes('machine') ||
-        name.includes('cnc') ||
-        name.includes('plant') ||
-        name.includes('pump') ||
-        name.includes('compressor') ||
-        name.includes('boiler') ||
-        code.includes('hvac') ||
-        code.includes('chiller') ||
-        code.includes('gen') ||
-        code.includes('plant')) && !name.includes('mobile')
-      );
-
-    case 'Vehicle':
-      return (
-        name.includes('vehicle') ||
-        name.includes('car') ||
-        name.includes('truck') ||
-        name.includes('van') ||
-        name.includes('fleet') ||
-        name.includes('forklift') ||
-        code.includes('veh')
-      );
-
-    case 'Furniture':
-      return (
-        name.includes('furniture') ||
-        (name.includes('desk') && !name.includes('desktop')) ||
-        name.includes('chair') ||
-        name.includes('cabinet') ||
-        name.includes('seating') ||
-        code.includes('furn')
-      );
-
-    case 'Facility & Building':
-      return (
-        name.includes('building') ||
-        name.includes('facility') ||
-        name.includes('civil') ||
-        (name.includes('structure') && !name.includes('infra')) ||
-        name.includes('hvac') ||
-        name.includes('electrical') ||
-        code.includes('bld')
-      );
-
-    default:
-      return true;
+  // 1. Explicit tags in description
+  if (desc.includes('[type:vehicle]') || desc.includes('[type:vehicles]')) {
+    return normalized.includes('vehicle');
   }
+  if (desc.includes('[type:furniture]')) {
+    return normalized.includes('furniture');
+  }
+  if (desc.includes('[type:machinery]') || desc.includes('[type:plant]')) {
+    return normalized.includes('machinery');
+  }
+  if (desc.includes('[type:facility]') || desc.includes('[type:building]')) {
+    return normalized.includes('facility') || normalized.includes('building');
+  }
+  if (desc.includes('[type:office]')) {
+    return normalized.includes('office');
+  }
+  if (desc.includes('[type:it]')) {
+    return normalized.includes('it') || normalized.includes('tech');
+  }
+
+  // 2. Keyword Classifications
+  const isVehicle = name.includes('vehicle') || name.includes('car') || name.includes('truck') || name.includes('van') || name.includes('fleet') || name.includes('forklift') || code.includes('veh');
+  const isFurniture = name.includes('furniture') || (name.includes('desk') && !name.includes('desktop')) || name.includes('chair') || name.includes('cabinet') || name.includes('seating') || code.includes('furn') || code.includes('ffe');
+  const isMachinery = name.includes('machine') || name.includes('cnc') || name.includes('plant') || name.includes('pump') || name.includes('compressor') || name.includes('boiler') || name.includes('chiller') || name.includes('generator') || code.includes('gen') || code.includes('chiller') || code.includes('mach');
+  const isFacility = name.includes('building') || name.includes('facility') || name.includes('civil') || (name.includes('structure') && !name.includes('infra')) || name.includes('hvac') || name.includes('electrical') || name.includes('plumbing') || code.includes('bld') || code.includes('hvac') || code.includes('mep');
+  const isOffice = name.includes('printer') || name.includes('scanner') || name.includes('copier') || name.includes('office') || name.includes('projector') || name.includes('shredder') || name.includes('telephony') || code.includes('prn') || code.includes('prt');
+  
+  const isIT = code.startsWith('it-') || code.startsWith('cat-it') || code.startsWith('cat-lap') || code.startsWith('cat-dsk') || code.startsWith('cat-srv') || code.startsWith('cat-disp') || code.startsWith('cat-prn') || code.startsWith('cat-acc') || code.startsWith('cat-mob') || code.startsWith('cat-tab') ||
+    name.includes('laptop') || name.includes('desktop') || name.includes('server') || name.includes('infrastructure') || name.includes('compute') || name.includes('monitor') || name.includes('display') || name.includes('mobile') || name.includes('tablet') || name.includes('accessory') || name.includes('network') || name.includes('switch') || name.includes('router') || name.includes('firewall') || name.includes('hardware');
+
+  // Check if it's an unclassified custom category
+  const isOther = !isVehicle && !isFurniture && !isMachinery && !isFacility && !isOffice && !isIT;
+
+  if (normalized.includes('vehicle')) {
+    return isVehicle;
+  }
+  if (normalized.includes('furniture')) {
+    return isFurniture;
+  }
+  if (normalized.includes('machinery')) {
+    return isMachinery;
+  }
+  if (normalized.includes('facility') || normalized.includes('building')) {
+    return isFacility;
+  }
+  if (normalized.includes('office')) {
+    return isOffice || (isIT && (name.includes('printer') || name.includes('monitor') || name.includes('accessory')));
+  }
+  if (normalized.includes('it') || normalized.includes('tech')) {
+    return (isIT || isOther) && !isVehicle && !isFurniture && !isMachinery && !isFacility;
+  }
+
+  return true;
 };
 
 export function AssetForm() {
@@ -422,12 +382,13 @@ export function AssetForm() {
   };
   const categoryCode = categories.find(category => category.id === formData.categoryId)?.code?.replace(/^CAT[-_ ]?/i, '') || formData.category;
   const subcategoryCode = assetClasses.find(assetClass => assetClass.id === formData.assetClassId)?.code?.replace(/^CLS[-_ ]?/i, '') || formData.subcategory;
-  // 1. Live Categories dynamically loaded from Master Data
+  // 1. Cascading Categories based on selected Asset Type
   const availableCategories = useMemo(() => {
     const activeCats = (categories || []).filter(c => c.active !== false);
+    const filtered = activeCats.filter(c => matchesAssetType(c, formData.assetType));
     const seen = new Set();
     const unique = [];
-    for (const c of activeCats) {
+    for (const c of filtered) {
       const cleanName = (c.name || '').trim();
       if (cleanName && !seen.has(cleanName.toLowerCase())) {
         seen.add(cleanName.toLowerCase());
@@ -435,7 +396,7 @@ export function AssetForm() {
       }
     }
     return unique;
-  }, [categories]);
+  }, [categories, formData.assetType]);
 
   // 2. Cascading Sub Categories / Asset Classes based on selected Category
   const availableAssetClasses = useMemo(() => {
@@ -467,9 +428,19 @@ export function AssetForm() {
 
   // Handlers for cascading state updates
   const handleAssetTypeChange = (newType) => {
+    const nextCategories = (categories || []).filter(c => c.active !== false && matchesAssetType(c, newType));
+    const isCatStillValid = nextCategories.some(c => 
+      (c.id && c.id === formData.categoryId) || 
+      ((c.name || '').trim().toLowerCase() === (formData.category || '').trim().toLowerCase())
+    );
+
     setFormData(prev => ({
       ...prev,
-      assetType: newType
+      assetType: newType,
+      category: isCatStillValid ? prev.category : '',
+      categoryId: isCatStillValid ? prev.categoryId : '',
+      subcategory: isCatStillValid ? prev.subcategory : '',
+      assetClassId: isCatStillValid ? prev.assetClassId : ''
     }));
   };
 

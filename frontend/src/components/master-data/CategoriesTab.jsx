@@ -384,12 +384,23 @@ export function CategoriesTab({
     e.preventDefault();
     if (!catFormState.code || !catFormState.name) return;
 
+    const groupToTag = {
+      'Information Technology': '[type:it]',
+      'Buildings & Facilities': '[type:facility]',
+      'Plant & Machinery': '[type:machinery]',
+      'Vehicles': '[type:vehicle]',
+      'Furniture, Fixtures & Equipment': '[type:furniture]'
+    };
+    const tag = groupToTag[catFormState.groupName] || '[type:it]';
+    let cleanDesc = (catFormState.description || '').replace(/\[type:[^\]]+\]/g, '').trim();
+    const taggedDescription = cleanDesc ? `${cleanDesc} ${tag}` : tag;
+
     if (editingCategory) {
       try {
         await api.put(`/master-data/categories/${editingCategory.id}`, {
           code: catFormState.code.toUpperCase(),
           name: catFormState.name,
-          description: catFormState.description,
+          description: taggedDescription,
           status: catFormState.status
         });
         await loadCategories();
@@ -404,7 +415,7 @@ export function CategoriesTab({
                 name: catFormState.name,
                 className: catFormState.className,
                 groupName: catFormState.groupName,
-                description: catFormState.description,
+                description: taggedDescription,
                 status: catFormState.status,
                 lastModifiedBy: 'Logged In User',
                 lastModifiedOn: new Date().toLocaleDateString('en-GB', {
@@ -426,7 +437,7 @@ export function CategoriesTab({
         await api.post('/master-data/categories', {
           code: catFormState.code.toUpperCase(),
           name: catFormState.name,
-          description: catFormState.description,
+          description: taggedDescription,
           status: catFormState.status
         });
         await loadCategories();
@@ -439,7 +450,7 @@ export function CategoriesTab({
           name: catFormState.name,
           className: catFormState.className,
           groupName: catFormState.groupName,
-          description: catFormState.description,
+          description: taggedDescription,
           totalAssets: 0,
           status: catFormState.status,
           createdBy: 'Admin User',
