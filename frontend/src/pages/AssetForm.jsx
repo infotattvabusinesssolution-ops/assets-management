@@ -1549,14 +1549,37 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Manufacturer</label>
-          <input
-            type="text"
-            value={formData.manufacturer}
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">Manufacturer</label>
+            <span className="text-[10px] text-purple-600 font-semibold">From Master Data</span>
+          </div>
+          <select
+            value={formData.manufacturer || ''}
             onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-            placeholder="e.g. Dell, HP, Apple (optional)"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          />
+          >
+            <option value="">-- Select Manufacturer --</option>
+            {manufacturers && manufacturers.length > 0 ? (
+              manufacturers.map((m) => {
+                const name = m.name || m.title || m;
+                return (
+                  <option key={m.id || m._id || name} value={name}>
+                    {name}
+                  </option>
+                );
+              })
+            ) : (
+              <>
+                <option value="Dell Technologies">Dell Technologies</option>
+                <option value="Apple">Apple</option>
+                <option value="HP Inc.">HP Inc.</option>
+                <option value="Cisco Systems">Cisco Systems</option>
+                <option value="Lenovo">Lenovo</option>
+                <option value="Toyota">Toyota</option>
+                <option value="Herman Miller">Herman Miller</option>
+              </>
+            )}
+          </select>
         </div>
 
         <div>
@@ -3161,9 +3184,23 @@ export function AssetForm() {
                     onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
-                    <option value="Dell">Dell</option>
-                    <option value="Apple">Apple</option>
-                    <option value="HP">HP</option>
+                    <option value="">-- Select Manufacturer --</option>
+                    {manufacturers && manufacturers.length > 0 ? (
+                      manufacturers.map((m) => {
+                        const name = m.name || m.title || m;
+                        return (
+                          <option key={m.id || m._id || name} value={name}>
+                            {name}
+                          </option>
+                        );
+                      })
+                    ) : (
+                      <>
+                        <option value="Dell Technologies">Dell Technologies</option>
+                        <option value="Apple">Apple</option>
+                        <option value="HP Inc.">HP Inc.</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
