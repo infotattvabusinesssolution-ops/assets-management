@@ -295,7 +295,7 @@ export function DepartmentsTab({
         }));
         const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
         const remainingInitial = INITIAL_DEPARTMENTS.filter((d) => !dbCodes.has(d.code.toUpperCase()));
-        const fullList = [...mapped, ...remainingInitial];
+        const fullList = mapped.length > 0 ? mapped : remainingInitial;
         setDepartmentsList(fullList);
         setSelectedDepartment((prev) => (prev ? fullList.find((d) => d.id === prev.id) || fullList[0] : fullList[0]));
       }

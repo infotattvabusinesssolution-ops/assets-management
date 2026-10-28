@@ -422,12 +422,12 @@ export function AssetForm() {
   };
   const categoryCode = categories.find(category => category.id === formData.categoryId)?.code?.replace(/^CAT[-_ ]?/i, '') || formData.category;
   const subcategoryCode = assetClasses.find(assetClass => assetClass.id === formData.assetClassId)?.code?.replace(/^CLS[-_ ]?/i, '') || formData.subcategory;
-  // 1. Cascading Categories based on selected Asset Type
+  // 1. Live Categories dynamically loaded from Master Data
   const availableCategories = useMemo(() => {
-    const filtered = categories.filter(c => matchesAssetType(c, formData.assetType));
+    const activeCats = (categories || []).filter(c => c.active !== false);
     const seen = new Set();
     const unique = [];
-    for (const c of filtered) {
+    for (const c of activeCats) {
       const cleanName = (c.name || '').trim();
       if (cleanName && !seen.has(cleanName.toLowerCase())) {
         seen.add(cleanName.toLowerCase());
@@ -435,7 +435,7 @@ export function AssetForm() {
       }
     }
     return unique;
-  }, [categories, formData.assetType]);
+  }, [categories]);
 
   // 2. Cascading Sub Categories / Asset Classes based on selected Category
   const availableAssetClasses = useMemo(() => {
@@ -467,18 +467,9 @@ export function AssetForm() {
 
   // Handlers for cascading state updates
   const handleAssetTypeChange = (newType) => {
-    const nextCategories = categories.filter(c => matchesAssetType(c, newType));
-    const isCatStillValid = nextCategories.some(c => 
-      c.id === formData.categoryId || (c.name || '').trim().toLowerCase() === (formData.category || '').trim().toLowerCase()
-    );
-
     setFormData(prev => ({
       ...prev,
-      assetType: newType,
-      category: isCatStillValid ? prev.category : '',
-      categoryId: isCatStillValid ? prev.categoryId : '',
-      subcategory: isCatStillValid ? prev.subcategory : '',
-      assetClassId: isCatStillValid ? prev.assetClassId : ''
+      assetType: newType
     }));
   };
 
@@ -1550,7 +1541,7 @@ export function AssetForm() {
               {fieldErrors.category}
             </p>
           ) : availableCategories.length === 0 ? (
-            <p className="text-[11px] text-amber-600 mt-1">No categories found for {formData.assetType}.</p>
+            <p className="text-[11px] text-amber-600 mt-1">No categories found.</p>
           ) : null}
         </div>
 
@@ -3126,7 +3117,7 @@ export function AssetForm() {
                       {availableCategories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
                     </select>
                     {availableCategories.length === 0 && (
-                      <p className="text-[10px] text-amber-600 mt-0.5">No categories for {formData.assetType}</p>
+                      <p className="text-[10px] text-amber-600 mt-0.5">No categories found</p>
                     )}
                   </div>
                   <div>

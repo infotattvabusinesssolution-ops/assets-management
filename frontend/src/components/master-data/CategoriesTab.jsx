@@ -278,7 +278,7 @@ export function CategoriesTab({
         }));
         const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
         const remainingInitial = INITIAL_CATEGORIES.filter((c) => !dbCodes.has(c.code.toUpperCase()));
-        const fullList = [...mapped, ...remainingInitial];
+        const fullList = mapped.length > 0 ? mapped : remainingInitial;
         setCategoriesList(fullList);
         setSelectedCategory((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
       }

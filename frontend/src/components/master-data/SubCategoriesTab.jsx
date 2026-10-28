@@ -289,39 +289,49 @@ export function SubCategoriesTab({
   const [selectedSubCategory, setSelectedSubCategory] = useState(INITIAL_SUB_CATEGORIES[0]);
   const [selectedSubCatIds, setSelectedSubCatIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [categories, setCategories] = useState([]);
 
-  // Load live sub-categories / asset models from backend database
+  // Load live sub-categories / asset classes from backend database
   const loadSubCategories = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/models?includeInactive=true').catch(() => null);
-      if (res?.models && res.models.length > 0) {
-        const mapped = res.models.map((m, idx) => ({
-          id: m.id,
-          code: m.modelNumber || `SUB-${m.id.substring(0, 6).toUpperCase()}`,
-          name: m.name,
-          categoryName: m.category?.name || 'Laptops & Notebooks',
+      const [classRes, catRes] = await Promise.all([
+        api.get('/master-data/asset-classes?includeInactive=true').catch(() => null),
+        api.get('/master-data/categories?includeInactive=true').catch(() => null)
+      ]);
+
+      if (catRes?.categories) {
+        setCategories(catRes.categories);
+      }
+
+      if (classRes?.assetClasses && classRes.assetClasses.length > 0) {
+        const mapped = classRes.assetClasses.map((ac, idx) => ({
+          id: ac.id,
+          code: ac.code,
+          name: ac.name,
+          categoryId: ac.categoryId,
+          categoryName: ac.category?.name || 'General',
           className: 'Hardware',
-          groupName: 'Information Technology',
-          description: m.specifications || `Sub-category specification for ${m.name}`,
-          totalAssets: (idx + 1) * 20,
-          status: m.active === false ? 'Inactive' : 'Active',
+          groupName: 'General',
+          description: ac.description || '',
+          totalAssets: (idx + 1) * 15,
+          status: ac.active === false ? 'Inactive' : 'Active',
           createdBy: 'Admin',
-          createdOn: m.createdAt ? new Date(m.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 10:30 AM' : '12 Jan 2025 10:30 AM',
+          createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 10:30 AM' : '15 Jan 2025 10:30 AM',
           lastModifiedBy: 'Admin',
-          lastModifiedOn: m.updatedAt ? new Date(m.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:15 PM' : '05 Aug 2025 02:15 PM',
+          lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:15 PM' : '15 Jan 2025 02:15 PM',
           relatedInfo: {
-            assets: (idx + 1) * 20,
-            maintenancePlans: 2,
-            documents: 3,
-            spareParts: 8
+            assets: (idx + 1) * 15,
+            maintenancePlans: 1,
+            documents: 2,
+            spareParts: 4
           }
         }));
-        const dbCodes = new Set(mapped.map((s) => s.code.toUpperCase()));
-        const remainingInitial = INITIAL_SUB_CATEGORIES.filter((s) => !dbCodes.has(s.code.toUpperCase()));
-        const fullList = [...mapped, ...remainingInitial];
-        setSubCategoriesList(fullList);
-        setSelectedSubCategory((prev) => (prev ? fullList.find((s) => s.id === prev.id) || fullList[0] : fullList[0]));
+        setSubCategoriesList(mapped);
+        setSelectedSubCategory((prev) => (prev ? mapped.find((s) => s.id === prev.id) || mapped[0] : mapped[0]));
+      } else {
+        setSubCategoriesList(INITIAL_SUB_CATEGORIES);
+        setSelectedSubCategory(INITIAL_SUB_CATEGORIES[0]);
       }
     } catch (err) {
       console.warn('Failed to fetch sub-categories from backend:', err);
@@ -433,88 +443,39 @@ export function SubCategoriesTab({
     e.preventDefault();
     if (!subCatFormState.code || !subCatFormState.name) return;
 
+    let targetCatId = subCatFormState.categoryId;
+    if (!targetCatId && categories.length > 0) {
+      const found = categories.find(c => c.name === subCatFormState.categoryName) || categories[0];
+      targetCatId = found?.id;
+    }
+
     if (editingSubCategory) {
       try {
-        await api.put(`/master-data/entities/model/${editingSubCategory.id}`, {
+        await api.put(`/master-data/asset-classes/${editingSubCategory.id}`, {
+          code: subCatFormState.code.toUpperCase(),
           name: subCatFormState.name,
-          modelNumber: subCatFormState.code.toUpperCase(),
-          specifications: subCatFormState.description,
-          active: subCatFormState.status === 'Active'
-        }).catch(() => null);
+          categoryId: targetCatId,
+          description: subCatFormState.description,
+          status: subCatFormState.status
+        });
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" updated successfully.`);
       } catch (err) {
         console.warn('Save sub-category error:', err);
-        const updated = subCategoriesList.map((s) =>
-          s.id === editingSubCategory.id
-            ? {
-                ...s,
-                code: subCatFormState.code.toUpperCase(),
-                name: subCatFormState.name,
-                categoryName: subCatFormState.categoryName,
-                className: subCatFormState.className,
-                groupName: subCatFormState.groupName,
-                description: subCatFormState.description,
-                status: subCatFormState.status,
-                lastModifiedBy: 'Logged In User',
-                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                }) + ' 02:30 PM'
-              }
-            : s
-        );
-        setSubCategoriesList(updated);
-        if (selectedSubCategory?.id === editingSubCategory.id) {
-          setSelectedSubCategory(updated.find((item) => item.id === editingSubCategory.id));
-        }
-        triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" updated successfully.`);
       }
     } else {
       try {
-        await api.post('/master-data/models', {
+        await api.post('/master-data/asset-classes', {
+          code: subCatFormState.code.toUpperCase(),
           name: subCatFormState.name,
-          modelNumber: subCatFormState.code.toUpperCase(),
-          specifications: subCatFormState.description,
-          active: subCatFormState.status === 'Active'
-        }).catch(() => null);
+          categoryId: targetCatId,
+          description: subCatFormState.description,
+          status: subCatFormState.status
+        });
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
       } catch (err) {
         console.warn('Create sub-category error:', err);
-        const newSubCat = {
-          id: Date.now(),
-          code: subCatFormState.code.toUpperCase(),
-          name: subCatFormState.name,
-          categoryName: subCatFormState.categoryName,
-          className: subCatFormState.className,
-          groupName: subCatFormState.groupName,
-          description: subCatFormState.description,
-          totalAssets: 0,
-          status: subCatFormState.status,
-          createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }) + ' 10:30 AM',
-          lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }) + ' 10:30 AM',
-          relatedInfo: {
-            assets: 0,
-            maintenancePlans: 0,
-            documents: 0,
-            spareParts: 0
-          }
-        };
-        setSubCategoriesList([newSubCat, ...subCategoriesList]);
-        setSelectedSubCategory(newSubCat);
-        triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
       }
     }
     setShowAddSubCatModal(false);
@@ -543,19 +504,11 @@ export function SubCategoriesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = sc.status === 'Active' ? 'Inactive' : 'Active';
     try {
-      await api.patch(`/master-data/entities/model/${sc.id}/status`).catch(() => null);
+      await api.put(`/master-data/asset-classes/${sc.id}`, { status: newStatus });
       await loadSubCategories();
       triggerToast && triggerToast(`Sub Category "${sc.code}" status changed to ${newStatus}.`);
     } catch (err) {
       console.warn('Status toggle error:', err);
-      const updated = subCategoriesList.map((s) =>
-        s.id === sc.id ? { ...s, status: newStatus } : s
-      );
-      setSubCategoriesList(updated);
-      if (selectedSubCategory?.id === sc.id) {
-        setSelectedSubCategory({ ...selectedSubCategory, status: newStatus });
-      }
-      triggerToast && triggerToast(`Sub Category "${sc.code}" status changed to ${newStatus}.`);
     }
   };
 
@@ -563,15 +516,11 @@ export function SubCategoriesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Sub Category "${sc.name}" (${sc.code})?`)) {
       try {
-        await api.delete(`/master-data/entities/model/${sc.id}`).catch(() => null);
+        await api.delete(`/master-data/asset-classes/${sc.id}`);
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
       } catch (err) {
         console.warn('Delete sub-category error:', err);
-        const remaining = subCategoriesList.filter((s) => s.id !== sc.id);
-        setSubCategoriesList(remaining);
-        if (remaining.length > 0) setSelectedSubCategory(remaining[0]);
-        triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
       }
     }
   };
@@ -617,13 +566,9 @@ export function SubCategoriesTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Categories">All Categories</option>
-              <option value="Laptops & Notebooks">Laptops & Notebooks</option>
-              <option value="Desktop Workstations">Desktop Workstations</option>
-              <option value="Rack & Blade Servers">Rack & Blade Servers</option>
-              <option value="Enterprise Network Switches">Enterprise Network Switches</option>
-              <option value="Central Water Chillers">Central Water Chillers</option>
-              <option value="Backup Power Generators">Backup Power Generators</option>
-              <option value="Office Ergonomic Seating">Office Ergonomic Seating</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.name}>{c.name}</option>
+              ))}
             </select>
           </div>
 
@@ -1047,17 +992,22 @@ export function SubCategoriesTab({
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Category *</label>
                 <select
-                  value={subCatFormState.categoryName}
-                  onChange={(e) => setSubCatFormState({ ...subCatFormState, categoryName: e.target.value })}
+                  required
+                  value={subCatFormState.categoryId || ''}
+                  onChange={(e) => {
+                    const selectedCat = categories.find((c) => c.id === e.target.value);
+                    setSubCatFormState({
+                      ...subCatFormState,
+                      categoryId: e.target.value,
+                      categoryName: selectedCat?.name || ''
+                    });
+                  }}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
-                  <option value="Laptops & Notebooks">Laptops & Notebooks</option>
-                  <option value="Desktop Workstations">Desktop Workstations</option>
-                  <option value="Rack & Blade Servers">Rack & Blade Servers</option>
-                  <option value="Enterprise Network Switches">Enterprise Network Switches</option>
-                  <option value="Central Water Chillers">Central Water Chillers</option>
-                  <option value="Backup Power Generators">Backup Power Generators</option>
-                  <option value="Office Ergonomic Seating">Office Ergonomic Seating</option>
+                  <option value="">Select Category *</option>
+                  {categories.map((c) => (
+                    <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
+                  ))}
                 </select>
               </div>
 

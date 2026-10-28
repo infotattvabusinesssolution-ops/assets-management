@@ -347,7 +347,7 @@ export function SuppliersTab({
         }));
         const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
         const remainingInitial = INITIAL_SUPPLIERS.filter((s) => !dbCodes.has(s.code.toUpperCase()));
-        const fullList = [...mapped, ...remainingInitial];
+        const fullList = mapped.length > 0 ? mapped : remainingInitial;
         setSuppliersList(fullList);
         setSelectedSupplier((prev) => (prev ? fullList.find((s) => s.id === prev.id) || fullList[0] : fullList[0]));
       }
