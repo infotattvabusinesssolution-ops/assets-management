@@ -20,222 +20,12 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { DEFAULT_ASSET_TYPES } from './GenericMasterTab';
 import { INITIAL_CLASSES } from './ClassesTab';
 import { INITIAL_CATEGORIES } from './CategoriesTab';
 import { INITIAL_SUB_CATEGORIES } from './SubCategoriesTab';
 
-export const INITIAL_ASSET_GROUPS = [
-  {
-    id: 1,
-    code: 'IT',
-    name: 'Information Technology',
-    description: 'IT hardware and software assets including laptops, desktops, servers, network devices and related accessories.',
-    assetType: 'Both',
-    assetTypeLabel: 'Both (Physical & Intangible)',
-    totalAssets: 1245,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '12 Jan 2025 10:30 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '05 Aug 2025 02:15 PM',
-    relatedInfo: {
-      classes: 8,
-      categories: 24,
-      subCategories: 56,
-      assets: 1245,
-      documents: 3
-    }
-  },
-  {
-    id: 2,
-    code: 'BLD',
-    name: 'Buildings & Facilities',
-    description: 'Buildings, facilities and infrastructure including office premises, warehouses, and HVAC systems.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 860,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '14 Jan 2025 09:15 AM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '10 Jun 2025 11:40 AM',
-    relatedInfo: {
-      classes: 5,
-      categories: 12,
-      subCategories: 28,
-      assets: 860,
-      documents: 14
-    }
-  },
-  {
-    id: 3,
-    code: 'PLANT',
-    name: 'Plant & Machinery',
-    description: 'Production and plant equipment, manufacturing lines, generators, and heavy machinery.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 642,
-    status: 'Active',
-    createdBy: 'John Doe',
-    createdOn: '18 Jan 2025 02:20 PM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '18 Jul 2025 04:10 PM',
-    relatedInfo: {
-      classes: 6,
-      categories: 18,
-      subCategories: 42,
-      assets: 642,
-      documents: 8
-    }
-  },
-  {
-    id: 4,
-    code: 'VEH',
-    name: 'Vehicles',
-    description: 'Fleet vehicles and transport equipment including delivery vans, corporate cars, and forklifts.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 215,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Jan 2025 11:05 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '02 Aug 2025 09:30 AM',
-    relatedInfo: {
-      classes: 4,
-      categories: 8,
-      subCategories: 16,
-      assets: 215,
-      documents: 12
-    }
-  },
-  {
-    id: 5,
-    code: 'FF&E',
-    name: 'Furniture, Fixtures & Equipment',
-    description: 'Office furniture and fixtures including executive desks, ergonomic seating, and conference tables.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 530,
-    status: 'Active',
-    createdBy: 'Sarah Ahmed',
-    createdOn: '22 Jan 2025 04:45 PM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '12 May 2025 01:15 PM',
-    relatedInfo: {
-      classes: 4,
-      categories: 15,
-      subCategories: 32,
-      assets: 530,
-      documents: 2
-    }
-  },
-  {
-    id: 6,
-    code: 'MED',
-    name: 'Medical Equipment',
-    description: 'Hospital and clinical equipment, diagnostic tools, patient monitors, and lab apparatus.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 312,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '25 Jan 2025 10:00 AM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '28 Jun 2025 03:50 PM',
-    relatedInfo: {
-      classes: 7,
-      categories: 20,
-      subCategories: 45,
-      assets: 312,
-      documents: 9
-    }
-  },
-  {
-    id: 7,
-    code: 'TOOL',
-    name: 'Tools & Accessories',
-    description: 'Tools and small equipment used for maintenance, repairs, and daily operations.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 198,
-    status: 'Active',
-    createdBy: 'Ramesh Kumar',
-    createdOn: '28 Jan 2025 01:30 PM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '15 Aug 2025 10:20 AM',
-    relatedInfo: {
-      classes: 3,
-      categories: 10,
-      subCategories: 22,
-      assets: 198,
-      documents: 1
-    }
-  },
-  {
-    id: 8,
-    code: 'SW',
-    name: 'Software Assets',
-    description: 'Licensed software and subscriptions including ERP platforms, design suites, and cloud applications.',
-    assetType: 'Intangible',
-    assetTypeLabel: 'Intangible / Digital',
-    totalAssets: 420,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '01 Feb 2025 09:00 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '01 Aug 2025 05:00 PM',
-    relatedInfo: {
-      classes: 5,
-      categories: 14,
-      subCategories: 30,
-      assets: 420,
-      documents: 6
-    }
-  },
-  {
-    id: 9,
-    code: 'LIC',
-    name: 'Licenses',
-    description: 'Regulatory and operational licenses, patents, copyrights, and commercial permits.',
-    assetType: 'Intangible',
-    assetTypeLabel: 'Intangible / Digital',
-    totalAssets: 124,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '05 Feb 2025 03:10 PM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '20 Jul 2025 11:15 AM',
-    relatedInfo: {
-      classes: 3,
-      categories: 7,
-      subCategories: 15,
-      assets: 124,
-      documents: 18
-    }
-  },
-  {
-    id: 10,
-    code: 'OTH',
-    name: 'Other Assets',
-    description: 'Miscellaneous assets not categorized in standard groups.',
-    assetType: 'Both',
-    assetTypeLabel: 'Both (Physical & Intangible)',
-    totalAssets: 76,
-    status: 'Inactive',
-    createdBy: 'John Doe',
-    createdOn: '10 Feb 2025 11:45 AM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '04 Aug 2025 09:00 AM',
-    relatedInfo: {
-      classes: 2,
-      categories: 4,
-      subCategories: 8,
-      assets: 76,
-      documents: 0
-    }
-  }
-];
+export const INITIAL_ASSET_GROUPS = [];
 
 export function AssetGroupsTab({
   triggerToast,
@@ -244,8 +34,8 @@ export function AssetGroupsTab({
   reloadTrigger,
   onNavigateTab
 }) {
-  const [assetGroups, setAssetGroups] = useState(INITIAL_ASSET_GROUPS);
-  const [selectedGroup, setSelectedGroup] = useState(INITIAL_ASSET_GROUPS[0]);
+  const [assetGroups, setAssetGroups] = useState([]);
+  const [selectedGroup, setSelectedGroup] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -263,6 +53,16 @@ export function AssetGroupsTab({
   const [showAddGrpModal, setShowAddGrpModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [modalError, setModalError] = useState('');
+  const [availableAssetTypes, setAvailableAssetTypes] = useState(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+      const existing = new Set(custom.map(c => c.name.toLowerCase()));
+      return [...custom, ...DEFAULT_ASSET_TYPES.filter(d => !existing.has(d.name.toLowerCase()))];
+    } catch (_) {
+      return DEFAULT_ASSET_TYPES;
+    }
+  });
+
   const [grpFormState, setGrpFormState] = useState({
     code: '',
     name: '',
@@ -303,19 +103,16 @@ export function AssetGroupsTab({
         const merged = [...missingCustom, ...res.assetGroups];
         setAssetGroups(merged);
         if (!selectedGroup || !merged.some((g) => g.id === selectedGroup.id)) {
-          setSelectedGroup(merged[0]);
+          setSelectedGroup(merged[0] || null);
         }
-      } else if (customGroups.length > 0) {
-        const merged = [...customGroups, ...INITIAL_ASSET_GROUPS];
-        setAssetGroups(merged);
+      } else {
+        setAssetGroups(customGroups);
+        setSelectedGroup(customGroups[0] || null);
       }
     } catch (err) {
-      console.warn('Failed to fetch asset groups from backend, falling back to local dataset:', err);
-      if (customGroups.length > 0) {
-        const existingCodes = new Set(INITIAL_ASSET_GROUPS.map(g => g.code.toUpperCase()));
-        const missing = customGroups.filter(g => !existingCodes.has(g.code.toUpperCase()));
-        setAssetGroups([...missing, ...INITIAL_ASSET_GROUPS]);
-      }
+      console.warn('Failed to fetch asset groups from backend, using local dataset:', err);
+      setAssetGroups(customGroups);
+      setSelectedGroup(customGroups[0] || null);
     } finally {
       setIsLoading(false);
     }
@@ -798,28 +595,30 @@ export function AssetGroupsTab({
         <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Asset Group Details</h3>
-            <div className="flex items-center gap-1.5">
-              <button
-                onClick={() => handleOpenAddGrpModal(selectedGroup)}
-                className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-              >
-                <Edit className="w-3.5 h-3.5" />
-                <span>Edit</span>
-              </button>
-              <button
-                onClick={() => {
-                  setGroupToDelete(selectedGroup);
-                  setShowDeleteConfirmModal(true);
-                }}
-                className="p-1.5 rounded-xl border border-slate-200 hover:bg-rose-50 text-slate-400 hover:text-rose-600 cursor-pointer"
-                title="Delete Group"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
+            {selectedGroup && (
+              <div className="flex items-center gap-1.5">
+                <button
+                  onClick={() => handleOpenAddGrpModal(selectedGroup)}
+                  className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Edit className="w-3.5 h-3.5" />
+                  <span>Edit</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setGroupToDelete(selectedGroup);
+                    setShowDeleteConfirmModal(true);
+                  }}
+                  className="p-1.5 rounded-xl border border-slate-200 hover:bg-rose-50 text-slate-400 hover:text-rose-600 cursor-pointer"
+                  title="Delete Group"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                </button>
+              </div>
+            )}
           </div>
 
-          {selectedGroup && (
+          {selectedGroup ? (
             <div className="space-y-3.5 text-xs">
               <div className="grid grid-cols-3 gap-1 py-1">
                 <span className="text-slate-500 font-medium">Group Code</span>
@@ -988,6 +787,10 @@ export function AssetGroupsTab({
                 </div>
               </div>
             </div>
+          ) : (
+            <div className="py-12 text-center text-slate-400 text-xs">
+              No asset group selected. Click "+ Add Asset Group" to create one.
+            </div>
           )}
         </div>
       </div>
@@ -1057,15 +860,16 @@ export function AssetGroupsTab({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Asset Type</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Parent Asset Type *</label>
                   <select
                     value={grpFormState.assetType}
                     onChange={(e) => setGrpFormState({ ...grpFormState, assetType: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    <option value="Both">Both (Physical & Intangible)</option>
-                    <option value="Physical">Physical Tangible</option>
-                    <option value="Intangible">Intangible / Digital</option>
+                    {availableAssetTypes.map((t) => {
+                      const name = typeof t === 'string' ? t : (t.name || t.code);
+                      return <option key={t.id || name} value={name}>{name}</option>;
+                    })}
                   </select>
                 </div>
 

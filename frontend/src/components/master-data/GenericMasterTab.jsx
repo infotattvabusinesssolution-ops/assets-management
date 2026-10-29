@@ -23,16 +23,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-export const DEFAULT_MANUFACTURERS = [
-  { id: '1', code: 'MFG-DELL', name: 'Dell Technologies', website: 'https://www.dell.com', supportContact: 'prosupport@dell.com', country: 'United States', status: 'Active', totalAssets: 480 },
-  { id: '2', code: 'MFG-AAPL', name: 'Apple Inc.', website: 'https://www.apple.com', supportContact: 'enterprise@apple.com', country: 'United States', status: 'Active', totalAssets: 320 },
-  { id: '3', code: 'MFG-CSCO', name: 'Cisco Systems', website: 'https://www.cisco.com', supportContact: 'tac@cisco.com', country: 'United States', status: 'Active', totalAssets: 145 },
-  { id: '4', code: 'MFG-ZEBR', name: 'Zebra Technologies', website: 'https://www.zebra.com', supportContact: 'support@zebra.com', country: 'United States', status: 'Active', totalAssets: 210 },
-  { id: '5', code: 'MFG-LNV', name: 'Lenovo Group', website: 'https://www.lenovo.com', supportContact: 'thinksupport@lenovo.com', country: 'Hong Kong', status: 'Active', totalAssets: 195 },
-  { id: '6', code: 'MFG-HP', name: 'HP Enterprise', website: 'https://www.hp.com', supportContact: 'support@hp.com', country: 'United States', status: 'Active', totalAssets: 160 },
-  { id: '7', code: 'MFG-SMSG', name: 'Samsung Electronics', website: 'https://www.samsung.com', supportContact: 'b2bsupport@samsung.com', country: 'South Korea', status: 'Active', totalAssets: 85 },
-  { id: '8', code: 'MFG-CAT', name: 'Caterpillar Inc.', website: 'https://www.cat.com', supportContact: 'machinery@cat.com', country: 'United States', status: 'Active', totalAssets: 42 }
-];
+export const DEFAULT_MANUFACTURERS = [];
 
 export const DEFAULT_UOM = [
   { id: '1', code: 'EA', name: 'Each / Pieces', symbol: 'ea', category: 'Discrete Count', description: 'Individual units, parts, or pieces', status: 'Active' },
@@ -44,6 +35,8 @@ export const DEFAULT_UOM = [
   { id: '7', code: 'LTR', name: 'Liter', symbol: 'L', category: 'Volume', description: 'Liquid volume for lubricants, coolants and fluids', status: 'Active' },
   { id: '8', code: 'ROLL', name: 'Roll', symbol: 'rl', category: 'Dimension', description: 'Continuous roll of cable, wiring, or RFID labels', status: 'Active' }
 ];
+
+export const DEFAULT_ASSET_TYPES = [];
 
 export const DEFAULT_STATUS_CODES = [
   { id: '1', code: 'ACTIVE', name: 'In Service / Operational', stage: 'Operational', color: 'emerald', description: 'Asset is actively deployed, operating, and assigned.', status: 'Active' },
@@ -118,6 +111,15 @@ export function GenericMasterTab({
           defaultItems: DEFAULT_STATUS_CODES,
           apiEndpoint: null
         };
+      case 'asset-types':
+        return {
+          title: 'Asset Types',
+          singular: 'Asset Type',
+          icon: Box,
+          defaultItems: DEFAULT_ASSET_TYPES,
+          apiEndpoint: '/master-data/asset-types',
+          storageKey: 'fams_custom_asset_types'
+        };
       default:
         return {
           title: tabName || 'Master Entity',
@@ -133,6 +135,75 @@ export function GenericMasterTab({
   const loadRecords = async () => {
     setIsLoading(true);
     try {
+      if (activeTab === 'asset-types') {
+
+        const res = await api.get('/master-data/asset-types').catch(() => null);
+
+        const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+
+        let serverTypes = [];
+
+        if (res?.assetTypes && res.assetTypes.length > 0) {
+
+          serverTypes = res.assetTypes.map((t, idx) => ({
+
+            id: t.id,
+
+            code: t.code || `TYPE-${t.name.substring(0, 4).toUpperCase()}`,
+
+            name: t.name,
+
+            symbol: t.code || 'TYPE',
+
+            category: 'General',
+
+            description: t.description || '',
+
+            status: t.active === false ? 'Inactive' : 'Active',
+
+            totalAssets: (idx + 1) * 20
+
+          }));
+
+        }
+
+        const existing = new Set([...custom, ...serverTypes].map(x => x.name.toLowerCase()));
+
+        const extraDefaults = DEFAULT_ASSET_TYPES.filter(d => !existing.has(d.name.toLowerCase()));
+
+        const combined = [...custom, ...serverTypes, ...extraDefaults];
+
+        setItems(combined);
+
+        setSelectedItem(combined[0]);
+
+        return;
+
+      }
+
+      if (activeTab === 'manufacturers') {
+        const res = await api.get('/master-data/manufacturers').catch(() => null);
+        const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        let serverMfrs = [];
+        if (res?.manufacturers && res.manufacturers.length > 0) {
+          serverMfrs = res.manufacturers.map((m, idx) => ({
+            id: m.id,
+            code: m.code || `MFG-${(m.name || 'MFR').substring(0, 4).toUpperCase()}`,
+            name: m.name,
+            website: m.website || '',
+            supportContact: m.supportContact || '',
+            country: m.country || 'Global',
+            status: m.active === false ? 'Inactive' : 'Active',
+            totalAssets: m.totalAssets || 0
+          }));
+        }
+        const existingNames = new Set(serverMfrs.map((x) => (x.name || '').toLowerCase()));
+        const missingCustom = custom.filter(c => !existingNames.has((c.name || '').toLowerCase()));
+        const combined = [...missingCustom, ...serverMfrs];
+        setItems(combined);
+        setSelectedItem(combined[0] || null);
+        return;
+      }
       if (tabConfig.apiEndpoint) {
         const res = await api.get(tabConfig.apiEndpoint).catch(() => null);
         if (res?.manufacturers && res.manufacturers.length > 0) {
@@ -243,6 +314,31 @@ export function GenericMasterTab({
         const updated = [newItem, ...items];
         setItems(updated);
         setSelectedItem(newItem);
+        if (activeTab === 'asset-types') {
+          api.post('/master-data/asset-types', {
+            code: newItem.code,
+            name: newItem.name,
+            description: newItem.description,
+            active: newItem.status === 'Active'
+          }).catch(() => null);
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+            localStorage.setItem('fams_custom_asset_types', JSON.stringify([newItem, ...custom]));
+          } catch (_) {}
+        }
+        if (activeTab === 'manufacturers') {
+          api.post('/master-data/manufacturers', {
+            code: newItem.code,
+            name: newItem.name,
+            website: newItem.website,
+            supportContact: newItem.supportContact,
+            active: newItem.status === 'Active'
+          }).catch(() => null);
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+            localStorage.setItem('fams_custom_manufacturers', JSON.stringify([newItem, ...custom]));
+          } catch (_) {}
+        }
         triggerToast && triggerToast(`${tabConfig.singular} "${formState.name}" created successfully.`);
       }
       setShowAddModal(false);
@@ -258,6 +354,20 @@ export function GenericMasterTab({
     setItems(updated);
     if (selectedItem?.id === itemToDelete.id) {
       setSelectedItem(updated[0] || null);
+    }
+    if (activeTab === 'asset-types') {
+      api.delete(`/master-data/asset-types/${itemToDelete.id}`).catch(() => null);
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+        localStorage.setItem('fams_custom_asset_types', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+      } catch (_) {}
+    }
+    if (activeTab === 'manufacturers') {
+      api.delete(`/master-data/manufacturers/${itemToDelete.id}`).catch(() => null);
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+      } catch (_) {}
     }
     triggerToast && triggerToast(`${tabConfig.singular} "${itemToDelete.name}" deleted.`);
     setShowDeleteModal(false);

@@ -22,219 +22,10 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
+import { INITIAL_CLASSES } from './ClassesTab';
 
-export const INITIAL_CATEGORIES = [
-  {
-    id: 1,
-    code: 'IT-HW-LAP',
-    name: 'Laptops',
-    className: 'Hardware',
-    groupName: 'Information Technology',
-    description: 'Business and corporate laptops including ultrabooks and mobile workstations',
-    totalAssets: 245,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '15 Jan 2025 09:30 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '02 Sep 2025 04:15 PM',
-    relatedInfo: {
-      subCategories: 6,
-      assets: 245,
-      maintenancePlans: 4,
-      documents: 3,
-      spareParts: 12
-    }
-  },
-  {
-    id: 2,
-    code: 'IT-HW-DSK',
-    name: 'Desktops',
-    className: 'Hardware',
-    groupName: 'Information Technology',
-    description: 'Desktop computers, all-in-ones and thin clients',
-    totalAssets: 180,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '15 Jan 2025 10:00 AM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '28 Aug 2025 11:30 AM',
-    relatedInfo: {
-      subCategories: 4,
-      assets: 180,
-      maintenancePlans: 3,
-      documents: 2,
-      spareParts: 8
-    }
-  },
-  {
-    id: 3,
-    code: 'IT-HW-SRV',
-    name: 'Servers',
-    className: 'Hardware',
-    groupName: 'Information Technology',
-    description: 'Rack servers, blade servers and storage arrays',
-    totalAssets: 85,
-    status: 'Active',
-    createdBy: 'John Doe',
-    createdOn: '16 Jan 2025 11:15 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '15 Jul 2025 03:45 PM',
-    relatedInfo: {
-      subCategories: 3,
-      assets: 85,
-      maintenancePlans: 6,
-      documents: 8,
-      spareParts: 22
-    }
-  },
-  {
-    id: 4,
-    code: 'IT-HW-PRN',
-    name: 'Printers & Scanners',
-    className: 'Hardware',
-    groupName: 'Information Technology',
-    description: 'Laser printers, inkjet printers, MFPs and document scanners',
-    totalAssets: 120,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '17 Jan 2025 09:45 AM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '10 Aug 2025 02:00 PM',
-    relatedInfo: {
-      subCategories: 4,
-      assets: 120,
-      maintenancePlans: 2,
-      documents: 3,
-      spareParts: 15
-    }
-  },
-  {
-    id: 5,
-    code: 'IT-NW-SW',
-    name: 'Network Switches',
-    className: 'Network Equipment',
-    groupName: 'Information Technology',
-    description: 'Managed and unmanaged Ethernet switches for LAN infrastructure',
-    totalAssets: 64,
-    status: 'Active',
-    createdBy: 'John Doe',
-    createdOn: '18 Jan 2025 02:30 PM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '22 Jul 2025 10:20 AM',
-    relatedInfo: {
-      subCategories: 2,
-      assets: 64,
-      maintenancePlans: 3,
-      documents: 4,
-      spareParts: 6
-    }
-  },
-  {
-    id: 6,
-    code: 'IT-NW-FW',
-    name: 'Firewalls',
-    className: 'Network Equipment',
-    groupName: 'Information Technology',
-    description: 'Hardware firewalls and unified threat management appliances',
-    totalAssets: 22,
-    status: 'Active',
-    createdBy: 'Michael Chen',
-    createdOn: '19 Jan 2025 10:00 AM',
-    lastModifiedBy: 'John Doe',
-    lastModifiedOn: '05 Aug 2025 01:10 PM',
-    relatedInfo: {
-      subCategories: 2,
-      assets: 22,
-      maintenancePlans: 2,
-      documents: 5,
-      spareParts: 4
-    }
-  },
-  {
-    id: 7,
-    code: 'BLD-STR-CIV',
-    name: 'Civil Works',
-    className: 'Building Structure',
-    groupName: 'Buildings & Facilities',
-    description: 'Foundation, walls, columns, beams, slabs and civil elements',
-    totalAssets: 156,
-    status: 'Active',
-    createdBy: 'Ramesh Kumar',
-    createdOn: '20 Jan 2025 12:00 PM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '18 Aug 2025 09:30 AM',
-    relatedInfo: {
-      subCategories: 5,
-      assets: 156,
-      maintenancePlans: 3,
-      documents: 6,
-      spareParts: 0
-    }
-  },
-  {
-    id: 8,
-    code: 'BLD-MEP-HVAC',
-    name: 'HVAC Systems',
-    className: 'MEP Systems',
-    groupName: 'Buildings & Facilities',
-    description: 'Air handling units, chillers, cooling towers and ductwork',
-    totalAssets: 95,
-    status: 'Active',
-    createdBy: 'Sarah Ahmed',
-    createdOn: '22 Jan 2025 03:30 PM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '14 May 2025 11:45 AM',
-    relatedInfo: {
-      subCategories: 4,
-      assets: 95,
-      maintenancePlans: 8,
-      documents: 12,
-      spareParts: 28
-    }
-  },
-  {
-    id: 9,
-    code: 'BLD-MEP-ELE',
-    name: 'Electrical Systems',
-    className: 'MEP Systems',
-    groupName: 'Buildings & Facilities',
-    description: 'Transformers, panels, switchgear and distribution boards',
-    totalAssets: 110,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '23 Jan 2025 08:45 AM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '20 Jun 2025 04:30 PM',
-    relatedInfo: {
-      subCategories: 3,
-      assets: 110,
-      maintenancePlans: 6,
-      documents: 9,
-      spareParts: 18
-    }
-  },
-  {
-    id: 10,
-    code: 'PLANT-PRD-CNC',
-    name: 'CNC Machines',
-    className: 'Production Equipment',
-    groupName: 'Plant & Machinery',
-    description: 'Computer numerical control milling and turning centres',
-    totalAssets: 48,
-    status: 'Active',
-    createdBy: 'Ramesh Kumar',
-    createdOn: '25 Jan 2025 09:15 AM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '30 Jun 2025 05:00 PM',
-    relatedInfo: {
-      subCategories: 4,
-      assets: 48,
-      maintenancePlans: 12,
-      documents: 8,
-      spareParts: 35
-    }
-  }
-];
+export const INITIAL_CATEGORIES = [];
 
 export function CategoriesTab({
   triggerToast,
@@ -244,8 +35,8 @@ export function CategoriesTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const [categoriesList, setCategoriesList] = useState(INITIAL_CATEGORIES);
-  const [selectedCategory, setSelectedCategory] = useState(INITIAL_CATEGORIES[0]);
+  const [categoriesList, setCategoriesList] = useState([]);
+  const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedCatIds, setSelectedCatIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -276,13 +67,21 @@ export function CategoriesTab({
             spareParts: 6
           }
         }));
-        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
+        const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+        const dbCodes = new Set([...mapped, ...custom].map((m) => m.code.toUpperCase()));
         const remainingInitial = INITIAL_CATEGORIES.filter((c) => !dbCodes.has(c.code.toUpperCase()));
-        const fullList = mapped.length > 0 ? mapped : remainingInitial;
+        const fullList = [...custom, ...mapped, ...remainingInitial];
         setCategoriesList(fullList);
-        setSelectedCategory((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
+        setSelectedCategory((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] || null : fullList[0] || null));
+      } else {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+        setCategoriesList(custom);
+        setSelectedCategory(custom[0] || null);
       }
     } catch (err) {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+      setCategoriesList(custom);
+      setSelectedCategory(custom[0] || null);
       console.warn('Failed to fetch categories, using fallback dataset:', err);
     } finally {
       setIsLoading(false);
@@ -302,6 +101,26 @@ export function CategoriesTab({
   // Modal state
   const [showAddCatModal, setShowAddCatModal] = useState(false);
   const [editingCategory, setEditingCategory] = useState(null);
+  const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
+      return [...custom, ...INITIAL_ASSET_GROUPS.filter(d => !existing.has(d.name.toLowerCase()))];
+    } catch (_) {
+      return INITIAL_ASSET_GROUPS;
+    }
+  });
+
+  const [availableAssetClasses, setAvailableAssetClasses] = useState(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
+      return [...custom, ...INITIAL_CLASSES.filter(d => !existing.has(d.name.toLowerCase()))];
+    } catch (_) {
+      return INITIAL_CLASSES;
+    }
+  });
+
   const [catFormState, setCatFormState] = useState({
     code: '',
     name: '',
@@ -524,15 +343,23 @@ export function CategoriesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Category "${cat.name}" (${cat.code})?`)) {
       try {
-        await api.delete(`/master-data/categories/${cat.id}`);
+        const res = await api.delete(`/master-data/categories/${cat.id}`);
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+          localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
+        } catch (_) {}
         await loadCategories();
-        triggerToast && triggerToast(`Category "${cat.code}" deleted successfully.`);
+        triggerToast && triggerToast(res?.message || `Category "${cat.name || cat.code}" deleted successfully.`);
       } catch (err) {
         console.warn('Delete category error:', err);
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+          localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
+        } catch (_) {}
         const remaining = categoriesList.filter((c) => c.id !== cat.id);
         setCategoriesList(remaining);
-        if (remaining.length > 0) setSelectedCategory(remaining[0]);
-        triggerToast && triggerToast(`Category "${cat.code}" deleted successfully.`);
+        setSelectedCategory(remaining[0] || null);
+        triggerToast && triggerToast(`Category "${cat.name || cat.code}" deleted.`);
       }
     }
   };
@@ -992,32 +819,38 @@ export function CategoriesTab({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Asset Class *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Parent Asset Group *</label>
+                <select
+                  value={catFormState.groupName}
+                  onChange={(e) => {
+                    const newGroup = e.target.value;
+                    const filteredClasses = availableAssetClasses.filter(c => c.groupName === newGroup);
+                    const newClass = filteredClasses.length > 0 ? (filteredClasses[0].name || filteredClasses[0].code) : (availableAssetClasses[0]?.name || 'Hardware');
+                    setCatFormState({ ...catFormState, groupName: newGroup, className: newClass });
+                  }}
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                >
+                  {availableAssetGroups.map((g) => {
+                    const name = g.name || g.code;
+                    return <option key={g.id || name} value={name}>{name}</option>;
+                  })}
+                </select>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Parent Asset Class *</label>
                 <select
                   value={catFormState.className}
                   onChange={(e) => setCatFormState({ ...catFormState, className: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
-                  <option value="Hardware">Hardware</option>
-                  <option value="Network Equipment">Network Equipment</option>
-                  <option value="Building Structure">Building Structure</option>
-                  <option value="MEP Systems">MEP Systems</option>
-                  <option value="Production Equipment">Production Equipment</option>
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Asset Group *</label>
-                <select
-                  value={catFormState.groupName}
-                  onChange={(e) => setCatFormState({ ...catFormState, groupName: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                >
-                  <option value="Information Technology">Information Technology</option>
-                  <option value="Buildings & Facilities">Buildings & Facilities</option>
-                  <option value="Plant & Machinery">Plant & Machinery</option>
-                  <option value="Vehicles">Vehicles</option>
-                  <option value="Furniture, Fixtures & Equipment">Furniture, Fixtures & Equipment</option>
+                  {(availableAssetClasses.filter(c => !catFormState.groupName || c.groupName === catFormState.groupName).length > 0
+                    ? availableAssetClasses.filter(c => !catFormState.groupName || c.groupName === catFormState.groupName)
+                    : availableAssetClasses
+                  ).map((cls) => {
+                    const name = cls.name || cls.code;
+                    return <option key={cls.id || name} value={name}>{name}</option>;
+                  })}
                 </select>
               </div>
 

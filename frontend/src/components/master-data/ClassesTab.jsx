@@ -22,219 +22,9 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
 
-export const INITIAL_CLASSES = [
-  {
-    id: 1,
-    code: 'IT-HW',
-    name: 'Hardware',
-    groupName: 'Information Technology',
-    description: 'Laptops, desktops, servers and peripherals',
-    assetType: 'Physical',
-    totalAssets: 680,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '15 Jan 2025 09:20 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '02 Sep 2025 04:15 PM',
-    relatedInfo: {
-      categories: 6,
-      subCategories: 18,
-      assets: 680,
-      maintenancePlans: 12,
-      documents: 4
-    }
-  },
-  {
-    id: 2,
-    code: 'IT-SW',
-    name: 'Software',
-    groupName: 'Information Technology',
-    description: 'Application software and licenses',
-    assetType: 'Intangible',
-    totalAssets: 420,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '16 Jan 2025 10:15 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '18 Aug 2025 02:30 PM',
-    relatedInfo: {
-      categories: 8,
-      subCategories: 24,
-      assets: 420,
-      maintenancePlans: 0,
-      documents: 15
-    }
-  },
-  {
-    id: 3,
-    code: 'IT-NW',
-    name: 'Network Equipment',
-    groupName: 'Information Technology',
-    description: 'Switches, routers, firewalls and Wi-Fi',
-    assetType: 'Physical',
-    totalAssets: 145,
-    status: 'Active',
-    createdBy: 'John Doe',
-    createdOn: '18 Jan 2025 01:45 PM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '25 Jul 2025 09:10 AM',
-    relatedInfo: {
-      categories: 4,
-      subCategories: 12,
-      assets: 145,
-      maintenancePlans: 6,
-      documents: 5
-    }
-  },
-  {
-    id: 4,
-    code: 'BLD-STR',
-    name: 'Building Structure',
-    groupName: 'Buildings & Facilities',
-    description: 'Building structure and civil elements',
-    assetType: 'Physical',
-    totalAssets: 320,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Jan 2025 11:30 AM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '10 Aug 2025 03:00 PM',
-    relatedInfo: {
-      categories: 3,
-      subCategories: 8,
-      assets: 320,
-      maintenancePlans: 8,
-      documents: 10
-    }
-  },
-  {
-    id: 5,
-    code: 'BLD-MEP',
-    name: 'MEP Systems',
-    groupName: 'Buildings & Facilities',
-    description: 'Mechanical, electrical and plumbing',
-    assetType: 'Physical',
-    totalAssets: 280,
-    status: 'Active',
-    createdBy: 'Sarah Ahmed',
-    createdOn: '22 Jan 2025 03:10 PM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '14 May 2025 11:20 AM',
-    relatedInfo: {
-      categories: 5,
-      subCategories: 15,
-      assets: 280,
-      maintenancePlans: 24,
-      documents: 18
-    }
-  },
-  {
-    id: 6,
-    code: 'PLANT-PRD',
-    name: 'Production Equipment',
-    groupName: 'Plant & Machinery',
-    description: 'Production and processing equipment',
-    assetType: 'Physical',
-    totalAssets: 410,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '25 Jan 2025 09:00 AM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '30 Jun 2025 04:45 PM',
-    relatedInfo: {
-      categories: 7,
-      subCategories: 20,
-      assets: 410,
-      maintenancePlans: 30,
-      documents: 12
-    }
-  },
-  {
-    id: 7,
-    code: 'PLANT-UTL',
-    name: 'Utilities',
-    groupName: 'Plant & Machinery',
-    description: 'Utilities and support systems',
-    assetType: 'Physical',
-    totalAssets: 232,
-    status: 'Active',
-    createdBy: 'Ramesh Kumar',
-    createdOn: '28 Jan 2025 02:15 PM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '12 Aug 2025 10:05 AM',
-    relatedInfo: {
-      categories: 4,
-      subCategories: 10,
-      assets: 232,
-      maintenancePlans: 15,
-      documents: 6
-    }
-  },
-  {
-    id: 8,
-    code: 'VEH-LT',
-    name: 'Light Vehicles',
-    groupName: 'Vehicles',
-    description: 'Cars, SUVs and light fleet vehicles',
-    assetType: 'Physical',
-    totalAssets: 120,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '01 Feb 2025 10:00 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '05 Aug 2025 01:15 PM',
-    relatedInfo: {
-      categories: 3,
-      subCategories: 6,
-      assets: 120,
-      maintenancePlans: 18,
-      documents: 20
-    }
-  },
-  {
-    id: 9,
-    code: 'VEH-HV',
-    name: 'Heavy Vehicles',
-    groupName: 'Vehicles',
-    description: 'Trucks, buses and heavy fleet vehicles',
-    assetType: 'Physical',
-    totalAssets: 95,
-    status: 'Active',
-    createdBy: 'John Doe',
-    createdOn: '04 Feb 2025 04:30 PM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '22 Jul 2025 11:40 AM',
-    relatedInfo: {
-      categories: 2,
-      subCategories: 5,
-      assets: 95,
-      maintenancePlans: 14,
-      documents: 14
-    }
-  },
-  {
-    id: 10,
-    code: 'FF&E-OFF',
-    name: 'Office Furniture',
-    groupName: 'Furniture, Fixtures & Equipment',
-    description: 'Desks, chairs and office furniture',
-    assetType: 'Physical',
-    totalAssets: 430,
-    status: 'Inactive',
-    createdBy: 'Admin',
-    createdOn: '08 Feb 2025 11:10 AM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '01 Sep 2025 09:30 AM',
-    relatedInfo: {
-      categories: 4,
-      subCategories: 10,
-      assets: 430,
-      maintenancePlans: 2,
-      documents: 4
-    }
-  }
-];
+export const INITIAL_CLASSES = [];
 
 export function ClassesTab({
   triggerToast,
@@ -244,18 +34,24 @@ export function ClassesTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const [classesList, setClassesList] = useState(INITIAL_CLASSES);
-  const [selectedClass, setSelectedClass] = useState(INITIAL_CLASSES[0]);
+  const [classesList, setClassesList] = useState([]);
+  const [selectedClass, setSelectedClass] = useState(null);
   const [selectedClassIds, setSelectedClassIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Load live classes from database
+  // Load live classes from database (Filtered strictly to true Asset Classes, excluding Sub Categories)
   const loadClasses = async () => {
     setIsLoading(true);
     try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
       const res = await api.get('/master-data/asset-classes?includeInactive=true');
+      const standardCodes = new Set(INITIAL_CLASSES.map(c => c.code.toUpperCase()));
+
+      let serverClasses = [];
       if (res?.assetClasses && res.assetClasses.length > 0) {
-        const mapped = res.assetClasses.map((ac, idx) => ({
+        // Exclude subcategories: only retain standard accounting classes or items not tied to a category as a subcategory
+        const trueClasses = res.assetClasses.filter(ac => standardCodes.has(ac.code?.toUpperCase()) || (!ac.categoryId && !ac.category));
+        serverClasses = trueClasses.map((ac, idx) => ({
           id: ac.id,
           code: ac.code,
           name: ac.name,
@@ -277,12 +73,13 @@ export function ClassesTab({
             documents: 4
           }
         }));
-        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
-        const remainingInitial = INITIAL_CLASSES.filter((c) => !dbCodes.has(c.code.toUpperCase()));
-        const fullList = mapped.length > 0 ? mapped : remainingInitial;
-        setClassesList(fullList);
-        setSelectedClass((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
       }
+
+      const dbCodes = new Set([...serverClasses, ...custom].map(m => m.code?.toUpperCase()));
+      const remainingInitial = INITIAL_CLASSES.filter(c => !dbCodes.has(c.code.toUpperCase()));
+      const fullList = [...custom, ...serverClasses, ...remainingInitial];
+      setClassesList(fullList);
+      setSelectedClass((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] || null : fullList[0] || null));
     } catch (err) {
       console.warn('Failed to fetch asset classes, using local dataset:', err);
     } finally {
@@ -303,6 +100,16 @@ export function ClassesTab({
   // Modal state
   const [showAddClsModal, setShowAddClsModal] = useState(false);
   const [editingClass, setEditingClass] = useState(null);
+  const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
+      return [...custom, ...INITIAL_ASSET_GROUPS.filter(d => !existing.has(d.name.toLowerCase()))];
+    } catch (_) {
+      return INITIAL_ASSET_GROUPS;
+    }
+  });
+
   const [clsFormState, setClsFormState] = useState({
     code: '',
     name: '',
@@ -472,6 +279,10 @@ export function ClassesTab({
         };
         setClassesList([newClass, ...classesList]);
         setSelectedClass(newClass);
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+          localStorage.setItem('fams_custom_asset_classes', JSON.stringify([newClass, ...custom]));
+        } catch (_) {}
         triggerToast && triggerToast(`Class "${clsFormState.name}" created successfully.`);
       }
     } catch (err) {
@@ -1029,17 +840,16 @@ export function ClassesTab({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Asset Group *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Parent Asset Group *</label>
                 <select
                   value={clsFormState.groupName}
                   onChange={(e) => setClsFormState({ ...clsFormState, groupName: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
-                  <option value="Information Technology">Information Technology</option>
-                  <option value="Buildings & Facilities">Buildings & Facilities</option>
-                  <option value="Plant & Machinery">Plant & Machinery</option>
-                  <option value="Vehicles">Vehicles</option>
-                  <option value="Furniture, Fixtures & Equipment">Furniture, Fixtures & Equipment</option>
+                  {availableAssetGroups.map((g) => {
+                    const name = g.name || g.code;
+                    return <option key={g.id || name} value={name}>{name}</option>;
+                  })}
                 </select>
               </div>
 

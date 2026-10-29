@@ -3,6 +3,12 @@ import JsBarcode from 'jsbarcode';
 import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
+
+import { INITIAL_ASSET_GROUPS } from '../components/master-data/AssetGroupsTab';
+import { INITIAL_CLASSES } from '../components/master-data/ClassesTab';
+import { INITIAL_SUB_CATEGORIES } from '../components/master-data/SubCategoriesTab';
+
+import { DEFAULT_ASSET_TYPES } from '../components/master-data/GenericMasterTab';
 import { uploadToCloudinary } from '../services/cloudinary';
 import {
   Package,
@@ -84,6 +90,65 @@ function BarcodePreview({ value }) {
   );
 }
 
+
+// --- Cascading Hierarchy Matchers ---
+const normalizeStr = (s) => (s || '').toLowerCase().trim();
+
+const matchesGroupToType = (group, assetType) => {
+  if (!assetType || assetType === 'All') return true;
+  const gName = normalizeStr(group.name || group.title || group);
+  const gCode = normalizeStr(group.code);
+  const t = normalizeStr(assetType);
+
+  if (t.includes('it') || t.includes('tech')) {
+    return gName.includes('tech') || gName.includes('it') || gCode === 'it' || gCode === 'sw' || gCode === 'lic' || gName.includes('software');
+  }
+  if (t.includes('veh') || t.includes('fleet')) {
+    return gName.includes('veh') || gCode === 'veh' || gName.includes('fleet');
+  }
+  if (t.includes('mach') || t.includes('plant')) {
+    return gName.includes('plant') || gName.includes('mach') || gName.includes('tool') || gCode === 'plant' || gCode === 'tool' || gName.includes('equip');
+  }
+  if (t.includes('furn')) {
+    return gName.includes('furn') || gCode.includes('ff&e') || gName.includes('fixture') || gName.includes('seating');
+  }
+  if (t.includes('fac') || t.includes('build')) {
+    return gName.includes('build') || gName.includes('fac') || gCode === 'bld' || gName.includes('infra') || gName.includes('civil');
+  }
+  if (t.includes('office')) {
+    return gName.includes('office') || gName.includes('furn') || gName.includes('it') || gName.includes('tech');
+  }
+  return true; // For custom dynamic asset types, allow all groups
+};
+
+const matchesClassToGroup = (cls, assetGroup) => {
+  if (!assetGroup) return true;
+  const grpName = normalizeStr(assetGroup);
+  const clsGrp = normalizeStr(cls.groupName);
+  const cCode = normalizeStr(cls.code);
+  const cName = normalizeStr(cls.name);
+
+  if (clsGrp && (clsGrp === grpName || grpName.includes(clsGrp) || clsGrp.includes(grpName))) {
+    return true;
+  }
+  if (grpName.includes('tech') || grpName.includes('it')) {
+    return cCode.startsWith('it') || cName.includes('hard') || cName.includes('soft') || cName.includes('net') || cName.includes('compute');
+  }
+  if (grpName.includes('build') || grpName.includes('fac')) {
+    return cCode.startsWith('bld') || cCode.startsWith('fac') || cName.includes('struct') || cName.includes('mep') || cName.includes('plant');
+  }
+  if (grpName.includes('plant') || grpName.includes('mach')) {
+    return cCode.startsWith('plant') || cCode.startsWith('mach') || cName.includes('prod') || cName.includes('util') || cName.includes('mach');
+  }
+  if (grpName.includes('veh')) {
+    return cCode.startsWith('veh') || cCode.startsWith('fleet') || cName.includes('veh') || cName.includes('light') || cName.includes('heavy');
+  }
+  if (grpName.includes('furn') || grpName.includes('ff&e')) {
+    return cCode.startsWith('ff&e') || cCode.startsWith('furn') || cName.includes('furn') || cName.includes('office');
+  }
+  return true;
+};
+
 const matchesAssetType = (category, assetType) => {
   if (!assetType || assetType === 'All') return true;
   const name = (category.name || '').toLowerCase().trim();
@@ -122,8 +187,11 @@ const matchesAssetType = (category, assetType) => {
   const isIT = code.startsWith('it-') || code.startsWith('cat-it') || code.startsWith('cat-lap') || code.startsWith('cat-dsk') || code.startsWith('cat-srv') || code.startsWith('cat-disp') || code.startsWith('cat-prn') || code.startsWith('cat-acc') || code.startsWith('cat-mob') || code.startsWith('cat-tab') ||
     name.includes('laptop') || name.includes('desktop') || name.includes('server') || name.includes('infrastructure') || name.includes('compute') || name.includes('monitor') || name.includes('display') || name.includes('mobile') || name.includes('tablet') || name.includes('accessory') || name.includes('network') || name.includes('switch') || name.includes('router') || name.includes('firewall') || name.includes('hardware');
 
-  // Check if it's an unclassified custom category
+  // Check if it's an unclassified custom category or custom dynamic type
   const isOther = !isVehicle && !isFurniture && !isMachinery && !isFacility && !isOffice && !isIT;
+  if (isOther) {
+    return true; // Gracefully allow all categories for custom dynamic asset types
+  }
 
   if (normalized.includes('vehicle')) {
     return isVehicle;
@@ -160,9 +228,43 @@ export function AssetForm() {
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
 
-  // Master Data Options loaded dynamically from backend
+  // Master Data Options loaded dynamically from backend & localStorage
+  const [assetTypes, setAssetTypes] = useState(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+      const existing = new Set(custom.map(c => c.name.toLowerCase()));
+      return [...custom, ...DEFAULT_ASSET_TYPES.filter(d => !existing.has(d.name.toLowerCase()))];
+    } catch (_) {
+      return DEFAULT_ASSET_TYPES;
+    }
+  });
+
+  const [assetGroups, setAssetGroups] = useState(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+      return [...local, ...INITIAL_ASSET_GROUPS.filter(ig => !local.some(lg => (lg.code && ig.code && lg.code.toUpperCase() === ig.code.toUpperCase()) || lg.id === ig.id))];
+    } catch (_) {
+      return INITIAL_ASSET_GROUPS;
+    }
+  });
+
   const [categories, setCategories] = useState([]);
-  const [assetClasses, setAssetClasses] = useState([]);
+  const [assetClasses, setAssetClasses] = useState(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+      return [...local, ...INITIAL_CLASSES.filter(ic => !local.some(lc => (lc.code && ic.code && lc.code.toUpperCase() === ic.code.toUpperCase()) || lc.id === ic.id))];
+    } catch (_) {
+      return INITIAL_CLASSES;
+    }
+  });
+  const [subCategories, setSubCategories] = useState(() => {
+    try {
+      const local = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+      return [...local, ...INITIAL_SUB_CATEGORIES];
+    } catch (_) {
+      return INITIAL_SUB_CATEGORIES;
+    }
+  });
   const [sites, setSites] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [buildings, setBuildings] = useState([]);
@@ -209,7 +311,7 @@ export function AssetForm() {
   useEffect(() => {
     async function loadMasterData() {
       try {
-        const [catRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes] = await Promise.all([
+        const [catRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes] = await Promise.all([
           api.get('/master-data/categories').catch(() => null),
           api.get('/master-data/asset-classes').catch(() => null),
           api.get('/master-data/sites').catch(() => null),
@@ -220,10 +322,40 @@ export function AssetForm() {
           api.get('/master-data/companies').catch(() => null),
           api.get('/master-data/buildings').catch(() => null),
           api.get('/master-data/floors').catch(() => null),
-          api.get('/master-data/rooms').catch(() => null)
+          api.get('/master-data/rooms').catch(() => null),
+          api.get('/master-data/asset-groups').catch(() => null),
+          api.get('/master-data/asset-types').catch(() => null)
         ]);
+        if (typeRes?.assetTypes && Array.isArray(typeRes.assetTypes) && typeRes.assetTypes.length > 0) {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+          const existingNames = new Set(custom.map(c => c.name.toLowerCase()));
+          const merged = [...custom, ...typeRes.assetTypes.filter(st => !existingNames.has(st.name.toLowerCase()))];
+          setAssetTypes(merged);
+        }
+        if (groupRes?.assetGroups && Array.isArray(groupRes.assetGroups) && groupRes.assetGroups.length > 0) {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+          const server = groupRes.assetGroups;
+          const merged = [...custom, ...server.filter(sg => !custom.some(cg => (cg.code && sg.code && cg.code.toUpperCase() === sg.code.toUpperCase()) || cg.id === sg.id))];
+          setAssetGroups(merged);
+        }
+        if (classRes?.assetClasses && Array.isArray(classRes.assetClasses) && classRes.assetClasses.length > 0) {
+          // 1. Separate SubCategories (all category-linked items like priyangshu belong here)
+          const customSub = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+          const allSub = [...customSub, ...classRes.assetClasses.filter(sc => !customSub.some(cs => cs.id === sc.id || cs.code === sc.code))];
+          setSubCategories(allSub);
+
+          // 2. Separate true high-level Asset Classes (accounting/depreciation classes only)
+          const standardCodes = new Set(INITIAL_CLASSES.map(c => c.code.toUpperCase()));
+          const customCls = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+          const trueServerClasses = classRes.assetClasses.filter(ac => standardCodes.has(ac.code?.toUpperCase()) || (!ac.categoryId && !ac.category));
+          const mergedCls = [
+            ...customCls,
+            ...trueServerClasses.filter(sc => !customCls.some(cc => (cc.code && sc.code && cc.code.toUpperCase() === sc.code.toUpperCase()) || cc.id === sc.id)),
+            ...INITIAL_CLASSES.filter(ic => !customCls.some(cc => cc.code?.toUpperCase() === ic.code?.toUpperCase()) && !trueServerClasses.some(sc => sc.code?.toUpperCase() === ic.code?.toUpperCase()))
+          ];
+          setAssetClasses(mergedCls);
+        }
         if (catRes?.categories) setCategories(catRes.categories);
-        if (classRes?.assetClasses) setAssetClasses(classRes.assetClasses);
         if (siteRes?.sites) setSites(siteRes.sites);
         if (companyRes?.companies) setCompanies(companyRes.companies);
         if (buildingRes?.buildings) setBuildings(buildingRes.buildings);
@@ -231,7 +363,11 @@ export function AssetForm() {
         if (roomRes?.rooms) setRooms(roomRes.rooms);
         if (deptRes?.departments) setDepartments(deptRes.departments);
         if (ccRes?.costCenters) setCostCenters(ccRes.costCenters);
-        if (mfrRes?.manufacturers) setManufacturers(mfrRes.manufacturers);
+                const customMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        const serverMfrs = mfrRes?.manufacturers || [];
+        const existingNames = new Set(serverMfrs.map(m => (m.name || '').toLowerCase()));
+        const mergedMfrs = [...serverMfrs, ...customMfrs.filter(cm => !existingNames.has((cm.name || '').toLowerCase()))];
+        setManufacturers(mergedMfrs);
         if (empRes?.employees) setEmployees(empRes.employees);
       } catch (err) {
         console.warn('Master data load skipped:', err);
@@ -408,14 +544,39 @@ export function AssetForm() {
     return (words.length > 1 ? (words[0].length <= 2 ? words[0] : words.map(word => word[0]).join('')) : words[0] || 'GEN').slice(0, 5);
   };
   const categoryCode = categories.find(category => category.id === formData.categoryId)?.code?.replace(/^CAT[-_ ]?/i, '') || formData.category;
-  const subcategoryCode = assetClasses.find(assetClass => assetClass.id === formData.assetClassId)?.code?.replace(/^CLS[-_ ]?/i, '') || formData.subcategory;
-  // 1. Cascading Categories based on selected Asset Type
+  const subcategoryCode = subCategories.find(subCat => subCat.id === formData.assetClassId || subCat.name === formData.subcategory)?.code?.replace(/^CLS[-_ ]?/i, '') || formData.subcategory;
+  // 1. Cascading Asset Groups based on selected Asset Type
+  const availableAssetGroups = useMemo(() => {
+    const filtered = (assetGroups || []).filter(g => matchesGroupToType(g, formData.assetType));
+    return filtered.length > 0 ? filtered : assetGroups;
+  }, [assetGroups, formData.assetType]);
+
+  // 2. Cascading Asset Classes based on selected Asset Group
+  const availableAssetClassesDropdown = useMemo(() => {
+    if (!formData.assetGroup) return assetClasses;
+    const filtered = (assetClasses || []).filter(cls => matchesClassToGroup(cls, formData.assetGroup));
+    return filtered.length > 0 ? filtered : assetClasses;
+  }, [assetClasses, formData.assetGroup]);
+
+  // 3. Cascading Categories based on Asset Class / Group / Type
   const availableCategories = useMemo(() => {
-    const activeCats = (categories || []).filter(c => c.active !== false);
-    const filtered = activeCats.filter(c => matchesAssetType(c, formData.assetType));
+    let cats = (categories || []).filter(c => c.active !== false);
+    // Filter by Asset Type
+    cats = cats.filter(c => matchesAssetType(c, formData.assetType));
+
+    // Filter by Asset Class if selected
+    if (formData.assetClass) {
+      const clsLower = normalizeStr(formData.assetClass);
+      const matchedByClass = cats.filter(c => {
+        const catClass = normalizeStr(c.className);
+        return catClass === clsLower || clsLower.includes(catClass) || catClass.includes(clsLower);
+      });
+      if (matchedByClass.length > 0) cats = matchedByClass;
+    }
+
     const seen = new Set();
     const unique = [];
-    for (const c of filtered) {
+    for (const c of cats) {
       const cleanName = (c.name || '').trim();
       if (cleanName && !seen.has(cleanName.toLowerCase())) {
         seen.add(cleanName.toLowerCase());
@@ -423,20 +584,20 @@ export function AssetForm() {
       }
     }
     return unique;
-  }, [categories, formData.assetType]);
+  }, [categories, formData.assetType, formData.assetClass]);
 
-  // 2. Cascading Sub Categories / Asset Classes based on selected Category
+  // 4. Cascading Sub Categories strictly based on selected Category
   const availableAssetClasses = useMemo(() => {
     if (!formData.categoryId && !formData.category) return [];
 
     const selectedCatName = (formData.category || '').trim().toLowerCase();
-    const matched = assetClasses.filter(cls => {
-      if (formData.categoryId && cls.categoryId === formData.categoryId) return true;
+    const matched = subCategories.filter(sc => {
+      if (formData.categoryId && sc.categoryId === formData.categoryId) return true;
       if (selectedCatName) {
-        const clsCatName = (cls.category?.name || cls.categoryName || '').trim().toLowerCase();
-        if (clsCatName === selectedCatName) return true;
+        const scCatName = (sc.category?.name || sc.categoryName || '').trim().toLowerCase();
+        if (scCatName === selectedCatName) return true;
         const selectedBase = selectedCatName.split(' ')[0];
-        if (selectedBase && selectedBase.length >= 3 && clsCatName.includes(selectedBase)) return true;
+        if (selectedBase && selectedBase.length >= 3 && scCatName.includes(selectedBase)) return true;
       }
       return false;
     });
@@ -451,26 +612,96 @@ export function AssetForm() {
       }
     }
     return unique;
-  }, [assetClasses, formData.categoryId, formData.category]);
+  }, [formData.category, formData.categoryId, subCategories]);
 
-  // Handlers for cascading state updates
+  // 5. Cascading / Prioritized Manufacturers based on Type & Category
+  const availableManufacturers = useMemo(() => {
+    if (!manufacturers || manufacturers.length === 0) return [];
+
+    const typeLower = normalizeStr(formData.assetType);
+    const catLower = normalizeStr(formData.category);
+
+    const isVehicle = typeLower.includes('veh') || catLower.includes('veh') || catLower.includes('car') || catLower.includes('truck');
+    const isFurniture = typeLower.includes('furn') || catLower.includes('furn') || catLower.includes('chair') || catLower.includes('desk');
+    const isMachinery = typeLower.includes('mach') || catLower.includes('mach') || catLower.includes('cnc') || catLower.includes('plant');
+    const isIT = typeLower.includes('it') || typeLower.includes('tech') || catLower.includes('laptop') || catLower.includes('server') || catLower.includes('switch');
+
+    const vehicleBrands = new Set(['toyota', 'ford', 'honda', 'volvo', 'mercedes-benz', 'isuzu', 'hyundai', 'caterpillar', 'bmw', 'chevrolet']);
+    const furnitureBrands = new Set(['herman miller', 'steelcase', 'haworth', 'ikea', 'knoll', 'godrej', 'vitra']);
+    const itBrands = new Set(['dell', 'dell technologies', 'apple', 'apple inc.', 'hp', 'hp inc.', 'hp enterprise', 'cisco', 'cisco systems', 'lenovo', 'lenovo group', 'samsung', 'zebra', 'zebra technologies', 'asus', 'acer', 'microsoft']);
+    const machineryBrands = new Set(['caterpillar', 'caterpillar inc.', 'siemens', 'bosch', 'komatsu', 'schneider electric', 'cummins', 'mitsubishi']);
+
+    let priorityBrands = new Set();
+    if (isVehicle) priorityBrands = vehicleBrands;
+    else if (isFurniture) priorityBrands = furnitureBrands;
+    else if (isMachinery) priorityBrands = machineryBrands;
+    else if (isIT) priorityBrands = itBrands;
+
+    if (priorityBrands.size === 0) return manufacturers;
+
+    const matched = [];
+    const others = [];
+    for (const m of manufacturers) {
+      const name = normalizeStr(m.name || m.title || m);
+      const hasMatch = Array.from(priorityBrands).some(b => name.includes(b));
+      if (hasMatch) matched.push(m);
+      else others.push(m);
+    }
+    return [...matched, ...others];
+  }, [manufacturers, formData.assetType, formData.category]);
+
+  // --- Handlers for Seamless Top-Down & Bottom-Up Cascades ---
+
+  // Top-Down Step 1: Change Asset Type
   const handleAssetTypeChange = (newType) => {
-    const nextCategories = (categories || []).filter(c => c.active !== false && matchesAssetType(c, newType));
-    const isCatStillValid = nextCategories.some(c => 
-      (c.id && c.id === formData.categoryId) || 
-      ((c.name || '').trim().toLowerCase() === (formData.category || '').trim().toLowerCase())
-    );
+    const nextGroups = (assetGroups || []).filter(g => matchesGroupToType(g, newType));
+    const nextGroup = nextGroups.length > 0 ? (nextGroups[0].name || nextGroups[0].code) : '';
+
+    const nextClasses = (assetClasses || []).filter(cls => matchesClassToGroup(cls, nextGroup));
+    const nextClass = nextClasses.length > 0 ? (nextClasses[0].name || nextClasses[0].code) : '';
 
     setFormData(prev => ({
       ...prev,
       assetType: newType,
-      category: isCatStillValid ? prev.category : '',
-      categoryId: isCatStillValid ? prev.categoryId : '',
-      subcategory: isCatStillValid ? prev.subcategory : '',
-      assetClassId: isCatStillValid ? prev.assetClassId : ''
+      assetGroup: nextGroup,
+      assetClass: nextClass,
+      category: '',
+      categoryId: '',
+      subcategory: '',
+      assetClassId: '',
+      manufacturer: ''
     }));
   };
 
+  // Top-Down Step 2: Change Asset Group
+  const handleAssetGroupChange = (newGroup) => {
+    const nextClasses = (assetClasses || []).filter(cls => matchesClassToGroup(cls, newGroup));
+    const nextClass = nextClasses.length > 0 ? (nextClasses[0].name || nextClasses[0].code) : '';
+
+    setFormData(prev => ({
+      ...prev,
+      assetGroup: newGroup,
+      assetClass: nextClass,
+      category: '',
+      categoryId: '',
+      subcategory: '',
+      assetClassId: ''
+    }));
+  };
+
+  // Top-Down Step 3: Change Asset Class
+  const handleAssetClassChange = (newClass) => {
+    setFormData(prev => ({
+      ...prev,
+      assetClass: newClass,
+      category: '',
+      categoryId: '',
+      subcategory: '',
+      assetClassId: ''
+    }));
+  };
+
+  // Top-Down Step 4 (or Direct Bottom-Up): Change Category
   const handleCategoryChange = (catName) => {
     if (!catName) {
       setFormData(prev => ({
@@ -478,7 +709,8 @@ export function AssetForm() {
         category: '',
         categoryId: '',
         subcategory: '',
-        assetClassId: ''
+        assetClassId: '',
+        manufacturer: ''
       }));
       return;
     }
@@ -486,23 +718,58 @@ export function AssetForm() {
       || categories.find(c => (c.name || '').trim().toLowerCase() === catName.trim().toLowerCase())
       || categories.find(c => (c.name || '').toLowerCase().includes(catName.toLowerCase()));
 
+    const catLower = (targetCat?.name || catName).toLowerCase();
+    let resolvedGroup = formData.assetGroup || 'Information Technology';
+    let resolvedClass = formData.assetClass || 'Hardware';
+    let resolvedType = formData.assetType || 'IT Equipment';
+
+    if (catLower.includes('server') || catLower.includes('it') || catLower.includes('compute') || catLower.includes('laptop') || catLower.includes('desktop') || catLower.includes('mobile') || catLower.includes('net')) {
+      resolvedType = 'IT Equipment';
+      resolvedGroup = 'Information Technology';
+      resolvedClass = (catLower.includes('net') || catLower.includes('switch') || catLower.includes('router')) ? 'Network Equipment' : 'Hardware';
+    } else if (catLower.includes('veh') || catLower.includes('fleet') || catLower.includes('truck') || catLower.includes('car') || catLower.includes('suv')) {
+      resolvedType = 'Vehicle';
+      resolvedGroup = 'Vehicles';
+      resolvedClass = (catLower.includes('truck') || catLower.includes('heavy')) ? 'Heavy Vehicles' : 'Light Vehicles';
+    } else if (catLower.includes('fac') || catLower.includes('mach') || catLower.includes('hvac') || catLower.includes('plant') || catLower.includes('cnc')) {
+      resolvedType = catLower.includes('mach') ? 'Machinery' : 'Facility & Building';
+      resolvedGroup = catLower.includes('mach') ? 'Plant & Machinery' : 'Buildings & Facilities';
+      resolvedClass = catLower.includes('hvac') ? 'MEP Systems' : (catLower.includes('mach') ? 'Production Equipment' : 'Building Structure');
+    } else if (catLower.includes('furn') || catLower.includes('chair') || catLower.includes('desk') || catLower.includes('table')) {
+      resolvedType = 'Furniture & Fixtures';
+      resolvedGroup = 'Furniture, Fixtures & Equipment';
+      resolvedClass = 'Office Furniture';
+    }
+
     setFormData(prev => ({
       ...prev,
       category: targetCat?.name || catName,
       categoryId: targetCat?.id || '',
+      assetType: resolvedType,
+      assetGroup: resolvedGroup,
+      assetClass: resolvedClass,
       subcategory: '',
       assetClassId: ''
     }));
   };
 
   const handleSubCategoryChange = (selectedClassIdOrName) => {
+    if (!selectedClassIdOrName) {
+      setFormData(prev => ({
+        ...prev,
+        subcategory: '',
+        assetClassId: ''
+      }));
+      return;
+    }
     const matchedClass = availableAssetClasses.find(item => item.id === selectedClassIdOrName || item.name === selectedClassIdOrName);
     setFormData(prev => ({
       ...prev,
       subcategory: matchedClass?.name || selectedClassIdOrName,
-      assetClassId: matchedClass?.id || ''
+      assetClassId: matchedClass?.id || selectedClassIdOrName
     }));
   };
+
   const assetIdPreview = `${previewPrefix(formData.assetType)}-${previewPrefix(categoryCode)}-${previewPrefix(subcategoryCode)}-${new Date().getFullYear()}-…`;
   const updateQuantity = value => {
     setFormData(previous => ({ ...previous, quantity: value, serialNumber: serialNumbers[0] || '' }));
@@ -1497,12 +1764,14 @@ export function AssetForm() {
                 : 'border-slate-200 focus:border-[#6C2BD9]'
             }`}
           >
-            <option value="IT Equipment">IT Equipment</option>
-            <option value="Office Equipment">Office Equipment</option>
-            <option value="Machinery">Machinery</option>
-            <option value="Vehicle">Vehicle</option>
-            <option value="Furniture">Furniture & Fixtures</option>
-            <option value="Facility & Building">Facility & Building</option>
+            {assetTypes.map((t) => {
+              const name = typeof t === 'string' ? t : (t.name || t.code);
+              return (
+                <option key={t.id || name} value={name}>
+                  {name}
+                </option>
+              );
+            })}
           </select>
           {fieldErrors.assetType && (
             <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
@@ -1510,6 +1779,50 @@ export function AssetForm() {
               {fieldErrors.assetType}
             </p>
           )}
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">Asset Group</label>
+            <span className="text-[10px] text-purple-600 font-semibold">Cascaded</span>
+          </div>
+          <select
+            value={formData.assetGroup || ''}
+            onChange={(e) => handleAssetGroupChange(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          >
+            <option value="">-- Select Asset Group --</option>
+            {availableAssetGroups.map((g) => {
+              const gName = g.name || g.code;
+              return (
+                <option key={g.id || g._id || gName} value={gName}>
+                  {gName} {g.code ? `(${g.code})` : ''}
+                </option>
+              );
+            })}
+          </select>
+        </div>
+
+        <div>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">Asset Class</label>
+            <span className="text-[10px] text-purple-600 font-semibold">Cascaded</span>
+          </div>
+          <select
+            value={formData.assetClass || ''}
+            onChange={(e) => handleAssetClassChange(e.target.value)}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          >
+            <option value="">-- Select Asset Class --</option>
+            {availableAssetClassesDropdown.map((cls) => {
+              const cName = cls.name || cls.code;
+              return (
+                <option key={cls.id || cls._id || cName} value={cName}>
+                  {cName} {cls.code ? `(${cls.code})` : ''}
+                </option>
+              );
+            })}
+          </select>
         </div>
 
         <div>
@@ -1586,8 +1899,8 @@ export function AssetForm() {
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
             <option value="">-- Select Manufacturer --</option>
-            {manufacturers && manufacturers.length > 0 ? (
-              manufacturers.map((m) => {
+            {availableManufacturers && availableManufacturers.length > 0 ? (
+              availableManufacturers.map((m) => {
                 const name = m.name || m.title || m;
                 return (
                   <option key={m.id || m._id || name} value={name}>
@@ -1596,15 +1909,7 @@ export function AssetForm() {
                 );
               })
             ) : (
-              <>
-                <option value="Dell Technologies">Dell Technologies</option>
-                <option value="Apple">Apple</option>
-                <option value="HP Inc.">HP Inc.</option>
-                <option value="Cisco Systems">Cisco Systems</option>
-                <option value="Lenovo">Lenovo</option>
-                <option value="Toyota">Toyota</option>
-                <option value="Herman Miller">Herman Miller</option>
-              </>
+              <option value="" disabled>No manufacturers registered</option>
             )}
           </select>
         </div>
@@ -1671,6 +1976,18 @@ export function AssetForm() {
             </p>
           )}
         </div>
+
+        {formData.category && (
+          <div className="col-span-full p-2.5 rounded-xl bg-purple-50/70 border border-purple-200 flex items-center justify-between text-xs animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-[#6C2BD9]" />
+              <span className="font-semibold text-purple-950">
+                Verified Hierarchy: <span className="font-bold">{formData.assetGroup || 'Information Technology'}</span> &rsaquo; <span className="font-bold">{formData.assetClass || 'Hardware'}</span> &rsaquo; <span className="font-bold">{formData.category}</span>
+              </span>
+            </div>
+            <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-200/60 text-[#5B21B6] px-2 py-0.5 rounded-full">Auto-Linked</span>
+          </div>
+        )}
       </div>
       {quantityCount > 1 && <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-3 text-xs space-y-2">
         <label className="block font-bold text-slate-700">Select item to edit its details</label>

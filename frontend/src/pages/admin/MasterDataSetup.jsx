@@ -57,7 +57,8 @@ import {
   GenericMasterTab,
   DEFAULT_MANUFACTURERS,
   DEFAULT_UOM,
-  DEFAULT_STATUS_CODES
+  DEFAULT_STATUS_CODES,
+  DEFAULT_ASSET_TYPES
 } from '../../components/master-data/GenericMasterTab';
 import { DepreciationPoliciesTab } from '../../components/master-data/DepreciationPoliciesTab';
 import { api } from '../../services/api';
@@ -382,6 +383,7 @@ export function MasterDataSetup() {
   // Exact 11 items matching the Master Data section in the left sidebar
   const TABS = [
     { id: 'asset-groups', name: 'Asset Groups', icon: Box, desc: 'Define and manage asset groups to classify your assets across the Asset360 enterprise platform.' },
+    { id: 'asset-types', name: 'Asset Types', icon: Box, desc: 'Define and manage primary asset types (e.g. IT Equipment, Vehicle, Machinery) for high-level classification and category filtering.' },
     { id: 'classes', name: 'Asset Classes', icon: Layers, desc: 'Define and manage asset classes within each asset group for classification and lifecycle control.' },
     { id: 'categories', name: 'Categories', icon: Tag, desc: 'Define and manage asset categories within each class.' },
     { id: 'subcategories', name: 'Sub Categories', icon: FolderTree, desc: 'Define and manage granular asset sub categories within each category.' },
@@ -780,8 +782,8 @@ export function MasterDataSetup() {
         />
       )}
 
-      {/* GENERIC MASTER DATA TABS (Manufacturers, UOM, Status Codes & Custom Views) */}
-      {(['manufacturers', 'uom', 'status-codes'].includes(activeTab) ||
+      {/* GENERIC MASTER DATA TABS (Asset Types, Manufacturers, UOM, Status Codes & Custom Views) */}
+      {(['manufacturers', 'uom', 'status-codes', 'asset-types'].includes(activeTab) ||
         (MORE_TABS.some((mt) => mt.id === activeTab) && activeTab !== 'depreciation')) && (
         <GenericMasterTab
           activeTab={activeTab}

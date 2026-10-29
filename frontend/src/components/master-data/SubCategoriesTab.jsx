@@ -21,261 +21,10 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
+import { INITIAL_CLASSES } from './ClassesTab';
 
-export const INITIAL_SUB_CATEGORIES = [
-  {
-    id: 1,
-    code: 'IT-HW-LAP-01',
-    name: 'Laptops',
-    categoryName: 'Laptops & Notebooks',
-    className: 'Hardware',
-    groupName: 'Information Technology',
-    description: 'High-performance and standard employee laptops, notebooks, ultrabooks, and portable workstations.',
-    totalAssets: 420,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '12 Jan 2025 10:30 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '05 Aug 2025 02:15 PM',
-    relatedInfo: {
-      assets: 420,
-      maintenancePlans: 2,
-      documents: 4,
-      spareParts: 12
-    }
-  },
-  {
-    id: 2,
-    code: 'IT-HW-DSK-01',
-    name: 'Desktops',
-    categoryName: 'Desktop Workstations',
-    className: 'Hardware',
-    groupName: 'Information Technology',
-    description: 'Desktop computers, tower PCs, workstations, and all-in-one computing systems.',
-    totalAssets: 380,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '14 Jan 2025 11:15 AM',
-    lastModifiedBy: 'Michael Brown',
-    lastModifiedOn: '10 Aug 2025 04:30 PM',
-    relatedInfo: {
-      assets: 380,
-      maintenancePlans: 1,
-      documents: 2,
-      spareParts: 8
-    }
-  },
-  {
-    id: 3,
-    code: 'IT-HW-SRV-01',
-    name: 'Rack Servers',
-    categoryName: 'Rack & Blade Servers',
-    className: 'Hardware',
-    groupName: 'Information Technology',
-    description: 'Enterprise data center rack servers, blade chassis, and virtualization host nodes.',
-    totalAssets: 85,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '15 Jan 2025 09:00 AM',
-    lastModifiedBy: 'David Kim',
-    lastModifiedOn: '12 Aug 2025 01:20 PM',
-    relatedInfo: {
-      assets: 85,
-      maintenancePlans: 6,
-      documents: 8,
-      spareParts: 24
-    }
-  },
-  {
-    id: 4,
-    code: 'IT-NW-SWT-01',
-    name: 'Core Switches',
-    categoryName: 'Enterprise Network Switches',
-    className: 'Network Equipment',
-    groupName: 'Information Technology',
-    description: 'Core and distribution layer high-speed managed Ethernet network switches.',
-    totalAssets: 45,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Jan 2025 02:40 PM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '18 Aug 2025 11:10 AM',
-    relatedInfo: {
-      assets: 45,
-      maintenancePlans: 4,
-      documents: 3,
-      spareParts: 6
-    }
-  },
-  {
-    id: 5,
-    code: 'IT-NW-ROU-01',
-    name: 'Enterprise Routers',
-    categoryName: 'Edge & Core Routers',
-    className: 'Network Equipment',
-    groupName: 'Information Technology',
-    description: 'Border gateway routers, WAN edge controllers, and corporate VPN gateways.',
-    totalAssets: 18,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '22 Jan 2025 04:10 PM',
-    lastModifiedBy: 'David Kim',
-    lastModifiedOn: '20 Aug 2025 09:30 AM',
-    relatedInfo: {
-      assets: 18,
-      maintenancePlans: 3,
-      documents: 5,
-      spareParts: 4
-    }
-  },
-  {
-    id: 6,
-    code: 'MEP-HVAC-CHL-01',
-    name: 'Water Chillers',
-    categoryName: 'Central Water Chillers',
-    className: 'HVAC Systems',
-    groupName: 'Buildings & Facilities MEP',
-    description: 'Centralized HVAC water chiller units and cooling plant refrigeration units.',
-    totalAssets: 12,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '01 Feb 2025 08:30 AM',
-    lastModifiedBy: 'Robert Taylor',
-    lastModifiedOn: '25 Aug 2025 03:45 PM',
-    relatedInfo: {
-      assets: 12,
-      maintenancePlans: 12,
-      documents: 9,
-      spareParts: 30
-    }
-  },
-  {
-    id: 7,
-    code: 'MEP-HVAC-AHU-01',
-    name: 'Air Handling Units',
-    categoryName: 'Air Handling Units (AHU)',
-    className: 'HVAC Systems',
-    groupName: 'Buildings & Facilities MEP',
-    description: 'Floor level air handling blower systems, filter banks, and air circulation units.',
-    totalAssets: 34,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '05 Feb 2025 10:00 AM',
-    lastModifiedBy: 'Robert Taylor',
-    lastModifiedOn: '28 Aug 2025 02:00 PM',
-    relatedInfo: {
-      assets: 34,
-      maintenancePlans: 8,
-      documents: 6,
-      spareParts: 18
-    }
-  },
-  {
-    id: 8,
-    code: 'MEP-ELE-GEN-01',
-    name: 'Diesel Generators',
-    categoryName: 'Backup Power Generators',
-    className: 'Electrical Systems',
-    groupName: 'Buildings & Facilities MEP',
-    description: 'Heavy-duty industrial emergency backup power diesel generator sets.',
-    totalAssets: 8,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '10 Feb 2025 01:20 PM',
-    lastModifiedBy: 'Robert Taylor',
-    lastModifiedOn: '30 Aug 2025 10:15 AM',
-    relatedInfo: {
-      assets: 8,
-      maintenancePlans: 10,
-      documents: 7,
-      spareParts: 25
-    }
-  },
-  {
-    id: 9,
-    code: 'PL-CNC-MILL-01',
-    name: 'CNC Milling',
-    categoryName: 'CNC Milling Machines',
-    className: 'CNC Machining',
-    groupName: 'Heavy Plant & Machinery',
-    description: 'Multi-axis CNC milling machines, vertical machining centers, and automated tooling systems.',
-    totalAssets: 16,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '15 Feb 2025 03:00 PM',
-    lastModifiedBy: 'James Wilson',
-    lastModifiedOn: '01 Sep 2025 11:30 AM',
-    relatedInfo: {
-      assets: 16,
-      maintenancePlans: 14,
-      documents: 11,
-      spareParts: 40
-    }
-  },
-  {
-    id: 10,
-    code: 'VH-LGT-SUV-01',
-    name: 'Fleet SUVs',
-    categoryName: 'Passenger SUV Vehicles',
-    className: 'Light Vehicles',
-    groupName: 'Fleet & Vehicles',
-    description: 'Executive transport SUVs, field supervisor four-wheel drive vehicles, and service utility SUVs.',
-    totalAssets: 22,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Feb 2025 09:45 AM',
-    lastModifiedBy: 'Emily Davis',
-    lastModifiedOn: '02 Sep 2025 04:10 PM',
-    relatedInfo: {
-      assets: 22,
-      maintenancePlans: 6,
-      documents: 15,
-      spareParts: 14
-    }
-  },
-  {
-    id: 11,
-    code: 'FFE-OFF-CHR-01',
-    name: 'Ergonomic Chairs',
-    categoryName: 'Office Ergonomic Seating',
-    className: 'Office Furniture',
-    groupName: 'Furniture, Fixtures & Equipment',
-    description: 'Executive and workstation ergonomic mesh chairs with lumbar support.',
-    totalAssets: 650,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '25 Feb 2025 02:10 PM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '03 Sep 2025 09:20 AM',
-    relatedInfo: {
-      assets: 650,
-      maintenancePlans: 0,
-      documents: 1,
-      spareParts: 10
-    }
-  },
-  {
-    id: 12,
-    code: 'FFE-OFF-DSK-01',
-    name: 'Executive Desks',
-    categoryName: 'Modular Work Desks',
-    className: 'Office Furniture',
-    groupName: 'Furniture, Fixtures & Equipment',
-    description: 'Motorized height-adjustable sit-stand desks and executive wooden desks.',
-    totalAssets: 510,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '01 Mar 2025 11:00 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '04 Sep 2025 01:45 PM',
-    relatedInfo: {
-      assets: 510,
-      maintenancePlans: 0,
-      documents: 2,
-      spareParts: 4
-    }
-  }
-];
+export const INITIAL_SUB_CATEGORIES = [];
 
 export function SubCategoriesTab({
   triggerToast,
@@ -285,8 +34,8 @@ export function SubCategoriesTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const [subCategoriesList, setSubCategoriesList] = useState(INITIAL_SUB_CATEGORIES);
-  const [selectedSubCategory, setSelectedSubCategory] = useState(INITIAL_SUB_CATEGORIES[0]);
+  const [subCategoriesList, setSubCategoriesList] = useState([]);
+  const [selectedSubCategory, setSelectedSubCategory] = useState(null);
   const [selectedSubCatIds, setSelectedSubCatIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [categories, setCategories] = useState([]);
@@ -330,10 +79,14 @@ export function SubCategoriesTab({
         setSubCategoriesList(mapped);
         setSelectedSubCategory((prev) => (prev ? mapped.find((s) => s.id === prev.id) || mapped[0] : mapped[0]));
       } else {
-        setSubCategoriesList(INITIAL_SUB_CATEGORIES);
-        setSelectedSubCategory(INITIAL_SUB_CATEGORIES[0]);
+        const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+        setSubCategoriesList(custom);
+        setSelectedSubCategory(custom[0] || null);
       }
     } catch (err) {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+      setSubCategoriesList(custom);
+      setSelectedSubCategory(custom[0] || null);
       console.warn('Failed to fetch sub-categories from backend:', err);
     } finally {
       setIsLoading(false);
@@ -354,6 +107,26 @@ export function SubCategoriesTab({
   // Modal state
   const [showAddSubCatModal, setShowAddSubCatModal] = useState(false);
   const [editingSubCategory, setEditingSubCategory] = useState(null);
+  const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
+      return [...custom, ...INITIAL_ASSET_GROUPS.filter(d => !existing.has(d.name.toLowerCase()))];
+    } catch (_) {
+      return INITIAL_ASSET_GROUPS;
+    }
+  });
+
+  const [availableAssetClasses, setAvailableAssetClasses] = useState(() => {
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
+      return [...custom, ...INITIAL_CLASSES.filter(d => !existing.has(d.name.toLowerCase()))];
+    } catch (_) {
+      return INITIAL_CLASSES;
+    }
+  });
+
   const [subCatFormState, setSubCatFormState] = useState({
     code: '',
     name: '',
@@ -1012,34 +785,30 @@ export function SubCategoriesTab({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Asset Class *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Asset Class</label>
                 <select
                   value={subCatFormState.className}
                   onChange={(e) => setSubCatFormState({ ...subCatFormState, className: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
-                  <option value="Hardware">Hardware</option>
-                  <option value="Network Equipment">Network Equipment</option>
-                  <option value="HVAC Systems">HVAC Systems</option>
-                  <option value="Electrical Systems">Electrical Systems</option>
-                  <option value="CNC Machining">CNC Machining</option>
-                  <option value="Light Vehicles">Light Vehicles</option>
-                  <option value="Office Furniture">Office Furniture</option>
+                  {availableAssetClasses.map((cls) => {
+                    const name = cls.name || cls.code;
+                    return <option key={cls.id || name} value={name}>{name}</option>;
+                  })}
                 </select>
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Asset Group *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Asset Group</label>
                 <select
                   value={subCatFormState.groupName}
                   onChange={(e) => setSubCatFormState({ ...subCatFormState, groupName: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
-                  <option value="Information Technology">Information Technology</option>
-                  <option value="Buildings & Facilities MEP">Buildings & Facilities MEP</option>
-                  <option value="Heavy Plant & Machinery">Heavy Plant & Machinery</option>
-                  <option value="Fleet & Vehicles">Fleet & Vehicles</option>
-                  <option value="Furniture, Fixtures & Equipment">Furniture, Fixtures & Equipment</option>
+                  {availableAssetGroups.map((g) => {
+                    const name = g.name || g.code;
+                    return <option key={g.id || name} value={name}>{name}</option>;
+                  })}
                 </select>
               </div>
 
