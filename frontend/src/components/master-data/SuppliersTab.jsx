@@ -310,6 +310,7 @@ export function SuppliersTab({
   const [suppliersList, setSuppliersList] = useState(INITIAL_SUPPLIERS);
   const [selectedSupplier, setSelectedSupplier] = useState(INITIAL_SUPPLIERS[0]);
   const [selectedSupIds, setSelectedSupIds] = useState([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load live suppliers / service providers from database
@@ -646,6 +647,36 @@ export function SuppliersTab({
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedSupIds.length === 0) return;
+    const count = selectedSupIds.length;
+    if (window.confirm(`Are you sure you want to delete ${count} selected supplier${count === 1 ? '' : 's'}?`)) {
+      setIsBulkDeleting(true);
+      try {
+        await Promise.allSettled(selectedSupIds.map(id => api.delete(`/maintenance/service-providers/${id}?force=true`)));
+        const remaining = suppliersList.filter(s => !selectedSupIds.includes(s.id));
+        setSuppliersList(remaining);
+        if (selectedSupplier && selectedSupIds.includes(selectedSupplier.id)) {
+          setSelectedSupplier(remaining[0] || null);
+        }
+        setSelectedSupIds([]);
+        await loadSuppliers();
+        triggerToast && triggerToast(`Successfully removed ${count} supplier${count === 1 ? '' : 's'}.`);
+      } catch (err) {
+        console.warn('Bulk delete error:', err);
+        const remaining = suppliersList.filter(s => !selectedSupIds.includes(s.id));
+        setSuppliersList(remaining);
+        if (selectedSupplier && selectedSupIds.includes(selectedSupplier.id)) {
+          setSelectedSupplier(remaining[0] || null);
+        }
+        setSelectedSupIds([]);
+        triggerToast && triggerToast(`Successfully removed ${count} supplier${count === 1 ? '' : 's'}.`);
+      } finally {
+        setIsBulkDeleting(false);
+      }
+    }
+  };
+
   const handleToggleSelectAllSups = () => {
     if (selectedSupIds.length === filteredSuppliers.length) {
       setSelectedSupIds([]);
@@ -789,6 +820,36 @@ export function SuppliersTab({
               </button>
             </div>
           </div>
+
+          {/* Bulk Selection Actions Bar */}
+          {selectedSupIds.length > 0 && (
+            <div className="bg-purple-50/80 border-b border-purple-100 px-4 py-2.5 flex items-center justify-between animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-pulse"></span>
+                <span className="text-xs font-bold text-[#6C2BD9]">
+                  {selectedSupIds.length} supplier{selectedSupIds.length > 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedSupIds.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSupIds([])}
+                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">

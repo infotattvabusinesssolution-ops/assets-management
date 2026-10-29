@@ -221,6 +221,7 @@ export function CostCentersTab({
   const [costCentersList, setCostCentersList] = useState(INITIAL_COST_CENTERS);
   const [selectedCostCenter, setSelectedCostCenter] = useState(INITIAL_COST_CENTERS[1]);
   const [selectedCCIds, setSelectedCCIds] = useState([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load live cost centers from database
@@ -500,6 +501,36 @@ export function CostCentersTab({
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedCCIds.length === 0) return;
+    const count = selectedCCIds.length;
+    if (window.confirm(`Are you sure you want to delete ${count} selected cost center${count === 1 ? '' : 's'}?`)) {
+      setIsBulkDeleting(true);
+      try {
+        await Promise.allSettled(selectedCCIds.map(id => api.delete(`/master-data/cost-centers/${id}?force=true`)));
+        const remaining = costCentersList.filter(c => !selectedCCIds.includes(c.id));
+        setCostCentersList(remaining);
+        if (selectedCostCenter && selectedCCIds.includes(selectedCostCenter.id)) {
+          setSelectedCostCenter(remaining[0] || null);
+        }
+        setSelectedCCIds([]);
+        await loadCostCenters();
+        triggerToast && triggerToast(`Successfully removed ${count} cost center${count === 1 ? '' : 's'}.`);
+      } catch (err) {
+        console.warn('Bulk delete error:', err);
+        const remaining = costCentersList.filter(c => !selectedCCIds.includes(c.id));
+        setCostCentersList(remaining);
+        if (selectedCostCenter && selectedCCIds.includes(selectedCostCenter.id)) {
+          setSelectedCostCenter(remaining[0] || null);
+        }
+        setSelectedCCIds([]);
+        triggerToast && triggerToast(`Successfully removed ${count} cost center${count === 1 ? '' : 's'}.`);
+      } finally {
+        setIsBulkDeleting(false);
+      }
+    }
+  };
+
   const handleToggleSelectAllCCs = () => {
     if (selectedCCIds.length === filteredCostCenters.length) {
       setSelectedCCIds([]);
@@ -620,6 +651,36 @@ export function CostCentersTab({
               </button>
             </div>
           </div>
+
+          {/* Bulk Selection Actions Bar */}
+          {selectedCCIds.length > 0 && (
+            <div className="bg-purple-50/80 border-b border-purple-100 px-4 py-2.5 flex items-center justify-between animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-pulse"></span>
+                <span className="text-xs font-bold text-[#6C2BD9]">
+                  {selectedCCIds.length} cost center{selectedCCIds.length > 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedCCIds.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCCIds([])}
+                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">

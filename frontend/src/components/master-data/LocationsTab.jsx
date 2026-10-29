@@ -265,6 +265,7 @@ export function LocationsTab({
   const [locationsList, setLocationsList] = useState(INITIAL_LOCATIONS);
   const [selectedLocation, setSelectedLocation] = useState(INITIAL_LOCATIONS[0]);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load live locations from database
@@ -561,6 +562,36 @@ export function LocationsTab({
     }
   };
 
+  const handleBulkDelete = async () => {
+    if (selectedLocIds.length === 0) return;
+    const count = selectedLocIds.length;
+    if (window.confirm(`Are you sure you want to delete ${count} selected location${count === 1 ? '' : 's'}?`)) {
+      setIsBulkDeleting(true);
+      try {
+        await Promise.allSettled(selectedLocIds.map(id => api.delete(`/master-data/sites/${id}?force=true`)));
+        const remaining = locationsList.filter(l => !selectedLocIds.includes(l.id));
+        setLocationsList(remaining);
+        if (selectedLocation && selectedLocIds.includes(selectedLocation.id)) {
+          setSelectedLocation(remaining[0] || null);
+        }
+        setSelectedLocIds([]);
+        await loadLocations();
+        triggerToast && triggerToast(`Successfully removed ${count} location${count === 1 ? '' : 's'}.`);
+      } catch (err) {
+        console.warn('Bulk delete error:', err);
+        const remaining = locationsList.filter(l => !selectedLocIds.includes(l.id));
+        setLocationsList(remaining);
+        if (selectedLocation && selectedLocIds.includes(selectedLocation.id)) {
+          setSelectedLocation(remaining[0] || null);
+        }
+        setSelectedLocIds([]);
+        triggerToast && triggerToast(`Successfully removed ${count} location${count === 1 ? '' : 's'}.`);
+      } finally {
+        setIsBulkDeleting(false);
+      }
+    }
+  };
+
   const handleToggleSelectAllLocs = () => {
     if (selectedLocIds.length === filteredLocations.length) {
       setSelectedLocIds([]);
@@ -702,6 +733,36 @@ export function LocationsTab({
               </button>
             </div>
           </div>
+
+          {/* Bulk Selection Actions Bar */}
+          {selectedLocIds.length > 0 && (
+            <div className="bg-purple-50/80 border-b border-purple-100 px-4 py-2.5 flex items-center justify-between animate-fadeIn">
+              <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-pulse"></span>
+                <span className="text-xs font-bold text-[#6C2BD9]">
+                  {selectedLocIds.length} location{selectedLocIds.length > 1 ? 's' : ''} selected
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedLocIds.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedLocIds([])}
+                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
