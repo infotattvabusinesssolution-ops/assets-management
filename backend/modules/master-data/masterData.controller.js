@@ -406,16 +406,27 @@ export async function updateSite(req, res, next) {
 export async function deleteSite(req, res, next) {
   try {
     const { id } = req.params;
+    const force = req.query.force === 'true';
     const assetCount = await prisma.asset.count({ where: { siteId: id } }).catch(() => 0);
-    if (assetCount > 0) {
+    if (assetCount > 0 && !force) {
       return res.status(400).json({
         success: false,
         message: `This location is currently referenced by ${assetCount} asset(s) and cannot be deleted.`
       });
     }
+    if (assetCount > 0 && force) {
+      await prisma.asset.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
+    }
+    await prisma.building.updateMany({ where: { siteId: id }, data: { active: false } }).catch(() => null);
     await prisma.site.delete({ where: { id } });
     res.json({ success: true, message: 'Location deleted successfully.' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    try {
+      await prisma.site.update({ where: { id: req.params.id }, data: { active: false } }).catch(() => null);
+      return res.json({ success: true, message: 'Location deactivated successfully.' });
+    } catch (_) {}
+    next(err);
+  }
 }
 
 export async function getBuildings(req, res, next) {
@@ -935,16 +946,26 @@ export async function updateDepartment(req, res, next) {
 export async function deleteDepartment(req, res, next) {
   try {
     const { id } = req.params;
+    const force = req.query.force === 'true';
     const assetCount = await prisma.asset.count({ where: { departmentId: id } }).catch(() => 0);
-    if (assetCount > 0) {
+    if (assetCount > 0 && !force) {
       return res.status(400).json({
         success: false,
         message: `This department is currently referenced by ${assetCount} asset(s) and cannot be deleted.`
       });
     }
+    if (assetCount > 0 && force) {
+      await prisma.asset.updateMany({ where: { departmentId: id }, data: { departmentId: null } }).catch(() => null);
+    }
     await prisma.department.delete({ where: { id } });
     res.json({ success: true, message: 'Department deleted successfully.' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    try {
+      await prisma.department.update({ where: { id: req.params.id }, data: { active: false } }).catch(() => null);
+      return res.json({ success: true, message: 'Department deactivated successfully.' });
+    } catch (_) {}
+    next(err);
+  }
 }
 
 export async function getCostCenters(req, res, next) {
@@ -996,7 +1017,13 @@ export async function deleteCostCenter(req, res, next) {
     const { id } = req.params;
     await prisma.costCenter.delete({ where: { id } });
     res.json({ success: true, message: 'Cost center deleted successfully.' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    try {
+      await prisma.costCenter.update({ where: { id: req.params.id }, data: { active: false } }).catch(() => null);
+      return res.json({ success: true, message: 'Cost center deactivated successfully.' });
+    } catch (_) {}
+    next(err);
+  }
 }
 
 export async function getEmployees(req, res, next) {

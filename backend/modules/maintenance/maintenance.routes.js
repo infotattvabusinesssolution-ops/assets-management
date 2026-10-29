@@ -87,6 +87,7 @@ router.get('/service-providers/:id', getServiceProviderById);
 router.post('/service-providers', createServiceProvider);
 router.put('/service-providers/:id', updateServiceProvider);
 router.patch('/service-providers/:id/status', toggleServiceProviderStatus);
+router.delete('/service-providers/:id', deleteServiceProvider);
 router.post('/service-providers/:id/contracts', addProviderContract);
 router.put('/service-providers/:id/contracts/:contractId', updateProviderContract);
 router.delete('/service-providers/:id/contracts/:contractId', deleteProviderContract);

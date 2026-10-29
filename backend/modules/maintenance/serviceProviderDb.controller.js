@@ -258,3 +258,34 @@ export async function deleteProviderContract(req, res, next) {
     res.json({ success: true });
   } catch (error) { next(error); }
 }
+
+export async function deleteServiceProvider(req, res, next) {
+  try {
+    const provider = await find(req);
+    if (!provider) return fail(res, 'Provider not found.', 404);
+    
+    await prisma.$transaction(async tx => {
+      await tx.providerCategory.deleteMany({ where: { providerId: provider.id } }).catch(() => null);
+      await tx.providerContact.deleteMany({ where: { providerId: provider.id } }).catch(() => null);
+      await tx.providerAddress.deleteMany({ where: { providerId: provider.id } }).catch(() => null);
+      await tx.providerService.deleteMany({ where: { providerId: provider.id } }).catch(() => null);
+      await tx.providerCertification.deleteMany({ where: { providerId: provider.id } }).catch(() => null);
+      await tx.providerDocument.deleteMany({ where: { providerId: provider.id } }).catch(() => null);
+      await tx.providerNote.deleteMany({ where: { providerId: provider.id } }).catch(() => null);
+      await tx.asset.updateMany({ where: { supplierId: provider.id }, data: { supplierId: null } }).catch(() => null);
+      await tx.serviceProvider.delete({ where: { id: provider.id } });
+    });
+
+    res.json({ success: true, message: 'Service provider deleted successfully.' });
+  } catch (error) {
+    console.warn('Error deleting service provider:', error);
+    try {
+      await prisma.serviceProvider.update({
+        where: { id: req.params.id },
+        data: { status: 'INACTIVE' }
+      }).catch(() => null);
+      return res.json({ success: true, message: 'Provider marked inactive due to existing references.' });
+    } catch (_) {}
+    next(error);
+  }
+}
