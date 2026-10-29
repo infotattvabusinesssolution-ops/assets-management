@@ -8,7 +8,8 @@ import {
   getFloors, createFloor,
   getRooms, createRoom,
   getCategories, createCategory, updateCategory, deleteCategory,
-  getAssetClasses, createAssetClass, updateAssetClass, deleteAssetClass,
+  getAssetClasses, createAssetClass, updateAssetClass, deleteAssetClass,
+  getAssetTypes, createAssetType, updateAssetType, deleteAssetType,
   getDepreciationPolicies, updateDepreciationPolicy,
   getManufacturers, createManufacturer,
   getModels, createModel,
@@ -58,7 +59,12 @@ router.delete('/categories/:id', deleteCategory);
 router.get('/asset-classes', getAssetClasses);
 router.post('/asset-classes', createAssetClass);
 router.put('/asset-classes/:id', updateAssetClass);
-router.delete('/asset-classes/:id', deleteAssetClass);
+router.delete('/asset-classes/:id', deleteAssetClass);
+
+router.get('/asset-types', getAssetTypes);
+router.post('/asset-types', createAssetType);
+router.put('/asset-types/:id', updateAssetType);
+router.delete('/asset-types/:id', deleteAssetType);
 
 router.get('/depreciation-policies', getDepreciationPolicies);
 router.put('/depreciation-policies/:id', updateDepreciationPolicy);

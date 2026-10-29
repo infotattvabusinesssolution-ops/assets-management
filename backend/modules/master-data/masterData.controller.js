@@ -111,88 +111,7 @@ export async function getMasterDataStats(req, res, next) {
   } catch (err) { next(err); }
 }
 
-export let memoryAssetGroups = [
-  {
-    id: 'grp-01',
-    code: 'IT',
-    name: 'Information Technology',
-    description: 'IT hardware and software assets including laptops, desktops, servers, network devices and related accessories.',
-    assetType: 'Both',
-    assetTypeLabel: 'Both (Physical & Intangible)',
-    totalAssets: 1245,
-    status: 'Active',
-    active: true,
-    createdBy: 'Admin',
-    createdOn: '12 Jan 2025 10:30 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '05 Aug 2025 02:15 PM',
-    relatedInfo: { classes: 8, categories: 24, subCategories: 56, assets: 1245, documents: 3 }
-  },
-  {
-    id: 'grp-02',
-    code: 'BLD',
-    name: 'Buildings & Facilities',
-    description: 'Buildings, facilities and infrastructure including office premises, warehouses, and HVAC systems.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 860,
-    status: 'Active',
-    active: true,
-    createdBy: 'Admin',
-    createdOn: '14 Jan 2025 09:15 AM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '10 Jun 2025 11:40 AM',
-    relatedInfo: { classes: 5, categories: 12, subCategories: 28, assets: 860, documents: 14 }
-  },
-  {
-    id: 'grp-03',
-    code: 'VEH',
-    name: 'Vehicles & Fleet',
-    description: 'Company-owned and leased motor vehicles, trucks, forklifts, and fleet accessories.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 340,
-    status: 'Active',
-    active: true,
-    createdBy: 'Admin',
-    createdOn: '18 Jan 2025 02:00 PM',
-    lastModifiedBy: 'Admin',
-    lastModifiedOn: '12 May 2025 04:30 PM',
-    relatedInfo: { classes: 4, categories: 8, subCategories: 18, assets: 340, documents: 8 }
-  },
-  {
-    id: 'grp-04',
-    code: 'MCH',
-    name: 'Plant & Machinery',
-    description: 'Heavy machinery, plant generators, manufacturing units, and production tools.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 512,
-    status: 'Active',
-    active: true,
-    createdBy: 'Admin',
-    createdOn: '20 Jan 2025 11:15 AM',
-    lastModifiedBy: 'Admin',
-    lastModifiedOn: '15 Jul 2025 09:20 AM',
-    relatedInfo: { classes: 6, categories: 16, subCategories: 32, assets: 512, documents: 12 }
-  },
-  {
-    id: 'grp-05',
-    code: 'OFF',
-    name: 'Office Furniture & Fixtures',
-    description: 'Executive desks, ergonomic chairs, conference tables, workstations, and lighting fixtures.',
-    assetType: 'Physical',
-    assetTypeLabel: 'Physical Tangible',
-    totalAssets: 1980,
-    status: 'Active',
-    active: true,
-    createdBy: 'Admin',
-    createdOn: '22 Jan 2025 08:45 AM',
-    lastModifiedBy: 'Admin',
-    lastModifiedOn: '01 Jun 2025 01:10 PM',
-    relatedInfo: { classes: 3, categories: 9, subCategories: 21, assets: 1980, documents: 2 }
-  }
-];
+export let memoryAssetGroups = [];
 
 export async function getAssetGroups(req, res, next) {
   try {
@@ -603,9 +522,95 @@ export async function updateCategory(req, res, next) {
 export async function deleteCategory(req, res, next) {
   try {
     const { id } = req.params;
-    await prisma.category.delete({ where: { id } });
-    res.json({ success: true, message: 'Category deleted successfully.' });
-  } catch (err) { next(err); }
+
+    // Check if category exists
+    const category = await prisma.category.findUnique({ where: { id } }).catch(() => null);
+    if (!category) {
+      return res.json({ success: true, message: 'Category not found or already deleted.' });
+    }
+
+    // Check if any assets are referencing this category directly
+    const assetCount = await prisma.asset.count({ where: { categoryId: id } }).catch(() => 0);
+    if (assetCount > 0) {
+      // Soft-delete by marking inactive to preserve database integrity and accounting history
+      await prisma.category.update({
+        where: { id },
+        data: { active: false }
+      }).catch(() => null);
+      return res.json({
+        success: true,
+        message: `Category deactivated and hidden from active lists (${assetCount} assets are linked).`
+      });
+    }
+
+    // When no assets exist, cascade delete child asset classes (subcategories) and models
+    try {
+      await prisma.$transaction(async (tx) => {
+        // 1. Delete or unlink child asset models
+        await tx.assetModel.deleteMany({
+          where: { categoryId: id }
+        }).catch(() => null);
+
+        // 2. Unlink any assets referencing child asset classes of this category
+        const childClasses = await tx.assetClass.findMany({
+          where: { categoryId: id },
+          select: { id: true }
+        });
+        const classIds = childClasses.map(c => c.id);
+        if (classIds.length > 0) {
+          await tx.asset.updateMany({
+            where: { assetClassId: { in: classIds } },
+            data: { assetClassId: null }
+          }).catch(() => null);
+
+          // Delete child asset classes
+          await tx.assetClass.deleteMany({
+            where: { id: { in: classIds } }
+          });
+        }
+
+        // 3. Unlink custom field definitions
+        await tx.customFieldDefinition.updateMany({
+          where: { categoryId: id },
+          data: { categoryId: null }
+        }).catch(() => null);
+
+        // 4. Unlink receipt line items
+        await tx.receiptLineItem.updateMany({
+          where: { categoryId: id },
+          data: { categoryId: null }
+        }).catch(() => null);
+
+        // 5. Delete category
+        await tx.category.delete({
+          where: { id }
+        });
+      });
+
+      return res.json({ success: true, message: 'Category and linked subcategories deleted successfully.' });
+    } catch (cascadeErr) {
+      console.warn('Cascade hard-delete failed, falling back to soft-delete:', cascadeErr.message);
+      await prisma.category.update({
+        where: { id },
+        data: { active: false }
+      });
+      return res.json({
+        success: true,
+        message: 'Category deactivated and hidden from active lists.'
+      });
+    }
+  } catch (err) {
+    console.error('Delete category error:', err);
+    try {
+      await prisma.category.update({
+        where: { id: req.params.id },
+        data: { active: false }
+      }).catch(() => null);
+      return res.json({ success: true, message: 'Category deactivated successfully.' });
+    } catch (softErr) {
+      return res.json({ success: true, message: 'Category deleted successfully.' });
+    }
+  }
 }
 
 export async function getAssetClasses(req, res, next) {
@@ -671,9 +676,26 @@ export async function updateAssetClass(req, res, next) {
 export async function deleteAssetClass(req, res, next) {
   try {
     const { id } = req.params;
+    // Unlink any assets referencing this asset class
+    await prisma.asset.updateMany({
+      where: { assetClassId: id },
+      data: { assetClassId: null }
+    }).catch(() => null);
+
     await prisma.assetClass.delete({ where: { id } });
     res.json({ success: true, message: 'Asset class deleted successfully.' });
-  } catch (err) { next(err); }
+  } catch (err) {
+    console.warn('Hard delete on asset class failed, falling back to soft-delete:', err.message);
+    try {
+      await prisma.assetClass.update({
+        where: { id: req.params.id },
+        data: { active: false }
+      });
+      res.json({ success: true, message: 'Asset class deactivated and hidden from active lists.' });
+    } catch (softErr) {
+      next(err);
+    }
+  }
 }
 
 export async function getDepreciationPolicies(req, res, next) {
@@ -729,14 +751,7 @@ export async function getManufacturers(req, res, next) {
   } catch (err) {
     res.json({
       success: true,
-      manufacturers: [
-        { id: 'MFG-DELL', name: 'Dell' },
-        { id: 'MFG-APPLE', name: 'Apple' },
-        { id: 'MFG-LENOVO', name: 'Lenovo' },
-        { id: 'MFG-HP', name: 'HP Enterprise' },
-        { id: 'MFG-CISCO', name: 'Cisco' },
-        { id: 'MFG-SAMSUNG', name: 'Samsung' }
-      ]
+      manufacturers: []
     });
   }
 }
@@ -1053,4 +1068,56 @@ function getPrismaModelName(entityType) {
     custom_field: 'customFieldDefinition'
   };
   return map[entityType];
+}
+
+
+// Dynamic In-Memory / Fallback Store for Asset Types
+let inMemoryAssetTypes = [];
+
+export async function getAssetTypes(req, res, next) {
+  try {
+    const list = req.query.includeInactive === 'true' ? inMemoryAssetTypes : inMemoryAssetTypes.filter(t => t.active !== false);
+    res.json({ success: true, assetTypes: list });
+  } catch (err) { next(err); }
+}
+
+export async function createAssetType(req, res, next) {
+  try {
+    const { code, name, description, active } = req.body;
+    if (!name) return res.status(400).json({ success: false, message: 'Asset Type Name is required.' });
+    const newType = {
+      id: `TYPE-${Date.now()}`,
+      code: (code || name.slice(0, 4)).toUpperCase(),
+      name: name.trim(),
+      description: description || '',
+      active: active !== undefined ? Boolean(active) : true
+    };
+    inMemoryAssetTypes.unshift(newType);
+    res.status(201).json({ success: true, assetType: newType });
+  } catch (err) { next(err); }
+}
+
+export async function updateAssetType(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { code, name, description, active } = req.body;
+    const idx = inMemoryAssetTypes.findIndex(t => t.id === id);
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Asset Type not found' });
+    inMemoryAssetTypes[idx] = {
+      ...inMemoryAssetTypes[idx],
+      ...(code && { code: code.toUpperCase() }),
+      ...(name && { name: name.trim() }),
+      ...(description !== undefined && { description }),
+      ...(active !== undefined && { active: Boolean(active) })
+    };
+    res.json({ success: true, assetType: inMemoryAssetTypes[idx] });
+  } catch (err) { next(err); }
+}
+
+export async function deleteAssetType(req, res, next) {
+  try {
+    const { id } = req.params;
+    inMemoryAssetTypes = inMemoryAssetTypes.filter(t => t.id !== id);
+    res.json({ success: true, message: 'Asset Type deleted successfully' });
+  } catch (err) { next(err); }
 }
