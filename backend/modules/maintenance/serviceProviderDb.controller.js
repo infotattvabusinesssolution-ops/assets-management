@@ -74,7 +74,7 @@ export async function getServiceProviders(req, res, next) {
     const where = { ...scope(req) };
     if (req.query.search) where.OR = [{ providerName: { contains: String(req.query.search) } }, { providerCode: { contains: String(req.query.search) } }];
     if (req.query.type && req.query.type !== 'ALL') where.providerType = String(req.query.type);
-    if (req.query.status && req.query.status !== 'ALL') where.status = String(req.query.status);
+    if (req.query.status && req.query.status !== 'ALL') { where.status = String(req.query.status); } else if (req.query.includeInactive !== 'true') { where.status = { not: 'INACTIVE' }; }
     const providers = await prisma.serviceProvider.findMany({ where, orderBy: { providerName: 'asc' } });
     res.json({ success: true, count: providers.length, providers });
   } catch (error) { next(error); }

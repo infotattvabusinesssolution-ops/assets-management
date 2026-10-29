@@ -360,12 +360,45 @@ export async function createAsset(req, res, next) {
     }
     const categoryId = category.id;
     const rawAssetClass = req.body.assetClassId || req.body.subcategory;
-    const assetClass = rawAssetClass ? await prisma.assetClass.findFirst({
-      where: { categoryId, active: true, OR: [{ id: rawAssetClass }, { code: rawAssetClass }, { name: rawAssetClass }] },
-      select: { id: true, code: true, name: true }
-    }) : null;
-    if (req.body.assetClassId && !assetClass) {
-      return res.status(400).json({ success: false, message: 'Choose a subcategory that belongs to the selected category.' });
+    let assetClass = null;
+    if (rawAssetClass) {
+      // 1. Try finding assetClass strictly under categoryId
+      assetClass = await prisma.assetClass.findFirst({
+        where: { categoryId, active: true, OR: [{ id: rawAssetClass }, { code: rawAssetClass }, { name: rawAssetClass }] },
+        select: { id: true, code: true, name: true, categoryId: true }
+      });
+
+      // 2. If not found under categoryId, check if it exists globally or under another category
+      if (!assetClass) {
+        assetClass = await prisma.assetClass.findFirst({
+          where: { active: true, OR: [{ id: rawAssetClass }, { code: rawAssetClass }, { name: rawAssetClass }] },
+          select: { id: true, code: true, name: true, categoryId: true }
+        });
+        // Link to category if not previously linked
+        if (assetClass && !assetClass.categoryId) {
+          await prisma.assetClass.update({
+            where: { id: assetClass.id },
+            data: { categoryId }
+          }).catch(() => null);
+        }
+      }
+
+      // 3. If still not found and subcategory string provided, auto-create under this category
+      if (!assetClass && (req.body.subcategory || typeof rawAssetClass === 'string')) {
+        try {
+          const subName = req.body.subcategory || rawAssetClass;
+          const subCode = 'SUB-' + String(subName).replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+          assetClass = await prisma.assetClass.create({
+            data: {
+              categoryId,
+              name: subName,
+              code: subCode,
+              active: true
+            },
+            select: { id: true, code: true, name: true, categoryId: true }
+          }).catch(() => null);
+        } catch (_) {}
+      }
     }
     const quantity = Number(req.body.quantity ?? 1);
     if (!Number.isInteger(quantity) || quantity < 1 || quantity > 50) {

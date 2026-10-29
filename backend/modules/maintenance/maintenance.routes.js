@@ -27,7 +27,8 @@ import {
   deleteProviderContract,
   saveProviderContractCoverage,
   saveProviderChild,
-  deleteProviderChild
+  deleteProviderChild,
+  deleteServiceProvider
 } from './serviceProvider.controller.js';
 import {
   getSpareParts,
