@@ -45,39 +45,66 @@ export function SubCategoriesTab({
     setIsLoading(true);
     try {
       const [classRes, catRes] = await Promise.all([
-        api.get('/master-data/asset-classes?includeInactive=true').catch(() => null),
-        api.get('/master-data/categories?includeInactive=true').catch(() => null)
+        api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null),
+        api.get('/master-data/categories').catch(() => null)
       ]);
 
       if (catRes?.categories) {
         setCategories(catRes.categories);
       }
 
+      const customClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+      const classCodes = new Set(customClasses.map(c => (c.code || '').toUpperCase()));
+
       if (classRes?.assetClasses && classRes.assetClasses.length > 0) {
-        const mapped = classRes.assetClasses.map((ac, idx) => ({
-          id: ac.id,
-          code: ac.code,
-          name: ac.name,
-          categoryId: ac.categoryId,
-          categoryName: ac.category?.name || 'General',
-          className: 'Hardware',
-          groupName: 'General',
-          description: ac.description || '',
-          totalAssets: (idx + 1) * 15,
-          status: ac.active === false ? 'Inactive' : 'Active',
-          createdBy: 'Admin',
-          createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 10:30 AM' : '15 Jan 2025 10:30 AM',
-          lastModifiedBy: 'Admin',
-          lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:15 PM' : '15 Jan 2025 02:15 PM',
-          relatedInfo: {
-            assets: (idx + 1) * 15,
-            maintenancePlans: 1,
-            documents: 2,
-            spareParts: 4
-          }
-        }));
-        setSubCategoriesList(mapped);
-        setSelectedSubCategory((prev) => (prev ? mapped.find((s) => s.id === prev.id) || mapped[0] : mapped[0]));
+        // Exclude any true asset classes!
+        const trueSubCats = classRes.assetClasses.filter(ac => 
+          !classCodes.has((ac.code || '').toUpperCase()) &&
+          !(ac.description || '').includes('[kind:class]')
+        );
+
+        const mapped = trueSubCats.map((ac, idx) => {
+          const descClean = (ac.description || '').replace(/\[kind:[^\]]+\]/g, '').trim();
+          return {
+            id: ac.id,
+            code: ac.code,
+            name: ac.name,
+            categoryId: ac.categoryId,
+            categoryName: ac.category?.name || 'General',
+            className: ac.className || 'General',
+            groupName: ac.groupName || 'General',
+            description: descClean,
+            totalAssets: ac.totalAssets || 0,
+            status: ac.active === false ? 'Inactive' : 'Active',
+            createdBy: 'Admin',
+            createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2025',
+            lastModifiedBy: 'Admin',
+            lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2025',
+            relatedInfo: {
+              assets: ac.totalAssets || 0,
+              maintenancePlans: 0,
+              documents: 0,
+              spareParts: 0
+            }
+          };
+        });
+
+        const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+        const filteredCustom = custom.filter(c => !classCodes.has((c.code || '').toUpperCase()));
+        const serverCodes = new Set(mapped.map(m => (m.code || m.name || '').toUpperCase().trim()));
+        const missingCustom = filteredCustom.filter(c => !serverCodes.has((c.code || c.name || '').toUpperCase().trim()));
+        const rawList = [...mapped, ...missingCustom];
+
+        const seen = new Set();
+        const fullList = rawList.filter(item => {
+          const key = (item.code || item.name || '').toUpperCase().trim();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
+        setSubCategoriesList(fullList);
+        setSelectedSubCategory((prev) => (prev ? fullList.find((s) => s.id === prev.id) || fullList[0] || null : fullList[0] || null));
       } else {
         const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
         setSubCategoriesList(custom);
@@ -243,8 +270,22 @@ export function SubCategoriesTab({
           name: subCatFormState.name,
           categoryId: targetCatId,
           description: subCatFormState.description,
+          kind: 'SUBCATEGORY',
           status: subCatFormState.status
         });
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+          const newSub = {
+            id: `SUBCAT-${Date.now()}`,
+            code: subCatFormState.code.toUpperCase(),
+            name: subCatFormState.name,
+            categoryId: targetCatId,
+            categoryName: categories.find(c => c.id === targetCatId)?.name || 'General',
+            description: subCatFormState.description,
+            status: subCatFormState.status
+          };
+          localStorage.setItem('fams_custom_subcategories', JSON.stringify([newSub, ...custom]));
+        } catch (_) {}
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
       } catch (err) {
@@ -294,6 +335,38 @@ export function SubCategoriesTab({
         triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
       } catch (err) {
         console.warn('Delete sub-category error:', err);
+      }
+    }
+  };
+
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  const handleBulkDelete = async () => {
+    if (selectedSubCatIds.length === 0) return;
+    const count = selectedSubCatIds.length;
+    if (window.confirm(`Are you sure you want to delete ${count} selected sub categor${count === 1 ? 'y' : 'ies'}?`)) {
+      setIsBulkDeleting(true);
+      try {
+        await Promise.allSettled(selectedSubCatIds.map(id => api.delete(`/master-data/asset-classes/${id}`)));
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+          const idSet = new Set(selectedSubCatIds);
+          localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => !idSet.has(c.id))));
+        } catch (_) {}
+
+        const remaining = subCategoriesList.filter(c => !selectedSubCatIds.includes(c.id));
+        setSubCategoriesList(remaining);
+        if (selectedSubCategory && selectedSubCatIds.includes(selectedSubCategory.id)) {
+          setSelectedSubCategory(remaining[0] || null);
+        }
+        setSelectedSubCatIds([]);
+        await loadSubCategories();
+        triggerToast && triggerToast(`Successfully removed ${count} sub categories.`);
+      } catch (err) {
+        console.warn('Bulk delete sub categories error:', err);
+        triggerToast && triggerToast('Failed to delete some sub categories.');
+      } finally {
+        setIsBulkDeleting(false);
       }
     }
   };
@@ -439,6 +512,34 @@ export function SubCategoriesTab({
               </button>
             </div>
           </div>
+
+          {/* Floating / Integrated Bulk Actions Toolbar */}
+          {selectedSubCatIds.length > 0 && (
+            <div className="px-4 py-2.5 bg-purple-50 border-b border-purple-200 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#6C2BD9]">
+                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-ping"></span>
+                <span>{selectedSubCatIds.length} sub categor{selectedSubCatIds.length === 1 ? 'y' : 'ies'} selected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedSubCatIds.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedSubCatIds([])}
+                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">

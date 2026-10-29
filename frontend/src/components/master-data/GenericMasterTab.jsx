@@ -138,57 +138,46 @@ export function GenericMasterTab({
       if (activeTab === 'asset-types') {
 
         const res = await api.get('/master-data/asset-types').catch(() => null);
-
         const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
-
         let serverTypes = [];
-
         if (res?.assetTypes && res.assetTypes.length > 0) {
-
           serverTypes = res.assetTypes.map((t, idx) => ({
-
             id: t.id,
-
-            code: t.code || `TYPE-${t.name.substring(0, 4).toUpperCase()}`,
-
+            code: t.code || `TYPE-${(t.name || '').substring(0, 4).toUpperCase()}`,
             name: t.name,
-
             symbol: t.code || 'TYPE',
-
             category: 'General',
-
             description: t.description || '',
-
             status: t.active === false ? 'Inactive' : 'Active',
-
-            totalAssets: (idx + 1) * 20
-
+            totalAssets: t.totalAssets || 0
           }));
-
         }
 
-        const existing = new Set([...custom, ...serverTypes].map(x => x.name.toLowerCase()));
+        const serverKeys = new Set(serverTypes.map(x => (x.code || x.name || '').toUpperCase().trim()));
+        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
+        const rawCombined = [...serverTypes, ...missingCustom];
 
-        const extraDefaults = DEFAULT_ASSET_TYPES.filter(d => !existing.has(d.name.toLowerCase()));
-
-        const combined = [...custom, ...serverTypes, ...extraDefaults];
+        // Deduplicate strictly by code and name
+        const seen = new Set();
+        const combined = rawCombined.filter(it => {
+          const key = (it.code || it.name || '').toUpperCase().trim();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
 
         setItems(combined);
-
-        setSelectedItem(combined[0]);
-
+        setSelectedItem(combined[0] || null);
         return;
-
       }
-
-      if (activeTab === 'manufacturers') {
-        const res = await api.get('/master-data/manufacturers').catch(() => null);
+      if (tabConfig.apiEndpoint) {
+        const res = await api.get(tabConfig.apiEndpoint).catch(() => null);
         const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
-        let serverMfrs = [];
+        let mapped = [];
         if (res?.manufacturers && res.manufacturers.length > 0) {
-          serverMfrs = res.manufacturers.map((m, idx) => ({
+          mapped = res.manufacturers.map((m, idx) => ({
             id: m.id,
-            code: m.code || `MFG-${(m.name || 'MFR').substring(0, 4).toUpperCase()}`,
+            code: m.code || `MFG-${(m.name || '').substring(0, 4).toUpperCase()}`,
             name: m.name,
             website: m.website || '',
             supportContact: m.supportContact || '',
@@ -197,33 +186,19 @@ export function GenericMasterTab({
             totalAssets: m.totalAssets || 0
           }));
         }
-        const existingNames = new Set(serverMfrs.map((x) => (x.name || '').toLowerCase()));
-        const missingCustom = custom.filter(c => !existingNames.has((c.name || '').toLowerCase()));
-        const combined = [...missingCustom, ...serverMfrs];
+        const serverKeys = new Set(mapped.map(x => (x.code || x.name || '').toUpperCase().trim()));
+        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
+        const rawCombined = [...mapped, ...missingCustom];
+        const seen = new Set();
+        const combined = rawCombined.filter(it => {
+          const key = (it.code || it.name || '').toUpperCase().trim();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
         setItems(combined);
         setSelectedItem(combined[0] || null);
         return;
-      }
-      if (tabConfig.apiEndpoint) {
-        const res = await api.get(tabConfig.apiEndpoint).catch(() => null);
-        if (res?.manufacturers && res.manufacturers.length > 0) {
-          const mapped = res.manufacturers.map((m, idx) => ({
-            id: m.id,
-            code: `MFG-${m.name.substring(0, 4).toUpperCase()}`,
-            name: m.name,
-            website: m.website || `https://www.${m.name.toLowerCase().replace(/\s+/g, '')}.com`,
-            supportContact: m.supportContact || `support@${m.name.toLowerCase().replace(/\s+/g, '')}.com`,
-            country: 'Global',
-            status: m.active === false ? 'Inactive' : 'Active',
-            totalAssets: (idx + 1) * 35
-          }));
-          const existingNames = new Set(mapped.map((x) => x.name.toLowerCase()));
-          const extraDefaults = tabConfig.defaultItems.filter((d) => !existingNames.has(d.name.toLowerCase()));
-          const combined = [...mapped, ...extraDefaults];
-          setItems(combined);
-          setSelectedItem(combined[0]);
-          return;
-        }
       }
       setItems(tabConfig.defaultItems);
       setSelectedItem(tabConfig.defaultItems[0]);

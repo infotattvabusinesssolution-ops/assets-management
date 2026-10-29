@@ -44,40 +44,53 @@ export function ClassesTab({
     setIsLoading(true);
     try {
       const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-      const res = await api.get('/master-data/asset-classes?includeInactive=true');
-      const standardCodes = new Set(INITIAL_CLASSES.map(c => c.code.toUpperCase()));
+      const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+      const subcatCodes = new Set(subcatCustom.map(s => (s.code || '').toUpperCase()));
+
+      const res = await api.get('/master-data/asset-classes?kind=CLASS').catch(() => null);
 
       let serverClasses = [];
       if (res?.assetClasses && res.assetClasses.length > 0) {
-        // Exclude subcategories: only retain standard accounting classes or items not tied to a category as a subcategory
-        const trueClasses = res.assetClasses.filter(ac => standardCodes.has(ac.code?.toUpperCase()) || (!ac.categoryId && !ac.category));
-        serverClasses = trueClasses.map((ac, idx) => ({
-          id: ac.id,
-          code: ac.code,
-          name: ac.name,
-          categoryId: ac.categoryId,
-          groupName: ac.category?.name || 'Information Technology',
-          description: ac.description || `Classification for ${ac.name}`,
-          assetType: ac.category?.code?.includes('IT') ? 'Physical' : 'Both',
-          totalAssets: (idx + 1) * 35,
-          status: ac.active === false ? 'Inactive' : 'Active',
-          createdBy: 'Admin',
-          createdOn: '15 Jan 2025 09:20 AM',
-          lastModifiedBy: 'Admin',
-          lastModifiedOn: '02 Sep 2025 04:15 PM',
-          relatedInfo: {
-            categories: 4,
-            subCategories: 12,
-            assets: (idx + 1) * 35,
-            maintenancePlans: 6,
-            documents: 4
-          }
-        }));
+        // Filter strictly to classes: exclude anything that is a subcategory
+        const trueClasses = res.assetClasses.filter(ac => 
+          !subcatCodes.has((ac.code || '').toUpperCase()) &&
+          !(ac.description || '').includes('[kind:subcat]')
+        );
+        serverClasses = trueClasses.map((ac, idx) => {
+          const descClean = (ac.description || '').replace(/\[kind:[^\]]+\]/g, '').replace(/\[group:[^\]]+\]/g, '').trim();
+          const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/);
+          const parsedGroup = groupMatch ? groupMatch[1] : (ac.groupName || 'General');
+          return {
+            id: ac.id,
+            code: ac.code,
+            name: ac.name,
+            categoryId: ac.categoryId,
+            groupName: parsedGroup,
+            description: descClean,
+            assetType: 'Physical',
+            totalAssets: ac.totalAssets || 0,
+            status: ac.active === false ? 'Inactive' : 'Active',
+            createdBy: 'Admin',
+            createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2025',
+            lastModifiedBy: 'Admin',
+            lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2025',
+            relatedInfo: { categories: 0, subCategories: 0, assets: 0, maintenancePlans: 0, documents: 0 }
+          };
+        });
       }
 
-      const dbCodes = new Set([...serverClasses, ...custom].map(m => m.code?.toUpperCase()));
-      const remainingInitial = INITIAL_CLASSES.filter(c => !dbCodes.has(c.code.toUpperCase()));
-      const fullList = [...custom, ...serverClasses, ...remainingInitial];
+      const serverCodes = new Set(serverClasses.map(m => (m.code || m.name || '').toUpperCase().trim()));
+      const missingCustom = custom.filter(c => !serverCodes.has((c.code || c.name || '').toUpperCase().trim()));
+      const rawList = [...serverClasses, ...missingCustom];
+
+      const seen = new Set();
+      const fullList = rawList.filter(item => {
+        const key = (item.code || item.name || '').toUpperCase().trim();
+        if (!key || seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+
       setClassesList(fullList);
       setSelectedClass((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] || null : fullList[0] || null));
     } catch (err) {
@@ -242,6 +255,8 @@ export function ClassesTab({
             code: clsFormState.code,
             name: clsFormState.name,
             description: clsFormState.description,
+            groupName: clsFormState.groupName,
+            kind: 'CLASS',
             status: clsFormState.status
           });
           if (res?.assetClass?.id) createdId = res.assetClass.id;
@@ -336,6 +351,38 @@ export function ClassesTab({
       setClassesList(remaining);
       if (remaining.length > 0) setSelectedClass(remaining[0]);
       triggerToast && triggerToast(`Class "${cls.code}" deleted successfully.`);
+    }
+  };
+
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  const handleBulkDelete = async () => {
+    if (selectedClassIds.length === 0) return;
+    const count = selectedClassIds.length;
+    if (window.confirm(`Are you sure you want to delete ${count} selected class${count === 1 ? '' : 'es'}?`)) {
+      setIsBulkDeleting(true);
+      try {
+        await Promise.allSettled(selectedClassIds.map(id => api.delete(`/master-data/asset-classes/${id}`)));
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+          const idSet = new Set(selectedClassIds);
+          localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => !idSet.has(c.id))));
+        } catch (_) {}
+
+        const remaining = classesList.filter(c => !selectedClassIds.includes(c.id));
+        setClassesList(remaining);
+        if (selectedClass && selectedClassIds.includes(selectedClass.id)) {
+          setSelectedClass(remaining[0] || null);
+        }
+        setSelectedClassIds([]);
+        await loadClasses();
+        triggerToast && triggerToast(`Successfully removed ${count} classes.`);
+      } catch (err) {
+        console.warn('Bulk delete classes error:', err);
+        triggerToast && triggerToast('Failed to delete some classes.');
+      } finally {
+        setIsBulkDeleting(false);
+      }
     }
   };
 
@@ -463,6 +510,34 @@ export function ClassesTab({
               </button>
             </div>
           </div>
+
+          {/* Floating / Integrated Bulk Actions Toolbar */}
+          {selectedClassIds.length > 0 && (
+            <div className="px-4 py-2.5 bg-purple-50 border-b border-purple-200 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#6C2BD9]">
+                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-ping"></span>
+                <span>{selectedClassIds.length} class{selectedClassIds.length === 1 ? '' : 'es'} selected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedClassIds.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedClassIds([])}
+                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">

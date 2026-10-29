@@ -44,7 +44,7 @@ export function CategoriesTab({
   const loadCategories = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/categories?includeInactive=true');
+      const res = await api.get('/master-data/categories');
       if (res?.categories && res.categories.length > 0) {
         const mapped = res.categories.map((cat, idx) => ({
           id: cat.id,
@@ -68,9 +68,19 @@ export function CategoriesTab({
           }
         }));
         const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-        const dbCodes = new Set([...mapped, ...custom].map((m) => m.code.toUpperCase()));
-        const remainingInitial = INITIAL_CATEGORIES.filter((c) => !dbCodes.has(c.code.toUpperCase()));
-        const fullList = [...custom, ...mapped, ...remainingInitial];
+        const serverCodes = new Set(mapped.map(m => (m.code || m.name || '').toUpperCase().trim()));
+        const missingCustom = custom.filter(c => !serverCodes.has((c.code || c.name || '').toUpperCase().trim()));
+        const rawList = [...mapped, ...missingCustom];
+
+        // Deduplicate strictly so no category appears twice
+        const seen = new Set();
+        const fullList = rawList.filter(item => {
+          const key = (item.code || item.name || '').toUpperCase().trim();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+
         setCategoriesList(fullList);
         setSelectedCategory((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] || null : fullList[0] || null));
       } else {
@@ -364,6 +374,42 @@ export function CategoriesTab({
     }
   };
 
+  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+
+  const handleBulkDelete = async () => {
+    if (selectedCatIds.length === 0) return;
+    const count = selectedCatIds.length;
+    if (window.confirm(`Are you sure you want to delete ${count} selected categor${count === 1 ? 'y' : 'ies'}?`)) {
+      setIsBulkDeleting(true);
+      try {
+        const res = await api.post('/master-data/categories/bulk-delete', { ids: selectedCatIds, force: true }).catch(async () => {
+          await Promise.allSettled(selectedCatIds.map(id => api.delete(`/master-data/categories/${id}?force=true`)));
+          return { success: true, message: `Processed ${count} categories.` };
+        });
+
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+          const idSet = new Set(selectedCatIds);
+          localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => !idSet.has(c.id))));
+        } catch (_) {}
+
+        const remaining = categoriesList.filter(c => !selectedCatIds.includes(c.id));
+        setCategoriesList(remaining);
+        if (selectedCategory && selectedCatIds.includes(selectedCategory.id)) {
+          setSelectedCategory(remaining[0] || null);
+        }
+        setSelectedCatIds([]);
+        await loadCategories();
+        triggerToast && triggerToast(res?.message || `Successfully removed ${count} categories.`);
+      } catch (err) {
+        console.warn('Bulk delete error:', err);
+        triggerToast && triggerToast('Failed to delete some categories.');
+      } finally {
+        setIsBulkDeleting(false);
+      }
+    }
+  };
+
   const handleToggleSelectAllCats = () => {
     if (selectedCatIds.length === filteredCategories.length) {
       setSelectedCatIds([]);
@@ -489,6 +535,34 @@ export function CategoriesTab({
               </button>
             </div>
           </div>
+
+          {/* Floating / Integrated Bulk Actions Toolbar */}
+          {selectedCatIds.length > 0 && (
+            <div className="px-4 py-2.5 bg-purple-50 border-b border-purple-200 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-150">
+              <div className="flex items-center gap-2 text-xs font-semibold text-[#6C2BD9]">
+                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-ping"></span>
+                <span>{selectedCatIds.length} categor{selectedCatIds.length === 1 ? 'y' : 'ies'} selected</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkDeleting}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  <Trash2 className="w-3.5 h-3.5" />
+                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedCatIds.length})`}</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setSelectedCatIds([])}
+                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
+                >
+                  Deselect All
+                </button>
+              </div>
+            </div>
+          )}
 
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
