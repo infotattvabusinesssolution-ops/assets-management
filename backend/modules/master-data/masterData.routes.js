@@ -7,8 +7,9 @@ import {
   getBuildings, createBuilding,
   getFloors, createFloor,
   getRooms, createRoom,
-  getCategories, createCategory, updateCategory, deleteCategory,
-  getAssetClasses, createAssetClass, updateAssetClass, deleteAssetClass,
+  getCategories, createCategory, updateCategory, deleteCategory, bulkDeleteCategories,
+  getAssetClasses, createAssetClass, updateAssetClass, deleteAssetClass,
+
   getAssetTypes, createAssetType, updateAssetType, deleteAssetType,
   getDepreciationPolicies, updateDepreciationPolicy,
   getManufacturers, createManufacturer,
@@ -55,15 +56,21 @@ router.get('/categories', getCategories);
 router.post('/categories', createCategory);
 router.put('/categories/:id', updateCategory);
 router.delete('/categories/:id', deleteCategory);
+router.post('/categories/bulk-delete', bulkDeleteCategories);
 
 router.get('/asset-classes', getAssetClasses);
 router.post('/asset-classes', createAssetClass);
 router.put('/asset-classes/:id', updateAssetClass);
-router.delete('/asset-classes/:id', deleteAssetClass);
-
-router.get('/asset-types', getAssetTypes);
-router.post('/asset-types', createAssetType);
-router.put('/asset-types/:id', updateAssetType);
+router.delete('/asset-classes/:id', deleteAssetClass);
+
+
+
+router.get('/asset-types', getAssetTypes);
+
+router.post('/asset-types', createAssetType);
+
+router.put('/asset-types/:id', updateAssetType);
+
 router.delete('/asset-types/:id', deleteAssetType);
 
 router.get('/depreciation-policies', getDepreciationPolicies);

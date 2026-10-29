@@ -522,6 +522,7 @@ export async function updateCategory(req, res, next) {
 export async function deleteCategory(req, res, next) {
   try {
     const { id } = req.params;
+    const force = req.query.force === 'true';
 
     // Check if category exists
     const category = await prisma.category.findUnique({ where: { id } }).catch(() => null);
@@ -531,7 +532,7 @@ export async function deleteCategory(req, res, next) {
 
     // Check if any assets are referencing this category directly
     const assetCount = await prisma.asset.count({ where: { categoryId: id } }).catch(() => 0);
-    if (assetCount > 0) {
+    if (assetCount > 0 && !force) {
       // Soft-delete by marking inactive to preserve database integrity and accounting history
       await prisma.category.update({
         where: { id },
@@ -613,22 +614,93 @@ export async function deleteCategory(req, res, next) {
   }
 }
 
+export async function bulkDeleteCategories(req, res, next) {
+  try {
+    const { ids, force } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No category IDs provided.' });
+    }
+
+    let deletedCount = 0;
+    let deactivatedCount = 0;
+
+    for (const id of ids) {
+      try {
+        const assetCount = await prisma.asset.count({ where: { categoryId: id } }).catch(() => 0);
+        if (assetCount > 0 && !force) {
+          await prisma.category.update({
+            where: { id },
+            data: { active: false }
+          }).catch(() => null);
+          deactivatedCount++;
+        } else {
+          await prisma.$transaction(async (tx) => {
+            if (assetCount > 0 && force) {
+              const assets = await tx.asset.findMany({ where: { categoryId: id }, select: { id: true } });
+              const assetIds = assets.map(a => a.id);
+              if (assetIds.length > 0) {
+                await tx.assetActivity.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+                await tx.assetMaintenanceLog.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+                await tx.assetBookValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+                await tx.assetCustomFieldValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+                await tx.assetDocument.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+                await tx.ticket.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+                await tx.workOrder.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+                await tx.asset.deleteMany({ where: { id: { in: assetIds } } }).catch(() => null);
+              }
+            }
+
+            await tx.assetModel.deleteMany({ where: { categoryId: id } }).catch(() => null);
+            const childClasses = await tx.assetClass.findMany({ where: { categoryId: id }, select: { id: true } });
+            const classIds = childClasses.map(c => c.id);
+            if (classIds.length > 0) {
+              await tx.asset.deleteMany({ where: { assetClassId: { in: classIds } } }).catch(() => null);
+              await tx.assetClass.deleteMany({ where: { id: { in: classIds } } });
+            }
+            await tx.customFieldDefinition.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
+            await tx.receiptLineItem.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
+            await tx.category.delete({ where: { id } });
+          });
+          deletedCount++;
+        }
+      } catch (e) {
+        await prisma.category.update({ where: { id }, data: { active: false } }).catch(() => null);
+        deactivatedCount++;
+      }
+    }
+
+    res.json({
+      success: true,
+      message: `Successfully removed ${ids.length} categories.`,
+      deletedCount,
+      deactivatedCount
+    });
+  } catch (err) { next(err); }
+}
+
 export async function getAssetClasses(req, res, next) {
   try {
     const where = req.query.includeInactive === 'true' ? {} : { active: true };
     if (req.query.categoryId) where.categoryId = String(req.query.categoryId);
-    const assetClasses = await prisma.assetClass.findMany({
+    let assetClasses = await prisma.assetClass.findMany({
       where,
       include: { category: true },
       orderBy: { name: 'asc' }
     });
+
+    if (req.query.kind === 'CLASS') {
+      assetClasses = assetClasses.filter(ac => (ac.description || '').includes('[kind:class]') || !(ac.description || '').includes('[kind:subcat]'));
+    } else if (req.query.kind === 'SUBCATEGORY') {
+      assetClasses = assetClasses.filter(ac => !(ac.description || '').includes('[kind:class]'));
+    }
+
     res.json({ success: true, assetClasses });
   } catch (err) { next(err); }
 }
 
 export async function createAssetClass(req, res, next) {
   try {
-    const { code, name, categoryId, description, active, status } = req.body;
+    const { code, name, categoryId, description, active, status, kind, groupName } = req.body;
     if (!code || !name) {
       return res.status(400).json({ success: false, message: 'Class Code and Name are required.' });
     }
@@ -638,11 +710,20 @@ export async function createAssetClass(req, res, next) {
       targetCatId = firstCat ? firstCat.id : null;
     }
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
+
+    let desc = description || '';
+    if (kind === 'CLASS' || (!categoryId && !desc.includes('[kind:'))) {
+      const grpTag = groupName ? `[group:${groupName}]` : '';
+      desc = `${desc} [kind:class] ${grpTag}`.trim();
+    } else if (kind === 'SUBCATEGORY' || (categoryId && !desc.includes('[kind:'))) {
+      desc = `${desc} [kind:subcat]`.trim();
+    }
+
     const assetClass = await prisma.assetClass.create({
       data: {
         code: code.trim().toUpperCase(),
         name: name.trim(),
-        description: description || '',
+        description: desc,
         active: isAct,
         categoryId: targetCatId
       },
