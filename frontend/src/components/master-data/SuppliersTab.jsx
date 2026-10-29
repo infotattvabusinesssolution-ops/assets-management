@@ -25,278 +25,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-export const INITIAL_SUPPLIERS = [
-  {
-    id: 1,
-    code: 'SUP-1000',
-    name: 'Zebra Technologies',
-    type: 'Hardware',
-    company: 'Wavelogix FZC',
-    country: 'USA',
-    contactPerson: 'Michael Brown',
-    email: 'michael.brown@zebra.com',
-    phone: '+1 847 634 6700',
-    address: '3 Overlook Point, Lincolnshire, Illinois 60069, USA',
-    website: 'www.zebra.com',
-    paymentTerms: '30 Days',
-    taxNo: '12-3456789',
-    description: 'Manufacturer of barcode and RFID devices',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '12 Jan 2025 09:15 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '28 Aug 2025 02:30 PM',
-    relatedInfo: {
-      purchaseOrders: 18,
-      assets: 245,
-      contracts: 3,
-      documents: 12
-    }
-  },
-  {
-    id: 2,
-    code: 'SUP-1100',
-    name: 'Honeywell',
-    type: 'Hardware',
-    company: 'Wavelogix FZC',
-    country: 'USA',
-    contactPerson: 'Sarah Wilson',
-    email: 'sarah.wilson@honeywell.com',
-    phone: '+1 800 582 4263',
-    address: '855 S Mint St, Charlotte, NC 28202, USA',
-    website: 'www.honeywell.com',
-    paymentTerms: '45 Days',
-    taxNo: '12-9876543',
-    description: 'Enterprise barcode scanners, mobile computers, and industrial automation.',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '14 Jan 2025 10:30 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '25 Aug 2025 01:15 PM',
-    relatedInfo: {
-      purchaseOrders: 14,
-      assets: 180,
-      contracts: 2,
-      documents: 8
-    }
-  },
-  {
-    id: 3,
-    code: 'SUP-1200',
-    name: 'Brady Corporation',
-    type: 'Consumables',
-    company: 'Wavelogix FZC',
-    country: 'USA',
-    contactPerson: 'Thomas Lee',
-    email: 'thomas.lee@bradycorp.com',
-    phone: '+1 414 358 6600',
-    address: '6555 W Good Hope Rd, Milwaukee, WI 53223, USA',
-    website: 'www.bradycorp.com',
-    paymentTerms: '30 Days',
-    taxNo: '34-5678901',
-    description: 'Industrial safety identification, specialty labels, and printer ribbons.',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '16 Jan 2025 02:00 PM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '20 Aug 2025 11:40 AM',
-    relatedInfo: {
-      purchaseOrders: 22,
-      assets: 95,
-      contracts: 1,
-      documents: 5
-    }
-  },
-  {
-    id: 4,
-    code: 'SUP-1300',
-    name: 'HID Global',
-    type: 'RFID Tags',
-    company: 'Wavelogix FZC',
-    country: 'USA',
-    contactPerson: 'Rachel Kim',
-    email: 'rachel.kim@hidglobal.com',
-    phone: '+1 512 776 9000',
-    address: '611 Center Ridge Dr, Austin, TX 78753, USA',
-    website: 'www.hidglobal.com',
-    paymentTerms: '60 Days',
-    taxNo: '45-6789012',
-    description: 'Secure identity solutions, active/passive RFID tags, and access controllers.',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '18 Jan 2025 11:15 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '22 Aug 2025 04:50 PM',
-    relatedInfo: {
-      purchaseOrders: 16,
-      assets: 310,
-      contracts: 4,
-      documents: 9
-    }
-  },
-  {
-    id: 5,
-    code: 'SUP-1400',
-    name: 'Teltonika',
-    type: 'Telematics',
-    company: 'Wavelogix FZC',
-    country: 'Lithuania',
-    contactPerson: 'Jonas Petraitis',
-    email: 'jonas.p@teltonika.lt',
-    phone: '+370 37 204 444',
-    address: 'Saltoniskiu g. 9, Vilnius 08105, Lithuania',
-    website: 'www.teltonika-gps.com',
-    paymentTerms: '30 Days',
-    taxNo: 'LT-100029341',
-    description: 'GPS trackers, BLE beacons, asset tracking devices, and IoT gateways.',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Jan 2025 09:45 AM',
-    lastModifiedBy: 'Hassan Ali',
-    lastModifiedOn: '26 Aug 2025 10:20 AM',
-    relatedInfo: {
-      purchaseOrders: 11,
-      assets: 420,
-      contracts: 2,
-      documents: 6
-    }
-  },
-  {
-    id: 6,
-    code: 'SUP-1500',
-    name: 'TEXBIT GmbH',
-    type: 'RFID Tags',
-    company: 'Wavelogix FZC',
-    country: 'Germany',
-    contactPerson: 'Stefan Weber',
-    email: 's.weber@texbit.de',
-    phone: '+49 711 722 328',
-    address: 'Industriestrasse 14, 70565 Stuttgart, Germany',
-    website: 'www.texbit.de',
-    paymentTerms: '30 Days',
-    taxNo: 'DE-98712345',
-    description: 'High-temperature industrial RFID transponders and laundry tags.',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '22 Jan 2025 01:30 PM',
-    lastModifiedBy: 'Michael Chen',
-    lastModifiedOn: '27 Aug 2025 03:15 PM',
-    relatedInfo: {
-      purchaseOrders: 8,
-      assets: 150,
-      contracts: 1,
-      documents: 4
-    }
-  },
-  {
-    id: 7,
-    code: 'SUP-1600',
-    name: 'Urovo',
-    type: 'Handheld Devices',
-    company: 'Wavelogix FZC',
-    country: 'China',
-    contactPerson: 'Li Wei',
-    email: 'li.wei@urovo.com',
-    phone: '+86 755 8659 0000',
-    address: 'High-Tech Industrial Park, Nanshan District, Shenzhen, China',
-    website: 'www.urovo.com',
-    paymentTerms: '45 Days',
-    taxNo: 'CN-914403007',
-    description: 'Rugged handheld mobile computers and mobile payment terminals.',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '25 Jan 2025 10:00 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '29 Aug 2025 09:30 AM',
-    relatedInfo: {
-      purchaseOrders: 15,
-      assets: 290,
-      contracts: 3,
-      documents: 7
-    }
-  },
-  {
-    id: 8,
-    code: 'SUP-1700',
-    name: 'Newland',
-    type: 'Scanners',
-    company: 'Wavelogix FZC',
-    country: 'China',
-    contactPerson: 'Chen Fang',
-    email: 'chen.fang@newland-id.com',
-    phone: '+86 592 608 9797',
-    address: 'Software Park Phase II, Xiamen, Fujian, China',
-    website: 'www.newland-id.com',
-    paymentTerms: '30 Days',
-    taxNo: 'CN-913502006',
-    description: 'Fixed mount OEM barcode scan engines and wireless handheld scanners.',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '28 Jan 2025 03:45 PM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '30 Aug 2025 02:10 PM',
-    relatedInfo: {
-      purchaseOrders: 9,
-      assets: 130,
-      contracts: 1,
-      documents: 3
-    }
-  },
-  {
-    id: 9,
-    code: 'SUP-1800',
-    name: 'Emdoor',
-    type: 'Rugged Tablets',
-    company: 'Wavelogix FZC',
-    country: 'China',
-    contactPerson: 'Kevin Zhang',
-    email: 'kevin.z@emdoor.com',
-    phone: '+86 755 2372 2888',
-    address: 'Baoan District, Shenzhen, Guangdong, China',
-    website: 'www.emdoor.com',
-    paymentTerms: '30 Days',
-    taxNo: 'CN-914403003',
-    description: 'Windows & Android rugged tablets and vehicle mount computers.',
-    status: 'Inactive',
-    createdBy: 'Admin',
-    createdOn: '01 Feb 2025 09:20 AM',
-    lastModifiedBy: 'Kevin Zhang',
-    lastModifiedOn: '01 Sep 2025 11:00 AM',
-    relatedInfo: {
-      purchaseOrders: 4,
-      assets: 65,
-      contracts: 1,
-      documents: 2
-    }
-  },
-  {
-    id: 10,
-    code: 'SUP-1900',
-    name: 'Al Futtaim Technologies',
-    type: 'Local Supplier',
-    company: 'Wavelogix FZC',
-    country: 'UAE',
-    contactPerson: 'Ahmed Al Marri',
-    email: 'ahmed.marri@alfuttaim.ae',
-    phone: '+971 4 332 9000',
-    address: 'Al Futtaim Tower, Deira, Dubai, UAE',
-    website: 'www.alfuttaimtechnologies.com',
-    paymentTerms: '30 Days',
-    taxNo: '100023456700003',
-    description: 'System integrator, ELV systems, local warranty support and installation.',
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '05 Feb 2025 11:30 AM',
-    lastModifiedBy: 'Ahmed Al Marri',
-    lastModifiedOn: '02 Sep 2025 04:15 PM',
-    relatedInfo: {
-      purchaseOrders: 25,
-      assets: 540,
-      contracts: 5,
-      documents: 14
-    }
-  }
-];
+export const INITIAL_SUPPLIERS = [];
 
 export function SuppliersTab({
   triggerToast,
@@ -307,8 +36,8 @@ export function SuppliersTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const [suppliersList, setSuppliersList] = useState(INITIAL_SUPPLIERS);
-  const [selectedSupplier, setSelectedSupplier] = useState(INITIAL_SUPPLIERS[0]);
+  const [suppliersList, setSuppliersList] = useState([]);
+  const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [selectedSupIds, setSelectedSupIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -346,11 +75,8 @@ export function SuppliersTab({
             documents: 4
           }
         }));
-        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
-        const remainingInitial = INITIAL_SUPPLIERS.filter((s) => !dbCodes.has(s.code.toUpperCase()));
-        const fullList = mapped.length > 0 ? mapped : remainingInitial;
-        setSuppliersList(fullList);
-        setSelectedSupplier((prev) => (prev ? fullList.find((s) => s.id === prev.id) || fullList[0] : fullList[0]));
+        setSuppliersList(mapped);
+        setSelectedSupplier((prev) => (prev ? mapped.find((s) => s.id === prev.id) || mapped[0] || null : mapped[0] || null));
       }
     } catch (err) {
       console.warn('Failed to fetch service providers/suppliers:', err);
@@ -875,7 +601,14 @@ export function SuppliersTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredSuppliers.map((sup, index) => {
+                {filteredSuppliers.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                      No suppliers found. Click "+ Add Supplier" to create one.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredSuppliers.map((sup, index) => {
                   const isSelected = selectedSupplier?.id === sup.id;
                   const isChecked = selectedSupIds.includes(sup.id);
                   const isMenuOpen = activeRowMenuId === `sup-${sup.id}`;
@@ -986,7 +719,7 @@ export function SuppliersTab({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
@@ -1014,7 +747,11 @@ export function SuppliersTab({
             </button>
           </div>
 
-          {selectedSupplier && (
+          {!selectedSupplier ? (
+            <div className="py-16 text-center text-slate-400 text-xs font-medium">
+              Select a supplier from the table to view details.
+            </div>
+          ) : (
             <div className="space-y-3 text-xs">
               <div className="grid grid-cols-3 gap-1 py-1">
                 <span className="text-slate-500 font-medium">Supplier Code</span>
@@ -1120,7 +857,7 @@ export function SuppliersTab({
                       <span className="font-semibold">Purchase Orders</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedSupplier.relatedInfo.purchaseOrders}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedSupplier.relatedInfo?.purchaseOrders ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1131,7 +868,7 @@ export function SuppliersTab({
                       <span className="font-semibold">Assets</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedSupplier.relatedInfo.assets.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedSupplier.relatedInfo?.assets?.toLocaleString() ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1142,7 +879,7 @@ export function SuppliersTab({
                       <span className="font-semibold">Contracts</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedSupplier.relatedInfo.contracts}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedSupplier.relatedInfo?.contracts ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1153,7 +890,7 @@ export function SuppliersTab({
                       <span className="font-semibold">Documents</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedSupplier.relatedInfo.documents}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedSupplier.relatedInfo?.documents ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>

@@ -220,6 +220,107 @@ export function AssetForm() {
   const [searchParams] = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
+
+  const handleQuickAddCompany = async () => {
+    const name = window.prompt('Enter new Company name (e.g. Acme Corp, Apex Group):');
+    if (!name || !name.trim()) return;
+    const cleanName = name.trim();
+    const code = window.prompt(`Enter Company code (or press OK to auto-generate CMP-${cleanName.slice(0, 4).toUpperCase()}):` )?.trim() || `CMP-${cleanName.slice(0, 4).toUpperCase()}`;
+    try {
+      const res = await api.post('/master-data/companies', { name: cleanName, code });
+      const newCmp = res?.company || { id: `cmp-${Date.now()}`, name: cleanName, code };
+      setCompanies(prev => [...prev, newCmp]);
+      setFormData(prev => ({ ...prev, companyId: newCmp.id, company: newCmp.name }));
+      try {
+        const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
+        localStorage.setItem('fams_companies', JSON.stringify([...stored, newCmp]));
+      } catch (_) {}
+      showToast('success', `Company "${cleanName}" added successfully!`);
+    } catch (err) {
+      console.warn('Add company error:', err);
+      const newCmp = { id: `cmp-${Date.now()}`, name: cleanName, code };
+      setCompanies(prev => [...prev, newCmp]);
+      setFormData(prev => ({ ...prev, companyId: newCmp.id, company: newCmp.name }));
+      try {
+        const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
+        localStorage.setItem('fams_companies', JSON.stringify([...stored, newCmp]));
+      } catch (_) {}
+      showToast('success', `Company "${cleanName}" added successfully!`);
+    }
+  };
+
+  const handleQuickAddBuilding = async () => {
+    const currentSiteId = formData.siteId || (sites[0]?.id || '');
+    if (!currentSiteId) {
+      showToast('warning', 'Please select or create a Site first before adding a Building.');
+      return;
+    }
+    const name = window.prompt('Enter Building name (e.g. Building A, Main Tower, Annex):');
+    if (!name || !name.trim()) return;
+    const cleanName = name.trim();
+    const code = window.prompt(`Enter Building code (or press OK to auto-generate BLD-${cleanName.slice(0, 4).toUpperCase()}):` )?.trim() || `BLD-${cleanName.slice(0, 4).toUpperCase()}`;
+    try {
+      const res = await api.post('/master-data/buildings', { name: cleanName, code, siteId: currentSiteId });
+      const newBld = res?.building || { id: `bld-${Date.now()}`, name: cleanName, code, siteId: currentSiteId };
+      setBuildings(prev => [...prev, newBld]);
+      setFormData(prev => ({ ...prev, buildingId: newBld.id, building: newBld.name }));
+      try {
+        const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
+        localStorage.setItem('fams_buildings', JSON.stringify([...stored, newBld]));
+      } catch (_) {}
+      showToast('success', `Building "${cleanName}" added successfully!`);
+    } catch (err) {
+      console.warn('Add building error:', err);
+      const newBld = { id: `bld-${Date.now()}`, name: cleanName, code, siteId: currentSiteId };
+      setBuildings(prev => [...prev, newBld]);
+      setFormData(prev => ({ ...prev, buildingId: newBld.id, building: newBld.name }));
+      try {
+        const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
+        localStorage.setItem('fams_buildings', JSON.stringify([...stored, newBld]));
+      } catch (_) {}
+      showToast('success', `Building "${cleanName}" added successfully!`);
+    }
+  };
+
+  const handleQuickAddDepartment = async () => {
+    const name = window.prompt('Enter Department name (e.g. Operations, Quality Assurance, Logistics):');
+    if (!name || !name.trim()) return;
+    const cleanName = name.trim();
+    const code = window.prompt('Enter Department code (e.g. OPS, QA, LOG):' )?.trim() || cleanName.slice(0, 3).toUpperCase();
+    try {
+      const res = await api.post('/master-data/departments', { name: cleanName, code, companyId: formData.companyId || undefined });
+      const newDept = res?.department || { id: `dept-${Date.now()}`, name: cleanName, code, companyId: formData.companyId };
+      setDepartments(prev => [...prev, newDept]);
+      setFormData(prev => ({ ...prev, departmentId: newDept.id, department: newDept.name }));
+      showToast('success', `Department "${cleanName}" added successfully!`);
+    } catch (err) {
+      console.warn('Add department error:', err);
+      const newDept = { id: `dept-${Date.now()}`, name: cleanName, code, companyId: formData.companyId };
+      setDepartments(prev => [...prev, newDept]);
+      setFormData(prev => ({ ...prev, departmentId: newDept.id, department: newDept.name }));
+      showToast('success', `Department "${cleanName}" added successfully!`);
+    }
+  };
+
+  const handleQuickAddCostCenter = async () => {
+    const name = window.prompt('Enter Cost Center name (e.g. Fleet Operations, Corporate Admin):');
+    if (!name || !name.trim()) return;
+    const cleanName = name.trim();
+    const code = window.prompt('Enter Cost Center code (e.g. CC-3000):' )?.trim() || `CC-${Math.floor(1000 + Math.random() * 9000)}`;
+    try {
+      const res = await api.post('/master-data/cost-centers', { name: cleanName, code, companyId: formData.companyId || undefined });
+      const newCC = res?.costCenter || { id: `cc-${Date.now()}`, name: cleanName, code, companyId: formData.companyId };
+      setCostCenters(prev => [...prev, newCC]);
+      setFormData(prev => ({ ...prev, costCenterId: newCC.id, costCenter: `${newCC.code} - ${newCC.name}` }));
+      showToast('success', `Cost Center "${cleanName}" added successfully!`);
+    } catch (err) {
+      console.warn('Add cost center error:', err);
+      const newCC = { id: `cc-${Date.now()}`, name: cleanName, code, companyId: formData.companyId };
+      setCostCenters(prev => [...prev, newCC]);
+      setFormData(prev => ({ ...prev, costCenterId: newCC.id, costCenter: `${newCC.code} - ${newCC.name}` }));
+      showToast('success', `Cost Center "${cleanName}" added successfully!`);
+    }
+  };
   const [createdAssets, setCreatedAssets] = useState([]);
 
   // Cloudinary upload state & refs
@@ -357,8 +458,18 @@ export function AssetForm() {
         }
         if (catRes?.categories) setCategories(catRes.categories);
         if (siteRes?.sites) setSites(siteRes.sites);
-        if (companyRes?.companies) setCompanies(companyRes.companies);
-        if (buildingRes?.buildings) setBuildings(buildingRes.buildings);
+        if (companyRes?.companies) {
+          const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
+          const server = companyRes.companies;
+          const merged = [...stored, ...server.filter(s => !stored.some(st => st.id === s.id || (st.code && s.code && st.code.toUpperCase() === s.code.toUpperCase())))];
+          setCompanies(merged);
+        }
+        if (buildingRes?.buildings) {
+          const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
+          const server = buildingRes.buildings;
+          const merged = [...stored, ...server.filter(s => !stored.some(st => st.id === s.id || (st.code && s.code && st.code.toUpperCase() === s.code.toUpperCase())))];
+          setBuildings(merged);
+        }
         if (floorRes?.floors) setFloors(floorRes.floors);
         if (roomRes?.rooms) setRooms(roomRes.rooms);
         if (deptRes?.departments) setDepartments(deptRes.departments);
@@ -2302,21 +2413,35 @@ export function AssetForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Company</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700">Company</label>
+            <button
+              type="button"
+              onClick={handleQuickAddCompany}
+              className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
+              title="Add a new Company"
+            >
+              <Plus className="w-3 h-3 stroke-[3]" /> Add
+            </button>
+          </div>
           <select
             value={formData.companyId || (companies.find(c => c.name === formData.company || c.code === formData.company)?.id || '')}
             onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = companies.find(c => c.id === selectedId);
-              setFormData(prev => ({
-                ...prev,
-                companyId: selectedId,
-                company: found ? (found.name || found.code) : '',
-                siteId: '',
-                site: '',
-                buildingId: '',
-                building: ''
-              }));
+              if (e.target.value === '__NEW__') {
+                handleQuickAddCompany();
+              } else {
+                const selectedId = e.target.value;
+                const found = companies.find(c => c.id === selectedId);
+                setFormData(prev => ({
+                  ...prev,
+                  companyId: selectedId,
+                  company: found ? (found.name || found.code) : '',
+                  siteId: '',
+                  site: '',
+                  buildingId: '',
+                  building: ''
+                }));
+              }
             }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
@@ -2324,6 +2449,7 @@ export function AssetForm() {
             {companies.map(c => (
               <option key={c.id} value={c.id}>{c.name || c.code}</option>
             ))}
+            <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Company...</option>
           </select>
         </div>
 
@@ -2354,17 +2480,31 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Building</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700">Building</label>
+            <button
+              type="button"
+              onClick={handleQuickAddBuilding}
+              className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
+              title="Add a new Building"
+            >
+              <Plus className="w-3 h-3 stroke-[3]" /> Add
+            </button>
+          </div>
           <select
             value={formData.buildingId || (buildings.find(b => b.name === formData.building || b.code === formData.building)?.id || '')}
             onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = buildings.find(b => b.id === selectedId);
-              setFormData(prev => ({
-                ...prev,
-                buildingId: selectedId,
-                building: found ? (found.name || found.code) : ''
-              }));
+              if (e.target.value === '__NEW__') {
+                handleQuickAddBuilding();
+              } else {
+                const selectedId = e.target.value;
+                const found = buildings.find(b => b.id === selectedId);
+                setFormData(prev => ({
+                  ...prev,
+                  buildingId: selectedId,
+                  building: found ? (found.name || found.code) : ''
+                }));
+              }
             }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
@@ -2374,6 +2514,7 @@ export function AssetForm() {
               .map(b => (
                 <option key={b.id} value={b.id}>{b.name || b.code}</option>
               ))}
+            <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Building...</option>
           </select>
         </div>
 
@@ -2389,17 +2530,31 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Department</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700">Department</label>
+            <button
+              type="button"
+              onClick={handleQuickAddDepartment}
+              className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
+              title="Add a new Department"
+            >
+              <Plus className="w-3 h-3 stroke-[3]" /> Add
+            </button>
+          </div>
           <select
             value={formData.departmentId || (departments.find(d => d.name === formData.department || d.code === formData.department)?.id || '')}
             onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = departments.find(d => d.id === selectedId);
-              setFormData(prev => ({
-                ...prev,
-                departmentId: selectedId,
-                department: found ? (found.name || found.code) : ''
-              }));
+              if (e.target.value === '__NEW__') {
+                handleQuickAddDepartment();
+              } else {
+                const selectedId = e.target.value;
+                const found = departments.find(d => d.id === selectedId);
+                setFormData(prev => ({
+                  ...prev,
+                  departmentId: selectedId,
+                  department: found ? (found.name || found.code) : ''
+                }));
+              }
             }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
@@ -2409,21 +2564,36 @@ export function AssetForm() {
               .map(d => (
                 <option key={d.id} value={d.id}>{d.name || d.code}</option>
               ))}
+            <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Department...</option>
           </select>
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Cost Center</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700">Cost Center</label>
+            <button
+              type="button"
+              onClick={handleQuickAddCostCenter}
+              className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
+              title="Add a new Cost Center"
+            >
+              <Plus className="w-3 h-3 stroke-[3]" /> Add
+            </button>
+          </div>
           <select
             value={formData.costCenterId || (costCenters.find(cc => cc.name === formData.costCenter || cc.code === formData.costCenter)?.id || '')}
             onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = costCenters.find(cc => cc.id === selectedId);
-              setFormData(prev => ({
-                ...prev,
-                costCenterId: selectedId,
-                costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
-              }));
+              if (e.target.value === '__NEW__') {
+                handleQuickAddCostCenter();
+              } else {
+                const selectedId = e.target.value;
+                const found = costCenters.find(cc => cc.id === selectedId);
+                setFormData(prev => ({
+                  ...prev,
+                  costCenterId: selectedId,
+                  costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
+                }));
+              }
             }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
@@ -2433,6 +2603,7 @@ export function AssetForm() {
               .map(cc => (
                 <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
               ))}
+            <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Cost Center...</option>
           </select>
         </div>
 
@@ -3653,21 +3824,34 @@ export function AssetForm() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Company</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700">Company</label>
+                      <button
+                        type="button"
+                        onClick={handleQuickAddCompany}
+                        className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 stroke-[3]" /> Add
+                      </button>
+                    </div>
                     <select
                       value={formData.companyId || (companies.find(c => c.name === formData.company || c.code === formData.company)?.id || '')}
                       onChange={(e) => {
-                        const selectedId = e.target.value;
-                        const found = companies.find(c => c.id === selectedId);
-                        setFormData(prev => ({
-                          ...prev,
-                          companyId: selectedId,
-                          company: found ? (found.name || found.code) : '',
-                          siteId: '',
-                          site: '',
-                          buildingId: '',
-                          building: ''
-                        }));
+                        if (e.target.value === '__NEW__') {
+                          handleQuickAddCompany();
+                        } else {
+                          const selectedId = e.target.value;
+                          const found = companies.find(c => c.id === selectedId);
+                          setFormData(prev => ({
+                            ...prev,
+                            companyId: selectedId,
+                            company: found ? (found.name || found.code) : '',
+                            siteId: '',
+                            site: '',
+                            buildingId: '',
+                            building: ''
+                          }));
+                        }
                       }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
@@ -3675,6 +3859,7 @@ export function AssetForm() {
                       {companies.map(c => (
                         <option key={c.id} value={c.id}>{c.name || c.code}</option>
                       ))}
+                      <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Company...</option>
                     </select>
                   </div>
                   <div>
@@ -3691,17 +3876,30 @@ export function AssetForm() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Department</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700">Department</label>
+                      <button
+                        type="button"
+                        onClick={handleQuickAddDepartment}
+                        className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 stroke-[3]" /> Add
+                      </button>
+                    </div>
                     <select
                       value={formData.departmentId || (departments.find(d => d.name === formData.department || d.code === formData.department)?.id || '')}
                       onChange={(e) => {
-                        const selectedId = e.target.value;
-                        const found = departments.find(d => d.id === selectedId);
-                        setFormData(prev => ({
-                          ...prev,
-                          departmentId: selectedId,
-                          department: found ? (found.name || found.code) : ''
-                        }));
+                        if (e.target.value === '__NEW__') {
+                          handleQuickAddDepartment();
+                        } else {
+                          const selectedId = e.target.value;
+                          const found = departments.find(d => d.id === selectedId);
+                          setFormData(prev => ({
+                            ...prev,
+                            departmentId: selectedId,
+                            department: found ? (found.name || found.code) : ''
+                          }));
+                        }
                       }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
@@ -3711,20 +3909,34 @@ export function AssetForm() {
                         .map(d => (
                           <option key={d.id} value={d.id}>{d.name || d.code}</option>
                         ))}
+                      <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Department...</option>
                     </select>
                   </div>
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Cost Center</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700">Cost Center</label>
+                      <button
+                        type="button"
+                        onClick={handleQuickAddCostCenter}
+                        className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 stroke-[3]" /> Add
+                      </button>
+                    </div>
                     <select
                       value={formData.costCenterId || (costCenters.find(cc => cc.name === formData.costCenter || cc.code === formData.costCenter)?.id || '')}
                       onChange={(e) => {
-                        const selectedId = e.target.value;
-                        const found = costCenters.find(cc => cc.id === selectedId);
-                        setFormData(prev => ({
-                          ...prev,
-                          costCenterId: selectedId,
-                          costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
-                        }));
+                        if (e.target.value === '__NEW__') {
+                          handleQuickAddCostCenter();
+                        } else {
+                          const selectedId = e.target.value;
+                          const found = costCenters.find(cc => cc.id === selectedId);
+                          setFormData(prev => ({
+                            ...prev,
+                            costCenterId: selectedId,
+                            costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
+                          }));
+                        }
                       }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
@@ -3734,6 +3946,7 @@ export function AssetForm() {
                         .map(cc => (
                           <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
                         ))}
+                      <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Cost Center...</option>
                     </select>
                   </div>
                 </div>
@@ -3765,17 +3978,30 @@ export function AssetForm() {
                     </select>
                   </div>
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Building</label>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-bold text-slate-700">Building</label>
+                      <button
+                        type="button"
+                        onClick={handleQuickAddBuilding}
+                        className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
+                      >
+                        <Plus className="w-3 h-3 stroke-[3]" /> Add
+                      </button>
+                    </div>
                     <select
                       value={formData.buildingId || (buildings.find(b => b.name === formData.building || b.code === formData.building)?.id || '')}
                       onChange={(e) => {
-                        const selectedId = e.target.value;
-                        const found = buildings.find(b => b.id === selectedId);
-                        setFormData(prev => ({
-                          ...prev,
-                          buildingId: selectedId,
-                          building: found ? (found.name || found.code) : ''
-                        }));
+                        if (e.target.value === '__NEW__') {
+                          handleQuickAddBuilding();
+                        } else {
+                          const selectedId = e.target.value;
+                          const found = buildings.find(b => b.id === selectedId);
+                          setFormData(prev => ({
+                            ...prev,
+                            buildingId: selectedId,
+                            building: found ? (found.name || found.code) : ''
+                          }));
+                        }
                       }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
@@ -3785,6 +4011,7 @@ export function AssetForm() {
                         .map(b => (
                           <option key={b.id} value={b.id}>{b.name || b.code}</option>
                         ))}
+                      <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Building...</option>
                     </select>
                   </div>
                 </div>

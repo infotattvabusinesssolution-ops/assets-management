@@ -21,233 +21,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-export const INITIAL_DEPARTMENTS = [
-  {
-    id: 1,
-    code: 'FIN',
-    name: 'Finance',
-    type: 'Support',
-    parentDepartment: '-',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
-    manager: 'Ahmed Khan',
-    email: 'ahmed.khan@wavelogix.com',
-    phone: '+971 50 234 5678',
-    description: 'Manages corporate financial planning, accounting, budgeting, and audits.',
-    employees: 85,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '08 Jan 2025 08:30 AM',
-    lastModifiedBy: 'Ahmed Khan',
-    lastModifiedOn: '20 Aug 2025 11:15 AM',
-    relatedInfo: {
-      subDepartments: 3,
-      locations: 3,
-      assets: 210,
-      users: 85
-    }
-  },
-  {
-    id: 2,
-    code: 'HR',
-    name: 'Human Resources',
-    type: 'Support',
-    parentDepartment: '-',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
-    manager: 'Priya Nair',
-    email: 'priya.nair@wavelogix.com',
-    phone: '+971 50 345 6789',
-    description: 'Oversees talent acquisition, employee relations, payroll, and corporate training.',
-    employees: 28,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '09 Jan 2025 10:15 AM',
-    lastModifiedBy: 'Priya Nair',
-    lastModifiedOn: '22 Aug 2025 09:40 AM',
-    relatedInfo: {
-      subDepartments: 2,
-      locations: 2,
-      assets: 145,
-      users: 28
-    }
-  },
-  {
-    id: 3,
-    code: 'IT',
-    name: 'Information Technology',
-    type: 'Support',
-    parentDepartment: '-',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
-    manager: 'Khalid Al-Mansoori',
-    email: 'khalid@wavelogix.com',
-    phone: '+971 50 123 4567',
-    description: 'Manages IT infrastructure, systems and support services.',
-    employees: 62,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '10 Jan 2025 09:20 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '28 Aug 2025 03:15 PM',
-    relatedInfo: {
-      subDepartments: 4,
-      locations: 2,
-      assets: 486,
-      users: 62
-    }
-  },
-  {
-    id: 4,
-    code: 'OPS',
-    name: 'Operations',
-    type: 'Operational',
-    parentDepartment: '-',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
-    manager: 'Hassan Ali',
-    email: 'hassan.ali@wavelogix.com',
-    phone: '+971 50 456 7890',
-    description: 'Directs day-to-day operational logistics, supply chain, and service delivery.',
-    employees: 120,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '12 Jan 2025 02:00 PM',
-    lastModifiedBy: 'Hassan Ali',
-    lastModifiedOn: '25 Aug 2025 01:30 PM',
-    relatedInfo: {
-      subDepartments: 5,
-      locations: 4,
-      assets: 950,
-      users: 120
-    }
-  },
-  {
-    id: 5,
-    code: 'MAINT',
-    name: 'Maintenance',
-    type: 'Operational',
-    parentDepartment: 'OPS',
-    location: 'Jebel Ali',
-    company: 'Wavelogix FZC',
-    manager: 'Ramesh Kumar',
-    email: 'ramesh.kumar@wavelogix.com',
-    phone: '+971 50 567 8901',
-    description: 'Responsible for facility preventive maintenance, equipment repairs, and field servicing.',
-    employees: 45,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '15 Jan 2025 11:30 AM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '27 Aug 2025 04:20 PM',
-    relatedInfo: {
-      subDepartments: 2,
-      locations: 3,
-      assets: 620,
-      users: 45
-    }
-  },
-  {
-    id: 6,
-    code: 'FAC',
-    name: 'Facilities Management',
-    type: 'Operational',
-    parentDepartment: 'OPS',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
-    manager: 'Sara Malik',
-    email: 'sara.malik@wavelogix.com',
-    phone: '+971 50 678 9012',
-    description: 'Manages building operations, utilities, security, and space allocation.',
-    employees: 38,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '18 Jan 2025 09:00 AM',
-    lastModifiedBy: 'Sara Malik',
-    lastModifiedOn: '29 Aug 2025 10:15 AM',
-    relatedInfo: {
-      subDepartments: 2,
-      locations: 4,
-      assets: 310,
-      users: 38
-    }
-  },
-  {
-    id: 7,
-    code: 'PROC',
-    name: 'Procurement',
-    type: 'Support',
-    parentDepartment: 'FIN',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
-    manager: 'David Lee',
-    email: 'david.lee@wavelogix.com',
-    phone: '+971 50 789 0123',
-    description: 'Handles vendor management, purchase orders, contracting, and asset sourcing.',
-    employees: 22,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Jan 2025 01:45 PM',
-    lastModifiedBy: 'David Lee',
-    lastModifiedOn: '30 Aug 2025 02:00 PM',
-    relatedInfo: {
-      subDepartments: 1,
-      locations: 2,
-      assets: 180,
-      users: 22
-    }
-  },
-  {
-    id: 8,
-    code: 'LEG',
-    name: 'Legal',
-    type: 'Support',
-    parentDepartment: '-',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
-    manager: 'Fatima Saeed',
-    email: 'fatima.saeed@wavelogix.com',
-    phone: '+971 50 890 1234',
-    description: 'Provides corporate legal counsel, compliance governance, and contract review.',
-    employees: 15,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '22 Jan 2025 03:10 PM',
-    lastModifiedBy: 'Fatima Saeed',
-    lastModifiedOn: '31 Aug 2025 11:50 AM',
-    relatedInfo: {
-      subDepartments: 1,
-      locations: 1,
-      assets: 85,
-      users: 15
-    }
-  },
-  {
-    id: 9,
-    code: 'COM',
-    name: 'Commercial',
-    type: 'Support',
-    parentDepartment: '-',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
-    manager: 'Omar Rahman',
-    email: 'omar.rahman@wavelogix.com',
-    phone: '+971 50 901 2345',
-    description: 'Drives enterprise sales, client relations, business development, and marketing.',
-    employees: 40,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '25 Jan 2025 10:00 AM',
-    lastModifiedBy: 'Omar Rahman',
-    lastModifiedOn: '01 Sep 2025 09:30 AM',
-    relatedInfo: {
-      subDepartments: 3,
-      locations: 2,
-      assets: 240,
-      users: 40
-    }
-  }
-];
+export const INITIAL_DEPARTMENTS = [];
 
 export function DepartmentsTab({
   triggerToast,
@@ -257,8 +31,8 @@ export function DepartmentsTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const [departmentsList, setDepartmentsList] = useState(INITIAL_DEPARTMENTS);
-  const [selectedDepartment, setSelectedDepartment] = useState(INITIAL_DEPARTMENTS[2]);
+  const [departmentsList, setDepartmentsList] = useState([]);
+  const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedDeptIds, setSelectedDeptIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -267,7 +41,7 @@ export function DepartmentsTab({
   const loadDepartments = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/departments?includeInactive=true');
+      const res = await api.get('/master-data/departments');
       if (res?.departments && res.departments.length > 0) {
         const mapped = res.departments.map((dept, idx) => ({
           id: dept.id,
@@ -294,11 +68,8 @@ export function DepartmentsTab({
             users: (idx + 1) * 15
           }
         }));
-        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
-        const remainingInitial = INITIAL_DEPARTMENTS.filter((d) => !dbCodes.has(d.code.toUpperCase()));
-        const fullList = mapped.length > 0 ? mapped : remainingInitial;
-        setDepartmentsList(fullList);
-        setSelectedDepartment((prev) => (prev ? fullList.find((d) => d.id === prev.id) || fullList[0] : fullList[0]));
+        setDepartmentsList(mapped);
+        setSelectedDepartment((prev) => (prev ? mapped.find((d) => d.id === prev.id) || mapped[0] || null : mapped[0] || null));
       }
     } catch (err) {
       console.warn('Failed to fetch departments, using fallback dataset:', err);
@@ -785,7 +556,14 @@ export function DepartmentsTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredDepartments.map((dept, index) => {
+                {filteredDepartments.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                      No departments found. Click "+ Add Department" to create one.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredDepartments.map((dept, index) => {
                   const isSelected = selectedDepartment?.id === dept.id;
                   const isChecked = selectedDeptIds.includes(dept.id);
                   const isMenuOpen = activeRowMenuId === `dept-${dept.id}`;
@@ -894,7 +672,7 @@ export function DepartmentsTab({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
@@ -922,7 +700,11 @@ export function DepartmentsTab({
             </button>
           </div>
 
-          {selectedDepartment && (
+          {!selectedDepartment ? (
+            <div className="py-16 text-center text-slate-400 text-xs font-medium">
+              Select a department from the table to view details.
+            </div>
+          ) : (
             <div className="space-y-3.5 text-xs">
               <div className="grid grid-cols-3 gap-1 py-1">
                 <span className="text-slate-500 font-medium">Dept Code</span>
@@ -987,7 +769,7 @@ export function DepartmentsTab({
                       <span className="font-semibold">Sub Departments</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo.subDepartments}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo?.subDepartments ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -998,7 +780,7 @@ export function DepartmentsTab({
                       <span className="font-semibold">Locations</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo.locations}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo?.locations ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1009,7 +791,7 @@ export function DepartmentsTab({
                       <span className="font-semibold">Assets</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo.assets.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo?.assets?.toLocaleString() ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1020,7 +802,7 @@ export function DepartmentsTab({
                       <span className="font-semibold">Assigned Users</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo.users}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo?.users ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1093,9 +875,13 @@ export function DepartmentsTab({
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
                     <option value="-">- (None / Top Level)</option>
-                    <option value="FIN">FIN (Finance)</option>
-                    <option value="OPS">OPS (Operations)</option>
-                    <option value="IT">IT (Information Technology)</option>
+                    {departmentsList
+                      .filter((d) => !editingDepartment || d.id !== editingDepartment.id)
+                      .map((d) => (
+                        <option key={d.id} value={d.code}>
+                          {d.code} ({d.name})
+                        </option>
+                      ))}
                   </select>
                 </div>
               </div>

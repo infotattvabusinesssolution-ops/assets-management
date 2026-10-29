@@ -23,192 +23,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-export const INITIAL_COST_CENTERS = [
-  {
-    id: 1,
-    code: 'CC-1000',
-    name: 'Corporate Services',
-    company: 'Wavelogix FZC',
-    type: 'Administrative',
-    manager: 'Ahmed Khan',
-    description: 'Executive management, legal services, administrative overhead, and general corporate facilities.',
-    totalAssets: 245,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '08 Jan 2025 09:00 AM',
-    lastModifiedBy: 'Ahmed Khan',
-    lastModifiedOn: '15 Aug 2025 11:30 AM',
-    relatedInfo: {
-      departments: 3,
-      locations: 2,
-      assets: 245,
-      maintenancePlans: 5,
-      budgets: 1,
-      documents: 4
-    }
-  },
-  {
-    id: 2,
-    code: 'CC-1100',
-    name: 'IT Infrastructure',
-    company: 'Wavelogix FZC',
-    type: 'Operational',
-    manager: 'Priya Nair',
-    description: 'IT infrastructure, servers, network and communication systems',
-    totalAssets: 680,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '10 Jan 2025 09:15 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '28 Aug 2025 02:30 PM',
-    relatedInfo: {
-      departments: 4,
-      locations: 3,
-      assets: 680,
-      maintenancePlans: 12,
-      budgets: 1,
-      documents: 6
-    }
-  },
-  {
-    id: 3,
-    code: 'CC-1200',
-    name: 'Finance',
-    company: 'Wavelogix FZC',
-    type: 'Administrative',
-    manager: 'Ramesh Kumar',
-    description: 'Financial management, treasury, accounting systems, and audit operations.',
-    totalAssets: 320,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '12 Jan 2025 10:45 AM',
-    lastModifiedBy: 'Ramesh Kumar',
-    lastModifiedOn: '20 Aug 2025 01:15 PM',
-    relatedInfo: {
-      departments: 2,
-      locations: 2,
-      assets: 320,
-      maintenancePlans: 3,
-      budgets: 1,
-      documents: 5
-    }
-  },
-  {
-    id: 4,
-    code: 'CC-1300',
-    name: 'Human Resources',
-    company: 'Wavelogix FZC',
-    type: 'Administrative',
-    manager: 'Sara Malik',
-    description: 'HR operations, talent acquisition, training facilities, and payroll systems.',
-    totalAssets: 180,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '14 Jan 2025 02:30 PM',
-    lastModifiedBy: 'Sara Malik',
-    lastModifiedOn: '22 Aug 2025 09:00 AM',
-    relatedInfo: {
-      departments: 2,
-      locations: 2,
-      assets: 180,
-      maintenancePlans: 2,
-      budgets: 1,
-      documents: 3
-    }
-  },
-  {
-    id: 5,
-    code: 'CC-2000',
-    name: 'Operations',
-    company: 'Wavelogix FZC',
-    type: 'Operational',
-    manager: 'Hassan Ali',
-    description: 'Core manufacturing operations, production lines, and plant equipment.',
-    totalAssets: 950,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '16 Jan 2025 11:00 AM',
-    lastModifiedBy: 'Hassan Ali',
-    lastModifiedOn: '25 Aug 2025 04:20 PM',
-    relatedInfo: {
-      departments: 5,
-      locations: 4,
-      assets: 950,
-      maintenancePlans: 18,
-      budgets: 2,
-      documents: 10
-    }
-  },
-  {
-    id: 6,
-    code: 'CC-2100',
-    name: 'Facilities Management',
-    company: 'Wavelogix FZC',
-    type: 'Operational',
-    manager: 'Lina George',
-    description: 'Building HVAC, electrical infrastructure, safety systems, and facility upkeep.',
-    totalAssets: 420,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '18 Jan 2025 01:20 PM',
-    lastModifiedBy: 'Lina George',
-    lastModifiedOn: '27 Aug 2025 10:45 AM',
-    relatedInfo: {
-      departments: 3,
-      locations: 3,
-      assets: 420,
-      maintenancePlans: 15,
-      budgets: 1,
-      documents: 8
-    }
-  },
-  {
-    id: 7,
-    code: 'CC-2200',
-    name: 'Logistics',
-    company: 'Wavelogix FZC',
-    type: 'Operational',
-    manager: 'Omar Rahman',
-    description: 'Warehouse equipment, fleet vehicles, delivery logistics, and material handling.',
-    totalAssets: 360,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Jan 2025 09:30 AM',
-    lastModifiedBy: 'Omar Rahman',
-    lastModifiedOn: '29 Aug 2025 03:00 PM',
-    relatedInfo: {
-      departments: 3,
-      locations: 2,
-      assets: 360,
-      maintenancePlans: 10,
-      budgets: 1,
-      documents: 7
-    }
-  },
-  {
-    id: 8,
-    code: 'CC-3000',
-    name: 'Sales & Commercial',
-    company: 'Wavelogix FZC',
-    type: 'Operational',
-    manager: 'David Lee',
-    description: 'Client servicing tools, mobile demo units, and sales office equipment.',
-    totalAssets: 110,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '22 Jan 2025 03:15 PM',
-    lastModifiedBy: 'David Lee',
-    lastModifiedOn: '30 Aug 2025 11:20 AM',
-    relatedInfo: {
-      departments: 2,
-      locations: 2,
-      assets: 110,
-      maintenancePlans: 1,
-      budgets: 1,
-      documents: 2
-    }
-  }
-];
+export const INITIAL_COST_CENTERS = [];
 
 export function CostCentersTab({
   triggerToast,
@@ -218,8 +33,8 @@ export function CostCentersTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const [costCentersList, setCostCentersList] = useState(INITIAL_COST_CENTERS);
-  const [selectedCostCenter, setSelectedCostCenter] = useState(INITIAL_COST_CENTERS[1]);
+  const [costCentersList, setCostCentersList] = useState([]);
+  const [selectedCostCenter, setSelectedCostCenter] = useState(null);
   const [selectedCCIds, setSelectedCCIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -228,7 +43,7 @@ export function CostCentersTab({
   const loadCostCenters = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/cost-centers?includeInactive=true');
+      const res = await api.get('/master-data/cost-centers');
       if (res?.costCenters && res.costCenters.length > 0) {
         const mapped = res.costCenters.map((cc, idx) => ({
           id: cc.id,
@@ -253,11 +68,8 @@ export function CostCentersTab({
             documents: 2
           }
         }));
-        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
-        const remainingInitial = INITIAL_COST_CENTERS.filter((c) => !dbCodes.has(c.code.toUpperCase()));
-        const fullList = mapped.length > 0 ? mapped : remainingInitial;
-        setCostCentersList(fullList);
-        setSelectedCostCenter((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
+        setCostCentersList(mapped);
+        setSelectedCostCenter((prev) => (prev ? mapped.find((c) => c.id === prev.id) || mapped[0] || null : mapped[0] || null));
       }
     } catch (err) {
       console.warn('Failed to fetch cost centers, using fallback dataset:', err);
@@ -706,7 +518,14 @@ export function CostCentersTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredCostCenters.map((cc, index) => {
+                {filteredCostCenters.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                      No cost centers found. Click "+ Add Cost Center" to create one.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredCostCenters.map((cc, index) => {
                   const isSelected = selectedCostCenter?.id === cc.id;
                   const isChecked = selectedCCIds.includes(cc.id);
                   const isMenuOpen = activeRowMenuId === `cc-${cc.id}`;
@@ -817,7 +636,7 @@ export function CostCentersTab({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
@@ -845,7 +664,11 @@ export function CostCentersTab({
             </button>
           </div>
 
-          {selectedCostCenter && (
+          {!selectedCostCenter ? (
+            <div className="py-16 text-center text-slate-400 text-xs font-medium">
+              Select a cost center from the table to view details.
+            </div>
+          ) : (
             <div className="space-y-3.5 text-xs">
               <div className="grid grid-cols-3 gap-1 py-1">
                 <span className="text-slate-500 font-medium">Cost Center Code</span>
@@ -910,7 +733,7 @@ export function CostCentersTab({
                       <span className="font-semibold">Departments</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo.departments}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo?.departments ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -921,7 +744,7 @@ export function CostCentersTab({
                       <span className="font-semibold">Locations</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo.locations}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo?.locations ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -932,7 +755,7 @@ export function CostCentersTab({
                       <span className="font-semibold">Assets</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo.assets.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo?.assets?.toLocaleString() ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -943,7 +766,7 @@ export function CostCentersTab({
                       <span className="font-semibold">Maintenance Plans</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo.maintenancePlans}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo?.maintenancePlans ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -954,7 +777,7 @@ export function CostCentersTab({
                       <span className="font-semibold">Budgets</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo.budgets}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo?.budgets ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -965,7 +788,7 @@ export function CostCentersTab({
                       <span className="font-semibold">Documents</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo.documents}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo?.documents ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>

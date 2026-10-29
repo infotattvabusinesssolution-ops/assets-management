@@ -21,237 +21,33 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-export const INITIAL_LOCATIONS = [
-  {
-    id: 1,
-    code: 'UAE-HQ',
-    name: 'Head Office',
-    type: 'Office',
-    parentLocation: '-',
-    country: 'UAE',
-    city: 'Dubai',
-    address: 'Level 15, Business Tower, Sheikh Zayed Road, Dubai',
-    postalCode: '12345',
-    totalAssets: 1245,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '12 Jan 2025 09:15 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '25 Aug 2025 02:30 PM',
-    relatedInfo: {
-      childLocations: 5,
-      assets: 1245,
-      departments: 12,
-      costCenters: 8
-    }
-  },
-  {
-    id: 2,
-    code: 'UAE-DXB-OF1',
-    name: 'Dubai Office',
-    type: 'Office',
-    parentLocation: 'UAE-HQ',
-    country: 'UAE',
-    city: 'Dubai',
-    address: 'Floor 8, Internet City Building 4, Dubai',
-    postalCode: '54321',
-    totalAssets: 320,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '15 Jan 2025 10:30 AM',
-    lastModifiedBy: 'Michael Brown',
-    lastModifiedOn: '18 Aug 2025 11:45 AM',
-    relatedInfo: {
-      childLocations: 2,
-      assets: 320,
-      departments: 6,
-      costCenters: 4
-    }
-  },
-  {
-    id: 3,
-    code: 'UAE-DXB-WH1',
-    name: 'Dubai Warehouse',
-    type: 'Warehouse',
-    parentLocation: 'UAE-HQ',
-    country: 'UAE',
-    city: 'Dubai',
-    address: 'Plot 598-112, Jebel Ali Freezone South, Dubai',
-    postalCode: '00000',
-    totalAssets: 860,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Jan 2025 02:00 PM',
-    lastModifiedBy: 'Robert Taylor',
-    lastModifiedOn: '20 Aug 2025 04:15 PM',
-    relatedInfo: {
-      childLocations: 0,
-      assets: 860,
-      departments: 3,
-      costCenters: 2
-    }
-  },
-  {
-    id: 4,
-    code: 'UAE-AUH-OF1',
-    name: 'Abu Dhabi Office',
-    type: 'Office',
-    parentLocation: 'UAE-HQ',
-    country: 'UAE',
-    city: 'Abu Dhabi',
-    address: 'Tower B, Al Khatem Tower, ADGM Square, Abu Dhabi',
-    postalCode: '45678',
-    totalAssets: 420,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '25 Jan 2025 09:00 AM',
-    lastModifiedBy: 'Sarah Ahmed',
-    lastModifiedOn: '22 Aug 2025 01:20 PM',
-    relatedInfo: {
-      childLocations: 1,
-      assets: 420,
-      departments: 5,
-      costCenters: 3
-    }
-  },
-  {
-    id: 5,
-    code: 'UAE-SHJ-S1',
-    name: 'Sharjah Site 1',
-    type: 'Site',
-    parentLocation: 'UAE-HQ',
-    country: 'UAE',
-    city: 'Sharjah',
-    address: 'Industrial Area 13, Near City Centre, Sharjah',
-    postalCode: '98765',
-    totalAssets: 215,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '01 Feb 2025 11:15 AM',
-    lastModifiedBy: 'David Kim',
-    lastModifiedOn: '24 Aug 2025 10:00 AM',
-    relatedInfo: {
-      childLocations: 0,
-      assets: 215,
-      departments: 2,
-      costCenters: 2
-    }
-  },
-  {
-    id: 6,
-    code: 'KSA-RYD-OF1',
-    name: 'Riyadh Office',
-    type: 'Office',
-    parentLocation: '-',
-    country: 'Saudi Arabia',
-    city: 'Riyadh',
-    address: 'King Fahd Road, Al Olaya District, Riyadh',
-    postalCode: '11564',
-    totalAssets: 340,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '05 Feb 2025 08:45 AM',
-    lastModifiedBy: 'Tariq Mansoor',
-    lastModifiedOn: '26 Aug 2025 03:30 PM',
-    relatedInfo: {
-      childLocations: 2,
-      assets: 340,
-      departments: 7,
-      costCenters: 5
-    }
-  },
-  {
-    id: 7,
-    code: 'KSA-JED-WH1',
-    name: 'Jeddah Warehouse',
-    type: 'Warehouse',
-    parentLocation: 'KSA-RYD-OF1',
-    country: 'Saudi Arabia',
-    city: 'Jeddah',
-    address: 'Al Industrial Area Phase 3, Jeddah',
-    postalCode: '21432',
-    totalAssets: 210,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '10 Feb 2025 01:30 PM',
-    lastModifiedBy: 'Tariq Mansoor',
-    lastModifiedOn: '27 Aug 2025 09:10 AM',
-    relatedInfo: {
-      childLocations: 0,
-      assets: 210,
-      departments: 2,
-      costCenters: 2
-    }
-  },
-  {
-    id: 8,
-    code: 'QAT-DOH-OF1',
-    name: 'Doha Office',
-    type: 'Office',
-    parentLocation: '-',
-    country: 'Qatar',
-    city: 'Doha',
-    address: 'West Bay Commercial Tower, Doha',
-    postalCode: '23456',
-    totalAssets: 180,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '15 Feb 2025 10:00 AM',
-    lastModifiedBy: 'Fatima Al-Kuwari',
-    lastModifiedOn: '28 Aug 2025 02:45 PM',
-    relatedInfo: {
-      childLocations: 0,
-      assets: 180,
-      departments: 4,
-      costCenters: 3
-    }
-  },
-  {
-    id: 9,
-    code: 'BHR-MAN-S1',
-    name: 'Manama Site',
-    type: 'Site',
-    parentLocation: '-',
-    country: 'Bahrain',
-    city: 'Manama',
-    address: 'Diplomatic Area, Building 452, Manama',
-    postalCode: '31700',
-    totalAssets: 95,
-    status: 'Active',
-    createdBy: 'Admin',
-    createdOn: '20 Feb 2025 03:20 PM',
-    lastModifiedBy: 'Hassan Al-Majid',
-    lastModifiedOn: '29 Aug 2025 11:15 AM',
-    relatedInfo: {
-      childLocations: 0,
-      assets: 95,
-      departments: 2,
-      costCenters: 1
-    }
-  },
-  {
-    id: 10,
-    code: 'OMN-MCT-OF1',
-    name: 'Muscat Office',
-    type: 'Office',
-    parentLocation: '-',
-    country: 'Oman',
-    city: 'Muscat',
-    address: 'Al Khuwair Street, Business District, Muscat',
-    postalCode: '11200',
-    totalAssets: 75,
-    status: 'Inactive',
-    createdBy: 'Admin',
-    createdOn: '25 Feb 2025 09:30 AM',
-    lastModifiedBy: 'Salim Al-Busaidi',
-    lastModifiedOn: '01 Sep 2025 04:00 PM',
-    relatedInfo: {
-      childLocations: 0,
-      assets: 75,
-      departments: 3,
-      costCenters: 2
-    }
-  }
+export const INITIAL_LOCATIONS = [];
+
+export const DEFAULT_COUNTRIES = [
+  'United Arab Emirates',
+  'Saudi Arabia',
+  'Qatar',
+  'Bahrain',
+  'Oman',
+  'Kuwait',
+  'India',
+  'United States',
+  'United Kingdom',
+  'Germany',
+  'Singapore',
+  'Other'
+];
+
+export const DEFAULT_LOCATION_TYPES = [
+  'Office',
+  'Warehouse',
+  'Site',
+  'Data Center',
+  'Store',
+  'Manufacturing Plant',
+  'Branch',
+  'Workshop',
+  'Showroom'
 ];
 
 export function LocationsTab({
@@ -262,17 +58,84 @@ export function LocationsTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const [locationsList, setLocationsList] = useState(INITIAL_LOCATIONS);
-  const [selectedLocation, setSelectedLocation] = useState(INITIAL_LOCATIONS[0]);
+  const [locationsList, setLocationsList] = useState([]);
+  const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
+  const [customCountries, setCustomCountries] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('fams_custom_countries') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const allCountries = useMemo(() => {
+    const combined = [...DEFAULT_COUNTRIES, ...customCountries];
+    locationsList.forEach((l) => {
+      if (l.country && !combined.includes(l.country)) {
+        combined.push(l.country);
+      }
+    });
+    return Array.from(new Set(combined)).filter(Boolean);
+  }, [customCountries, locationsList]);
+
+  const handleAddNewCountry = () => {
+    const newCountry = window.prompt('Enter new Country name (e.g. Canada, Japan, Australia, France):');
+    if (!newCountry || !newCountry.trim()) return;
+    const clean = newCountry.trim();
+    if (!allCountries.includes(clean)) {
+      const updated = [...customCountries, clean];
+      setCustomCountries(updated);
+      try {
+        localStorage.setItem('fams_custom_countries', JSON.stringify(updated));
+      } catch (_) {}
+    }
+    setLocFormState((prev) => ({ ...prev, country: clean }));
+    triggerToast && triggerToast(`Country "${clean}" added successfully.`);
+  };
+
+  const [customLocationTypes, setCustomLocationTypes] = useState(() => {
+    try {
+      const saved = JSON.parse(localStorage.getItem('fams_custom_location_types') || '[]');
+      return Array.isArray(saved) ? saved : [];
+    } catch {
+      return [];
+    }
+  });
+
+  const allLocationTypes = useMemo(() => {
+    const combined = [...DEFAULT_LOCATION_TYPES, ...customLocationTypes];
+    locationsList.forEach((l) => {
+      if (l.type && !combined.includes(l.type)) {
+        combined.push(l.type);
+      }
+    });
+    return Array.from(new Set(combined)).filter(Boolean);
+  }, [customLocationTypes, locationsList]);
+
+  const handleAddNewLocationType = () => {
+    const newType = window.prompt('Enter new Location Type (e.g. Workshop, Showroom, Branch, Hospital):');
+    if (!newType || !newType.trim()) return;
+    const clean = newType.trim();
+    if (!allLocationTypes.includes(clean)) {
+      const updated = [...customLocationTypes, clean];
+      setCustomLocationTypes(updated);
+      try {
+        localStorage.setItem('fams_custom_location_types', JSON.stringify(updated));
+      } catch (_) {}
+    }
+    setLocFormState((prev) => ({ ...prev, type: clean }));
+    triggerToast && triggerToast(`Location Type "${clean}" added successfully.`);
+  };
   const [isLoading, setIsLoading] = useState(false);
 
   // Load live locations from database
   const loadLocations = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/sites?includeInactive=true');
+      const res = await api.get('/master-data/sites');
       if (res?.sites && res.sites.length > 0) {
         const mapped = res.sites.map((site, idx) => ({
           id: site.id,
@@ -297,11 +160,8 @@ export function LocationsTab({
             costCenters: 3
           }
         }));
-        const dbCodes = new Set(mapped.map((m) => m.code.toUpperCase()));
-        const remainingInitial = INITIAL_LOCATIONS.filter((c) => !dbCodes.has(c.code.toUpperCase()));
-        const fullList = mapped.length > 0 ? mapped : remainingInitial;
-        setLocationsList(fullList);
-        setSelectedLocation((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] : fullList[0]));
+        setLocationsList(mapped);
+        setSelectedLocation((prev) => (prev ? mapped.find((c) => c.id === prev.id) || mapped[0] || null : mapped[0] || null));
       }
     } catch (err) {
       console.warn('Failed to fetch sites/locations, using fallback dataset:', err);
@@ -634,10 +494,11 @@ export function LocationsTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Types">All Types</option>
-              <option value="Office">Office</option>
-              <option value="Warehouse">Warehouse</option>
-              <option value="Site">Site</option>
-              <option value="Data Center">Data Center</option>
+              {allLocationTypes.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -662,11 +523,11 @@ export function LocationsTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All">All</option>
-              <option value="UAE">UAE</option>
-              <option value="Saudi Arabia">Saudi Arabia</option>
-              <option value="Qatar">Qatar</option>
-              <option value="Bahrain">Bahrain</option>
-              <option value="Oman">Oman</option>
+              {allCountries.map((c) => (
+                <option key={c} value={c}>
+                  {c}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -679,8 +540,13 @@ export function LocationsTab({
             >
               <option value="All">All</option>
               <option value="-">- (Root)</option>
-              <option value="UAE-HQ">UAE-HQ</option>
-              <option value="KSA-RYD-OF1">KSA-RYD-OF1</option>
+              {Array.from(new Set(locationsList.map((l) => l.code)))
+                .filter((code) => code && code !== '-')
+                .map((code) => (
+                  <option key={code} value={code}>
+                    {code}
+                  </option>
+                ))}
             </select>
           </div>
 
@@ -788,7 +654,14 @@ export function LocationsTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredLocations.map((loc, index) => {
+                {filteredLocations.length === 0 ? (
+                  <tr>
+                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                      No locations found. Click "+ Add Location" to create one.
+                    </td>
+                  </tr>
+                ) : (
+                  filteredLocations.map((loc, index) => {
                   const isSelected = selectedLocation?.id === loc.id;
                   const isChecked = selectedLocIds.includes(loc.id);
                   const isMenuOpen = activeRowMenuId === `loc-${loc.id}`;
@@ -899,7 +772,7 @@ export function LocationsTab({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
@@ -927,7 +800,11 @@ export function LocationsTab({
             </button>
           </div>
 
-          {selectedLocation && (
+          {!selectedLocation ? (
+            <div className="py-16 text-center text-slate-400 text-xs font-medium">
+              Select a location from the table to view details.
+            </div>
+          ) : (
             <div className="space-y-3.5 text-xs">
               <div className="grid grid-cols-3 gap-1 py-1">
                 <span className="text-slate-500 font-medium">Location Code</span>
@@ -992,7 +869,7 @@ export function LocationsTab({
                       <span className="font-semibold">Child Locations</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo.childLocations}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo?.childLocations ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1003,7 +880,7 @@ export function LocationsTab({
                       <span className="font-semibold">Assets</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo.assets.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo?.assets?.toLocaleString() ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1014,7 +891,7 @@ export function LocationsTab({
                       <span className="font-semibold">Departments</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo.departments}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo?.departments ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1025,7 +902,7 @@ export function LocationsTab({
                       <span className="font-semibold">Cost Centers</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo.costCenters}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo?.costCenters ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -1064,18 +941,37 @@ export function LocationsTab({
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Location Type *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">Location Type *</label>
+                    <button
+                      type="button"
+                      onClick={handleAddNewLocationType}
+                      className="text-[11px] font-bold text-[#6C2BD9] hover:text-[#5B21B6] hover:underline flex items-center gap-0.5 cursor-pointer"
+                      title="Add a custom Location Type"
+                    >
+                      <Plus className="w-3 h-3 stroke-[3]" />
+                      <span>Add Type</span>
+                    </button>
+                  </div>
                   <select
                     value={locFormState.type}
-                    onChange={(e) => setLocFormState({ ...locFormState, type: e.target.value })}
+                    onChange={(e) => {
+                      if (e.target.value === '__NEW__') {
+                        handleAddNewLocationType();
+                      } else {
+                        setLocFormState({ ...locFormState, type: e.target.value });
+                      }
+                    }}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    <option value="Office">Office</option>
-                    <option value="Warehouse">Warehouse</option>
-                    <option value="Site">Site</option>
-                    <option value="Data Center">Data Center</option>
-                    <option value="Store">Store</option>
-                    <option value="Manufacturing Plant">Manufacturing Plant</option>
+                    {allLocationTypes.map((t) => (
+                      <option key={t} value={t}>
+                        {t}
+                      </option>
+                    ))}
+                    <option value="__NEW__" className="text-[#6C2BD9] font-bold">
+                      + Add New Location Type...
+                    </option>
                   </select>
                 </div>
               </div>
@@ -1100,25 +996,49 @@ export function LocationsTab({
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
                   <option value="-">- (Root / None)</option>
-                  <option value="UAE-HQ">UAE-HQ (Head Office)</option>
-                  <option value="KSA-RYD-OF1">KSA-RYD-OF1 (Riyadh Office)</option>
+                  {locationsList
+                    .filter((loc) => !editingLocation || loc.id !== editingLocation.id)
+                    .map((loc) => (
+                      <option key={loc.id} value={loc.code}>
+                        {loc.code} ({loc.name})
+                      </option>
+                    ))}
                 </select>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Country *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-semibold text-slate-700">Country *</label>
+                    <button
+                      type="button"
+                      onClick={handleAddNewCountry}
+                      className="text-[11px] font-bold text-[#6C2BD9] hover:text-[#5B21B6] hover:underline flex items-center gap-0.5 cursor-pointer"
+                      title="Add a custom Country"
+                    >
+                      <Plus className="w-3 h-3 stroke-[3]" />
+                      <span>Add Country</span>
+                    </button>
+                  </div>
                   <select
                     value={locFormState.country}
-                    onChange={(e) => setLocFormState({ ...locFormState, country: e.target.value })}
+                    onChange={(e) => {
+                      if (e.target.value === '__NEW__') {
+                        handleAddNewCountry();
+                      } else {
+                        setLocFormState({ ...locFormState, country: e.target.value });
+                      }
+                    }}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    <option value="UAE">UAE</option>
-                    <option value="Saudi Arabia">Saudi Arabia</option>
-                    <option value="Qatar">Qatar</option>
-                    <option value="Bahrain">Bahrain</option>
-                    <option value="Oman">Oman</option>
-                    <option value="Kuwait">Kuwait</option>
+                    {allCountries.map((c) => (
+                      <option key={c} value={c}>
+                        {c}
+                      </option>
+                    ))}
+                    <option value="__NEW__" className="text-[#6C2BD9] font-bold">
+                      + Add New Country...
+                    </option>
                   </select>
                 </div>
                 <div>
