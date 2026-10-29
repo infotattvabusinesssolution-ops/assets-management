@@ -362,37 +362,42 @@ export async function createAsset(req, res, next) {
     const rawAssetClass = req.body.assetClassId || req.body.subcategory;
     let assetClass = null;
     if (rawAssetClass) {
-      // 1. Try finding assetClass strictly under categoryId
-      assetClass = await prisma.assetClass.findFirst({
-        where: { categoryId, active: true, OR: [{ id: rawAssetClass }, { code: rawAssetClass }, { name: rawAssetClass }] },
-        select: { id: true, code: true, name: true, categoryId: true }
-      });
+      const subName = String(req.body.subcategory || rawAssetClass).trim();
+      const cleanKey = subName.replace(/[^a-zA-Z0-9]/g, '').toUpperCase();
+      const possibleCodes = [rawAssetClass, subName, 'SUB-' + cleanKey, 'CLS-' + cleanKey, cleanKey];
 
-      // 2. If not found under categoryId, check if it exists globally or under another category
-      if (!assetClass) {
-        assetClass = await prisma.assetClass.findFirst({
-          where: { active: true, OR: [{ id: rawAssetClass }, { code: rawAssetClass }, { name: rawAssetClass }] },
-          select: { id: true, code: true, name: true, categoryId: true }
-        });
-        // Link to category if not previously linked
-        if (assetClass && !assetClass.categoryId) {
+      // 1. Find by ID, name, or possible codes (active or inactive)
+      assetClass = await prisma.assetClass.findFirst({
+        where: {
+          OR: [
+            { id: rawAssetClass },
+            { name: { equals: subName } },
+            { code: { in: possibleCodes } }
+          ]
+        },
+        select: { id: true, code: true, name: true, categoryId: true, active: true }
+      }).catch(() => null);
+
+      if (assetClass) {
+        // If inactive or unlinked, update it
+        const updates = {};
+        if (!assetClass.active) updates.active = true;
+        if (!assetClass.categoryId && categoryId) updates.categoryId = categoryId;
+        if (Object.keys(updates).length > 0) {
           await prisma.assetClass.update({
             where: { id: assetClass.id },
-            data: { categoryId }
+            data: updates
           }).catch(() => null);
         }
-      }
-
-      // 3. If still not found and subcategory string provided, auto-create under this category
-      if (!assetClass && (req.body.subcategory || typeof rawAssetClass === 'string')) {
+      } else {
+        // 2. Not found, create with a guaranteed unique code
         try {
-          const subName = req.body.subcategory || rawAssetClass;
-          const subCode = 'SUB-' + String(subName).replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8);
+          const uniqueCode = 'SUB-' + cleanKey.slice(0, 6) + '-' + Math.floor(100 + Math.random() * 900);
           assetClass = await prisma.assetClass.create({
             data: {
-              categoryId,
+              categoryId: categoryId || null,
               name: subName,
-              code: subCode,
+              code: uniqueCode,
               active: true
             },
             select: { id: true, code: true, name: true, categoryId: true }

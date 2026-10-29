@@ -82,33 +82,42 @@ export async function toggleDefinitionStatus(req, res, next) {
 /**
  * Format a WorkflowInstance into the rich request shape expected by the frontend
  */
-async function formatWorkflowInstance(inst) {
+async function formatWorkflowInstance(inst, assetMap = null, userMap = null) {
   const requestNo = inst.legacyMongoId || 'APR-' + new Date(inst.createdAt).getFullYear() + '-' + inst.id.slice(0, 6).toUpperCase();
   const transactionType = inst.workflowDefinition?.transactionType || inst.workflowDefinition?.name || 'Asset Approval';
 
   // Resolve Asset details
   let asset = null;
   if (inst.entityId) {
-    asset = await prisma.asset.findFirst({
-      where: { OR: [{ id: inst.entityId }, { assetId: inst.entityId }] },
-      include: {
-        category: true,
-        site: true,
-        building: true,
-        room: true,
-        custodian: true,
-        manufacturer: true
-      }
-    });
+    if (assetMap) {
+      asset = assetMap.get(inst.entityId) || null;
+    } else {
+      asset = await prisma.asset.findFirst({
+        where: { OR: [{ id: inst.entityId }, { assetId: inst.entityId }] },
+        include: {
+          category: true,
+          site: true,
+          building: true,
+          room: true,
+          custodian: true,
+          manufacturer: true
+        }
+      }).catch(() => null);
+    }
   }
 
   // Resolve Requester
   let requesterName = '-';
   if (inst.requestedByUserId) {
-    const user = await prisma.user.findFirst({
-      where: { OR: [{ id: inst.requestedByUserId }, { username: inst.requestedByUserId }] }
-    });
-    if (user) requesterName = user.fullName || user.username;
+    if (userMap) {
+      const u = userMap.get(inst.requestedByUserId);
+      if (u) requesterName = u.fullName || u.username;
+    } else {
+      const user = await prisma.user.findFirst({
+        where: { OR: [{ id: inst.requestedByUserId }, { username: inst.requestedByUserId }] }
+      }).catch(() => null);
+      if (user) requesterName = user.fullName || user.username;
+    }
   }
 
   const steps = inst.workflowDefinition?.steps || [];
@@ -233,7 +242,33 @@ export async function getAllApprovals(req, res, next) {
       orderBy: { createdAt: 'desc' }
     });
 
-    const requests = await Promise.all(instances.map(formatWorkflowInstance));
+    // Batch fetch assets and users in 2 queries instead of 40+ N+1 queries
+    const entityIds = [...new Set(instances.map(i => i.entityId).filter(Boolean))];
+    const userIds = [...new Set(instances.map(i => i.requestedByUserId).filter(Boolean))];
+
+    const [assets, users] = await Promise.all([
+      entityIds.length > 0 ? prisma.asset.findMany({
+        where: { OR: [{ id: { in: entityIds } }, { assetId: { in: entityIds } }] },
+        include: { category: true, site: true, building: true, room: true, custodian: true, manufacturer: true }
+      }).catch(() => []) : [],
+      userIds.length > 0 ? prisma.user.findMany({
+        where: { OR: [{ id: { in: userIds } }, { username: { in: userIds } }] }
+      }).catch(() => []) : []
+    ]);
+
+    const assetMap = new Map();
+    assets.forEach(a => {
+      assetMap.set(a.id, a);
+      if (a.assetId) assetMap.set(a.assetId, a);
+    });
+
+    const userMap = new Map();
+    users.forEach(u => {
+      userMap.set(u.id, u);
+      if (u.username) userMap.set(u.username, u);
+    });
+
+    const requests = await Promise.all(instances.map(inst => formatWorkflowInstance(inst, assetMap, userMap)));
 
     res.json({
       success: true,
