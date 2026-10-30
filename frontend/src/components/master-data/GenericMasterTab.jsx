@@ -138,7 +138,12 @@ export function GenericMasterTab({
       if (activeTab === 'asset-types') {
 
         const res = await api.get('/master-data/asset-types').catch(() => null);
-        const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+        let custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+        // Clean out test record from localStorage
+        if (custom.some(c => c.code === '123' || (c.name || '').toLowerCase() === 'abhay')) {
+          custom = custom.filter(c => c.code !== '123' && (c.name || '').toLowerCase() !== 'abhay');
+          try { localStorage.setItem('fams_custom_asset_types', JSON.stringify(custom)); } catch (_) {}
+        }
         let serverTypes = [];
         if (res?.assetTypes && res.assetTypes.length > 0) {
           serverTypes = res.assetTypes.map((t, idx) => ({

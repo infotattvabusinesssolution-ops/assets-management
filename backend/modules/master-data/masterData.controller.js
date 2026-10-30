@@ -1191,22 +1191,12 @@ function readAssetTypesFromFile() {
   try {
     if (fs.existsSync(ASSET_TYPES_FILE)) {
       const data = JSON.parse(fs.readFileSync(ASSET_TYPES_FILE, 'utf8'));
-      if (Array.isArray(data) && data.length > 0) return data;
+      if (Array.isArray(data)) return data.filter(t => t.code !== '123' && (t.name || '').toLowerCase() !== 'abhay');
     }
   } catch (e) {
     console.warn('Failed to read asset_types.json:', e.message);
   }
-  return [
-    {
-      id: 'TYPE-1793351000000',
-      code: '123',
-      name: 'abhay',
-      description: 'i am abhay',
-      category: 'Discrete Count',
-      stage: 'Operational',
-      active: true
-    }
-  ];
+  return [];
 }
 
 function writeAssetTypesToFile(list) {
@@ -1240,18 +1230,9 @@ async function ensureAssetTypesTable() {
       );
     `);
 
-    const existingCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM asset_types`).catch(() => [{ cnt: 0 }]);
-    const count = Number(existingCount?.[0]?.cnt || 0);
-    if (count === 0) {
-      for (const t of inMemoryAssetTypes) {
-        try {
-          await prisma.$executeRawUnsafe(`
-            INSERT INTO asset_types (id, code, name, description, category, stage, active, createdAt, updatedAt)
-            VALUES ('${t.id}', '${t.code.replace(/'/g, "''")}', '${t.name.replace(/'/g, "''")}', '${(t.description || '').replace(/'/g, "''")}', '${(t.category || 'Discrete Count').replace(/'/g, "''")}', '${(t.stage || 'Operational').replace(/'/g, "''")}', ${t.active ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          `);
-        } catch (_) {}
-      }
-    }
+    // Clean up test record if present in DB
+    await prisma.$executeRawUnsafe(`DELETE FROM asset_types WHERE code = '123' OR name = 'abhay'`).catch(() => null);
+
     tableEnsured = true;
   } catch (err) {
     console.warn('asset_types table check skipped:', err.message);
