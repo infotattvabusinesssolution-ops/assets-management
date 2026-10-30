@@ -146,7 +146,8 @@ export function GenericMasterTab({
             code: t.code || `TYPE-${(t.name || '').substring(0, 4).toUpperCase()}`,
             name: t.name,
             symbol: t.code || 'TYPE',
-            category: 'General',
+            category: t.category || 'Discrete Count',
+            stage: t.stage || 'Operational',
             description: t.description || '',
             status: t.active === false ? 'Inactive' : 'Active',
             totalAssets: t.totalAssets || 0
@@ -294,6 +295,8 @@ export function GenericMasterTab({
             code: newItem.code,
             name: newItem.name,
             description: newItem.description,
+            category: newItem.category || 'Discrete Count',
+            stage: newItem.stage || 'Operational',
             active: newItem.status === 'Active'
           }).catch(() => null);
           try {

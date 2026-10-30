@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import prisma from '../../config/prisma.js';
 import { isDbConnected } from '../../config/db.js';
@@ -1179,11 +1182,110 @@ function getPrismaModelName(entityType) {
 }
 
 
-// Dynamic In-Memory / Fallback Store for Asset Types
-let inMemoryAssetTypes = [];
+// Persistent Database & File Store for Asset Types
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const ASSET_TYPES_FILE = path.resolve(__dirname, '../../data/asset_types.json');
+
+function readAssetTypesFromFile() {
+  try {
+    if (fs.existsSync(ASSET_TYPES_FILE)) {
+      const data = JSON.parse(fs.readFileSync(ASSET_TYPES_FILE, 'utf8'));
+      if (Array.isArray(data) && data.length > 0) return data;
+    }
+  } catch (e) {
+    console.warn('Failed to read asset_types.json:', e.message);
+  }
+  return [
+    {
+      id: 'TYPE-1793351000000',
+      code: '123',
+      name: 'abhay',
+      description: 'i am abhay',
+      category: 'Discrete Count',
+      stage: 'Operational',
+      active: true
+    }
+  ];
+}
+
+function writeAssetTypesToFile(list) {
+  try {
+    const dir = path.dirname(ASSET_TYPES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(ASSET_TYPES_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write asset_types.json:', e.message);
+  }
+}
+
+let inMemoryAssetTypes = readAssetTypesFromFile();
+let tableEnsured = false;
+
+async function ensureAssetTypesTable() {
+  if (tableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='asset_types' and xtype='U')
+      CREATE TABLE asset_types (
+        id NVARCHAR(100) PRIMARY KEY,
+        code NVARCHAR(50) NOT NULL UNIQUE,
+        name NVARCHAR(200) NOT NULL,
+        description NVARCHAR(500) NULL,
+        category NVARCHAR(100) NULL,
+        stage NVARCHAR(100) NULL,
+        active BIT DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    const existingCount = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM asset_types`).catch(() => [{ cnt: 0 }]);
+    const count = Number(existingCount?.[0]?.cnt || 0);
+    if (count === 0) {
+      for (const t of inMemoryAssetTypes) {
+        try {
+          await prisma.$executeRawUnsafe(`
+            INSERT INTO asset_types (id, code, name, description, category, stage, active, createdAt, updatedAt)
+            VALUES ('${t.id}', '${t.code.replace(/'/g, "''")}', '${t.name.replace(/'/g, "''")}', '${(t.description || '').replace(/'/g, "''")}', '${(t.category || 'Discrete Count').replace(/'/g, "''")}', '${(t.stage || 'Operational').replace(/'/g, "''")}', ${t.active ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          `);
+        } catch (_) {}
+      }
+    }
+    tableEnsured = true;
+  } catch (err) {
+    console.warn('asset_types table check skipped:', err.message);
+  }
+}
 
 export async function getAssetTypes(req, res, next) {
   try {
+    await ensureAssetTypesTable();
+    if (isDbConnected()) {
+      try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const query = includeInactive
+          ? `SELECT id, code, name, description, category, stage, active FROM asset_types ORDER BY name ASC`
+          : `SELECT id, code, name, description, category, stage, active FROM asset_types WHERE active = 1 ORDER BY name ASC`;
+        const rows = await prisma.$queryRawUnsafe(query);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            description: r.description || '',
+            category: r.category || 'Discrete Count',
+            stage: r.stage || 'Operational',
+            active: Boolean(r.active)
+          }));
+          inMemoryAssetTypes = list;
+          writeAssetTypesToFile(list);
+          return res.json({ success: true, assetTypes: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getAssetTypes query skipped, using persistent store:', dbErr.message);
+      }
+    }
     const list = req.query.includeInactive === 'true' ? inMemoryAssetTypes : inMemoryAssetTypes.filter(t => t.active !== false);
     res.json({ success: true, assetTypes: list });
   } catch (err) { next(err); }
@@ -1191,16 +1293,41 @@ export async function getAssetTypes(req, res, next) {
 
 export async function createAssetType(req, res, next) {
   try {
-    const { code, name, description, active } = req.body;
+    const { code, name, description, category, stage, active } = req.body;
     if (!name) return res.status(400).json({ success: false, message: 'Asset Type Name is required.' });
+    const cleanCode = (code || name.slice(0, 4)).toUpperCase().trim();
+    const cleanName = name.trim();
+    const cleanDesc = description || '';
+    const cleanCat = category || 'Discrete Count';
+    const cleanStage = stage || 'Operational';
+    const isAct = active !== undefined ? Boolean(active) : true;
+    const id = `TYPE-${Date.now()}`;
+
     const newType = {
-      id: `TYPE-${Date.now()}`,
-      code: (code || name.slice(0, 4)).toUpperCase(),
-      name: name.trim(),
-      description: description || '',
-      active: active !== undefined ? Boolean(active) : true
+      id,
+      code: cleanCode,
+      name: cleanName,
+      description: cleanDesc,
+      category: cleanCat,
+      stage: cleanStage,
+      active: isAct
     };
+
+    await ensureAssetTypesTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO asset_types (id, code, name, description, category, stage, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', '${cleanCat.replace(/'/g, "''")}', '${cleanStage.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert asset_types skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryAssetTypes = inMemoryAssetTypes.filter(t => t.id !== id && t.code !== cleanCode);
     inMemoryAssetTypes.unshift(newType);
+    writeAssetTypesToFile(inMemoryAssetTypes);
     res.status(201).json({ success: true, assetType: newType });
   } catch (err) { next(err); }
 }
@@ -1208,16 +1335,41 @@ export async function createAssetType(req, res, next) {
 export async function updateAssetType(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, description, active } = req.body;
+    const { code, name, description, category, stage, active } = req.body;
     const idx = inMemoryAssetTypes.findIndex(t => t.id === id);
     if (idx === -1) return res.status(404).json({ success: false, message: 'Asset Type not found' });
+
     inMemoryAssetTypes[idx] = {
       ...inMemoryAssetTypes[idx],
-      ...(code && { code: code.toUpperCase() }),
+      ...(code && { code: code.toUpperCase().trim() }),
       ...(name && { name: name.trim() }),
       ...(description !== undefined && { description }),
+      ...(category && { category }),
+      ...(stage && { stage }),
       ...(active !== undefined && { active: Boolean(active) })
     };
+
+    await ensureAssetTypesTable();
+    if (isDbConnected()) {
+      try {
+        const item = inMemoryAssetTypes[idx];
+        await prisma.$executeRawUnsafe(`
+          UPDATE asset_types
+          SET code = '${item.code.replace(/'/g, "''")}',
+              name = '${item.name.replace(/'/g, "''")}',
+              description = '${(item.description || '').replace(/'/g, "''")}',
+              category = '${(item.category || '').replace(/'/g, "''")}',
+              stage = '${(item.stage || '').replace(/'/g, "''")}',
+              active = ${item.active ? 1 : 0},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${id.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB update asset_types skipped:', dbErr.message);
+      }
+    }
+
+    writeAssetTypesToFile(inMemoryAssetTypes);
     res.json({ success: true, assetType: inMemoryAssetTypes[idx] });
   } catch (err) { next(err); }
 }
@@ -1226,6 +1378,17 @@ export async function deleteAssetType(req, res, next) {
   try {
     const { id } = req.params;
     inMemoryAssetTypes = inMemoryAssetTypes.filter(t => t.id !== id);
+
+    await ensureAssetTypesTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`DELETE FROM asset_types WHERE id = '${id.replace(/'/g, "''")}'`);
+      } catch (dbErr) {
+        console.warn('DB delete asset_types skipped:', dbErr.message);
+      }
+    }
+
+    writeAssetTypesToFile(inMemoryAssetTypes);
     res.json({ success: true, message: 'Asset Type deleted successfully' });
   } catch (err) { next(err); }
 }
