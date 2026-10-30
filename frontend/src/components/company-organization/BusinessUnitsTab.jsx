@@ -61,6 +61,13 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab, openAddModalTrigge
     fetchBusinessUnitsFromDb();
   }, []);
   const [units, setUnits] = useState(INITIAL_BUSINESS_UNITS);
+  const [companyOptions, setCompanyOptions] = useState([]);
+
+  React.useEffect(() => {
+    api.get('/admin/organization/companies').then(res => {
+      if (res && res.companies) setCompanyOptions(res.companies);
+    }).catch(() => null);
+  }, []);
   const [selectedUnitIds, setSelectedUnitIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('All Companies');
@@ -83,7 +90,7 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab, openAddModalTrigge
   const [unitForm, setUnitForm] = useState({
     name: '',
     code: '',
-    company: 'Asset360 Holdings',
+    company: companyOptions[0]?.name || '',
     parentUnit: '-',
     type: 'Operations',
     status: 'Active',
@@ -298,10 +305,9 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab, openAddModalTrigge
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
                 <option value="All Companies">All Companies</option>
-                <option value="Asset360 Holdings">Asset360 Holdings</option>
-                <option value="Wavelogix FZC">Wavelogix FZC</option>
-                <option value="d.code Solutions LLC">d.code Solutions LLC</option>
-                <option value="Digital ID Solutions FZ LLC">Digital ID Solutions FZ LLC</option>
+                {companyOptions.map(c => (
+                  <option key={c.id} value={c.name}>{c.name}</option>
+                ))}
               </select>
               <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
             </div>
@@ -831,10 +837,13 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab, openAddModalTrigge
                     onChange={(e) => setUnitForm({ ...unitForm, company: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer"
                   >
-                    <option value="Asset360 Holdings">Asset360 Holdings</option>
-                    <option value="Wavelogix FZC">Wavelogix FZC</option>
-                    <option value="d.code Solutions LLC">d.code Solutions LLC</option>
-                    <option value="Digital ID Solutions FZ LLC">Digital ID Solutions FZ LLC</option>
+                    {companyOptions.length > 0 ? (
+                      companyOptions.map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))
+                    ) : (
+                      <option value="">General</option>
+                    )}
                   </select>
                 </div>
               </div>

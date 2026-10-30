@@ -46,6 +46,32 @@ export function UserManagement() {
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeDropdownId, setActiveDropdownId] = useState(null);
 
+  // Dynamic Metadata States
+  const [sitesList, setSitesList] = useState([]);
+  const [departmentsList, setDepartmentsList] = useState([]);
+  const [companiesList, setCompaniesList] = useState([]);
+  const [rolesList, setRolesList] = useState([]);
+  const [userTypesList, setUserTypesList] = useState([
+    'System User',
+    'Portal User',
+    'Mobile User',
+    'Contractor',
+    'Auditor',
+    'Technician',
+    'Asset Manager',
+    'Department Manager'
+  ]);
+
+  // Inline Quick-Add States
+  const [isAddingLocation, setIsAddingLocation] = useState(false);
+  const [newLocationInput, setNewLocationInput] = useState('');
+  const [isAddingDepartment, setIsAddingDepartment] = useState(false);
+  const [newDepartmentInput, setNewDepartmentInput] = useState('');
+  const [isAddingCompany, setIsAddingCompany] = useState(false);
+  const [newCompanyInput, setNewCompanyInput] = useState('');
+  const [isAddingUserType, setIsAddingUserType] = useState(false);
+  const [newUserTypeInput, setNewUserTypeInput] = useState('');
+
   // Modals & Drawers
   const [showAddModal, setShowAddModal] = useState(false);
   const [showEditModal, setShowEditModal] = useState(false);
@@ -91,6 +117,139 @@ export function UserManagement() {
   });
 
   // Fetch Users
+  const fetchMetadata = async () => {
+    try {
+      const [sitesRes, deptsRes, compsRes, rolesRes] = await Promise.all([
+        api.get('/master-data/sites').catch(() => null),
+        api.get('/master-data/departments').catch(() => null),
+        api.get('/master-data/companies').catch(() => null),
+        api.get('/admin/roles').catch(() => null)
+      ]);
+
+      if (sitesRes && Array.isArray(sitesRes.sites)) {
+        setSitesList(sitesRes.sites);
+      }
+      if (deptsRes && Array.isArray(deptsRes.departments)) {
+        setDepartmentsList(deptsRes.departments);
+      }
+      if (compsRes && Array.isArray(compsRes.companies)) {
+        setCompaniesList(compsRes.companies);
+      }
+      if (rolesRes && Array.isArray(rolesRes.roles)) {
+        setRolesList(rolesRes.roles);
+      }
+    } catch (e) {
+      console.warn('Metadata fetch error:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchMetadata();
+  }, []);
+
+  useEffect(() => {
+    if (users && users.length > 0) {
+      const types = users.map(u => u.userType).filter(Boolean);
+      if (types.length > 0) {
+        setUserTypesList(prev => Array.from(new Set([...prev, ...types])));
+      }
+    }
+  }, [users]);
+
+  // Quick on-the-fly add functions
+  const handleAddLocation = async () => {
+    const val = newLocationInput.trim();
+    if (!val) return;
+    try {
+      const res = await api.post('/master-data/sites', {
+        name: val,
+        code: 'LOC-' + val.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6)
+      }).catch(() => null);
+      const newLoc = res?.site || { id: `SITE-${Date.now()}`, name: val, code: val.slice(0, 6).toUpperCase() };
+      setSitesList(prev => [...prev.filter(s => s.name !== val), newLoc]);
+      setUserFormData(prev => ({ ...prev, location: val }));
+      setNewLocationInput('');
+      setIsAddingLocation(false);
+      setActionSuccessMsg(`Location "${val}" created and selected.`);
+    } catch (e) {
+      setUserFormData(prev => ({ ...prev, location: val }));
+      setIsAddingLocation(false);
+    }
+  };
+
+  const handleAddDepartment = async () => {
+    const val = newDepartmentInput.trim();
+    if (!val) return;
+    try {
+      const res = await api.post('/master-data/departments', {
+        name: val,
+        code: 'DEP-' + val.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6)
+      }).catch(() => null);
+      const newDept = res?.department || { id: `DEP-${Date.now()}`, name: val, code: val.slice(0, 6).toUpperCase() };
+      setDepartmentsList(prev => [...prev.filter(d => d.name !== val), newDept]);
+      setUserFormData(prev => ({ ...prev, department: val }));
+      setNewDepartmentInput('');
+      setIsAddingDepartment(false);
+      setActionSuccessMsg(`Department "${val}" created and selected.`);
+    } catch (e) {
+      setUserFormData(prev => ({ ...prev, department: val }));
+      setIsAddingDepartment(false);
+    }
+  };
+
+  const handleAddCompany = async () => {
+    const val = newCompanyInput.trim();
+    if (!val) return;
+    try {
+      const res = await api.post('/master-data/companies', {
+        name: val,
+        code: 'CMP-' + val.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 6)
+      }).catch(() => null);
+      const newComp = res?.company || { id: `CMP-${Date.now()}`, name: val, code: val.slice(0, 6).toUpperCase() };
+      setCompaniesList(prev => [...prev.filter(c => c.name !== val), newComp]);
+      setUserFormData(prev => ({ ...prev, company: val }));
+      setNewCompanyInput('');
+      setIsAddingCompany(false);
+      setActionSuccessMsg(`Company "${val}" created and selected.`);
+    } catch (e) {
+      setUserFormData(prev => ({ ...prev, company: val }));
+      setIsAddingCompany(false);
+    }
+  };
+
+  const handleAddUserType = () => {
+    const val = newUserTypeInput.trim();
+    if (!val) return;
+    setUserTypesList(prev => Array.from(new Set([...prev, val])));
+    setUserFormData(prev => ({ ...prev, userType: val }));
+    setNewUserTypeInput('');
+    setIsAddingUserType(false);
+    setActionSuccessMsg(`User Type "${val}" added and selected.`);
+  };
+
+  const openAddUserModal = () => {
+    setUserFormData({
+      name: '',
+      username: '',
+      email: '',
+      phone: '',
+      employeeId: '',
+      role: rolesList.length > 0 ? rolesList[0].name : 'Standard User',
+      department: departmentsList.length > 0 ? departmentsList[0].name : '',
+      location: sitesList.length > 0 ? sitesList[0].name : '',
+      company: companiesList.length > 0 ? companiesList[0].name : '',
+      businessUnit: 'Corporate Operations',
+      userType: userTypesList.length > 0 ? userTypesList[0] : 'System User',
+      status: 'Active',
+      mfaEnabled: false
+    });
+    setIsAddingLocation(false);
+    setIsAddingDepartment(false);
+    setIsAddingCompany(false);
+    setIsAddingUserType(false);
+    setShowAddModal(true);
+  };
+
   const fetchUsers = async () => {
     setLoading(true);
     let customUsers = [];
@@ -118,7 +277,7 @@ export function UserManagement() {
       if (data && data.success && Array.isArray(data.users)) {
         const serverUsers = data.users;
         const serverIds = new Set(serverUsers.map(u => u.id));
-        const missingCustom = customUsers.filter(u => !serverIds.has(u.id));
+        const missingCustom = customUsers.filter(u => !serverIds.has(u.id) && !u.email?.includes('asset360.com') && !u.id?.startsWith('USR-0'));
         let allUsers = [...missingCustom, ...serverUsers];
 
         if (searchQuery.trim()) {
@@ -383,24 +542,7 @@ export function UserManagement() {
             </div>
 
             <button
-              onClick={() => {
-                setUserFormData({
-                  name: '',
-                  username: '',
-                  email: '',
-                  phone: '',
-                  employeeId: '',
-                  role: 'Standard User',
-                  department: 'Information Technology',
-                  location: 'Dubai HQ',
-                  company: 'Asset360 Holdings',
-                  businessUnit: 'Corporate Services',
-                  userType: 'System User',
-                  status: 'Active',
-                  mfaEnabled: false
-                });
-                setShowAddModal(true);
-              }}
+              onClick={openAddUserModal}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-semibold rounded-lg transition shadow-sm"
             >
               <Plus className="w-4 h-4" />
@@ -522,10 +664,9 @@ export function UserManagement() {
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                   >
                     <option value="All Users">All Users</option>
-                    <option value="System User">System User</option>
-                    <option value="Portal User">Portal User</option>
-                    <option value="Mobile User">Mobile User</option>
-                    <option value="Contractor">Contractor</option>
+                    {userTypesList.map(type => (
+                      <option key={type} value={type}>{type}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -552,13 +693,17 @@ export function UserManagement() {
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                   >
                     <option value="All Roles">All Roles</option>
-                    <option value="System Administrator">System Administrator</option>
-                    <option value="Asset Manager">Asset Manager</option>
-                    <option value="Maintenance Manager">Maintenance Manager</option>
-                    <option value="Inventory Manager">Inventory Manager</option>
-                    <option value="Audit Manager">Audit Manager</option>
-                    <option value="Standard User">Standard User</option>
-                    <option value="Read Only User">Read Only User</option>
+                    {rolesList.length > 0 ? (
+                      rolesList.map(r => (
+                        <option key={r.id || r.name} value={r.name}>{r.name}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="System Administrator">System Administrator</option>
+                        <option value="Asset Manager">Asset Manager</option>
+                        <option value="Standard User">Standard User</option>
+                      </>
+                    )}
                   </select>
                 </div>
 
@@ -571,13 +716,9 @@ export function UserManagement() {
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                   >
                     <option value="All Departments">All Departments</option>
-                    <option value="Information Technology">Information Technology</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Operations">Operations</option>
-                    <option value="Maintenance">Maintenance</option>
-                    <option value="Procurement">Procurement</option>
-                    <option value="Logistics">Logistics</option>
+                    {departmentsList.map(d => (
+                      <option key={d.id} value={d.name}>{d.name} {d.code ? `(${d.code})` : ''}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -590,12 +731,9 @@ export function UserManagement() {
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                   >
                     <option value="All Locations">All Locations</option>
-                    <option value="Dubai HQ">Dubai HQ</option>
-                    <option value="Jebel Ali Warehouse">Jebel Ali Warehouse</option>
-                    <option value="Abu Dhabi Office">Abu Dhabi Office</option>
-                    <option value="Sharjah Warehouse">Sharjah Warehouse</option>
-                    <option value="Riyadh Office">Riyadh Office</option>
-                    <option value="Doha Office">Doha Office</option>
+                    {sitesList.map(s => (
+                      <option key={s.id} value={s.name}>{s.name} {s.code ? `(${s.code})` : ''}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -608,10 +746,9 @@ export function UserManagement() {
                     className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                   >
                     <option value="All Companies">All Companies</option>
-                    <option value="Asset360 Holdings">Asset360 Holdings</option>
-                    <option value="Wavelogix FZC">Wavelogix FZC</option>
-                    <option value="d.code Solutions LLC">d.code Solutions LLC</option>
-                    <option value="Digital ID Solutions FZ LLC">Digital ID Solutions FZ LLC</option>
+                    {companiesList.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
                   </select>
                 </div>
 
@@ -1108,72 +1245,217 @@ export function UserManagement() {
                     onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
                   >
-                    <option value="System Administrator">System Administrator</option>
-                    <option value="Asset Manager">Asset Manager</option>
-                    <option value="Maintenance Manager">Maintenance Manager</option>
-                    <option value="Inventory Manager">Inventory Manager</option>
-                    <option value="Audit Manager">Audit Manager</option>
-                    <option value="Standard User">Standard User</option>
-                    <option value="Read Only User">Read Only User</option>
-                    <option value="Contractor">Contractor</option>
+                    {rolesList.length > 0 ? (
+                      rolesList.map(r => (
+                        <option key={r.id || r.name} value={r.name}>{r.name}</option>
+                      ))
+                    ) : (
+                      <>
+                        <option value="System Administrator">System Administrator</option>
+                        <option value="Asset Manager">Asset Manager</option>
+                        <option value="Maintenance Manager">Maintenance Manager</option>
+                        <option value="Standard User">Standard User</option>
+                      </>
+                    )}
                   </select>
                 </div>
+
+                {/* Dynamic User Type */}
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">User Type</label>
-                  <select
-                    value={userFormData.userType}
-                    onChange={(e) => setUserFormData({ ...userFormData, userType: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                  >
-                    <option value="System User">System User</option>
-                    <option value="Portal User">Portal User</option>
-                    <option value="Mobile User">Mobile User</option>
-                    <option value="Contractor">Contractor</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-medium text-slate-700">User Type</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingUserType(!isAddingUserType)}
+                      className="text-[11px] text-[#6C2BD9] hover:underline font-semibold"
+                    >
+                      {isAddingUserType ? 'Cancel' : '+ Add User Type'}
+                    </button>
+                  </div>
+                  {isAddingUserType ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="e.g. Field Auditor, Warehouse Staff"
+                        value={newUserTypeInput}
+                        onChange={(e) => setNewUserTypeInput(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-purple-50/40 text-xs focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddUserType}
+                        className="px-2.5 py-1.5 bg-[#6C2BD9] text-white text-xs font-semibold rounded-lg hover:bg-[#5B21B6]"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={userFormData.userType}
+                      onChange={(e) => {
+                        if (e.target.value === '__add_new__') {
+                          setIsAddingUserType(true);
+                        } else {
+                          setUserFormData({ ...userFormData, userType: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    >
+                      {userTypesList.map(t => (
+                        <option key={t} value={t}>{t}</option>
+                      ))}
+                      <option value="__add_new__">+ Add Custom User Type...</option>
+                    </select>
+                  )}
                 </div>
+
+                {/* Dynamic Company */}
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Company *</label>
-                  <select
-                    value={userFormData.company}
-                    onChange={(e) => setUserFormData({ ...userFormData, company: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                  >
-                    <option value="Asset360 Holdings">Asset360 Holdings</option>
-                    <option value="Wavelogix FZC">Wavelogix FZC</option>
-                    <option value="d.code Solutions LLC">d.code Solutions LLC</option>
-                    <option value="Digital ID Solutions FZ LLC">Digital ID Solutions FZ LLC</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-medium text-slate-700">Company *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingCompany(!isAddingCompany)}
+                      className="text-[11px] text-[#6C2BD9] hover:underline font-semibold"
+                    >
+                      {isAddingCompany ? 'Cancel' : '+ Add Company'}
+                    </button>
+                  </div>
+                  {isAddingCompany ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="Enter company name"
+                        value={newCompanyInput}
+                        onChange={(e) => setNewCompanyInput(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-purple-50/40 text-xs focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddCompany}
+                        className="px-2.5 py-1.5 bg-[#6C2BD9] text-white text-xs font-semibold rounded-lg hover:bg-[#5B21B6]"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={userFormData.company}
+                      onChange={(e) => {
+                        if (e.target.value === '__add_new__') {
+                          setIsAddingCompany(true);
+                        } else {
+                          setUserFormData({ ...userFormData, company: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    >
+                      {companiesList.map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))}
+                      <option value="__add_new__">+ Add New Company...</option>
+                    </select>
+                  )}
                 </div>
+
+                {/* Dynamic Department */}
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Department</label>
-                  <select
-                    value={userFormData.department}
-                    onChange={(e) => setUserFormData({ ...userFormData, department: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                  >
-                    <option value="Information Technology">Information Technology</option>
-                    <option value="Finance">Finance</option>
-                    <option value="Human Resources">Human Resources</option>
-                    <option value="Operations">Operations</option>
-                    <option value="Maintenance">Maintenance</option>
-                    <option value="Procurement">Procurement</option>
-                    <option value="Logistics">Logistics</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-medium text-slate-700">Department</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingDepartment(!isAddingDepartment)}
+                      className="text-[11px] text-[#6C2BD9] hover:underline font-semibold"
+                    >
+                      {isAddingDepartment ? 'Cancel' : '+ Add Department'}
+                    </button>
+                  </div>
+                  {isAddingDepartment ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="Enter department name"
+                        value={newDepartmentInput}
+                        onChange={(e) => setNewDepartmentInput(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-purple-50/40 text-xs focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddDepartment}
+                        className="px-2.5 py-1.5 bg-[#6C2BD9] text-white text-xs font-semibold rounded-lg hover:bg-[#5B21B6]"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={userFormData.department}
+                      onChange={(e) => {
+                        if (e.target.value === '__add_new__') {
+                          setIsAddingDepartment(true);
+                        } else {
+                          setUserFormData({ ...userFormData, department: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    >
+                      {departmentsList.map(d => (
+                        <option key={d.id} value={d.name}>{d.name} {d.code ? `(${d.code})` : ''}</option>
+                      ))}
+                      <option value="__add_new__">+ Add New Department...</option>
+                    </select>
+                  )}
                 </div>
+
+                {/* Dynamic Primary Location */}
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Primary Location *</label>
-                  <select
-                    value={userFormData.location}
-                    onChange={(e) => setUserFormData({ ...userFormData, location: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                  >
-                    <option value="Dubai HQ">Dubai HQ</option>
-                    <option value="Jebel Ali Warehouse">Jebel Ali Warehouse</option>
-                    <option value="Abu Dhabi Office">Abu Dhabi Office</option>
-                    <option value="Sharjah Warehouse">Sharjah Warehouse</option>
-                    <option value="Riyadh Office">Riyadh Office</option>
-                  </select>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-medium text-slate-700">Primary Location *</label>
+                    <button
+                      type="button"
+                      onClick={() => setIsAddingLocation(!isAddingLocation)}
+                      className="text-[11px] text-[#6C2BD9] hover:underline font-semibold"
+                    >
+                      {isAddingLocation ? 'Cancel' : '+ Add Location'}
+                    </button>
+                  </div>
+                  {isAddingLocation ? (
+                    <div className="flex items-center gap-1.5">
+                      <input
+                        type="text"
+                        placeholder="Enter location / site name"
+                        value={newLocationInput}
+                        onChange={(e) => setNewLocationInput(e.target.value)}
+                        className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-purple-50/40 text-xs focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAddLocation}
+                        className="px-2.5 py-1.5 bg-[#6C2BD9] text-white text-xs font-semibold rounded-lg hover:bg-[#5B21B6]"
+                      >
+                        Add
+                      </button>
+                    </div>
+                  ) : (
+                    <select
+                      value={userFormData.location}
+                      onChange={(e) => {
+                        if (e.target.value === '__add_new__') {
+                          setIsAddingLocation(true);
+                        } else {
+                          setUserFormData({ ...userFormData, location: e.target.value });
+                        }
+                      }}
+                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    >
+                      {sitesList.map(s => (
+                        <option key={s.id} value={s.name}>{s.name} {s.code ? `(${s.code})` : ''}</option>
+                      ))}
+                      <option value="__add_new__">+ Add New Location...</option>
+                    </select>
+                  )}
                 </div>
+
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">Status</label>
                   <select

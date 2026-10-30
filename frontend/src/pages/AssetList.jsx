@@ -94,6 +94,11 @@ export function AssetList() {
   const [disposalRequestAsset, setDisposalRequestAsset] = useState(null);
   const [disposalReason, setDisposalReason] = useState('Obsolescence / End of Useful Life');
 
+  // Master Data Options for Filter Dropdowns
+  const [masterCategories, setMasterCategories] = useState([]);
+  const [masterDepartments, setMasterDepartments] = useState([]);
+  const [masterLocations, setMasterLocations] = useState([]);
+
   // Filters State
   const [search, setSearch] = useState(initialSearchParam);
   const [selectedCategory, setSelectedCategory] = useState(initialCategoryParam);
@@ -199,8 +204,59 @@ export function AssetList() {
     }
   };
 
+  // Fetch Master Data for Categories, Departments, and Locations
+  const fetchFilterOptions = async () => {
+    try {
+      const [catsRes, deptsRes, orgDeptsRes, sitesRes] = await Promise.allSettled([
+        api.get('/master-data/categories'),
+        api.get('/master-data/departments'),
+        api.get('/admin/organization/departments'),
+        api.get('/master-data/sites')
+      ]);
+
+      const catNames = [];
+      if (catsRes.status === 'fulfilled' && catsRes.value?.success && Array.isArray(catsRes.value.categories)) {
+        catNames.push(...catsRes.value.categories.map(c => c.name).filter(Boolean));
+      }
+
+      const deptNames = [];
+      if (deptsRes.status === 'fulfilled' && deptsRes.value?.success && Array.isArray(deptsRes.value.departments)) {
+        deptNames.push(...deptsRes.value.departments.map(d => d.name).filter(Boolean));
+      }
+      if (orgDeptsRes.status === 'fulfilled' && orgDeptsRes.value?.success && Array.isArray(orgDeptsRes.value.departments)) {
+        deptNames.push(...orgDeptsRes.value.departments.map(d => d.name).filter(Boolean));
+      }
+
+      const siteNames = [];
+      if (sitesRes.status === 'fulfilled' && sitesRes.value?.success && Array.isArray(sitesRes.value.sites)) {
+        siteNames.push(...sitesRes.value.sites.map(s => s.name).filter(Boolean));
+      }
+
+      try {
+        const storedCats = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+        if (Array.isArray(storedCats)) {
+          catNames.push(...storedCats.map(c => typeof c === 'string' ? c : c.name).filter(Boolean));
+        }
+        const storedDepts = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
+        if (Array.isArray(storedDepts)) {
+          deptNames.push(...storedDepts.map(d => typeof d === 'string' ? d : d.name).filter(Boolean));
+        }
+      } catch (_) {}
+
+      const defaultCategories = ['IT Infrastructure', 'Laptops & Workstations', 'Servers & Storage', 'Networking', 'Office Furniture', 'Vehicles & Fleet', 'Heavy Machinery', 'Facilities & AV'];
+      const defaultDepartments = ['Information Technology', 'Finance & Accounting', 'Human Resources', 'Operations', 'Supply Chain & Logistics', 'Administration'];
+
+      setMasterCategories(Array.from(new Set([...catNames, ...defaultCategories])));
+      setMasterDepartments(Array.from(new Set([...deptNames, ...defaultDepartments])));
+      setMasterLocations(Array.from(new Set(siteNames)));
+    } catch (err) {
+      console.warn('Failed to load filter options:', err);
+    }
+  };
+
   useEffect(() => {
     fetchAssets();
+    fetchFilterOptions();
   }, []);
 
   // Fetch 360 Detail for selected asset
@@ -229,10 +285,10 @@ export function AssetList() {
   const kpiCounts = useMemo(() => {
     // Base assets filtered by search, category, location, asset type, and department (excluding activeTab / status)
     const base = assets.filter(a => {
-      if (selectedCategory !== 'All' && a.categoryName !== selectedCategory) return false;
-      if (selectedLocation !== 'All' && !a.locationStr?.toLowerCase().includes(selectedLocation.toLowerCase())) return false;
-      if (selectedDepartment !== 'All' && a.departmentName !== selectedDepartment) return false;
-      if (selectedAssetType !== 'All' && a.categoryName !== selectedAssetType && !a.description?.toLowerCase().includes(selectedAssetType.toLowerCase())) return false;
+      if (selectedCategory !== 'All' && (a.categoryName || '').trim().toLowerCase() !== selectedCategory.trim().toLowerCase()) return false;
+      if (selectedLocation !== 'All' && !a.locationStr?.toLowerCase().includes(selectedLocation.toLowerCase()) && (a.siteName || '').toLowerCase() !== selectedLocation.toLowerCase()) return false;
+      if (selectedDepartment !== 'All' && (a.departmentName || '').trim().toLowerCase() !== selectedDepartment.trim().toLowerCase()) return false;
+      if (selectedAssetType !== 'All' && (a.categoryName || '').trim().toLowerCase() !== selectedAssetType.trim().toLowerCase() && !a.description?.toLowerCase().includes(selectedAssetType.toLowerCase())) return false;
       if (search.trim()) {
         const q = search.toLowerCase();
         const matchId = (a.assetId || '').toLowerCase().includes(q);
@@ -276,21 +332,27 @@ export function AssetList() {
     };
   }, [assets, selectedCategory, selectedLocation, selectedDepartment, selectedAssetType, search]);
 
-  // Dynamic Dropdown Lists
+  // Dynamic Dropdown Lists (Combining Live Master Data & Assets)
   const availableCategories = useMemo(() => {
-    const set = new Set(assets.map(a => a.categoryName).filter(Boolean));
-    return ['All', ...Array.from(set)];
-  }, [assets]);
+    const fromAssets = assets.map(a => a.categoryName).filter(Boolean);
+    const combined = Array.from(new Set([...masterCategories, ...fromAssets])).filter(Boolean);
+    combined.sort((a, b) => a.localeCompare(b));
+    return ['All', ...combined];
+  }, [masterCategories, assets]);
 
   const availableLocations = useMemo(() => {
-    const set = new Set(assets.map(a => a.siteName).filter(Boolean));
-    return ['All', ...Array.from(set)];
-  }, [assets]);
+    const fromAssets = assets.map(a => a.siteName).filter(Boolean);
+    const combined = Array.from(new Set([...masterLocations, ...fromAssets])).filter(Boolean);
+    combined.sort((a, b) => a.localeCompare(b));
+    return ['All', ...combined];
+  }, [masterLocations, assets]);
 
   const availableDepartments = useMemo(() => {
-    const set = new Set(assets.map(a => a.departmentName).filter(Boolean));
-    return ['All', ...Array.from(set)];
-  }, [assets]);
+    const fromAssets = assets.map(a => a.departmentName).filter(Boolean);
+    const combined = Array.from(new Set([...masterDepartments, ...fromAssets])).filter(Boolean);
+    combined.sort((a, b) => a.localeCompare(b));
+    return ['All', ...combined];
+  }, [masterDepartments, assets]);
 
   // Outside click listener for action dropdown
   useEffect(() => {
@@ -410,11 +472,11 @@ export function AssetList() {
       if (activeTab === 'DISPOSED' && a.lifecycleStatus !== 'DISPOSED' && a.lifecycleStatus !== 'RETIRED' && a.lifecycleStatus !== 'Disposed') return false;
 
       // Dropdown filters
-      if (selectedCategory !== 'All' && a.categoryName !== selectedCategory) return false;
+      if (selectedCategory !== 'All' && (a.categoryName || '').trim().toLowerCase() !== selectedCategory.trim().toLowerCase()) return false;
       if (selectedStatus !== 'All' && a.lifecycleStatus !== selectedStatus) return false;
-      if (selectedLocation !== 'All' && !a.locationStr?.toLowerCase().includes(selectedLocation.toLowerCase())) return false;
-      if (selectedDepartment !== 'All' && a.departmentName !== selectedDepartment) return false;
-      if (selectedAssetType !== 'All' && a.categoryName !== selectedAssetType && !a.description?.toLowerCase().includes(selectedAssetType.toLowerCase())) return false;
+      if (selectedLocation !== 'All' && !a.locationStr?.toLowerCase().includes(selectedLocation.toLowerCase()) && (a.siteName || '').toLowerCase() !== selectedLocation.toLowerCase()) return false;
+      if (selectedDepartment !== 'All' && (a.departmentName || '').trim().toLowerCase() !== selectedDepartment.trim().toLowerCase()) return false;
+      if (selectedAssetType !== 'All' && (a.categoryName || '').trim().toLowerCase() !== selectedAssetType.trim().toLowerCase() && !a.description?.toLowerCase().includes(selectedAssetType.toLowerCase())) return false;
 
       // Search text filter
       if (search.trim()) {
@@ -764,6 +826,7 @@ export function AssetList() {
                     <th className="py-3 px-3 bg-slate-50">Asset ID</th>
                     <th className="py-3 px-3 bg-slate-50">Asset Name</th>
                     <th className="py-3 px-3 bg-slate-50">Category</th>
+                    <th className="py-3 px-3 bg-slate-50">Department</th>
                     <th className="py-3 px-3 bg-slate-50">Tag / RFID</th>
                     <th className="py-3 px-3 bg-slate-50">Location</th>
                     <th className="py-3 px-3 bg-slate-50">Status</th>
@@ -775,6 +838,22 @@ export function AssetList() {
                 </thead>
 
                 <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
+                  {filteredAssets.length === 0 && (
+                    <tr>
+                      <td colSpan={12} className="py-12 text-center text-slate-400">
+                        <Package className="w-8 h-8 mx-auto text-slate-300 mb-2" />
+                        <p className="font-semibold text-sm text-slate-600">No assets match the current filters</p>
+                        <p className="text-xs text-slate-400 mt-1">Try clearing or adjusting your Category, Department, or Search filters</p>
+                        <button
+                          onClick={handleClearFilters}
+                          className="mt-3 px-3 py-1.5 text-xs font-bold text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors cursor-pointer inline-flex items-center gap-1"
+                        >
+                          Clear All Filters
+                        </button>
+                      </td>
+                    </tr>
+                  )}
+
                   {filteredAssets.map((asset, index) => {
                     const isSelected = selectedAsset?.id === asset.id;
                     const isChecked = selectedRowIds.includes(asset.id);
@@ -832,6 +911,17 @@ export function AssetList() {
 
                         {/* Category */}
                         <td className="py-3 px-3 text-slate-600 font-semibold">{asset.categoryName}</td>
+
+                        {/* Department */}
+                        <td className="py-3 px-3 text-slate-600 font-medium">
+                          {asset.departmentName ? (
+                            <span className="px-2 py-0.5 rounded-md text-[11px] font-semibold bg-purple-50 text-[#6C2BD9] border border-purple-100">
+                              {asset.departmentName}
+                            </span>
+                          ) : (
+                            <span className="text-slate-400 text-xs italic">Unassigned</span>
+                          )}
+                        </td>
 
                         {/* Tag / RFID */}
                         <td className="py-3 px-3 font-mono text-slate-600 text-[11px]">{asset.tagNumber}</td>

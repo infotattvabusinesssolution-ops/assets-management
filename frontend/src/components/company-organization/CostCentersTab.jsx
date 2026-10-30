@@ -59,6 +59,21 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
     fetchCostCentersFromDb();
   }, []);
   const [costCenters, setCostCenters] = useState([]);
+  const [companyOptions, setCompanyOptions] = useState([]);
+  const [departmentOptions, setDepartmentOptions] = useState([]);
+  const [locationOptions, setLocationOptions] = useState([]);
+
+  React.useEffect(() => {
+    Promise.all([
+      api.get('/admin/organization/companies').catch(() => null),
+      api.get('/admin/organization/departments').catch(() => null),
+      api.get('/admin/organization/locations').catch(() => null)
+    ]).then(([compRes, deptRes, locRes]) => {
+      if (compRes?.companies) setCompanyOptions(compRes.companies);
+      if (deptRes?.departments) setDepartmentOptions(deptRes.departments);
+      if (locRes?.locations) setLocationOptions(locRes.locations);
+    });
+  }, []);
   const [selectedCcIds, setSelectedCcIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('All Companies');
@@ -86,10 +101,10 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
   const [ccForm, setCcForm] = useState({
     code: '',
     name: '',
-    company: 'Asset360 Holdings',
+    company: companyOptions[0]?.name || '',
     businessUnit: 'Corporate',
-    department: 'Finance',
-    location: 'Dubai HQ',
+    department: departmentOptions[0]?.name || '',
+    location: locationOptions[0]?.name || '',
     type: 'Support',
     status: 'Active',
     currency: 'AED',
@@ -989,11 +1004,13 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                     onChange={(e) => setCcForm({ ...ccForm, location: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer"
                   >
-                    <option value="Dubai HQ">Dubai HQ</option>
-                    <option value="Jebel Ali Warehouse">Jebel Ali Warehouse</option>
-                    <option value="Riyadh Office">Riyadh Office</option>
-                    <option value="Fujairah Site">Fujairah Site</option>
-                    <option value="Doha Office">Doha Office</option>
+                    {locationOptions.length > 0 ? (
+                      locationOptions.map(l => (
+                        <option key={l.id} value={l.name}>{l.name}</option>
+                      ))
+                    ) : (
+                      <option value="">General Location</option>
+                    )}
                   </select>
                 </div>
               </div>

@@ -5,275 +5,7 @@ import { isSqlServerConnected } from '../../config/db.js';
 // SEED DATA PRE-LOADED WITH SCREENSHOT MATCH
 // ==========================================
 
-export let memoryUsers = [
-  {
-    id: 'USR-001',
-    name: 'John Doe',
-    username: 'jdoe',
-    email: 'john.doe@asset360.com',
-    phone: '+971 50 123 4567',
-    employeeId: 'EMP-00101',
-    role: 'System Administrator',
-    roleId: 'ROLE-001',
-    department: 'Information Technology',
-    location: 'Dubai HQ',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    costCenter: 'CC-1001',
-    userType: 'System User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: true,
-    lastLogin: '10 Sep 2025 09:15 AM',
-    createdDate: '2025-01-10',
-    assignedLocations: ['Dubai HQ', 'Jebel Ali Warehouse'],
-    assignedCompanies: ['Asset360 Holdings', 'Wavelogix FZC']
-  },
-  {
-    id: 'USR-002',
-    name: 'Sarah Ahmed',
-    username: 'sahmed',
-    email: 'sarah.ahmed@asset360.com',
-    phone: '+971 50 234 5678',
-    employeeId: 'EMP-00102',
-    role: 'Asset Manager',
-    roleId: 'ROLE-002',
-    department: 'Finance',
-    location: 'Dubai HQ',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    costCenter: 'CC-1002',
-    userType: 'System User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: true,
-    lastLogin: '09 Sep 2025 11:20 AM',
-    createdDate: '2025-01-12',
-    assignedLocations: ['Dubai HQ'],
-    assignedCompanies: ['Asset360 Holdings']
-  },
-  {
-    id: 'USR-003',
-    name: 'Ramesh Kumar',
-    username: 'rkumar',
-    email: 'ramesh.kumar@asset360.com',
-    phone: '+971 50 345 6789',
-    employeeId: 'EMP-00103',
-    role: 'Maintenance Manager',
-    roleId: 'ROLE-003',
-    department: 'Information Technology',
-    location: 'Dubai HQ',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    costCenter: 'CC-1001',
-    userType: 'System User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: true,
-    lastLogin: '08 Sep 2025 04:45 PM',
-    createdDate: '2025-01-15',
-    assignedLocations: ['Dubai HQ', 'Abu Dhabi Office'],
-    assignedCompanies: ['Asset360 Holdings']
-  },
-  {
-    id: 'USR-004',
-    name: 'Priya Nair',
-    username: 'pnair',
-    email: 'priya.nair@asset360.com',
-    phone: '+971 50 456 7890',
-    employeeId: 'EMP-00104',
-    role: 'Inventory Manager',
-    roleId: 'ROLE-004',
-    department: 'Human Resources',
-    location: 'Dubai HQ',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    costCenter: 'CC-1003',
-    userType: 'System User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: false,
-    lastLogin: '07 Sep 2025 02:10 PM',
-    createdDate: '2025-01-18',
-    assignedLocations: ['Dubai HQ'],
-    assignedCompanies: ['Asset360 Holdings']
-  },
-  {
-    id: 'USR-005',
-    name: 'Ahmed Al Marri',
-    username: 'amarri',
-    email: 'ahmed.marri@asset360.com',
-    phone: '+971 50 567 8901',
-    employeeId: 'EMP-00105',
-    role: 'Audit Manager',
-    roleId: 'ROLE-005',
-    department: 'Operations',
-    location: 'Jebel Ali',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    costCenter: 'CC-2001',
-    userType: 'System User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: true,
-    lastLogin: '06 Sep 2025 10:30 AM',
-    createdDate: '2025-01-20',
-    assignedLocations: ['Jebel Ali Warehouse', 'Dubai HQ'],
-    assignedCompanies: ['Asset360 Holdings']
-  },
-  {
-    id: 'USR-006',
-    name: 'Fatima Saeed',
-    username: 'fsaeed',
-    email: 'fatima.saeed@asset360.com',
-    phone: '+971 50 678 9012',
-    employeeId: 'EMP-00106',
-    role: 'Standard User',
-    roleId: 'ROLE-006',
-    department: 'Logistics',
-    location: 'Sharjah',
-    company: 'Wavelogix FZC',
-    businessUnit: 'Operations',
-    costCenter: 'CC-2003',
-    userType: 'Portal User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: false,
-    lastLogin: '05 Sep 2025 08:45 AM',
-    createdDate: '2025-01-22',
-    assignedLocations: ['Sharjah Warehouse'],
-    assignedCompanies: ['Wavelogix FZC']
-  },
-  {
-    id: 'USR-007',
-    name: 'Khalid Hassan',
-    username: 'khassan',
-    email: 'khalid.h@asset360.com',
-    phone: '+971 50 789 0123',
-    employeeId: 'EMP-00107',
-    role: 'Supervisor',
-    roleId: 'ROLE-009',
-    department: 'Facilities',
-    location: 'Dubai HQ',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    costCenter: 'CC-2002',
-    userType: 'Contractor',
-    status: 'Inactive',
-    accountStatus: 'Locked',
-    mfaEnabled: false,
-    lastLogin: '28 Aug 2025 03:15 PM',
-    createdDate: '2025-01-25',
-    assignedLocations: ['Dubai HQ'],
-    assignedCompanies: ['Asset360 Holdings']
-  },
-  {
-    id: 'USR-008',
-    name: 'Lina George',
-    username: 'lgeorge',
-    email: 'lina.george@asset360.com',
-    phone: '+971 50 890 1234',
-    employeeId: 'EMP-00108',
-    role: 'Report Viewer',
-    roleId: 'ROLE-007',
-    department: 'Finance',
-    location: 'Dubai HQ',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    costCenter: 'CC-1004',
-    userType: 'Portal User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: true,
-    lastLogin: '27 Aug 2025 01:25 PM',
-    createdDate: '2025-01-28',
-    assignedLocations: ['Dubai HQ'],
-    assignedCompanies: ['Asset360 Holdings']
-  },
-  {
-    id: 'USR-009',
-    name: 'Omar Rahman',
-    username: 'orahman',
-    email: 'omar.rahman@asset360.com',
-    phone: '+971 50 901 2345',
-    employeeId: 'EMP-00109',
-    role: 'Maintenance Technician',
-    roleId: 'ROLE-009',
-    department: 'Maintenance',
-    location: 'Jebel Ali',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Operations',
-    costCenter: 'CC-2002',
-    userType: 'Mobile User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: false,
-    lastLogin: '25 Aug 2025 11:05 AM',
-    createdDate: '2025-02-01',
-    assignedLocations: ['Jebel Ali Warehouse'],
-    assignedCompanies: ['Asset360 Holdings']
-  },
-  {
-    id: 'USR-010',
-    name: 'Chen Wei',
-    username: 'cwei',
-    email: 'chen.wei@asset360.com',
-    phone: '+971 50 012 3456',
-    employeeId: 'EMP-00110',
-    role: 'Inventory User',
-    roleId: 'ROLE-004',
-    department: 'Warehouse',
-    location: 'Abu Dhabi',
-    company: 'Asset360 Holdings',
-    businessUnit: 'Corporate Services',
-    costCenter: 'CC-2004',
-    userType: 'System User',
-    status: 'Active',
-    accountStatus: 'Active',
-    mfaEnabled: true,
-    lastLogin: '22 Aug 2025 09:40 AM',
-    createdDate: '2025-02-05',
-    assignedLocations: ['Abu Dhabi Office'],
-    assignedCompanies: ['Asset360 Holdings']
-  }
-];
-
-// Add 38 more realistic mock users so total is 48 (matching Screenshot 1: "Showing 1 to 10 of 48 records")
-for (let i = 11; i <= 48; i++) {
-  const depts = ['Information Technology', 'Finance', 'Human Resources', 'Operations', 'Maintenance', 'Procurement', 'Logistics', 'Quality Assurance'];
-  const locs = ['Dubai HQ', 'Jebel Ali Warehouse', 'Abu Dhabi Office', 'Sharjah Warehouse', 'Riyadh Office'];
-  const cmps = ['Asset360 Holdings', 'Wavelogix FZC', 'd.code Solutions LLC', 'Digital ID Solutions FZ LLC'];
-  const roles = ['Standard User', 'Read Only User', 'Contractor', 'Asset Manager', 'Maintenance Technician'];
-  const types = ['System User', 'Portal User', 'Mobile User', 'Contractor'];
-
-  memoryUsers.push({
-    id: `USR-${String(i).padStart(3, '0')}`,
-    name: `User ${i} Candidate`,
-    username: `user${i}`,
-    email: `user.${i}@asset360.com`,
-    phone: `+971 50 ${100 + i} ${1000 + i}`,
-    employeeId: `EMP-00${100 + i}`,
-    role: roles[i % roles.length],
-    roleId: `ROLE-00${(i % 5) + 1}`,
-    department: depts[i % depts.length],
-    location: locs[i % locs.length],
-    company: cmps[i % cmps.length],
-    businessUnit: 'Corporate Services',
-    costCenter: `CC-100${(i % 5) + 1}`,
-    userType: types[i % types.length],
-    status: i % 7 === 0 ? 'Inactive' : 'Active',
-    accountStatus: i % 7 === 0 ? 'Locked' : 'Active',
-    mfaEnabled: i % 2 === 0,
-    lastLogin: `${15 - (i % 12)} Aug 2025 10:${String(i % 60).padStart(2, '0')} AM`,
-    createdDate: `2025-02-${String((i % 20) + 1).padStart(2, '0')}`,
-    assignedLocations: [locs[i % locs.length]],
-    assignedCompanies: [cmps[i % cmps.length]]
-  });
-}
-
-// ==========================================
-// ROLES & PERMISSION MATRIX (SCREENSHOT 2)
-// ==========================================
+export let memoryUsers = [];
 
 export const DEFAULT_PERMISSIONS = {
   assets: {
@@ -484,71 +216,15 @@ export let memoryRoles = [
 // ORGANIZATIONAL HIERARCHY (SCREENSHOTS 3, 4, 5)
 // ==========================================
 
-export let memoryCompanies = [
-  { id: 'CMP-001', name: 'Asset360 Holdings', code: 'A360', type: 'Holding', region: 'UAE', businessUnitsCount: 5, locationsCount: 12, status: 'Active', createdOn: '10 Jan 2025', parentCompany: null },
-  { id: 'CMP-002', name: 'Wavelogix FZC', code: 'WLF', type: 'Operating', region: 'UAE', businessUnitsCount: 3, locationsCount: 8, status: 'Active', createdOn: '12 Jan 2025', parentCompany: 'Asset360 Holdings' },
-  { id: 'CMP-003', name: 'd.code Solutions LLC', code: 'DCS', type: 'Operating', region: 'UAE', businessUnitsCount: 2, locationsCount: 5, status: 'Active', createdOn: '15 Jan 2025', parentCompany: 'Asset360 Holdings' },
-  { id: 'CMP-004', name: 'Digital ID Solutions FZ LLC', code: 'DIS', type: 'Operating', region: 'UAE', businessUnitsCount: 2, locationsCount: 4, status: 'Active', createdOn: '18 Jan 2025', parentCompany: 'Asset360 Holdings' },
-  { id: 'CMP-005', name: 'Aasaan Environmental Services', code: 'AES', type: 'Operating', region: 'KSA', businessUnitsCount: 3, locationsCount: 7, status: 'Active', createdOn: '22 Jan 2025', parentCompany: 'Asset360 Holdings' },
-  { id: 'CMP-006', name: 'CodeIQ Technologies', code: 'CIQ', type: 'Operating', region: 'Qatar', businessUnitsCount: 1, locationsCount: 3, status: 'Inactive', createdOn: '25 Jan 2025', parentCompany: 'Asset360 Holdings' },
-  { id: 'CMP-007', name: 'Middle East Operations', code: 'MEO', type: 'Region', region: 'UAE', businessUnitsCount: 0, locationsCount: 0, status: 'Active', createdOn: '28 Jan 2025', parentCompany: 'Asset360 Holdings' },
-  { id: 'CMP-008', name: 'International Ventures', code: 'INV', type: 'Region', region: 'Other', businessUnitsCount: 0, locationsCount: 0, status: 'Active', createdOn: '01 Feb 2025', parentCompany: 'Asset360 Holdings' }
-];
+export let memoryCompanies = [];
 
-export let memoryBusinessUnits = [
-  { id: 'BU-001', code: 'CS', name: 'Corporate Services', company: 'Asset360 Holdings', companyId: 'CMP-001', head: 'Ramesh Kumar', status: 'Active', createdOn: '10 Jan 2025' },
-  { id: 'BU-002', code: 'OPS', name: 'Operations', company: 'Asset360 Holdings', companyId: 'CMP-001', head: 'Ahmed Al Marri', status: 'Active', createdOn: '10 Jan 2025' },
-  { id: 'BU-003', code: 'COMM', name: 'Commercial', company: 'Asset360 Holdings', companyId: 'CMP-001', head: 'Omar Rahman', status: 'Active', createdOn: '11 Jan 2025' },
-  { id: 'BU-004', code: 'TECH', name: 'Technology Solutions', company: 'Wavelogix FZC', companyId: 'CMP-002', head: 'Sarah Ahmed', status: 'Active', createdOn: '12 Jan 2025' },
-  { id: 'BU-005', code: 'SALES', name: 'Sales & Consulting', company: 'd.code Solutions LLC', companyId: 'CMP-003', head: 'Priya Nair', status: 'Active', createdOn: '15 Jan 2025' },
-  { id: 'BU-006', code: 'SUPPORT', name: 'Customer Support', company: 'Asset360 Holdings', companyId: 'CMP-001', head: 'John Doe', status: 'Active', createdOn: '18 Jan 2025' }
-];
+export let memoryBusinessUnits = [];
 
-export let memoryDepartments = [
-  { id: 'DEP-001', name: 'Information Technology', code: 'IT', businessUnit: 'Corporate Services', company: 'Asset360 Holdings', departmentHead: 'Ramesh Kumar', location: 'Dubai HQ', costCenter: 'CC-1001', status: 'Active', createdOn: '10 Jan 2025', type: 'Technical' },
-  { id: 'DEP-002', name: 'Finance', code: 'FIN', businessUnit: 'Corporate Services', company: 'Asset360 Holdings', departmentHead: 'Sarah Ahmed', location: 'Dubai HQ', costCenter: 'CC-1002', status: 'Active', createdOn: '10 Jan 2025', type: 'Administrative' },
-  { id: 'DEP-003', name: 'Human Resources', code: 'HR', businessUnit: 'Corporate Services', company: 'Asset360 Holdings', departmentHead: 'Priya Nair', location: 'Dubai HQ', costCenter: 'CC-1003', status: 'Active', createdOn: '11 Jan 2025', type: 'Administrative' },
-  { id: 'DEP-004', name: 'Operations', code: 'OPS', businessUnit: 'Operations', company: 'Asset360 Holdings', departmentHead: 'Ahmed Al Marri', location: 'Jebel Ali', costCenter: 'CC-2001', status: 'Active', createdOn: '12 Jan 2025', type: 'Operational' },
-  { id: 'DEP-005', name: 'Maintenance', code: 'MNT', businessUnit: 'Operations', company: 'Asset360 Holdings', departmentHead: 'Khalid Hassan', location: 'Jebel Ali', costCenter: 'CC-2002', status: 'Active', createdOn: '12 Jan 2025', type: 'Operational' },
-  { id: 'DEP-006', name: 'Procurement', code: 'PRC', businessUnit: 'Corporate Services', company: 'Asset360 Holdings', departmentHead: 'Lina George', location: 'Dubai HQ', costCenter: 'CC-1004', status: 'Active', createdOn: '13 Jan 2025', type: 'Operational' },
-  { id: 'DEP-007', name: 'Sales & Business Development', code: 'SBD', businessUnit: 'Commercial', company: 'Asset360 Holdings', departmentHead: 'Omar Rahman', location: 'Dubai HQ', costCenter: 'CC-3001', status: 'Active', createdOn: '14 Jan 2025', type: 'Commercial' },
-  { id: 'DEP-008', name: 'Logistics', code: 'LOG', businessUnit: 'Operations', company: 'Wavelogix FZC', departmentHead: 'Fatima Saeed', location: 'Sharjah', costCenter: 'CC-2003', status: 'Active', createdOn: '15 Jan 2025', type: 'Operational' },
-  { id: 'DEP-009', name: 'Health, Safety & Environment', code: 'HSE', businessUnit: 'Corporate Services', company: 'Asset360 Holdings', departmentHead: 'Mohammed Ali', location: 'Dubai HQ', costCenter: 'CC-1005', status: 'Inactive', createdOn: '16 Jan 2025', type: 'Compliance' },
-  { id: 'DEP-010', name: 'Quality Assurance', code: 'QA', businessUnit: 'Operations', company: 'Asset360 Holdings', departmentHead: 'Saeed Al Hashmi', location: 'Abu Dhabi', costCenter: 'CC-2004', status: 'Active', createdOn: '17 Jan 2025', type: 'Compliance' },
-  { id: 'DEP-011', name: 'Facilities Management', code: 'FAC', businessUnit: 'Corporate Services', company: 'Asset360 Holdings', departmentHead: 'Ahmed Al Marri', location: 'Dubai HQ', costCenter: 'CC-1006', status: 'Active', createdOn: '18 Jan 2025', type: 'Operational' },
-  { id: 'DEP-012', name: 'Internal Audit', code: 'AUD', businessUnit: 'Corporate Services', company: 'Asset360 Holdings', departmentHead: 'Priya Nair', location: 'Dubai HQ', costCenter: 'CC-1007', status: 'Active', createdOn: '19 Jan 2025', type: 'Compliance' }
-];
+export let memoryDepartments = [];
 
-export let memoryLocations = [
-  { id: 'LOC-001', name: 'Dubai HQ', code: 'DXB-HQ', company: 'Asset360 Holdings', businessUnit: 'Corporate Services', city: 'Dubai', country: 'UAE', locationType: 'Head Office', status: 'Active' },
-  { id: 'LOC-002', name: 'Jebel Ali Warehouse', code: 'DXB-WH1', company: 'Asset360 Holdings', businessUnit: 'Operations', city: 'Jebel Ali', country: 'UAE', locationType: 'Warehouse', status: 'Active' },
-  { id: 'LOC-003', name: 'Abu Dhabi Office', code: 'AUH-OF1', company: 'Asset360 Holdings', businessUnit: 'Corporate Services', city: 'Abu Dhabi', country: 'UAE', locationType: 'Office', status: 'Active' },
-  { id: 'LOC-004', name: 'Sharjah Warehouse', code: 'SHJ-WH1', company: 'Wavelogix FZC', businessUnit: 'Operations', city: 'Sharjah', country: 'UAE', locationType: 'Warehouse', status: 'Active' },
-  { id: 'LOC-005', name: 'Riyadh Office', code: 'RUH-OF1', company: 'd.code Solutions LLC', businessUnit: 'Sales & Consulting', city: 'Riyadh', country: 'KSA', locationType: 'Office', status: 'Active' },
-  { id: 'LOC-006', name: 'Doha Office', code: 'DOH-OF1', company: 'Digital ID Solutions', businessUnit: 'Sales & Consulting', city: 'Doha', country: 'Qatar', locationType: 'Office', status: 'Inactive' },
-  { id: 'LOC-007', name: 'Muscat Service Center', code: 'MCT-SVC', company: 'Asset360 Holdings', businessUnit: 'Customer Support', city: 'Muscat', country: 'Oman', locationType: 'Service Center', status: 'Active' },
-  { id: 'LOC-008', name: 'Dammam Warehouse', code: 'DMM-WH1', company: 'Wavelogix FZC', businessUnit: 'Operations', city: 'Dammam', country: 'KSA', locationType: 'Warehouse', status: 'Active' },
-  { id: 'LOC-009', name: 'Fujairah Site', code: 'FUJ-ST1', company: 'Aasaan Environmental Services', businessUnit: 'Operations', city: 'Fujairah', country: 'UAE', locationType: 'Site', status: 'Active' },
-  { id: 'LOC-010', name: 'Al Ain Office', code: 'AAN-OF1', company: 'Asset360 Holdings', businessUnit: 'Corporate Services', city: 'Al Ain', country: 'UAE', locationType: 'Office', status: 'Active' },
-  { id: 'LOC-011', name: 'Ras Al Khaimah Depot', code: 'RAK-DP1', company: 'Asset360 Holdings', businessUnit: 'Operations', city: 'Ras Al Khaimah', country: 'UAE', locationType: 'Warehouse', status: 'Active' },
-  { id: 'LOC-012', name: 'Jeddah Branch', code: 'JED-OF1', company: 'Aasaan Environmental Services', businessUnit: 'Sales & Consulting', city: 'Jeddah', country: 'KSA', locationType: 'Office', status: 'Active' },
-  { id: 'LOC-013', name: 'Manama Service Center', code: 'BAH-SVC1', company: 'Asset360 Holdings', businessUnit: 'Customer Support', city: 'Manama', country: 'Bahrain', locationType: 'Service Center', status: 'Active' },
-  { id: 'LOC-014', name: 'Kuwait City Hub', code: 'KWT-HUB1', company: 'Asset360 Holdings', businessUnit: 'Operations', city: 'Kuwait City', country: 'Kuwait', locationType: 'Site', status: 'Active' },
-  { id: 'LOC-015', name: 'London Liaison Office', code: 'LON-OF1', company: 'International Ventures', businessUnit: 'Corporate Services', city: 'London', country: 'Other', locationType: 'Office', status: 'Active' }
-];
+export let memoryLocations = [];
 
-export let memoryCostCenters = [
-  { id: 'CC-001', code: 'CC-1001', name: 'IT Operations & Infrastructure', company: 'Asset360 Holdings', businessUnit: 'Corporate Services', department: 'Information Technology', location: 'Dubai HQ', costCenterType: 'Operational', currency: 'AED', status: 'Active' },
-  { id: 'CC-002', code: 'CC-1002', name: 'Financial Management', company: 'Asset360 Holdings', businessUnit: 'Corporate Services', department: 'Finance', location: 'Dubai HQ', costCenterType: 'Administrative', currency: 'AED', status: 'Active' },
-  { id: 'CC-003', code: 'CC-1003', name: 'Talent & Human Capital', company: 'Asset360 Holdings', businessUnit: 'Corporate Services', department: 'Human Resources', location: 'Dubai HQ', costCenterType: 'Administrative', currency: 'AED', status: 'Active' },
-  { id: 'CC-004', code: 'CC-2001', name: 'Supply Chain & Warehousing', company: 'Asset360 Holdings', businessUnit: 'Operations', department: 'Operations', location: 'Jebel Ali', costCenterType: 'Operational', currency: 'AED', status: 'Active' },
-  { id: 'CC-005', code: 'CC-2002', name: 'Facilities & Plant Maintenance', company: 'Asset360 Holdings', businessUnit: 'Operations', department: 'Maintenance', location: 'Jebel Ali', costCenterType: 'Operational', currency: 'AED', status: 'Active' },
-  { id: 'CC-006', code: 'CC-1004', name: 'Strategic Procurement', company: 'Asset360 Holdings', businessUnit: 'Corporate Services', department: 'Procurement', location: 'Dubai HQ', costCenterType: 'Operational', currency: 'AED', status: 'Active' },
-  { id: 'CC-007', code: 'CC-3001', name: 'Regional Commercial & Sales', company: 'Asset360 Holdings', businessUnit: 'Commercial', department: 'Sales & Business Development', location: 'Dubai HQ', costCenterType: 'Commercial', currency: 'AED', status: 'Active' },
-  { id: 'CC-008', code: 'CC-2003', name: 'Freight Logistics Sharjah', company: 'Wavelogix FZC', businessUnit: 'Operations', department: 'Logistics', location: 'Sharjah', costCenterType: 'Operational', currency: 'AED', status: 'Active' },
-  { id: 'CC-009', code: 'CC-1005', name: 'Health & Safety Operations', company: 'Asset360 Holdings', businessUnit: 'Corporate Services', department: 'Health, Safety & Environment', location: 'Dubai HQ', costCenterType: 'Compliance', currency: 'AED', status: 'Inactive' },
-  { id: 'CC-010', code: 'CC-2004', name: 'Quality Assurance Lab', company: 'Asset360 Holdings', businessUnit: 'Operations', department: 'Quality Assurance', location: 'Abu Dhabi', costCenterType: 'Compliance', currency: 'AED', status: 'Active' }
-];
+export let memoryCostCenters = [];
 
 // ==========================================
 // USER MANAGEMENT ENDPOINTS
@@ -591,13 +267,13 @@ export async function getAdminUsers(req, res) {
       name: u.fullName || u.username,
       username: u.username,
       email: u.email,
-      phone: u.phone || '+971 50 123 4567',
+      phone: u.phone || '',
       employeeId: u.employee?.employeeCode || u.employeeId || 'EMP-001',
       role: u.role?.name || 'Standard User',
       roleId: u.role?.id || u.roleId,
-      department: u.department?.name || 'Information Technology',
-      location: u.site?.name || 'Dubai HQ Campus',
-      company: u.company?.name || 'Infotatwaa Enterprise Corp',
+      department: u.department?.name || 'General',
+      location: u.site?.name || 'Main Campus',
+      company: u.company?.name || 'Corporate',
       businessUnit: 'Corporate Operations',
       costCenter: u.costCenter?.code || 'CC-IT01',
       userType: 'System User',
@@ -606,8 +282,8 @@ export async function getAdminUsers(req, res) {
       mfaEnabled: true,
       lastLogin: u.lastLogin ? new Date(u.lastLogin).toLocaleDateString('en-GB') : 'Recently',
       createdDate: new Date(u.createdAt).toISOString().split('T')[0],
-      assignedLocations: [u.site?.name || 'Dubai HQ Campus'],
-      assignedCompanies: [u.company?.name || 'Infotatwaa Enterprise Corp']
+      assignedLocations: [u.site?.name || 'Main Campus'],
+      assignedCompanies: [u.company?.name || 'Corporate']
     }));
 
     const existingIds = new Set(filtered.map(u => u.id));
@@ -679,20 +355,45 @@ export async function createAdminUser(req, res) {
     try {
       if (prisma && prisma.user) {
         let roleRecord = await prisma.role.findFirst({
-          where: { name: { contains: data.role || 'Standard' } }
+          where: { OR: [{ id: data.roleId || '' }, { name: { contains: data.role || 'Standard' } }] }
         });
         if (!roleRecord) {
           roleRecord = await prisma.role.findFirst();
         }
+
+        let siteRecord = null;
+        if (data.location || data.siteId) {
+          siteRecord = await prisma.site.findFirst({
+            where: { OR: [{ id: data.siteId || '' }, { name: data.location || '' }, { code: data.location || '' }] }
+          }).catch(() => null);
+        }
+
+        let deptRecord = null;
+        if (data.department || data.departmentId) {
+          deptRecord = await prisma.department.findFirst({
+            where: { OR: [{ id: data.departmentId || '' }, { name: data.department || '' }, { code: data.department || '' }] }
+          }).catch(() => null);
+        }
+
+        let compRecord = null;
+        if (data.company || data.companyId) {
+          compRecord = await prisma.company.findFirst({
+            where: { OR: [{ id: data.companyId || '' }, { name: data.company || '' }, { code: data.company || '' }] }
+          }).catch(() => null);
+        }
+
         if (roleRecord) {
           const dbCreated = await prisma.user.create({
             data: {
               fullName: data.name,
               username: data.username,
               email: data.email,
-              phone: data.phone || '+971 50 000 0000',
+              phone: data.phone || '',
               passwordHash: '$2a$10$dummyHashForAdminCreatedUser',
               roleId: roleRecord.id,
+              siteId: siteRecord ? siteRecord.id : null,
+              departmentId: deptRecord ? deptRecord.id : null,
+              companyId: compRecord ? compRecord.id : null,
               active: data.status === 'Active'
             }
           }).catch(err => {
@@ -713,23 +414,23 @@ export async function createAdminUser(req, res) {
       name: data.name,
       username: data.username,
       email: data.email,
-      phone: data.phone || '+971 50 000 0000',
+      phone: data.phone || '',
       employeeId: data.employeeId || `EMP-${String(Math.floor(100 + Math.random() * 900))}`,
       role: data.role || 'Standard User',
       roleId: data.roleId || 'ROLE-006',
-      department: data.department || 'Information Technology',
-      location: data.location || 'Dubai HQ Campus',
-      company: data.company || 'Infotatwaa Enterprise Corp',
+      department: data.department || 'General',
+      location: data.location || 'Main Campus',
+      company: data.company || 'Corporate',
       businessUnit: data.businessUnit || 'Corporate Operations',
-      costCenter: data.costCenter || 'CC-IT01',
+      costCenter: data.costCenter || 'CC-01',
       userType: data.userType || 'System User',
       status: data.status || 'Active',
       accountStatus: 'Active',
       mfaEnabled: Boolean(data.mfaEnabled),
       lastLogin: 'Never',
       createdDate: new Date().toISOString().split('T')[0],
-      assignedLocations: data.assignedLocations || [data.location || 'Dubai HQ Campus'],
-      assignedCompanies: data.assignedCompanies || [data.company || 'Infotatwaa Enterprise Corp']
+      assignedLocations: data.assignedLocations || [data.location || 'Main Campus'],
+      assignedCompanies: data.assignedCompanies || [data.company || 'Corporate']
     };
 
     memoryUsers.unshift(newUser);
@@ -750,15 +451,46 @@ export async function updateAdminUser(req, res) {
     }
 
     try {
+      let roleRecord = null;
+      if (req.body.role || req.body.roleId) {
+        roleRecord = await prisma.role.findFirst({
+          where: { OR: [{ id: req.body.roleId || '' }, { name: { contains: req.body.role || '' } }] }
+        }).catch(() => null);
+      }
+      let siteRecord = null;
+      if (req.body.location || req.body.siteId) {
+        siteRecord = await prisma.site.findFirst({
+          where: { OR: [{ id: req.body.siteId || '' }, { name: req.body.location || '' }, { code: req.body.location || '' }] }
+        }).catch(() => null);
+      }
+      let deptRecord = null;
+      if (req.body.department || req.body.departmentId) {
+        deptRecord = await prisma.department.findFirst({
+          where: { OR: [{ id: req.body.departmentId || '' }, { name: req.body.department || '' }, { code: req.body.department || '' }] }
+        }).catch(() => null);
+      }
+      let compRecord = null;
+      if (req.body.company || req.body.companyId) {
+        compRecord = await prisma.company.findFirst({
+          where: { OR: [{ id: req.body.companyId || '' }, { name: req.body.company || '' }, { code: req.body.company || '' }] }
+        }).catch(() => null);
+      }
+
+      const updateData = {
+        fullName: req.body.name,
+        username: req.body.username,
+        email: req.body.email,
+        phone: req.body.phone,
+        active: req.body.status === 'Active'
+      };
+      if (roleRecord) updateData.roleId = roleRecord.id;
+      if (siteRecord) updateData.siteId = siteRecord.id;
+      if (deptRecord) updateData.departmentId = deptRecord.id;
+      if (compRecord) updateData.companyId = compRecord.id;
+
       await prisma.user.update({
         where: { id },
-        data: {
-          fullName: req.body.name,
-          username: req.body.username,
-          email: req.body.email,
-          phone: req.body.phone,
-          active: req.body.status === 'Active'
-        }
+        data: updateData
       }).catch(() => null);
     } catch (e) {}
 
@@ -974,23 +706,26 @@ export async function deleteAdminRole(req, res) {
 
 export async function getCompaniesList(req, res) {
   try {
-    const dbCompanies = await prisma.company.findMany({ orderBy: { name: 'asc' } });
-    if (dbCompanies && dbCompanies.length > 0) {
-      const mapped = dbCompanies.map(c => ({
-        id: c.id,
-        code: c.code,
-        name: c.name,
-        currency: c.currency,
-        region: 'Middle East',
-        type: 'Operating Entity',
-        status: c.active ? 'Active' : 'Inactive',
-        createdOn: new Date(c.createdAt).toLocaleDateString('en-GB')
-      }));
-      return res.json({ success: true, companies: mapped, total: mapped.length });
-    }
-    res.json({ success: true, companies: memoryCompanies, total: memoryCompanies.length });
+    const dbCompanies = await prisma.company.findMany({
+      include: { sites: true, departments: true, costCenters: true },
+      orderBy: { name: 'asc' }
+    });
+    const mapped = dbCompanies.map(c => ({
+      id: c.id,
+      code: c.code,
+      name: c.name,
+      currency: c.currency || 'USD',
+      region: 'Middle East',
+      type: 'Operating Entity',
+      businessUnitsCount: 0,
+      locationsCount: c.sites ? c.sites.length : 0,
+      departmentsCount: c.departments ? c.departments.length : 0,
+      status: c.active ? 'Active' : 'Inactive',
+      createdOn: new Date(c.createdAt).toLocaleDateString('en-GB')
+    }));
+    return res.json({ success: true, companies: mapped, total: mapped.length });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.json({ success: true, companies: memoryCompanies, total: memoryCompanies.length });
   }
 }
 
@@ -998,14 +733,12 @@ export async function getBusinessUnitsList(req, res) {
   try {
     const { companyId = '', search = '', status = '' } = req.query;
     let list = [...memoryBusinessUnits];
-
     if (companyId) list = list.filter(b => b.companyId === companyId || b.company === companyId);
     if (status && status !== 'All Status') list = list.filter(b => b.status.toLowerCase() === status.toLowerCase());
     if (search) {
       const q = search.toLowerCase();
       list = list.filter(b => b.name.toLowerCase().includes(q) || b.code.toLowerCase().includes(q));
     }
-
     res.json({ success: true, businessUnits: list, total: list.length });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
@@ -1014,73 +747,79 @@ export async function getBusinessUnitsList(req, res) {
 
 export async function getDepartmentsList(req, res) {
   try {
-    const dbDepts = await prisma.department.findMany({ include: { company: true }, orderBy: { name: 'asc' } });
-    if (dbDepts && dbDepts.length > 0) {
-      const mapped = dbDepts.map(d => ({
-        id: d.id,
-        code: d.code,
-        name: d.name,
-        businessUnit: 'Corporate Operations',
-        company: d.company?.name || 'Infotatwaa Enterprise Corp',
-        departmentHead: 'Department Manager',
-        location: 'Dubai HQ Campus',
-        costCenter: 'CC-IT01',
-        status: d.active ? 'Active' : 'Inactive',
-        createdOn: new Date(d.createdAt).toLocaleDateString('en-GB'),
-        type: 'Operational'
-      }));
-      return res.json({ success: true, departments: mapped, total: mapped.length });
-    }
-    res.json({ success: true, departments: memoryDepartments, total: memoryDepartments.length });
+    const dbDepts = await prisma.department.findMany({
+      include: { company: true },
+      orderBy: { name: 'asc' }
+    });
+    const mapped = dbDepts.map(d => ({
+      id: d.id,
+      code: d.code,
+      name: d.name,
+      businessUnit: 'Corporate Operations',
+      company: d.company?.name || '-',
+      companyId: d.companyId,
+      departmentHead: 'Unassigned',
+      location: '-',
+      costCenter: '-',
+      status: d.active ? 'Active' : 'Inactive',
+      createdOn: new Date(d.createdAt).toLocaleDateString('en-GB'),
+      type: 'Operational'
+    }));
+    return res.json({ success: true, departments: mapped, total: mapped.length });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.json({ success: true, departments: memoryDepartments, total: memoryDepartments.length });
   }
 }
 
 export async function getLocationsList(req, res) {
   try {
-    const dbSites = await prisma.site.findMany({ include: { company: true }, orderBy: { name: 'asc' } });
-    if (dbSites && dbSites.length > 0) {
-      const mapped = dbSites.map(s => ({
-        id: s.id,
-        code: s.code,
-        name: s.name,
-        company: s.company?.name || 'Infotatwaa Enterprise Corp',
-        businessUnit: 'Corporate Operations',
-        city: s.city || 'Dubai',
-        country: s.country || 'UAE',
-        locationType: 'Primary Facility',
-        status: s.active ? 'Active' : 'Inactive'
-      }));
-      return res.json({ success: true, locations: mapped, total: mapped.length });
-    }
-    res.json({ success: true, locations: memoryLocations, total: memoryLocations.length });
+    const dbSites = await prisma.site.findMany({
+      include: { company: true, buildings: true },
+      orderBy: { name: 'asc' }
+    });
+    const mapped = dbSites.map(s => ({
+      id: s.id,
+      code: s.code,
+      name: s.name,
+      company: s.company?.name || '-',
+      companyId: s.companyId,
+      businessUnit: 'Corporate Operations',
+      city: s.city || '-',
+      country: s.country || '-',
+      buildingsCount: s.buildings ? s.buildings.length : 0,
+      locationType: 'Primary Facility',
+      status: s.active ? 'Active' : 'Inactive',
+      createdOn: new Date(s.createdAt).toLocaleDateString('en-GB')
+    }));
+    return res.json({ success: true, locations: mapped, total: mapped.length });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.json({ success: true, locations: memoryLocations, total: memoryLocations.length });
   }
 }
 
 export async function getCostCentersList(req, res) {
   try {
-    const dbCC = await prisma.costCenter.findMany({ include: { company: true }, orderBy: { code: 'asc' } });
-    if (dbCC && dbCC.length > 0) {
-      const mapped = dbCC.map(c => ({
-        id: c.id,
-        code: c.code,
-        name: c.name,
-        company: c.company?.name || 'Infotatwaa Enterprise Corp',
-        businessUnit: 'Corporate Operations',
-        department: 'Operations',
-        location: 'Dubai HQ Campus',
-        costCenterType: 'Operational',
-        currency: c.company?.currency || 'AED',
-        status: c.active ? 'Active' : 'Inactive'
-      }));
-      return res.json({ success: true, costCenters: mapped, total: mapped.length });
-    }
-    res.json({ success: true, costCenters: memoryCostCenters, total: memoryCostCenters.length });
+    const dbCC = await prisma.costCenter.findMany({
+      include: { company: true },
+      orderBy: { code: 'asc' }
+    });
+    const mapped = dbCC.map(c => ({
+      id: c.id,
+      code: c.code,
+      name: c.name,
+      company: c.company?.name || '-',
+      companyId: c.companyId,
+      businessUnit: 'Corporate Operations',
+      department: '-',
+      location: '-',
+      costCenterType: 'Operational',
+      currency: c.company?.currency || 'USD',
+      status: c.active ? 'Active' : 'Inactive',
+      createdOn: new Date(c.createdAt).toLocaleDateString('en-GB')
+    }));
+    return res.json({ success: true, costCenters: mapped, total: mapped.length });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    res.json({ success: true, costCenters: memoryCostCenters, total: memoryCostCenters.length });
   }
 }
 
@@ -1089,10 +828,26 @@ export async function createCompany(req, res) {
     const data = req.body;
     if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Name and Code are required' });
 
+    let createdCompany = null;
+    try {
+      createdCompany = await prisma.company.create({
+        data: {
+          code: data.code.toUpperCase(),
+          name: data.name,
+          currency: data.currency || 'USD',
+          taxId: data.taxId || null,
+          address: data.address || null,
+          active: data.status !== 'Inactive'
+        }
+      });
+    } catch (dbErr) {
+      console.warn('Prisma create company error:', dbErr.message);
+    }
+
     const newCompany = {
-      id: `CMP-${String(memoryCompanies.length + 1).padStart(3, '0')}`,
+      id: createdCompany ? createdCompany.id : `CMP-${String(Date.now()).slice(-6)}`,
       name: data.name,
-      code: data.code,
+      code: data.code.toUpperCase(),
       type: data.type || 'Operating',
       region: data.region || 'UAE',
       businessUnitsCount: 0,
@@ -1102,8 +857,51 @@ export async function createCompany(req, res) {
       parentCompany: data.parentCompany || null
     };
 
-    memoryCompanies.push(newCompany);
+    memoryCompanies.unshift(newCompany);
     res.status(201).json({ success: true, company: newCompany, message: 'Company created successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function updateCompany(req, res) {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    try {
+      await prisma.company.update({
+        where: { id },
+        data: {
+          name: data.name,
+          code: data.code ? data.code.toUpperCase() : undefined,
+          active: data.status !== 'Inactive' && data.active !== false
+        }
+      }).catch(() => null);
+    } catch (e) {}
+
+    const index = memoryCompanies.findIndex(c => c.id === id);
+    if (index !== -1) {
+      memoryCompanies[index] = { ...memoryCompanies[index], ...data };
+    }
+
+    res.json({ success: true, company: { id, ...data }, message: 'Company updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function deleteCompany(req, res) {
+  try {
+    const { id } = req.params;
+    try {
+      await prisma.company.delete({ where: { id } }).catch(() => null);
+    } catch (e) {}
+
+    const index = memoryCompanies.findIndex(c => c.id === id);
+    if (index !== -1) memoryCompanies.splice(index, 1);
+
+    res.json({ success: true, message: 'Company deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1114,22 +912,89 @@ export async function createDepartment(req, res) {
     const data = req.body;
     if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Department Name and Code are required' });
 
+    let comp = null;
+    if (data.companyId || data.company) {
+      comp = await prisma.company.findFirst({
+        where: { OR: [{ id: data.companyId || '' }, { name: data.company || '' }, { code: data.company || '' }] }
+      }).catch(() => null);
+    }
+    if (!comp) comp = await prisma.company.findFirst().catch(() => null);
+
+    let createdDept = null;
+    if (comp) {
+      try {
+        createdDept = await prisma.department.create({
+          data: {
+            companyId: comp.id,
+            code: data.code.toUpperCase(),
+            name: data.name,
+            active: data.status !== 'Inactive'
+          }
+        });
+      } catch (dbErr) {
+        console.warn('Prisma create department error:', dbErr.message);
+      }
+    }
+
     const newDept = {
-      id: `DEP-${String(memoryDepartments.length + 1).padStart(3, '0')}`,
+      id: createdDept ? createdDept.id : `DEP-${String(Date.now()).slice(-6)}`,
       name: data.name,
-      code: data.code,
-      businessUnit: data.businessUnit || 'Corporate Services',
-      company: data.company || 'Asset360 Holdings',
-      departmentHead: data.departmentHead || 'Ramesh Kumar',
-      location: data.location || 'Dubai HQ',
-      costCenter: data.costCenter || 'CC-1001',
+      code: data.code.toUpperCase(),
+      businessUnit: data.businessUnit || 'Corporate Operations',
+      company: comp ? comp.name : (data.company || '-'),
+      departmentHead: data.departmentHead || 'Unassigned',
+      location: data.location || '-',
+      costCenter: data.costCenter || '-',
       status: data.status || 'Active',
       createdOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       type: data.type || 'Operational'
     };
 
-    memoryDepartments.push(newDept);
+    memoryDepartments.unshift(newDept);
     res.status(201).json({ success: true, department: newDept, message: 'Department created successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function updateDepartment(req, res) {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    try {
+      await prisma.department.update({
+        where: { id },
+        data: {
+          name: data.name,
+          code: data.code ? data.code.toUpperCase() : undefined,
+          active: data.status !== 'Inactive' && data.active !== false
+        }
+      }).catch(() => null);
+    } catch (e) {}
+
+    const index = memoryDepartments.findIndex(d => d.id === id);
+    if (index !== -1) {
+      memoryDepartments[index] = { ...memoryDepartments[index], ...data };
+    }
+
+    res.json({ success: true, department: { id, ...data }, message: 'Department updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function deleteDepartment(req, res) {
+  try {
+    const { id } = req.params;
+    try {
+      await prisma.department.delete({ where: { id } }).catch(() => null);
+    } catch (e) {}
+
+    const index = memoryDepartments.findIndex(d => d.id === id);
+    if (index !== -1) memoryDepartments.splice(index, 1);
+
+    res.json({ success: true, message: 'Department deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1140,20 +1005,92 @@ export async function createLocation(req, res) {
     const data = req.body;
     if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Location Name and Code are required' });
 
+    let comp = null;
+    if (data.companyId || data.company) {
+      comp = await prisma.company.findFirst({
+        where: { OR: [{ id: data.companyId || '' }, { name: data.company || '' }, { code: data.company || '' }] }
+      }).catch(() => null);
+    }
+    if (!comp) comp = await prisma.company.findFirst().catch(() => null);
+
+    let createdLoc = null;
+    if (comp) {
+      try {
+        createdLoc = await prisma.site.create({
+          data: {
+            companyId: comp.id,
+            code: data.code.toUpperCase(),
+            name: data.name,
+            city: data.city || null,
+            country: data.country || null,
+            active: data.status !== 'Inactive'
+          }
+        });
+      } catch (dbErr) {
+        console.warn('Prisma create site error:', dbErr.message);
+      }
+    }
+
     const newLoc = {
-      id: `LOC-${String(memoryLocations.length + 1).padStart(3, '0')}`,
+      id: createdLoc ? createdLoc.id : `LOC-${String(Date.now()).slice(-6)}`,
       name: data.name,
-      code: data.code,
-      company: data.company || 'Asset360 Holdings',
-      businessUnit: data.businessUnit || 'Corporate Services',
-      city: data.city || 'Dubai',
-      country: data.country || 'UAE',
-      locationType: data.locationType || 'Office',
-      status: data.status || 'Active'
+      code: data.code.toUpperCase(),
+      company: comp ? comp.name : (data.company || '-'),
+      businessUnit: data.businessUnit || 'Corporate Operations',
+      city: data.city || '-',
+      country: data.country || '-',
+      locationType: data.locationType || 'Primary Facility',
+      status: data.status || 'Active',
+      address: data.address || ''
     };
 
-    memoryLocations.push(newLoc);
+    memoryLocations.unshift(newLoc);
     res.status(201).json({ success: true, location: newLoc, message: 'Location created successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function updateLocation(req, res) {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    try {
+      await prisma.site.update({
+        where: { id },
+        data: {
+          name: data.name,
+          code: data.code ? data.code.toUpperCase() : undefined,
+          city: data.city || undefined,
+          country: data.country || undefined,
+          active: data.status !== 'Inactive' && data.active !== false
+        }
+      }).catch(() => null);
+    } catch (e) {}
+
+    const index = memoryLocations.findIndex(l => l.id === id);
+    if (index !== -1) {
+      memoryLocations[index] = { ...memoryLocations[index], ...data };
+    }
+
+    res.json({ success: true, location: { id, ...data }, message: 'Location updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function deleteLocation(req, res) {
+  try {
+    const { id } = req.params;
+    try {
+      await prisma.site.delete({ where: { id } }).catch(() => null);
+    } catch (e) {}
+
+    const index = memoryLocations.findIndex(l => l.id === id);
+    if (index !== -1) memoryLocations.splice(index, 1);
+
+    res.json({ success: true, message: 'Location deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1164,21 +1101,88 @@ export async function createCostCenter(req, res) {
     const data = req.body;
     if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Cost Center Name and Code are required' });
 
+    let comp = null;
+    if (data.companyId || data.company) {
+      comp = await prisma.company.findFirst({
+        where: { OR: [{ id: data.companyId || '' }, { name: data.company || '' }, { code: data.company || '' }] }
+      }).catch(() => null);
+    }
+    if (!comp) comp = await prisma.company.findFirst().catch(() => null);
+
+    let createdCC = null;
+    if (comp) {
+      try {
+        createdCC = await prisma.costCenter.create({
+          data: {
+            companyId: comp.id,
+            code: data.code.toUpperCase(),
+            name: data.name,
+            active: data.status !== 'Inactive'
+          }
+        });
+      } catch (dbErr) {
+        console.warn('Prisma create cost center error:', dbErr.message);
+      }
+    }
+
     const newCC = {
-      id: `CC-${String(memoryCostCenters.length + 1).padStart(3, '0')}`,
-      code: data.code,
+      id: createdCC ? createdCC.id : `CC-${String(Date.now()).slice(-6)}`,
+      code: data.code.toUpperCase(),
       name: data.name,
-      company: data.company || 'Asset360 Holdings',
-      businessUnit: data.businessUnit || 'Corporate Services',
-      department: data.department || 'Information Technology',
-      location: data.location || 'Dubai HQ',
+      company: comp ? comp.name : (data.company || '-'),
+      businessUnit: data.businessUnit || 'Corporate Operations',
+      department: data.department || '-',
+      location: data.location || '-',
       costCenterType: data.costCenterType || 'Operational',
-      currency: data.currency || 'AED',
+      currency: comp?.currency || data.currency || 'USD',
       status: data.status || 'Active'
     };
 
-    memoryCostCenters.push(newCC);
+    memoryCostCenters.unshift(newCC);
     res.status(201).json({ success: true, costCenter: newCC, message: 'Cost Center created successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function updateCostCenter(req, res) {
+  try {
+    const { id } = req.params;
+    const data = req.body;
+
+    try {
+      await prisma.costCenter.update({
+        where: { id },
+        data: {
+          name: data.name,
+          code: data.code ? data.code.toUpperCase() : undefined,
+          active: data.status !== 'Inactive' && data.active !== false
+        }
+      }).catch(() => null);
+    } catch (e) {}
+
+    const index = memoryCostCenters.findIndex(c => c.id === id);
+    if (index !== -1) {
+      memoryCostCenters[index] = { ...memoryCostCenters[index], ...data };
+    }
+
+    res.json({ success: true, costCenter: { id, ...data }, message: 'Cost Center updated successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
+export async function deleteCostCenter(req, res) {
+  try {
+    const { id } = req.params;
+    try {
+      await prisma.costCenter.delete({ where: { id } }).catch(() => null);
+    } catch (e) {}
+
+    const index = memoryCostCenters.findIndex(c => c.id === id);
+    if (index !== -1) memoryCostCenters.splice(index, 1);
+
+    res.json({ success: true, message: 'Cost Center deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1190,78 +1194,44 @@ export async function createBusinessUnit(req, res) {
     if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Business Unit Name and Code are required' });
 
     const newUnit = {
-      id: `BU-${String(memoryBusinessUnits.length + 1).padStart(3, '0')}`,
+      id: `BU-${String(Date.now()).slice(-6)}`,
       name: data.name,
-      code: data.code,
-      company: data.company || 'Asset360 Holdings',
+      code: data.code.toUpperCase(),
+      company: data.company || '-',
       parentUnit: data.parentUnit || '-',
       type: data.type || 'Operations',
       status: data.status || 'Active',
       description: data.description || ''
     };
 
-    memoryBusinessUnits.push(newUnit);
+    memoryBusinessUnits.unshift(newUnit);
     res.status(201).json({ success: true, businessUnit: newUnit, message: 'Business Unit created successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 }
 
-export async function updateCompany(req, res) {
+export async function updateBusinessUnit(req, res) {
   try {
     const { id } = req.params;
     const data = req.body;
-    const index = memoryCompanies.findIndex(c => c.id === id);
+    const index = memoryBusinessUnits.findIndex(b => b.id === id);
     if (index !== -1) {
-      memoryCompanies[index] = { ...memoryCompanies[index], ...data };
-      return res.json({ success: true, company: memoryCompanies[index], message: 'Company updated successfully' });
+      memoryBusinessUnits[index] = { ...memoryBusinessUnits[index], ...data };
     }
-    res.status(404).json({ success: false, error: 'Company not found' });
+    res.json({ success: true, businessUnit: { id, ...data }, message: 'Business Unit updated successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 }
 
-export async function deleteCompany(req, res) {
+export async function deleteBusinessUnit(req, res) {
   try {
     const { id } = req.params;
-    const index = memoryCompanies.findIndex(c => c.id === id);
-    if (index !== -1) {
-      memoryCompanies.splice(index, 1);
-      return res.json({ success: true, message: 'Company deleted successfully' });
-    }
-    res.status(404).json({ success: false, error: 'Company not found' });
+    const index = memoryBusinessUnits.findIndex(b => b.id === id);
+    if (index !== -1) memoryBusinessUnits.splice(index, 1);
+    res.json({ success: true, message: 'Business Unit deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
 }
-
-export async function updateDepartment(req, res) {
-  try {
-    const { id } = req.params;
-    const data = req.body;
-    const index = memoryDepartments.findIndex(d => d.id === id);
-    if (index !== -1) {
-      memoryDepartments[index] = { ...memoryDepartments[index], ...data };
-      return res.json({ success: true, department: memoryDepartments[index], message: 'Department updated successfully' });
-    }
-    res.status(404).json({ success: false, error: 'Department not found' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-}
-
-export async function deleteDepartment(req, res) {
-  try {
-    const { id } = req.params;
-    const index = memoryDepartments.findIndex(d => d.id === id);
-    if (index !== -1) {
-      memoryDepartments.splice(index, 1);
-      return res.json({ success: true, message: 'Department deleted successfully' });
-    }
-    res.status(404).json({ success: false, error: 'Department not found' });
-  } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
-  }
-}
-

@@ -61,6 +61,13 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
     fetchLocationsFromDb();
   }, []);
   const [locations, setLocations] = useState([]);
+  const [companyOptions, setCompanyOptions] = useState([]);
+
+  React.useEffect(() => {
+    api.get('/admin/organization/companies').then(res => {
+      if (res?.companies) setCompanyOptions(res.companies);
+    }).catch(() => null);
+  }, []);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('All Companies');
@@ -88,10 +95,10 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
   const [locForm, setLocForm] = useState({
     name: '',
     code: '',
-    company: 'Asset360 Holdings',
+    company: companyOptions[0]?.name || '',
     businessUnit: 'Corporate Services',
-    city: 'Dubai',
-    country: 'UAE',
+    city: '',
+    country: '',
     locationType: 'Head Office',
     status: 'Active',
     address: '',
@@ -948,11 +955,13 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
                     onChange={(e) => setLocForm({ ...locForm, company: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer"
                   >
-                    <option value="Asset360 Holdings">Asset360 Holdings</option>
-                    <option value="Wavelogix FZC">Wavelogix FZC</option>
-                    <option value="d.code Solutions LLC">d.code Solutions LLC</option>
-                    <option value="Digital ID Solutions">Digital ID Solutions</option>
-                    <option value="Green Arabia LLC">Green Arabia LLC</option>
+                    {companyOptions.length > 0 ? (
+                      companyOptions.map(c => (
+                        <option key={c.id} value={c.name}>{c.name}</option>
+                      ))
+                    ) : (
+                      <option value="">Corporate</option>
+                    )}
                   </select>
                 </div>
                 <div>

@@ -24,7 +24,13 @@ import {
   updateDepartment,
   deleteDepartment,
   createLocation,
-  createCostCenter
+  updateLocation,
+  deleteLocation,
+  createCostCenter,
+  updateCostCenter,
+  deleteCostCenter,
+  updateBusinessUnit,
+  deleteBusinessUnit
 } from './adminOrg.controller.js';
 
 import adminGovernanceRoutes from './adminGovernance.routes.js';
@@ -57,6 +63,8 @@ router.delete('/organization/companies/:id', deleteCompany);
 
 router.get('/organization/business-units', getBusinessUnitsList);
 router.post('/organization/business-units', createBusinessUnit);
+router.put('/organization/business-units/:id', updateBusinessUnit);
+router.delete('/organization/business-units/:id', deleteBusinessUnit);
 
 router.get('/organization/departments', getDepartmentsList);
 router.post('/organization/departments', createDepartment);
@@ -65,8 +73,12 @@ router.delete('/organization/departments/:id', deleteDepartment);
 
 router.get('/organization/locations', getLocationsList);
 router.post('/organization/locations', createLocation);
+router.put('/organization/locations/:id', updateLocation);
+router.delete('/organization/locations/:id', deleteLocation);
 
 router.get('/organization/cost-centers', getCostCentersList);
 router.post('/organization/cost-centers', createCostCenter);
+router.put('/organization/cost-centers/:id', updateCostCenter);
+router.delete('/organization/cost-centers/:id', deleteCostCenter);
 
 export default router;

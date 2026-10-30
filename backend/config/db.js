@@ -10,14 +10,14 @@ export function isDbConnected() {
 /**
  * Attempt to connect to Microsoft SQL Server with retries and auto-reconnect
  */
-export async function connectDB(maxRetries = 1) {
+export async function connectDB(maxRetries = 3) {
   let attempt = 0;
   while (attempt < maxRetries) {
     attempt++;
     try {
       await Promise.race([
         prisma.$connect(),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('SQL Server connection timeout after 3000ms')), 3000))
+        new Promise((_, reject) => setTimeout(() => reject(new Error('SQL Server connection timeout after 15000ms')), 15000))
       ]);
       isSqlServerConnected = true;
       setDbConnected(true);

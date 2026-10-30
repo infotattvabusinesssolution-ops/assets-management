@@ -81,7 +81,7 @@ export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger })
     code: '',
     type: 'Operating',
     region: 'UAE',
-    parentCompany: 'Asset360 Holdings',
+    parentCompany: '-',
     status: 'Active',
     description: ''
   });
@@ -780,7 +780,7 @@ export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger })
                   required
                   value={companyForm.name}
                   onChange={(e) => setCompanyForm({ ...companyForm, name: e.target.value })}
-                  placeholder="e.g. Asset360 Holdings"
+                  placeholder="e.g. Acme Corp"
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] font-medium"
                 />
               </div>

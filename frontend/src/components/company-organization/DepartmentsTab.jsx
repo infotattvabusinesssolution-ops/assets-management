@@ -44,7 +44,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
             name: d.name,
             code: d.code,
             company: d.company?.name || 'Asset360 Holdings',
-            businessUnit: 'Corporate Services',
+            businessUnit: 'Corporate Operations',
             headOfDepartment: d.headOfDepartment || 'Unassigned',
             employeesCount: d._count?.employees || 0,
             assetsCount: d._count?.assets || 0,
@@ -61,6 +61,21 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
     fetchDepartmentsFromDb();
   }, []);
   const [departments, setDepartments] = useState([]);
+  const [companyOptions, setCompanyOptions] = useState([]);
+  const [locationOptions, setLocationOptions] = useState([]);
+  const [costCenterOptions, setCostCenterOptions] = useState([]);
+
+  React.useEffect(() => {
+    Promise.all([
+      api.get('/admin/organization/companies').catch(() => null),
+      api.get('/admin/organization/locations').catch(() => null),
+      api.get('/admin/organization/cost-centers').catch(() => null)
+    ]).then(([compRes, locRes, ccRes]) => {
+      if (compRes?.companies) setCompanyOptions(compRes.companies);
+      if (locRes?.locations) setLocationOptions(locRes.locations);
+      if (ccRes?.costCenters) setCostCenterOptions(ccRes.costCenters);
+    });
+  }, []);
   const [selectedDeptIds, setSelectedDeptIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [companyFilter, setCompanyFilter] = useState('All Companies');
@@ -84,11 +99,11 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
   const [deptForm, setDeptForm] = useState({
     name: '',
     code: '',
-    company: 'Asset360 Holdings',
+    company: companyOptions[0]?.name || '',
     businessUnit: 'Corporate Services',
-    departmentHead: 'Ramesh Kumar',
-    location: 'Dubai HQ',
-    costCenter: 'CC-1001',
+    departmentHead: 'Unassigned',
+    location: locationOptions[0]?.name || '',
+    costCenter: costCenterOptions[0]?.code || '',
     status: 'Active',
     description: ''
   });
@@ -887,10 +902,13 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                     onChange={(e) => setDeptForm({ ...deptForm, location: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer"
                   >
-                    <option value="Dubai HQ">Dubai HQ</option>
-                    <option value="Jebel Ali">Jebel Ali</option>
-                    <option value="Abu Dhabi">Abu Dhabi</option>
-                    <option value="Sharjah">Sharjah</option>
+                    {locationOptions.length > 0 ? (
+                      locationOptions.map(l => (
+                        <option key={l.id} value={l.name}>{l.name}</option>
+                      ))
+                    ) : (
+                      <option value="">General Location</option>
+                    )}
                   </select>
                 </div>
               </div>
@@ -903,11 +921,13 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                     onChange={(e) => setDeptForm({ ...deptForm, costCenter: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer"
                   >
-                    <option value="CC-1001">CC-1001</option>
-                    <option value="CC-1002">CC-1002</option>
-                    <option value="CC-1003">CC-1003</option>
-                    <option value="CC-2001">CC-2001</option>
-                    <option value="CC-2002">CC-2002</option>
+                    {costCenterOptions.length > 0 ? (
+                      costCenterOptions.map(c => (
+                        <option key={c.id} value={c.code}>{c.code} - {c.name}</option>
+                      ))
+                    ) : (
+                      <option value="">General Cost Center</option>
+                    )}
                   </select>
                 </div>
                 <div>
