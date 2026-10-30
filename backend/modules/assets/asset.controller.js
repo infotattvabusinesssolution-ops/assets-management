@@ -531,21 +531,63 @@ export async function createAsset(req, res, next) {
     }
     const siteId = site.id;
 
-    // 4. Resolve Department & Cost Center if provided
+    // 4. Resolve Department & Cost Center if provided (checking ID, code, and name)
     let departmentId = null;
-    if (rawDept) {
+    const deptIdInput = req.body.departmentId;
+    const deptNameInput = req.body.department;
+    if (deptIdInput || deptNameInput || rawDept) {
+      const orConditions = [];
+      if (deptIdInput) orConditions.push({ id: deptIdInput }, { code: deptIdInput }, { name: deptIdInput });
+      if (deptNameInput) orConditions.push({ id: deptNameInput }, { code: deptNameInput }, { name: deptNameInput });
+      if (rawDept && rawDept !== deptIdInput && rawDept !== deptNameInput) orConditions.push({ id: rawDept }, { code: rawDept }, { name: rawDept });
       const dept = await prisma.department.findFirst({
-        where: { OR: [{ id: rawDept }, { code: rawDept }, { name: rawDept }] }
+        where: { OR: orConditions }
       });
-      if (dept) departmentId = dept.id;
+      if (dept) {
+        departmentId = dept.id;
+      } else {
+        const targetName = deptNameInput || rawDept || deptIdInput;
+        try {
+          const createdDept = await prisma.department.create({
+            data: {
+              code: 'DEP-' + String(targetName).replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8),
+              name: String(targetName).trim(),
+              companyId: companyId,
+              active: true
+            }
+          });
+          if (createdDept) departmentId = createdDept.id;
+        } catch (_) {}
+      }
     }
 
     let costCenterId = null;
-    if (rawCostCenter) {
+    const ccIdInput = req.body.costCenterId;
+    const ccNameInput = req.body.costCenter;
+    if (ccIdInput || ccNameInput || rawCostCenter) {
+      const orConditions = [];
+      if (ccIdInput) orConditions.push({ id: ccIdInput }, { code: ccIdInput }, { name: ccIdInput });
+      if (ccNameInput) orConditions.push({ id: ccNameInput }, { code: ccNameInput }, { name: ccNameInput });
+      if (rawCostCenter && rawCostCenter !== ccIdInput && rawCostCenter !== ccNameInput) orConditions.push({ id: rawCostCenter }, { code: rawCostCenter }, { name: rawCostCenter });
       const cc = await prisma.costCenter.findFirst({
-        where: { OR: [{ id: rawCostCenter }, { code: rawCostCenter }, { name: rawCostCenter }] }
+        where: { OR: orConditions }
       });
-      if (cc) costCenterId = cc.id;
+      if (cc) {
+        costCenterId = cc.id;
+      } else {
+        const targetName = ccNameInput || rawCostCenter || ccIdInput;
+        try {
+          const createdCC = await prisma.costCenter.create({
+            data: {
+              code: 'CC-' + String(targetName).replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(0, 8),
+              name: String(targetName).trim(),
+              companyId: companyId,
+              active: true
+            }
+          });
+          if (createdCC) costCenterId = createdCC.id;
+        } catch (_) {}
+      }
     }
 
     // 5. Resolve Custodian / Employee if provided
@@ -674,8 +716,8 @@ export async function createAsset(req, res, next) {
         buildingId: selectedBuilding?.id || null,
         floorId: selectedFloor?.id || null,
         roomId: selectedRoom?.id || null,
-        departmentId: selectedDepartment?.id || (effectiveCompanyId === companyId ? departmentId : null),
-        costCenterId: selectedCostCenter?.id || (effectiveCompanyId === companyId ? costCenterId : null),
+        departmentId: selectedDepartment?.id || departmentId || null,
+        costCenterId: selectedCostCenter?.id || costCenterId || null,
         custodianId: selectedCustodian?.id || null
       };
     }));

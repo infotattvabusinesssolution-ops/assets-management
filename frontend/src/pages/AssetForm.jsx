@@ -288,17 +288,83 @@ export function AssetForm() {
     const cleanName = name.trim();
     const code = window.prompt('Enter Department code (e.g. OPS, QA, LOG):' )?.trim() || cleanName.slice(0, 3).toUpperCase();
     try {
-      const res = await api.post('/master-data/departments', { name: cleanName, code, companyId: formData.companyId || undefined });
-      const newDept = res?.department || { id: `dept-${Date.now()}`, name: cleanName, code, companyId: formData.companyId };
-      setDepartments(prev => [...prev, newDept]);
-      setFormData(prev => ({ ...prev, departmentId: newDept.id, department: newDept.name }));
-      showToast('success', `Department "${cleanName}" added successfully!`);
+      const res = await api.post('/master-data/departments', {
+        name: cleanName,
+        code,
+        companyId: formData.companyId || undefined,
+        active: true
+      });
+      const newDept = res?.department || {
+        id: `dept-${Date.now()}`,
+        name: cleanName,
+        code,
+        companyId: formData.companyId || undefined,
+        active: true
+      };
+
+      setDepartments(prev => {
+        const exists = prev.some(d => d.id === newDept.id || d.name?.toLowerCase() === cleanName.toLowerCase());
+        return exists ? prev.map(d => (d.id === newDept.id || d.name?.toLowerCase() === cleanName.toLowerCase()) ? newDept : d) : [...prev, newDept];
+      });
+
+      setFormData(prev => ({
+        ...prev,
+        departmentId: newDept.id,
+        department: newDept.name || cleanName
+      }));
+
+      if (typeof updateAssetItem === 'function') {
+        updateAssetItem({
+          departmentId: newDept.id,
+          department: newDept.name || cleanName
+        });
+      }
+
+      try {
+        const stored = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
+        localStorage.setItem('fams_custom_departments', JSON.stringify([...stored, newDept]));
+      } catch (_) {}
+
+      // Refresh live departments list from backend in background
+      api.get('/master-data/departments')
+        .then(r => {
+          if (r?.departments && Array.isArray(r.departments)) {
+            setDepartments(prev => {
+              const ids = new Set(r.departments.map(d => d.id));
+              const extras = prev.filter(p => !ids.has(p.id));
+              return [...r.departments, ...extras];
+            });
+          }
+        })
+        .catch(() => null);
+
+      showToast('success', `Department "${cleanName}" added and selected successfully!`);
     } catch (err) {
       console.warn('Add department error:', err);
-      const newDept = { id: `dept-${Date.now()}`, name: cleanName, code, companyId: formData.companyId };
+      const newDept = {
+        id: `dept-${Date.now()}`,
+        name: cleanName,
+        code,
+        companyId: formData.companyId || undefined,
+        active: true
+      };
       setDepartments(prev => [...prev, newDept]);
-      setFormData(prev => ({ ...prev, departmentId: newDept.id, department: newDept.name }));
-      showToast('success', `Department "${cleanName}" added successfully!`);
+      setFormData(prev => ({
+        ...prev,
+        departmentId: newDept.id,
+        department: newDept.name || cleanName
+      }));
+      if (typeof updateAssetItem === 'function') {
+        updateAssetItem({
+          departmentId: newDept.id,
+          department: newDept.name || cleanName
+        });
+      }
+      try {
+        const stored = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
+        localStorage.setItem('fams_custom_departments', JSON.stringify([...stored, newDept]));
+      } catch (_) {}
+      showToast('success', `Department "${cleanName}" added and selected successfully!`);
     }
   };
 
@@ -472,7 +538,12 @@ export function AssetForm() {
         }
         if (floorRes?.floors) setFloors(floorRes.floors);
         if (roomRes?.rooms) setRooms(roomRes.rooms);
-        if (deptRes?.departments) setDepartments(deptRes.departments);
+        if (deptRes?.departments) {
+          const customDepts = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
+          const serverDepts = deptRes.departments;
+          const mergedDepts = [...serverDepts, ...customDepts.filter(cd => !serverDepts.some(sd => sd.id === cd.id || (sd.code && cd.code && sd.code.toUpperCase() === cd.code.toUpperCase())))];
+          setDepartments(mergedDepts);
+        }
         if (ccRes?.costCenters) setCostCenters(ccRes.costCenters);
                 const customMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
         const serverMfrs = mfrRes?.manufacturers || [];
@@ -2375,7 +2446,7 @@ export function AssetForm() {
     const availableBuildings = buildings.filter(building => item.siteId && building.siteId === item.siteId);
     const availableFloors = floors.filter(floor => item.buildingId && floor.buildingId === item.buildingId);
     const availableRooms = rooms.filter(room => item.floorId && room.floorId === item.floorId);
-    const availableDepartments = departments.filter(department => !effectiveCompanyId || department.companyId === effectiveCompanyId);
+    const availableDepartments = departments.filter(department => !effectiveCompanyId || !department.companyId || department.companyId === effectiveCompanyId || department.id === item.departmentId);
     const availableCostCenters = costCenters.filter(center => !effectiveCompanyId || center.companyId === effectiveCompanyId);
     const availableEmployees = employees.filter(employee => !effectiveCompanyId || employee.companyId === effectiveCompanyId);
     const select = (label, key, options, next = {}) => <label key={key} className="space-y-1 text-xs font-bold text-slate-700">{label}
@@ -2560,7 +2631,7 @@ export function AssetForm() {
           >
             <option value="">Select Department (Optional)</option>
             {departments
-              .filter(d => !formData.companyId || d.companyId === formData.companyId)
+              .filter(d => !formData.companyId || !d.companyId || d.companyId === formData.companyId || d.id === formData.departmentId || d.name === formData.department)
               .map(d => (
                 <option key={d.id} value={d.id}>{d.name || d.code}</option>
               ))}
@@ -2599,7 +2670,7 @@ export function AssetForm() {
           >
             <option value="">Select Cost Center (Optional)</option>
             {costCenters
-              .filter(cc => !formData.companyId || cc.companyId === formData.companyId)
+              .filter(cc => !formData.companyId || !cc.companyId || cc.companyId === formData.companyId || cc.id === formData.costCenterId || cc.name === formData.costCenter)
               .map(cc => (
                 <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
               ))}
@@ -3905,7 +3976,7 @@ export function AssetForm() {
                     >
                       <option value="">Select Department (Optional)</option>
                       {departments
-                        .filter(d => !formData.companyId || d.companyId === formData.companyId)
+                        .filter(d => !formData.companyId || !d.companyId || d.companyId === formData.companyId || d.id === formData.departmentId || d.name === formData.department)
                         .map(d => (
                           <option key={d.id} value={d.id}>{d.name || d.code}</option>
                         ))}
@@ -3942,7 +4013,7 @@ export function AssetForm() {
                     >
                       <option value="">Select Cost Center (Optional)</option>
                       {costCenters
-                        .filter(cc => !formData.companyId || cc.companyId === formData.companyId)
+                        .filter(cc => !formData.companyId || !cc.companyId || cc.companyId === formData.companyId || cc.id === formData.costCenterId || cc.name === formData.costCenter)
                         .map(cc => (
                           <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
                         ))}
