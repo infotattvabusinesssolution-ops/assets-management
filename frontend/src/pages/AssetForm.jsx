@@ -98,33 +98,50 @@ const matchesGroupToType = (group, assetType) => {
   if (!assetType || assetType === 'All') return true;
   const gType = normalizeStr(group.assetType);
   const t = normalizeStr(assetType);
-
-  // Group assetType match ('Both', 'Physical', 'Intangible', or dynamic)
-  if (gType === 'both') return true;
-  if (gType && (gType === t || t.includes(gType) || gType.includes(t))) return true;
-
   const gName = normalizeStr(group.name || group.title || group);
   const gCode = normalizeStr(group.code);
 
-  if (t.includes('it') || t.includes('tech')) {
-    return gName.includes('tech') || gName.includes('it') || gCode === 'it' || gCode === 'sw' || gCode === 'lic' || gName.includes('software');
+  // 1. If group explicitly has an assetType specified (not generic 'both')
+  if (gType && gType !== 'both' && gType !== 'all') {
+    if (gType === t || t.includes(gType) || gType.includes(t)) return true;
+    // Explicitly assigned to a different type -> do not match!
+    return false;
   }
-  if (t.includes('veh') || t.includes('fleet')) {
-    return gName.includes('veh') || gCode === 'veh' || gName.includes('fleet');
+
+  // 2. Keyword/domain matching based on Asset Type
+  const isIT = t.includes('it') || t.includes('tech') || t.includes('comput') || t.includes('soft') || t.includes('hard') || t.includes('digital');
+  const isVeh = t.includes('veh') || t.includes('fleet') || t.includes('auto') || t.includes('car') || t.includes('truck');
+  const isMach = t.includes('mach') || t.includes('plant') || t.includes('tool') || t.includes('equip') || t.includes('product');
+  const isFurn = t.includes('furn') || t.includes('fixture') || t.includes('seat');
+  const isFac = t.includes('fac') || t.includes('build') || t.includes('civil') || t.includes('struct') || t.includes('infra');
+  const isOffice = t.includes('office') || t.includes('stationery');
+
+  if (isIT) {
+    return gName.includes('tech') || gName.includes('it') || gCode === 'it' || gCode === 'sw' || gCode === 'lic' || gName.includes('software') || gName.includes('hardware') || gName.includes('information') || gName.includes('network') || gName.includes('telecom');
   }
-  if (t.includes('mach') || t.includes('plant')) {
-    return gName.includes('plant') || gName.includes('mach') || gName.includes('tool') || gCode === 'plant' || gCode === 'tool' || gName.includes('equip');
+  if (isVeh) {
+    return gName.includes('veh') || gCode === 'veh' || gName.includes('fleet') || gName.includes('transport') || gName.includes('car') || gName.includes('truck') || gName.includes('automobile');
   }
-  if (t.includes('furn')) {
-    return gName.includes('furn') || gCode.includes('ff&e') || gName.includes('fixture') || gName.includes('seating');
+  if (isMach) {
+    return gName.includes('plant') || gName.includes('mach') || gName.includes('tool') || gCode === 'plant' || gCode === 'tool' || gName.includes('equip') || gName.includes('production') || gName.includes('industrial');
   }
-  if (t.includes('fac') || t.includes('build')) {
-    return gName.includes('build') || gName.includes('fac') || gCode === 'bld' || gName.includes('infra') || gName.includes('civil');
+  if (isFurn) {
+    return gName.includes('furn') || gCode.includes('ff&e') || gName.includes('fixture') || gName.includes('seating') || gName.includes('desk') || gName.includes('chair');
   }
-  if (t.includes('office')) {
-    return gName.includes('office') || gName.includes('furn') || gName.includes('it') || gName.includes('tech');
+  if (isFac) {
+    return gName.includes('build') || gName.includes('fac') || gCode === 'bld' || gName.includes('infra') || gName.includes('civil') || gName.includes('real estate') || gName.includes('structure');
   }
-  return true; // For custom dynamic asset types, allow all groups
+  if (isOffice) {
+    return gName.includes('office') || gName.includes('furn') || gName.includes('printer') || gName.includes('stationery');
+  }
+
+  // 3. Dynamic / Custom Asset Type (e.g. user created custom type name)
+  if (gType === t || gName === t || gName.includes(t) || t.includes(gName) || (gCode && t.includes(gCode))) {
+    return true;
+  }
+
+  // If group has no specific keyword match and assetType is specific, do not match
+  return false;
 };
 
 const matchesClassToGroup = (cls, assetGroup) => {
@@ -766,15 +783,14 @@ export function AssetForm() {
   const subcategoryCode = subCategories.find(subCat => subCat.id === formData.assetClassId || subCat.name === formData.subcategory)?.code?.replace(/^CLS[-_ ]?/i, '') || formData.subcategory;
   // 1. Cascading Asset Groups based on selected Asset Type
   const availableAssetGroups = useMemo(() => {
-    const filtered = (assetGroups || []).filter(g => matchesGroupToType(g, formData.assetType));
-    return filtered.length > 0 ? filtered : assetGroups;
+    if (!formData.assetType) return assetGroups;
+    return (assetGroups || []).filter(g => matchesGroupToType(g, formData.assetType));
   }, [assetGroups, formData.assetType]);
 
   // 2. Cascading Asset Classes based on selected Asset Group
   const availableAssetClassesDropdown = useMemo(() => {
     if (!formData.assetGroup) return assetClasses;
-    const filtered = (assetClasses || []).filter(cls => matchesClassToGroup(cls, formData.assetGroup));
-    return filtered.length > 0 ? filtered : assetClasses;
+    return (assetClasses || []).filter(cls => matchesClassToGroup(cls, formData.assetGroup));
   }, [assetClasses, formData.assetGroup]);
 
   // 3. Cascading Categories based on Asset Class / Group / Type
@@ -2012,7 +2028,7 @@ export function AssetForm() {
             onChange={(e) => handleAssetGroupChange(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="">-- Select Asset Group --</option>
+            <option value="">{availableAssetGroups.length > 0 ? '-- Select Asset Group --' : 'No asset groups linked to this asset type'}</option>
             {availableAssetGroups.map((g) => {
               const gName = g.name || g.code;
               return (
@@ -2034,7 +2050,7 @@ export function AssetForm() {
             onChange={(e) => handleAssetClassChange(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="">-- Select Asset Class --</option>
+            <option value="">{availableAssetClassesDropdown.length > 0 ? '-- Select Asset Class --' : (formData.assetGroup ? 'No asset classes linked to this group' : '-- Select Asset Group first --')}</option>
             {availableAssetClassesDropdown.map((cls) => {
               const cName = cls.name || cls.code;
               return (

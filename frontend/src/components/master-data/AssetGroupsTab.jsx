@@ -87,6 +87,12 @@ export function AssetGroupsTab({
 
   // Load Asset Groups from Backend Database on Mount
   const loadAssetGroups = async () => {
+    try {
+      const typeRes = await api.get('/master-data/asset-types').catch(() => null);
+      if (typeRes?.assetTypes && Array.isArray(typeRes.assetTypes) && typeRes.assetTypes.length > 0) {
+        setAvailableAssetTypes(typeRes.assetTypes);
+      }
+    } catch (_) {}
     setIsLoading(true);
     let customGroups = [];
     try {
