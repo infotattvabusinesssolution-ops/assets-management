@@ -172,7 +172,7 @@ const NAV_STRUCTURE = [
     subItems: [
       { name: 'Asset Groups', path: '/admin/master-data?tab=asset-groups' },
       { name: 'Asset Types', path: '/admin/master-data?tab=asset-types' },
-      { name: 'Asset Classes', path: '/admin/master-data?tab=classes' },
+      { name: 'Asset Sub Groups', path: '/admin/master-data?tab=classes' },
       { name: 'Categories', path: '/admin/master-data?tab=categories' },
       { name: 'Sub Categories', path: '/admin/master-data?tab=subcategories' },
       { name: 'Locations', path: '/admin/master-data?tab=locations' },

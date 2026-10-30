@@ -384,7 +384,7 @@ export function MasterDataSetup() {
   const TABS = [
     { id: 'asset-groups', name: 'Asset Groups', icon: Box, desc: 'Define and manage asset groups to classify your assets across the Asset360 enterprise platform.' },
     { id: 'asset-types', name: 'Asset Types', icon: Box, desc: 'Define and manage primary asset types (e.g. IT Equipment, Vehicle, Machinery) for high-level classification and category filtering.' },
-    { id: 'classes', name: 'Asset Classes', icon: Layers, desc: 'Define and manage asset classes within each asset group for classification and lifecycle control.' },
+    { id: 'classes', name: 'Asset Sub Groups', icon: Layers, desc: 'Define and manage asset sub groups within each asset group for classification and lifecycle control.' },
     { id: 'categories', name: 'Categories', icon: Tag, desc: 'Define and manage asset categories within each class.' },
     { id: 'subcategories', name: 'Sub Categories', icon: FolderTree, desc: 'Define and manage granular asset sub categories within each category.' },
     { id: 'locations', name: 'Locations', icon: MapPin, desc: 'Define and manage physical sites, campuses, buildings, and rooms where assets are deployed.' },

@@ -454,13 +454,13 @@ export function CategoriesTab({
           </div>
 
           <div className="w-full md:w-48 relative">
-            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Asset Class</span>
+            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Asset Sub Group</span>
             <select
               value={catClassFilter}
               onChange={(e) => setCatClassFilter(e.target.value)}
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
-              <option value="All Classes">All Classes</option>
+              <option value="All Classes">All Sub Groups</option>
               <option value="Hardware">Hardware</option>
               <option value="Network Equipment">Network Equipment</option>
               <option value="Building Structure">Building Structure</option>
@@ -589,7 +589,7 @@ export function CategoriesTab({
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Category Code</th>
                   <th className="py-3 px-3">Category Name</th>
-                  <th className="py-3 px-3">Asset Class</th>
+                  <th className="py-3 px-3">Asset Sub Group</th>
                   <th className="py-3 px-3">Asset Group</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
@@ -772,7 +772,7 @@ export function CategoriesTab({
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Asset Class</span>
+                <span className="text-slate-500 font-medium">Asset Sub Group</span>
                 <span className="col-span-2 font-semibold text-slate-800">{selectedCategory.className}</span>
               </div>
 
@@ -922,7 +922,7 @@ export function CategoriesTab({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Parent Asset Class *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Parent Asset Sub Group *</label>
                 <select
                   value={catFormState.className}
                   onChange={(e) => setCatFormState({ ...catFormState, className: e.target.value })}

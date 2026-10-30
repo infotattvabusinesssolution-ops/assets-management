@@ -419,13 +419,13 @@ export function SubCategoriesTab({
           </div>
 
           <div className="w-full md:w-40 relative">
-            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Asset Class</span>
+            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Asset Sub Group</span>
             <select
               value={subCatClassFilter}
               onChange={(e) => setSubCatClassFilter(e.target.value)}
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
-              <option value="All Classes">All Classes</option>
+              <option value="All Classes">All Sub Groups</option>
               <option value="Hardware">Hardware</option>
               <option value="Network Equipment">Network Equipment</option>
               <option value="HVAC Systems">HVAC Systems</option>
@@ -744,7 +744,7 @@ export function SubCategoriesTab({
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Asset Class</span>
+                <span className="text-slate-500 font-medium">Asset Sub Group</span>
                 <span className="col-span-2 font-semibold text-slate-800">{selectedSubCategory.className}</span>
               </div>
 
@@ -886,7 +886,7 @@ export function SubCategoriesTab({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Asset Class</label>
+                <label className="block font-semibold text-slate-700 mb-1">Asset Sub Group</label>
                 <select
                   value={subCatFormState.className}
                   onChange={(e) => setSubCatFormState({ ...subCatFormState, className: e.target.value })}

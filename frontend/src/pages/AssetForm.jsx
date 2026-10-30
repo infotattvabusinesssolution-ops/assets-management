@@ -2042,7 +2042,7 @@ export function AssetForm() {
 
         <div>
           <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">Asset Class</label>
+            <label className="font-bold text-slate-700 block">Asset Sub Group</label>
             <span className="text-[10px] text-purple-600 font-semibold">Cascaded</span>
           </div>
           <select
@@ -2050,7 +2050,7 @@ export function AssetForm() {
             onChange={(e) => handleAssetClassChange(e.target.value)}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="">{availableAssetClassesDropdown.length > 0 ? '-- Select Asset Class --' : (formData.assetGroup ? 'No asset classes linked to this group' : '-- Select Asset Group first --')}</option>
+            <option value="">{availableAssetClassesDropdown.length > 0 ? '-- Select Asset Sub Group --' : (formData.assetGroup ? 'No asset sub groups linked to this group' : '-- Select Asset Group first --')}</option>
             {availableAssetClassesDropdown.map((cls) => {
               const cName = cls.name || cls.code;
               return (

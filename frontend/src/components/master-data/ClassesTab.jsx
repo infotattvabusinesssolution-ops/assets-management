@@ -251,7 +251,7 @@ export function ClassesTab({
         if (selectedClass.id === editingClass.id) {
           setSelectedClass(updated.find((item) => item.id === editingClass.id));
         }
-        triggerToast && triggerToast(`Class "${clsFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Asset Sub Group "${clsFormState.name}" updated successfully.`);
       } else {
         let createdId = Date.now();
         try {
@@ -302,7 +302,7 @@ export function ClassesTab({
           const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
           localStorage.setItem('fams_custom_asset_classes', JSON.stringify([newClass, ...custom]));
         } catch (_) {}
-        triggerToast && triggerToast(`Class "${clsFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Asset Sub Group "${clsFormState.name}" created successfully.`);
       }
     } catch (err) {
       triggerToast && triggerToast(`Error saving class: ${err.message || 'Operation failed'}`);
@@ -416,7 +416,7 @@ export function ClassesTab({
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 bottom-2.5" />
             <input
               type="text"
-              placeholder="Search by class code, name or description..."
+              placeholder="Search by sub group code, name or description..."
               value={clsSearchQuery}
               onChange={(e) => setClsSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 pt-4 pb-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] focus:bg-white transition-all font-medium"
@@ -490,7 +490,7 @@ export function ClassesTab({
         <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Classes List</h2>
+              <h2 className="text-sm font-bold text-slate-900">Asset Sub Groups List</h2>
               <p className="text-xs text-slate-500">Showing all asset classes.</p>
             </div>
             <div className="flex items-center gap-2">
@@ -510,7 +510,7 @@ export function ClassesTab({
                 className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
               >
                 <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Add Class</span>
+                <span>Add Sub Group</span>
               </button>
             </div>
           </div>
@@ -556,8 +556,8 @@ export function ClassesTab({
                     />
                   </th>
                   <th className="py-3 px-2 text-center">#</th>
-                  <th className="py-3 px-3">Class Code</th>
-                  <th className="py-3 px-3">Class Name</th>
+                  <th className="py-3 px-3">Sub Group Code</th>
+                  <th className="py-3 px-3">Sub Group Name</th>
                   <th className="py-3 px-3.5">Asset Group</th>
                   <th className="py-3 px-4">Description</th>
                   <th className="py-3 px-3">Asset Type</th>
@@ -625,7 +625,7 @@ export function ClassesTab({
                           <button
                             onClick={() => handleOpenAddClsModal(cls)}
                             className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9]"
-                            title="Edit Class"
+                            title="Edit Sub Group"
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
@@ -757,12 +757,12 @@ export function ClassesTab({
           {selectedClass && (
             <div className="space-y-3.5 text-xs">
               <div className="grid grid-cols-3 gap-1 py-1">
-                <span className="text-slate-500 font-medium">Class Code</span>
+                <span className="text-slate-500 font-medium">Sub Group Code</span>
                 <span className="col-span-2 font-bold font-mono text-slate-900">{selectedClass.code}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Class Name</span>
+                <span className="text-slate-500 font-medium">Sub Group Name</span>
                 <span className="col-span-2 font-semibold text-slate-900">{selectedClass.name}</span>
               </div>
 
@@ -886,7 +886,7 @@ export function ClassesTab({
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <Layers className="w-4 h-4 text-[#6C2BD9]" />
-                <span>{editingClass ? 'Edit Class' : 'Add New Class'}</span>
+                <span>{editingClass ? 'Edit Sub Group' : 'Add New Sub Group'}</span>
               </h3>
               <button onClick={() => setShowAddClsModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
                 <X className="w-4 h-4" />
@@ -895,7 +895,7 @@ export function ClassesTab({
 
             <form onSubmit={handleSaveClass} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Class Code *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Sub Group Code *</label>
                 <input
                   type="text"
                   required
@@ -907,7 +907,7 @@ export function ClassesTab({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Class Name *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Sub Group Name *</label>
                 <input
                   type="text"
                   required

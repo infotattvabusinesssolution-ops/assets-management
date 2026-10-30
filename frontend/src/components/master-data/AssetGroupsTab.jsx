@@ -695,13 +695,13 @@ export function AssetGroupsTab({
                     role="button"
                     tabIndex={0}
                     className="flex items-center justify-between p-2.5 rounded-xl border border-slate-200/80 hover:border-purple-300 hover:bg-purple-50/60 transition-all cursor-pointer group shadow-2xs hover:shadow-sm"
-                    title="Explore related Asset Classes"
+                    title="Explore related Asset Sub Groups"
                   >
                     <div className="flex items-center gap-2.5">
                       <div className="w-7 h-7 rounded-lg bg-purple-100/70 text-[#6C2BD9] flex items-center justify-center group-hover:bg-[#6C2BD9] group-hover:text-white transition-colors">
                         <Layers className="w-3.5 h-3.5" />
                       </div>
-                      <span className="font-semibold text-xs text-slate-800 group-hover:text-[#6C2BD9]">Asset Classes</span>
+                      <span className="font-semibold text-xs text-slate-800 group-hover:text-[#6C2BD9]">Asset Sub Groups</span>
                     </div>
                     <div className="flex items-center gap-1.5">
                       <span className="font-mono text-xs font-bold text-slate-700 px-2 py-0.5 rounded-md bg-slate-100 group-hover:bg-purple-100 group-hover:text-[#6C2BD9]">
@@ -713,7 +713,7 @@ export function AssetGroupsTab({
                           e.stopPropagation();
                           if (onNavigateTab) onNavigateTab('classes');
                         }}
-                        title="Jump straight to Asset Classes tab"
+                        title="Jump straight to Asset Sub Groups tab"
                         className="p-1 rounded-md text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100 transition-colors"
                       >
                         <ExternalLink className="w-3.5 h-3.5" />
@@ -959,7 +959,7 @@ export function AssetGroupsTab({
                 <div>
                   <h3 className="text-base font-bold text-slate-900 flex items-center gap-2">
                     <span>
-                      {selectedRelatedType === 'classes' && 'Related Asset Classes'}
+                      {selectedRelatedType === 'classes' && 'Related Asset Sub Groups'}
                       {selectedRelatedType === 'categories' && 'Related Categories'}
                       {selectedRelatedType === 'subcategories' && 'Related Sub Categories'}
                     </span>
@@ -968,7 +968,7 @@ export function AssetGroupsTab({
                     </span>
                   </h3>
                   <p className="text-xs text-slate-500 mt-0.5">
-                    Showing all {selectedRelatedType === 'classes' ? 'classes' : selectedRelatedType === 'categories' ? 'categories' : 'sub-categories'} mapped under this asset group
+                    Showing all {selectedRelatedType === 'classes' ? 'sub groups' : selectedRelatedType === 'categories' ? 'categories' : 'sub-categories'} mapped under this asset group
                   </p>
                 </div>
               </div>
@@ -988,7 +988,7 @@ export function AssetGroupsTab({
                   type="text"
                   value={relatedSearchQuery}
                   onChange={(e) => setRelatedSearchQuery(e.target.value)}
-                  placeholder={`Search in related ${selectedRelatedType === 'classes' ? 'classes' : selectedRelatedType === 'categories' ? 'categories' : 'sub categories'}...`}
+                  placeholder={`Search in related ${selectedRelatedType === 'classes' ? 'sub groups' : selectedRelatedType === 'categories' ? 'categories' : 'sub categories'}...`}
                   className="w-full pl-9 pr-3 py-1.5 text-xs rounded-xl border border-slate-200 focus:outline-hidden focus:border-[#6C2BD9] focus:ring-2 focus:ring-purple-100"
                 />
               </div>
@@ -1002,7 +1002,7 @@ export function AssetGroupsTab({
                 }}
                 className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-semibold flex items-center gap-1.5 shadow-xs cursor-pointer transition-colors"
               >
-                <span>Open {selectedRelatedType === 'classes' ? 'Classes' : selectedRelatedType === 'categories' ? 'Categories' : 'Sub Categories'} Tab</span>
+                <span>Open {selectedRelatedType === 'classes' ? 'Asset Sub Groups' : selectedRelatedType === 'categories' ? 'Categories' : 'Sub Categories'} Tab</span>
                 <ExternalLink className="w-3.5 h-3.5" />
               </button>
             </div>
@@ -1031,7 +1031,7 @@ export function AssetGroupsTab({
                     }}
                     className="mt-3 px-3 py-1.5 rounded-lg bg-slate-100 hover:bg-purple-100 text-[#6C2BD9] text-xs font-semibold cursor-pointer"
                   >
-                    Go to {selectedRelatedType === 'classes' ? 'Asset Classes' : selectedRelatedType === 'categories' ? 'Categories' : 'Sub Categories'} Tab
+                    Go to {selectedRelatedType === 'classes' ? 'Asset Sub Groups' : selectedRelatedType === 'categories' ? 'Categories' : 'Sub Categories'} Tab
                   </button>
                 </div>
               ) : (
