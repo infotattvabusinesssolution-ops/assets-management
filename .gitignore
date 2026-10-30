@@ -27,6 +27,7 @@ lerna-debug.log*
 # Uploads & Temp files
 /uploads/
 backend/uploads/
+backend/data/
 !backend/modules/uploads/
 tmp/
 temp/
