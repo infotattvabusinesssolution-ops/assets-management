@@ -217,10 +217,14 @@ export function ClassesTab({
     try {
       if (editingClass) {
         if (typeof editingClass.id === 'string' && editingClass.id.length > 10) {
+          const cleanDesc = (clsFormState.description || '')
+            .replace(/\[kind:[^\]]+\]/g, '')
+            .replace(/\[group:[^\]]+\]/g, '')
+            .trim();
           await api.put(`/master-data/asset-classes/${editingClass.id}`, {
             code: clsFormState.code,
             name: clsFormState.name,
-            description: clsFormState.description,
+            description: `${cleanDesc} [kind:class] [group:${clsFormState.groupName}]`.trim(),
             status: clsFormState.status
           }).catch(() => null);
         }

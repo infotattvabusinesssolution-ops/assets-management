@@ -50,8 +50,14 @@ export function CategoriesTab({
           id: cat.id,
           code: cat.code,
           name: cat.name,
-          className: cat.code.startsWith('IT') ? 'Hardware' : (cat.code.startsWith('BLD') ? 'Building Structure' : 'General'),
-          groupName: cat.code.startsWith('IT') ? 'Information Technology' : (cat.code.startsWith('BLD') ? 'Buildings & Facilities' : 'Corporate Assets'),
+          className: (() => {
+            const m = (cat.description || '').match(/\[class:([^\]]+)\]/);
+            return m ? m[1] : (cat.code.startsWith('IT') ? 'Hardware' : (cat.code.startsWith('BLD') ? 'Building Structure' : 'General'));
+          })(),
+          groupName: (() => {
+            const m = (cat.description || '').match(/\[group:([^\]]+)\]/);
+            return m ? m[1] : (cat.code.startsWith('IT') ? 'Information Technology' : (cat.code.startsWith('BLD') ? 'Buildings & Facilities' : 'Corporate Assets'));
+          })(),
           description: cat.description || `Classification for ${cat.name}`,
           totalAssets: (idx + 1) * 28,
           status: cat.active === false ? 'Inactive' : 'Active',
@@ -221,8 +227,12 @@ export function CategoriesTab({
       'Furniture, Fixtures & Equipment': '[type:furniture]'
     };
     const tag = groupToTag[catFormState.groupName] || '[type:it]';
-    let cleanDesc = (catFormState.description || '').replace(/\[type:[^\]]+\]/g, '').trim();
-    const taggedDescription = cleanDesc ? `${cleanDesc} ${tag}` : tag;
+    let cleanDesc = (catFormState.description || '')
+      .replace(/\[type:[^\]]+\]/g, '')
+      .replace(/\[group:[^\]]+\]/g, '')
+      .replace(/\[class:[^\]]+\]/g, '')
+      .trim();
+    const taggedDescription = `${cleanDesc} ${tag} [group:${catFormState.groupName}] [class:${catFormState.className}]`.trim();
 
     if (editingCategory) {
       try {

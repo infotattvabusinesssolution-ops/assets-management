@@ -96,9 +96,15 @@ const normalizeStr = (s) => (s || '').toLowerCase().trim();
 
 const matchesGroupToType = (group, assetType) => {
   if (!assetType || assetType === 'All') return true;
+  const gType = normalizeStr(group.assetType);
+  const t = normalizeStr(assetType);
+
+  // Group assetType match ('Both', 'Physical', 'Intangible', or dynamic)
+  if (gType === 'both') return true;
+  if (gType && (gType === t || t.includes(gType) || gType.includes(t))) return true;
+
   const gName = normalizeStr(group.name || group.title || group);
   const gCode = normalizeStr(group.code);
-  const t = normalizeStr(assetType);
 
   if (t.includes('it') || t.includes('tech')) {
     return gName.includes('tech') || gName.includes('it') || gCode === 'it' || gCode === 'sw' || gCode === 'lic' || gName.includes('software');
@@ -124,7 +130,8 @@ const matchesGroupToType = (group, assetType) => {
 const matchesClassToGroup = (cls, assetGroup) => {
   if (!assetGroup) return true;
   const grpName = normalizeStr(assetGroup);
-  const clsGrp = normalizeStr(cls.groupName);
+  const groupMatch = (cls.description || '').match(/\[group:([^\]]+)\]/);
+  const clsGrp = normalizeStr(cls.groupName || (groupMatch ? groupMatch[1] : ''));
   const cCode = normalizeStr(cls.code);
   const cName = normalizeStr(cls.name);
 
@@ -506,23 +513,53 @@ export function AssetForm() {
           setAssetGroups(merged);
         }
         if (classRes?.assetClasses && Array.isArray(classRes.assetClasses) && classRes.assetClasses.length > 0) {
-          // 1. Separate SubCategories (all category-linked items like priyangshu belong here)
           const customSub = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-          const allSub = [...customSub, ...classRes.assetClasses.filter(sc => !customSub.some(cs => cs.id === sc.id || cs.code === sc.code))];
-          setSubCategories(allSub);
-
-          // 2. Separate true high-level Asset Classes (accounting/depreciation classes only)
-          const standardCodes = new Set(INITIAL_CLASSES.map(c => c.code.toUpperCase()));
           const customCls = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-          const trueServerClasses = classRes.assetClasses.filter(ac => standardCodes.has(ac.code?.toUpperCase()) || (!ac.categoryId && !ac.category));
+          const customSubCodes = new Set(customSub.map(s => (s.code || '').toUpperCase()));
+
+          // Separate SubCategories vs true Asset Classes
+          // Server classes: identify by [kind:class] or !includes('[kind:subcat]')
+          const serverClasses = classRes.assetClasses
+            .filter(ac => !customSubCodes.has((ac.code || '').toUpperCase()) && !(ac.description || '').includes('[kind:subcat]'))
+            .map(ac => {
+              const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/);
+              return {
+                ...ac,
+                groupName: groupMatch ? groupMatch[1] : (ac.groupName || 'General')
+              };
+            });
+
+          const serverSubCats = classRes.assetClasses
+            .filter(ac => (ac.description || '').includes('[kind:subcat]') || customSubCodes.has((ac.code || '').toUpperCase()))
+            .map(ac => ({
+              ...ac,
+              categoryName: ac.category?.name || 'General'
+            }));
+
           const mergedCls = [
             ...customCls,
-            ...trueServerClasses.filter(sc => !customCls.some(cc => (cc.code && sc.code && cc.code.toUpperCase() === sc.code.toUpperCase()) || cc.id === sc.id)),
-            ...INITIAL_CLASSES.filter(ic => !customCls.some(cc => cc.code?.toUpperCase() === ic.code?.toUpperCase()) && !trueServerClasses.some(sc => sc.code?.toUpperCase() === ic.code?.toUpperCase()))
+            ...serverClasses.filter(sc => !customCls.some(cc => (cc.code && sc.code && cc.code.toUpperCase() === sc.code.toUpperCase()) || cc.id === sc.id))
           ];
           setAssetClasses(mergedCls);
+
+          const allSub = [
+            ...customSub,
+            ...serverSubCats.filter(sc => !customSub.some(cs => cs.id === sc.id || (cs.code && sc.code && cs.code.toUpperCase() === sc.code.toUpperCase())))
+          ];
+          setSubCategories(allSub);
         }
-        if (catRes?.categories) setCategories(catRes.categories);
+        if (catRes?.categories) {
+          const enrichedCategories = catRes.categories.map(c => {
+            const groupMatch = (c.description || '').match(/\[group:([^\]]+)\]/);
+            const classMatch = (c.description || '').match(/\[class:([^\]]+)\]/);
+            return {
+              ...c,
+              groupName: groupMatch ? groupMatch[1] : (c.groupName || (c.code?.startsWith('IT') ? 'Information Technology' : 'General')),
+              className: classMatch ? classMatch[1] : (c.className || (c.code?.startsWith('IT') ? 'Hardware' : 'General'))
+            };
+          });
+          setCategories(enrichedCategories);
+        }
         if (siteRes?.sites) setSites(siteRes.sites);
         if (companyRes?.companies) {
           const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
@@ -743,18 +780,32 @@ export function AssetForm() {
   // 3. Cascading Categories based on Asset Class / Group / Type
   const availableCategories = useMemo(() => {
     let cats = (categories || []).filter(c => c.active !== false);
-    // Filter by Asset Type
-    cats = cats.filter(c => matchesAssetType(c, formData.assetType));
 
-    // Filter by Asset Class if selected
+    // 1. Filter by Asset Class if selected
     if (formData.assetClass) {
       const clsLower = normalizeStr(formData.assetClass);
       const matchedByClass = cats.filter(c => {
-        const catClass = normalizeStr(c.className);
-        return catClass === clsLower || clsLower.includes(catClass) || catClass.includes(clsLower);
+        const groupMatch = (c.description || '').match(/\[group:([^\]]+)\]/);
+        const classMatch = (c.description || '').match(/\[class:([^\]]+)\]/);
+        const catClass = normalizeStr(c.className || (classMatch ? classMatch[1] : ''));
+        return catClass && (catClass === clsLower || clsLower.includes(catClass) || catClass.includes(clsLower));
       });
       if (matchedByClass.length > 0) cats = matchedByClass;
     }
+
+    // 2. Filter by Asset Group if selected and not already narrowed down by class
+    if (formData.assetGroup && (!formData.assetClass || cats.length === (categories || []).length)) {
+      const grpLower = normalizeStr(formData.assetGroup);
+      const matchedByGroup = cats.filter(c => {
+        const groupMatch = (c.description || '').match(/\[group:([^\]]+)\]/);
+        const catGroup = normalizeStr(c.groupName || (groupMatch ? groupMatch[1] : ''));
+        return catGroup && (catGroup === grpLower || grpLower.includes(catGroup) || catGroup.includes(grpLower));
+      });
+      if (matchedByGroup.length > 0) cats = matchedByGroup;
+    }
+
+    // 3. Filter by Asset Type
+    cats = cats.filter(c => matchesAssetType(c, formData.assetType));
 
     const seen = new Set();
     const unique = [];
@@ -765,8 +816,8 @@ export function AssetForm() {
         unique.push(c);
       }
     }
-    return unique;
-  }, [categories, formData.assetType, formData.assetClass]);
+    return unique.length > 0 ? unique : (categories || []);
+  }, [categories, formData.assetType, formData.assetGroup, formData.assetClass]);
 
   // 4. Cascading Sub Categories strictly based on selected Category
   const availableAssetClasses = useMemo(() => {
@@ -837,20 +888,22 @@ export function AssetForm() {
   // Top-Down Step 1: Change Asset Type
   const handleAssetTypeChange = (newType) => {
     const nextGroups = (assetGroups || []).filter(g => matchesGroupToType(g, newType));
-    const nextGroup = nextGroups.length > 0 ? (nextGroups[0].name || nextGroups[0].code) : '';
+    const currentGroupValid = nextGroups.some(g => (g.name || g.code) === formData.assetGroup);
+    const nextGroup = currentGroupValid ? formData.assetGroup : (nextGroups.length > 0 ? (nextGroups[0].name || nextGroups[0].code) : '');
 
     const nextClasses = (assetClasses || []).filter(cls => matchesClassToGroup(cls, nextGroup));
-    const nextClass = nextClasses.length > 0 ? (nextClasses[0].name || nextClasses[0].code) : '';
+    const currentClassValid = nextClasses.some(c => (c.name || c.code) === formData.assetClass);
+    const nextClass = currentClassValid ? formData.assetClass : (nextClasses.length > 0 ? (nextClasses[0].name || nextClasses[0].code) : '');
 
     setFormData(prev => ({
       ...prev,
       assetType: newType,
       assetGroup: nextGroup,
       assetClass: nextClass,
-      category: '',
-      categoryId: '',
-      subcategory: '',
-      assetClassId: '',
+      category: currentGroupValid && currentClassValid ? prev.category : '',
+      categoryId: currentGroupValid && currentClassValid ? prev.categoryId : '',
+      subcategory: currentGroupValid && currentClassValid ? prev.subcategory : '',
+      assetClassId: currentGroupValid && currentClassValid ? prev.assetClassId : '',
       manufacturer: ''
     }));
   };
@@ -858,16 +911,17 @@ export function AssetForm() {
   // Top-Down Step 2: Change Asset Group
   const handleAssetGroupChange = (newGroup) => {
     const nextClasses = (assetClasses || []).filter(cls => matchesClassToGroup(cls, newGroup));
-    const nextClass = nextClasses.length > 0 ? (nextClasses[0].name || nextClasses[0].code) : '';
+    const currentClassValid = nextClasses.some(c => (c.name || c.code) === formData.assetClass);
+    const nextClass = currentClassValid ? formData.assetClass : (nextClasses.length > 0 ? (nextClasses[0].name || nextClasses[0].code) : '');
 
     setFormData(prev => ({
       ...prev,
       assetGroup: newGroup,
       assetClass: nextClass,
-      category: '',
-      categoryId: '',
-      subcategory: '',
-      assetClassId: ''
+      category: currentClassValid ? prev.category : '',
+      categoryId: currentClassValid ? prev.categoryId : '',
+      subcategory: currentClassValid ? prev.subcategory : '',
+      assetClassId: currentClassValid ? prev.assetClassId : ''
     }));
   };
 
@@ -900,36 +954,21 @@ export function AssetForm() {
       || categories.find(c => (c.name || '').trim().toLowerCase() === catName.trim().toLowerCase())
       || categories.find(c => (c.name || '').toLowerCase().includes(catName.toLowerCase()));
 
-    const catLower = (targetCat?.name || catName).toLowerCase();
-    let resolvedGroup = formData.assetGroup || 'Information Technology';
-    let resolvedClass = formData.assetClass || 'Hardware';
-    let resolvedType = formData.assetType || 'IT Equipment';
+    // DO NOT override assetType, assetGroup, assetClass if user already selected them!
+    const groupMatch = (targetCat?.description || '').match(/\[group:([^\]]+)\]/);
+    const classMatch = (targetCat?.description || '').match(/\[class:([^\]]+)\]/);
 
-    if (catLower.includes('server') || catLower.includes('it') || catLower.includes('compute') || catLower.includes('laptop') || catLower.includes('desktop') || catLower.includes('mobile') || catLower.includes('net')) {
-      resolvedType = 'IT Equipment';
-      resolvedGroup = 'Information Technology';
-      resolvedClass = (catLower.includes('net') || catLower.includes('switch') || catLower.includes('router')) ? 'Network Equipment' : 'Hardware';
-    } else if (catLower.includes('veh') || catLower.includes('fleet') || catLower.includes('truck') || catLower.includes('car') || catLower.includes('suv')) {
-      resolvedType = 'Vehicle';
-      resolvedGroup = 'Vehicles';
-      resolvedClass = (catLower.includes('truck') || catLower.includes('heavy')) ? 'Heavy Vehicles' : 'Light Vehicles';
-    } else if (catLower.includes('fac') || catLower.includes('mach') || catLower.includes('hvac') || catLower.includes('plant') || catLower.includes('cnc')) {
-      resolvedType = catLower.includes('mach') ? 'Machinery' : 'Facility & Building';
-      resolvedGroup = catLower.includes('mach') ? 'Plant & Machinery' : 'Buildings & Facilities';
-      resolvedClass = catLower.includes('hvac') ? 'MEP Systems' : (catLower.includes('mach') ? 'Production Equipment' : 'Building Structure');
-    } else if (catLower.includes('furn') || catLower.includes('chair') || catLower.includes('desk') || catLower.includes('table')) {
-      resolvedType = 'Furniture & Fixtures';
-      resolvedGroup = 'Furniture, Fixtures & Equipment';
-      resolvedClass = 'Office Furniture';
-    }
+    const resolvedGroup = formData.assetGroup || targetCat?.groupName || (groupMatch ? groupMatch[1] : '');
+    const resolvedClass = formData.assetClass || targetCat?.className || (classMatch ? classMatch[1] : '');
+    const resolvedType = formData.assetType || 'IT Equipment';
 
     setFormData(prev => ({
       ...prev,
       category: targetCat?.name || catName,
       categoryId: targetCat?.id || '',
       assetType: resolvedType,
-      assetGroup: resolvedGroup,
-      assetClass: resolvedClass,
+      assetGroup: resolvedGroup || prev.assetGroup,
+      assetClass: resolvedClass || prev.assetClass,
       subcategory: '',
       assetClassId: ''
     }));
