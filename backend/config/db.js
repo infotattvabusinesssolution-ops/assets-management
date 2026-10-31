@@ -28,6 +28,7 @@ export async function connectDB(maxRetries = 3) {
       }
       return true;
     } catch (sqlErr) {
+      await prisma.().catch(() => {});
       if (attempt < maxRetries) {
         const waitMs = attempt * 1000;
         console.warn(`⚠️ SQL Server connection attempt ${attempt}/${maxRetries} failed (${sqlErr.message}). Retrying in ${waitMs}ms...`);
