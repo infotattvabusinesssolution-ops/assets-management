@@ -29,6 +29,44 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
+// Standard Enterprise Baseline Master Data (guarantees options exist even if DB tables are empty)
+const DEFAULT_ASSET_GROUPS = [
+  { id: 'grp-01', code: 'GRP-IT', name: 'Information Technology' },
+  { id: 'grp-02', code: 'GRP-FUR', name: 'Furniture & Fixtures' },
+  { id: 'grp-03', code: 'GRP-VEH', name: 'Motor Vehicles' },
+  { id: 'grp-04', code: 'GRP-FAC', name: 'Facilities & Building Equipment' },
+  { id: 'grp-05', code: 'GRP-OFF', name: 'Office Electronics' }
+];
+
+const DEFAULT_ASSET_SUBGROUPS = [
+  { id: 'subgrp-01', code: 'CLS-LAP', name: 'Laptops', groupName: 'Information Technology' },
+  { id: 'subgrp-02', code: 'CLS-DSK', name: 'Desktops & Workstations', groupName: 'Information Technology' },
+  { id: 'subgrp-03', code: 'CLS-SRV', name: 'Servers & Storage', groupName: 'Information Technology' },
+  { id: 'subgrp-04', code: 'CLS-NET', name: 'Network Switches & Routers', groupName: 'Information Technology' },
+  { id: 'subgrp-05', code: 'CLS-MON', name: 'Monitors & Displays', groupName: 'Information Technology' },
+  { id: 'subgrp-06', code: 'CLS-CHR', name: 'Executive & Task Chairs', groupName: 'Furniture & Fixtures' },
+  { id: 'subgrp-07', code: 'CLS-DSK2', name: 'Workstations & Desks', groupName: 'Furniture & Fixtures' },
+  { id: 'subgrp-08', code: 'CLS-SED', name: 'Sedan & Passenger Cars', groupName: 'Motor Vehicles' },
+  { id: 'subgrp-09', code: 'CLS-VAN', name: 'Delivery Vans & Trucks', groupName: 'Motor Vehicles' },
+  { id: 'subgrp-10', code: 'CLS-PRN', name: 'Multifunction Printers', groupName: 'Office Electronics' }
+];
+
+const DEFAULT_CATEGORIES = [
+  { id: 'cat-01', code: 'CAT-IT', name: 'Computer Equipment', groupName: 'Information Technology' },
+  { id: 'cat-02', code: 'CAT-FUR', name: 'Office Furniture', groupName: 'Furniture & Fixtures' },
+  { id: 'cat-03', code: 'CAT-VEH', name: 'Vehicles', groupName: 'Motor Vehicles' },
+  { id: 'cat-04', code: 'CAT-PLT', name: 'Plant & Machinery', groupName: 'Facilities & Building Equipment' },
+  { id: 'cat-05', code: 'CAT-OFF', name: 'Office Equipment', groupName: 'Office Electronics' }
+];
+
+const DEFAULT_SUBCATEGORIES = [
+  { id: 'subcat-01', code: 'SCAT-PORT', name: 'Portable Computing', categoryName: 'Computer Equipment' },
+  { id: 'subcat-02', code: 'SCAT-DESK', name: 'Fixed Workstations', categoryName: 'Computer Equipment' },
+  { id: 'subcat-03', code: 'SCAT-SEAT', name: 'Ergonomic Seating', categoryName: 'Office Furniture' },
+  { id: 'subcat-04', code: 'SCAT-TABL', name: 'Conference & Office Tables', categoryName: 'Office Furniture' },
+  { id: 'subcat-05', code: 'SCAT-FLEET', name: 'Corporate Fleet', categoryName: 'Vehicles' }
+];
+
 export function ItemMasterTab({
   triggerToast,
   externalShowAddModal,
@@ -101,10 +139,55 @@ export function ItemMasterTab({
         setItems(itemRes.items);
         setSelectedItem(itemRes.items[0] || null);
       }
-      if (grpRes?.assetGroups) setAssetGroups(grpRes.assetGroups);
-      if (clsRes?.assetClasses) setAssetSubGroups(clsRes.assetClasses);
-      if (subCatRes?.assetClasses) setSubCategories(subCatRes.assetClasses);
-      if (catRes?.categories) setCategories(catRes.categories);
+
+      // Merge Asset Groups: API + LocalStorage + Defaults
+      const localGroups = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+      const serverGroups = grpRes?.assetGroups || [];
+      const seenGroupNames = new Set();
+      const mergedGroups = [...serverGroups, ...localGroups, ...DEFAULT_ASSET_GROUPS].filter(g => {
+        const name = (g.name || g.code || '').trim().toLowerCase();
+        if (!name || seenGroupNames.has(name)) return false;
+        seenGroupNames.add(name);
+        return true;
+      });
+      setAssetGroups(mergedGroups);
+
+      // Merge Asset Subgroups (Classes): API + LocalStorage + Defaults
+      const localClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+      const serverClasses = clsRes?.assetClasses || [];
+      const seenClassNames = new Set();
+      const mergedClasses = [...serverClasses, ...localClasses, ...DEFAULT_ASSET_SUBGROUPS].filter(c => {
+        const name = (c.name || c.code || '').trim().toLowerCase();
+        if (!name || seenClassNames.has(name)) return false;
+        seenClassNames.add(name);
+        return true;
+      });
+      setAssetSubGroups(mergedClasses);
+
+      // Merge Categories: API + LocalStorage + Defaults
+      const localCats = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+      const serverCats = catRes?.categories || [];
+      const seenCatNames = new Set();
+      const mergedCats = [...serverCats, ...localCats, ...DEFAULT_CATEGORIES].filter(c => {
+        const name = (c.name || c.code || '').trim().toLowerCase();
+        if (!name || seenCatNames.has(name)) return false;
+        seenCatNames.add(name);
+        return true;
+      });
+      setCategories(mergedCats);
+
+      // Merge Sub Categories: API + LocalStorage + Defaults
+      const localSubCats = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+      const serverSubCats = subCatRes?.assetClasses || [];
+      const seenSubCatNames = new Set();
+      const mergedSubCats = [...serverSubCats, ...localSubCats, ...DEFAULT_SUBCATEGORIES].filter(s => {
+        const name = (s.name || s.code || '').trim().toLowerCase();
+        if (!name || seenSubCatNames.has(name)) return false;
+        seenSubCatNames.add(name);
+        return true;
+      });
+      setSubCategories(mergedSubCats);
+
       if (mfrRes?.manufacturers) setManufacturers(mfrRes.manufacturers);
       if (uomRes?.uoms) setUoms(uomRes.uoms);
     } catch (err) {
@@ -125,15 +208,17 @@ export function ItemMasterTab({
     }
   }, [externalShowAddModal]);
 
-  // Derived Cascading Options for Add/Edit Modal
+  // Derived Cascading Options for Add/Edit Modal (with graceful non-empty fallbacks)
   const availableModalSubGroups = useMemo(() => {
     if (!formState.assetGroupName) return assetSubGroups;
     const targetGroup = formState.assetGroupName.toLowerCase();
-    return assetSubGroups.filter(sg => {
+    const filtered = assetSubGroups.filter(sg => {
       const grp = (sg.groupName || '').toLowerCase();
       const desc = (sg.description || '').toLowerCase();
       return grp === targetGroup || desc.includes(`[group:${targetGroup}]`) || grp.includes(targetGroup);
     });
+    // Return filtered matches; if none match this specific group, show all sub groups rather than empty list
+    return filtered.length > 0 ? filtered : assetSubGroups;
   }, [assetSubGroups, formState.assetGroupName]);
 
   const availableModalCategories = useMemo(() => {
@@ -141,7 +226,7 @@ export function ItemMasterTab({
     const targetSubGroup = (formState.assetSubGroupName || '').toLowerCase();
     const targetGroup = (formState.assetGroupName || '').toLowerCase();
 
-    return categories.filter(c => {
+    const filtered = categories.filter(c => {
       const cls = (c.className || '').toLowerCase();
       const desc = (c.description || '').toLowerCase();
       const grp = (c.groupName || '').toLowerCase();
@@ -149,15 +234,19 @@ export function ItemMasterTab({
       if (targetGroup && (grp === targetGroup || desc.includes(`[group:${targetGroup}]`))) return true;
       return false;
     });
+    // Return filtered categories; fallback to all categories if none match
+    return filtered.length > 0 ? filtered : categories;
   }, [categories, formState.assetSubGroupName, formState.assetGroupName]);
 
   const availableModalSubCategories = useMemo(() => {
     if (!formState.categoryId && !formState.categoryName) return subCategories;
-    return subCategories.filter(sc => {
+    const filtered = subCategories.filter(sc => {
       if (formState.categoryId && sc.categoryId === formState.categoryId) return true;
       if (formState.categoryName && (sc.category?.name === formState.categoryName || sc.categoryName === formState.categoryName)) return true;
       return false;
     });
+    // Return filtered subcategories; fallback to all subcategories if none match
+    return filtered.length > 0 ? filtered : subCategories;
   }, [subCategories, formState.categoryId, formState.categoryName]);
 
   // Filtered Items for List
@@ -225,8 +314,8 @@ export function ItemMasterTab({
         itemName: '',
         supplierBarcode: '',
         description: '',
-        assetGroupId: assetGroups[0]?.id || '',
-        assetGroupName: assetGroups[0]?.name || '',
+        assetGroupId: '',
+        assetGroupName: '',
         assetSubGroupId: '',
         assetSubGroupName: '',
         categoryId: '',
