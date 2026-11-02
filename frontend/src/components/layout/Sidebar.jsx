@@ -310,9 +310,16 @@ export function Sidebar({ collapsed, setCollapsed }) {
     movements: location.pathname.startsWith('/movements') || location.pathname.startsWith('/movement-approvals') || location.pathname.startsWith('/movement-history'),
     stocktakes: location.pathname.startsWith('/stocktakes') || location.pathname.startsWith('/verification'),
     maintenance: location.pathname.startsWith('/maintenance') || location.pathname.startsWith('/service-providers') || location.pathname.startsWith('/spare-parts') || location.pathname.startsWith('/preventive-maintenance') || location.pathname.startsWith('/inventory'),
+    disposal: location.pathname.startsWith('/disposals') || location.pathname.startsWith('/disposal'),
     reports: location.pathname.startsWith('/reports'),
     administration: location.pathname.startsWith('/admin') || location.pathname.startsWith('/master-data') || location.pathname.startsWith('/audit-trail') || location.pathname.startsWith('/notifications') || location.pathname.startsWith('/backup-scheduler') || location.pathname.startsWith('/integrations')
   });
+
+  useEffect(() => {
+    if (location.pathname.startsWith('/disposals') || location.pathname.startsWith('/disposal')) {
+      setOpenMenus(prev => ({ ...prev, disposal: true }));
+    }
+  }, [location.pathname]);
 
   const toggleSubmenu = (menuId) => {
     setOpenMenus(prev => ({
