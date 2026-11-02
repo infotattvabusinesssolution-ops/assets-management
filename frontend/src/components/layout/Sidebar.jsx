@@ -172,10 +172,11 @@ const NAV_STRUCTURE = [
     subItems: [
       { name: 'Item Master', path: '/admin/master-data?tab=item-master' },
       { name: 'Asset Groups', path: '/admin/master-data?tab=asset-groups' },
-      { name: 'Asset Types', path: '/admin/master-data?tab=asset-types' },
       { name: 'Asset Sub Groups', path: '/admin/master-data?tab=classes' },
       { name: 'Categories', path: '/admin/master-data?tab=categories' },
       { name: 'Sub Categories', path: '/admin/master-data?tab=subcategories' },
+      { name: 'Companies', path: '/admin/master-data?tab=companies' },
+      { name: 'Custodians', path: '/admin/master-data?tab=custodians' },
       { name: 'Locations', path: '/admin/master-data?tab=locations' },
       { name: 'Departments', path: '/admin/master-data?tab=departments' },
       { name: 'Cost Centers', path: '/admin/master-data?tab=cost-centers' },

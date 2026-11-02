@@ -2,7 +2,7 @@ import { Router } from 'express';
 import {
   getMasterDataStats,
   getAssetGroups, createAssetGroup, updateAssetGroup, deleteAssetGroup,
-  getCompanies, createCompany,
+  getCompanies, createCompany, updateCompany, deleteCompany,
   getSites, createSite, updateSite, deleteSite,
   getBuildings, createBuilding,
   getFloors, createFloor,
@@ -16,7 +16,7 @@ import {
   getModels, createModel,
   getDepartments, createDepartment, updateDepartment, deleteDepartment,
   getCostCenters, createCostCenter, updateCostCenter, deleteCostCenter,
-  getEmployees, createEmployee,
+  getEmployees, createEmployee, updateEmployee, deleteEmployee,
   getCustomFields, createCustomField,
   updateMasterEntity,
   toggleMasterEntityStatus,
@@ -39,6 +39,8 @@ router.delete('/asset-groups/:id', deleteAssetGroup);
 
 router.get('/companies', getCompanies);
 router.post('/companies', createCompany);
+router.put('/companies/:id', updateCompany);
+router.delete('/companies/:id', deleteCompany);
 
 router.get('/sites', getSites);
 router.post('/sites', createSite);
@@ -96,6 +98,13 @@ router.delete('/cost-centers/:id', deleteCostCenter);
 
 router.get('/employees', getEmployees);
 router.post('/employees', createEmployee);
+router.put('/employees/:id', updateEmployee);
+router.delete('/employees/:id', deleteEmployee);
+
+router.get('/custodians', getEmployees);
+router.post('/custodians', createEmployee);
+router.put('/custodians/:id', updateEmployee);
+router.delete('/custodians/:id', deleteEmployee);
 
 router.get('/custom-fields', getCustomFields);
 router.post('/custom-fields', createCustomField);

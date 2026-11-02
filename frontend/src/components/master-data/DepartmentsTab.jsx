@@ -8,6 +8,7 @@ import {
   ChevronRight,
   ChevronLeft,
   Users,
+  BarChart3,
   Box,
   MapPin,
   Copy,
@@ -32,6 +33,7 @@ export function DepartmentsTab({
   setExternalShowAddModal
 }) {
   const [departmentsList, setDepartmentsList] = useState([]);
+  const [costCenters, setCostCenters] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedDeptIds, setSelectedDeptIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -41,33 +43,45 @@ export function DepartmentsTab({
   const loadDepartments = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/departments');
+      const [res, ccRes] = await Promise.all([
+        api.get('/master-data/departments'),
+        api.get('/master-data/cost-centers').catch(() => ({ costCenters: [] }))
+      ]);
+      const loadedCCs = ccRes?.costCenters || [];
+      setCostCenters(loadedCCs);
+
       if (res?.departments && res.departments.length > 0) {
-        const mapped = res.departments.map((dept, idx) => ({
-          id: dept.id,
-          code: dept.code,
-          name: dept.name,
-          type: dept.code.includes('OPS') ? 'Operations' : 'Support',
-          parentDepartment: '-',
-          location: 'Dubai HQ',
-          company: 'Wavelogix FZC',
-          manager: dept.name.includes('IT') ? 'Michael Chen' : (dept.name.includes('Finance') ? 'Ahmed Khan' : 'Department Head'),
-          email: `${dept.code.toLowerCase()}@wavelogix.com`,
-          phone: '+971 4 398 2211',
-          description: `Department overseeing ${dept.name}`,
-          employees: (idx + 1) * 15,
-          status: dept.active === false ? 'Inactive' : 'Active',
-          createdBy: 'Admin',
-          createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:00 AM' : '15 Jan 2025 09:00 AM',
-          lastModifiedBy: 'Admin',
-          lastModifiedOn: dept.updatedAt ? new Date(dept.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 03:00 PM' : '20 Aug 2025 03:00 PM',
-          relatedInfo: {
-            subDepartments: 2,
-            locations: 2,
-            assets: (idx + 1) * 35,
-            users: (idx + 1) * 15
-          }
-        }));
+        const mapped = res.departments.map((dept, idx) => {
+          const matchedCC = loadedCCs.find((c) => c.companyId === dept.companyId || c.code.includes(dept.code) || c.name.toLowerCase().includes(dept.name.toLowerCase()));
+          return {
+            id: dept.id,
+            code: dept.code,
+            name: dept.name,
+            costCenterCode: matchedCC ? matchedCC.code : `CC-${dept.code}`,
+            costCenterName: matchedCC ? matchedCC.name : `${dept.name} Cost Center`,
+            costCenterId: matchedCC ? matchedCC.id : '',
+            type: dept.code.includes('OPS') ? 'Operations' : 'Support',
+            parentDepartment: '-',
+            location: 'Dubai HQ',
+            company: 'Wavelogix FZC',
+            manager: dept.name.includes('IT') ? 'Michael Chen' : (dept.name.includes('Finance') ? 'Ahmed Khan' : 'Department Head'),
+            email: `${dept.code.toLowerCase()}@wavelogix.com`,
+            phone: '+971 4 398 2211',
+            description: `Department overseeing ${dept.name}`,
+            employees: (idx + 1) * 15,
+            status: dept.active === false ? 'Inactive' : 'Active',
+            createdBy: 'Admin',
+            createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:00 AM' : '15 Jan 2025 09:00 AM',
+            lastModifiedBy: 'Admin',
+            lastModifiedOn: dept.updatedAt ? new Date(dept.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 03:00 PM' : '20 Aug 2025 03:00 PM',
+            relatedInfo: {
+              subDepartments: 2,
+              locations: 2,
+              assets: (idx + 1) * 35,
+              users: (idx + 1) * 15
+            }
+          };
+        });
         setDepartmentsList(mapped);
         setSelectedDepartment((prev) => (prev ? mapped.find((d) => d.id === prev.id) || mapped[0] || null : mapped[0] || null));
       }
@@ -103,6 +117,7 @@ export function DepartmentsTab({
     email: '',
     phone: '',
     description: '',
+    costCenterId: '',
     status: 'Active'
   });
 
@@ -153,6 +168,7 @@ export function DepartmentsTab({
         email: deptToEdit.email || '',
         phone: deptToEdit.phone || '',
         description: deptToEdit.description || '',
+        costCenterId: deptToEdit.costCenterId || '',
         status: deptToEdit.status || 'Active'
       });
     } else {
@@ -547,6 +563,7 @@ export function DepartmentsTab({
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Dept Code</th>
                   <th className="py-3 px-3">Dept Name</th>
+                  <th className="py-3 px-3">Cost Center</th>
                   <th className="py-3 px-3">Type</th>
                   <th className="py-3 px-3">Manager</th>
                   <th className="py-3 px-3">Location</th>
@@ -558,7 +575,7 @@ export function DepartmentsTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredDepartments.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={11} className="py-12 text-center text-slate-400 text-xs font-medium">
                       No departments found. Click "+ Add Department" to create one.
                     </td>
                   </tr>
@@ -588,6 +605,7 @@ export function DepartmentsTab({
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{dept.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{dept.name}</td>
+                      <td className="py-2.5 px-3 font-mono font-bold text-xs text-[#6C2BD9]">{dept.costCenterCode || `CC-${dept.code}`}</td>
                       <td className="py-2.5 px-3 text-slate-700">{dept.type}</td>
                       <td className="py-2.5 px-3 text-slate-800">{dept.manager}</td>
                       <td className="py-2.5 px-3 text-slate-700">{dept.location}</td>
@@ -765,6 +783,17 @@ export function DepartmentsTab({
                 <div className="space-y-1.5">
                   <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-purple-200 hover:bg-purple-50/50 transition-colors cursor-pointer group">
                     <div className="flex items-center gap-2 text-slate-700 group-hover:text-[#6C2BD9]">
+                      <BarChart3 className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                      <span className="font-semibold">Linked Cost Center</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono font-bold text-[#6C2BD9]">{selectedDepartment.costCenterCode || `CC-${selectedDepartment.code}`}</span>
+                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
+                    </div>
+                  </div>
+
+                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-purple-200 hover:bg-purple-50/50 transition-colors cursor-pointer group">
+                    <div className="flex items-center gap-2 text-slate-700 group-hover:text-[#6C2BD9]">
                       <FolderTree className="w-3.5 h-3.5 text-[#6C2BD9]" />
                       <span className="font-semibold">Sub Departments</span>
                     </div>
@@ -900,6 +929,24 @@ export function DepartmentsTab({
                     <option value="Riyadh Office">Riyadh Office</option>
                   </select>
                 </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Primary Cost Center</label>
+                  <select
+                    value={deptFormState.costCenterId || ''}
+                    onChange={(e) => setDeptFormState({ ...deptFormState, costCenterId: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="">- Select Linked Cost Center -</option>
+                    {costCenters.map((cc) => (
+                      <option key={cc.id} value={cc.id}>
+                        {cc.code} ({cc.name})
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Company</label>
                   <select

@@ -346,6 +346,54 @@ export async function createCompany(req, res, next) {
   } catch (err) { next(err); }
 }
 
+
+export async function updateCompany(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { code, name, currency, taxId, address, active, status } = req.body;
+    const updateData = {};
+    if (code) updateData.code = code.trim().toUpperCase();
+    if (name) updateData.name = name.trim();
+    if (currency) updateData.currency = currency;
+    if (taxId !== undefined) updateData.taxId = taxId;
+    if (address !== undefined) updateData.address = address;
+    if (active !== undefined) updateData.active = Boolean(active);
+    else if (status !== undefined) updateData.active = status === 'Active';
+
+    if (isDbConnected()) {
+      try {
+        const company = await prisma.company.update({
+          where: { id },
+          data: updateData
+        });
+        return res.json({ success: true, company });
+      } catch (dbErr) {
+        console.warn('DB update company skipped:', dbErr.message);
+      }
+    }
+    res.json({ success: true, company: { id, ...req.body } });
+  } catch (err) { next(err); }
+}
+
+export async function deleteCompany(req, res, next) {
+  try {
+    const { id } = req.params;
+    if (isDbConnected()) {
+      try {
+        await prisma.company.update({
+          where: { id },
+          data: { active: false }
+        }).catch(async () => {
+          await prisma.company.delete({ where: { id } });
+        });
+      } catch (dbErr) {
+        console.warn('DB delete company skipped:', dbErr.message);
+      }
+    }
+    res.json({ success: true, message: 'Company deactivated successfully' });
+  } catch (err) { next(err); }
+}
+
 export async function getSites(req, res, next) {
   try {
     const where = {};
@@ -1045,6 +1093,56 @@ export async function createEmployee(req, res, next) {
   try {
     const employee = await prisma.employee.create({ data: req.body });
     res.status(201).json({ success: true, employee });
+  } catch (err) { next(err); }
+}
+
+
+export async function updateEmployee(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { employeeCode, fullName, email, companyId, departmentId, costCenterId, active, status, custodianType, organization, section, location, phone } = req.body;
+    const updateData = {};
+    if (employeeCode) updateData.employeeCode = employeeCode.trim().toUpperCase();
+    if (fullName) updateData.fullName = fullName.trim();
+    if (email) updateData.email = email.trim();
+    if (companyId) updateData.companyId = companyId;
+    if (departmentId !== undefined) updateData.departmentId = departmentId || null;
+    if (costCenterId !== undefined) updateData.costCenterId = costCenterId || null;
+    if (active !== undefined) updateData.active = Boolean(active);
+    else if (status !== undefined) updateData.active = status === 'Active';
+
+    if (isDbConnected()) {
+      try {
+        const employee = await prisma.employee.update({
+          where: { id },
+          data: updateData,
+          include: { department: true, company: true }
+        });
+        return res.json({ success: true, employee: { ...employee, custodianType, organization, section, location, phone } });
+      } catch (dbErr) {
+        console.warn('DB update employee skipped:', dbErr.message);
+      }
+    }
+    res.json({ success: true, employee: { id, ...req.body } });
+  } catch (err) { next(err); }
+}
+
+export async function deleteEmployee(req, res, next) {
+  try {
+    const { id } = req.params;
+    if (isDbConnected()) {
+      try {
+        await prisma.employee.update({
+          where: { id },
+          data: { active: false }
+        }).catch(async () => {
+          await prisma.employee.delete({ where: { id } });
+        });
+      } catch (dbErr) {
+        console.warn('DB delete employee skipped:', dbErr.message);
+      }
+    }
+    res.json({ success: true, message: 'Custodian deactivated successfully' });
   } catch (err) { next(err); }
 }
 

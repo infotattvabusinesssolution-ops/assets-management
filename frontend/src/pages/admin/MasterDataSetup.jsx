@@ -40,12 +40,15 @@ import {
   Copy,
   RefreshCw,
   Clock,
-  Grid
+  Grid,
+  Building2
 } from 'lucide-react';
 import clsx from 'clsx';
 
 // Modular Tab Components
 import { ItemMasterTab } from '../../components/master-data/ItemMasterTab';
+import { CompaniesTab } from '../../components/master-data/CompaniesTab';
+import { CustodiansTab } from '../../components/master-data/CustodiansTab';
 import { AssetGroupsTab, INITIAL_ASSET_GROUPS } from '../../components/master-data/AssetGroupsTab';
 import { ClassesTab, INITIAL_CLASSES } from '../../components/master-data/ClassesTab';
 import { CategoriesTab, INITIAL_CATEGORIES } from '../../components/master-data/CategoriesTab';
@@ -383,11 +386,13 @@ export function MasterDataSetup() {
 
   // Exact 11 items matching the Master Data section in the left sidebar
   const TABS = [
+    { id: 'item-master', name: 'Item Master', icon: Box, desc: 'Central catalog of items defining code, name, barcode, and classification hierarchy before asset registration.' },
     { id: 'asset-groups', name: 'Asset Groups', icon: Box, desc: 'Define and manage asset groups to classify your assets across the Asset360 enterprise platform.' },
-    { id: 'asset-types', name: 'Asset Types', icon: Box, desc: 'Define and manage primary asset types (e.g. IT Equipment, Vehicle, Machinery) for high-level classification and category filtering.' },
     { id: 'classes', name: 'Asset Sub Groups', icon: Layers, desc: 'Define and manage asset sub groups within each asset group for classification and lifecycle control.' },
     { id: 'categories', name: 'Categories', icon: Tag, desc: 'Define and manage asset categories within each class.' },
     { id: 'subcategories', name: 'Sub Categories', icon: FolderTree, desc: 'Define and manage granular asset sub categories within each category.' },
+    { id: 'companies', name: 'Companies', icon: Building2, desc: 'Define legal entities and corporate operating units for asset ownership and financial reporting.' },
+    { id: 'custodians', name: 'Custodians', icon: UserCheck, desc: 'Manage internal employees and external custodians responsible for asset care, custody, and physical tracking.' },
     { id: 'locations', name: 'Locations', icon: MapPin, desc: 'Define and manage physical sites, campuses, buildings, and rooms where assets are deployed.' },
     { id: 'departments', name: 'Departments', icon: Users, desc: 'Define and manage organizational departments for asset ownership and financial accountability.' },
     { id: 'cost-centers', name: 'Cost Centers', icon: BarChart3, desc: 'Define and manage cost centers for budget allocation, depreciation charging, and financial reporting.' },
@@ -744,6 +749,22 @@ export function MasterDataSetup() {
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
           externalShowAddModal={activeAddModalTab === 'subcategories'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
+        />
+      )}
+
+      {activeTab === 'companies' && (
+        <CompaniesTab
+          triggerToast={triggerToast}
+          externalShowAddModal={activeAddModalTab === 'companies'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
+        />
+      )}
+
+      {activeTab === 'custodians' && (
+        <CustodiansTab
+          triggerToast={triggerToast}
+          externalShowAddModal={activeAddModalTab === 'custodians'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
