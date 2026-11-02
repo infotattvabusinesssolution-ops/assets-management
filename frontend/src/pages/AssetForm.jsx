@@ -2218,25 +2218,27 @@ export function AssetForm() {
           <p className="mt-1 text-[11px] text-slate-500">Each physical unit receives a unique system tag ID upon registration.</p>
         </div>
 
-        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
           <div className="flex items-center justify-between">
-            <label className="font-bold text-slate-700 block">Asset Classification (System Enumeration)</label>
-            <span className="text-[10px] text-slate-400 font-medium">Auto-derived</span>
-          </div>
-          <div className={`p-2 rounded-xl border flex items-center justify-between text-xs font-bold ${
-            derivedClassification === 'Asset'
-              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-              : 'bg-amber-50 text-amber-800 border-amber-200'
-          }`}>
-            <div className="flex items-center gap-1.5">
-              <ShieldCheck className="w-4 h-4 text-emerald-600" />
-              <span>{derivedClassification === 'Asset' ? 'Asset (Capitalized & Depreciated)' : 'Non-asset (Expensed / Low-value)'}</span>
-            </div>
-            <span className="text-[10px] font-mono text-slate-500">
-              Unit Cost: ${unitCostNum.toLocaleString()} (Threshold: ${CAPITALIZATION_THRESHOLD.toLocaleString()})
+            <label className="font-bold text-slate-700 block">Asset Classification / Asset Type</label>
+            <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-full">
+              System Enumeration
             </span>
           </div>
-          <p className="text-[10px] text-slate-400">Fixed system rule: cost &ge; $1,000 is capitalized; otherwise expensed.</p>
+          <select
+            value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
+            onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
+            className="w-full bg-white border border-slate-300 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none shadow-2xs cursor-pointer"
+          >
+            <option value="Asset">Asset (Capitalized &amp; Depreciated)</option>
+            <option value="Non-asset">Non-asset (Expensed / Low-value)</option>
+          </select>
+          <div className="flex items-center justify-between text-[11px] text-slate-500">
+            <span>Threshold: ${CAPITALIZATION_THRESHOLD.toLocaleString()}</span>
+            <span className={unitCostNum >= CAPITALIZATION_THRESHOLD ? 'text-emerald-700 font-bold' : 'text-slate-600 font-medium'}>
+              Current Unit Cost: ${unitCostNum.toLocaleString()}
+            </span>
+          </div>
         </div>
       </div>
 
@@ -4265,17 +4267,20 @@ export function AssetForm() {
 
                 {/* System-defined enumeration: Asset vs Non-asset */}
                 <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Asset Classification (System Enumeration)</label>
-                  <div className={`p-2 rounded-xl border flex items-center justify-between font-bold text-xs ${
-                    derivedClassification === 'Asset'
-                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-                      : 'bg-amber-50 text-amber-800 border-amber-200'
-                  }`}>
-                    <div className="flex items-center gap-1.5">
-                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
-                      <span>{derivedClassification === 'Asset' ? 'Asset (Capitalized)' : 'Non-asset (Expensed)'}</span>
-                    </div>
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-700 block">Asset Classification (Asset Type)</label>
+                    <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-full">
+                      System Enumeration
+                    </span>
                   </div>
+                  <select
+                    value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
+                    onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                  >
+                    <option value="Asset">Asset (Capitalized &amp; Depreciated)</option>
+                    <option value="Non-asset">Non-asset (Expensed / Low-value)</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1 text-xs">
