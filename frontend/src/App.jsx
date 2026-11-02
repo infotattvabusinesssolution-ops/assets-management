@@ -43,6 +43,7 @@ import { DiscoverySettings } from './pages/DiscoverySettings';
 import { ImportToAsset360 } from './pages/ImportToAsset360';
 import { DiscoveredDevicesWorkbench } from './pages/DiscoveredDevicesWorkbench';
 import { ReportsCatalogue } from './pages/ReportsCatalogue';
+import { DisposalWorkbench } from './pages/DisposalWorkbench';
 import { WorkflowDesigner } from './pages/WorkflowDesigner';
 import { AISuite } from './pages/AISuite';
 import { AssetTracking } from './pages/AssetTracking';
@@ -187,6 +188,9 @@ export function App() {
                 <Route path="rtls-map" element={<Navigate to="/rtls/map" replace />} />
                 <Route path="tracking" element={<Navigate to="/rtls" replace />} />
                 <Route path="tracking/map" element={<Navigate to="/rtls/map" replace />} />
+                <Route path="disposals" element={<DisposalWorkbench />} />
+                <Route path="disposal" element={<Navigate to="/disposals" replace />} />
+                <Route path="assets/disposal" element={<Navigate to="/disposals" replace />} />
                 <Route path="reports" element={<ReportsCatalogue />} />
                 <Route path="workflows" element={<WorkflowDesigner />} />
                 <Route path="admin/workflow-configuration" element={<WorkflowDesigner />} />

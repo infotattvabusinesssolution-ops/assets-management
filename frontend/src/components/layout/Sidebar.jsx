@@ -140,6 +140,18 @@ const NAV_STRUCTURE = [
     ]
   },
   {
+    id: 'disposal',
+    name: 'Disposal',
+    path: '/disposals',
+    icon: Trash2,
+    roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'AUDITOR', 'MANAGEMENT'],
+    subItems: [
+      { name: 'Disposal Workbench', path: '/disposals' },
+      { name: 'Disposed Assets Ledger', path: '/disposals?tab=ledger' },
+      { name: 'Pending Disposal', path: '/disposals?tab=pending' }
+    ]
+  },
+  {
     id: 'reports',
     name: 'Reports & Analytics',
     path: '/reports',
@@ -183,7 +195,8 @@ const NAV_STRUCTURE = [
       { name: 'Suppliers', path: '/admin/master-data?tab=suppliers' },
       { name: 'Manufacturers', path: '/admin/master-data?tab=manufacturers' },
       { name: 'UOM', path: '/admin/master-data?tab=uom' },
-      { name: 'Status Codes', path: '/admin/master-data?tab=status-codes' }
+      { name: 'Status Codes', path: '/admin/master-data?tab=status-codes' },
+      { name: 'Disposal Statuses', path: '/admin/master-data?tab=disposal-statuses' }
     ]
   },
   {

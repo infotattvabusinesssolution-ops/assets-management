@@ -22,7 +22,8 @@ import {
   toggleMasterEntityStatus,
   deleteMasterEntity,
   getItemMasters, getItemMasterById, createItemMaster, updateItemMaster, deleteItemMaster,
-  getUoms, createUom, updateUom, deleteUom
+  getUoms, createUom, updateUom, deleteUom,
+  getDisposalStatuses, createDisposalStatus, updateDisposalStatus, deleteDisposalStatus
 } from './masterData.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
@@ -127,6 +128,12 @@ router.get('/uoms', getUoms);
 router.post('/uoms', createUom);
 router.put('/uoms/:id', updateUom);
 router.delete('/uoms/:id', deleteUom);
+
+// Disposal Statuses (Master Data)
+router.get('/disposal-statuses', getDisposalStatuses);
+router.post('/disposal-statuses', createDisposalStatus);
+router.put('/disposal-statuses/:id', updateDisposalStatus);
+router.delete('/disposal-statuses/:id', deleteDisposalStatus);
 
 export default router;
 

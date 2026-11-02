@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { DisposalTransactionModal } from '../components/modals/DisposalTransactionModal';
 import {
   Package,
   DollarSign,
@@ -34,7 +35,8 @@ import {
   TrendingDown,
   Compass,
   Zap,
-  Info
+  Info,
+  Trash2
 } from 'lucide-react';
 
 const TABS = [
@@ -61,6 +63,7 @@ export function Asset360Detail() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [showDisposalModal, setShowDisposalModal] = useState(false);
 
   const showToast = (type, message) => {
     setToast({ type, message });
@@ -373,6 +376,16 @@ export function Asset360Detail() {
             >
               <Printer className="w-3.5 h-3.5 text-slate-500" /> Print Tag
             </button>
+
+            {!['DISPOSED', 'RETIRED'].includes(asset.lifecycleStatus) && (
+              <button
+                onClick={() => setShowDisposalModal(true)}
+                className="px-3.5 py-1.5 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-200 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+                title="Execute formal disposal transaction"
+              >
+                <Trash2 className="w-3.5 h-3.5 text-rose-600" /> Dispose Asset
+              </button>
+            )}
 
             {asset.lifecycleStatus !== 'IN_SERVICE' ? (
               <button

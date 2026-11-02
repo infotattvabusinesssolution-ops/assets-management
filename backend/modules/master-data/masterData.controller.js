@@ -1589,6 +1589,15 @@ export async function deleteAssetType(req, res, next) {
 // ============================================================================
 const ITEM_MASTERS_FILE = path.join(process.cwd(), 'data', 'item_masters.json');
 const UOMS_FILE = path.join(process.cwd(), 'data', 'uoms.json');
+const DISPOSAL_STATUSES_FILE = path.join(process.cwd(), 'data', 'disposal_statuses.json');
+
+const DEFAULT_DISPOSAL_STATUSES = [
+  { id: 'disp-01', code: 'SCRAPPED', name: 'Scrapped', description: 'Asset sent to recycling or salvage yard with zero or scrap residual value', active: true },
+  { id: 'disp-02', code: 'SOLD', name: 'Sold', description: 'Asset sold to third party or employee with recovered disposal proceeds', active: true },
+  { id: 'disp-03', code: 'DONATED', name: 'Donated', description: 'Asset donated to charitable, educational, or non-profit organization', active: true },
+  { id: 'disp-04', code: 'WRITTEN_OFF', name: 'Written Off', description: 'Asset written off books due to total loss, severe casualty, or obsolescence', active: true },
+  { id: 'disp-05', code: 'TRADED_IN', name: 'Traded In', description: 'Asset returned or exchanged toward the purchase of replacement equipment', active: true }
+];
 
 const DEFAULT_UOMS = [
   { id: 'uom-1', code: 'EA', name: 'Each', description: 'Individual single unit', active: true },
@@ -1689,6 +1698,53 @@ function writeItemMastersToFile(list) {
     fs.writeFileSync(ITEM_MASTERS_FILE, JSON.stringify(list, null, 2), 'utf8');
   } catch (e) {
     console.warn('Failed to write item_masters.json:', e.message);
+  }
+}
+
+function readDisposalStatusesFromFile() {
+  try {
+    if (fs.existsSync(DISPOSAL_STATUSES_FILE)) {
+      const data = fs.readFileSync(DISPOSAL_STATUSES_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_DISPOSAL_STATUSES;
+    }
+  } catch (e) {
+    console.warn('Failed to read disposal_statuses.json, using defaults:', e.message);
+  }
+  return DEFAULT_DISPOSAL_STATUSES;
+}
+
+function writeDisposalStatusesToFile(list) {
+  try {
+    const dir = path.dirname(DISPOSAL_STATUSES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(DISPOSAL_STATUSES_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write disposal_statuses.json:', e.message);
+  }
+}
+
+let inMemoryDisposalStatuses = readDisposalStatusesFromFile();
+let disposalStatusesTableEnsured = false;
+
+async function ensureDisposalStatusesTable() {
+  if (disposalStatusesTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='disposal_statuses' and xtype='U')
+      CREATE TABLE disposal_statuses (
+        id NVARCHAR(100) PRIMARY KEY,
+        code NVARCHAR(50) NOT NULL UNIQUE,
+        name NVARCHAR(100) NOT NULL,
+        description NVARCHAR(500) NULL,
+        active BIT DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    disposalStatusesTableEnsured = true;
+  } catch (err) {
+    console.warn('disposal_statuses table check skipped:', err.message);
   }
 }
 
@@ -2121,5 +2177,91 @@ export async function deleteUom(req, res, next) {
     inMemoryUoms = inMemoryUoms.filter(u => u.id !== id && u.code !== id);
     writeUomsToFile(inMemoryUoms);
     res.json({ success: true, message: 'UOM deleted successfully' });
+  } catch (err) { next(err); }
+}
+
+// Disposal Status Handlers (Master Data)
+export async function getDisposalStatuses(req, res, next) {
+  try {
+    await ensureDisposalStatusesTable();
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM disposal_statuses WHERE active = 1 ORDER BY name ASC`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            description: r.description || '',
+            active: Boolean(r.active)
+          }));
+          inMemoryDisposalStatuses = list;
+          writeDisposalStatusesToFile(list);
+          return res.json({ success: true, disposalStatuses: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getDisposalStatuses skipped, using persistent store:', dbErr.message);
+      }
+    }
+    res.json({ success: true, disposalStatuses: inMemoryDisposalStatuses.filter(s => s.active !== false) });
+  } catch (err) { next(err); }
+}
+
+export async function createDisposalStatus(req, res, next) {
+  try {
+    await ensureDisposalStatusesTable();
+    const { code, name, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Name is required' });
+
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase().replace(/\s+/g, '_') : name.trim().toUpperCase().replace(/\s+/g, '_');
+    const cleanName = name.trim();
+
+    if (inMemoryDisposalStatuses.some(s => s.code.toLowerCase() === cleanCode.toLowerCase())) {
+      return res.status(409).json({ success: false, message: 'Disposal status code already exists' });
+    }
+
+    const newStatus = {
+      id: 'disp-' + Date.now().toString(36),
+      code: cleanCode,
+      name: cleanName,
+      description: description ? description.trim() : '',
+      active: true,
+      createdAt: new Date().toISOString()
+    };
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO disposal_statuses (id, code, name, description, active, createdAt, updatedAt)
+          VALUES ('${newStatus.id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(description || '').replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert disposal_statuses skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryDisposalStatuses.push(newStatus);
+    writeDisposalStatusesToFile(inMemoryDisposalStatuses);
+    res.status(201).json({ success: true, disposalStatus: newStatus });
+  } catch (err) { next(err); }
+}
+
+export async function updateDisposalStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    const idx = inMemoryDisposalStatuses.findIndex(s => s.id === id || s.code === id);
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Disposal status not found' });
+    inMemoryDisposalStatuses[idx] = { ...inMemoryDisposalStatuses[idx], ...req.body, updatedAt: new Date().toISOString() };
+    writeDisposalStatusesToFile(inMemoryDisposalStatuses);
+    res.json({ success: true, disposalStatus: inMemoryDisposalStatuses[idx] });
+  } catch (err) { next(err); }
+}
+
+export async function deleteDisposalStatus(req, res, next) {
+  try {
+    const { id } = req.params;
+    inMemoryDisposalStatuses = inMemoryDisposalStatuses.filter(s => s.id !== id && s.code !== id);
+    writeDisposalStatusesToFile(inMemoryDisposalStatuses);
+    res.json({ success: true, message: 'Disposal status deleted successfully' });
   } catch (err) { next(err); }
 }

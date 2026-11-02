@@ -61,7 +61,10 @@ export async function createCampaign(req, res, next) {
             }
           });
 
-          const whereClause = { active: true };
+          const whereClause = {
+            active: true,
+            lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED'] }
+          };
           if (companyId) whereClause.companyId = companyId;
           if (siteId) whereClause.siteId = siteId;
           if (scope.buildingId) whereClause.buildingId = scope.buildingId;

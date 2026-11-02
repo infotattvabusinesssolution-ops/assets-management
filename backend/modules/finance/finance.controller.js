@@ -168,7 +168,14 @@ export async function runDepreciation(req, res, next) {
         }
       });
 
-      const assets = await tx.asset.findMany({ where: { companyId, active: true }, include: { category: true } });
+      const assets = await tx.asset.findMany({
+        where: {
+          companyId,
+          active: true,
+          lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED'] }
+        },
+        include: { category: true }
+      });
       let totalProcessed = 0;
       let totalDepAmount = new Decimal(0);
       const entriesDocs = [];

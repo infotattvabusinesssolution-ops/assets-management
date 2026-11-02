@@ -65,6 +65,7 @@ import {
   DEFAULT_ASSET_TYPES
 } from '../../components/master-data/GenericMasterTab';
 import { DepreciationPoliciesTab } from '../../components/master-data/DepreciationPoliciesTab';
+import { DisposalStatusesTab } from '../../components/master-data/DisposalStatusesTab';
 import { api } from '../../services/api';
 
 const getSingularName = (name = '') => {
@@ -399,7 +400,8 @@ export function MasterDataSetup() {
     { id: 'suppliers', name: 'Suppliers', icon: Truck, desc: 'Manage approved vendors and suppliers for asset procurement, warranties, and maintenance services.' },
     { id: 'manufacturers', name: 'Manufacturers', icon: Factory, desc: 'Manage approved equipment manufacturers, OEM specs, vendor portals, and technical support.' },
     { id: 'uom', name: 'UOM', icon: Scale, desc: 'Define standard Units of Measure (UOM) for inventory parts, bulk materials, and asset counting.' },
-    { id: 'status-codes', name: 'Status Codes', icon: ShieldCheck, desc: 'Configure lifecycle status codes, operational states, and workflow status indicators.' }
+    { id: 'status-codes', name: 'Status Codes', icon: ShieldCheck, desc: 'Configure lifecycle status codes, operational states, and workflow status indicators.' },
+    { id: 'disposal-statuses', name: 'Disposal Statuses', icon: Trash2, desc: 'Manage disposal statuses (Scrapped, Sold, Donated, Written Off, Traded In) for asset retirement transactions.' }
   ];
 
   const MORE_TABS = [
@@ -809,6 +811,14 @@ export function MasterDataSetup() {
           setActiveRowMenuId={setActiveRowMenuId}
           addModalTrigger={addModalTrigger}
           externalShowAddModal={activeAddModalTab === 'suppliers'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
+        />
+      )}
+
+      {activeTab === 'disposal-statuses' && (
+        <DisposalStatusesTab
+          triggerToast={triggerToast}
+          externalShowAddModal={activeAddModalTab === 'disposal-statuses'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}

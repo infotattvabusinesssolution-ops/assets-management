@@ -3,6 +3,7 @@ import { useNavigate, useSearchParams, Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 import { StatusBadge } from '../components/common/StatusBadge';
+import { DisposalTransactionModal } from '../components/modals/DisposalTransactionModal';
 import {
   Package,
   Plus,
@@ -1228,7 +1229,7 @@ export function AssetList() {
                                       }}
                                       className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                                     >
-                                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Request Disposal
+                                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Dispose / Decommission Asset
                                     </button>
                                   )}
                                 </>
@@ -1779,62 +1780,18 @@ export function AssetList() {
         </div>
       )}
 
-      {/* Disposal Request Modal */}
-      {disposalRequestAsset && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-              <div className="flex items-center gap-2">
-                <div className="w-9 h-9 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center border border-purple-200">
-                  <Archive className="w-5 h-5" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-bold text-slate-900">Request Asset Disposal</h3>
-                  <span className="text-[11px] font-mono text-slate-500">{disposalRequestAsset.assetId} - {disposalRequestAsset.name}</span>
-                </div>
-              </div>
-              <button onClick={() => setDisposalRequestAsset(null)} className="text-slate-400 hover:text-slate-600 cursor-pointer">
-                <X className="w-4 h-4" />
-              </button>
-            </div>
-
-            <div className="space-y-3 text-xs">
-              <p className="text-slate-600 leading-relaxed">
-                This asset will be flagged for decommissioning review and moved to <span className="font-semibold text-purple-700">Pending Disposal</span> status.
-              </p>
-              <div>
-                <label className="text-[10px] font-bold text-slate-500 uppercase block mb-1.5">Reason for Disposal</label>
-                <select
-                  value={disposalReason}
-                  onChange={(e) => setDisposalReason(e.target.value)}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-800 font-bold focus:border-[#6C2BD9] focus:outline-none"
-                >
-                  <option value="Obsolescence / End of Useful Life">Obsolescence / End of Useful Life</option>
-                  <option value="Beyond Economical Repair (Damaged)">Beyond Economical Repair (Damaged)</option>
-                  <option value="Lost / Stolen / Missing">Lost / Stolen / Missing</option>
-                  <option value="Surplus / Decommissioned">Surplus / Decommissioned</option>
-                  <option value="Trade-in / Lease Expiry">Trade-in / Lease Expiry</option>
-                </select>
-              </div>
-            </div>
-
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                onClick={() => setDisposalRequestAsset(null)}
-                className="px-4 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => handleRequestDisposal(disposalRequestAsset.id, disposalReason)}
-                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer flex items-center gap-1.5"
-              >
-                <Check className="w-4 h-4" /> Submit Request
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* Formal Disposal Transaction Modal */}
+      <DisposalTransactionModal
+        isOpen={Boolean(disposalRequestAsset)}
+        onClose={() => setDisposalRequestAsset(null)}
+        preselectedAsset={disposalRequestAsset}
+        onSuccess={() => {
+          setAssets(prev => prev.map(a => (a.id === disposalRequestAsset?.id || a.assetId === disposalRequestAsset?.assetId) ? { ...a, lifecycleStatus: 'DISPOSED' } : a));
+          showToast('success', `Disposal transaction completed for [${disposalRequestAsset?.assetId}]`);
+          fetchData();
+        }}
+        triggerToast={(msg, type) => showToast(type || 'success', msg)}
+      />
 
     </div>
   );
