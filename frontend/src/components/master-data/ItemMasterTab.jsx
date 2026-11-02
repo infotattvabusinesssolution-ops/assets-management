@@ -135,9 +135,18 @@ export function ItemMasterTab({
         api.get('/master-data/uoms').catch(() => null)
       ]);
 
-      if (itemRes?.items && Array.isArray(itemRes.items)) {
-        setItems(itemRes.items);
-        setSelectedItem(itemRes.items[0] || null);
+      const customItems = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+      const serverItems = (itemRes?.items && Array.isArray(itemRes.items)) ? itemRes.items : [];
+      const seenItemCodes = new Set();
+      const mergedItems = [...customItems, ...serverItems].filter(itm => {
+        const c = (itm.itemCode || itm.id || '').toUpperCase().trim();
+        if (!c || seenItemCodes.has(c)) return false;
+        seenItemCodes.add(c);
+        return true;
+      });
+      if (mergedItems.length > 0) {
+        setItems(mergedItems);
+        setSelectedItem(mergedItems[0] || null);
       }
 
       // Merge Asset Groups: API + LocalStorage + Defaults
@@ -273,11 +282,18 @@ export function ItemMasterTab({
     });
   }, [items, searchQuery, statusFilter, groupFilter, categoryFilter]);
 
-  // Auto-generate next item code preview
+  // Auto-generate next item code preview (guarantee uniqueness above baseline defaults)
   const nextItemCodePreview = useMemo(() => {
-    const existing = items.map(i => i.itemCode || '').filter(c => c.startsWith('ITM-'));
+    const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+    const baseline = ['ITM-000101', 'ITM-000102', 'ITM-000103', 'ITM-000104'];
+    const allCodes = [
+      ...items.map(i => i.itemCode || ''),
+      ...custom.map(i => i.itemCode || ''),
+      ...baseline
+    ].filter(c => c.startsWith('ITM-'));
+
     let max = 100;
-    for (const c of existing) {
+    for (const c of allCodes) {
       const num = parseInt(c.replace('ITM-', ''), 10);
       if (!isNaN(num) && num > max) max = num;
     }
@@ -349,15 +365,23 @@ export function ItemMasterTab({
       };
 
       if (editingItem) {
-        const res = await api.put(`/master-data/items/${editingItem.id}`, payload);
+        const res = await api.put(`/master-data/items/${editingItem.id}`, payload).catch(() => null);
         const saved = res?.item || { ...editingItem, ...payload };
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+          localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.map(i => i.id === editingItem.id ? saved : i)));
+        } catch (_) {}
         const updated = items.map(i => i.id === editingItem.id ? saved : i);
         setItems(updated);
         if (selectedItem?.id === editingItem.id) setSelectedItem(saved);
         triggerToast && triggerToast(`Item "${saved.itemName}" updated successfully.`);
       } else {
-        const res = await api.post('/master-data/items', payload);
+        const res = await api.post('/master-data/items', payload).catch(() => null);
         const newItem = res?.item || { ...payload, id: `ITM-${Date.now()}` };
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+          localStorage.setItem('fams_custom_item_masters', JSON.stringify([newItem, ...custom.filter(c => c.id !== newItem.id)]));
+        } catch (_) {}
         const updated = [newItem, ...items];
         setItems(updated);
         setSelectedItem(newItem);

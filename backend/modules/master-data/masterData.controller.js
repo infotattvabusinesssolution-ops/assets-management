@@ -1883,14 +1883,23 @@ export async function createItemMaster(req, res, next) {
     const isAct = active !== undefined ? Boolean(active) : true;
     const id = `ITM-${Date.now()}`;
 
-    // Check duplicate code
-    if (inMemoryItemMasters.some(i => i.itemCode === cleanCode)) {
-      return res.status(400).json({ success: false, message: `Item Code "${cleanCode}" already exists.` });
+    // Check duplicate code and auto-resolve to next sequential code if duplicate
+    let finalCode = cleanCode;
+    if (inMemoryItemMasters.some(i => i.itemCode === finalCode)) {
+      let maxNum = 100;
+      for (const itm of inMemoryItemMasters) {
+        const m = (itm.itemCode || '').match(/ITM-(\d+)/);
+        if (m) {
+          const n = parseInt(m[1], 10);
+          if (!isNaN(n) && n > maxNum) maxNum = n;
+        }
+      }
+      finalCode = `ITM-${String(maxNum + 1).padStart(6, '0')}`;
     }
 
     const newItem = {
       id,
-      itemCode: cleanCode,
+      itemCode: finalCode,
       itemName: cleanName,
       supplierBarcode: cleanBarcode,
       description: description || '',
