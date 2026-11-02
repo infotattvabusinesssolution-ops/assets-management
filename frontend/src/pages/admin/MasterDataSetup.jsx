@@ -45,6 +45,7 @@ import {
 import clsx from 'clsx';
 
 // Modular Tab Components
+import { ItemMasterTab } from '../../components/master-data/ItemMasterTab';
 import { AssetGroupsTab, INITIAL_ASSET_GROUPS } from '../../components/master-data/AssetGroupsTab';
 import { ClassesTab, INITIAL_CLASSES } from '../../components/master-data/ClassesTab';
 import { CategoriesTab, INITIAL_CATEGORIES } from '../../components/master-data/CategoriesTab';
@@ -693,6 +694,15 @@ export function MasterDataSetup() {
       </div>
 
       {/* RENDER MODULAR TABS */}
+      {activeTab === 'item-master' && (
+        <ItemMasterTab
+          triggerToast={triggerToast}
+          externalShowAddModal={activeAddModalTab === 'item-master'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
+          onNavigateTab={handleTabChange}
+        />
+      )}
+
       {activeTab === 'asset-groups' && (
         <AssetGroupsTab
           triggerToast={triggerToast}

@@ -170,6 +170,7 @@ const NAV_STRUCTURE = [
     icon: Database,
     roles: ['SYS_ADMIN', 'ASSET_ADMIN'],
     subItems: [
+      { name: 'Item Master', path: '/admin/master-data?tab=item-master' },
       { name: 'Asset Groups', path: '/admin/master-data?tab=asset-groups' },
       { name: 'Asset Types', path: '/admin/master-data?tab=asset-types' },
       { name: 'Asset Sub Groups', path: '/admin/master-data?tab=classes' },

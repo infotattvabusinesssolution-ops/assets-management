@@ -1373,3 +1373,534 @@ export async function deleteAssetType(req, res, next) {
     res.json({ success: true, message: 'Asset Type deleted successfully' });
   } catch (err) { next(err); }
 }
+
+// ============================================================================
+// ITEM MASTER & UNITS OF MEASURE (UOM)
+// ============================================================================
+const ITEM_MASTERS_FILE = path.join(process.cwd(), 'data', 'item_masters.json');
+const UOMS_FILE = path.join(process.cwd(), 'data', 'uoms.json');
+
+const DEFAULT_UOMS = [
+  { id: 'uom-1', code: 'EA', name: 'Each', description: 'Individual single unit', active: true },
+  { id: 'uom-2', code: 'UNT', name: 'Unit', description: 'Discrete item unit', active: true },
+  { id: 'uom-3', code: 'SET', name: 'Set', description: 'Paired or bundled set', active: true },
+  { id: 'uom-4', code: 'BOX', name: 'Box', description: 'Standard packaged box', active: true },
+  { id: 'uom-5', code: 'MTR', name: 'Meter', description: 'Length measurement in meters', active: true },
+  { id: 'uom-6', code: 'KG', name: 'Kilogram', description: 'Weight measurement in kilograms', active: true },
+  { id: 'uom-7', code: 'LTR', name: 'Litre', description: 'Volume measurement in litres', active: true }
+];
+
+const DEFAULT_ITEMS = [
+  {
+    id: 'itm-001',
+    itemCode: 'ITM-000101',
+    itemName: 'Lenovo ThinkPad T14 Gen 4',
+    supplierBarcode: '019534827101',
+    description: 'Enterprise 14-inch professional business laptop with Intel Core i7, 32GB RAM, 512GB SSD',
+    assetGroupId: 'grp-it',
+    assetGroupName: 'Information Technology',
+    assetSubGroupId: 'cls-hw',
+    assetSubGroupName: 'Hardware',
+    categoryId: 'cat-lap',
+    categoryName: 'Laptops & Notebooks',
+    subCategoryId: 'sub-lap',
+    subCategoryName: 'Business Laptops',
+    manufacturerId: 'mfr-lenovo',
+    manufacturerName: 'Lenovo',
+    model: 'ThinkPad T14 Gen 4',
+    uom: 'Each',
+    specifications: 'CPU: Intel Core i7-1365U | RAM: 32GB DDR5 | Storage: 512GB NVMe SSD | OS: Windows 11 Pro',
+    imageUrl: '',
+    active: true
+  },
+  {
+    id: 'itm-002',
+    itemCode: 'ITM-000102',
+    itemName: 'Dell PowerEdge R750 Rack Server',
+    supplierBarcode: '088411638290',
+    description: '2U Dual-Socket enterprise rack server optimized for application performance and virtualization',
+    assetGroupId: 'grp-it',
+    assetGroupName: 'Information Technology',
+    assetSubGroupId: 'cls-hw',
+    assetSubGroupName: 'Hardware',
+    categoryId: 'cat-srv',
+    categoryName: 'Enterprise Servers',
+    subCategoryId: 'sub-srv',
+    subCategoryName: 'Rack Servers',
+    manufacturerId: 'mfr-dell',
+    manufacturerName: 'Dell Technologies',
+    model: 'PowerEdge R750',
+    uom: 'Each',
+    specifications: 'CPU: 2x Intel Xeon Gold 6330 | RAM: 128GB ECC DDR4 | Storage: 4x 1.92TB SSD SAS | PSU: Dual 1400W Redundant',
+    imageUrl: '',
+    active: true
+  },
+  {
+    id: 'itm-003',
+    itemCode: 'ITM-000103',
+    itemName: 'Steelcase Gesture Ergonomic Office Chair',
+    supplierBarcode: '072481923018',
+    description: 'High-performance ergonomic executive task chair designed to support diverse postures with 360-degree arms',
+    assetGroupId: 'grp-corp',
+    assetGroupName: 'Corporate Assets',
+    assetSubGroupId: 'cls-furn',
+    assetSubGroupName: 'Office Furniture',
+    categoryId: 'cat-seat',
+    categoryName: 'Ergonomic Chairs',
+    subCategoryId: 'sub-seat',
+    subCategoryName: 'Executive Task Chairs',
+    manufacturerId: 'mfr-steelcase',
+    manufacturerName: 'Steelcase',
+    model: 'Gesture-Black/Platinum',
+    uom: 'Each',
+    specifications: 'Core Equalizer Lumbar Support | 360-degree Rotating Armrests | Pneumatic Cylinder Height Adjustment',
+    imageUrl: '',
+    active: true
+  }
+];
+
+function readItemMastersFromFile() {
+  try {
+    if (fs.existsSync(ITEM_MASTERS_FILE)) {
+      const data = fs.readFileSync(ITEM_MASTERS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_ITEMS;
+    }
+  } catch (e) {
+    console.warn('Failed to read item_masters.json, using defaults:', e.message);
+  }
+  return DEFAULT_ITEMS;
+}
+
+function writeItemMastersToFile(list) {
+  try {
+    const dir = path.dirname(ITEM_MASTERS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(ITEM_MASTERS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write item_masters.json:', e.message);
+  }
+}
+
+function readUomsFromFile() {
+  try {
+    if (fs.existsSync(UOMS_FILE)) {
+      const data = fs.readFileSync(UOMS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_UOMS;
+    }
+  } catch (e) {
+    console.warn('Failed to read uoms.json, using defaults:', e.message);
+  }
+  return DEFAULT_UOMS;
+}
+
+function writeUomsToFile(list) {
+  try {
+    const dir = path.dirname(UOMS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(UOMS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write uoms.json:', e.message);
+  }
+}
+
+let inMemoryItemMasters = readItemMastersFromFile();
+let inMemoryUoms = readUomsFromFile();
+let itemMastersTableEnsured = false;
+let uomsTableEnsured = false;
+
+async function ensureItemMastersTable() {
+  if (itemMastersTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='item_masters' and xtype='U')
+      CREATE TABLE item_masters (
+        id NVARCHAR(100) PRIMARY KEY,
+        itemCode NVARCHAR(50) NOT NULL UNIQUE,
+        itemName NVARCHAR(250) NOT NULL,
+        supplierBarcode NVARCHAR(100) NULL,
+        description NVARCHAR(1000) NULL,
+        assetGroupId NVARCHAR(100) NULL,
+        assetGroupName NVARCHAR(200) NULL,
+        assetSubGroupId NVARCHAR(100) NULL,
+        assetSubGroupName NVARCHAR(200) NULL,
+        categoryId NVARCHAR(100) NULL,
+        categoryName NVARCHAR(200) NULL,
+        subCategoryId NVARCHAR(100) NULL,
+        subCategoryName NVARCHAR(200) NULL,
+        manufacturerId NVARCHAR(100) NULL,
+        manufacturerName NVARCHAR(200) NULL,
+        model NVARCHAR(100) NULL,
+        uom NVARCHAR(50) DEFAULT 'Each',
+        specifications NVARCHAR(MAX) NULL,
+        imageUrl NVARCHAR(500) NULL,
+        active BIT DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    itemMastersTableEnsured = true;
+  } catch (err) {
+    console.warn('item_masters table check skipped:', err.message);
+  }
+}
+
+async function ensureUomsTable() {
+  if (uomsTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='units_of_measure' and xtype='U')
+      CREATE TABLE units_of_measure (
+        id NVARCHAR(100) PRIMARY KEY,
+        code NVARCHAR(50) NOT NULL UNIQUE,
+        name NVARCHAR(100) NOT NULL,
+        description NVARCHAR(500) NULL,
+        active BIT DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    uomsTableEnsured = true;
+  } catch (err) {
+    console.warn('units_of_measure table check skipped:', err.message);
+  }
+}
+
+// Generate Next Item Code (e.g. ITM-000104)
+function generateNextItemCode() {
+  const existingCodes = inMemoryItemMasters
+    .map(i => i.itemCode || '')
+    .filter(c => c.startsWith('ITM-'));
+  let maxSeq = 100;
+  for (const c of existingCodes) {
+    const num = parseInt(c.replace('ITM-', ''), 10);
+    if (!isNaN(num) && num > maxSeq) maxSeq = num;
+  }
+  return `ITM-${String(maxSeq + 1).padStart(6, '0')}`;
+}
+
+export async function getItemMasters(req, res, next) {
+  try {
+    await ensureItemMastersTable();
+    if (isDbConnected()) {
+      try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const query = includeInactive
+          ? `SELECT * FROM item_masters ORDER BY itemCode ASC`
+          : `SELECT * FROM item_masters WHERE active = 1 ORDER BY itemCode ASC`;
+        const rows = await prisma.$queryRawUnsafe(query);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            itemCode: r.itemCode,
+            itemName: r.itemName,
+            supplierBarcode: r.supplierBarcode || '',
+            description: r.description || '',
+            assetGroupId: r.assetGroupId || '',
+            assetGroupName: r.assetGroupName || '',
+            assetSubGroupId: r.assetSubGroupId || '',
+            assetSubGroupName: r.assetSubGroupName || '',
+            categoryId: r.categoryId || '',
+            categoryName: r.categoryName || '',
+            subCategoryId: r.subCategoryId || '',
+            subCategoryName: r.subCategoryName || '',
+            manufacturerId: r.manufacturerId || '',
+            manufacturerName: r.manufacturerName || '',
+            model: r.model || '',
+            uom: r.uom || 'Each',
+            specifications: r.specifications || '',
+            imageUrl: r.imageUrl || '',
+            active: Boolean(r.active),
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
+          }));
+          inMemoryItemMasters = list;
+          writeItemMastersToFile(list);
+          return res.json({ success: true, items: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getItemMasters query skipped, using persistent store:', dbErr.message);
+      }
+    }
+    const list = req.query.includeInactive === 'true'
+      ? inMemoryItemMasters
+      : inMemoryItemMasters.filter(i => i.active !== false);
+    res.json({ success: true, items: list });
+  } catch (err) { next(err); }
+}
+
+export async function getItemMasterById(req, res, next) {
+  try {
+    const { id } = req.params;
+    const item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id);
+    if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+    res.json({ success: true, item });
+  } catch (err) { next(err); }
+}
+
+export async function createItemMaster(req, res, next) {
+  try {
+    const {
+      itemCode,
+      itemName,
+      supplierBarcode,
+      description,
+      assetGroupId,
+      assetGroupName,
+      assetSubGroupId,
+      assetSubGroupName,
+      categoryId,
+      categoryName,
+      subCategoryId,
+      subCategoryName,
+      manufacturerId,
+      manufacturerName,
+      model,
+      uom,
+      specifications,
+      imageUrl,
+      active
+    } = req.body;
+
+    if (!itemName || !itemName.trim()) {
+      return res.status(400).json({ success: false, message: 'Item Name is required.' });
+    }
+
+    const cleanName = itemName.trim();
+    const cleanCode = (itemCode && itemCode.trim()) ? itemCode.trim().toUpperCase() : generateNextItemCode();
+    const cleanBarcode = (supplierBarcode || '').trim();
+    const isAct = active !== undefined ? Boolean(active) : true;
+    const id = `ITM-${Date.now()}`;
+
+    // Check duplicate code
+    if (inMemoryItemMasters.some(i => i.itemCode === cleanCode)) {
+      return res.status(400).json({ success: false, message: `Item Code "${cleanCode}" already exists.` });
+    }
+
+    const newItem = {
+      id,
+      itemCode: cleanCode,
+      itemName: cleanName,
+      supplierBarcode: cleanBarcode,
+      description: description || '',
+      assetGroupId: assetGroupId || '',
+      assetGroupName: assetGroupName || '',
+      assetSubGroupId: assetSubGroupId || '',
+      assetSubGroupName: assetSubGroupName || '',
+      categoryId: categoryId || '',
+      categoryName: categoryName || '',
+      subCategoryId: subCategoryId || '',
+      subCategoryName: subCategoryName || '',
+      manufacturerId: manufacturerId || '',
+      manufacturerName: manufacturerName || '',
+      model: model || '',
+      uom: uom || 'Each',
+      specifications: specifications || '',
+      imageUrl: imageUrl || '',
+      active: isAct,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    await ensureItemMastersTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO item_masters (
+            id, itemCode, itemName, supplierBarcode, description,
+            assetGroupId, assetGroupName, assetSubGroupId, assetSubGroupName,
+            categoryId, categoryName, subCategoryId, subCategoryName,
+            manufacturerId, manufacturerName, model, uom,
+            specifications, imageUrl, active, createdAt, updatedAt
+          ) VALUES (
+            '${id}',
+            '${cleanCode.replace(/'/g, "''")}',
+            '${cleanName.replace(/'/g, "''")}',
+            '${cleanBarcode.replace(/'/g, "''")}',
+            '${(description || '').replace(/'/g, "''")}',
+            '${(assetGroupId || '').replace(/'/g, "''")}',
+            '${(assetGroupName || '').replace(/'/g, "''")}',
+            '${(assetSubGroupId || '').replace(/'/g, "''")}',
+            '${(assetSubGroupName || '').replace(/'/g, "''")}',
+            '${(categoryId || '').replace(/'/g, "''")}',
+            '${(categoryName || '').replace(/'/g, "''")}',
+            '${(subCategoryId || '').replace(/'/g, "''")}',
+            '${(subCategoryName || '').replace(/'/g, "''")}',
+            '${(manufacturerId || '').replace(/'/g, "''")}',
+            '${(manufacturerName || '').replace(/'/g, "''")}',
+            '${(model || '').replace(/'/g, "''")}',
+            '${(uom || 'Each').replace(/'/g, "''")}',
+            '${(specifications || '').replace(/'/g, "''")}',
+            '${(imageUrl || '').replace(/'/g, "''")}',
+            ${isAct ? 1 : 0},
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+          )
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert item_masters skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryItemMasters.unshift(newItem);
+    writeItemMastersToFile(inMemoryItemMasters);
+    res.status(201).json({ success: true, item: newItem });
+  } catch (err) { next(err); }
+}
+
+export async function updateItemMaster(req, res, next) {
+  try {
+    const { id } = req.params;
+    const idx = inMemoryItemMasters.findIndex(i => i.id === id || i.itemCode === id);
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Item not found' });
+
+    const existing = inMemoryItemMasters[idx];
+    const updated = {
+      ...existing,
+      ...req.body,
+      updatedAt: new Date().toISOString()
+    };
+    if (req.body.active !== undefined) updated.active = Boolean(req.body.active);
+    inMemoryItemMasters[idx] = updated;
+
+    await ensureItemMastersTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE item_masters
+          SET itemName = '${(updated.itemName || '').replace(/'/g, "''")}',
+              supplierBarcode = '${(updated.supplierBarcode || '').replace(/'/g, "''")}',
+              description = '${(updated.description || '').replace(/'/g, "''")}',
+              assetGroupId = '${(updated.assetGroupId || '').replace(/'/g, "''")}',
+              assetGroupName = '${(updated.assetGroupName || '').replace(/'/g, "''")}',
+              assetSubGroupId = '${(updated.assetSubGroupId || '').replace(/'/g, "''")}',
+              assetSubGroupName = '${(updated.assetSubGroupName || '').replace(/'/g, "''")}',
+              categoryId = '${(updated.categoryId || '').replace(/'/g, "''")}',
+              categoryName = '${(updated.categoryName || '').replace(/'/g, "''")}',
+              subCategoryId = '${(updated.subCategoryId || '').replace(/'/g, "''")}',
+              subCategoryName = '${(updated.subCategoryName || '').replace(/'/g, "''")}',
+              manufacturerId = '${(updated.manufacturerId || '').replace(/'/g, "''")}',
+              manufacturerName = '${(updated.manufacturerName || '').replace(/'/g, "''")}',
+              model = '${(updated.model || '').replace(/'/g, "''")}',
+              uom = '${(updated.uom || 'Each').replace(/'/g, "''")}',
+              specifications = '${(updated.specifications || '').replace(/'/g, "''")}',
+              imageUrl = '${(updated.imageUrl || '').replace(/'/g, "''")}',
+              active = ${updated.active ? 1 : 0},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${existing.id.replace(/'/g, "''")}' OR itemCode = '${existing.itemCode.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB update item_masters skipped:', dbErr.message);
+      }
+    }
+
+    writeItemMastersToFile(inMemoryItemMasters);
+    res.json({ success: true, item: updated });
+  } catch (err) { next(err); }
+}
+
+export async function deleteItemMaster(req, res, next) {
+  try {
+    const { id } = req.params;
+    const item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id);
+    if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+
+    inMemoryItemMasters = inMemoryItemMasters.filter(i => i.id !== id && i.itemCode !== id);
+
+    await ensureItemMastersTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          DELETE FROM item_masters WHERE id = '${item.id.replace(/'/g, "''")}' OR itemCode = '${item.itemCode.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB delete item_masters skipped:', dbErr.message);
+      }
+    }
+
+    writeItemMastersToFile(inMemoryItemMasters);
+    res.json({ success: true, message: 'Item deleted successfully' });
+  } catch (err) { next(err); }
+}
+
+// UOM Handlers
+export async function getUoms(req, res, next) {
+  try {
+    await ensureUomsTable();
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM units_of_measure WHERE active = 1 ORDER BY name ASC`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            description: r.description || '',
+            active: Boolean(r.active)
+          }));
+          inMemoryUoms = list;
+          writeUomsToFile(list);
+          return res.json({ success: true, uoms: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getUoms query skipped, using persistent store:', dbErr.message);
+      }
+    }
+    res.json({ success: true, uoms: inMemoryUoms });
+  } catch (err) { next(err); }
+}
+
+export async function createUom(req, res, next) {
+  try {
+    const { code, name, description } = req.body;
+    if (!code || !name) return res.status(400).json({ success: false, message: 'UOM Code and Name are required.' });
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
+    const id = `uom-${Date.now()}`;
+
+    const newUom = {
+      id,
+      code: cleanCode,
+      name: cleanName,
+      description: description || '',
+      active: true
+    };
+
+    await ensureUomsTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO units_of_measure (id, code, name, description, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(description || '').replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert units_of_measure skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryUoms.push(newUom);
+    writeUomsToFile(inMemoryUoms);
+    res.status(201).json({ success: true, uom: newUom });
+  } catch (err) { next(err); }
+}
+
+export async function updateUom(req, res, next) {
+  try {
+    const { id } = req.params;
+    const idx = inMemoryUoms.findIndex(u => u.id === id || u.code === id);
+    if (idx === -1) return res.status(404).json({ success: false, message: 'UOM not found' });
+    inMemoryUoms[idx] = { ...inMemoryUoms[idx], ...req.body };
+    writeUomsToFile(inMemoryUoms);
+    res.json({ success: true, uom: inMemoryUoms[idx] });
+  } catch (err) { next(err); }
+}
+
+export async function deleteUom(req, res, next) {
+  try {
+    const { id } = req.params;
+    inMemoryUoms = inMemoryUoms.filter(u => u.id !== id && u.code !== id);
+    writeUomsToFile(inMemoryUoms);
+    res.json({ success: true, message: 'UOM deleted successfully' });
+  } catch (err) { next(err); }
+}

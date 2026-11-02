@@ -20,7 +20,9 @@ import {
   getCustomFields, createCustomField,
   updateMasterEntity,
   toggleMasterEntityStatus,
-  deleteMasterEntity
+  deleteMasterEntity,
+  getItemMasters, getItemMasterById, createItemMaster, updateItemMaster, deleteItemMaster,
+  getUoms, createUom, updateUom, deleteUom
 } from './masterData.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
@@ -102,6 +104,20 @@ router.post('/custom-fields', createCustomField);
 router.put('/entities/:entityType/:id', updateMasterEntity);
 router.patch('/entities/:entityType/:id/status', toggleMasterEntityStatus);
 router.delete('/entities/:entityType/:id', deleteMasterEntity);
+
+
+// Item Masters
+router.get('/items', getItemMasters);
+router.get('/items/:id', getItemMasterById);
+router.post('/items', createItemMaster);
+router.put('/items/:id', updateItemMaster);
+router.delete('/items/:id', deleteItemMaster);
+
+// Units of Measure (UOM)
+router.get('/uoms', getUoms);
+router.post('/uoms', createUom);
+router.put('/uoms/:id', updateUom);
+router.delete('/uoms/:id', deleteUom);
 
 export default router;
 
