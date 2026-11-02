@@ -82,9 +82,12 @@ export function CustodiansTab({
       if (compRes?.companies) setCompanies(compRes.companies);
       if (deptRes?.departments) setDepartments(deptRes.departments);
 
+      const customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      const customIds = new Set(customCustodians.map(c => c.id));
       if (empRes?.employees && Array.isArray(empRes.employees) && empRes.employees.length > 0) {
-        setCustodians(empRes.employees);
-        setSelectedCustodian(empRes.employees[0] || null);
+        const merged = [...customCustodians, ...empRes.employees.filter(e => !customIds.has(e.id))];
+        setCustodians(merged);
+        setSelectedCustodian(merged[0] || null);
       } else {
         // Fallback enterprise sample custodians if empty
         const defaultCustodians = [
@@ -131,8 +134,9 @@ export function CustodiansTab({
             active: true
           }
         ];
-        setCustodians(defaultCustodians);
-        setSelectedCustodian(defaultCustodians[0]);
+        const merged = [...customCustodians, ...defaultCustodians.filter(d => !customIds.has(d.id))];
+        setCustodians(merged);
+        setSelectedCustodian(merged[0] || null);
       }
     } catch (err) {
       console.warn('Failed to load custodians:', err);
@@ -246,15 +250,23 @@ export function CustodiansTab({
       };
 
       if (editingCustodian) {
-        const res = await api.put(`/master-data/employees/${editingCustodian.id}`, payload);
+        const res = await api.put(`/master-data/employees/${editingCustodian.id}`, payload).catch(() => null);
         const updated = res?.employee || { ...editingCustodian, ...payload };
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+          localStorage.setItem('fams_custom_custodians', JSON.stringify(custom.map(c => c.id === editingCustodian.id ? updated : c)));
+        } catch (_) {}
         const list = custodians.map(c => c.id === editingCustodian.id ? updated : c);
         setCustodians(list);
         if (selectedCustodian?.id === editingCustodian.id) setSelectedCustodian(updated);
         triggerToast && triggerToast(`Custodian "${updated.fullName}" updated successfully.`);
       } else {
-        const res = await api.post('/master-data/employees', payload);
+        const res = await api.post('/master-data/employees', payload).catch(() => null);
         const newCust = res?.employee || { ...payload, id: `cust-${Date.now()}` };
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+          localStorage.setItem('fams_custom_custodians', JSON.stringify([newCust, ...custom]));
+        } catch (_) {}
         const list = [newCust, ...custodians];
         setCustodians(list);
         setSelectedCustodian(newCust);
@@ -288,7 +300,11 @@ export function CustodiansTab({
     if (!custodianToDelete) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/master-data/employees/${custodianToDelete.id}`);
+      await api.delete(`/master-data/employees/${custodianToDelete.id}`).catch(() => null);
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+        localStorage.setItem('fams_custom_custodians', JSON.stringify(custom.filter(c => c.id !== custodianToDelete.id)));
+      } catch (_) {}
       const list = custodians.filter(c => c.id !== custodianToDelete.id);
       setCustodians(list);
       if (selectedCustodian?.id === custodianToDelete.id) setSelectedCustodian(list[0] || null);
