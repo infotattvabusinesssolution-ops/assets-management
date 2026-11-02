@@ -708,8 +708,8 @@ export async function createAsset(req, res, next) {
         data: {
           ...req.body,
           ...item,
-          purchaseDate: item.acquisitionDate ?? item.purchaseDate ?? req.body.purchaseDate,
-          inServiceDate: item.inServiceDate ?? item.acquisitionDate ?? req.body.inServiceDate
+          purchaseDate: item.poDate ?? item.purchaseDate ?? item.acquisitionDate ?? req.body.poDate ?? req.body.purchaseDate ?? req.body.acquisitionDate,
+          inServiceDate: item.depreciationStartDate ?? item.invoiceDate ?? item.inServiceDate ?? item.purchaseDate ?? item.acquisitionDate ?? req.body.depreciationStartDate ?? req.body.invoiceDate ?? req.body.inServiceDate ?? req.body.purchaseDate ?? req.body.acquisitionDate
         },
         companyId: effectiveCompanyId,
         siteId: itemSite?.id || siteId,
@@ -825,7 +825,13 @@ export async function createAsset(req, res, next) {
       const newAsset = await tx.asset.create({
         data: {
           assetId,
-          description: itemData.description || itemData.assetName || itemData.name || 'New Enterprise Asset',
+          description: (() => {
+            const raw = itemData.description || itemData.assetName || itemData.name || 'New Enterprise Asset';
+            const meta = [];
+            if (itemData.invoiceNumber) meta.push(`Inv: ${itemData.invoiceNumber}`);
+            if (itemData.deliveryNote) meta.push(`DN: ${itemData.deliveryNote}`);
+            return meta.length > 0 && !raw.includes(meta[0]) ? `${raw} [${meta.join(', ')}]` : raw;
+          })(),
           categoryId,
           assetClassId: assetClass?.id || null,
           companyId: itemRecord?.companyId || companyId,
@@ -851,8 +857,8 @@ export async function createAsset(req, res, next) {
           currency: itemData.currency || 'USD',
           poNumber: itemData.poNumber || itemData.poInvoiceNo || null,
           supplierName: itemData.supplierName || itemData.supplier || itemData.vendorSupplier || null,
-          purchaseDate: itemData.purchaseDate || itemData.acquisitionDate ? new Date(itemData.purchaseDate || itemData.acquisitionDate) : null,
-          inServiceDate: itemData.inServiceDate || itemData.purchaseDate || itemData.acquisitionDate ? new Date(itemData.inServiceDate || itemData.purchaseDate || itemData.acquisitionDate) : null,
+          purchaseDate: itemData.purchaseDate || itemData.poDate || itemData.acquisitionDate ? new Date(itemData.purchaseDate || itemData.poDate || itemData.acquisitionDate) : null,
+          inServiceDate: itemData.depreciationStartDate || itemData.invoiceDate || itemData.inServiceDate || itemData.purchaseDate || itemData.acquisitionDate ? new Date(itemData.depreciationStartDate || itemData.invoiceDate || itemData.inServiceDate || itemData.purchaseDate || itemData.acquisitionDate) : null,
           hostname: itemObservation?.hostname || itemDiscovery.hostname || null,
           macAddress: itemObservation?.macAddress || itemDiscovery.macAddress || null,
           ipAddress: itemObservation?.ipAddress || itemDiscovery.ipAddress || null,

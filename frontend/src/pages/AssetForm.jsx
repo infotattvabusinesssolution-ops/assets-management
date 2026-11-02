@@ -672,7 +672,7 @@ export function AssetForm() {
     assetGroup: '',
     assetClass: '',
     criticality: 'Medium',
-    status: 'New',
+    status: 'Active',
     condition: 'New',
 
     // 3. Product Details
@@ -697,7 +697,15 @@ export function AssetForm() {
     alternateCustodian: '',
     expectedUser: '',
 
-    // 5. Financial Information
+    // 5. Receiving & Financial Information
+    quantityReceived: '1',
+    poNumber: '',
+    poDate: '',
+    deliveryNote: '',
+    deliveryDate: '',
+    invoiceNumber: '',
+    invoiceDate: '',
+    depreciationStartDate: '',
     acquisitionDate: '',
     acquisitionCost: '',
     purchaseDate: '',
@@ -756,7 +764,7 @@ export function AssetForm() {
 
     // Tagging tab selection (Stepper view)
     tagType: 'Barcode', // Barcode | RFID | QR Code
-    tagStatus: 'Available',
+    tagStatus: 'Active',
 
     // Documents
     documents: [],
@@ -921,6 +929,7 @@ export function AssetForm() {
       category: item.categoryName || prev.category,
       categoryId: item.categoryId || prev.categoryId,
       subcategory: item.subCategoryName || prev.subcategory,
+      assetClassId: item.subCategoryId || item.assetClassId || prev.assetClassId,
       supplierBarcode: item.supplierBarcode || '',
       manufacturer: item.manufacturerName || prev.manufacturer,
       brand: item.manufacturerName || prev.brand,
@@ -929,6 +938,7 @@ export function AssetForm() {
     }));
     clearFieldError('assetName');
     if (item.categoryName) clearFieldError('category');
+    if (item.subCategoryName) clearFieldError('subcategory');
   };
 
   const handleClearItemMaster = () => {
@@ -1053,14 +1063,57 @@ export function AssetForm() {
 
   const assetIdPreview = `${previewPrefix(formData.assetType)}-${previewPrefix(categoryCode)}-${previewPrefix(subcategoryCode)}-${new Date().getFullYear()}-…`;
   const updateQuantity = value => {
-    setFormData(previous => ({ ...previous, quantity: value, serialNumber: serialNumbers[0] || '' }));
+    setFormData(previous => ({ ...previous, quantity: value, quantityReceived: value, serialNumber: serialNumbers[0] || '' }));
     const count = Number(value);
     if (Number.isInteger(count) && count >= 1 && count <= 50) {
+      const year = new Date().getFullYear();
+      const startSeq = Math.floor(10000 + Math.random() * 80000);
       setSerialNumbers(previous => Array.from({ length: count }, (_, index) => previous[index] || ''));
       setDiscoveryItems(previous => Array.from({ length: count }, (_, index) => previous[index] || {}));
-      setAssetItems(previous => Array.from({ length: count }, (_, index) => previous[index] || {}));
+      setAssetItems(previous => Array.from({ length: count }, (_, index) => {
+        const existing = previous[index] || {};
+        const seqStr = String(startSeq + index).padStart(5, '0');
+        const tagNumber = existing.tagNumber || `TAG-${year}-${seqStr}`;
+        const rfidEpc = existing.rfidEpc || `E2801170${seqStr}${Math.floor(10000000 + Math.random() * 90000000)}`;
+        return {
+          ...existing,
+          tagNumber,
+          barcode: tagNumber,
+          rfidEpc,
+          status: 'Active'
+        };
+      }));
       setSelectedItemIndex(0);
     }
+  };
+
+  const handleBatchGenerateTags = (overrideType) => {
+    const targetType = overrideType || formData.tagType || 'Barcode';
+    const year = new Date().getFullYear();
+    const startSeq = Math.floor(10000 + Math.random() * 80000);
+    setAssetItems(prev => prev.map((item, index) => {
+      const seqStr = String(startSeq + index).padStart(5, '0');
+      let tagNumber = '';
+      let rfidEpc = '';
+      if (targetType === 'RFID') {
+        const hex = Math.floor(0x10000000 + Math.random() * 0xefffffff).toString(16).toUpperCase();
+        tagNumber = `E2801170${seqStr}${hex}`.slice(0, 24);
+        rfidEpc = tagNumber;
+      } else if (targetType === 'QR Code') {
+        tagNumber = `QR-${year}-${seqStr}`;
+      } else {
+        tagNumber = `TAG-${year}-${seqStr}`;
+      }
+      return {
+        ...item,
+        tagNumber,
+        barcode: tagNumber,
+        rfidEpc: rfidEpc || item.rfidEpc,
+        tagType: targetType,
+        status: 'Active'
+      };
+    }));
+    showToast('success', `Generated sequential ${targetType} tags for all ${quantityCount} units!`);
   };
   const updateSerialNumber = value => {
     setSerialNumbers(previous => previous.map((serial, index) => index === selectedItemIndex ? value : serial));
@@ -1624,6 +1677,14 @@ export function AssetForm() {
       const payload = {
         autoGenerateId: true,
         quantity,
+        quantityReceived: quantity,
+        poNumber: formData.poNumber?.trim() || formData.poInvoiceNo?.trim() || undefined,
+        poDate: formData.poDate || formData.acquisitionDate || undefined,
+        deliveryNote: formData.deliveryNote?.trim() || undefined,
+        deliveryDate: formData.deliveryDate || undefined,
+        invoiceNumber: formData.invoiceNumber?.trim() || formData.invoiceNo?.trim() || undefined,
+        invoiceDate: formData.invoiceDate || undefined,
+        depreciationStartDate: formData.depreciationStartDate || formData.invoiceDate || undefined,
         serialNumbers: itemSerialNumbers,
         discoveryItems: quantity > 1 ? discoveryItems : undefined,
         assetItems: quantity > 1 ? assetItems : undefined,
@@ -2159,12 +2220,13 @@ export function AssetForm() {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="font-bold text-slate-700 block">Asset Sub Group</label>
-            <span className="text-[10px] text-purple-600 font-semibold">Cascaded</span>
+            {selectedItemMasterId ? <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span> : <span className="text-[10px] text-purple-600 font-semibold">Cascaded</span>}
           </div>
           <select
             value={formData.assetClass || ''}
             onChange={(e) => handleAssetClassChange(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            disabled={Boolean(selectedItemMasterId)}
+            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'}`}
           >
             <option value="">{availableAssetClassesDropdown.length > 0 ? '-- Select Asset Sub Group --' : (formData.assetGroup ? 'No asset sub groups linked to this group' : '-- Select Asset Group first --')}</option>
             {availableAssetClassesDropdown.map((cls) => {
@@ -2179,16 +2241,22 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">
-            Category <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">
+              Category <span className="text-rose-500">*</span>
+            </label>
+            {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
+          </div>
           <select
             value={formData.category}
+            disabled={Boolean(selectedItemMasterId)}
             onChange={(e) => {
               handleCategoryChange(e.target.value);
               if (e.target.value) clearFieldError('category');
             }}
-            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
+              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+            } ${
               fieldErrors.category
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
@@ -2210,17 +2278,22 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">
-            Sub Category {availableAssetClasses.length > 0 ? <span className="text-rose-500">*</span> : null}
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">
+              Sub Category {availableAssetClasses.length > 0 ? <span className="text-rose-500">*</span> : null}
+            </label>
+            {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
+          </div>
           <select
             value={formData.assetClassId || formData.subcategory}
             onChange={(e) => {
               handleSubCategoryChange(e.target.value);
               if (e.target.value) clearFieldError('subcategory');
             }}
-            disabled={!formData.category}
-            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-400 transition-colors ${
+            disabled={Boolean(selectedItemMasterId) || !formData.category}
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-400 transition-colors ${
+              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+            } ${
               fieldErrors.subcategory
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
@@ -2244,12 +2317,15 @@ export function AssetForm() {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="font-bold text-slate-700 block">Manufacturer</label>
-            <span className="text-[10px] text-purple-600 font-semibold">From Master Data</span>
+            {selectedItemMasterId ? <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span> : <span className="text-[10px] text-purple-600 font-semibold">From Master Data</span>}
           </div>
           <select
             value={formData.manufacturer || ''}
             onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            disabled={Boolean(selectedItemMasterId)}
+            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${
+              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+            }`}
           >
             <option value="">-- Select Manufacturer --</option>
             {availableManufacturers && availableManufacturers.length > 0 ? (
@@ -2268,13 +2344,19 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Model</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">Model</label>
+            {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
+          </div>
           <input
             type="text"
             value={formData.model}
+            readOnly={Boolean(selectedItemMasterId)}
             onChange={(e) => setFormData({ ...formData, model: e.target.value })}
             placeholder="e.g. Latitude 5420 (optional)"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${
+              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+            }`}
           />
         </div>
 
@@ -2452,10 +2534,10 @@ export function AssetForm() {
 
   // Step 2: Financial Information
   const renderFinancialInfo = () => (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
+    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-4 relative">
       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
         <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
-          <DollarSign className="w-4 h-4 text-[#6C2BD9]" /> Financial Information
+          <DollarSign className="w-4 h-4 text-[#6C2BD9]" /> Receiving & Financial Information
         </h3>
         <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-full border border-purple-200">
           Step 2
@@ -2478,6 +2560,7 @@ export function AssetForm() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+        {/* Row 1: Quantity, Unit Cost, Currency, Supplier */}
         <div>
           <label className="font-bold text-slate-700 block mb-1">
             Quantity Received <span className="text-rose-500">*</span>
@@ -2498,16 +2581,18 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Unit Cost ({formData.currency || 'AED'}) *</label>
+          <label className="font-bold text-slate-700 block mb-1">Unit Cost ({formData.currency || 'USD'}) *</label>
           <input
             type="text"
             required
             value={formData.acquisitionCost}
             onChange={(e) => {
-              setFormData({ ...formData, acquisitionCost: e.target.value });
+              setFormData({ ...formData, acquisitionCost: e.target.value, purchaseCost: e.target.value });
             }}
+            placeholder="e.g. 1250.00"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none"
           />
+          <p className="text-[10px] text-slate-400 mt-0.5">Per-unit capitalization value.</p>
         </div>
 
         <div>
@@ -2517,22 +2602,34 @@ export function AssetForm() {
             onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="AED">AED</option>
             <option value="USD">USD</option>
+            <option value="AED">AED</option>
+            <option value="SAR">SAR</option>
             <option value="EUR">EUR</option>
             <option value="GBP">GBP</option>
-            <option value="SAR">SAR</option>
             <option value="INR">INR</option>
           </select>
         </div>
 
         <div>
+          <label className="font-bold text-slate-700 block mb-1">Supplier / Vendor</label>
+          <input
+            type="text"
+            value={formData.supplier}
+            onChange={(e) => setFormData({ ...formData, supplier: e.target.value, vendorSupplier: e.target.value })}
+            placeholder="e.g. Dell Direct, Al Futtaim"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        {/* Row 2: PO Details & Delivery Note Details */}
+        <div>
           <label className="font-bold text-slate-700 block mb-1">Purchase Order (PO) No.</label>
           <input
             type="text"
-            value={formData.poInvoiceNo}
-            placeholder="e.g. PO-2025-089"
-            onChange={(e) => setFormData({ ...formData, poInvoiceNo: e.target.value })}
+            value={formData.poNumber || formData.poInvoiceNo || ''}
+            placeholder="e.g. PO-2026-089"
+            onChange={(e) => setFormData({ ...formData, poNumber: e.target.value, poInvoiceNo: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono focus:border-[#6C2BD9] outline-none"
           />
         </div>
@@ -2541,34 +2638,20 @@ export function AssetForm() {
           <label className="font-bold text-slate-700 block mb-1">PO Date</label>
           <input
             type="date"
-            value={formData.acquisitionDate}
-            onChange={(e) => setFormData({ ...formData, acquisitionDate: e.target.value })}
+            value={formData.poDate || formData.acquisitionDate || ''}
+            onChange={(e) => setFormData({ ...formData, poDate: e.target.value, acquisitionDate: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           />
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Invoice Number</label>
+          <label className="font-bold text-slate-700 block mb-1">Delivery Note (Challan) No.</label>
           <input
             type="text"
-            value={formData.invoiceNo || ''}
-            placeholder="e.g. INV-2025-998"
-            onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })}
+            value={formData.deliveryNote || ''}
+            placeholder="e.g. DN-2026-441"
+            onChange={(e) => setFormData({ ...formData, deliveryNote: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono focus:border-[#6C2BD9] outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Invoice Date (Deprec. Start)</label>
-          <input
-            type="date"
-            value={formData.invoiceDate || formData.acquisitionDate}
-            onChange={(e) => setFormData({
-              ...formData,
-              invoiceDate: e.target.value,
-              depreciationStartDate: e.target.value
-            })}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           />
         </div>
 
@@ -2576,79 +2659,56 @@ export function AssetForm() {
           <label className="font-bold text-slate-700 block mb-1">Delivery Date</label>
           <input
             type="date"
-            value={formData.acquisitionDate}
-            onChange={(e) => setFormData({ ...formData, acquisitionDate: e.target.value })}
+            value={formData.deliveryDate || ''}
+            onChange={(e) => setFormData({ ...formData, deliveryDate: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           />
         </div>
 
+        {/* Row 3: Invoice & Depreciation Start Date (Synced) */}
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Acquisition Cost ({formData.currency || 'AED'})</label>
+          <label className="font-bold text-slate-700 block mb-1">Invoice Number</label>
           <input
             type="text"
-            value={formData.acquisitionCost}
-            onChange={(e) => setFormData({ ...formData, acquisitionCost: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Currency</label>
-          <select
-            value={formData.currency}
-            onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          >
-            <option value="AED">AED</option>
-            <option value="USD">USD</option>
-            <option value="EUR">EUR</option>
-            <option value="GBP">GBP</option>
-            <option value="INR">INR</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Purchase Order No.</label>
-          <input
-            type="text"
-            value={formData.poInvoiceNo}
-            onChange={(e) => setFormData({ ...formData, poInvoiceNo: e.target.value })}
+            value={formData.invoiceNumber || formData.invoiceNo || ''}
+            placeholder="e.g. INV-2026-998"
+            onChange={(e) => setFormData({ ...formData, invoiceNumber: e.target.value, invoiceNo: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono focus:border-[#6C2BD9] outline-none"
           />
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Supplier</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">Invoice Date</label>
+            <span className="text-[10px] text-purple-600 font-semibold">Syncs Deprec.</span>
+          </div>
           <input
-            type="text"
-            value={formData.supplier}
-            onChange={(e) => setFormData({ ...formData, supplier: e.target.value })}
+            type="date"
+            value={formData.invoiceDate || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              setFormData(prev => ({
+                ...prev,
+                invoiceDate: val,
+                depreciationStartDate: val,
+                purchaseDate: prev.purchaseDate || val,
+                acquisitionDate: prev.acquisitionDate || val
+              }));
+            }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           />
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Warranty Start Date</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">Depreciation Start Date</label>
+            <span className="text-[10px] text-emerald-600 font-semibold">From Invoice</span>
+          </div>
           <input
             type="date"
-            value={formData.warrantyStartDate}
-            onChange={(e) => updateWarranty({ warrantyStartDate: e.target.value })}
+            value={formData.depreciationStartDate || formData.invoiceDate || ''}
+            onChange={(e) => setFormData({ ...formData, depreciationStartDate: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Warranty (years)</label>
-          <input type="number" min="1" max="50" step="1" value={formData.warrantyYears} onChange={(e) => updateWarranty({ warrantyYears: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold" />
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Warranty End Date</label>
-          <input
-            type="date"
-            value={formData.warrantyEndDate}
-            readOnly
-            className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold"
           />
         </div>
 
@@ -2662,8 +2722,54 @@ export function AssetForm() {
             <option value="New">New</option>
             <option value="Good">Good</option>
             <option value="Fair">Fair</option>
+            <option value="Damaged">Damaged</option>
             <option value="Refurbished">Refurbished</option>
           </select>
+        </div>
+
+        {/* Row 4: Warranty Information */}
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Warranty Start Date</label>
+          <input
+            type="date"
+            value={formData.warrantyStartDate}
+            onChange={(e) => updateWarranty({ warrantyStartDate: e.target.value })}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Warranty (years)</label>
+          <input
+            type="number"
+            min="1"
+            max="50"
+            step="1"
+            value={formData.warrantyYears}
+            onChange={(e) => updateWarranty({ warrantyYears: e.target.value })}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Warranty End Date</label>
+          <input
+            type="date"
+            value={formData.warrantyEndDate}
+            readOnly
+            className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold cursor-not-allowed"
+          />
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Warranty Provider</label>
+          <input
+            type="text"
+            value={formData.provider}
+            onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
+            placeholder={formData.manufacturer || 'OEM Provider'}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          />
         </div>
       </div>
       {renderCategoryDepreciation()}
@@ -3016,17 +3122,131 @@ export function AssetForm() {
   // Step 3: Tagging Information
   const renderTagging = () => {
     if (quantityCount > 1) {
-      const item = assetItems[selectedItemIndex] || {};
-      return <section className="rounded-xl border border-slate-200 bg-white p-4 text-xs space-y-4">
-        <h3 className="font-extrabold text-slate-900 flex items-center gap-2"><QrCode className="w-4 h-4 text-[#6C2BD9]" /> Tagging by Asset</h3>
-        {renderItemSelector('Select asset to assign its tag')}
-        <p className="text-slate-500">Leave the tag blank to generate a unique barcode when the asset is saved. A physical RFID tag needs its own EPC.</p>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="space-y-1 font-bold text-slate-700">Barcode / tag number<input value={item.tagNumber || ''} onChange={event => updateAssetItem({ tagNumber: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-mono" placeholder="Generated on save if blank" /></label>
-          <label className="space-y-1 font-bold text-slate-700">RFID EPC<input value={item.rfidEpc || ''} onChange={event => updateAssetItem({ rfidEpc: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2 font-mono" placeholder="Optional unique EPC" /></label>
-        </div>
-        {item.tagNumber && <div className="rounded-lg border border-slate-100 bg-slate-50 p-3"><BarcodePreview value={item.tagNumber} /></div>}
-      </section>;
+      return (
+        <section className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-slate-100 pb-3">
+            <div>
+              <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                <QrCode className="w-4 h-4 text-[#6C2BD9]" /> Multi-Unit Tag Assignment ({quantityCount} Units)
+              </h3>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Each physical unit receives a unique sequential tag identifier ready for barcode printing upon receipt.
+              </p>
+            </div>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                onClick={() => handleBatchGenerateTags(formData.tagType || 'Barcode')}
+                className="px-3 py-1.5 bg-[#6C2BD9] text-white text-xs font-bold rounded-xl hover:bg-[#5821B0] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
+              >
+                <RefreshCw className="w-3.5 h-3.5" /> Re-Generate All Tags
+              </button>
+            </div>
+          </div>
+
+          {/* Batch Units Table */}
+          <div className="overflow-x-auto border border-slate-200 rounded-xl">
+            <table className="w-full text-left text-xs text-slate-700">
+              <thead className="bg-slate-50 text-[11px] font-bold text-slate-700 border-b border-slate-200 uppercase tracking-wider">
+                <tr>
+                  <th className="p-2.5">Unit #</th>
+                  <th className="p-2.5">Serial Number</th>
+                  <th className="p-2.5">Unique Tag ID / Barcode</th>
+                  <th className="p-2.5">RFID EPC</th>
+                  <th className="p-2.5">Status</th>
+                  <th className="p-2.5 text-right">Action</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {assetItems.map((unitItem, idx) => {
+                  const isSelected = selectedItemIndex === idx;
+                  const tagNum = unitItem.tagNumber || `TAG-${new Date().getFullYear()}-${String(10000 + idx).padStart(5, '0')}`;
+                  return (
+                    <tr key={idx} className={`transition-colors ${isSelected ? 'bg-purple-50/70' : 'hover:bg-slate-50/60'}`}>
+                      <td className="p-2.5 font-bold text-slate-900 whitespace-nowrap">
+                        <span className="w-6 h-6 rounded-full bg-slate-200 text-slate-800 inline-flex items-center justify-center text-[10px] font-bold mr-1.5">
+                          {idx + 1}
+                        </span>
+                        Unit {idx + 1}
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="text"
+                          value={serialNumbers[idx] || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setSerialNumbers(prev => prev.map((s, i) => i === idx ? val : s));
+                            if (idx === 0) setFormData(prev => ({ ...prev, serialNumber: val }));
+                          }}
+                          placeholder={`SN-${idx + 1}`}
+                          className="w-36 bg-white border border-slate-200 rounded-lg p-1.5 text-xs font-mono font-bold text-slate-800"
+                        />
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="text"
+                          value={unitItem.tagNumber || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAssetItems(prev => prev.map((it, i) => i === idx ? { ...it, tagNumber: val, barcode: val } : it));
+                          }}
+                          className="w-44 bg-white border border-purple-200 rounded-lg p-1.5 text-xs font-mono font-bold text-purple-900"
+                        />
+                      </td>
+                      <td className="p-2.5">
+                        <input
+                          type="text"
+                          value={unitItem.rfidEpc || ''}
+                          onChange={(e) => {
+                            const val = e.target.value;
+                            setAssetItems(prev => prev.map((it, i) => i === idx ? { ...it, rfidEpc: val } : it));
+                          }}
+                          placeholder="Optional EPC"
+                          className="w-48 bg-white border border-slate-200 rounded-lg p-1.5 text-xs font-mono text-slate-700"
+                        />
+                      </td>
+                      <td className="p-2.5">
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-100 text-emerald-800 border border-emerald-200">
+                          Active
+                        </span>
+                      </td>
+                      <td className="p-2.5 text-right">
+                        <button
+                          type="button"
+                          onClick={() => setSelectedItemIndex(idx)}
+                          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
+                            isSelected
+                              ? 'bg-[#6C2BD9] text-white shadow-xs'
+                              : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
+                          }`}
+                        >
+                          {isSelected ? 'Viewing' : 'Preview'}
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Active Unit Barcode Preview */}
+          <div className="p-4 bg-slate-50 border border-slate-200 rounded-xl flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center sm:text-left">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-purple-700">Live Tag Preview: Unit #{selectedItemIndex + 1}</span>
+              <p className="text-sm font-mono font-extrabold text-slate-900">
+                {assetItems[selectedItemIndex]?.tagNumber || `TAG-${new Date().getFullYear()}-${String(10000 + selectedItemIndex).padStart(5, '0')}`}
+              </p>
+              <p className="text-[11px] text-slate-500">
+                Serial: <span className="font-mono font-bold text-slate-700">{serialNumbers[selectedItemIndex] || 'None assigned'}</span> &bull; Status: <span className="text-emerald-700 font-bold">Active</span>
+              </p>
+            </div>
+            <div className="bg-white p-2.5 border border-slate-200 rounded-xl shadow-xs">
+              <BarcodePreview value={assetItems[selectedItemIndex]?.tagNumber || `TAG-${new Date().getFullYear()}-${String(10000 + selectedItemIndex).padStart(5, '0')}`} />
+            </div>
+          </div>
+        </section>
+      );
     }
     const tagValue = formData.assetTagBarcode?.trim() || '';
     const isRfid = formData.tagType === 'RFID';
