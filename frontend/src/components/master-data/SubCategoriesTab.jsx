@@ -330,7 +330,13 @@ export function SubCategoriesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Sub Category "${sc.name}" (${sc.code})?`)) {
       try {
-        await api.delete(`/master-data/asset-classes/${sc.id}`);
+        if (typeof sc.id === 'string' && sc.id.length > 10) {
+          await api.delete(`/master-data/asset-classes/${sc.id}`).catch(() => null);
+        }
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+          localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => c.id !== sc.id)));
+        } catch (_) {}
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
       } catch (err) {

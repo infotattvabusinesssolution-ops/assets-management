@@ -351,6 +351,10 @@ export function ClassesTab({
       if (typeof cls.id === 'string' && cls.id.length > 10) {
         await api.delete(`/master-data/asset-classes/${cls.id}`).catch(() => null);
       }
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+        localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== cls.id)));
+      } catch (_) {}
       const remaining = classesList.filter((c) => c.id !== cls.id);
       setClassesList(remaining);
       if (remaining.length > 0) setSelectedClass(remaining[0]);
