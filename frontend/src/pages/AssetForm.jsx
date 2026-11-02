@@ -420,15 +420,10 @@ export function AssetForm() {
   const [uploadingImage, setUploadingImage] = useState(false);
 
   // Master Data Options loaded dynamically from backend & localStorage
-  const [assetTypes, setAssetTypes] = useState(() => {
-    try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
-      const existing = new Set(custom.map(c => c.name.toLowerCase()));
-      return [...custom, ...DEFAULT_ASSET_TYPES.filter(d => !existing.has(d.name.toLowerCase()))];
-    } catch (_) {
-      return DEFAULT_ASSET_TYPES;
-    }
-  });
+  const [assetTypes, setAssetTypes] = useState([
+    { id: '1', name: 'Asset', description: 'Capitalized physical asset subject to depreciation' },
+    { id: '2', name: 'Non-asset', description: 'Expensed low-value item or consumable' }
+  ]);
 
   const [assetGroups, setAssetGroups] = useState(() => {
     try {
@@ -660,7 +655,7 @@ export function AssetForm() {
   const [formData, setFormData] = useState({
     // 1. Basic Information
     assetName: '',
-    assetType: 'IT Equipment',
+    assetType: 'Asset',
     category: '',
     categoryId: '',
     subcategory: '',
@@ -790,7 +785,7 @@ export function AssetForm() {
   // 1. Cascading Asset Groups based on selected Asset Type
   const availableAssetGroups = useMemo(() => {
     if (!formData.assetType) return assetGroups;
-    return (assetGroups || []).filter(g => matchesGroupToType(g, formData.assetType));
+    return assetGroups || [];
   }, [assetGroups, formData.assetType]);
 
   // 2. Cascading Asset Classes based on selected Asset Group
@@ -2000,68 +1995,139 @@ export function AssetForm() {
         </div>
       )}
 
-      <div className="p-3 bg-purple-50/50 border border-purple-100 rounded-xl text-xs">
-        <label className="font-bold text-slate-700 block mb-1">Asset ID</label>
-        <input readOnly value={assetIdPreview} className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold" />
-        <p className="mt-1 text-[11px] text-slate-500">Each item receives a unique ID using the asset type, category, and subcategory prefixes when saved.</p>
+      {/* --- ITEM MASTER CATALOG PICKER --- */}
+      <div className="p-4 bg-gradient-to-r from-purple-50/90 via-indigo-50/60 to-purple-50/80 border border-purple-200 rounded-2xl space-y-3 shadow-2xs animate-in fade-in">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-purple-100 pb-2.5">
+          <div className="flex items-center gap-2">
+            <div className="w-8 h-8 rounded-xl bg-[#6C2BD9] text-white flex items-center justify-center font-bold shrink-0">
+              <Box className="w-4 h-4" />
+            </div>
+            <div>
+              <h3 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                <span>Select from Item Master Catalog</span>
+                <span className="px-2 py-0.2 bg-[#6C2BD9] text-white rounded text-[9px] font-bold uppercase tracking-wider">Required</span>
+              </h3>
+              <p className="text-[11px] text-slate-500">Pick the defined product. Classification, model, supplier barcode & specifications lock automatically.</p>
+            </div>
+          </div>
+          <a
+            href="/admin/master-data?tab=item-master"
+            target="_blank"
+            rel="noreferrer"
+            className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-1"
+          >
+            + Create New Item in Master
+          </a>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+          <div className="md:col-span-2">
+            <label className="font-bold text-slate-700 block mb-1">
+              Item Master Record <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={selectedItemMasterId}
+              onChange={(e) => handleSelectItemMaster(e.target.value)}
+              className="w-full bg-white border border-purple-300 rounded-xl p-2.5 text-xs text-slate-900 font-bold focus:border-[#6C2BD9] outline-none shadow-xs cursor-pointer"
+            >
+              <option value="">-- Choose Item from Item Master --</option>
+              {itemMasters.map((itm) => (
+                <option key={itm.id} value={itm.id}>
+                  [{itm.itemCode}] {itm.itemName} — {itm.assetGroupName || 'General'} &rsaquo; {itm.categoryName || 'General'}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Supplier Barcode (EAN/Model)</label>
+            <input
+              readOnly
+              value={formData.supplierBarcode || (selectedItemMasterId ? 'None on master' : '')}
+              placeholder="Locked from Item Master"
+              className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-xs font-mono font-bold text-slate-700"
+            />
+          </div>
+        </div>
+
+        {selectedItemMasterId && (
+          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900 animate-in fade-in">
+            <div className="flex items-center gap-2">
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+              <span>
+                <strong>Master Linked:</strong> {formData.assetName} &bull; Group: <strong>{formData.assetGroup}</strong> &bull; Subgroup: <strong>{formData.assetClass}</strong> &bull; Category: <strong>{formData.category}</strong>
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={handleClearItemMaster}
+              className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer shrink-0"
+            >
+              Clear Selection
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* --- ASSET ID & SYSTEM DERIVED CLASSIFICATION --- */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs">
+          <label className="font-bold text-slate-700 block mb-1">Asset Tag ID (Unique Physical Tag)</label>
+          <input readOnly value={assetIdPreview} className="w-full bg-white border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold" />
+          <p className="mt-1 text-[11px] text-slate-500">Each physical unit receives a unique system tag ID upon registration.</p>
+        </div>
+
+        <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1">
+          <div className="flex items-center justify-between">
+            <label className="font-bold text-slate-700 block">Asset Classification (System Enumeration)</label>
+            <span className="text-[10px] text-slate-400 font-medium">Auto-derived</span>
+          </div>
+          <div className={`p-2 rounded-xl border flex items-center justify-between text-xs font-bold ${
+            derivedClassification === 'Asset'
+              ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+              : 'bg-amber-50 text-amber-800 border-amber-200'
+          }`}>
+            <div className="flex items-center gap-1.5">
+              <ShieldCheck className="w-4 h-4 text-emerald-600" />
+              <span>{derivedClassification === 'Asset' ? 'Asset (Capitalized & Depreciated)' : 'Non-asset (Expensed / Low-value)'}</span>
+            </div>
+            <span className="text-[10px] font-mono text-slate-500">
+              Unit Cost: ${unitCostNum.toLocaleString()} (Threshold: ${CAPITALIZATION_THRESHOLD.toLocaleString()})
+            </span>
+          </div>
+          <p className="text-[10px] text-slate-400">Fixed system rule: cost &ge; $1,000 is capitalized; otherwise expensed.</p>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
-          <label className="font-bold text-slate-700 block mb-1">
-            Asset Name <span className="text-rose-500">*</span>
-          </label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="font-bold text-slate-700 block">
+              Asset Name <span className="text-rose-500">*</span>
+            </label>
+            {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
+          </div>
           <input
             type="text"
             value={formData.assetName}
+            readOnly={Boolean(selectedItemMasterId)}
             onChange={(e) => {
               setFormData({ ...formData, assetName: e.target.value });
               if (e.target.value.trim()) clearFieldError('assetName');
             }}
-            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
+              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-700' : 'bg-slate-50'
+            } ${
               fieldErrors.assetName
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
             }`}
-            placeholder="e.g. Dell Latitude 5420"
+            placeholder="e.g. Lenovo ThinkPad T14"
           />
           {fieldErrors.assetName && (
             <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               {fieldErrors.assetName}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">
-            Asset Type <span className="text-rose-500">*</span>
-          </label>
-          <select
-            value={formData.assetType}
-            onChange={(e) => {
-              handleAssetTypeChange(e.target.value);
-              if (e.target.value) clearFieldError('assetType');
-            }}
-            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
-              fieldErrors.assetType
-                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
-                : 'border-slate-200 focus:border-[#6C2BD9]'
-            }`}
-          >
-            {assetTypes.map((t) => {
-              const name = typeof t === 'string' ? t : (t.name || t.code);
-              return (
-                <option key={t.id || name} value={name}>
-                  {name}
-                </option>
-              );
-            })}
-          </select>
-          {fieldErrors.assetType && (
-            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {fieldErrors.assetType}
             </p>
           )}
         </div>
@@ -2074,7 +2140,8 @@ export function AssetForm() {
           <select
             value={formData.assetGroup || ''}
             onChange={(e) => handleAssetGroupChange(e.target.value)}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            disabled={Boolean(selectedItemMasterId)}
+            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'}`}
           >
             <option value="">{availableAssetGroups.length > 0 ? '-- Select Asset Group --' : 'No asset groups linked to this asset type'}</option>
             {availableAssetGroups.map((g) => {
@@ -2394,9 +2461,118 @@ export function AssetForm() {
         </span>
       </div>
 
+      {/* Live Capitalization Evaluation Banner */}
+      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
+        derivedClassification === 'Asset'
+          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+          : 'bg-amber-50 text-amber-800 border-amber-200'
+      }`}>
+        <div className="flex items-center gap-2">
+          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>Capitalization Evaluation: <strong>{derivedClassification === 'Asset' ? 'Asset (Capitalized & Depreciated)' : 'Non-asset (Expensed on Purchase)'}</strong></span>
+        </div>
+        <span className="text-[11px] font-mono">
+          Unit Cost: ${unitCostNum.toLocaleString()} | Threshold: $1,000.00
+        </span>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Acquisition Date</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Quantity Received <span className="text-rose-500">*</span>
+          </label>
+          <input
+            type="number"
+            min="1"
+            max="50"
+            value={formData.quantity}
+            onChange={(e) => {
+              updateQuantity(e.target.value);
+              const val = Number(e.target.value);
+              if (Number.isInteger(val) && val >= 1 && val <= 50) clearFieldError('quantity');
+            }}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none"
+          />
+          <p className="text-[10px] text-slate-400 mt-0.5">Generates {quantityCount} distinct Tag ID{quantityCount > 1 ? 's' : ''} on save.</p>
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Unit Cost ({formData.currency || 'AED'}) *</label>
+          <input
+            type="text"
+            required
+            value={formData.acquisitionCost}
+            onChange={(e) => {
+              setFormData({ ...formData, acquisitionCost: e.target.value });
+            }}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Currency</label>
+          <select
+            value={formData.currency}
+            onChange={(e) => setFormData({ ...formData, currency: e.target.value })}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          >
+            <option value="AED">AED</option>
+            <option value="USD">USD</option>
+            <option value="EUR">EUR</option>
+            <option value="GBP">GBP</option>
+            <option value="SAR">SAR</option>
+            <option value="INR">INR</option>
+          </select>
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Purchase Order (PO) No.</label>
+          <input
+            type="text"
+            value={formData.poInvoiceNo}
+            placeholder="e.g. PO-2025-089"
+            onChange={(e) => setFormData({ ...formData, poInvoiceNo: e.target.value })}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">PO Date</label>
+          <input
+            type="date"
+            value={formData.acquisitionDate}
+            onChange={(e) => setFormData({ ...formData, acquisitionDate: e.target.value })}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Invoice Number</label>
+          <input
+            type="text"
+            value={formData.invoiceNo || ''}
+            placeholder="e.g. INV-2025-998"
+            onChange={(e) => setFormData({ ...formData, invoiceNo: e.target.value })}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Invoice Date (Deprec. Start)</label>
+          <input
+            type="date"
+            value={formData.invoiceDate || formData.acquisitionDate}
+            onChange={(e) => setFormData({
+              ...formData,
+              invoiceDate: e.target.value,
+              depreciationStartDate: e.target.value
+            })}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Delivery Date</label>
           <input
             type="date"
             value={formData.acquisitionDate}
@@ -3663,30 +3839,52 @@ export function AssetForm() {
           {/* ROW 1: Panels 1, 2, 3, 4 (4 Columns Across) */}
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 items-stretch">
 
-            {/* PANEL 1: 📋 1. Basic Information ⓘ */}
+            {/* PANEL 1: 📋 1. Basic Information & Item Master ⓘ */}
             <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 flex flex-col justify-between">
               <div className="space-y-3">
                 <div className="flex items-center justify-between border-b border-slate-100 pb-2">
                   <h3 className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
-                    <FileText className="w-4 h-4 text-[#6C2BD9]" /> Basic Information <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
+                    <FileText className="w-4 h-4 text-[#6C2BD9]" /> Item Master & Specs <HelpCircle className="w-3.5 h-3.5 text-slate-400 cursor-pointer" />
                   </h3>
+                  <span className="text-[9px] font-bold uppercase text-[#6C2BD9] bg-purple-50 px-2 py-0.5 rounded-full border border-purple-100">Catalog Driven</span>
+                </div>
+
+                {/* Item Master Catalog Picker */}
+                <div className="space-y-1 text-xs p-2.5 bg-purple-50/70 border border-purple-200 rounded-xl">
+                  <label className="font-bold text-slate-800 block">Select from Item Master *</label>
+                  <select
+                    value={selectedItemMasterId}
+                    onChange={(e) => handleSelectItemMaster(e.target.value)}
+                    className="w-full bg-white border border-purple-300 rounded-lg p-2 text-xs text-slate-900 font-bold focus:border-[#6C2BD9] outline-none"
+                  >
+                    <option value="">-- Choose Item Master --</option>
+                    {itemMasters.map((itm) => (
+                      <option key={itm.id} value={itm.id}>
+                        [{itm.itemCode}] {itm.itemName}
+                      </option>
+                    ))}
+                  </select>
+                  {selectedItemMasterId && (
+                    <p className="text-[10px] text-emerald-700 font-semibold mt-1">✓ Master specifications locked.</p>
+                  )}
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Asset ID</label>
+                  <label className="font-bold text-slate-700 block">Asset Tag ID</label>
                   <input readOnly value={assetIdPreview} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold" />
-                  <p className="text-[10px] text-slate-500">Unique ID assigned on save.</p>
+                  <p className="text-[10px] text-slate-500">Unique tag ID assigned per physical unit.</p>
                 </div>
 
                 {/* Asset Name */}
                 <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Asset Name *</label>
+                  <label className="font-bold text-slate-700 block">Asset / Item Name *</label>
                   <input
                     type="text"
                     required
+                    readOnly={Boolean(selectedItemMasterId)}
                     value={formData.assetName}
                     onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                    className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
                   />
                 </div>
 
@@ -3760,31 +3958,50 @@ export function AssetForm() {
                   </h3>
                 </div>
 
+                {/* System-defined enumeration: Asset vs Non-asset */}
+                <div className="space-y-1 text-xs">
+                  <label className="font-bold text-slate-700 block">Asset Classification (System Enumeration)</label>
+                  <div className={`p-2 rounded-xl border flex items-center justify-between font-bold text-xs ${
+                    derivedClassification === 'Asset'
+                      ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
+                      : 'bg-amber-50 text-amber-800 border-amber-200'
+                  }`}>
+                    <div className="flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-600" />
+                      <span>{derivedClassification === 'Asset' ? 'Asset (Capitalized)' : 'Non-asset (Expensed)'}</span>
+                    </div>
+                  </div>
+                </div>
+
                 <div className="space-y-1 text-xs">
                   <label className="font-bold text-slate-700 block">Asset Group *</label>
                   <select
                     value={formData.assetGroup}
-                    onChange={(e) => setFormData({ ...formData, assetGroup: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                    disabled={Boolean(selectedItemMasterId)}
+                    onChange={(e) => handleAssetGroupChange(e.target.value)}
+                    className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
                   >
-                    <option value="IT Assets">IT Assets</option>
-                    <option value="Facilities">Facilities</option>
+                    <option value="">-- Select Asset Group --</option>
+                    {assetGroups.map((g) => {
+                      const name = g.name || g.code;
+                      return <option key={g.id || name} value={name}>{name}</option>;
+                    })}
                   </select>
                 </div>
 
                 <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Asset Type *</label>
+                  <label className="font-bold text-slate-700 block">Asset Sub Group</label>
                   <select
-                    value={formData.assetType}
-                    onChange={(e) => handleAssetTypeChange(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                    value={formData.assetClass}
+                    disabled={Boolean(selectedItemMasterId)}
+                    onChange={(e) => handleAssetClassChange(e.target.value)}
+                    className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
                   >
-                    <option value="IT Equipment">IT Equipment</option>
-                    <option value="Office Equipment">Office Equipment</option>
-                    <option value="Machinery">Machinery</option>
-                    <option value="Vehicle">Vehicle</option>
-                    <option value="Furniture">Furniture & Fixtures</option>
-                    <option value="Facility & Building">Facility & Building</option>
+                    <option value="">-- Select Sub Group --</option>
+                    {availableAssetClassesDropdown.map((cls) => {
+                      const name = cls.name || cls.code;
+                      return <option key={cls.id || name} value={name}>{name}</option>;
+                    })}
                   </select>
                 </div>
 
