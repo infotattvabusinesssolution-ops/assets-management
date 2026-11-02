@@ -14,83 +14,7 @@ export const SYSTEM_DISPOSAL_REASONS = [
 
 const DISPOSED_ASSETS_FILE = path.join(process.cwd(), 'data', 'disposed_assets.json');
 
-const INITIAL_DISPOSED_ASSETS = [
-  {
-    id: 'ast-disp-001',
-    assetId: 'AST-000088',
-    tagNumber: 'TAG-2024-0088',
-    serialNumber: 'SN-HP-88910',
-    description: 'HP EliteDesk 800 G3 Desktop Workstation',
-    lifecycleStatus: 'DISPOSED',
-    active: false,
-    purchaseCost: 1250,
-    unitCost: 1250,
-    category: { id: 'cat-01', name: 'Workstations', code: 'WKS' },
-    site: { id: 'site-01', name: 'Dubai HQ' },
-    disposalDetails: {
-      referenceNumber: 'DISP-2026-0012',
-      disposalStatus: 'SCRAPPED',
-      disposalReason: 'END_OF_LIFE',
-      disposalDate: '2026-02-15T10:00:00.000Z',
-      disposalProceeds: 85,
-      netBookValue: 120,
-      gainLoss: -35,
-      certificateNumber: 'CERT-SCRAP-8812',
-      buyerRecipient: 'Emirates Metal Recycling LLC',
-      notes: 'End of 5-year depreciation cycle; motherboard capacitors blown.'
-    }
-  },
-  {
-    id: 'ast-disp-002',
-    assetId: 'AST-000095',
-    tagNumber: 'TAG-2024-0095',
-    serialNumber: 'SN-LN-99231',
-    description: 'Lenovo ThinkPad X1 Carbon Gen 8',
-    lifecycleStatus: 'DISPOSED',
-    active: false,
-    purchaseCost: 2100,
-    unitCost: 2100,
-    category: { id: 'cat-02', name: 'Laptops', code: 'LAP' },
-    site: { id: 'site-02', name: 'Abu Dhabi Branch' },
-    disposalDetails: {
-      referenceNumber: 'DISP-2026-0018',
-      disposalStatus: 'SOLD',
-      disposalReason: 'END_OF_LIFE',
-      disposalDate: '2026-03-01T14:30:00.000Z',
-      disposalProceeds: 450,
-      netBookValue: 350,
-      gainLoss: 100,
-      certificateNumber: 'BILL-SALE-9912',
-      buyerRecipient: 'Employee Buyout Program',
-      notes: 'Sold to departing project lead after security data sanitization.'
-    }
-  },
-  {
-    id: 'ast-disp-003',
-    assetId: 'AST-000104',
-    tagNumber: 'TAG-2025-0104',
-    serialNumber: 'SN-AP-44109',
-    description: 'Apple iPad Pro 11-inch (M1)',
-    lifecycleStatus: 'DISPOSED',
-    active: false,
-    purchaseCost: 950,
-    unitCost: 950,
-    category: { id: 'cat-03', name: 'Tablets', code: 'TAB' },
-    site: { id: 'site-01', name: 'Dubai HQ' },
-    disposalDetails: {
-      referenceNumber: 'DISP-2026-0024',
-      disposalStatus: 'WRITTEN_OFF',
-      disposalReason: 'THEFT_LOSS',
-      disposalDate: '2026-03-10T09:15:00.000Z',
-      disposalProceeds: 0,
-      netBookValue: 620,
-      gainLoss: -620,
-      certificateNumber: 'POLICE-REP-2026-90',
-      buyerRecipient: '',
-      notes: 'Reported missing in transit between sites. Police incident report filed.'
-    }
-  }
-];
+const INITIAL_DISPOSED_ASSETS = [];
 
 function readDisposedAssetsFromFile() {
   try {
@@ -126,118 +50,71 @@ export async function getDisposalReasons(req, res, next) {
 // Fetch active asset candidates eligible for disposal
 export async function getDisposalCandidates(req, res, next) {
   try {
-    const { search, categoryId, siteId } = req.query;
+    const { search, categoryId, siteId, limit = 50 } = req.query;
 
-    if (isDbConnected()) {
-      try {
-        const where = {
-          lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED'] }
-        };
+    const where = {
+      lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED'] }
+    };
 
-        if (search && search.trim()) {
-          const q = search.trim();
-          where.OR = [
-            { assetId: { contains: q } },
-            { tagNumber: { contains: q } },
-            { serialNumber: { contains: q } },
-            { description: { contains: q } }
-          ];
-        }
-        if (categoryId) where.categoryId = categoryId;
-        if (siteId) where.siteId = siteId;
+    if (search && search.trim()) {
+      const q = search.trim();
+      where.OR = [
+        { assetId: { contains: q } },
+        { tagNumber: { contains: q } },
+        { serialNumber: { contains: q } },
+        { description: { contains: q } }
+      ];
+    }
+    if (categoryId) where.categoryId = categoryId;
+    if (siteId) where.siteId = siteId;
 
-        const assets = await prisma.asset.findMany({
-          where,
-          include: {
-            category: { select: { id: true, name: true, code: true } },
-            company: { select: { id: true, name: true } },
-            site: { select: { id: true, name: true } },
-            building: { select: { id: true, name: true } },
-            room: { select: { id: true, name: true } },
-            custodian: { select: { id: true, fullName: true, employeeCode: true } }
-          },
-          orderBy: { assetId: 'asc' },
-          take: 50
+    let candidates = [];
+    try {
+      const assets = await prisma.asset.findMany({
+        where,
+        include: {
+          category: { select: { id: true, name: true, code: true } },
+          company: { select: { id: true, name: true } },
+          site: { select: { id: true, name: true } },
+          building: { select: { id: true, name: true } },
+          room: { select: { id: true, name: true } },
+          department: { select: { id: true, name: true } },
+          custodian: { select: { id: true, fullName: true, employeeCode: true } }
+        },
+        orderBy: { assetId: 'asc' },
+        take: parseInt(limit, 10) || 50
+      });
+
+      if (assets.length > 0) {
+        const assetIds = assets.map(a => a.id);
+        const bookValues = await prisma.assetBookValue.findMany({
+          where: { assetId: { in: assetIds }, bookType: 'CORPORATE' }
+        }).catch(() => []);
+        const bookValMap = new Map(bookValues.map(b => [b.assetId, b]));
+
+        candidates = assets.map(a => {
+          const b = bookValMap.get(a.id);
+          const capVal = b?.capitalizationValue ? parseFloat(b.capitalizationValue.toString()) : (parseFloat(a.acquisitionValue || 0));
+          const accumDep = b?.accumulatedDepreciation ? parseFloat(b.accumulatedDepreciation.toString()) : 0;
+          const nbv = b?.netBookValue ? parseFloat(b.netBookValue.toString()) : Math.max(0, capVal - accumDep);
+
+          return {
+            ...a,
+            purchaseCost: capVal,
+            acquisitionValue: capVal,
+            accumulatedDepreciation: accumDep,
+            netBookValue: nbv
+          };
         });
-
-        if (assets.length > 0) {
-          const assetIds = assets.map(a => a.id);
-          const bookValues = await prisma.assetBookValue.findMany({
-            where: { assetId: { in: assetIds }, bookType: 'CORPORATE' }
-          }).catch(() => []);
-          const bookValMap = new Map(bookValues.map(b => [b.assetId, b]));
-
-          const enriched = assets.map(a => {
-            const b = bookValMap.get(a.id);
-            const capVal = b?.capitalizationValue ? parseFloat(b.capitalizationValue.toString()) : (parseFloat(a.purchaseCost || a.unitCost || 0));
-            const accumDep = b?.accumulatedDepreciation ? parseFloat(b.accumulatedDepreciation.toString()) : 0;
-            const nbv = b?.netBookValue ? parseFloat(b.netBookValue.toString()) : Math.max(0, capVal - accumDep);
-
-            return {
-              ...a,
-              capitalizationValue: capVal,
-              accumulatedDepreciation: accumDep,
-              netBookValue: nbv
-            };
-          });
-
-          return res.json({ success: true, candidates: enriched });
-        }
-      } catch (dbErr) {
-        console.warn('DB candidate search fallback:', dbErr.message);
       }
+    } catch (dbErr) {
+      console.warn('Real asset candidate search error:', dbErr.message);
     }
 
-    // Resilient fallback candidate assets
-    const fallbackCandidates = [
-      {
-        id: 'ast-cand-01',
-        assetId: 'AST-000101',
-        tagNumber: 'TAG-2025-0101',
-        serialNumber: 'SN-LN-10142',
-        description: 'Lenovo ThinkPad T14 Gen 3',
-        lifecycleStatus: 'PENDING_DISPOSAL',
-        purchaseCost: 1450,
-        netBookValue: 450,
-        category: { name: 'Laptops' },
-        site: { name: 'Dubai HQ' },
-        custodian: { fullName: 'Salma Khan' }
-      },
-      {
-        id: 'ast-cand-02',
-        assetId: 'AST-000102',
-        tagNumber: 'TAG-2025-0102',
-        serialNumber: 'SN-DL-88219',
-        description: 'Dell PowerEdge R740 Server',
-        lifecycleStatus: 'IN_STORE',
-        purchaseCost: 6800,
-        netBookValue: 1200,
-        category: { name: 'Servers' },
-        site: { name: 'DC Al Quoz' },
-        custodian: { fullName: 'IT Infrastructure' }
-      },
-      {
-        id: 'ast-cand-03',
-        assetId: 'AST-000103',
-        tagNumber: 'TAG-2025-0103',
-        serialNumber: 'SN-HP-33100',
-        description: 'HP LaserJet Enterprise MFP M630',
-        lifecycleStatus: 'UNDER_MAINTENANCE',
-        purchaseCost: 2800,
-        netBookValue: 300,
-        category: { name: 'Printers' },
-        site: { name: 'Dubai HQ' },
-        custodian: { fullName: 'Admin Facilities' }
-      }
-    ];
-
-    res.json({
+    // Always return real candidates only - no mock data!
+    return res.json({
       success: true,
-      candidates: fallbackCandidates.filter(c =>
-        !search ||
-        c.assetId.toLowerCase().includes(search.toLowerCase()) ||
-        c.description.toLowerCase().includes(search.toLowerCase())
-      )
+      candidates
     });
   } catch (err) { next(err); }
 }
@@ -331,7 +208,7 @@ export async function getDisposalSummary(req, res, next) {
     if (isDbConnected()) {
       try {
         const [allAssets, disposeTxs, bookValues] = await Promise.all([
-          prisma.asset.findMany({ select: { id: true, lifecycleStatus: true, active: true, purchaseCost: true, unitCost: true } }),
+          prisma.asset.findMany({ select: { id: true, lifecycleStatus: true, active: true, acquisitionValue: true } }),
           prisma.assetTransaction.findMany({
             where: { transactionType: { in: ['DISPOSAL', 'DISPOSE'] } },
             select: { assetId: true, notes: true, payload: true, createdAt: true }
@@ -466,8 +343,13 @@ export async function initiateDisposal(req, res, next) {
 
     if (isDbConnected()) {
       try {
-        const asset = await prisma.asset.findUnique({
-          where: { id: assetId },
+        const asset = await prisma.asset.findFirst({
+          where: {
+            OR: [
+              { id: assetId },
+              { assetId: assetId }
+            ]
+          },
           include: { category: true, company: true, site: true }
         });
 
@@ -485,7 +367,7 @@ export async function initiateDisposal(req, res, next) {
             where: { assetId_bookType: { assetId: asset.id, bookType: 'CORPORATE' } }
           }).catch(() => null);
 
-          const capVal = bookVal?.capitalizationValue ? parseFloat(bookVal.capitalizationValue.toString()) : (parseFloat(asset.purchaseCost || asset.unitCost || 0));
+          const capVal = bookVal?.capitalizationValue ? parseFloat(bookVal.capitalizationValue.toString()) : (parseFloat(asset.acquisitionValue || 0));
           const accumDep = bookVal?.accumulatedDepreciation ? parseFloat(bookVal.accumulatedDepreciation.toString()) : 0;
           const netBookValue = bookVal?.netBookValue ? parseFloat(bookVal.netBookValue.toString()) : Math.max(0, capVal - accumDep);
           const gainLoss = actualProceeds - netBookValue;

@@ -93,16 +93,55 @@ export function DisposalTransactionModal({
     fetchMasterData();
   }, [isOpen]);
 
-  // Search candidate assets if none selected
+  // Search candidate assets from real API (No mock data)
   const searchCandidates = async (query = '') => {
     setIsSearchingCandidates(true);
     try {
-      const res = await api.get('/disposals/candidates', { params: { search: query } });
-      if (res && res.candidates) {
-        setCandidates(res.candidates);
+      let list = [];
+
+      // 1. First attempt to fetch from disposal candidates endpoint
+      try {
+        const res = await api.get('/disposals/candidates', { params: { search: query, limit: 50 } });
+        if (res?.success && Array.isArray(res.candidates) && res.candidates.length > 0) {
+          list = res.candidates;
+        }
+      } catch (_) {}
+
+      // 2. Also search from real system assets endpoint /assets if candidate list empty
+      if (!list || list.length === 0) {
+        try {
+          const assetsRes = await api.get('/assets', {
+            params: {
+              search: query,
+              limit: 50
+            }
+          });
+          if (assetsRes?.assets && Array.isArray(assetsRes.assets)) {
+            list = assetsRes.assets
+              .filter(a => !['DISPOSED', 'RETIRED'].includes(a.lifecycleStatus))
+              .map(a => ({
+                id: a.id,
+                assetId: a.assetId || a.id,
+                description: a.description || a.name || 'Unnamed Asset',
+                tagNumber: a.tagNumber || a.barcode || 'N/A',
+                serialNumber: a.serialNumber || 'N/A',
+                category: a.category || { name: 'General' },
+                site: a.site || { name: 'Main Site' },
+                custodian: a.custodian,
+                purchaseCost: parseFloat(a.acquisitionValue || a.purchaseCost || a.unitCost || 0),
+                netBookValue: a.netBookValue !== undefined 
+                  ? parseFloat(a.netBookValue) 
+                  : parseFloat(a.acquisitionValue || a.purchaseCost || a.unitCost || 0),
+                lifecycleStatus: a.lifecycleStatus
+              }));
+          }
+        } catch (_) {}
       }
+
+      setCandidates(list || []);
     } catch (err) {
       console.warn('Candidate search error:', err.message);
+      setCandidates([]);
     } finally {
       setIsSearchingCandidates(false);
     }
@@ -117,8 +156,10 @@ export function DisposalTransactionModal({
   // Calculated Financial Metrics
   const calculatedNBV = useMemo(() => {
     if (!targetAsset) return 0;
-    if (targetAsset.netBookValue !== undefined) return parseFloat(targetAsset.netBookValue) || 0;
-    const cost = parseFloat(targetAsset.purchaseCost || targetAsset.unitCost || targetAsset.cost || 0);
+    if (targetAsset.netBookValue !== undefined && !isNaN(parseFloat(targetAsset.netBookValue))) {
+      return parseFloat(targetAsset.netBookValue);
+    }
+    const cost = parseFloat(targetAsset.acquisitionValue || targetAsset.purchaseCost || targetAsset.unitCost || targetAsset.cost || 0);
     const accum = parseFloat(targetAsset.accumulatedDepreciation || 0);
     return Math.max(0, cost - accum);
   }, [targetAsset]);

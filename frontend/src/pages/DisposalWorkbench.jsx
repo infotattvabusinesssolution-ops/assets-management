@@ -34,111 +34,6 @@ import clsx from 'clsx';
 import { api } from '../services/api';
 import { DisposalTransactionModal, SYSTEM_DISPOSAL_REASONS } from '../components/modals/DisposalTransactionModal';
 
-// Rich baseline records to guarantee immediate display even if backend is restarting
-const FALLBACK_DISPOSED_ASSETS = [
-  {
-    id: 'ast-disp-001',
-    assetId: 'AST-000088',
-    tagNumber: 'TAG-2024-0088',
-    serialNumber: 'SN-HP-88910',
-    description: 'HP EliteDesk 800 G3 Desktop Workstation',
-    lifecycleStatus: 'DISPOSED',
-    purchaseCost: 1250,
-    unitCost: 1250,
-    category: { name: 'Workstations' },
-    site: { name: 'Dubai HQ' },
-    disposalDetails: {
-      referenceNumber: 'DISP-2026-0012',
-      disposalStatus: 'SCRAPPED',
-      disposalReason: 'END_OF_LIFE',
-      disposalDate: '2026-02-15T10:00:00.000Z',
-      disposalProceeds: 85,
-      netBookValue: 120,
-      gainLoss: -35,
-      certificateNumber: 'CERT-SCRAP-8812',
-      buyerRecipient: 'Emirates Metal Recycling LLC',
-      notes: 'End of 5-year depreciation cycle; motherboard capacitors blown.'
-    }
-  },
-  {
-    id: 'ast-disp-002',
-    assetId: 'AST-000095',
-    tagNumber: 'TAG-2024-0095',
-    serialNumber: 'SN-LN-99231',
-    description: 'Lenovo ThinkPad X1 Carbon Gen 8',
-    lifecycleStatus: 'DISPOSED',
-    purchaseCost: 2100,
-    unitCost: 2100,
-    category: { name: 'Laptops' },
-    site: { name: 'Abu Dhabi Branch' },
-    disposalDetails: {
-      referenceNumber: 'DISP-2026-0018',
-      disposalStatus: 'SOLD',
-      disposalReason: 'END_OF_LIFE',
-      disposalDate: '2026-03-01T14:30:00.000Z',
-      disposalProceeds: 450,
-      netBookValue: 350,
-      gainLoss: 100,
-      certificateNumber: 'BILL-SALE-9912',
-      buyerRecipient: 'Employee Buyout Program',
-      notes: 'Sold to departing project lead after security data sanitization.'
-    }
-  },
-  {
-    id: 'ast-disp-003',
-    assetId: 'AST-000104',
-    tagNumber: 'TAG-2025-0104',
-    serialNumber: 'SN-AP-44109',
-    description: 'Apple iPad Pro 11-inch (M1)',
-    lifecycleStatus: 'DISPOSED',
-    purchaseCost: 950,
-    unitCost: 950,
-    category: { name: 'Tablets' },
-    site: { name: 'Dubai HQ' },
-    disposalDetails: {
-      referenceNumber: 'DISP-2026-0024',
-      disposalStatus: 'WRITTEN_OFF',
-      disposalReason: 'THEFT_LOSS',
-      disposalDate: '2026-03-10T09:15:00.000Z',
-      disposalProceeds: 0,
-      netBookValue: 620,
-      gainLoss: -620,
-      certificateNumber: 'POLICE-REP-2026-90',
-      buyerRecipient: '',
-      notes: 'Reported missing in transit between sites. Police incident report filed.'
-    }
-  }
-];
-
-const FALLBACK_PENDING_ASSETS = [
-  {
-    id: 'ast-pend-01',
-    assetId: 'AST-000101',
-    tagNumber: 'TAG-2025-0101',
-    serialNumber: 'SN-LN-10142',
-    description: 'Lenovo ThinkPad T14 Gen 3',
-    lifecycleStatus: 'PENDING_DISPOSAL',
-    purchaseCost: 1450,
-    unitCost: 1450,
-    category: { name: 'Laptops' },
-    site: { name: 'Dubai HQ' },
-    custodian: { fullName: 'Salma Khan' }
-  },
-  {
-    id: 'ast-pend-02',
-    assetId: 'AST-000115',
-    tagNumber: 'TAG-2025-0115',
-    serialNumber: 'SN-SM-22901',
-    description: 'Samsung Curved UHD Monitor 34-inch',
-    lifecycleStatus: 'PENDING_DISPOSAL',
-    purchaseCost: 890,
-    unitCost: 890,
-    category: { name: 'Monitors' },
-    site: { name: 'Abu Dhabi Branch' },
-    custodian: { fullName: 'Facilities Reserve' }
-  }
-];
-
 export function DisposalWorkbench() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -146,8 +41,8 @@ export function DisposalWorkbench() {
   // 3 distinct views derived directly from searchParams: 'workbench' | 'ledger' | 'pending'
   const activeTab = searchParams.get('tab') || 'workbench';
 
-  const [disposedAssets, setDisposedAssets] = useState(FALLBACK_DISPOSED_ASSETS);
-  const [pendingAssets, setPendingAssets] = useState(FALLBACK_PENDING_ASSETS);
+  const [disposedAssets, setDisposedAssets] = useState([]);
+  const [pendingAssets, setPendingAssets] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
 
   // Filters
@@ -174,21 +69,21 @@ export function DisposalWorkbench() {
         api.get('/assets', { params: { status: 'PENDING_DISPOSAL', limit: 100 } }).catch(() => null)
       ]);
 
-      if (disposalsRes?.assets && Array.isArray(disposalsRes.assets) && disposalsRes.assets.length > 0) {
+      if (disposalsRes?.assets && Array.isArray(disposalsRes.assets)) {
         setDisposedAssets(disposalsRes.assets);
-        try { localStorage.setItem('fams_disposed_assets', JSON.stringify(disposalsRes.assets)); } catch (_) {}
       } else {
-        const stored = localStorage.getItem('fams_disposed_assets');
-        if (stored) {
-          try { setDisposedAssets(JSON.parse(stored)); } catch (_) { setDisposedAssets(FALLBACK_DISPOSED_ASSETS); }
-        }
+        setDisposedAssets([]);
       }
 
-      if (pendingRes?.assets && Array.isArray(pendingRes.assets) && pendingRes.assets.length > 0) {
+      if (pendingRes?.assets && Array.isArray(pendingRes.assets)) {
         setPendingAssets(pendingRes.assets);
+      } else {
+        setPendingAssets([]);
       }
     } catch (err) {
       console.warn('Failed to load disposal records:', err.message);
+      setDisposedAssets([]);
+      setPendingAssets([]);
     } finally {
       setIsLoading(false);
     }
