@@ -38,17 +38,34 @@ export const DEFAULT_COUNTRIES = [
   'Other'
 ];
 
-export const DEFAULT_LOCATION_TYPES = [
-  'Office',
-  'Warehouse',
-  'Site',
-  'Data Center',
-  'Store',
-  'Manufacturing Plant',
-  'Branch',
-  'Workshop',
-  'Showroom'
+// System-defined enumerations (fixed, not user-defined)
+export const SYSTEM_LOCATION_TYPES = ['Internal', 'External'];
+
+export const LOCATION_LEVELS = [
+  { id: 'Level 1', label: 'Level 1 (e.g. Campus / Site)' },
+  { id: 'Level 2', label: 'Level 2 (e.g. Building / Tower)' },
+  { id: 'Level 3', label: 'Level 3 (e.g. Floor / Wing)' },
+  { id: 'Level 4', label: 'Level 4 (e.g. Room / Zone / Area)' }
 ];
+
+export const computeFullPath = (loc, allLocs = []) => {
+  if (!loc) return '';
+  const parts = [loc.name || loc.code];
+  let current = loc;
+  let depth = 0;
+  while (current && current.parentLocation && current.parentLocation !== '-' && depth < 5) {
+    const parent = allLocs.find((l) => l.code === current.parentLocation || l.id === current.parentLocation || l.name === current.parentLocation);
+    if (parent) {
+      parts.unshift(parent.name || parent.code);
+      current = parent;
+    } else {
+      parts.unshift(current.parentLocation);
+      break;
+    }
+    depth++;
+  }
+  return parts.join(' > ');
+};
 
 export function LocationsTab({
   triggerToast,
@@ -96,40 +113,7 @@ export function LocationsTab({
     triggerToast && triggerToast(`Country "${clean}" added successfully.`);
   };
 
-  const [customLocationTypes, setCustomLocationTypes] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('fams_custom_location_types') || '[]');
-      return Array.isArray(saved) ? saved : [];
-    } catch {
-      return [];
-    }
-  });
-
-  const allLocationTypes = useMemo(() => {
-    const combined = [...DEFAULT_LOCATION_TYPES, ...customLocationTypes];
-    locationsList.forEach((l) => {
-      if (l.type && !combined.includes(l.type)) {
-        combined.push(l.type);
-      }
-    });
-    return Array.from(new Set(combined)).filter(Boolean);
-  }, [customLocationTypes, locationsList]);
-
-  const handleAddNewLocationType = () => {
-    const newType = window.prompt('Enter new Location Type (e.g. Workshop, Showroom, Branch, Hospital):');
-    if (!newType || !newType.trim()) return;
-    const clean = newType.trim();
-    if (!allLocationTypes.includes(clean)) {
-      const updated = [...customLocationTypes, clean];
-      setCustomLocationTypes(updated);
-      try {
-        localStorage.setItem('fams_custom_location_types', JSON.stringify(updated));
-      } catch (_) {}
-    }
-    setLocFormState((prev) => ({ ...prev, type: clean }));
-    triggerToast && triggerToast(`Location Type "${clean}" added successfully.`);
-  };
-  const [isLoading, setIsLoading] = useState(false);
+    const [isLoading, setIsLoading] = useState(false);
 
   // Load live locations from database
   const loadLocations = async () => {
@@ -141,7 +125,8 @@ export function LocationsTab({
           id: site.id,
           code: site.code,
           name: site.name,
-          type: site.code.includes('HQ') ? 'Head Office' : (site.code.includes('BR') ? 'Branch' : 'Site'),
+          type: site.type === 'External' ? 'External' : 'Internal',
+          level: site.level || (site.code.includes('HQ') ? 'Level 1' : (site.code.includes('FL') ? 'Level 3' : (site.code.includes('RM') ? 'Level 4' : 'Level 2'))),
           parentLocation: site.code.includes('HQ') ? '-' : 'UAE-HQ',
           country: site.country || 'UAE',
           city: site.city || 'Dubai',
@@ -187,7 +172,8 @@ export function LocationsTab({
   const [locFormState, setLocFormState] = useState({
     code: '',
     name: '',
-    type: 'Office',
+    type: 'Internal',
+    level: 'Level 1',
     parentLocation: '-',
     country: 'UAE',
     city: 'Dubai',
@@ -235,8 +221,9 @@ export function LocationsTab({
       setLocFormState({
         code: locToEdit.code,
         name: locToEdit.name,
-        type: locToEdit.type,
-        parentLocation: locToEdit.parentLocation,
+        type: locToEdit.type || 'Internal',
+        level: locToEdit.level || 'Level 1',
+        parentLocation: locToEdit.parentLocation || '-',
         country: locToEdit.country,
         city: locToEdit.city,
         address: locToEdit.address,
@@ -248,7 +235,8 @@ export function LocationsTab({
       setLocFormState({
         code: '',
         name: '',
-        type: 'Office',
+        type: 'Internal',
+        level: 'Level 1',
         parentLocation: '-',
         country: 'UAE',
         city: 'Dubai',
@@ -292,6 +280,7 @@ export function LocationsTab({
                 code: locFormState.code.toUpperCase(),
                 name: locFormState.name,
                 type: locFormState.type,
+                level: locFormState.level,
                 parentLocation: locFormState.parentLocation,
                 country: locFormState.country,
                 city: locFormState.city,
@@ -493,12 +482,9 @@ export function LocationsTab({
               onChange={(e) => setLocTypeFilter(e.target.value)}
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
-              <option value="All Types">All Types</option>
-              {allLocationTypes.map((t) => (
-                <option key={t} value={t}>
-                  {t}
-                </option>
-              ))}
+              <option value="All Types">All Location Types</option>
+              <option value="Internal">Internal</option>
+              <option value="External">External</option>
             </select>
           </div>
 
@@ -645,7 +631,9 @@ export function LocationsTab({
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Location Code</th>
                   <th className="py-3 px-3">Location Name</th>
-                  <th className="py-3 px-3">Location Type</th>
+                  <th className="py-3 px-3">Level</th>
+                  <th className="py-3 px-3">Hierarchical Path</th>
+                  <th className="py-3 px-3 text-center">Type</th>
                   <th className="py-3 px-3">Country</th>
                   <th className="py-3 px-3">City</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
@@ -656,7 +644,7 @@ export function LocationsTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredLocations.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={12} className="py-12 text-center text-slate-400 text-xs font-medium">
                       No locations found. Click "+ Add Location" to create one.
                     </td>
                   </tr>
@@ -941,37 +929,16 @@ export function LocationsTab({
                   />
                 </div>
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-semibold text-slate-700">Location Type *</label>
-                    <button
-                      type="button"
-                      onClick={handleAddNewLocationType}
-                      className="text-[11px] font-bold text-[#6C2BD9] hover:text-[#5B21B6] hover:underline flex items-center gap-0.5 cursor-pointer"
-                      title="Add a custom Location Type"
-                    >
-                      <Plus className="w-3 h-3 stroke-[3]" />
-                      <span>Add Type</span>
-                    </button>
-                  </div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Location Type * <span className="text-[10px] text-slate-400 font-normal">(System Enumeration)</span>
+                  </label>
                   <select
                     value={locFormState.type}
-                    onChange={(e) => {
-                      if (e.target.value === '__NEW__') {
-                        handleAddNewLocationType();
-                      } else {
-                        setLocFormState({ ...locFormState, type: e.target.value });
-                      }
-                    }}
+                    onChange={(e) => setLocFormState({ ...locFormState, type: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    {allLocationTypes.map((t) => (
-                      <option key={t} value={t}>
-                        {t}
-                      </option>
-                    ))}
-                    <option value="__NEW__" className="text-[#6C2BD9] font-bold">
-                      + Add New Location Type...
-                    </option>
+                    <option value="Internal">Internal (Company Owned / Leased)</option>
+                    <option value="External">External (Client Site / 3rd Party / Vendor)</option>
                   </select>
                 </div>
               </div>
@@ -988,8 +955,21 @@ export function LocationsTab({
                 />
               </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Parent Location</label>
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Hierarchy Level *</label>
+                  <select
+                    value={locFormState.level || 'Level 1'}
+                    onChange={(e) => setLocFormState({ ...locFormState, level: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    {LOCATION_LEVELS.map((lvl) => (
+                      <option key={lvl.id} value={lvl.id}>{lvl.label}</option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Parent Location</label>
                 <select
                   value={locFormState.parentLocation}
                   onChange={(e) => setLocFormState({ ...locFormState, parentLocation: e.target.value })}
@@ -1004,6 +984,7 @@ export function LocationsTab({
                       </option>
                     ))}
                 </select>
+              </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

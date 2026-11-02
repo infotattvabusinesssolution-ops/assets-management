@@ -48,6 +48,9 @@ export function UserManagement() {
 
   // Dynamic Metadata States
   const [sitesList, setSitesList] = useState([]);
+  const [custodiansList, setCustodiansList] = useState([]);
+  const [employeeLookupCode, setEmployeeLookupCode] = useState('');
+  const [employeeLookupStatus, setEmployeeLookupStatus] = useState(null);
   const [departmentsList, setDepartmentsList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
   const [rolesList, setRolesList] = useState([]);
@@ -112,6 +115,9 @@ export function UserManagement() {
     company: 'Asset360 Holdings',
     businessUnit: 'Corporate Services',
     userType: 'System User',
+    password: '',
+    passwordOption: 'custom',
+    forcePasswordChange: true,
     status: 'Active',
     mfaEnabled: false
   });
@@ -119,12 +125,17 @@ export function UserManagement() {
   // Fetch Users
   const fetchMetadata = async () => {
     try {
-      const [sitesRes, deptsRes, compsRes, rolesRes] = await Promise.all([
+      const [sitesRes, deptsRes, compsRes, rolesRes, custRes] = await Promise.all([
         api.get('/master-data/sites').catch(() => null),
         api.get('/master-data/departments').catch(() => null),
         api.get('/master-data/companies').catch(() => null),
-        api.get('/admin/roles').catch(() => null)
+        api.get('/admin/roles').catch(() => null),
+        api.get('/master-data/custodians').catch(() => null)
       ]);
+
+      if (custRes && Array.isArray(custRes.custodians)) {
+        setCustodiansList(custRes.custodians);
+      }
 
       if (sitesRes && Array.isArray(sitesRes.sites)) {
         setSitesList(sitesRes.sites);
@@ -227,7 +238,53 @@ export function UserManagement() {
     setActionSuccessMsg(`User Type "${val}" added and selected.`);
   };
 
-  const openAddUserModal = () => {
+  const handleLookupEmployee = (lookupQuery) => {
+    const q = (lookupQuery || employeeLookupCode).trim();
+    if (!q) return;
+    const clean = q.toUpperCase();
+    const match = custodiansList.find(
+      (c) =>
+        (c.employeeCode && c.employeeCode.toUpperCase() === clean) ||
+        (c.code && c.code.toUpperCase() === clean) ||
+        (c.fullName && c.fullName.toUpperCase().includes(clean)) ||
+        (c.name && c.name.toUpperCase().includes(clean)) ||
+        (c.email && c.email.toUpperCase() === clean)
+    );
+
+    if (match) {
+      setUserFormData((prev) => ({
+        ...prev,
+        employeeId: match.employeeCode || match.code || clean,
+        name: match.fullName || match.name || prev.name,
+        email: match.email || prev.email,
+        phone: match.phone || prev.phone,
+        department: match.department || prev.department,
+        company: match.company || match.organization || prev.company,
+        location: match.location || prev.location,
+        username: prev.username || (match.email ? match.email.split('@')[0] : (match.employeeCode || match.code || '').toLowerCase())
+      }));
+      setEmployeeLookupStatus({
+        found: true,
+        message: `Matched Custodian: ${match.fullName || match.name} (${match.custodianType || 'Internal'} - ${match.department || 'General'})`
+      });
+    } else {
+      setEmployeeLookupStatus({
+        found: false,
+        message: `No custodian record found for "${q}". You can enter user details manually or add them to the Custodian Master first.`
+      });
+    }
+  };
+
+  const handleGeneratePassword = () => {
+    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
+    let pass = 'Pass#';
+    for (let i = 0; i < 8; i++) {
+      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    }
+    setUserFormData((prev) => ({ ...prev, password: pass }));
+  };
+
+    const openAddUserModal = () => {
     setUserFormData({
       name: '',
       username: '',
@@ -247,6 +304,8 @@ export function UserManagement() {
     setIsAddingDepartment(false);
     setIsAddingCompany(false);
     setIsAddingUserType(false);
+    setEmployeeLookupCode('');
+    setEmployeeLookupStatus(null);
     setShowAddModal(true);
   };
 
@@ -1162,11 +1221,40 @@ export function UserManagement() {
                 </div>
               </div>
 
-              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100">
-                <span className="font-semibold text-slate-500 uppercase tracking-wider block mb-2">Assigned Roles & Boundary</span>
-                <div className="flex items-center gap-2 flex-wrap">
-                  <span className="px-2.5 py-1 bg-[#F5F3FF] border border-[#DDD6FE] text-[#6C2BD9] font-medium rounded-md">
-                    {selectedUser.role} (Primary)
+              <div className="p-3 bg-slate-50 rounded-lg border border-slate-100 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="font-semibold text-slate-500 uppercase tracking-wider block text-[10px]">User Group & Role</span>
+                  <span className="px-2.5 py-0.5 bg-[#F5F3FF] border border-[#DDD6FE] text-[#6C2BD9] font-bold rounded-md text-[11px]">
+                    {selectedUser.role || 'Standard User'}
+                  </span>
+                </div>
+
+                <div>
+                  <span className="font-semibold text-slate-500 uppercase tracking-wider block mb-1.5 text-[10px]">Application Menu Access Permissions</span>
+                  <div className="grid grid-cols-2 gap-1.5 text-[11px]">
+                    {[
+                      { name: 'Asset Management', allowed: true },
+                      { name: 'Asset 360 Registry', allowed: true },
+                      { name: 'Master Data Hub', allowed: ['System Administrator', 'Asset Manager', 'Admin'].includes(selectedUser.role) },
+                      { name: 'Maintenance & Work Orders', allowed: ['System Administrator', 'Asset Manager', 'Technician'].includes(selectedUser.role) },
+                      { name: 'Verification & Audit', allowed: ['System Administrator', 'Asset Manager', 'Auditor'].includes(selectedUser.role) },
+                      { name: 'Finance & Depreciation', allowed: ['System Administrator', 'Finance Controller', 'Asset Manager'].includes(selectedUser.role) },
+                      { name: 'Administration & Security', allowed: ['System Administrator', 'Admin'].includes(selectedUser.role) }
+                    ].map((perm) => (
+                      <div key={perm.name} className="flex items-center justify-between p-1.5 rounded-lg border bg-white border-slate-200">
+                        <span className="truncate text-slate-700 font-medium">{perm.name}</span>
+                        <span className={`px-1.5 py-0.5 rounded text-[9px] font-bold shrink-0 ${perm.allowed ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-400'}`}>
+                          {perm.allowed ? 'Granted' : 'Locked'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="pt-2 border-t border-slate-200 flex items-center justify-between text-[11px]">
+                  <span className="text-slate-500 font-medium">Next Login Policy:</span>
+                  <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                    Force Password Change
                   </span>
                 </div>
               </div>
@@ -1198,6 +1286,46 @@ export function UserManagement() {
             </div>
 
             <form onSubmit={handleSaveUser} className="space-y-4 text-xs">
+              {/* Employee / Custodian Master Lookup */}
+              {!showEditModal && (
+                <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                      <Users className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                      <span>Employee / Custodian Master Lookup</span>
+                    </label>
+                    <span className="text-[10px] text-slate-500">Auto-populates user details</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      placeholder="Enter Employee Code (e.g. EMP-001) or Name..."
+                      value={employeeLookupCode}
+                      onChange={(e) => setEmployeeLookupCode(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') {
+                          e.preventDefault();
+                          handleLookupEmployee();
+                        }
+                      }}
+                      className="flex-1 px-3 py-1.5 border border-purple-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => handleLookupEmployee()}
+                      className="px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-semibold rounded-lg transition-colors cursor-pointer text-xs shrink-0"
+                    >
+                      Lookup & Populate
+                    </button>
+                  </div>
+                  {employeeLookupStatus && (
+                    <div className={`p-2 rounded-lg text-[11px] flex items-center gap-2 ${employeeLookupStatus.found ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+                      <span className="font-medium">{employeeLookupStatus.message}</span>
+                    </div>
+                  )}
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">Full Name *</label>
@@ -1469,7 +1597,46 @@ export function UserManagement() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
+              <div className="p-3 bg-slate-50 rounded-xl border border-slate-200 space-y-2">
+                <div className="flex items-center justify-between">
+                  <label className="font-bold text-slate-800 text-[11px] flex items-center gap-1.5">
+                    <Key className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                    <span>Password Configuration</span>
+                  </label>
+                  <button
+                    type="button"
+                    onClick={handleGeneratePassword}
+                    className="text-[11px] font-bold text-[#6C2BD9] hover:underline cursor-pointer"
+                  >
+                    + Generate Random Password
+                  </button>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                  <div>
+                    <input
+                      type="text"
+                      placeholder={showEditModal ? 'Leave blank to keep existing password' : 'Enter initial password...'}
+                      value={userFormData.password || ''}
+                      onChange={(e) => setUserFormData({ ...userFormData, password: e.target.value })}
+                      className="w-full px-3 py-1.5 border border-slate-300 rounded-lg text-xs font-mono bg-white focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
+                    />
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="checkbox"
+                      id="forcePassCheck"
+                      checked={userFormData.forcePasswordChange !== false}
+                      onChange={(e) => setUserFormData({ ...userFormData, forcePasswordChange: e.target.checked })}
+                      className="rounded border-slate-300 text-[#6C2BD9]"
+                    />
+                    <label htmlFor="forcePassCheck" className="text-[11px] font-medium text-slate-700 cursor-pointer">
+                      Force password change on first login
+                    </label>
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 pt-1">
                 <input
                   type="checkbox"
                   id="mfaCheck"
