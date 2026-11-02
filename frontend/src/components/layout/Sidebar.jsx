@@ -146,7 +146,7 @@ const NAV_STRUCTURE = [
     icon: Trash2,
     roles: ['SYS_ADMIN', 'ASSET_ADMIN', 'FINANCE', 'AUDITOR', 'MANAGEMENT'],
     subItems: [
-      { name: 'Disposal Workbench', path: '/disposals' },
+      { name: 'Disposal Workbench', path: '/disposals?tab=workbench' },
       { name: 'Disposed Assets Ledger', path: '/disposals?tab=ledger' },
       { name: 'Pending Disposal', path: '/disposals?tab=pending' }
     ]
@@ -246,6 +246,12 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
   if ((pathname === '/admin/master-data' || pathname === '/master-data') && (!search || !search.includes('tab=') || search.includes('tab=asset-groups'))) {
     const agSub = subItems.find(sub => sub.name === 'Asset Groups');
     if (agSub) return agSub.path;
+  }
+
+  // 2c. If on /disposals without tab or with ?tab=workbench, match Disposal Workbench
+  if ((pathname === '/disposals' || pathname === '/disposal') && (!search || !search.includes('tab=') || search.includes('tab=workbench'))) {
+    const wbSub = subItems.find(sub => sub.name === 'Disposal Workbench');
+    if (wbSub) return wbSub.path;
   }
 
   // 3. Match sub-item without query param if search is empty or no query match

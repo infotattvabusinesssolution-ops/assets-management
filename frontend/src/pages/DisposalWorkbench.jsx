@@ -25,7 +25,10 @@ import {
   X,
   Printer,
   ChevronRight,
-  Sparkles
+  Sparkles,
+  BarChart2,
+  PieChart,
+  LayoutDashboard
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../services/api';
@@ -140,9 +143,8 @@ export function DisposalWorkbench() {
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
-  // Dynamically sync activeTab with URL search params
-  const tabFromUrl = searchParams.get('tab') || 'ledger';
-  const [activeTab, setActiveTab] = useState(tabFromUrl);
+  // 3 distinct views derived directly from searchParams: 'workbench' | 'ledger' | 'pending'
+  const activeTab = searchParams.get('tab') || 'workbench';
 
   const [disposedAssets, setDisposedAssets] = useState(FALLBACK_DISPOSED_ASSETS);
   const [pendingAssets, setPendingAssets] = useState(FALLBACK_PENDING_ASSETS);
@@ -158,12 +160,6 @@ export function DisposalWorkbench() {
   const [selectedAssetForModal, setSelectedAssetForModal] = useState(null);
   const [viewingCertificateAsset, setViewingCertificateAsset] = useState(null);
   const [toastMessage, setToastMessage] = useState(null);
-
-  // Synchronize activeTab whenever the URL search params change (e.g. user clicks in Sidebar)
-  useEffect(() => {
-    const nextTab = searchParams.get('tab') || 'ledger';
-    setActiveTab(nextTab);
-  }, [searchParams]);
 
   const showToast = (message, type = 'success') => {
     setToastMessage({ message, type });
@@ -202,10 +198,8 @@ export function DisposalWorkbench() {
     fetchData();
   }, []);
 
-  // Update tab in URL search params
   const handleTabChange = (tab) => {
-    setActiveTab(tab);
-    setSearchParams(tab === 'ledger' ? {} : { tab });
+    setSearchParams({ tab });
   };
 
   // Filtered Disposed Ledger
@@ -240,11 +234,21 @@ export function DisposalWorkbench() {
   const summaryMetrics = useMemo(() => {
     let proceeds = 0;
     let writtenOff = 0;
+    const byReason = {};
+    const byStatus = {};
 
     disposedAssets.forEach(item => {
       const d = item.disposalDetails || {};
-      proceeds += parseFloat(d.disposalProceeds || 0);
-      writtenOff += parseFloat(d.netBookValue || item.purchaseCost || item.unitCost || 0);
+      const p = parseFloat(d.disposalProceeds || 0);
+      const w = parseFloat(d.netBookValue || item.purchaseCost || item.unitCost || 0);
+      proceeds += p;
+      writtenOff += w;
+
+      const r = d.disposalReason || 'END_OF_LIFE';
+      byReason[r] = (byReason[r] || 0) + 1;
+
+      const s = d.disposalStatus || 'SCRAPPED';
+      byStatus[s] = (byStatus[s] || 0) + 1;
     });
 
     return {
@@ -252,7 +256,9 @@ export function DisposalWorkbench() {
       pendingDisposalCount: pendingAssets.length,
       totalProceeds: proceeds,
       totalWrittenOffValue: writtenOff,
-      netGainLoss: proceeds - writtenOff
+      netGainLoss: proceeds - writtenOff,
+      byReason,
+      byStatus
     };
   }, [disposedAssets, pendingAssets]);
 
@@ -321,10 +327,14 @@ export function DisposalWorkbench() {
               <Trash2 className="w-5 h-5" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">Asset Disposal & Write-Off</h1>
-                <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[#6C2BD9] text-[10px] font-bold">
-                  {activeTab === 'pending' ? 'Pending Review Mode' : 'Ledger View'}
+              <div className="flex items-center gap-2.5">
+                <h1 className="text-xl font-extrabold text-slate-900 tracking-tight">
+                  {activeTab === 'workbench' && 'Disposal Operations Workbench'}
+                  {activeTab === 'ledger' && 'Disposed Assets Historical Ledger'}
+                  {activeTab === 'pending' && 'Pending Disposal Review Queue'}
+                </h1>
+                <span className="px-2.5 py-0.5 rounded-full bg-purple-100 text-[#6C2BD9] text-[10px] font-bold">
+                  {activeTab === 'workbench' ? 'Command Center' : activeTab === 'ledger' ? 'Audit Register' : 'Review Queue'}
                 </span>
               </div>
               <p className="text-xs text-slate-500">
@@ -366,10 +376,27 @@ export function DisposalWorkbench() {
       {/* KPI Cards */}
       <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
         <div
+          onClick={() => handleTabChange('workbench')}
+          className={clsx(
+            "p-4 rounded-2xl border transition-all cursor-pointer",
+            activeTab === 'workbench' ? "bg-purple-50/50 border-[#6C2BD9] shadow-xs ring-2 ring-purple-200" : "bg-white border-slate-200/80 shadow-xs hover:border-purple-300"
+          )}
+        >
+          <div className="flex items-center justify-between text-slate-500 mb-1">
+            <span className="text-[10px] font-bold uppercase tracking-wider">Workbench Overview</span>
+            <LayoutDashboard className="w-4 h-4 text-purple-600" />
+          </div>
+          <div className="text-xl font-extrabold text-slate-900 font-mono">
+            {summaryMetrics.totalDisposedCount + summaryMetrics.pendingDisposalCount}
+          </div>
+          <span className="text-[10px] text-slate-400 mt-1 block">Total lifecycle actions</span>
+        </div>
+
+        <div
           onClick={() => handleTabChange('ledger')}
           className={clsx(
             "p-4 rounded-2xl border transition-all cursor-pointer",
-            activeTab === 'ledger' ? "bg-purple-50/50 border-[#6C2BD9] shadow-xs" : "bg-white border-slate-200/80 shadow-xs hover:border-purple-300"
+            activeTab === 'ledger' ? "bg-purple-50/50 border-[#6C2BD9] shadow-xs ring-2 ring-purple-200" : "bg-white border-slate-200/80 shadow-xs hover:border-purple-300"
           )}
         >
           <div className="flex items-center justify-between text-slate-500 mb-1">
@@ -379,14 +406,14 @@ export function DisposalWorkbench() {
           <div className="text-xl font-extrabold text-slate-900 font-mono">
             {summaryMetrics.totalDisposedCount}
           </div>
-          <span className="text-[10px] text-slate-400 mt-1 block">Assets permanently retired</span>
+          <span className="text-[10px] text-slate-400 mt-1 block">Retired assets ledger</span>
         </div>
 
         <div
           onClick={() => handleTabChange('pending')}
           className={clsx(
             "p-4 rounded-2xl border transition-all cursor-pointer",
-            activeTab === 'pending' ? "bg-amber-50/80 border-amber-500 shadow-xs" : "bg-white border-slate-200/80 shadow-xs hover:border-amber-300"
+            activeTab === 'pending' ? "bg-amber-50/80 border-amber-500 shadow-xs ring-2 ring-amber-200" : "bg-white border-slate-200/80 shadow-xs hover:border-amber-300"
           )}
         >
           <div className="flex items-center justify-between text-slate-500 mb-1">
@@ -420,41 +447,33 @@ export function DisposalWorkbench() {
           </div>
           <span className="text-[10px] text-emerald-600/80 mt-1 block">Total salvage/sale cash</span>
         </div>
-
-        <div className={clsx(
-          "p-4 rounded-2xl border shadow-xs",
-          summaryMetrics.netGainLoss >= 0 ? "bg-emerald-50/50 border-emerald-200" : "bg-rose-50/50 border-rose-200"
-        )}>
-          <div className="flex items-center justify-between text-slate-500 mb-1">
-            <span className="text-[10px] font-bold uppercase tracking-wider">
-              {summaryMetrics.netGainLoss >= 0 ? 'Net Gain' : 'Net Capital Loss'}
-            </span>
-            {summaryMetrics.netGainLoss >= 0 ? (
-              <TrendingUp className="w-4 h-4 text-emerald-600" />
-            ) : (
-              <TrendingDown className="w-4 h-4 text-rose-600" />
-            )}
-          </div>
-          <div className={clsx(
-            "text-xl font-extrabold font-mono",
-            summaryMetrics.netGainLoss >= 0 ? "text-emerald-700" : "text-rose-700"
-          )}>
-            ${Math.abs(summaryMetrics.netGainLoss).toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: 0 })}
-          </div>
-          <span className="text-[10px] text-slate-500 mt-1 block">Proceeds minus written off value</span>
-        </div>
       </div>
 
-      {/* Tabs Navigation */}
+      {/* 3 Main Tabs Navigation */}
       <div className="flex items-center justify-between border-b border-slate-200">
         <div className="flex items-center gap-6">
           <button
+            onClick={() => handleTabChange('workbench')}
+            className={clsx(
+              "pb-3 text-xs font-bold transition-all relative cursor-pointer flex items-center gap-1.5",
+              activeTab === 'workbench' ? "text-[#6C2BD9]" : "text-slate-500 hover:text-slate-800"
+            )}
+          >
+            <LayoutDashboard className="w-3.5 h-3.5" />
+            Disposal Workbench
+            {activeTab === 'workbench' && (
+              <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C2BD9] rounded-full" />
+            )}
+          </button>
+
+          <button
             onClick={() => handleTabChange('ledger')}
             className={clsx(
-              "pb-3 text-xs font-bold transition-all relative cursor-pointer",
+              "pb-3 text-xs font-bold transition-all relative cursor-pointer flex items-center gap-1.5",
               activeTab === 'ledger' ? "text-[#6C2BD9]" : "text-slate-500 hover:text-slate-800"
             )}
           >
+            <Archive className="w-3.5 h-3.5" />
             Disposed Assets Ledger ({filteredDisposals.length})
             {activeTab === 'ledger' && (
               <span className="absolute bottom-0 left-0 right-0 h-0.5 bg-[#6C2BD9] rounded-full" />
@@ -468,6 +487,7 @@ export function DisposalWorkbench() {
               activeTab === 'pending' ? "text-[#6C2BD9]" : "text-slate-500 hover:text-slate-800"
             )}
           >
+            <Clock className="w-3.5 h-3.5" />
             Pending Disposal Review
             <span className="px-2 py-0.5 rounded-full text-[10px] bg-amber-100 text-amber-800 font-bold">
               {pendingAssets.length}
@@ -483,239 +503,445 @@ export function DisposalWorkbench() {
             onClick={() => navigate('/admin/master-data?tab=disposal-statuses')}
             className="text-purple-700 hover:text-purple-900 font-bold flex items-center gap-1 cursor-pointer"
           >
-            Manage Disposal Statuses in Master Data <ChevronRight className="w-3.5 h-3.5" />
+            Configure Disposal Statuses in Master Data <ChevronRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
 
-      {/* Search & Filters */}
-      <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
-        <div className="relative flex-1 w-full max-w-md">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
-          <input
-            type="text"
-            placeholder={activeTab === 'pending' ? "Search pending review assets..." : "Search by Asset ID, tag, name, cert #, or transaction ref..."}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
-          />
-        </div>
-
-        {activeTab === 'ledger' && (
-          <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-              <span className="font-semibold text-slate-500">Status:</span>
-              <select
-                value={selectedStatus}
-                onChange={(e) => setSelectedStatus(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
-              >
-                <option value="ALL">All Statuses</option>
-                <option value="SCRAPPED">Scrapped</option>
-                <option value="SOLD">Sold</option>
-                <option value="DONATED">Donated</option>
-                <option value="WRITTEN_OFF">Written Off</option>
-                <option value="TRADED_IN">Traded In</option>
-              </select>
+      {/* ============================================================== */}
+      {/* VIEW 1: DISPOSAL WORKBENCH (OPERATIONS & OVERVIEW)              */}
+      {/* ============================================================== */}
+      {activeTab === 'workbench' && (
+        <div className="space-y-6">
+          {/* Quick Action & Guidance Hero */}
+          <div className="bg-gradient-to-r from-purple-900 to-indigo-900 rounded-3xl p-6 text-white shadow-xl flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
+            <div className="space-y-1.5 max-w-xl">
+              <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md text-[11px] font-bold text-purple-200">
+                <Sparkles className="w-3.5 h-3.5 text-purple-300" /> Asset Decommissioning Operations
+              </div>
+              <h2 className="text-xl font-black tracking-tight">Formal Disposal Transaction Engine</h2>
+              <p className="text-xs text-purple-200 leading-relaxed">
+                As required by the Asset 360 specification: <span className="text-white font-semibold">Disposal is a transaction, not just a status</span>. Whenever an asset leaves service, execute a formal transaction recording the Disposal Status (Master Data), Disposal Reason (System Enumeration), salvage proceeds, and certificate of destruction.
+              </p>
             </div>
 
-            <div className="flex items-center gap-1.5 text-xs text-slate-600">
-              <span className="font-semibold text-slate-500">Reason:</span>
-              <select
-                value={selectedReason}
-                onChange={(e) => setSelectedReason(e.target.value)}
-                className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
+            <div className="flex flex-col sm:flex-row gap-3 w-full md:w-auto">
+              <button
+                onClick={() => {
+                  setSelectedAssetForModal(null);
+                  setShowTransactionModal(true);
+                }}
+                className="px-5 py-3 bg-white text-purple-900 hover:bg-purple-50 font-extrabold text-xs rounded-2xl shadow-lg transition-all flex items-center justify-center gap-2 cursor-pointer"
               >
-                <option value="ALL">All Reasons</option>
-                {SYSTEM_DISPOSAL_REASONS.map(r => (
-                  <option key={r.code} value={r.code}>{r.label}</option>
-                ))}
-              </select>
+                <Plus className="w-4 h-4 text-[#6C2BD9]" /> Initiate Disposal Transaction
+              </button>
+              <button
+                onClick={() => handleTabChange('pending')}
+                className="px-5 py-3 bg-purple-800/80 hover:bg-purple-800 text-white font-bold text-xs rounded-2xl border border-purple-700/60 transition-all flex items-center justify-center gap-2 cursor-pointer"
+              >
+                <Clock className="w-4 h-4 text-amber-300" /> Review Pending ({pendingAssets.length})
+              </button>
             </div>
           </div>
-        )}
-      </div>
 
-      {/* Main Ledger Table */}
-      {activeTab === 'ledger' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Transaction Ref</th>
-                  <th className="py-3 px-4">Asset Details</th>
-                  <th className="py-3 px-4">Disposal Status</th>
-                  <th className="py-3 px-4">Disposal Reason</th>
-                  <th className="py-3 px-4">Disposal Date</th>
-                  <th className="py-3 px-4 text-right">Net Book Value</th>
-                  <th className="py-3 px-4 text-right">Proceeds</th>
-                  <th className="py-3 px-4 text-right">Gain / Loss</th>
-                  <th className="py-3 px-4 text-center">Certificate</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredDisposals.length === 0 ? (
-                  <tr>
-                    <td colSpan="10" className="py-12 text-center text-slate-400">
-                      <Archive className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                      <p className="font-medium text-slate-600">No disposal transaction records match your filters</p>
-                      <p className="text-[11px] text-slate-400 mt-1">Execute a new disposal transaction to permanently retire an asset.</p>
-                    </td>
+          {/* 2-Column Section: Pending Queue + Reason & Status Breakdown */}
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            {/* Left 2 cols: Quick Pending Review Action Queue */}
+            <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                    <Clock className="w-4 h-4 text-amber-500" />
+                    Pending Disposal Queue
+                  </h3>
+                  <p className="text-[11px] text-slate-500">Assets requested for decommissioning awaiting final transaction</p>
+                </div>
+                <button
+                  onClick={() => handleTabChange('pending')}
+                  className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer"
+                >
+                  View All ({pendingAssets.length}) <ChevronRight className="w-3.5 h-3.5" />
+                </button>
+              </div>
+
+              <div className="divide-y divide-slate-100">
+                {pendingAssets.slice(0, 3).map((item) => (
+                  <div key={item.id} className="py-3 flex items-center justify-between gap-4">
+                    <div className="space-y-0.5">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono font-bold text-xs text-purple-700 bg-purple-50 px-2 py-0.5 rounded">
+                          {item.assetId}
+                        </span>
+                        <span className="font-bold text-xs text-slate-900">{item.description}</span>
+                      </div>
+                      <div className="text-[11px] text-slate-500">
+                        Tag: {item.tagNumber || 'N/A'} | Location: {item.site?.name || 'Main HQ'} | Custodian: {item.custodian?.fullName || 'Unassigned'}
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={() => {
+                        setSelectedAssetForModal(item);
+                        setShowTransactionModal(true);
+                      }}
+                      className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" /> Execute Disposal
+                    </button>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Right 1 col: Reasons Breakdown */}
+            <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                  <BarChart2 className="w-4 h-4 text-[#6C2BD9]" />
+                  Disposals by Governed Reason
+                </h3>
+                <p className="text-[11px] text-slate-500">System-defined enumeration breakdown</p>
+              </div>
+
+              <div className="space-y-3 pt-1">
+                {SYSTEM_DISPOSAL_REASONS.map(r => {
+                  const count = summaryMetrics.byReason[r.code] || 0;
+                  const total = summaryMetrics.totalDisposedCount || 1;
+                  const pct = Math.round((count / total) * 100);
+
+                  return (
+                    <div key={r.code} className="space-y-1">
+                      <div className="flex items-center justify-between text-xs">
+                        <span className="font-medium text-slate-700 truncate max-w-[180px]">{r.label}</span>
+                        <span className="font-mono font-bold text-slate-900">{count} ({pct}%)</span>
+                      </div>
+                      <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                        <div
+                          className="bg-[#6C2BD9] h-1.5 rounded-full transition-all duration-500"
+                          style={{ width: `${Math.max(5, pct)}%` }}
+                        />
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+
+          {/* Recent Disposed Transactions Preview */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs p-5 space-y-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-2">
+                  <Archive className="w-4 h-4 text-[#6C2BD9]" />
+                  Recent Disposal Transactions
+                </h3>
+                <p className="text-[11px] text-slate-500">Recently decommissioned historical records</p>
+              </div>
+              <button
+                onClick={() => handleTabChange('ledger')}
+                className="text-xs font-bold text-purple-700 hover:text-purple-900 flex items-center gap-1 cursor-pointer"
+              >
+                Go to Full Ledger ({disposedAssets.length}) <ChevronRight className="w-3.5 h-3.5" />
+              </button>
+            </div>
+
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse text-xs">
+                <thead>
+                  <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase">
+                    <th className="py-2.5 px-3">Transaction Ref</th>
+                    <th className="py-2.5 px-3">Asset Description</th>
+                    <th className="py-2.5 px-3">Disposal Status</th>
+                    <th className="py-2.5 px-3">Disposal Reason</th>
+                    <th className="py-2.5 px-3">Date</th>
+                    <th className="py-2.5 px-3 text-right">Proceeds</th>
+                    <th className="py-2.5 px-3 text-right">Certificate</th>
                   </tr>
-                ) : (
-                  filteredDisposals.map((item) => {
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {disposedAssets.slice(0, 3).map((item) => {
                     const d = item.disposalDetails || {};
-                    const gainLoss = (d.gainLoss !== undefined) ? d.gainLoss : ((d.disposalProceeds || 0) - (d.netBookValue || 0));
-
                     return (
-                      <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                        <td className="py-3.5 px-4 font-mono font-bold text-purple-700">
-                          {d.referenceNumber || `DISP-${item.assetId}`}
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <div className="font-bold text-slate-900">{item.description}</div>
-                          <div className="text-[11px] text-slate-500 font-mono">
-                            {item.assetId} | Tag: {item.tagNumber || 'N/A'}
-                          </div>
-                        </td>
-                        <td className="py-3.5 px-4">
-                          <span className={clsx(
-                            "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
-                            d.disposalStatus === 'SOLD' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
-                            d.disposalStatus === 'DONATED' ? "bg-blue-50 text-blue-700 border-blue-200" :
-                            d.disposalStatus === 'WRITTEN_OFF' ? "bg-rose-50 text-rose-700 border-rose-200" :
-                            d.disposalStatus === 'TRADED_IN' ? "bg-amber-50 text-amber-700 border-amber-200" :
-                            "bg-slate-100 text-slate-700 border-slate-200"
-                          )}>
+                      <tr key={item.id} className="hover:bg-slate-50/50">
+                        <td className="py-3 px-3 font-mono font-bold text-purple-700">{d.referenceNumber || `DISP-${item.assetId}`}</td>
+                        <td className="py-3 px-3 font-bold text-slate-900">{item.description}</td>
+                        <td className="py-3 px-3">
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-slate-100 text-slate-700 border border-slate-200">
                             {d.disposalStatus || 'SCRAPPED'}
                           </span>
                         </td>
-                        <td className="py-3.5 px-4">
-                          <span className="text-[11px] font-semibold text-slate-700">
-                            {SYSTEM_DISPOSAL_REASONS.find(r => r.code === d.disposalReason)?.label || d.disposalReason || 'End of Life'}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-slate-600">
-                          {d.disposalDate ? new Date(d.disposalDate).toLocaleDateString() : 'N/A'}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-700">
-                          ${(d.netBookValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-600">
-                          ${(d.disposalProceeds || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                        </td>
-                        <td className="py-3.5 px-4 text-right font-mono font-bold">
-                          <span className={gainLoss >= 0 ? "text-emerald-700" : "text-rose-600"}>
-                            {gainLoss >= 0 ? '+' : ''}${gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                          </span>
-                        </td>
-                        <td className="py-3.5 px-4 text-center font-mono text-[11px] text-slate-500">
-                          {d.certificateNumber || '-'}
-                        </td>
-                        <td className="py-3.5 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1.5">
-                            <button
-                              onClick={() => setViewingCertificateAsset(item)}
-                              className="px-2.5 py-1 text-slate-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg text-xs font-bold border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
-                              title="View Disposal Certificate"
-                            >
-                              <FileText className="w-3.5 h-3.5" /> Certificate
-                            </button>
-                            <button
-                              onClick={() => navigate(`/assets/${item.id}`)}
-                              className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
-                              title="View Asset 360 Record"
-                            >
-                              <ExternalLink className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <td className="py-3 px-3 text-slate-600 font-medium">{d.disposalReason}</td>
+                        <td className="py-3 px-3 text-slate-500">{d.disposalDate ? new Date(d.disposalDate).toLocaleDateString() : 'N/A'}</td>
+                        <td className="py-3 px-3 text-right font-mono font-bold text-emerald-600">${d.disposalProceeds || 0}</td>
+                        <td className="py-3 px-3 text-right">
+                          <button
+                            onClick={() => setViewingCertificateAsset(item)}
+                            className="text-purple-700 hover:text-purple-900 font-bold text-xs underline cursor-pointer"
+                          >
+                            View
+                          </button>
                         </td>
                       </tr>
                     );
-                  })
-                )}
-              </tbody>
-            </table>
+                  })}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
 
-      {/* Pending Disposal Review Table */}
-      {activeTab === 'pending' && (
-        <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-          <div className="p-4 bg-amber-50/50 border-b border-amber-200/60 flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <AlertTriangle className="w-4 h-4 text-amber-600" />
-              <span className="text-xs font-bold text-amber-900">
-                Assets awaiting formal disposal transaction:
-              </span>
+      {/* ============================================================== */}
+      {/* VIEW 2: DISPOSED ASSETS LEDGER                                 */}
+      {/* ============================================================== */}
+      {activeTab === 'ledger' && (
+        <div className="space-y-4">
+          {/* Search & Filters */}
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs flex flex-col md:flex-row items-center justify-between gap-3">
+            <div className="relative flex-1 w-full max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search by Asset ID, tag, name, cert #, or transaction ref..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
+              />
             </div>
-            <span className="text-xs text-amber-800 font-medium">
-              These assets are flagged for retirement and must be processed to cease depreciation.
-            </span>
+
+            <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto justify-end">
+              <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                <span className="font-semibold text-slate-500">Status:</span>
+                <select
+                  value={selectedStatus}
+                  onChange={(e) => setSelectedStatus(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
+                >
+                  <option value="ALL">All Statuses</option>
+                  <option value="SCRAPPED">Scrapped</option>
+                  <option value="SOLD">Sold</option>
+                  <option value="DONATED">Donated</option>
+                  <option value="WRITTEN_OFF">Written Off</option>
+                  <option value="TRADED_IN">Traded In</option>
+                </select>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-xs text-slate-600">
+                <span className="font-semibold text-slate-500">Reason:</span>
+                <select
+                  value={selectedReason}
+                  onChange={(e) => setSelectedReason(e.target.value)}
+                  className="bg-slate-50 border border-slate-200 rounded-xl px-2.5 py-1.5 text-xs font-bold text-slate-700 focus:outline-none focus:border-[#6C2BD9]"
+                >
+                  <option value="ALL">All Reasons</option>
+                  {SYSTEM_DISPOSAL_REASONS.map(r => (
+                    <option key={r.code} value={r.code}>{r.label}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
           </div>
 
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
-              <thead>
-                <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
-                  <th className="py-3 px-4">Asset Code</th>
-                  <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-4">Category</th>
-                  <th className="py-3 px-4">Location</th>
-                  <th className="py-3 px-4">Custodian</th>
-                  <th className="py-3 px-4 text-right">Est. Book Value</th>
-                  <th className="py-3 px-4 text-right">Actions</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-slate-100 text-xs">
-                {filteredPending.length === 0 ? (
-                  <tr>
-                    <td colSpan="7" className="py-12 text-center text-slate-400">
-                      <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-400 mb-2" />
-                      <p className="font-medium text-slate-600">No pending disposal requests found</p>
-                      <p className="text-[11px] text-slate-400 mt-1">All decommissioning reviews are up to date.</p>
-                    </td>
+          {/* Table */}
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Transaction Ref</th>
+                    <th className="py-3 px-4">Asset Details</th>
+                    <th className="py-3 px-4">Disposal Status</th>
+                    <th className="py-3 px-4">Disposal Reason</th>
+                    <th className="py-3 px-4">Disposal Date</th>
+                    <th className="py-3 px-4 text-right">Net Book Value</th>
+                    <th className="py-3 px-4 text-right">Proceeds</th>
+                    <th className="py-3 px-4 text-right">Gain / Loss</th>
+                    <th className="py-3 px-4 text-center">Certificate</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
                   </tr>
-                ) : (
-                  filteredPending.map((asset) => (
-                    <tr key={asset.id} className="hover:bg-slate-50/50 transition-colors">
-                      <td className="py-3.5 px-4 font-mono font-bold text-purple-700">
-                        {asset.assetId}
-                      </td>
-                      <td className="py-3.5 px-4 font-bold text-slate-900">
-                        {asset.description}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600">
-                        {asset.category?.name || 'General'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600">
-                        {asset.site?.name || 'Main Site'}
-                      </td>
-                      <td className="py-3.5 px-4 text-slate-600">
-                        {asset.custodian?.fullName || 'Unassigned'}
-                      </td>
-                      <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-700">
-                        ${(parseFloat(asset.purchaseCost || asset.unitCost || 0)).toLocaleString()}
-                      </td>
-                      <td className="py-3.5 px-4 text-right">
-                        <button
-                          onClick={() => {
-                            setSelectedAssetForModal(asset);
-                            setShowTransactionModal(true);
-                          }}
-                          className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" /> Execute Disposal
-                        </button>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredDisposals.length === 0 ? (
+                    <tr>
+                      <td colSpan="10" className="py-12 text-center text-slate-400">
+                        <Archive className="w-10 h-10 mx-auto text-slate-300 mb-2" />
+                        <p className="font-medium text-slate-600">No disposal transaction records match your filters</p>
+                        <p className="text-[11px] text-slate-400 mt-1">Execute a new disposal transaction to permanently retire an asset.</p>
                       </td>
                     </tr>
-                  ))
-                )}
-              </tbody>
-            </table>
+                  ) : (
+                    filteredDisposals.map((item) => {
+                      const d = item.disposalDetails || {};
+                      const gainLoss = (d.gainLoss !== undefined) ? d.gainLoss : ((d.disposalProceeds || 0) - (d.netBookValue || 0));
+
+                      return (
+                        <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                          <td className="py-3.5 px-4 font-mono font-bold text-purple-700">
+                            {d.referenceNumber || `DISP-${item.assetId}`}
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <div className="font-bold text-slate-900">{item.description}</div>
+                            <div className="text-[11px] text-slate-500 font-mono">
+                              {item.assetId} | Tag: {item.tagNumber || 'N/A'}
+                            </div>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className={clsx(
+                              "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
+                              d.disposalStatus === 'SOLD' ? "bg-emerald-50 text-emerald-700 border-emerald-200" :
+                              d.disposalStatus === 'DONATED' ? "bg-blue-50 text-blue-700 border-blue-200" :
+                              d.disposalStatus === 'WRITTEN_OFF' ? "bg-rose-50 text-rose-700 border-rose-200" :
+                              d.disposalStatus === 'TRADED_IN' ? "bg-amber-50 text-amber-700 border-amber-200" :
+                              "bg-slate-100 text-slate-700 border-slate-200"
+                            )}>
+                              {d.disposalStatus || 'SCRAPPED'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4">
+                            <span className="text-[11px] font-semibold text-slate-700">
+                              {SYSTEM_DISPOSAL_REASONS.find(r => r.code === d.disposalReason)?.label || d.disposalReason || 'End of Life'}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-slate-600">
+                            {d.disposalDate ? new Date(d.disposalDate).toLocaleDateString() : 'N/A'}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-medium text-slate-700">
+                            ${(d.netBookValue || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold text-emerald-600">
+                            ${(d.disposalProceeds || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                          </td>
+                          <td className="py-3.5 px-4 text-right font-mono font-bold">
+                            <span className={gainLoss >= 0 ? "text-emerald-700" : "text-rose-600"}>
+                              {gainLoss >= 0 ? '+' : ''}${gainLoss.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            </span>
+                          </td>
+                          <td className="py-3.5 px-4 text-center font-mono text-[11px] text-slate-500">
+                            {d.certificateNumber || '-'}
+                          </td>
+                          <td className="py-3.5 px-4 text-right">
+                            <div className="flex items-center justify-end gap-1.5">
+                              <button
+                                onClick={() => setViewingCertificateAsset(item)}
+                                className="px-2.5 py-1 text-slate-600 hover:text-purple-700 hover:bg-purple-50 rounded-lg text-xs font-bold border border-slate-200 transition-colors cursor-pointer flex items-center gap-1"
+                                title="View Disposal Certificate"
+                              >
+                                <FileText className="w-3.5 h-3.5" /> Certificate
+                              </button>
+                              <button
+                                onClick={() => navigate(`/assets/${item.id}`)}
+                                className="p-1 text-slate-400 hover:text-slate-700 rounded-lg cursor-pointer"
+                                title="View Asset 360 Record"
+                              >
+                                <ExternalLink className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ============================================================== */}
+      {/* VIEW 3: PENDING DISPOSAL REVIEW QUEUE                          */}
+      {/* ============================================================== */}
+      {activeTab === 'pending' && (
+        <div className="space-y-4">
+          <div className="p-4 bg-amber-50/50 border border-amber-200/80 rounded-2xl flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <span className="text-xs font-bold text-amber-900 block">
+                  Decommissioning Review Queue ({pendingAssets.length} assets awaiting action):
+                </span>
+                <span className="text-[11px] text-amber-800">
+                  These assets were flagged for retirement. Completing the disposal transaction freezes depreciation permanently and writes off Net Book Value.
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="bg-white p-4 rounded-2xl border border-slate-200/80 shadow-xs">
+            <div className="relative max-w-md">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <input
+                type="text"
+                placeholder="Search pending assets by ID, name, or tag..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-4 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-medium text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
+              />
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-4">Asset Code</th>
+                    <th className="py-3 px-4">Description</th>
+                    <th className="py-3 px-4">Category</th>
+                    <th className="py-3 px-4">Location</th>
+                    <th className="py-3 px-4">Custodian</th>
+                    <th className="py-3 px-4 text-right">Est. Book Value</th>
+                    <th className="py-3 px-4 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 text-xs">
+                  {filteredPending.length === 0 ? (
+                    <tr>
+                      <td colSpan="7" className="py-12 text-center text-slate-400">
+                        <CheckCircle2 className="w-10 h-10 mx-auto text-emerald-400 mb-2" />
+                        <p className="font-medium text-slate-600">No pending disposal requests found</p>
+                        <p className="text-[11px] text-slate-400 mt-1">All decommissioning reviews are up to date.</p>
+                      </td>
+                    </tr>
+                  ) : (
+                    filteredPending.map((asset) => (
+                      <tr key={asset.id} className="hover:bg-slate-50/50 transition-colors">
+                        <td className="py-3.5 px-4 font-mono font-bold text-purple-700">
+                          {asset.assetId}
+                        </td>
+                        <td className="py-3.5 px-4 font-bold text-slate-900">
+                          {asset.description}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {asset.category?.name || 'General'}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {asset.site?.name || 'Main Site'}
+                        </td>
+                        <td className="py-3.5 px-4 text-slate-600">
+                          {asset.custodian?.fullName || 'Unassigned'}
+                        </td>
+                        <td className="py-3.5 px-4 text-right font-mono font-bold text-slate-700">
+                          ${(parseFloat(asset.purchaseCost || asset.unitCost || 0)).toLocaleString()}
+                        </td>
+                        <td className="py-3.5 px-4 text-right">
+                          <button
+                            onClick={() => {
+                              setSelectedAssetForModal(asset);
+                              setShowTransactionModal(true);
+                            }}
+                            className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-xs transition-all cursor-pointer flex items-center gap-1.5 ml-auto"
+                          >
+                            <Trash2 className="w-3.5 h-3.5" /> Execute Disposal
+                          </button>
+                        </td>
+                      </tr>
+                    ))
+                  )}
+                </tbody>
+              </table>
+            </div>
           </div>
         </div>
       )}
