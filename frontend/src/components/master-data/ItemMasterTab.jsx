@@ -87,10 +87,11 @@ export function ItemMasterTab({
   const loadItemMasters = async () => {
     setIsLoading(true);
     try {
-      const [itemRes, grpRes, clsRes, catRes, mfrRes, uomRes] = await Promise.all([
+      const [itemRes, grpRes, clsRes, subCatRes, catRes, mfrRes, uomRes] = await Promise.all([
         api.get('/master-data/items?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-classes?kind=CLASS').catch(() => null),
+        api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null),
         api.get('/master-data/categories').catch(() => null),
         api.get('/master-data/manufacturers').catch(() => null),
         api.get('/master-data/uoms').catch(() => null)
@@ -102,6 +103,7 @@ export function ItemMasterTab({
       }
       if (grpRes?.assetGroups) setAssetGroups(grpRes.assetGroups);
       if (clsRes?.assetClasses) setAssetSubGroups(clsRes.assetClasses);
+      if (subCatRes?.assetClasses) setSubCategories(subCatRes.assetClasses);
       if (catRes?.categories) setCategories(catRes.categories);
       if (mfrRes?.manufacturers) setManufacturers(mfrRes.manufacturers);
       if (uomRes?.uoms) setUoms(uomRes.uoms);
@@ -148,6 +150,15 @@ export function ItemMasterTab({
       return false;
     });
   }, [categories, formState.assetSubGroupName, formState.assetGroupName]);
+
+  const availableModalSubCategories = useMemo(() => {
+    if (!formState.categoryId && !formState.categoryName) return subCategories;
+    return subCategories.filter(sc => {
+      if (formState.categoryId && sc.categoryId === formState.categoryId) return true;
+      if (formState.categoryName && (sc.category?.name === formState.categoryName || sc.categoryName === formState.categoryName)) return true;
+      return false;
+    });
+  }, [subCategories, formState.categoryId, formState.categoryName]);
 
   // Filtered Items for List
   const filteredItems = useMemo(() => {
@@ -562,6 +573,10 @@ export function ItemMasterTab({
                     <span className="font-bold text-slate-800 text-xs">{selectedItem.categoryName || 'N/A'}</span>
                   </div>
                   <div className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-100">
+                    <span className="text-[10px] text-slate-400 block font-semibold">Sub Category</span>
+                    <span className="font-bold text-slate-800 text-xs">{selectedItem.subCategoryName || 'N/A'}</span>
+                  </div>
+                  <div className="p-2.5 rounded-xl bg-slate-50/80 border border-slate-100 col-span-2">
                     <span className="text-[10px] text-slate-400 block font-semibold">Unit of Measure</span>
                     <span className="font-bold text-slate-800 text-xs">{selectedItem.uom || 'Each'}</span>
                   </div>
@@ -731,12 +746,14 @@ export function ItemMasterTab({
                       value={formState.assetSubGroupName}
                       onChange={(e) => {
                         const sg = assetSubGroups.find(s => s.name === e.target.value);
+                        const parentGrpName = sg?.groupName || (sg?.description?.match(/\[group:([^\]]+)\]/)?.[1]) || formState.assetGroupName;
+                        const parentGrp = assetGroups.find(g => g.name.toLowerCase() === (parentGrpName || '').toLowerCase());
                         setFormState({
                           ...formState,
                           assetSubGroupName: e.target.value,
                           assetSubGroupId: sg?.id || '',
-                          categoryName: '',
-                          categoryId: ''
+                          assetGroupName: parentGrp ? parentGrp.name : formState.assetGroupName,
+                          assetGroupId: parentGrp ? parentGrp.id : formState.assetGroupId
                         });
                       }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
@@ -759,7 +776,9 @@ export function ItemMasterTab({
                         setFormState({
                           ...formState,
                           categoryName: e.target.value,
-                          categoryId: cat?.id || ''
+                          categoryId: cat?.id || '',
+                          subCategoryName: '',
+                          subCategoryId: ''
                         });
                       }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
@@ -771,6 +790,33 @@ export function ItemMasterTab({
                     </select>
                   </div>
 
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Sub Category</label>
+                    <select
+                      value={formState.subCategoryName}
+                      onChange={(e) => {
+                        const sc = subCategories.find(s => s.name === e.target.value);
+                        const parentCat = sc?.category?.name || categories.find(c => c.id === sc?.categoryId)?.name || formState.categoryName;
+                        const parentCatObj = categories.find(c => c.name === parentCat);
+                        setFormState({
+                          ...formState,
+                          subCategoryName: e.target.value,
+                          subCategoryId: sc?.id || '',
+                          categoryName: parentCat || formState.categoryName,
+                          categoryId: parentCatObj?.id || formState.categoryId
+                        });
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                    >
+                      <option value="">-- Select Sub Category --</option>
+                      {availableModalSubCategories.map(sc => (
+                        <option key={sc.id || sc.name} value={sc.name}>{sc.name}</option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="block font-semibold text-slate-700 mb-1">Unit of Measure (UOM)</label>
                     <select
