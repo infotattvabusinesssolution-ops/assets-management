@@ -819,7 +819,7 @@ export function CategoriesTab({
                       <span className="font-semibold">Sub Categories</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCategory.relatedInfo.subCategories}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCategory.relatedInfo?.subCategories ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -841,7 +841,7 @@ export function CategoriesTab({
                       <span className="font-semibold">Maintenance Plans</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCategory.relatedInfo.maintenancePlans}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCategory.relatedInfo?.maintenancePlans ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -852,7 +852,7 @@ export function CategoriesTab({
                       <span className="font-semibold">Documents</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCategory.relatedInfo.documents}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedCategory.relatedInfo?.documents ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>

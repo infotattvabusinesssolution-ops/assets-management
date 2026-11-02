@@ -808,7 +808,7 @@ export function SubCategoriesTab({
                       <span className="font-semibold">Maintenance Plans</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedSubCategory.relatedInfo.maintenancePlans}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedSubCategory.relatedInfo?.maintenancePlans ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -819,7 +819,7 @@ export function SubCategoriesTab({
                       <span className="font-semibold">Documents</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedSubCategory.relatedInfo.documents}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedSubCategory.relatedInfo?.documents ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>

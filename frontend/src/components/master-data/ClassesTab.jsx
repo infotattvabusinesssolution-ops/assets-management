@@ -828,7 +828,7 @@ export function ClassesTab({
                       <span className="font-semibold">Categories</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedClass.relatedInfo.categories}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedClass.relatedInfo?.categories ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -839,7 +839,7 @@ export function ClassesTab({
                       <span className="font-semibold">Sub Categories</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedClass.relatedInfo.subCategories}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedClass.relatedInfo?.subCategories ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -861,7 +861,7 @@ export function ClassesTab({
                       <span className="font-semibold">Maintenance Plans</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedClass.relatedInfo.maintenancePlans}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedClass.relatedInfo?.maintenancePlans ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
@@ -872,7 +872,7 @@ export function ClassesTab({
                       <span className="font-semibold">Documents</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedClass.relatedInfo.documents}</span>
+                      <span className="font-mono font-bold text-slate-900">{selectedClass.relatedInfo?.documents ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
