@@ -11,6 +11,7 @@ import { INITIAL_SUB_CATEGORIES } from '../components/master-data/SubCategoriesT
 import { DEFAULT_ASSET_TYPES } from '../components/master-data/GenericMasterTab';
 import { uploadToCloudinary } from '../services/cloudinary';
 import {
+  Box,
   Package,
   Save,
   ArrowLeft,
