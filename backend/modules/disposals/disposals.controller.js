@@ -50,7 +50,7 @@ export async function getDisposalReasons(req, res, next) {
 // Fetch active asset candidates eligible for disposal
 export async function getDisposalCandidates(req, res, next) {
   try {
-    const { search, categoryId, siteId, limit = 50 } = req.query;
+    const { search, categoryId, siteId, limit = 200 } = req.query;
 
     const where = {
       lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED'] }
@@ -62,7 +62,9 @@ export async function getDisposalCandidates(req, res, next) {
         { assetId: { contains: q } },
         { tagNumber: { contains: q } },
         { serialNumber: { contains: q } },
-        { description: { contains: q } }
+        { description: { contains: q } },
+        { barcode: { contains: q } },
+        { category: { name: { contains: q } } }
       ];
     }
     if (categoryId) where.categoryId = categoryId;
@@ -81,8 +83,11 @@ export async function getDisposalCandidates(req, res, next) {
           department: { select: { id: true, name: true } },
           custodian: { select: { id: true, fullName: true, employeeCode: true } }
         },
-        orderBy: { assetId: 'asc' },
-        take: parseInt(limit, 10) || 50
+        orderBy: [
+          { createdAt: 'desc' },
+          { updatedAt: 'desc' }
+        ],
+        take: parseInt(limit, 10) || 200
       });
 
       if (assets.length > 0) {

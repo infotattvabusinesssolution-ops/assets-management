@@ -97,29 +97,24 @@ export function DisposalTransactionModal({
   const searchCandidates = async (query = '') => {
     setIsSearchingCandidates(true);
     try {
-      let list = [];
+      const [candidatesRes, assetsRes] = await Promise.allSettled([
+        api.get('/disposals/candidates', { params: { search: query, limit: 200 } }),
+        api.get('/assets', { params: { search: query, limit: 200 } })
+      ]);
 
-      // 1. First attempt to fetch from disposal candidates endpoint
-      try {
-        const res = await api.get('/disposals/candidates', { params: { search: query, limit: 50 } });
-        if (res?.success && Array.isArray(res.candidates) && res.candidates.length > 0) {
-          list = res.candidates;
-        }
-      } catch (_) {}
+      const assetMap = new Map();
 
-      // 2. Also search from real system assets endpoint /assets if candidate list empty
-      if (!list || list.length === 0) {
-        try {
-          const assetsRes = await api.get('/assets', {
-            params: {
-              search: query,
-              limit: 50
-            }
-          });
-          if (assetsRes?.assets && Array.isArray(assetsRes.assets)) {
-            list = assetsRes.assets
-              .filter(a => !['DISPOSED', 'RETIRED'].includes(a.lifecycleStatus))
-              .map(a => ({
+      if (candidatesRes.status === 'fulfilled' && Array.isArray(candidatesRes.value?.candidates)) {
+        candidatesRes.value.candidates.forEach(a => {
+          if (a && a.id) assetMap.set(a.id, a);
+        });
+      }
+
+      if (assetsRes.status === 'fulfilled' && Array.isArray(assetsRes.value?.assets)) {
+        assetsRes.value.assets.forEach(a => {
+          if (a && a.id && !['DISPOSED', 'RETIRED'].includes(a.lifecycleStatus)) {
+            if (!assetMap.has(a.id)) {
+              assetMap.set(a.id, {
                 id: a.id,
                 assetId: a.assetId || a.id,
                 description: a.description || a.name || 'Unnamed Asset',
@@ -133,12 +128,13 @@ export function DisposalTransactionModal({
                   ? parseFloat(a.netBookValue) 
                   : parseFloat(a.acquisitionValue || a.purchaseCost || a.unitCost || 0),
                 lifecycleStatus: a.lifecycleStatus
-              }));
+              });
+            }
           }
-        } catch (_) {}
+        });
       }
 
-      setCandidates(list || []);
+      setCandidates(Array.from(assetMap.values()));
     } catch (err) {
       console.warn('Candidate search error:', err.message);
       setCandidates([]);
@@ -146,6 +142,19 @@ export function DisposalTransactionModal({
       setIsSearchingCandidates(false);
     }
   };
+
+  const filteredCandidates = useMemo(() => {
+    if (!candidateSearch.trim()) return candidates;
+    const q = candidateSearch.trim().toLowerCase();
+    return candidates.filter(cand =>
+      (cand.assetId && cand.assetId.toLowerCase().includes(q)) ||
+      (cand.description && cand.description.toLowerCase().includes(q)) ||
+      (cand.tagNumber && cand.tagNumber.toLowerCase().includes(q)) ||
+      (cand.serialNumber && cand.serialNumber.toLowerCase().includes(q)) ||
+      (cand.category?.name && cand.category.name.toLowerCase().includes(q)) ||
+      (cand.site?.name && cand.site.name.toLowerCase().includes(q))
+    );
+  }, [candidates, candidateSearch]);
 
   useEffect(() => {
     if (isOpen && !targetAsset) {
@@ -293,10 +302,10 @@ export function DisposalTransactionModal({
                 <div className="border border-slate-200 rounded-2xl max-h-48 overflow-y-auto divide-y divide-slate-100">
                   {isSearchingCandidates ? (
                     <div className="p-4 text-center text-xs text-slate-400">Loading candidate assets...</div>
-                  ) : candidates.length === 0 ? (
+                  ) : filteredCandidates.length === 0 ? (
                     <div className="p-4 text-center text-xs text-slate-400">No active assets match your search.</div>
                   ) : (
-                    candidates.map((cand) => (
+                    filteredCandidates.map((cand) => (
                       <div
                         key={cand.id}
                         onClick={() => setTargetAsset(cand)}
@@ -305,7 +314,7 @@ export function DisposalTransactionModal({
                         <div>
                           <div className="font-bold text-slate-900">{cand.assetId} - {cand.description}</div>
                           <div className="text-[11px] text-slate-500">
-                            Tag: {cand.tagNumber || 'N/A'} | Site: {cand.site?.name || 'N/A'} | NBV: ${cand.netBookValue?.toLocaleString() || '0'}
+                            Tag: {cand.tagNumber || 'N/A'} | Category: {cand.category?.name || 'General'} | Site: {cand.site?.name || 'N/A'} | NBV: ${cand.netBookValue?.toLocaleString() || '0'}
                           </div>
                         </div>
                         <span className="text-purple-700 font-bold text-xs">Select</span>
