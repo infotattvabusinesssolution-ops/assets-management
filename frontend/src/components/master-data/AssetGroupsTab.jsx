@@ -536,7 +536,7 @@ export function AssetGroupsTab({
                         </td>
                         <td className="py-3.5 px-3.5 text-slate-700">{grp.assetType}</td>
                         <td className="py-3.5 px-3.5 text-right font-mono font-bold text-slate-900">
-                          {grp.totalAssets.toLocaleString()}
+                          {(grp.totalAssets ?? 0).toLocaleString()}
                         </td>
                         <td className="py-3.5 px-3.5 text-center" onClick={(e) => handleToggleStatus(grp, e)}>
                           <button
@@ -657,7 +657,7 @@ export function AssetGroupsTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Total Assets</span>
-                <span className="col-span-2 font-mono font-bold text-slate-900">{selectedGroup.totalAssets.toLocaleString()}</span>
+                <span className="col-span-2 font-mono font-bold text-slate-900">{(selectedGroup.totalAssets ?? 0).toLocaleString()}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">

@@ -592,7 +592,7 @@ export function SubCategoriesTab({
                       <td className="py-3.5 px-3 text-slate-700">{sc.categoryName}</td>
                       <td className="py-3.5 px-3 text-slate-700">{sc.className}</td>
                       <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900">
-                        {sc.totalAssets.toLocaleString()}
+                        {(sc.totalAssets ?? 0).toLocaleString()}
                       </td>
                       <td className="py-3.5 px-3 text-center">
                         <span
@@ -769,7 +769,7 @@ export function SubCategoriesTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Total Assets</span>
-                <span className="col-span-2 font-mono font-bold text-slate-900">{selectedSubCategory.totalAssets.toLocaleString()}</span>
+                <span className="col-span-2 font-mono font-bold text-slate-900">{(selectedSubCategory.totalAssets ?? 0).toLocaleString()}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -791,7 +791,7 @@ export function SubCategoriesTab({
                       <span className="font-semibold">Assets</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedSubCategory.relatedInfo.assets.toLocaleString()}</span>
+                      <span className="font-mono font-bold text-slate-900">{(selectedSubCategory.relatedInfo?.assets ?? 0).toLocaleString()}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>

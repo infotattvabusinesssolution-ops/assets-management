@@ -820,7 +820,7 @@ export function DepartmentsTab({
                       <span className="font-semibold">Assets</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedDepartment.relatedInfo?.assets?.toLocaleString() ?? 0}</span>
+                      <span className="font-mono font-bold text-slate-900">{(selectedDepartment.relatedInfo?.assets ?? 0).toLocaleString() ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>

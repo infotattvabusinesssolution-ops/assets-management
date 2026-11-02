@@ -554,7 +554,7 @@ export function CostCentersTab({
                       <td className="py-2.5 px-3 text-slate-700">{cc.type}</td>
                       <td className="py-2.5 px-3 text-slate-800">{cc.manager}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
-                        {cc.totalAssets.toLocaleString()}
+                        {(cc.totalAssets ?? 0).toLocaleString()}
                       </td>
                       <td className="py-2.5 px-3 text-center">
                         <span
@@ -711,7 +711,7 @@ export function CostCentersTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Total Assets</span>
-                <span className="col-span-2 font-mono font-bold text-slate-900">{selectedCostCenter.totalAssets.toLocaleString()}</span>
+                <span className="col-span-2 font-mono font-bold text-slate-900">{(selectedCostCenter.totalAssets ?? 0).toLocaleString()}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -755,7 +755,7 @@ export function CostCentersTab({
                       <span className="font-semibold">Assets</span>
                     </div>
                     <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-slate-900">{selectedCostCenter.relatedInfo?.assets?.toLocaleString() ?? 0}</span>
+                      <span className="font-mono font-bold text-slate-900">{(selectedCostCenter.relatedInfo?.assets ?? 0).toLocaleString() ?? 0}</span>
                       <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
                     </div>
                   </div>
