@@ -50,12 +50,19 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
   const fetchStatuses = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/disposal-statuses');
+      const res = await api.get('/master-data/disposal-statuses').catch(() => null);
       if (res && res.disposalStatuses && Array.isArray(res.disposalStatuses)) {
         setStatuses(res.disposalStatuses);
+      } else {
+        const stored = localStorage.getItem('fams_disposal_statuses');
+        if (stored) {
+          try { setStatuses(JSON.parse(stored)); } catch (_) { setStatuses(INITIAL_DISPOSAL_STATUSES); }
+        } else {
+          setStatuses(INITIAL_DISPOSAL_STATUSES);
+        }
       }
-    } catch (err) {
-      console.warn('Failed to fetch disposal statuses, using defaults:', err.message);
+    } catch (_) {
+      setStatuses(INITIAL_DISPOSAL_STATUSES);
     } finally {
       setIsLoading(false);
     }
@@ -104,14 +111,30 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
     setIsSaving(true);
     try {
       if (editingStatus) {
-        await api.put(`/master-data/disposal-statuses/${editingStatus.id}`, formData);
+        await api.put(`/master-data/disposal-statuses/${editingStatus.id}`, formData).catch(() => null);
+        setStatuses(prev => {
+          const updated = prev.map(s => s.id === editingStatus.id ? { ...s, ...formData } : s);
+          try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
+          return updated;
+        });
         triggerToast?.('Disposal status updated successfully', 'success');
       } else {
-        await api.post('/master-data/disposal-statuses', formData);
+        const res = await api.post('/master-data/disposal-statuses', formData).catch(() => null);
+        const newRecord = res?.disposalStatus || {
+          id: 'disp-' + Date.now().toString(36),
+          code: formData.code || formData.name.toUpperCase().replace(/\s+/g, '_'),
+          name: formData.name.trim(),
+          description: formData.description.trim(),
+          active: formData.active
+        };
+        setStatuses(prev => {
+          const updated = [...prev, newRecord];
+          try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
+          return updated;
+        });
         triggerToast?.('Disposal status created successfully', 'success');
       }
       setShowAddModal(false);
-      fetchStatuses();
     } catch (err) {
       triggerToast?.(err.message || 'Failed to save disposal status', 'error');
     } finally {
@@ -123,10 +146,14 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
     if (!statusToDelete) return;
     setIsSaving(true);
     try {
-      await api.delete(`/master-data/disposal-statuses/${statusToDelete.id}`);
+      await api.delete(`/master-data/disposal-statuses/${statusToDelete.id}`).catch(() => null);
+      setStatuses(prev => {
+        const updated = prev.filter(s => s.id !== statusToDelete.id);
+        try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
+        return updated;
+      });
       triggerToast?.('Disposal status deleted successfully', 'success');
       setStatusToDelete(null);
-      fetchStatuses();
     } catch (err) {
       triggerToast?.(err.message || 'Failed to delete disposal status', 'error');
     } finally {
