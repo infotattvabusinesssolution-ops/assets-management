@@ -440,6 +440,8 @@ export function AssetForm() {
   });
 
   const [categories, setCategories] = useState([]);
+  const [itemMasters, setItemMasters] = useState([]);
+  const [selectedItemMasterId, setSelectedItemMasterId] = useState('');
   const [assetClasses, setAssetClasses] = useState(() => {
     try {
       const local = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
@@ -502,7 +504,7 @@ export function AssetForm() {
   useEffect(() => {
     async function loadMasterData() {
       try {
-        const [catRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes] = await Promise.all([
+        const [catRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes] = await Promise.all([
           api.get('/master-data/categories').catch(() => null),
           api.get('/master-data/asset-classes').catch(() => null),
           api.get('/master-data/sites').catch(() => null),
@@ -515,8 +517,12 @@ export function AssetForm() {
           api.get('/master-data/floors').catch(() => null),
           api.get('/master-data/rooms').catch(() => null),
           api.get('/master-data/asset-groups').catch(() => null),
-          api.get('/master-data/asset-types').catch(() => null)
+          api.get('/master-data/asset-types').catch(() => null),
+          api.get('/master-data/items?includeInactive=false').catch(() => null)
         ]);
+        if (itemRes?.items && Array.isArray(itemRes.items)) {
+          setItemMasters(itemRes.items);
+        }
         if (typeRes?.assetTypes && Array.isArray(typeRes.assetTypes) && typeRes.assetTypes.length > 0) {
           const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
           const existingNames = new Set(custom.map(c => c.name.toLowerCase()));
@@ -900,6 +906,48 @@ export function AssetForm() {
   }, [manufacturers, formData.assetType, formData.category]);
 
   // --- Handlers for Seamless Top-Down & Bottom-Up Cascades ---
+
+  
+  // --- Item Master Selection & Auto-Fill ---
+  const handleSelectItemMaster = (itemId) => {
+    setSelectedItemMasterId(itemId);
+    if (!itemId) return;
+    const item = itemMasters.find(i => i.id === itemId);
+    if (!item) return;
+
+    setFormData(prev => ({
+      ...prev,
+      itemMasterId: item.id,
+      assetName: item.itemName,
+      description: item.description || item.itemName,
+      assetGroup: item.assetGroupName || prev.assetGroup,
+      assetClass: item.assetSubGroupName || prev.assetClass,
+      category: item.categoryName || prev.category,
+      categoryId: item.categoryId || prev.categoryId,
+      subcategory: item.subCategoryName || prev.subcategory,
+      supplierBarcode: item.supplierBarcode || '',
+      manufacturer: item.manufacturerName || prev.manufacturer,
+      brand: item.manufacturerName || prev.brand,
+      model: item.model || prev.model,
+      modelNumber: item.model || prev.modelNumber
+    }));
+    clearFieldError('assetName');
+    if (item.categoryName) clearFieldError('category');
+  };
+
+  const handleClearItemMaster = () => {
+    setSelectedItemMasterId('');
+    setFormData(prev => ({
+      ...prev,
+      itemMasterId: '',
+      supplierBarcode: ''
+    }));
+  };
+
+  // Capitalization Threshold Evaluation (Default 1000 units of currency)
+  const CAPITALIZATION_THRESHOLD = 1000;
+  const unitCostNum = parseFloat(formData.acquisitionCost) || 0;
+  const derivedClassification = unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset';
 
   // Top-Down Step 1: Change Asset Type
   const handleAssetTypeChange = (newType) => {
