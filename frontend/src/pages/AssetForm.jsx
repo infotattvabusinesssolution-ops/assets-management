@@ -92,6 +92,128 @@ function BarcodePreview({ value }) {
 }
 
 
+
+// Standard Enterprise Baseline Master Data (guarantees options exist even if DB tables are empty)
+const BASELINE_GROUPS = [
+  { id: 'grp-01', code: 'GRP-IT', name: 'Information Technology' },
+  { id: 'grp-02', code: 'GRP-FUR', name: 'Furniture & Fixtures' },
+  { id: 'grp-03', code: 'GRP-VEH', name: 'Motor Vehicles' },
+  { id: 'grp-04', code: 'GRP-FAC', name: 'Facilities & Building Equipment' },
+  { id: 'grp-05', code: 'GRP-OFF', name: 'Office Electronics' }
+];
+
+const BASELINE_SUBGROUPS = [
+  { id: 'subgrp-01', code: 'CLS-LAP', name: 'Laptops', groupName: 'Information Technology' },
+  { id: 'subgrp-02', code: 'CLS-DSK', name: 'Desktops & Workstations', groupName: 'Information Technology' },
+  { id: 'subgrp-03', code: 'CLS-SRV', name: 'Servers & Storage', groupName: 'Information Technology' },
+  { id: 'subgrp-04', code: 'CLS-NET', name: 'Network Switches & Routers', groupName: 'Information Technology' },
+  { id: 'subgrp-05', code: 'CLS-MON', name: 'Monitors & Displays', groupName: 'Information Technology' },
+  { id: 'subgrp-06', code: 'CLS-CHR', name: 'Executive & Task Chairs', groupName: 'Furniture & Fixtures' },
+  { id: 'subgrp-07', code: 'CLS-DSK2', name: 'Workstations & Desks', groupName: 'Furniture & Fixtures' },
+  { id: 'subgrp-08', code: 'CLS-SED', name: 'Sedan & Passenger Cars', groupName: 'Motor Vehicles' },
+  { id: 'subgrp-09', code: 'CLS-VAN', name: 'Delivery Vans & Trucks', groupName: 'Motor Vehicles' },
+  { id: 'subgrp-10', code: 'CLS-PRN', name: 'Multifunction Printers', groupName: 'Office Electronics' },
+  { id: 'subgrp-11', code: 'CLS-HW', name: 'Hardware', groupName: 'Information Technology' }
+];
+
+const BASELINE_CATEGORIES = [
+  { id: 'cat-01', code: 'CAT-IT', name: 'Computer Equipment', groupName: 'Information Technology' },
+  { id: 'cat-02', code: 'CAT-FUR', name: 'Office Furniture', groupName: 'Furniture & Fixtures' },
+  { id: 'cat-03', code: 'CAT-VEH', name: 'Vehicles', groupName: 'Motor Vehicles' },
+  { id: 'cat-04', code: 'CAT-PLT', name: 'Plant & Machinery', groupName: 'Facilities & Building Equipment' },
+  { id: 'cat-05', code: 'CAT-OFF', name: 'Office Equipment', groupName: 'Office Electronics' },
+  { id: 'cat-06', code: 'CAT-LAP', name: 'Laptops & Notebooks', groupName: 'Information Technology' },
+  { id: 'cat-07', code: 'CAT-SRV', name: 'Enterprise Servers', groupName: 'Information Technology' },
+  { id: 'cat-08', code: 'CAT-SEAT', name: 'Ergonomic Chairs', groupName: 'Furniture & Fixtures' }
+];
+
+const BASELINE_SUBCATEGORIES = [
+  { id: 'subcat-01', code: 'SCAT-PORT', name: 'Portable Computing', categoryName: 'Computer Equipment' },
+  { id: 'subcat-02', code: 'SCAT-DESK', name: 'Fixed Workstations', categoryName: 'Computer Equipment' },
+  { id: 'subcat-03', code: 'SCAT-SEAT', name: 'Ergonomic Seating', categoryName: 'Office Furniture' },
+  { id: 'subcat-04', code: 'SCAT-TABL', name: 'Conference & Office Tables', categoryName: 'Office Furniture' },
+  { id: 'subcat-05', code: 'SCAT-FLEET', name: 'Corporate Fleet', categoryName: 'Vehicles' },
+  { id: 'subcat-06', code: 'SUB-LAP', name: 'Business Laptops', categoryName: 'Laptops & Notebooks' },
+  { id: 'subcat-07', code: 'SUB-SRV', name: 'Rack Servers', categoryName: 'Enterprise Servers' },
+  { id: 'subcat-08', code: 'SUB-SEAT', name: 'Executive Task Chairs', categoryName: 'Ergonomic Chairs' }
+];
+
+const BASELINE_MANUFACTURERS = [
+  { id: 'mfr-01', name: 'Lenovo' },
+  { id: 'mfr-02', name: 'Dell Technologies' },
+  { id: 'mfr-03', name: 'HP Inc.' },
+  { id: 'mfr-04', name: 'Apple Inc.' },
+  { id: 'mfr-05', name: 'Cisco Systems' },
+  { id: 'mfr-06', name: 'Steelcase' },
+  { id: 'mfr-07', name: 'Herman Miller' },
+  { id: 'mfr-08', name: 'Toyota' },
+  { id: 'mfr-09', name: 'Mercedes-Benz' },
+  { id: 'mfr-10', name: 'Caterpillar' }
+];
+
+const DEFAULT_CATALOG_ITEMS = [
+  {
+    id: 'itm-001',
+    itemCode: 'ITM-000101',
+    itemName: 'Lenovo ThinkPad T14 Gen 4',
+    supplierBarcode: '019534827101',
+    description: 'Enterprise 14-inch professional business laptop with Intel Core i7, 32GB RAM, 512GB SSD',
+    assetGroupId: 'grp-01',
+    assetGroupName: 'Information Technology',
+    assetSubGroupId: 'subgrp-11',
+    assetSubGroupName: 'Hardware',
+    categoryId: 'cat-06',
+    categoryName: 'Laptops & Notebooks',
+    subCategoryId: 'subcat-06',
+    subCategoryName: 'Business Laptops',
+    manufacturerId: 'mfr-01',
+    manufacturerName: 'Lenovo',
+    model: 'ThinkPad T14 Gen 4',
+    uom: 'Each',
+    active: true
+  },
+  {
+    id: 'itm-002',
+    itemCode: 'ITM-000102',
+    itemName: 'Dell PowerEdge R750 Rack Server',
+    supplierBarcode: '088411638290',
+    description: '2U Dual-Socket enterprise rack server optimized for virtualization',
+    assetGroupId: 'grp-01',
+    assetGroupName: 'Information Technology',
+    assetSubGroupId: 'subgrp-11',
+    assetSubGroupName: 'Hardware',
+    categoryId: 'cat-07',
+    categoryName: 'Enterprise Servers',
+    subCategoryId: 'subcat-07',
+    subCategoryName: 'Rack Servers',
+    manufacturerId: 'mfr-02',
+    manufacturerName: 'Dell Technologies',
+    model: 'PowerEdge R750',
+    uom: 'Each',
+    active: true
+  },
+  {
+    id: 'itm-003',
+    itemCode: 'ITM-000103',
+    itemName: 'Steelcase Gesture Ergonomic Office Chair',
+    supplierBarcode: '072481923018',
+    description: 'High-performance ergonomic executive task chair',
+    assetGroupId: 'grp-02',
+    assetGroupName: 'Furniture & Fixtures',
+    assetSubGroupId: 'subgrp-06',
+    assetSubGroupName: 'Office Furniture',
+    categoryId: 'cat-08',
+    categoryName: 'Ergonomic Chairs',
+    subCategoryId: 'subcat-08',
+    subCategoryName: 'Executive Task Chairs',
+    manufacturerId: 'mfr-06',
+    manufacturerName: 'Steelcase',
+    model: 'Gesture-Black/Platinum',
+    uom: 'Each',
+    active: true
+  }
+];
+
 // --- Cascading Hierarchy Matchers ---
 const normalizeStr = (s) => (s || '').toLowerCase().trim();
 
@@ -793,121 +915,72 @@ export function AssetForm() {
   const subcategoryCode = subCategories.find(subCat => subCat.id === formData.assetClassId || subCat.name === formData.subcategory)?.code?.replace(/^CLS[-_ ]?/i, '') || formData.subcategory;
   // 1. Cascading Asset Groups based on selected Asset Type
   const availableAssetGroups = useMemo(() => {
-    if (!formData.assetType) return assetGroups;
-    return assetGroups || [];
-  }, [assetGroups, formData.assetType]);
+    let list = (assetGroups && assetGroups.length > 0) ? assetGroups : BASELINE_GROUPS;
+    if (formData.assetGroup && !list.some(g => (g.name || g.code) === formData.assetGroup || g.id === formData.assetGroup)) {
+      list = [{ id: 'sel-grp', name: formData.assetGroup, code: formData.assetGroup }, ...list];
+    }
+    return list;
+  }, [assetGroups, formData.assetGroup]);
 
-  // 2. Cascading Asset Classes based on selected Asset Group
+  // 2. Cascading Asset Classes (Sub Groups) based on selected Asset Group
   const availableAssetClassesDropdown = useMemo(() => {
-    if (!formData.assetGroup) return assetClasses;
-    return (assetClasses || []).filter(cls => matchesClassToGroup(cls, formData.assetGroup));
-  }, [assetClasses, formData.assetGroup]);
+    let list = (assetClasses && assetClasses.length > 0) ? assetClasses : BASELINE_SUBGROUPS;
+    if (formData.assetGroup) {
+      const filtered = list.filter(cls => matchesClassToGroup(cls, formData.assetGroup));
+      list = filtered.length > 0 ? filtered : list;
+    }
+    if (formData.assetClass && !list.some(c => (c.name || c.code) === formData.assetClass || c.id === formData.assetClass)) {
+      list = [{ id: 'sel-subgrp', name: formData.assetClass, code: formData.assetClass }, ...list];
+    }
+    return list;
+  }, [assetClasses, formData.assetGroup, formData.assetClass]);
 
   // 3. Cascading Categories based on Asset Class / Group / Type
   const availableCategories = useMemo(() => {
-    let cats = (categories || []).filter(c => c.active !== false);
-
-    // 1. Filter by Asset Class if selected
-    if (formData.assetClass) {
-      const clsLower = normalizeStr(formData.assetClass);
-      const matchedByClass = cats.filter(c => {
-        const groupMatch = (c.description || '').match(/\[group:([^\]]+)\]/);
-        const classMatch = (c.description || '').match(/\[class:([^\]]+)\]/);
-        const catClass = normalizeStr(c.className || (classMatch ? classMatch[1] : ''));
-        return catClass && (catClass === clsLower || clsLower.includes(catClass) || catClass.includes(clsLower));
-      });
-      if (matchedByClass.length > 0) cats = matchedByClass;
+    let cats = (categories && categories.length > 0) ? categories.filter(c => c.active !== false) : BASELINE_CATEGORIES;
+    if (formData.category && !cats.some(c => (c.name || c.code) === formData.category || c.id === formData.category || c.id === formData.categoryId)) {
+      cats = [{ id: formData.categoryId || 'sel-cat', name: formData.category, code: formData.category }, ...cats];
     }
-
-    // 2. Filter by Asset Group if selected and not already narrowed down by class
-    if (formData.assetGroup && (!formData.assetClass || cats.length === (categories || []).length)) {
-      const grpLower = normalizeStr(formData.assetGroup);
-      const matchedByGroup = cats.filter(c => {
-        const groupMatch = (c.description || '').match(/\[group:([^\]]+)\]/);
-        const catGroup = normalizeStr(c.groupName || (groupMatch ? groupMatch[1] : ''));
-        return catGroup && (catGroup === grpLower || grpLower.includes(catGroup) || catGroup.includes(grpLower));
-      });
-      if (matchedByGroup.length > 0) cats = matchedByGroup;
-    }
-
-    // 3. Filter by Asset Type
-    cats = cats.filter(c => matchesAssetType(c, formData.assetType));
-
-    const seen = new Set();
-    const unique = [];
-    for (const c of cats) {
-      const cleanName = (c.name || '').trim();
-      if (cleanName && !seen.has(cleanName.toLowerCase())) {
-        seen.add(cleanName.toLowerCase());
-        unique.push(c);
-      }
-    }
-    return unique.length > 0 ? unique : (categories || []);
-  }, [categories, formData.assetType, formData.assetGroup, formData.assetClass]);
+    return cats;
+  }, [categories, formData.category, formData.categoryId]);
 
   // 4. Cascading Sub Categories strictly based on selected Category
   const availableAssetClasses = useMemo(() => {
-    if (!formData.categoryId && !formData.category) return [];
-
+    let list = (subCategories && subCategories.length > 0) ? subCategories : BASELINE_SUBCATEGORIES;
     const selectedCatName = (formData.category || '').trim().toLowerCase();
-    const matched = subCategories.filter(sc => {
-      if (formData.categoryId && sc.categoryId === formData.categoryId) return true;
-      if (selectedCatName) {
-        const scCatName = (sc.category?.name || sc.categoryName || '').trim().toLowerCase();
-        if (scCatName === selectedCatName) return true;
-        const selectedBase = selectedCatName.split(' ')[0];
-        if (selectedBase && selectedBase.length >= 3 && scCatName.includes(selectedBase)) return true;
-      }
-      return false;
-    });
-
-    const seen = new Set();
-    const unique = [];
-    for (const item of matched) {
-      const cleanName = (item.name || '').trim();
-      if (cleanName && !seen.has(cleanName.toLowerCase())) {
-        seen.add(cleanName.toLowerCase());
-        unique.push(item);
+    let matched = [];
+    if (formData.categoryId || selectedCatName) {
+      matched = list.filter(sc => {
+        if (formData.categoryId && sc.categoryId === formData.categoryId) return true;
+        if (selectedCatName) {
+          const scCatName = (sc.category?.name || sc.categoryName || '').trim().toLowerCase();
+          if (scCatName === selectedCatName) return true;
+          const selectedBase = selectedCatName.split(' ')[0];
+          if (selectedBase && selectedBase.length >= 3 && scCatName.includes(selectedBase)) return true;
+        }
+        return false;
+      });
+    }
+    let result = matched.length > 0 ? matched : list;
+    const targetSubName = formData.subcategory;
+    const targetSubId = formData.assetClassId;
+    if (targetSubName || targetSubId) {
+      const exists = result.some(sc => (targetSubId && sc.id === targetSubId) || (targetSubName && (sc.name || sc.title || sc.id)?.toLowerCase() === targetSubName.toLowerCase()));
+      if (!exists && targetSubName) {
+        result = [{ id: targetSubId || targetSubName, name: targetSubName, code: targetSubName }, ...result];
       }
     }
-    return unique;
-  }, [formData.category, formData.categoryId, subCategories]);
+    return result;
+  }, [formData.category, formData.categoryId, formData.subcategory, formData.assetClassId, subCategories]);
 
   // 5. Cascading / Prioritized Manufacturers based on Type & Category
   const availableManufacturers = useMemo(() => {
-    if (!manufacturers || manufacturers.length === 0) return [];
-
-    const typeLower = normalizeStr(formData.assetType);
-    const catLower = normalizeStr(formData.category);
-
-    const isVehicle = typeLower.includes('veh') || catLower.includes('veh') || catLower.includes('car') || catLower.includes('truck');
-    const isFurniture = typeLower.includes('furn') || catLower.includes('furn') || catLower.includes('chair') || catLower.includes('desk');
-    const isMachinery = typeLower.includes('mach') || catLower.includes('mach') || catLower.includes('cnc') || catLower.includes('plant');
-    const isIT = typeLower.includes('it') || typeLower.includes('tech') || catLower.includes('laptop') || catLower.includes('server') || catLower.includes('switch');
-
-    const vehicleBrands = new Set(['toyota', 'ford', 'honda', 'volvo', 'mercedes-benz', 'isuzu', 'hyundai', 'caterpillar', 'bmw', 'chevrolet']);
-    const furnitureBrands = new Set(['herman miller', 'steelcase', 'haworth', 'ikea', 'knoll', 'godrej', 'vitra']);
-    const itBrands = new Set(['dell', 'dell technologies', 'apple', 'apple inc.', 'hp', 'hp inc.', 'hp enterprise', 'cisco', 'cisco systems', 'lenovo', 'lenovo group', 'samsung', 'zebra', 'zebra technologies', 'asus', 'acer', 'microsoft']);
-    const machineryBrands = new Set(['caterpillar', 'caterpillar inc.', 'siemens', 'bosch', 'komatsu', 'schneider electric', 'cummins', 'mitsubishi']);
-
-    let priorityBrands = new Set();
-    if (isVehicle) priorityBrands = vehicleBrands;
-    else if (isFurniture) priorityBrands = furnitureBrands;
-    else if (isMachinery) priorityBrands = machineryBrands;
-    else if (isIT) priorityBrands = itBrands;
-
-    if (priorityBrands.size === 0) return manufacturers;
-
-    const matched = [];
-    const others = [];
-    for (const m of manufacturers) {
-      const name = normalizeStr(m.name || m.title || m);
-      const hasMatch = Array.from(priorityBrands).some(b => name.includes(b));
-      if (hasMatch) matched.push(m);
-      else others.push(m);
+    let mfrs = (manufacturers && manufacturers.length > 0) ? manufacturers : BASELINE_MANUFACTURERS;
+    if (formData.manufacturer && !mfrs.some(m => (m.name || m.title || m).toLowerCase() === formData.manufacturer.toLowerCase())) {
+      mfrs = [{ id: 'sel-mfr', name: formData.manufacturer }, ...mfrs];
     }
-    return [...matched, ...others];
-  }, [manufacturers, formData.assetType, formData.category]);
+    return mfrs;
+  }, [manufacturers, formData.manufacturer]);
 
   // --- Handlers for Seamless Top-Down & Bottom-Up Cascades ---
 
@@ -919,26 +992,32 @@ export function AssetForm() {
     const item = itemMasters.find(i => i.id === itemId);
     if (!item) return;
 
+    const groupName = item.assetGroupName || item.assetGroup || '';
+    const subGroupName = item.assetSubGroupName || item.assetClass || item.subGroup || '';
+    const categoryName = item.categoryName || item.category || '';
+    const subCategoryName = item.subCategoryName || item.subcategory || item.subCategory || '';
+    const manufacturerName = item.manufacturerName || item.manufacturer || item.brand || '';
+
     setFormData(prev => ({
       ...prev,
       itemMasterId: item.id,
       assetName: item.itemName,
       description: item.description || item.itemName,
-      assetGroup: item.assetGroupName || prev.assetGroup,
-      assetClass: item.assetSubGroupName || prev.assetClass,
-      category: item.categoryName || prev.category,
+      assetGroup: groupName || prev.assetGroup,
+      assetClass: subGroupName || prev.assetClass,
+      category: categoryName || prev.category,
       categoryId: item.categoryId || prev.categoryId,
-      subcategory: item.subCategoryName || prev.subcategory,
-      assetClassId: item.subCategoryId || item.assetClassId || prev.assetClassId,
+      subcategory: subCategoryName || prev.subcategory,
+      assetClassId: item.subCategoryId || item.assetClassId || subCategoryName || prev.assetClassId,
       supplierBarcode: item.supplierBarcode || '',
-      manufacturer: item.manufacturerName || prev.manufacturer,
-      brand: item.manufacturerName || prev.brand,
+      manufacturer: manufacturerName || prev.manufacturer,
+      brand: manufacturerName || prev.brand,
       model: item.model || prev.model,
       modelNumber: item.model || prev.modelNumber
     }));
     clearFieldError('assetName');
-    if (item.categoryName) clearFieldError('category');
-    if (item.subCategoryName) clearFieldError('subcategory');
+    if (categoryName) clearFieldError('category');
+    if (subCategoryName) clearFieldError('subcategory');
   };
 
   const handleClearItemMaster = () => {
@@ -2285,7 +2364,7 @@ export function AssetForm() {
             {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
           </div>
           <select
-            value={formData.assetClassId || formData.subcategory}
+            value={formData.subcategory || formData.assetClassId || ''}
             onChange={(e) => {
               handleSubCategoryChange(e.target.value);
               if (e.target.value) clearFieldError('subcategory');
@@ -2300,9 +2379,14 @@ export function AssetForm() {
             }`}
           >
             <option value="">{formData.category ? (availableAssetClasses.length > 0 ? 'Select Sub Category *' : 'No sub categories (optional)') : 'Select a Category first'}</option>
-            {availableAssetClasses.map(assetClass => (
-              <option key={assetClass.id} value={assetClass.id}>{assetClass.name}</option>
-            ))}
+            {availableAssetClasses.map(assetClass => {
+              const val = assetClass.name || assetClass.id;
+              return (
+                <option key={assetClass.id || assetClass.name} value={val}>
+                  {assetClass.name}
+                </option>
+              );
+            })}
           </select>
           {fieldErrors.subcategory ? (
             <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
