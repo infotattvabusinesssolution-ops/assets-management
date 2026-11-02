@@ -456,18 +456,7 @@ export function ClassesTab({
             </select>
           </div>
 
-          <div className="w-full md:w-44 relative">
-            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Asset Type</span>
-            <select
-              value={clsAssetTypeFilter}
-              onChange={(e) => setClsAssetTypeFilter(e.target.value)}
-              className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-            >
-              <option value="All">All</option>
-              <option value="Physical">Physical</option>
-              <option value="Intangible">Intangible</option>
-            </select>
-          </div>
+
 
           <div className="pt-4 md:pt-0">
             <button
@@ -564,7 +553,7 @@ export function ClassesTab({
                   <th className="py-3 px-3">Sub Group Name</th>
                   <th className="py-3 px-3.5">Asset Group</th>
                   <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-3">Asset Type</th>
+                  
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-center">Actions</th>
@@ -600,7 +589,7 @@ export function ClassesTab({
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={cls.description}>
                         {cls.description}
                       </td>
-                      <td className="py-3.5 px-3 text-slate-700">{cls.assetType}</td>
+                      
                       <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900">
                         {(cls.totalAssets ?? 0).toLocaleString()}
                       </td>
@@ -780,10 +769,7 @@ export function ClassesTab({
                 <span className="col-span-2 text-slate-700 leading-relaxed">{selectedClass.description}</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Asset Type</span>
-                <span className="col-span-2 font-semibold text-slate-800">{selectedClass.assetType}</span>
-              </div>
+
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Status</span>
@@ -947,30 +933,16 @@ export function ClassesTab({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Asset Type</label>
-                  <select
-                    value={clsFormState.assetType}
-                    onChange={(e) => setClsFormState({ ...clsFormState, assetType: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="Physical">Physical</option>
-                    <option value="Intangible">Intangible</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Status</label>
-                  <select
-                    value={clsFormState.status}
-                    onChange={(e) => setClsFormState({ ...clsFormState, status: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Status</label>
+                <select
+                  value={clsFormState.status}
+                  onChange={(e) => setClsFormState({ ...clsFormState, status: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

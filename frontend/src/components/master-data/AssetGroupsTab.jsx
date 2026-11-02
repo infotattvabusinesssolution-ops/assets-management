@@ -429,19 +429,7 @@ export function AssetGroupsTab({
             </select>
           </div>
 
-          <div className="w-full md:w-52 flex items-center gap-2">
-            <span className="text-xs font-semibold text-slate-500 shrink-0">Asset Type</span>
-            <select
-              value={grpAssetTypeFilter}
-              onChange={(e) => setGrpAssetTypeFilter(e.target.value)}
-              className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-            >
-              <option value="All">All</option>
-              <option value="Physical">Physical</option>
-              <option value="Intangible">Intangible</option>
-              <option value="Both">Both</option>
-            </select>
-          </div>
+
 
           <button
             onClick={handleResetGrpFilters}
@@ -494,7 +482,7 @@ export function AssetGroupsTab({
                   <th className="py-3 px-3.5">Group Code</th>
                   <th className="py-3 px-3.5">Group Name</th>
                   <th className="py-3 px-4">Description</th>
-                  <th className="py-3 px-3.5">Asset Type</th>
+                  
                   <th className="py-3 px-3.5 text-right">Total Assets</th>
                   <th className="py-3 px-3.5 text-center">Status</th>
                   <th className="py-3 px-3.5 text-center">Actions</th>
@@ -503,7 +491,7 @@ export function AssetGroupsTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {isLoading ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       <div className="flex flex-col items-center justify-center gap-2">
                         <RefreshCw className="w-6 h-6 text-[#6C2BD9] animate-spin" />
                         <span className="text-xs font-semibold">Loading Asset Groups from database...</span>
@@ -512,7 +500,7 @@ export function AssetGroupsTab({
                   </tr>
                 ) : filteredGroups.length === 0 ? (
                   <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
+                    <td colSpan={7} className="py-12 text-center text-slate-400">
                       No asset groups found matching your filters.
                     </td>
                   </tr>
@@ -534,7 +522,7 @@ export function AssetGroupsTab({
                         <td className="py-3.5 px-4 text-slate-600 max-w-[220px] truncate" title={grp.description}>
                           {grp.description || '-'}
                         </td>
-                        <td className="py-3.5 px-3.5 text-slate-700">{grp.assetType}</td>
+                        
                         <td className="py-3.5 px-3.5 text-right font-mono font-bold text-slate-900">
                           {(grp.totalAssets ?? 0).toLocaleString()}
                         </td>
@@ -641,10 +629,7 @@ export function AssetGroupsTab({
                 <span className="col-span-2 text-slate-700 leading-relaxed">{selectedGroup.description}</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Asset Type</span>
-                <span className="col-span-2 font-semibold text-slate-800">{selectedGroup.assetTypeLabel}</span>
-              </div>
+
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Status</span>
@@ -864,32 +849,16 @@ export function AssetGroupsTab({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Parent Asset Type *</label>
-                  <select
-                    value={grpFormState.assetType}
-                    onChange={(e) => setGrpFormState({ ...grpFormState, assetType: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    {availableAssetTypes.map((t) => {
-                      const name = typeof t === 'string' ? t : (t.name || t.code);
-                      return <option key={t.id || name} value={name}>{name}</option>;
-                    })}
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Status</label>
-                  <select
-                    value={grpFormState.status}
-                    onChange={(e) => setGrpFormState({ ...grpFormState, status: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Status</label>
+                <select
+                  value={grpFormState.status}
+                  onChange={(e) => setGrpFormState({ ...grpFormState, status: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">
