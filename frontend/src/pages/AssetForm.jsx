@@ -93,6 +93,22 @@ function BarcodePreview({ value }) {
 
 
 
+// System-Defined Enumeration per Requirements Documentation Section 4
+export const ASSET_CLASSIFICATION_ENUM = Object.freeze({
+  ASSET: {
+    code: 'ASSET',
+    value: 'Asset',
+    label: 'Asset (Capitalized & Depreciated)',
+    description: 'Capitalized physical asset subject to balance-sheet depreciation'
+  },
+  NON_ASSET: {
+    code: 'NON_ASSET',
+    value: 'Non-asset',
+    label: 'Non-asset (Expensed / Low-value)',
+    description: 'Expensed low-value item or consumable written off upon purchase'
+  }
+});
+
 // Standard Enterprise Baseline Master Data (guarantees options exist even if DB tables are empty)
 const BASELINE_GROUPS = [
   { id: 'grp-01', code: 'GRP-IT', name: 'Information Technology' },
@@ -2226,12 +2242,15 @@ export function AssetForm() {
             </span>
           </div>
           <select
-            value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
+            value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? ASSET_CLASSIFICATION_ENUM.ASSET.value : ASSET_CLASSIFICATION_ENUM.NON_ASSET.value)}
             onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
             className="w-full bg-white border border-slate-300 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none shadow-2xs cursor-pointer"
           >
-            <option value="Asset">Asset (Capitalized &amp; Depreciated)</option>
-            <option value="Non-asset">Non-asset (Expensed / Low-value)</option>
+            {Object.values(ASSET_CLASSIFICATION_ENUM).map((enumItem) => (
+              <option key={enumItem.code} value={enumItem.value}>
+                {enumItem.label}
+              </option>
+            ))}
           </select>
           <div className="flex items-center justify-between text-[11px] text-slate-500">
             <span>Threshold: ${CAPITALIZATION_THRESHOLD.toLocaleString()}</span>
@@ -4274,12 +4293,15 @@ export function AssetForm() {
                     </span>
                   </div>
                   <select
-                    value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
+                    value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? ASSET_CLASSIFICATION_ENUM.ASSET.value : ASSET_CLASSIFICATION_ENUM.NON_ASSET.value)}
                     onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
-                    <option value="Asset">Asset (Capitalized &amp; Depreciated)</option>
-                    <option value="Non-asset">Non-asset (Expensed / Low-value)</option>
+                    {Object.values(ASSET_CLASSIFICATION_ENUM).map((enumItem) => (
+                      <option key={enumItem.code} value={enumItem.value}>
+                        {enumItem.label}
+                      </option>
+                    ))}
                   </select>
                 </div>
 
