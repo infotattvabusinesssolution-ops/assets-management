@@ -1571,13 +1571,7 @@ export function AssetForm() {
         if (!firstWarning) firstWarning = 'Warning: Quantity must be a valid number between 1 and 50.';
       }
 
-      if (quantityCount > 1 && selectedDepreciationCategory?.isSerialized) {
-        const itemSerialNumbers = serialNumbers.map(s => (s || '').trim());
-        if (itemSerialNumbers.some(s => !s)) {
-          errors.serialNumber = 'Each item in this serialized category requires a serial number.';
-          if (!firstWarning) firstWarning = 'Warning: Each item in this serialized category requires a serial number.';
-        }
-      }
+      
     }
 
     if (stepNumber === 2) {
@@ -1620,6 +1614,13 @@ export function AssetForm() {
     }
 
     if (stepNumber === 3) {
+      if (quantityCount > 1 && selectedDepreciationCategory?.isSerialized) {
+        const itemSerialNumbers = serialNumbers.map(s => (s || '').trim());
+        if (itemSerialNumbers.some(s => !s)) {
+          errors.serialNumber = 'Each item in this serialized category requires a serial number in the tag assignment table.';
+          if (!firstWarning) firstWarning = 'Warning: Each item in this serialized category requires a physical serial number.';
+        }
+      }
       if (tagValidationStatus === 'CONFLICT') {
         errors.tag = 'Asset Tag is already assigned to another asset.';
         if (!firstWarning) firstWarning = 'Warning: The entered Asset Tag is already in use. Please enter or generate an available tag.';
@@ -2143,7 +2144,7 @@ export function AssetForm() {
         </span>
       </div>
 
-      {Object.keys(fieldErrors).some(k => ['assetName', 'assetType', 'category', 'subcategory', 'quantity', 'serialNumber'].includes(k)) && (
+      {Object.keys(fieldErrors).some(k => ['assetName', 'assetType', 'category', 'subcategory', 'quantity'].includes(k)) && (
         <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
           <div>
@@ -2451,42 +2452,15 @@ export function AssetForm() {
         <div>
           <div className="flex items-center justify-between mb-1">
             <label className="font-bold text-slate-700 block">Model</label>
-            {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
+            <span className="text-[10px] font-bold text-[#6C2BD9]">From Item Master</span>
           </div>
           <input
             type="text"
-            value={formData.model}
-            readOnly={Boolean(selectedItemMasterId)}
-            onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-            placeholder="e.g. Latitude 5420 (optional)"
-            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${
-              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
-            }`}
+            readOnly
+            value={formData.model || (selectedItemMasterId ? 'None specified on master' : '')}
+            placeholder="Auto-populated from Item Master"
+            className="w-full border border-slate-200 rounded-xl p-2 font-semibold bg-slate-100 cursor-not-allowed text-slate-700 outline-none"
           />
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Serial Number</label>
-          <input
-            type="text"
-            value={serialNumbers[selectedItemIndex] || ''}
-            onChange={(e) => {
-              updateSerialNumber(e.target.value);
-              if (e.target.value.trim()) clearFieldError('serialNumber');
-            }}
-            placeholder="e.g. SN-892118 (optional)"
-            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-mono font-bold outline-none transition-colors ${
-              fieldErrors.serialNumber
-                ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
-                : 'border-slate-200 focus:border-[#6C2BD9]'
-            }`}
-          />
-          {fieldErrors.serialNumber && (
-            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {fieldErrors.serialNumber}
-            </p>
-          )}
         </div>
 
         <div>
@@ -3434,6 +3408,31 @@ export function AssetForm() {
                 tagValidationStatus === 'VALIDATING' ? 'Checking' : 'Ready'}
             </span>
           </div>
+        </div>
+
+        {/* Physical Unit Serial Number */}
+        <div className="space-y-1.5 pt-2 border-t border-slate-100">
+          <div className="flex items-center justify-between">
+            <label htmlFor="asset-serial-number" className="block text-xs font-bold text-slate-700">
+              Physical Serial Number (Unit Serial #)
+            </label>
+            <span className="text-[10px] text-slate-400">Optional · Hardware device sticker</span>
+          </div>
+          <input
+            id="asset-serial-number"
+            type="text"
+            value={serialNumbers[0] || ''}
+            onChange={(e) => {
+              const val = e.target.value;
+              updateSerialNumber(val);
+              if (val.trim()) clearFieldError('serialNumber');
+            }}
+            placeholder="e.g. SN-LN-992810 (scanned from physical unit)"
+            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold outline-none text-xs focus:border-[#6C2BD9] transition-colors"
+          />
+          <p className="text-[11px] text-slate-500">
+            Serial number is unit-level data assigned to this physical unit upon receiving. (Supplier barcode is common to all units of this model).
+          </p>
         </div>
 
         <div className="rounded-xl bg-slate-50 border border-slate-100 p-4 space-y-3 min-w-0">
@@ -4454,48 +4453,20 @@ export function AssetForm() {
                     </select>
                   </div>
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Model *</label>
-                    <select
-                      value={formData.model}
-                      onChange={(e) => setFormData({ ...formData, model: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    >
-                      <option value="Latitude 7450">Latitude 7450</option>
-                    </select>
+                    <label className="font-bold text-slate-700 block mb-1">Model</label>
+                    <input
+                      type="text"
+                      readOnly
+                      value={formData.model || (selectedItemMasterId ? 'None specified on master' : '')}
+                      placeholder="From Item Master"
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-700 font-semibold cursor-not-allowed outline-none"
+                    />
                   </div>
-                </div>
-
-                <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Model Number</label>
-                  <input
-                    type="text"
-                    value={formData.modelNumber}
-                    onChange={(e) => setFormData({ ...formData, modelNumber: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none"
-                  />
                 </div>
 
                 <div className="space-y-1 text-xs">
                   <label className="font-bold text-slate-700 block">Quantity *</label>
                   <input type="number" min="1" max="50" value={formData.quantity} onChange={(e) => updateQuantity(e.target.value)} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none" />
-                </div>
-
-                {quantityCount > 1 && <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Item serial number</label>
-                  <select value={selectedItemIndex} onChange={event => { const index = Number(event.target.value); setSelectedItemIndex(index); setFormData(previous => ({ ...previous, serialNumber: serialNumbers[index] || '' })); }} className="w-full bg-white border border-purple-200 rounded-xl p-2 text-slate-900 font-semibold">
-                    {serialNumbers.map((serial, index) => <option key={index} value={index}>{index + 1} / {serialNumbers.length}{serial ? ` — ${serial}` : ' — serial needed'}</option>)}
-                  </select>
-                </div>}
-
-                <div className="space-y-1 text-xs">
-                  <label className="font-bold text-slate-700 block">Serial Number *</label>
-                  <input
-                    type="text"
-                    required
-                    value={serialNumbers[selectedItemIndex] || ''}
-                    onChange={(e) => updateSerialNumber(e.target.value)}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold focus:border-[#6C2BD9] outline-none"
-                  />
                 </div>
 
                 <div className="space-y-1 text-xs">
