@@ -11,6 +11,7 @@ import { INITIAL_SUB_CATEGORIES } from '../components/master-data/SubCategoriesT
 import { DEFAULT_ASSET_TYPES } from '../components/master-data/GenericMasterTab';
 import { uploadToCloudinary } from '../services/cloudinary';
 import {
+  Sparkles,
   Box,
   Package,
   Save,
@@ -1210,6 +1211,23 @@ export function AssetForm() {
     }));
     showToast('success', `Generated sequential ${targetType} tags for all ${quantityCount} units!`);
   };
+  const generateRandomSerial = (prefix = 'SN', index = 0) => {
+    const yr = new Date().getFullYear();
+    const hex = Math.random().toString(36).substring(2, 7).toUpperCase();
+    if (quantityCount > 1) {
+      return `${prefix}-${yr}-${String(index + 1).padStart(3, '0')}-${hex}`;
+    }
+    return `${prefix}-${yr}-${hex}`;
+  };
+
+  const handleBatchGenerateSerials = () => {
+    const newSerials = Array.from({ length: quantityCount }, (_, i) => generateRandomSerial('SN', i));
+    setSerialNumbers(newSerials);
+    setFormData(prev => ({ ...prev, serialNumber: newSerials[0] }));
+    clearFieldError('serialNumber');
+    showToast('success', `Generated serial numbers for all ${quantityCount} units!`);
+  };
+
   const updateSerialNumber = value => {
     setSerialNumbers(previous => previous.map((serial, index) => index === selectedItemIndex ? value : serial));
     setFormData(previous => ({ ...previous, serialNumber: value }));
@@ -1723,7 +1741,10 @@ export function AssetForm() {
         showToast('error', 'Select a Sub Category before saving.');
         return;
       }
-      const itemSerialNumbers = serialNumbers.map(serial => serial.trim());
+      const itemSerialNumbers = serialNumbers.map((serial, idx) => {
+        const trimmed = (serial || '').trim();
+        return trimmed || generateRandomSerial('SN', idx);
+      });
       if (quantity > 1 && selectedDepreciationCategory?.isSerialized && itemSerialNumbers.some(serial => !serial)) {
         showToast('error', 'Enter a serial number for every item before saving.');
         return;
@@ -3215,6 +3236,13 @@ export function AssetForm() {
             <div className="flex items-center gap-2">
               <button
                 type="button"
+                onClick={() => handleBatchGenerateSerials()}
+                className="px-3 py-1.5 bg-slate-100 text-slate-700 border border-slate-200 text-xs font-bold rounded-xl hover:bg-purple-50 hover:text-[#6C2BD9] hover:border-purple-200 transition-colors flex items-center gap-1.5 shadow-2xs cursor-pointer"
+              >
+                <Sparkles className="w-3.5 h-3.5 text-[#6C2BD9]" /> Auto-Generate All Serials
+              </button>
+              <button
+                type="button"
                 onClick={() => handleBatchGenerateTags(formData.tagType || 'Barcode')}
                 className="px-3 py-1.5 bg-[#6C2BD9] text-white text-xs font-bold rounded-xl hover:bg-[#5821B0] transition-colors flex items-center gap-1.5 shadow-xs cursor-pointer"
               >
@@ -3418,18 +3446,36 @@ export function AssetForm() {
             </label>
             <span className="text-[10px] text-slate-400">Optional · Hardware device sticker</span>
           </div>
-          <input
-            id="asset-serial-number"
-            type="text"
-            value={serialNumbers[0] || ''}
-            onChange={(e) => {
-              const val = e.target.value;
-              updateSerialNumber(val);
-              if (val.trim()) clearFieldError('serialNumber');
-            }}
-            placeholder="e.g. SN-LN-992810 (scanned from physical unit)"
-            className="w-full bg-slate-50 border border-slate-200 rounded-lg px-3 py-2 text-slate-900 font-mono font-bold outline-none text-xs focus:border-[#6C2BD9] transition-colors"
-          />
+          <div className="flex items-stretch gap-2 min-w-0">
+            <input
+              id="asset-serial-number"
+              type="text"
+              value={serialNumbers[0] || ''}
+              onChange={(e) => {
+                const val = e.target.value;
+                updateSerialNumber(val);
+                if (val.trim()) clearFieldError('serialNumber');
+              }}
+              placeholder="e.g. SN-LN-992810 (scanned or click Generate)"
+              className={`min-w-0 flex-1 bg-slate-50 border rounded-lg px-3 py-2 text-slate-900 font-mono font-bold outline-none text-xs transition-colors ${
+                fieldErrors.serialNumber ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+              }`}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                const newSerial = generateRandomSerial('SN', 0);
+                updateSerialNumber(newSerial);
+                clearFieldError('serialNumber');
+                showToast('info', `Generated unit serial number: ${newSerial}`);
+              }}
+              className="px-3 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 hover:text-purple-700 font-bold rounded-lg text-xs cursor-pointer whitespace-nowrap flex items-center justify-center gap-1.5 border border-slate-200 transition-colors"
+              title="Auto-generate unit serial number"
+            >
+              <Sparkles className="w-3.5 h-3.5 text-[#6C2BD9]" />
+              Generate
+            </button>
+          </div>
           <p className="text-[11px] text-slate-500">
             Serial number is unit-level data assigned to this physical unit upon receiving. (Supplier barcode is common to all units of this model).
           </p>
