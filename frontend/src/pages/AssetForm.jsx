@@ -52,7 +52,8 @@ import {
   FolderPlus,
   Sliders,
   ExternalLink,
-  Cloud
+  Cloud,
+  Lock
 } from 'lucide-react';
 
 function BarcodePreview({ value }) {
@@ -561,9 +562,25 @@ export function AssetForm() {
 
   // Master Data Options loaded dynamically from backend & localStorage
   const [assetTypes, setAssetTypes] = useState([
-    { id: '1', name: 'Asset', description: 'Capitalized physical asset subject to depreciation' },
-    { id: '2', name: 'Non-asset', description: 'Expensed low-value item or consumable' }
+    { id: 'TYPE-SYS-ASSET', code: 'ASSET', name: 'Asset (Capitalized & Depreciated)', description: 'Capitalized physical asset subject to balance-sheet depreciation', isSystem: true },
+    { id: 'TYPE-SYS-NON-ASSET', code: 'NON_ASSET', name: 'Non-asset (Expensed / Low-value)', description: 'Expensed low-value item or consumable written off upon purchase', isSystem: true }
   ]);
+
+  const classificationOptions = useMemo(() => {
+    if (assetTypes && assetTypes.length > 0) {
+      return assetTypes.map(t => ({
+        code: t.code || t.name,
+        value: (t.code === 'NON_ASSET' || (t.name || '').toLowerCase().includes('non-asset')) ? 'Non-asset' : ((t.code === 'ASSET' || (t.name || '').toLowerCase().startsWith('asset')) ? 'Asset' : t.name),
+        label: t.name,
+        description: t.description || '',
+        isSystem: Boolean(t.isSystem)
+      }));
+    }
+    return [
+      { code: 'ASSET', value: 'Asset', label: 'Asset (Capitalized & Depreciated)', isSystem: true },
+      { code: 'NON_ASSET', value: 'Non-asset', label: 'Non-asset (Expensed / Low-value)', isSystem: true }
+    ];
+  }, [assetTypes]);
 
   const [assetGroups, setAssetGroups] = useState(() => {
     try {
@@ -659,10 +676,7 @@ export function AssetForm() {
           setItemMasters(itemRes.items);
         }
         if (typeRes?.assetTypes && Array.isArray(typeRes.assetTypes) && typeRes.assetTypes.length > 0) {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
-          const existingNames = new Set(custom.map(c => c.name.toLowerCase()));
-          const merged = [...custom, ...typeRes.assetTypes.filter(st => !existingNames.has(st.name.toLowerCase()))];
-          setAssetTypes(merged);
+          setAssetTypes(typeRes.assetTypes);
         }
         if (groupRes?.assetGroups && Array.isArray(groupRes.assetGroups) && groupRes.assetGroups.length > 0) {
           const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
@@ -2264,11 +2278,11 @@ export function AssetForm() {
             </span>
           </div>
           <select
-            value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? ASSET_CLASSIFICATION_ENUM.ASSET.value : ASSET_CLASSIFICATION_ENUM.NON_ASSET.value)}
+            value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
             onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
             className="w-full bg-white border border-slate-300 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none shadow-2xs cursor-pointer"
           >
-            {Object.values(ASSET_CLASSIFICATION_ENUM).map((enumItem) => (
+            {classificationOptions.map((enumItem) => (
               <option key={enumItem.code} value={enumItem.value}>
                 {enumItem.label}
               </option>
@@ -4338,11 +4352,11 @@ export function AssetForm() {
                     </span>
                   </div>
                   <select
-                    value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? ASSET_CLASSIFICATION_ENUM.ASSET.value : ASSET_CLASSIFICATION_ENUM.NON_ASSET.value)}
+                    value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
                     onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
-                    {Object.values(ASSET_CLASSIFICATION_ENUM).map((enumItem) => (
+                    {classificationOptions.map((enumItem) => (
                       <option key={enumItem.code} value={enumItem.value}>
                         {enumItem.label}
                       </option>

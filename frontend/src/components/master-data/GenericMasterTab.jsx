@@ -18,7 +18,8 @@ import {
   Tag,
   Box,
   Layers,
-  ChevronRight
+  ChevronRight,
+  Lock
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -227,8 +228,9 @@ export function GenericMasterTab({
             name: t.name,
             symbol: t.code || 'TYPE',
             category: t.category || 'Discrete Count',
-            stage: t.stage || 'Operational',
+            stage: t.stage || (t.isSystem ? 'SYSTEM' : 'Operational'),
             description: t.description || '',
+            isSystem: Boolean(t.isSystem),
             status: t.active === false ? 'Inactive' : 'Active',
             totalAssets: t.totalAssets || 0
           }));
@@ -688,25 +690,31 @@ export function GenericMasterTab({
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1">
-                            <button
-                              onClick={() => handleOpenAddModal(item)}
-                              title="Edit Record"
-                              className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => {
-                                setItemToDelete(item);
-                                setShowDeleteModal(true);
-                              }}
-                              title="Delete Record"
-                              className="p-1 hover:bg-rose-100 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                          {item.isSystem ? (
+                            <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200" title="Protected System Enumeration (Cannot be modified or deleted via UI)">
+                              <Lock className="w-2.5 h-2.5" /> System Enum
+                            </span>
+                          ) : (
+                            <div className="flex items-center justify-center gap-1">
+                              <button
+                                onClick={() => handleOpenAddModal(item)}
+                                title="Edit Record"
+                                className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                onClick={() => {
+                                  setItemToDelete(item);
+                                  setShowDeleteModal(true);
+                                }}
+                                title="Delete Record"
+                                className="p-1 hover:bg-rose-100 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                              </button>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

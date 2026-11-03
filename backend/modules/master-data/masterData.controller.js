@@ -1614,10 +1614,21 @@ async function ensureAssetTypesTable() {
         description NVARCHAR(500) NULL,
         category NVARCHAR(100) NULL,
         stage NVARCHAR(100) NULL,
+        isSystem BIT DEFAULT 0,
         active BIT DEFAULT 1,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('asset_types') AND name = 'isSystem')
+      ALTER TABLE asset_types ADD isSystem BIT NOT NULL CONSTRAINT DF_asset_types_isSystem DEFAULT 0;
+
+      IF NOT EXISTS (SELECT 1 FROM asset_types WHERE code = 'ASSET')
+      INSERT INTO asset_types (id, code, name, description, category, stage, isSystem, active, createdAt, updatedAt)
+      VALUES ('TYPE-SYS-ASSET', 'ASSET', 'Asset (Capitalized & Depreciated)', 'Capitalized physical asset subject to balance-sheet depreciation', 'CAPITALIZED', 'SYSTEM', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+
+      IF NOT EXISTS (SELECT 1 FROM asset_types WHERE code = 'NON_ASSET')
+      INSERT INTO asset_types (id, code, name, description, category, stage, isSystem, active, createdAt, updatedAt)
+      VALUES ('TYPE-SYS-NON-ASSET', 'NON_ASSET', 'Non-asset (Expensed / Low-value)', 'Expensed low-value item or consumable written off upon purchase', 'EXPENSED', 'SYSTEM', 1, 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
     `);
 
     // Clean up test record if present in DB
@@ -1636,8 +1647,8 @@ export async function getAssetTypes(req, res, next) {
       try {
         const includeInactive = req.query.includeInactive === 'true';
         const query = includeInactive
-          ? `SELECT id, code, name, description, category, stage, active FROM asset_types ORDER BY name ASC`
-          : `SELECT id, code, name, description, category, stage, active FROM asset_types WHERE active = 1 ORDER BY name ASC`;
+          ? `SELECT id, code, name, description, category, stage, isSystem, active FROM asset_types ORDER BY isSystem DESC, name ASC`
+          : `SELECT id, code, name, description, category, stage, isSystem, active FROM asset_types WHERE active = 1 ORDER BY isSystem DESC, name ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
         if (Array.isArray(rows) && rows.length > 0) {
           const list = rows.map(r => ({
@@ -1646,7 +1657,8 @@ export async function getAssetTypes(req, res, next) {
             name: r.name,
             description: r.description || '',
             category: r.category || 'Discrete Count',
-            stage: r.stage || 'Operational',
+            stage: r.stage || (r.isSystem ? 'SYSTEM' : 'Operational'),
+            isSystem: Boolean(r.isSystem),
             active: Boolean(r.active)
           }));
           inMemoryAssetTypes = list;
@@ -1681,6 +1693,7 @@ export async function createAssetType(req, res, next) {
       description: cleanDesc,
       category: cleanCat,
       stage: cleanStage,
+      isSystem: false,
       active: isAct
     };
 
@@ -1688,8 +1701,8 @@ export async function createAssetType(req, res, next) {
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
-          INSERT INTO asset_types (id, code, name, description, category, stage, active, createdAt, updatedAt)
-          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', '${cleanCat.replace(/'/g, "''")}', '${cleanStage.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          INSERT INTO asset_types (id, code, name, description, category, stage, isSystem, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', '${cleanCat.replace(/'/g, "''")}', '${cleanStage.replace(/'/g, "''")}', 0, ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
       } catch (dbErr) {
         console.warn('DB insert asset_types skipped:', dbErr.message);
@@ -1707,8 +1720,31 @@ export async function updateAssetType(req, res, next) {
   try {
     const { id } = req.params;
     const { code, name, description, category, stage, active } = req.body;
+
+    await ensureAssetTypesTable();
+    if (isDbConnected()) {
+      try {
+        const check = await prisma.$queryRawUnsafe(`SELECT isSystem FROM asset_types WHERE id = '${id.replace(/'/g, "''")}'`);
+        if (check?.[0]?.isSystem) {
+          return res.status(403).json({
+            success: false,
+            message: 'System Enumerations (Asset / Non-asset) are protected and cannot be modified.'
+          });
+        }
+      } catch (dbErr) {
+        console.warn('DB check system enum skipped:', dbErr.message);
+      }
+    }
+
     const idx = inMemoryAssetTypes.findIndex(t => t.id === id);
     if (idx === -1) return res.status(404).json({ success: false, message: 'Asset Type not found' });
+
+    if (inMemoryAssetTypes[idx]?.isSystem) {
+      return res.status(403).json({
+        success: false,
+        message: 'System Enumerations (Asset / Non-asset) are protected and cannot be modified.'
+      });
+    }
 
     inMemoryAssetTypes[idx] = {
       ...inMemoryAssetTypes[idx],
@@ -1720,7 +1756,6 @@ export async function updateAssetType(req, res, next) {
       ...(active !== undefined && { active: Boolean(active) })
     };
 
-    await ensureAssetTypesTable();
     if (isDbConnected()) {
       try {
         const item = inMemoryAssetTypes[idx];
@@ -1748,9 +1783,32 @@ export async function updateAssetType(req, res, next) {
 export async function deleteAssetType(req, res, next) {
   try {
     const { id } = req.params;
-    inMemoryAssetTypes = inMemoryAssetTypes.filter(t => t.id !== id);
 
     await ensureAssetTypesTable();
+    if (isDbConnected()) {
+      try {
+        const check = await prisma.$queryRawUnsafe(`SELECT isSystem FROM asset_types WHERE id = '${id.replace(/'/g, "''")}'`);
+        if (check?.[0]?.isSystem) {
+          return res.status(403).json({
+            success: false,
+            message: 'System Enumerations (Asset / Non-asset) are protected and cannot be deleted.'
+          });
+        }
+      } catch (dbErr) {
+        console.warn('DB check system enum delete skipped:', dbErr.message);
+      }
+    }
+
+    const item = inMemoryAssetTypes.find(t => t.id === id);
+    if (item?.isSystem) {
+      return res.status(403).json({
+        success: false,
+        message: 'System Enumerations (Asset / Non-asset) are protected and cannot be deleted.'
+      });
+    }
+
+    inMemoryAssetTypes = inMemoryAssetTypes.filter(t => t.id !== id);
+
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`DELETE FROM asset_types WHERE id = '${id.replace(/'/g, "''")}'`);
