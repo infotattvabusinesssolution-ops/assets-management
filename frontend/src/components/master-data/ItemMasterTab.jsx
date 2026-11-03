@@ -67,20 +67,7 @@ const DEFAULT_SUBCATEGORIES = [
   { id: 'subcat-05', code: 'SCAT-FLEET', name: 'Corporate Fleet', categoryName: 'Vehicles' }
 ];
 
-const DEFAULT_MANUFACTURERS = [
-  { id: 'mfr-dell', code: 'MFG-DELL', name: 'Dell Technologies' },
-  { id: 'mfr-hp', code: 'MFG-HP', name: 'HP Inc.' },
-  { id: 'mfr-apple', code: 'MFG-APPLE', name: 'Apple Inc.' },
-  { id: 'mfr-lenovo', code: 'MFG-LENOVO', name: 'Lenovo' },
-  { id: 'mfr-cisco', code: 'MFG-CISCO', name: 'Cisco Systems' },
-  { id: 'mfr-samsung', code: 'MFG-SAMSUNG', name: 'Samsung Electronics' },
-  { id: 'mfr-logi', code: 'MFG-LOGI', name: 'Logitech' },
-  { id: 'mfr-steel', code: 'MFG-STEEL', name: 'Steelcase' },
-  { id: 'mfr-hm', code: 'MFG-HM', name: 'Herman Miller' },
-  { id: 'mfr-toyota', code: 'MFG-TOYOTA', name: 'Toyota Motor Corp' },
-  { id: 'mfr-sony', code: 'MFG-SONY', name: 'Sony Group' },
-  { id: 'mfr-canon', code: 'MFG-CANON', name: 'Canon Inc.' }
-];
+const DEFAULT_MANUFACTURERS = [];
 
 const DEFAULT_BRANDS = [
   { id: 'brd-dell', code: 'BRD-DELL', name: 'Dell', manufacturerName: 'Dell Technologies' },
@@ -122,7 +109,7 @@ export function ItemMasterTab({
   const [assetSubGroups, setAssetSubGroups] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
-  const [manufacturers, setManufacturers] = useState(DEFAULT_MANUFACTURERS);
+  const [manufacturers, setManufacturers] = useState([]);
   const [brands, setBrands] = useState(DEFAULT_BRANDS);
   const [uoms, setUoms] = useState([]);
 
@@ -236,7 +223,7 @@ export function ItemMasterTab({
       const localMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
       const serverMfrs = mfrRes?.manufacturers || [];
       const seenMfrs = new Set();
-      const mergedMfrs = [...serverMfrs, ...localMfrs, ...DEFAULT_MANUFACTURERS].filter(m => {
+      const mergedMfrs = [...serverMfrs, ...localMfrs].filter(m => {
         const name = (m.name || m.code || '').trim().toLowerCase();
         if (!name || seenMfrs.has(name)) return false;
         seenMfrs.add(name);

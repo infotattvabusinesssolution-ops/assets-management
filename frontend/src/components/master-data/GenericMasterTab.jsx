@@ -23,19 +23,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-export const DEFAULT_MANUFACTURERS = [
-  { id: '1', code: 'MFG-DELL', name: 'Dell Technologies', website: 'https://www.dell.com', supportContact: 'support@dell.com', country: 'United States', status: 'Active', totalAssets: 0 },
-  { id: '2', code: 'MFG-HP', name: 'HP Inc.', website: 'https://www.hp.com', supportContact: 'support@hp.com', country: 'United States', status: 'Active', totalAssets: 0 },
-  { id: '3', code: 'MFG-APPLE', name: 'Apple Inc.', website: 'https://www.apple.com', supportContact: 'applecare@apple.com', country: 'United States', status: 'Active', totalAssets: 0 },
-  { id: '4', code: 'MFG-LENOVO', name: 'Lenovo', website: 'https://www.lenovo.com', supportContact: 'support@lenovo.com', country: 'China', status: 'Active', totalAssets: 0 },
-  { id: '5', code: 'MFG-CISCO', name: 'Cisco Systems', website: 'https://www.cisco.com', supportContact: 'tac@cisco.com', country: 'United States', status: 'Active', totalAssets: 0 },
-  { id: '6', code: 'MFG-SAMSUNG', name: 'Samsung Electronics', website: 'https://www.samsung.com', supportContact: 'b2bsupport@samsung.com', country: 'South Korea', status: 'Active', totalAssets: 0 },
-  { id: '7', code: 'MFG-LOGI', name: 'Logitech', website: 'https://www.logitech.com', supportContact: 'help@logitech.com', country: 'Switzerland', status: 'Active', totalAssets: 0 },
-  { id: '8', code: 'MFG-STEEL', name: 'Steelcase', website: 'https://www.steelcase.com', supportContact: 'lineone@steelcase.com', country: 'United States', status: 'Active', totalAssets: 0 },
-  { id: '9', code: 'MFG-HM', name: 'Herman Miller', website: 'https://www.hermanmiller.com', supportContact: 'service@hermanmiller.com', country: 'United States', status: 'Active', totalAssets: 0 },
-  { id: '10', code: 'MFG-TOYOTA', name: 'Toyota Motor Corp', website: 'https://www.toyota.com', supportContact: 'fleet@toyota.com', country: 'Japan', status: 'Active', totalAssets: 0 },
-  { id: '11', code: 'MFG-SONY', name: 'Sony Group', website: 'https://www.sony.com', supportContact: 'prosupport@sony.com', country: 'Japan', status: 'Active', totalAssets: 0 }
-];
+export const DEFAULT_MANUFACTURERS = [];
 
 export const DEFAULT_BRANDS = [
   { id: '1', code: 'BRD-DELL', name: 'Dell', manufacturerName: 'Dell Technologies', description: 'Enterprise PCs, Latitude laptops, Precision workstations, PowerEdge servers', status: 'Active', totalAssets: 0 },
@@ -85,6 +73,26 @@ export function GenericMasterTab({
   onResetToDefault
 }) {
   const [items, setItems] = useState([]);
+  const [realManufacturers, setRealManufacturers] = useState([]);
+
+  // Fetch real manufacturers dynamically from backend and custom storage
+  const fetchRealManufacturers = async () => {
+    try {
+      const res = await api.get('/master-data/manufacturers?includeInactive=false').catch(() => null);
+      const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+      const serverMfrs = (res?.manufacturers && Array.isArray(res.manufacturers)) ? res.manufacturers : [];
+      const seen = new Set();
+      const combined = [...serverMfrs, ...custom].filter(m => {
+        const name = (m.name || m.code || '').trim();
+        if (!name || seen.has(name.toLowerCase())) return false;
+        seen.add(name.toLowerCase());
+        return true;
+      });
+      setRealManufacturers(combined);
+    } catch (err) {
+      console.warn('Failed to load real manufacturers:', err);
+    }
+  };
   const [selectedItem, setSelectedItem] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
@@ -285,12 +293,14 @@ export function GenericMasterTab({
 
   useEffect(() => {
     loadRecords();
+    fetchRealManufacturers();
     setSearchQuery('');
     setStatusFilter('All');
   }, [activeTab]);
 
   // External trigger handler
   const handleOpenAddModal = (itemToEdit = null) => {
+    fetchRealManufacturers();
     if (itemToEdit) {
       setEditingItem(itemToEdit);
       setFormState({
@@ -874,20 +884,41 @@ export function GenericMasterTab({
 
               {activeTab === 'brands' && (
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Manufacturer</label>
-                  <input
-                    type="text"
-                    list="brand-mfr-list"
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-slate-700">
+                      Manufacturer <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium">From Manufacturer Master</span>
+                  </div>
+                  <select
                     value={formState.manufacturerName || ''}
-                    onChange={(e) => setFormState({ ...formState, manufacturerName: e.target.value })}
-                    placeholder="e.g. Dell Technologies, Lenovo, Apple, HP Inc."
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
-                  />
-                  <datalist id="brand-mfr-list">
-                    {DEFAULT_MANUFACTURERS.map((m) => (
-                      <option key={m.id || m.name} value={m.name} />
+                    onChange={(e) => {
+                      const sel = realManufacturers.find(m => m.name === e.target.value);
+                      setFormState({
+                        ...formState,
+                        manufacturerName: e.target.value,
+                        manufacturerId: sel?.id || ''
+                      });
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-medium text-slate-800"
+                  >
+                    <option value="">-- Select Manufacturer --</option>
+                    {realManufacturers.map((m) => (
+                      <option key={m.id || m.code || m.name} value={m.name}>
+                        {m.name} {m.country && m.country !== 'Global' ? `(${m.country})` : ''}
+                      </option>
                     ))}
-                  </datalist>
+                  </select>
+                  {realManufacturers.length === 0 ? (
+                    <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      <span>No manufacturers defined yet. Add manufacturers in the Manufacturers tab to link them here.</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Real manufacturers configured in your Manufacturer Master.
+                    </p>
+                  )}
                 </div>
               )}
 

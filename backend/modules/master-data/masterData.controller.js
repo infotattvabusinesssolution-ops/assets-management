@@ -1788,19 +1788,7 @@ const DEFAULT_BRANDS = [
   { id: 'brd-012', code: 'BRD-SONY', name: 'Sony', manufacturerId: 'mfr-sony', manufacturerName: 'Sony Group', description: 'Professional 4K display monitors, studio audio, conference cameras', active: true }
 ];
 
-const DEFAULT_MANUFACTURERS = [
-  { id: 'mfr-dell', code: 'MFG-DELL', name: 'Dell Technologies', website: 'https://www.dell.com', supportContact: 'support@dell.com', country: 'United States', active: true },
-  { id: 'mfr-hp', code: 'MFG-HP', name: 'HP Inc.', website: 'https://www.hp.com', supportContact: 'support@hp.com', country: 'United States', active: true },
-  { id: 'mfr-apple', code: 'MFG-APPLE', name: 'Apple Inc.', website: 'https://www.apple.com', supportContact: 'applecare@apple.com', country: 'United States', active: true },
-  { id: 'mfr-lenovo', code: 'MFG-LENOVO', name: 'Lenovo', website: 'https://www.lenovo.com', supportContact: 'support@lenovo.com', country: 'China', active: true },
-  { id: 'mfr-cisco', code: 'MFG-CISCO', name: 'Cisco Systems', website: 'https://www.cisco.com', supportContact: 'tac@cisco.com', country: 'United States', active: true },
-  { id: 'mfr-samsung', code: 'MFG-SAMSUNG', name: 'Samsung Electronics', website: 'https://www.samsung.com', supportContact: 'b2bsupport@samsung.com', country: 'South Korea', active: true },
-  { id: 'mfr-logi', code: 'MFG-LOGI', name: 'Logitech', website: 'https://www.logitech.com', supportContact: 'help@logitech.com', country: 'Switzerland', active: true },
-  { id: 'mfr-steel', code: 'MFG-STEEL', name: 'Steelcase', website: 'https://www.steelcase.com', supportContact: 'lineone@steelcase.com', country: 'United States', active: true },
-  { id: 'mfr-hm', code: 'MFG-HM', name: 'Herman Miller', website: 'https://www.hermanmiller.com', supportContact: 'service@hermanmiller.com', country: 'United States', active: true },
-  { id: 'mfr-toyota', code: 'MFG-TOYOTA', name: 'Toyota Motor Corp', website: 'https://www.toyota.com', supportContact: 'fleet@toyota.com', country: 'Japan', active: true },
-  { id: 'mfr-sony', code: 'MFG-SONY', name: 'Sony Group', website: 'https://www.sony.com', supportContact: 'prosupport@sony.com', country: 'Japan', active: true }
-];
+const DEFAULT_MANUFACTURERS = [];
 
 const DEFAULT_DISPOSAL_STATUSES = [
   { id: 'disp-01', code: 'SCRAPPED', name: 'Scrapped', description: 'Asset sent to recycling or salvage yard with zero or scrap residual value', active: true },
