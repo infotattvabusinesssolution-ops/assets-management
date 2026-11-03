@@ -133,9 +133,21 @@ export function UserManagement() {
         api.get('/master-data/custodians').catch(() => null)
       ]);
 
-      if (custRes && Array.isArray(custRes.custodians)) {
-        setCustodiansList(custRes.custodians);
-      }
+      const serverCustodians = custRes?.custodians || custRes?.employees || (Array.isArray(custRes) ? custRes : []);
+      let localCustodians = [];
+      try {
+        localCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      } catch (_) {}
+      const combinedCustodians = [...serverCustodians, ...localCustodians];
+      const seenCust = new Set();
+      const uniqueCustodians = combinedCustodians.filter(c => {
+        const key = (c.employeeCode || c.code || c.email || c.fullName || c.name || '').toUpperCase().trim();
+        if (!key || seenCust.has(key)) return false;
+        seenCust.add(key);
+        return true;
+      });
+      console.log('👥 [UserManagement Loaded Employees/Custodians]:', uniqueCustodians.length);
+      setCustodiansList(uniqueCustodians);
 
       if (sitesRes && Array.isArray(sitesRes.sites)) {
         setSitesList(sitesRes.sites);
@@ -1299,9 +1311,16 @@ export function UserManagement() {
                   <div className="flex items-center gap-2">
                     <input
                       type="text"
-                      placeholder="Enter Employee Code (e.g. EMP-001) or Name..."
+                      list="employee-lookup-datalist"
+                      placeholder="Type or select Employee / Custodian (e.g. EMP-1001 or Sarah)..."
                       value={employeeLookupCode}
-                      onChange={(e) => setEmployeeLookupCode(e.target.value)}
+                      onChange={(e) => {
+                        setEmployeeLookupCode(e.target.value);
+                        // If exact match from datalist option selected, auto lookup
+                        const val = e.target.value.trim().toUpperCase();
+                        const foundDirect = custodiansList.find(c => (c.employeeCode || c.code || '').toUpperCase() === val);
+                        if (foundDirect) handleLookupEmployee(e.target.value);
+                      }}
                       onKeyDown={(e) => {
                         if (e.key === 'Enter') {
                           e.preventDefault();
@@ -1310,12 +1329,19 @@ export function UserManagement() {
                       }}
                       className="flex-1 px-3 py-1.5 border border-purple-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
                     />
+                    <datalist id="employee-lookup-datalist">
+                      {custodiansList.map((c, i) => (
+                        <option key={c.id || i} value={c.employeeCode || c.code || c.name}>
+                          {c.fullName || c.name} — {c.custodianType || 'Internal'} ({c.department || 'General'})
+                        </option>
+                      ))}
+                    </datalist>
                     <button
                       type="button"
                       onClick={() => handleLookupEmployee()}
-                      className="px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-semibold rounded-lg transition-colors cursor-pointer text-xs shrink-0"
+                      className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-semibold rounded-lg transition-colors cursor-pointer text-xs shrink-0 flex items-center gap-1 shadow-2xs"
                     >
-                      Lookup & Populate
+                      <span>Lookup & Populate</span>
                     </button>
                   </div>
                   {employeeLookupStatus && (
