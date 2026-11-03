@@ -41,16 +41,7 @@ export const DEFAULT_BRANDS = [
   { id: '12', code: 'BRD-SONY', name: 'Sony', manufacturerName: 'Sony Group', description: 'Professional 4K display monitors, studio audio, conference cameras', status: 'Active', totalAssets: 0 }
 ];
 
-export const DEFAULT_UOM = [
-  { id: '1', code: 'EA', name: 'Each / Pieces', symbol: 'ea', category: 'Discrete Count', description: 'Individual units, parts, or pieces', status: 'Active' },
-  { id: '2', code: 'SET', name: 'Set / Kit', symbol: 'set', category: 'Bundle', description: 'Coordinated set of multiple matched components', status: 'Active' },
-  { id: '3', code: 'BOX', name: 'Box', symbol: 'box', category: 'Packaging', description: 'Standard packaged box containing components', status: 'Active' },
-  { id: '4', code: 'PK', name: 'Pack', symbol: 'pk', category: 'Packaging', description: 'Blister pack or shrink-wrap container', status: 'Active' },
-  { id: '5', code: 'MTR', name: 'Meter', symbol: 'm', category: 'Dimension', description: 'Metric linear length for cabling and rails', status: 'Active' },
-  { id: '6', code: 'KG', name: 'Kilogram', symbol: 'kg', category: 'Weight', description: 'Metric mass for raw materials or bulk equipment', status: 'Active' },
-  { id: '7', code: 'LTR', name: 'Liter', symbol: 'L', category: 'Volume', description: 'Liquid volume for lubricants, coolants and fluids', status: 'Active' },
-  { id: '8', code: 'ROLL', name: 'Roll', symbol: 'rl', category: 'Dimension', description: 'Continuous roll of cable, wiring, or RFID labels', status: 'Active' }
-];
+export const DEFAULT_UOM = [];
 
 export const DEFAULT_ASSET_TYPES = [];
 
@@ -147,7 +138,8 @@ export function GenericMasterTab({
           singular: 'Unit of Measure',
           icon: Scale,
           defaultItems: DEFAULT_UOM,
-          apiEndpoint: null
+          apiEndpoint: '/master-data/uoms',
+          storageKey: 'fams_custom_uoms'
         };
       case 'status-codes':
         return {
@@ -181,6 +173,29 @@ export function GenericMasterTab({
   const loadRecords = async () => {
     setIsLoading(true);
     try {
+      if (activeTab === 'uom') {
+        const res = await api.get('/master-data/uoms').catch(() => null);
+        let custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
+        let serverUoms = [];
+        if (res?.uoms && res.uoms.length > 0) {
+          serverUoms = res.uoms.map((u) => ({
+            id: u.id,
+            code: u.code,
+            name: u.name,
+            symbol: u.symbol || '',
+            category: u.category || 'Discrete Count',
+            description: u.description || '',
+            status: u.active === false ? 'Inactive' : 'Active'
+          }));
+        }
+        const serverKeys = new Set(serverUoms.map(x => (x.code || x.name || '').toUpperCase().trim()));
+        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
+        const combined = [...serverUoms, ...missingCustom];
+        console.log('📋 [Dynamic UOM Records Loaded from Database]:', combined);
+        setItems(combined);
+        setSelectedItem(combined[0] || null);
+        return;
+      }
       if (activeTab === 'brands') {
         const res = await api.get('/master-data/brands').catch(() => null);
         let custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
@@ -211,7 +226,17 @@ export function GenericMasterTab({
         setSelectedItem(combined[0] || null);
         return;
       }
-      if (activeTab === 'asset-types') {
+      if (activeTab === 'uom') {
+      console.log('🗑️ [Deleting UOM]:', itemToDelete);
+      api.delete(`/master-data/uoms/${itemToDelete.id}`).then((res) => {
+        console.log('✅ [UOM Deleted Successfully from Database]:', res?.data || res);
+      }).catch((err) => console.warn('Failed to delete UOM:', err));
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
+        localStorage.setItem('fams_custom_uoms', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+      } catch (_) {}
+    }
+    if (activeTab === 'asset-types') {
 
         const res = await api.get('/master-data/asset-types').catch(() => null);
         let custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
@@ -378,6 +403,19 @@ export function GenericMasterTab({
       }
 
       if (editingItem) {
+        if (activeTab === 'uom') {
+          console.log('✏️ [Updating UOM in Frontend]:', { id: editingItem.id, ...formState });
+          api.put(`/master-data/uoms/${editingItem.id}`, {
+            ...formState,
+            active: formState.status === 'Active'
+          }).then((res) => {
+            console.log('✅ [UOM Updated Successfully in Database]:', res?.data || res);
+          }).catch((err) => console.warn('Failed to update UOM:', err));
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
+            localStorage.setItem('fams_custom_uoms', JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
+          } catch (_) {}
+        }
         if (activeTab === 'brands') {
           api.put(`/master-data/brands/${editingItem.id}`, {
             ...formState,
@@ -412,6 +450,35 @@ export function GenericMasterTab({
         const updated = [newItem, ...items];
         setItems(updated);
         setSelectedItem(newItem);
+        if (activeTab === 'uom') {
+          console.log('🚀 [Adding New UOM in Frontend]:', {
+            id: newItem.id,
+            code: newItem.code,
+            name: newItem.name,
+            symbol: newItem.symbol || '',
+            category: newItem.category || 'Discrete Count',
+            description: newItem.description || '',
+            status: newItem.status
+          });
+
+          api.post('/master-data/uoms', {
+            code: newItem.code,
+            name: newItem.name,
+            symbol: newItem.symbol || '',
+            category: newItem.category || 'Discrete Count',
+            description: newItem.description || '',
+            active: newItem.status === 'Active'
+          }).then((res) => {
+            console.log('✅ [UOM Created Successfully in Database]:', res?.data || res);
+          }).catch((err) => {
+            console.error('❌ Failed to save UOM to backend:', err);
+          });
+
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
+            localStorage.setItem('fams_custom_uoms', JSON.stringify([newItem, ...custom]));
+          } catch (_) {}
+        }
         if (activeTab === 'asset-types') {
           api.post('/master-data/asset-types', {
             code: newItem.code,

@@ -1857,13 +1857,14 @@ const DEFAULT_DISPOSAL_STATUSES = [
 ];
 
 const DEFAULT_UOMS = [
-  { id: 'uom-1', code: 'EA', name: 'Each', description: 'Individual single unit', active: true },
-  { id: 'uom-2', code: 'UNT', name: 'Unit', description: 'Discrete item unit', active: true },
-  { id: 'uom-3', code: 'SET', name: 'Set', description: 'Paired or bundled set', active: true },
-  { id: 'uom-4', code: 'BOX', name: 'Box', description: 'Standard packaged box', active: true },
-  { id: 'uom-5', code: 'MTR', name: 'Meter', description: 'Length measurement in meters', active: true },
-  { id: 'uom-6', code: 'KG', name: 'Kilogram', description: 'Weight measurement in kilograms', active: true },
-  { id: 'uom-7', code: 'LTR', name: 'Litre', description: 'Volume measurement in litres', active: true }
+  { id: 'uom-1', code: 'EA', name: 'Each / Pieces', symbol: 'ea', category: 'Discrete Count', description: 'Individual single units, parts, or pieces', active: true },
+  { id: 'uom-2', code: 'SET', name: 'Set / Kit', symbol: 'set', category: 'Bundle', description: 'Coordinated set of multiple matched components', active: true },
+  { id: 'uom-3', code: 'BOX', name: 'Box', symbol: 'box', category: 'Packaging', description: 'Standard packaged box containing components', active: true },
+  { id: 'uom-4', code: 'PK', name: 'Pack', symbol: 'pk', category: 'Packaging', description: 'Blister pack or shrink-wrap container', active: true },
+  { id: 'uom-5', code: 'MTR', name: 'Meter', symbol: 'm', category: 'Dimension', description: 'Metric linear length for cabling and rails', active: true },
+  { id: 'uom-6', code: 'KG', name: 'Kilogram', symbol: 'kg', category: 'Weight', description: 'Metric mass for raw materials or bulk equipment', active: true },
+  { id: 'uom-7', code: 'LTR', name: 'Liter', symbol: 'L', category: 'Volume', description: 'Liquid volume for lubricants, coolants and fluids', active: true },
+  { id: 'uom-8', code: 'ROLL', name: 'Roll', symbol: 'rl', category: 'Dimension', description: 'Continuous roll of cable, wiring, or RFID labels', active: true }
 ];
 
 const DEFAULT_ITEMS = [
@@ -2157,12 +2158,34 @@ async function ensureUomsTable() {
         id NVARCHAR(100) PRIMARY KEY,
         code NVARCHAR(50) NOT NULL UNIQUE,
         name NVARCHAR(100) NOT NULL,
+        symbol NVARCHAR(20) NULL,
+        category NVARCHAR(100) NULL,
         description NVARCHAR(500) NULL,
         active BIT DEFAULT 1,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('units_of_measure') AND name = 'symbol')
+      ALTER TABLE units_of_measure ADD symbol NVARCHAR(20) NULL;
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('units_of_measure') AND name = 'category')
+      ALTER TABLE units_of_measure ADD category NVARCHAR(100) NULL;
     `);
+
+    try {
+      const countRes = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM units_of_measure`);
+      const cnt = countRes?.[0]?.cnt || 0;
+      if (Number(cnt) === 0) {
+        for (const u of DEFAULT_UOMS) {
+          await prisma.$executeRawUnsafe(`
+            INSERT INTO units_of_measure (id, code, name, symbol, category, description, active, createdAt, updatedAt)
+            VALUES ('${u.id}', '${u.code}', '${u.name.replace(/'/g, "''")}', '${(u.symbol || '').replace(/'/g, "''")}', '${(u.category || '').replace(/'/g, "''")}', '${(u.description || '').replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          `);
+        }
+      }
+    } catch (seedErr) {
+      console.warn('UOM seed check skipped:', seedErr.message);
+    }
+
     uomsTableEnsured = true;
   } catch (err) {
     console.warn('units_of_measure table check skipped:', err.message);
@@ -2485,12 +2508,14 @@ export async function getUoms(req, res, next) {
     await ensureUomsTable();
     if (isDbConnected()) {
       try {
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM units_of_measure WHERE active = 1 ORDER BY name ASC`);
+        const rows = await prisma.$queryRawUnsafe(`SELECT id, code, name, symbol, category, description, active FROM units_of_measure ORDER BY name ASC`);
         if (Array.isArray(rows) && rows.length > 0) {
           const list = rows.map(r => ({
             id: r.id,
             code: r.code,
             name: r.name,
+            symbol: r.symbol || '',
+            category: r.category || 'Discrete Count',
             description: r.description || '',
             active: Boolean(r.active)
           }));
@@ -2508,26 +2533,43 @@ export async function getUoms(req, res, next) {
 
 export async function createUom(req, res, next) {
   try {
-    const { code, name, description } = req.body;
+    const { code, name, symbol, category, description, active } = req.body;
     if (!code || !name) return res.status(400).json({ success: false, message: 'UOM Code and Name are required.' });
     const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
-    const id = `uom-${Date.now()}`;
+    const cleanSymbol = (symbol || '').trim();
+    const cleanCategory = (category || 'Discrete Count').trim();
+    const cleanDesc = (description || '').trim();
+    const isAct = active !== false;
 
+    // Strict duplicate check
+    const exists = inMemoryUoms.some(u => 
+      (u.code && u.code.toUpperCase() === cleanCode) || 
+      (u.name && u.name.toLowerCase() === cleanName.toLowerCase())
+    );
+    if (exists) {
+      return res.status(409).json({ success: false, message: `Duplicate Error: UOM with code "${cleanCode}" or name "${cleanName}" already exists.` });
+    }
+
+    const id = `uom-${Date.now()}`;
     const newUom = {
       id,
       code: cleanCode,
       name: cleanName,
-      description: description || '',
-      active: true
+      symbol: cleanSymbol,
+      category: cleanCategory,
+      description: cleanDesc,
+      active: isAct
     };
+
+    console.log('📦 [Backend UOM Created]:', JSON.stringify(newUom));
 
     await ensureUomsTable();
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
-          INSERT INTO units_of_measure (id, code, name, description, active, createdAt, updatedAt)
-          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(description || '').replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          INSERT INTO units_of_measure (id, code, name, symbol, category, description, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanSymbol.replace(/'/g, "''")}', '${cleanCategory.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
       } catch (dbErr) {
         console.warn('DB insert units_of_measure skipped:', dbErr.message);
@@ -2543,9 +2585,48 @@ export async function createUom(req, res, next) {
 export async function updateUom(req, res, next) {
   try {
     const { id } = req.params;
+    const { code, name, symbol, category, description, active } = req.body;
     const idx = inMemoryUoms.findIndex(u => u.id === id || u.code === id);
     if (idx === -1) return res.status(404).json({ success: false, message: 'UOM not found' });
-    inMemoryUoms[idx] = { ...inMemoryUoms[idx], ...req.body };
+
+    const cleanCode = code ? code.trim().toUpperCase() : inMemoryUoms[idx].code;
+    const cleanName = name ? name.trim() : inMemoryUoms[idx].name;
+    const cleanSymbol = symbol !== undefined ? symbol.trim() : inMemoryUoms[idx].symbol;
+    const cleanCategory = category !== undefined ? category.trim() : inMemoryUoms[idx].category;
+    const cleanDesc = description !== undefined ? description.trim() : inMemoryUoms[idx].description;
+    const isAct = active !== undefined ? Boolean(active) : inMemoryUoms[idx].active;
+
+    inMemoryUoms[idx] = {
+      ...inMemoryUoms[idx],
+      code: cleanCode,
+      name: cleanName,
+      symbol: cleanSymbol,
+      category: cleanCategory,
+      description: cleanDesc,
+      active: isAct
+    };
+
+    console.log('✏️ [Backend UOM Updated]:', JSON.stringify(inMemoryUoms[idx]));
+
+    await ensureUomsTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE units_of_measure
+          SET code = '${cleanCode.replace(/'/g, "''")}',
+              name = '${cleanName.replace(/'/g, "''")}',
+              symbol = '${(cleanSymbol || '').replace(/'/g, "''")}',
+              category = '${(cleanCategory || '').replace(/'/g, "''")}',
+              description = '${(cleanDesc || '').replace(/'/g, "''")}',
+              active = ${isAct ? 1 : 0},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB update units_of_measure skipped:', dbErr.message);
+      }
+    }
+
     writeUomsToFile(inMemoryUoms);
     res.json({ success: true, uom: inMemoryUoms[idx] });
   } catch (err) { next(err); }
@@ -2554,7 +2635,18 @@ export async function updateUom(req, res, next) {
 export async function deleteUom(req, res, next) {
   try {
     const { id } = req.params;
+    console.log('🗑️ [Backend UOM Deleted]:', id);
     inMemoryUoms = inMemoryUoms.filter(u => u.id !== id && u.code !== id);
+
+    await ensureUomsTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`DELETE FROM units_of_measure WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+      } catch (dbErr) {
+        console.warn('DB delete units_of_measure skipped:', dbErr.message);
+      }
+    }
+
     writeUomsToFile(inMemoryUoms);
     res.json({ success: true, message: 'UOM deleted successfully' });
   } catch (err) { next(err); }

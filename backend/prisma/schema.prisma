@@ -234,6 +234,20 @@ model AssetType {
   @@map("asset_types")
 }
 
+model UnitOfMeasure {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  symbol      String?
+  category    String?
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("units_of_measure")
+}
+
 model Category {
   id                          String             @id @default(uuid())
   legacyMongoId               String?
