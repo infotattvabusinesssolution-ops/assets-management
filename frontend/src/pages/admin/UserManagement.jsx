@@ -140,26 +140,71 @@ export function UserManagement() {
       } catch (_) {}
       const combinedCustodians = [...serverCustodians, ...localCustodians];
       const seenCust = new Set();
-      const uniqueCustodians = combinedCustodians.filter(c => {
-        const key = (c.employeeCode || c.code || c.email || c.fullName || c.name || '').toUpperCase().trim();
-        if (!key || seenCust.has(key)) return false;
-        seenCust.add(key);
-        return true;
-      });
+      const getStrVal = (val, fallback = '') => {
+        if (!val) return fallback;
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object') return val.name || val.title || val.code || fallback;
+        return String(val);
+      };
+      const uniqueCustodians = combinedCustodians
+        .map(c => {
+          if (!c || typeof c !== 'object') return null;
+          const fullName = getStrVal(c.fullName, getStrVal(c.name, ''));
+          const employeeCode = getStrVal(c.employeeCode, getStrVal(c.code, ''));
+          const dept = getStrVal(c.department, 'General');
+          const comp = getStrVal(c.company, getStrVal(c.organization, 'Enterprise'));
+          const loc = getStrVal(c.location, '');
+          const type = getStrVal(c.custodianType, 'Internal');
+          return {
+            ...c,
+            fullName: fullName || employeeCode || 'Unnamed',
+            name: fullName || employeeCode || 'Unnamed',
+            employeeCode,
+            code: employeeCode,
+            department: dept,
+            company: comp,
+            location: loc,
+            custodianType: type,
+            email: getStrVal(c.email, ''),
+            phone: getStrVal(c.phone, '')
+          };
+        })
+        .filter(c => {
+          if (!c) return false;
+          const key = (c.employeeCode || c.email || c.fullName || '').toUpperCase().trim();
+          if (!key || seenCust.has(key)) return false;
+          seenCust.add(key);
+          return true;
+        });
       console.log('👥 [UserManagement Loaded Employees/Custodians]:', uniqueCustodians.length);
       setCustodiansList(uniqueCustodians);
 
       if (sitesRes && Array.isArray(sitesRes.sites)) {
-        setSitesList(sitesRes.sites);
+        setSitesList(sitesRes.sites.map(s => ({
+          ...s,
+          name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
+          code: typeof s.code === 'string' ? s.code : String(s.code || ''),
+          fullPath: typeof s.fullPath === 'string' ? s.fullPath : String(s.fullPath || s.name || '')
+        })));
       }
       if (deptsRes && Array.isArray(deptsRes.departments)) {
-        setDepartmentsList(deptsRes.departments);
+        setDepartmentsList(deptsRes.departments.map(d => ({
+          ...d,
+          name: typeof d.name === 'string' ? d.name : (d.name?.name || String(d.name || '')),
+          code: typeof d.code === 'string' ? d.code : String(d.code || '')
+        })));
       }
       if (compsRes && Array.isArray(compsRes.companies)) {
-        setCompaniesList(compsRes.companies);
+        setCompaniesList(compsRes.companies.map(c => ({
+          ...c,
+          name: typeof c.name === 'string' ? c.name : (c.name?.name || String(c.name || ''))
+        })));
       }
       if (rolesRes && Array.isArray(rolesRes.roles)) {
-        setRolesList(rolesRes.roles);
+        setRolesList(rolesRes.roles.map(r => ({
+          ...r,
+          name: typeof r.name === 'string' ? r.name : (r.name?.name || String(r.name || ''))
+        })));
       }
     } catch (e) {
       console.warn('Metadata fetch error:', e);
@@ -256,28 +301,44 @@ export function UserManagement() {
     const clean = q.toUpperCase();
     const match = custodiansList.find(
       (c) =>
-        (c.employeeCode && c.employeeCode.toUpperCase() === clean) ||
-        (c.code && c.code.toUpperCase() === clean) ||
-        (c.fullName && c.fullName.toUpperCase().includes(clean)) ||
-        (c.name && c.name.toUpperCase().includes(clean)) ||
-        (c.email && c.email.toUpperCase() === clean)
+        (c.employeeCode && String(c.employeeCode).toUpperCase() === clean) ||
+        (c.code && String(c.code).toUpperCase() === clean) ||
+        (c.fullName && String(c.fullName).toUpperCase().includes(clean)) ||
+        (c.name && String(c.name).toUpperCase().includes(clean)) ||
+        (c.email && String(c.email).toUpperCase() === clean)
     );
 
     if (match) {
+      const getStr = (val, fallback = '') => {
+        if (!val) return fallback;
+        if (typeof val === 'string') return val;
+        if (typeof val === 'object') return val.name || val.title || val.code || fallback;
+        return String(val);
+      };
+
+      const matchedName = getStr(match.fullName, getStr(match.name, prev => prev.name || ''));
+      const matchedCode = getStr(match.employeeCode, getStr(match.code, clean));
+      const matchedDept = getStr(match.department, 'Information Technology');
+      const matchedComp = getStr(match.company, getStr(match.organization, 'Asset360 Holdings'));
+      const matchedLoc = getStr(match.location, '');
+      const matchedEmail = getStr(match.email, '');
+      const matchedPhone = getStr(match.phone, '');
+      const matchedType = getStr(match.custodianType, 'Internal');
+
       setUserFormData((prev) => ({
         ...prev,
-        employeeId: match.employeeCode || match.code || clean,
-        name: match.fullName || match.name || prev.name,
-        email: match.email || prev.email,
-        phone: match.phone || prev.phone,
-        department: match.department || prev.department,
-        company: match.company || match.organization || prev.company,
-        location: match.location || prev.location,
-        username: prev.username || (match.email ? match.email.split('@')[0] : (match.employeeCode || match.code || '').toLowerCase())
+        employeeId: matchedCode,
+        name: matchedName || prev.name,
+        email: matchedEmail || prev.email,
+        phone: matchedPhone || prev.phone,
+        department: matchedDept || prev.department,
+        company: matchedComp || prev.company,
+        location: matchedLoc || prev.location,
+        username: prev.username || (matchedEmail ? matchedEmail.split('@')[0] : (matchedCode ? matchedCode.toLowerCase() : ''))
       }));
       setEmployeeLookupStatus({
         found: true,
-        message: `Matched Custodian: ${match.fullName || match.name} (${match.custodianType || 'Internal'} - ${match.department || 'General'})`
+        message: `Matched Custodian: ${matchedName || clean} (${matchedType} - ${matchedDept})`
       });
     } else {
       setEmployeeLookupStatus({
@@ -995,12 +1056,14 @@ export function UserManagement() {
                 </tr>
               ) : (
                 users.map((user, idx) => {
-                  const initials = user.name
+                  const userNameStr = typeof user.name === 'string' ? user.name : (user.name?.name || 'User');
+                  const initials = userNameStr
                     .split(' ')
+                    .filter(Boolean)
                     .map((n) => n[0])
                     .join('')
                     .toUpperCase()
-                    .slice(0, 2);
+                    .slice(0, 2) || 'U';
 
                   return (
                     <tr
@@ -1330,11 +1393,17 @@ export function UserManagement() {
                       className="flex-1 px-3 py-1.5 border border-purple-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
                     />
                     <datalist id="employee-lookup-datalist">
-                      {custodiansList.map((c, i) => (
-                        <option key={c.id || i} value={c.employeeCode || c.code || c.name}>
-                          {c.fullName || c.name} — {c.custodianType || 'Internal'} ({c.department || 'General'})
-                        </option>
-                      ))}
+                      {custodiansList.map((c, i) => {
+                        const nameStr = typeof c.fullName === 'string' ? c.fullName : (typeof c.name === 'string' ? c.name : (c.name?.name || 'Unnamed'));
+                        const codeStr = typeof c.employeeCode === 'string' ? c.employeeCode : (typeof c.code === 'string' ? c.code : nameStr);
+                        const typeStr = typeof c.custodianType === 'string' ? c.custodianType : (c.custodianType?.name || 'Internal');
+                        const deptStr = typeof c.department === 'string' ? c.department : (c.department?.name || 'General');
+                        return (
+                          <option key={c.id || i} value={codeStr}>
+                            {`${nameStr} — ${typeStr} (${deptStr})`}
+                          </option>
+                        );
+                      })}
                     </datalist>
                     <button
                       type="button"
