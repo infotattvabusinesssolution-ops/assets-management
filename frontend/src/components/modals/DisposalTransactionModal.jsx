@@ -94,26 +94,52 @@ export function DisposalTransactionModal({
     fetchMasterData();
   }, [isOpen]);
 
-  // Search candidate assets from real API (No mock data)
+  // Search candidate assets from real API (Strictly active assets only; excludes disposed & pending)
   const searchCandidates = async (query = '') => {
     setIsSearchingCandidates(true);
     try {
-      const [candidatesRes, assetsRes] = await Promise.allSettled([
+      const [candidatesRes, assetsRes, disposedRes, pendingRes] = await Promise.allSettled([
         api.get('/disposals/candidates', { params: { search: query, limit: 200 } }),
-        api.get('/assets', { params: { search: query, limit: 200 } })
+        api.get('/assets', { params: { search: query, limit: 200 } }),
+        api.get('/disposals'),
+        api.get('/disposals/pending')
       ]);
+
+      const excludedIds = new Set();
+      if (disposedRes.status === 'fulfilled' && Array.isArray(disposedRes.value?.assets)) {
+        disposedRes.value.assets.forEach(d => {
+          if (d?.id) excludedIds.add(d.id);
+          if (d?.assetId) excludedIds.add(d.assetId);
+        });
+      }
+      if (pendingRes.status === 'fulfilled' && Array.isArray(pendingRes.value?.assets)) {
+        pendingRes.value.assets.forEach(p => {
+          if (p?.id) excludedIds.add(p.id);
+          if (p?.assetId) excludedIds.add(p.assetId);
+        });
+      }
+
+      const isDisposedOrPending = (a) => {
+        if (!a) return true;
+        if (a.active === false) return true;
+        if (excludedIds.has(a.id) || excludedIds.has(a.assetId)) return true;
+        const st = (a.lifecycleStatus || a.status || '').toUpperCase();
+        return ['DISPOSED', 'RETIRED', 'PENDING_DISPOSAL', 'DISPOSAL', 'SCRAPPED', 'SOLD', 'DONATED', 'WRITTEN_OFF'].includes(st);
+      };
 
       const assetMap = new Map();
 
       if (candidatesRes.status === 'fulfilled' && Array.isArray(candidatesRes.value?.candidates)) {
         candidatesRes.value.candidates.forEach(a => {
-          if (a && a.id) assetMap.set(a.id, a);
+          if (a && a.id && !isDisposedOrPending(a)) {
+            assetMap.set(a.id, a);
+          }
         });
       }
 
       if (assetsRes.status === 'fulfilled' && Array.isArray(assetsRes.value?.assets)) {
         assetsRes.value.assets.forEach(a => {
-          if (a && a.id && !['DISPOSED', 'RETIRED'].includes(a.lifecycleStatus)) {
+          if (a && a.id && !isDisposedOrPending(a)) {
             if (!assetMap.has(a.id)) {
               assetMap.set(a.id, {
                 id: a.id,

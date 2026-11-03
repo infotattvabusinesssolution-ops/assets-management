@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import {
   getDisposedAssets,
+  getPendingDisposals,
   initiateDisposal,
   getDisposalSummary,
   getDisposalReasons,
@@ -12,6 +13,8 @@ const router = Router();
 router.use(authenticateToken);
 
 router.get('/', getDisposedAssets);
+router.get('/history', getDisposedAssets);
+router.get('/pending', getPendingDisposals);
 router.get('/summary', getDisposalSummary);
 router.get('/reasons', getDisposalReasons);
 router.get('/candidates', getDisposalCandidates);

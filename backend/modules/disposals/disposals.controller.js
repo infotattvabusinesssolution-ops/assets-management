@@ -13,20 +13,19 @@ export const SYSTEM_DISPOSAL_REASONS = [
 ];
 
 const DISPOSED_ASSETS_FILE = path.join(process.cwd(), 'data', 'disposed_assets.json');
-
-const INITIAL_DISPOSED_ASSETS = [];
+const PENDING_DISPOSALS_FILE = path.join(process.cwd(), 'data', 'pending_disposals.json');
 
 function readDisposedAssetsFromFile() {
   try {
     if (fs.existsSync(DISPOSED_ASSETS_FILE)) {
       const data = fs.readFileSync(DISPOSED_ASSETS_FILE, 'utf8');
       const parsed = JSON.parse(data);
-      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      if (Array.isArray(parsed)) return parsed;
     }
   } catch (e) {
     console.warn('Failed to read disposed_assets.json, using defaults:', e.message);
   }
-  return INITIAL_DISPOSED_ASSETS;
+  return [];
 }
 
 function writeDisposedAssetsToFile(list) {
@@ -39,7 +38,28 @@ function writeDisposedAssetsToFile(list) {
   }
 }
 
-let inMemoryDisposedAssets = readDisposedAssetsFromFile();
+function readPendingDisposalsFromFile() {
+  try {
+    if (fs.existsSync(PENDING_DISPOSALS_FILE)) {
+      const data = fs.readFileSync(PENDING_DISPOSALS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed)) return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to read pending_disposals.json:', e.message);
+  }
+  return [];
+}
+
+function writePendingDisposalsToFile(list) {
+  try {
+    const dir = path.dirname(PENDING_DISPOSALS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(PENDING_DISPOSALS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write pending_disposals.json:', e.message);
+  }
+}
 
 export async function getDisposalReasons(req, res, next) {
   try {
@@ -53,7 +73,8 @@ export async function getDisposalCandidates(req, res, next) {
     const { search, categoryId, siteId, limit = 200 } = req.query;
 
     const where = {
-      lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED', 'PENDING_DISPOSAL', 'DISPOSAL'] }
+      active: true,
+      lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED', 'PENDING_DISPOSAL', 'DISPOSAL', 'Disposed', 'Retired', 'SCRAPPED', 'SOLD', 'DONATED', 'WRITTEN_OFF'] }
     };
 
     if (search && search.trim()) {
@@ -71,56 +92,108 @@ export async function getDisposalCandidates(req, res, next) {
     if (siteId) where.siteId = siteId;
 
     let candidates = [];
-    try {
-      const assets = await prisma.asset.findMany({
-        where,
-        include: {
-          category: { select: { id: true, name: true, code: true } },
-          company: { select: { id: true, name: true } },
-          site: { select: { id: true, name: true } },
-          building: { select: { id: true, name: true } },
-          room: { select: { id: true, name: true } },
-          department: { select: { id: true, name: true } },
-          custodian: { select: { id: true, fullName: true, employeeCode: true } }
-        },
-        orderBy: [
-          { createdAt: 'desc' },
-          { updatedAt: 'desc' }
-        ],
-        take: parseInt(limit, 10) || 200
-      });
-
-      if (assets.length > 0) {
-        const assetIds = assets.map(a => a.id);
-        const bookValues = await prisma.assetBookValue.findMany({
-          where: { assetId: { in: assetIds }, bookType: 'CORPORATE' }
-        }).catch(() => []);
-        const bookValMap = new Map(bookValues.map(b => [b.assetId, b]));
-
-        candidates = assets.map(a => {
-          const b = bookValMap.get(a.id);
-          const capVal = b?.capitalizationValue ? parseFloat(b.capitalizationValue.toString()) : (parseFloat(a.acquisitionValue || 0));
-          const accumDep = b?.accumulatedDepreciation ? parseFloat(b.accumulatedDepreciation.toString()) : 0;
-          const nbv = b?.netBookValue ? parseFloat(b.netBookValue.toString()) : Math.max(0, capVal - accumDep);
-
-          return {
-            ...a,
-            purchaseCost: capVal,
-            acquisitionValue: capVal,
-            accumulatedDepreciation: accumDep,
-            netBookValue: nbv
-          };
+    if (isDbConnected()) {
+      try {
+        const assets = await prisma.asset.findMany({
+          where,
+          include: {
+            category: { select: { id: true, name: true, code: true } },
+            company: { select: { id: true, name: true } },
+            site: { select: { id: true, name: true } },
+            building: { select: { id: true, name: true } },
+            room: { select: { id: true, name: true } },
+            department: { select: { id: true, name: true } },
+            custodian: { select: { id: true, fullName: true, employeeCode: true } }
+          },
+          orderBy: [
+            { createdAt: 'desc' },
+            { updatedAt: 'desc' }
+          ],
+          take: parseInt(limit, 10) || 200
         });
+
+        if (assets.length > 0) {
+          const assetIds = assets.map(a => a.id);
+          const bookValues = await prisma.assetBookValue.findMany({
+            where: { assetId: { in: assetIds }, bookType: 'CORPORATE' }
+          }).catch(() => []);
+          const bookValMap = new Map(bookValues.map(b => [b.assetId, b]));
+
+          candidates = assets.map(a => {
+            const b = bookValMap.get(a.id);
+            const capVal = b?.capitalizationValue ? parseFloat(b.capitalizationValue.toString()) : (parseFloat(a.acquisitionValue || 0));
+            const accumDep = b?.accumulatedDepreciation ? parseFloat(b.accumulatedDepreciation.toString()) : 0;
+            const nbv = b?.netBookValue ? parseFloat(b.netBookValue.toString()) : Math.max(0, capVal - accumDep);
+
+            return {
+              ...a,
+              purchaseCost: capVal,
+              acquisitionValue: capVal,
+              accumulatedDepreciation: accumDep,
+              netBookValue: nbv
+            };
+          });
+        }
+      } catch (dbErr) {
+        console.warn('Real asset candidate search error:', dbErr.message);
       }
-    } catch (dbErr) {
-      console.warn('Real asset candidate search error:', dbErr.message);
     }
 
-    // Always return real candidates only - no mock data!
+    // Exclude any asset already in disposed list or pending review queue
+    const disposedAssets = readDisposedAssetsFromFile();
+    const pendingAssets = readPendingDisposalsFromFile();
+    const excludedIds = new Set([
+      ...disposedAssets.map(a => a.id),
+      ...disposedAssets.map(a => a.assetId),
+      ...pendingAssets.map(a => a.id),
+      ...pendingAssets.map(a => a.assetId)
+    ].filter(Boolean));
+
+    candidates = candidates.filter(a => {
+      if (a.active === false) return false;
+      const st = (a.lifecycleStatus || '').toUpperCase();
+      if (['DISPOSED', 'RETIRED', 'PENDING_DISPOSAL', 'DISPOSAL', 'SCRAPPED', 'SOLD', 'DONATED', 'WRITTEN_OFF'].includes(st)) return false;
+      if (excludedIds.has(a.id) || excludedIds.has(a.assetId)) return false;
+      return true;
+    });
+
     return res.json({
       success: true,
       candidates
     });
+  } catch (err) { next(err); }
+}
+
+// Fetch pending disposal review queue
+export async function getPendingDisposals(req, res, next) {
+  try {
+    if (isDbConnected()) {
+      try {
+        const assets = await prisma.asset.findMany({
+          where: {
+            lifecycleStatus: { in: ['PENDING_DISPOSAL', 'DISPOSAL', 'Pending Disposal'] }
+          },
+          include: {
+            category: true,
+            company: true,
+            site: true,
+            building: true,
+            room: true,
+            custodian: true
+          },
+          orderBy: { updatedAt: 'desc' }
+        });
+
+        if (assets && assets.length > 0) {
+          return res.json({ success: true, assets });
+        }
+      } catch (dbErr) {
+        console.warn('DB getPendingDisposals query skipped, using store:', dbErr.message);
+      }
+    }
+
+    const pendingList = readPendingDisposalsFromFile();
+    return res.json({ success: true, assets: pendingList });
   } catch (err) { next(err); }
 }
 
@@ -194,7 +267,6 @@ export async function getDisposedAssets(req, res, next) {
           });
 
         if (enrichedAssets.length > 0) {
-          inMemoryDisposedAssets = enrichedAssets;
           writeDisposedAssetsToFile(enrichedAssets);
           return res.json({ success: true, assets: enrichedAssets });
         }
@@ -203,13 +275,17 @@ export async function getDisposedAssets(req, res, next) {
       }
     }
 
-    res.json({ success: true, assets: inMemoryDisposedAssets });
+    const disposedAssets = readDisposedAssetsFromFile();
+    res.json({ success: true, assets: disposedAssets });
   } catch (err) { next(err); }
 }
 
 // Fetch KPI metrics and summary for asset disposals
 export async function getDisposalSummary(req, res, next) {
   try {
+    const disposedList = readDisposedAssetsFromFile();
+    const pendingList = readPendingDisposalsFromFile();
+
     if (isDbConnected()) {
       try {
         const [allAssets, disposeTxs, bookValues] = await Promise.all([
@@ -271,10 +347,10 @@ export async function getDisposalSummary(req, res, next) {
           success: true,
           summary: {
             activeCandidatesCount,
-            disposedCount,
+            disposedCount: Math.max(disposedCount, disposedList.length),
             retiredCount,
-            pendingDisposalCount,
-            totalDisposedCount: disposedCount + retiredCount,
+            pendingDisposalCount: Math.max(pendingDisposalCount, pendingList.length),
+            totalDisposedCount: Math.max(disposedCount + retiredCount, disposedList.length),
             totalProceeds,
             totalWrittenOffValue,
             netGainLoss: totalProceeds - totalWrittenOffValue,
@@ -293,7 +369,7 @@ export async function getDisposalSummary(req, res, next) {
     const byReason = {};
     const byStatus = {};
 
-    inMemoryDisposedAssets.forEach(item => {
+    disposedList.forEach(item => {
       const d = item.disposalDetails || {};
       totalProceeds += (d.disposalProceeds || 0);
       totalWrittenOffValue += (d.netBookValue || 0);
@@ -305,10 +381,10 @@ export async function getDisposalSummary(req, res, next) {
       success: true,
       summary: {
         activeCandidatesCount: 142,
-        disposedCount: inMemoryDisposedAssets.length,
+        disposedCount: disposedList.length,
         retiredCount: 0,
-        pendingDisposalCount: 1,
-        totalDisposedCount: inMemoryDisposedAssets.length,
+        pendingDisposalCount: pendingList.length,
+        totalDisposedCount: disposedList.length,
         totalProceeds,
         totalWrittenOffValue,
         netGainLoss: totalProceeds - totalWrittenOffValue,
@@ -335,12 +411,11 @@ export async function initiateDisposal(req, res, next) {
       buyerRecipient = '',
       notes = '',
       reason,
-      action = 'EXECUTE',
-      submitForReview = false
+      action = 'SUBMIT_FOR_REVIEW',
+      submitForReview = true
     } = req.body;
 
     const isReviewOnly = action === 'SUBMIT_FOR_REVIEW' || submitForReview === true;
-
     const actualReason = reason || disposalReason;
     const actualStatus = method || disposalStatus;
     const actualProceeds = parseFloat(disposalProceeds || estimatedProceeds || 0);
@@ -431,16 +506,21 @@ export async function initiateDisposal(req, res, next) {
               include: { category: true, company: true, site: true, building: true, room: true, custodian: true }
             });
 
+            const returnPending = {
+              ...populatedAsset,
+              disposalTx: tx,
+              disposalDetails: txPayload
+            };
+
+            const pendingList = readPendingDisposalsFromFile();
+            writePendingDisposalsToFile([returnPending, ...pendingList.filter(p => p.id !== returnPending.id && p.assetId !== returnPending.assetId)]);
+
             return res.status(200).json({
               success: true,
               isPending: true,
               message: `Asset ${asset.assetId} successfully submitted for disposal review (Pending Queue).`,
               transaction: { id: tx.id, referenceNumber: txRefNumber, ...txPayload },
-              asset: {
-                ...populatedAsset,
-                disposalTx: tx,
-                disposalDetails: txPayload
-              }
+              asset: returnPending
             });
           }
 
@@ -485,11 +565,17 @@ export async function initiateDisposal(req, res, next) {
             disposalDetails: txPayload
           };
 
-          inMemoryDisposedAssets.unshift(returnRecord);
-          writeDisposedAssetsToFile(inMemoryDisposedAssets);
+          // Remove from pending store
+          const currentPending = readPendingDisposalsFromFile();
+          writePendingDisposalsToFile(currentPending.filter(p => p.id !== asset.id && p.assetId !== asset.assetId));
+
+          // Add to disposed store
+          const currentDisposed = readDisposedAssetsFromFile();
+          writeDisposedAssetsToFile([returnRecord, ...currentDisposed.filter(d => d.id !== asset.id && d.assetId !== asset.assetId)]);
 
           return res.status(201).json({
             success: true,
+            isPending: false,
             message: `Asset ${asset.assetId} successfully disposed via transaction ${txRefNumber}.`,
             transaction: { id: tx.id, referenceNumber: txRefNumber, ...txPayload },
             asset: returnRecord
@@ -500,12 +586,57 @@ export async function initiateDisposal(req, res, next) {
       }
     }
 
-    // In-memory / Fallback execution
-    const mockRecord = {
+    // In-memory / Resilient execution
+    const pendingList = readPendingDisposalsFromFile();
+    const disposedList = readDisposedAssetsFromFile();
+
+    const netBookValue = parseFloat(req.body.netBookValue || 450);
+    const gainLoss = actualProceeds - netBookValue;
+
+    if (isReviewOnly) {
+      // Stage 1: Put into Pending Queue
+      const pendingRecord = {
+        id: assetId || 'ast-' + Date.now(),
+        assetId: assetId?.startsWith('AST-') ? assetId : (assetId || `AST-${Math.floor(1000 + Math.random() * 9000)}`),
+        tagNumber: req.body.tagNumber || `TAG-${Math.floor(10000 + Math.random() * 90000)}`,
+        description: req.body.description || 'Asset Pending Disposal Review',
+        lifecycleStatus: 'PENDING_DISPOSAL',
+        active: true,
+        category: req.body.category || { name: 'General' },
+        site: req.body.site || { name: 'Main Site' },
+        custodian: req.body.custodian || null,
+        purchaseCost: actualProceeds || netBookValue,
+        netBookValue,
+        disposalDetails: {
+          referenceNumber: txRefNumber,
+          disposalStatus: actualStatus,
+          disposalReason: actualReason,
+          disposalDate: new Date(disposalDate).toISOString(),
+          disposalProceeds: actualProceeds,
+          netBookValue,
+          notes: notes.trim(),
+          isReviewOnly: true
+        }
+      };
+
+      const updatedPending = [pendingRecord, ...pendingList.filter(p => p.id !== pendingRecord.id && p.assetId !== pendingRecord.assetId)];
+      writePendingDisposalsToFile(updatedPending);
+
+      return res.status(200).json({
+        success: true,
+        isPending: true,
+        message: `Asset ${pendingRecord.assetId} successfully submitted for disposal review (Pending Queue).`,
+        transaction: pendingRecord.disposalDetails,
+        asset: pendingRecord
+      });
+    }
+
+    // Stage 2: Finalize Disposal
+    const disposedRecord = {
       id: assetId || 'ast-' + Date.now(),
-      assetId: assetId?.startsWith('AST-') ? assetId : `AST-${Math.floor(1000 + Math.random() * 9000)}`,
-      tagNumber: `TAG-${Math.floor(10000 + Math.random() * 90000)}`,
-      description: 'Asset Disposed via Transaction',
+      assetId: assetId?.startsWith('AST-') ? assetId : (assetId || `AST-${Math.floor(1000 + Math.random() * 9000)}`),
+      tagNumber: req.body.tagNumber || `TAG-${Math.floor(10000 + Math.random() * 90000)}`,
+      description: req.body.description || 'Asset Disposed via Transaction',
       lifecycleStatus: 'DISPOSED',
       active: false,
       disposalDetails: {
@@ -514,22 +645,28 @@ export async function initiateDisposal(req, res, next) {
         disposalReason: actualReason,
         disposalDate: new Date(disposalDate).toISOString(),
         disposalProceeds: actualProceeds,
-        netBookValue: 450,
-        gainLoss: actualProceeds - 450,
+        netBookValue,
+        gainLoss,
         certificateNumber: certificateNumber.trim(),
         buyerRecipient: buyerRecipient.trim(),
         notes: notes.trim()
       }
     };
 
-    inMemoryDisposedAssets.unshift(mockRecord);
-    writeDisposedAssetsToFile(inMemoryDisposedAssets);
+    // Remove from pending queue
+    const remainingPending = pendingList.filter(p => p.id !== disposedRecord.id && p.assetId !== disposedRecord.assetId);
+    writePendingDisposalsToFile(remainingPending);
 
-    res.status(201).json({
+    // Add to disposed list
+    const updatedDisposed = [disposedRecord, ...disposedList.filter(d => d.id !== disposedRecord.id && d.assetId !== disposedRecord.assetId)];
+    writeDisposedAssetsToFile(updatedDisposed);
+
+    return res.status(201).json({
       success: true,
-      message: `Asset successfully disposed via transaction ${txRefNumber}.`,
-      transaction: mockRecord.disposalDetails,
-      asset: mockRecord
+      isPending: false,
+      message: `Asset ${disposedRecord.assetId} successfully disposed via transaction ${txRefNumber}.`,
+      transaction: disposedRecord.disposalDetails,
+      asset: disposedRecord
     });
   } catch (err) { next(err); }
 }

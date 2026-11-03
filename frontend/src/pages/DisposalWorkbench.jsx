@@ -64,8 +64,9 @@ export function DisposalWorkbench() {
   const fetchData = async () => {
     setIsLoading(true);
     try {
-      const [disposalsRes, pendingRes] = await Promise.all([
+      const [disposalsRes, pendingRes, assetsPendingRes] = await Promise.all([
         api.get('/disposals').catch(() => null),
+        api.get('/disposals/pending').catch(() => null),
         api.get('/assets', { params: { status: 'PENDING_DISPOSAL', limit: 100 } }).catch(() => null)
       ]);
 
@@ -75,11 +76,14 @@ export function DisposalWorkbench() {
         setDisposedAssets([]);
       }
 
+      const pendingMap = new Map();
       if (pendingRes?.assets && Array.isArray(pendingRes.assets)) {
-        setPendingAssets(pendingRes.assets);
-      } else {
-        setPendingAssets([]);
+        pendingRes.assets.forEach(a => { if (a && (a.id || a.assetId)) pendingMap.set(a.id || a.assetId, a); });
       }
+      if (assetsPendingRes?.assets && Array.isArray(assetsPendingRes.assets)) {
+        assetsPendingRes.assets.forEach(a => { if (a && (a.id || a.assetId)) pendingMap.set(a.id || a.assetId, a); });
+      }
+      setPendingAssets(Array.from(pendingMap.values()));
     } catch (err) {
       console.warn('Failed to load disposal records:', err.message);
       setDisposedAssets([]);
