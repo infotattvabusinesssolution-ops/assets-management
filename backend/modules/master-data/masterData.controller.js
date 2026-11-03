@@ -1642,7 +1642,7 @@ export async function getEmployees(req, res, next) {
           include: { department: true, company: true },
           orderBy: { fullName: 'asc' }
         });
-        if (Array.isArray(employees) && employees.length > 0) {
+        if (Array.isArray(employees)) {
           const mapped = employees.map(e => ({
             id: e.id,
             employeeCode: e.employeeCode,
@@ -1666,9 +1666,9 @@ export async function getEmployees(req, res, next) {
         console.warn('DB get employees skipped:', dbErr.message);
       }
     }
-    res.json({ success: true, employees: DEFAULT_ENTERPRISE_EMPLOYEES, custodians: DEFAULT_ENTERPRISE_EMPLOYEES });
+    res.json({ success: true, employees: [], custodians: [] });
   } catch (err) {
-    res.json({ success: true, employees: DEFAULT_ENTERPRISE_EMPLOYEES, custodians: DEFAULT_ENTERPRISE_EMPLOYEES });
+    res.json({ success: true, employees: [], custodians: [] });
   }
 }
 

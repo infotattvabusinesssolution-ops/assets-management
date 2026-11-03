@@ -138,8 +138,32 @@ export function UserManagement() {
       let localCustodians = [];
       try {
         localCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+        // Clean out any legacy mock demo custodians from localStorage
+        const demoDomains = ['infotatwaa.com', 'corporate.com', 'infotattva.com', 'apexfacilities.com'];
+        const cleanLocal = localCustodians.filter(c => {
+          const email = String(c?.email || '').toLowerCase();
+          const code = String(c?.employeeCode || c?.code || '').toUpperCase();
+          if (demoDomains.some(d => email.includes(d))) return false;
+          if (['EMP-101', 'EMP-103', 'EMP-104', 'EMP-105', 'EMP-106', 'EMP-107', 'EMP-108', 'EMP-CORP-96381', 'EMP-FAC', 'EMP-JOHN', 'EMP-JANE', 'CUST-EXT-01'].includes(code)) return false;
+          return true;
+        });
+        if (cleanLocal.length !== localCustodians.length) {
+          localStorage.setItem('fams_custom_custodians', JSON.stringify(cleanLocal));
+          localCustodians = cleanLocal;
+        }
       } catch (_) {}
-      const combinedCustodians = [...serverCustodians, ...localCustodians];
+
+      // Combine server and local, strictly excluding legacy demo mock accounts
+      const demoDomains = ['infotatwaa.com', 'corporate.com', 'infotattva.com', 'apexfacilities.com'];
+      const demoCodes = new Set(['EMP-101', 'EMP-103', 'EMP-104', 'EMP-105', 'EMP-106', 'EMP-107', 'EMP-108', 'EMP-CORP-96381', 'EMP-FAC', 'EMP-JOHN', 'EMP-JANE', 'CUST-EXT-01']);
+      const combinedCustodians = [...serverCustodians, ...localCustodians].filter(c => {
+        if (!c) return false;
+        const email = String(c.email || '').toLowerCase();
+        const code = String(c.employeeCode || c.code || '').toUpperCase();
+        if (demoDomains.some(d => email.includes(d))) return false;
+        if (demoCodes.has(code)) return false;
+        return true;
+      });
       const seenCust = new Set();
       const getStrVal = (val, fallback = '') => {
         if (!val) return fallback;
