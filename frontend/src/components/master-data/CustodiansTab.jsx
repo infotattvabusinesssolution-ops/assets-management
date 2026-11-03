@@ -359,14 +359,6 @@ export function CustodiansTab({
               <option value="Inactive">Inactive</option>
             </select>
           </div>
-
-          <button
-            onClick={() => handleOpenAddModal(null)}
-            className="w-full md:w-auto px-4 py-2 bg-[#6C2BD9] hover:bg-[#581c87] text-white rounded-xl text-xs font-bold transition-all shadow-md shadow-purple-500/20 flex items-center justify-center gap-2 shrink-0 cursor-pointer"
-          >
-            <Plus className="w-4 h-4" />
-            <span>Add Custodian</span>
-          </button>
         </div>
       </div>
 

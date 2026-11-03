@@ -537,13 +537,6 @@ export function SuppliersTab({
               <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
                 {filteredSuppliers.length} Suppliers
               </span>
-              <button
-                onClick={() => handleOpenAddSupModal(null)}
-                className="px-3.5 py-1.5 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
-                <span>Add Supplier</span>
-              </button>
             </div>
           </div>
 

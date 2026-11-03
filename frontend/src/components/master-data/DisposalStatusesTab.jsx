@@ -241,13 +241,6 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
           >
             <Download className="w-3.5 h-3.5 text-slate-500" /> Export CSV
           </button>
-
-          <button
-            onClick={handleOpenAdd}
-            className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl flex items-center gap-1.5 shadow-sm transition-all cursor-pointer"
-          >
-            <Plus className="w-4 h-4" /> Add Disposal Status
-          </button>
         </div>
       </div>
 
