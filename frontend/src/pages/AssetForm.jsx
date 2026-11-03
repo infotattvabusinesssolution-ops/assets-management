@@ -2143,14 +2143,13 @@ export function AssetForm() {
               <p className="text-[11px] text-slate-500">Pick the defined product. Classification, model, supplier barcode & specifications lock automatically.</p>
             </div>
           </div>
-          <a
-            href="/admin/master-data?tab=item-master"
-            target="_blank"
-            rel="noreferrer"
-            className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-1"
+          <button
+            type="button"
+            onClick={() => navigate('/admin/master-data?tab=item-master')}
+            className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
           >
             + Create New Item in Master
-          </a>
+          </button>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
