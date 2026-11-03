@@ -234,13 +234,17 @@ export function DisposalTransactionModal({
             </div>
             <div>
               <div className="flex items-center gap-2">
-                <h3 className="font-bold text-slate-900 text-base">Asset Disposal Transaction</h3>
+                <h3 className="font-bold text-slate-900 text-base">
+                  {isAlreadyPending ? 'Approve & Finalize Disposal' : 'Submit Asset Disposal Request'}
+                </h3>
                 <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[#6C2BD9] text-[10px] font-mono font-bold">
                   {referenceNumber}
                 </span>
               </div>
               <p className="text-xs text-slate-500">
-                Formal asset decommissioning, write-off, and depreciation freeze
+                {isAlreadyPending
+                  ? 'Review justification, certificate details, and permanently finalize asset write-off'
+                  : 'Place asset into the Pending Disposal Review Queue for administrative authorization'}
               </p>
             </div>
           </div>
@@ -505,17 +509,25 @@ export function DisposalTransactionModal({
           <div className="p-3 rounded-xl bg-amber-50/70 border border-amber-200/80 flex items-start gap-2.5 text-[11px] text-amber-900 leading-relaxed">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
             <div>
-              <strong>Audit & Operational Policy Reminder:</strong> Once executed, this asset is marked <span className="font-bold">DISPOSED</span> and becomes an immutable historical record. Future depreciation calculation halts, and the asset is permanently excluded from physical audits, movement transfers, and maintenance work orders.
+              {isAlreadyPending ? (
+                <>
+                  <strong>Final Write-off Authorization:</strong> Approving this transaction marks the asset <span className="font-bold">DISPOSED</span>, halts depreciation permanently, and registers the write-off in the Disposed Assets Ledger.
+                </>
+              ) : (
+                <>
+                  <strong>Governance & Review Pipeline:</strong> Submitting this request places the asset into the <span className="font-bold">Pending Disposal Review Queue</span>. The asset is removed from active operations while awaiting final financial write-off approval.
+                </>
+              )}
             </div>
           </div>
 
           {/* Footer Actions */}
-          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-4 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              className="px-5 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs rounded-xl transition-all cursor-pointer"
             >
               Cancel
             </button>
@@ -528,31 +540,19 @@ export function DisposalTransactionModal({
                 className="px-6 py-2.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
               >
                 <Check className="w-4 h-4" />
-                {isSubmitting ? 'Finalizing Disposal...' : 'Approve & Finalize Disposal'}
+                {isSubmitting ? 'Finalizing Write-Off...' : 'Approve & Finalize Disposal'}
               </button>
             ) : (
-              <>
-                <button
-                  type="button"
-                  onClick={(e) => handleSubmit(e, 'SUBMIT_FOR_REVIEW')}
-                  disabled={isSubmitting || !targetAsset}
-                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                  title="Move asset to Pending Disposal Review Queue without finalizing immediately"
-                >
-                  <Clock className="w-4 h-4" />
-                  {isSubmitting ? 'Queueing...' : 'Submit for Review (Pending Queue)'}
-                </button>
-                <button
-                  type="button"
-                  onClick={(e) => handleSubmit(e, 'EXECUTE')}
-                  disabled={isSubmitting || !targetAsset}
-                  className="px-5 py-2.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-                  title="Immediately finalize write-off and mark asset as DISPOSED"
-                >
-                  <Check className="w-4 h-4" />
-                  {isSubmitting ? 'Executing...' : 'Direct Finalize & Dispose'}
-                </button>
-              </>
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, 'SUBMIT_FOR_REVIEW')}
+                disabled={isSubmitting || !targetAsset}
+                className="px-6 py-2.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                title="Place asset into Pending Disposal Review Queue"
+              >
+                <Clock className="w-4 h-4" />
+                {isSubmitting ? 'Submitting to Queue...' : 'Submit for Disposal Review'}
+              </button>
             )}
           </div>
         </form>

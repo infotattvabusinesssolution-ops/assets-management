@@ -1229,7 +1229,7 @@ export function AssetList() {
                                       }}
                                       className="w-full flex items-center gap-2 px-3 py-1.5 text-xs font-semibold text-rose-700 hover:bg-rose-50 rounded-xl transition-all cursor-pointer"
                                     >
-                                      <AlertTriangle className="w-3.5 h-3.5 text-rose-600" /> Dispose / Decommission Asset
+                                      <AlertTriangle className="w-3.5 h-3.5 text-amber-600" /> Request Disposal / Decommission
                                     </button>
                                   )}
                                 </>
