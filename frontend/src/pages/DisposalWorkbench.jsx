@@ -851,11 +851,17 @@ export function DisposalWorkbench() {
         preselectedAsset={selectedAssetForModal}
         onSuccess={(result) => {
           if (result?.asset) {
-            setDisposedAssets(prev => [result.asset, ...prev]);
-            setPendingAssets(prev => prev.filter(p => p.id !== result.asset.id && p.assetId !== result.asset.assetId));
+            if (result.isPending) {
+              setPendingAssets(prev => [result.asset, ...prev.filter(p => p.id !== result.asset.id && p.assetId !== result.asset.assetId)]);
+              handleTabChange('pending');
+            } else {
+              setDisposedAssets(prev => [result.asset, ...prev]);
+              setPendingAssets(prev => prev.filter(p => p.id !== result.asset.id && p.assetId !== result.asset.assetId));
+              handleTabChange('ledger');
+            }
           }
           fetchData();
-          showToast('Disposal transaction executed successfully.');
+          showToast(result?.message || 'Disposal transaction processed successfully.');
         }}
         triggerToast={showToast}
       />

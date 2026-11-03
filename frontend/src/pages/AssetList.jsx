@@ -1785,9 +1785,16 @@ export function AssetList() {
         isOpen={Boolean(disposalRequestAsset)}
         onClose={() => setDisposalRequestAsset(null)}
         preselectedAsset={disposalRequestAsset}
-        onSuccess={() => {
-          setAssets(prev => prev.map(a => (a.id === disposalRequestAsset?.id || a.assetId === disposalRequestAsset?.assetId) ? { ...a, lifecycleStatus: 'DISPOSED' } : a));
-          showToast('success', `Disposal transaction completed for [${disposalRequestAsset?.assetId}]`);
+        onSuccess={(result) => {
+          const isPending = result?.isPending;
+          const newStatus = isPending ? 'PENDING_DISPOSAL' : 'DISPOSED';
+          setAssets(prev => prev.map(a => (a.id === disposalRequestAsset?.id || a.assetId === disposalRequestAsset?.assetId) ? { ...a, lifecycleStatus: newStatus } : a));
+          if (isPending) {
+            setActiveTab('PENDING_DISPOSAL');
+          } else {
+            setActiveTab('DISPOSED');
+          }
+          showToast('success', result?.message || `Disposal transaction completed for [${disposalRequestAsset?.assetId}]`);
           fetchData();
         }}
         triggerToast={(msg, type) => showToast(type || 'success', msg)}

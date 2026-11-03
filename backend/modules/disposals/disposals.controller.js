@@ -53,7 +53,7 @@ export async function getDisposalCandidates(req, res, next) {
     const { search, categoryId, siteId, limit = 200 } = req.query;
 
     const where = {
-      lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED'] }
+      lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED', 'PENDING_DISPOSAL', 'DISPOSAL'] }
     };
 
     if (search && search.trim()) {
@@ -334,8 +334,12 @@ export async function initiateDisposal(req, res, next) {
       certificateNumber = '',
       buyerRecipient = '',
       notes = '',
-      reason
+      reason,
+      action = 'EXECUTE',
+      submitForReview = false
     } = req.body;
+
+    const isReviewOnly = action === 'SUBMIT_FOR_REVIEW' || submitForReview === true;
 
     const actualReason = reason || disposalReason;
     const actualStatus = method || disposalStatus;
@@ -389,6 +393,7 @@ export async function initiateDisposal(req, res, next) {
             buyerRecipient: buyerRecipient.trim(),
             notes: notes.trim(),
             disposedByUserId: userId,
+            isReviewOnly,
             assetSummary: {
               assetId: asset.assetId,
               tagNumber: asset.tagNumber,
@@ -397,6 +402,49 @@ export async function initiateDisposal(req, res, next) {
             }
           };
 
+          if (isReviewOnly) {
+            // Stage 1: Move asset into PENDING_DISPOSAL review queue
+            const [updatedAsset, tx] = await prisma.$transaction([
+              prisma.asset.update({
+                where: { id: asset.id },
+                data: {
+                  lifecycleStatus: 'PENDING_DISPOSAL',
+                  active: true,
+                  updatedByUserId: userId
+                }
+              }),
+              prisma.assetTransaction.create({
+                data: {
+                  assetId: asset.id,
+                  transactionType: 'DISPOSAL_REQUEST',
+                  fromStatus: previousStatus,
+                  toStatus: 'PENDING_DISPOSAL',
+                  performedByUserId: userId,
+                  notes: notes.trim() || `Disposal Review Request [${txRefNumber}]: Reason ${actualReason}. Placed in Pending Review Queue.`,
+                  payload: JSON.stringify(txPayload)
+                }
+              })
+            ]);
+
+            const populatedAsset = await prisma.asset.findUnique({
+              where: { id: asset.id },
+              include: { category: true, company: true, site: true, building: true, room: true, custodian: true }
+            });
+
+            return res.status(200).json({
+              success: true,
+              isPending: true,
+              message: `Asset ${asset.assetId} successfully submitted for disposal review (Pending Queue).`,
+              transaction: { id: tx.id, referenceNumber: txRefNumber, ...txPayload },
+              asset: {
+                ...populatedAsset,
+                disposalTx: tx,
+                disposalDetails: txPayload
+              }
+            });
+          }
+
+          // Stage 2: Finalize Disposal Transaction
           const [updatedAsset, tx] = await prisma.$transaction([
             prisma.asset.update({
               where: { id: asset.id },

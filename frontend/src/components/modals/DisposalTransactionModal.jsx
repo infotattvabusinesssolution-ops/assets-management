@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import {
+  Clock,
   X,
   Check,
   AlertTriangle,
@@ -175,9 +176,10 @@ export function DisposalTransactionModal({
 
   const numProceeds = parseFloat(proceeds || 0);
   const gainLoss = numProceeds - calculatedNBV;
+  const isAlreadyPending = targetAsset?.lifecycleStatus === 'PENDING_DISPOSAL' || targetAsset?.lifecycleStatus === 'DISPOSAL';
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e, forcedAction = null) => {
+    if (e && e.preventDefault) e.preventDefault();
     if (!targetAsset) {
       triggerToast?.('Please select an asset to dispose', 'error');
       return;
@@ -191,6 +193,7 @@ export function DisposalTransactionModal({
       return;
     }
 
+    const actionToUse = forcedAction || (isAlreadyPending ? 'EXECUTE' : 'SUBMIT_FOR_REVIEW');
     setIsSubmitting(true);
     try {
       const payload = {
@@ -202,11 +205,13 @@ export function DisposalTransactionModal({
         referenceNumber,
         certificateNumber,
         buyerRecipient,
-        notes
+        notes,
+        action: actionToUse,
+        submitForReview: actionToUse === 'SUBMIT_FOR_REVIEW'
       };
 
       const res = await api.post('/disposals', payload);
-      triggerToast?.(res.message || `Disposal transaction completed for ${targetAsset.assetId}`, 'success');
+      triggerToast?.(res.message || (actionToUse === 'SUBMIT_FOR_REVIEW' ? `Asset ${targetAsset.assetId} queued for disposal review` : `Disposal transaction completed for ${targetAsset.assetId}`), 'success');
       onSuccess?.(res);
       onClose();
     } catch (err) {
@@ -247,7 +252,17 @@ export function DisposalTransactionModal({
           </button>
         </div>
 
-        <form onSubmit={handleSubmit} className="p-6 space-y-6">
+        <form onSubmit={(e) => handleSubmit(e)} className="p-6 space-y-6">
+          {isAlreadyPending && (
+            <div className="p-3.5 bg-amber-50/90 border border-amber-300 rounded-2xl flex items-center gap-3 text-xs text-amber-900 animate-in fade-in">
+              <Clock className="w-5 h-5 text-amber-600 shrink-0" />
+              <div>
+                <span className="font-extrabold block">Pending Disposal Review Queue</span>
+                <span className="text-[11px] text-amber-800">This asset is awaiting final decommission approval. Confirming below will finalize write-off and mark the asset as <strong>DISPOSED</strong>.</span>
+              </div>
+            </div>
+          )}
+
           {/* Section 1: Asset Identification */}
           <div className="space-y-3">
             <label className="text-[11px] font-bold text-slate-700 uppercase tracking-wider block">
@@ -495,23 +510,50 @@ export function DisposalTransactionModal({
           </div>
 
           {/* Footer Actions */}
-          <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-100">
+          <div className="flex flex-wrap items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
             <button
               type="button"
               onClick={onClose}
               disabled={isSubmitting}
-              className="px-5 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs rounded-xl transition-all cursor-pointer"
+              className="px-4 py-2.5 border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs rounded-xl transition-all cursor-pointer"
             >
               Cancel
             </button>
-            <button
-              type="submit"
-              disabled={isSubmitting || !targetAsset}
-              className="px-6 py-2.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              <Check className="w-4 h-4" />
-              {isSubmitting ? 'Executing Disposal...' : 'Confirm & Execute Disposal'}
-            </button>
+
+            {isAlreadyPending ? (
+              <button
+                type="button"
+                onClick={(e) => handleSubmit(e, 'EXECUTE')}
+                disabled={isSubmitting || !targetAsset}
+                className="px-6 py-2.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              >
+                <Check className="w-4 h-4" />
+                {isSubmitting ? 'Finalizing Disposal...' : 'Approve & Finalize Disposal'}
+              </button>
+            ) : (
+              <>
+                <button
+                  type="button"
+                  onClick={(e) => handleSubmit(e, 'SUBMIT_FOR_REVIEW')}
+                  disabled={isSubmitting || !targetAsset}
+                  className="px-4 py-2.5 bg-amber-500 hover:bg-amber-600 text-white font-bold text-xs rounded-xl shadow-xs transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  title="Move asset to Pending Disposal Review Queue without finalizing immediately"
+                >
+                  <Clock className="w-4 h-4" />
+                  {isSubmitting ? 'Queueing...' : 'Submit for Review (Pending Queue)'}
+                </button>
+                <button
+                  type="button"
+                  onClick={(e) => handleSubmit(e, 'EXECUTE')}
+                  disabled={isSubmitting || !targetAsset}
+                  className="px-5 py-2.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+                  title="Immediately finalize write-off and mark asset as DISPOSED"
+                >
+                  <Check className="w-4 h-4" />
+                  {isSubmitting ? 'Executing...' : 'Direct Finalize & Dispose'}
+                </button>
+              </>
+            )}
           </div>
         </form>
       </div>
