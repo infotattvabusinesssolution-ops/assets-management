@@ -87,53 +87,23 @@ export function MasterDataSetup() {
     const moreItem = MORE_TABS.find((t) => t.id === tabId);
     if (moreItem && moreItem.action === 'audit') {
       setShowAuditHistoryModal(true);
-      setShowMoreMenu(false);
       return;
     }
     if (moreItem && moreItem.action === 'guidelines') {
       setShowImportGuidelinesModal(true);
-      setShowMoreMenu(false);
       return;
     }
-    setShowMoreMenu(false);
     navigate(`/admin/master-data?tab=${tabId}`, { replace: true });
   };
 
-  const tabsContainerRef = useRef(null);
-  const moreMenuRef = useRef(null);
   const importDropdownRef = useRef(null);
   const exportDropdownRef = useRef(null);
   const addDropdownRef = useRef(null);
-
-  // Auto-scroll active tab into view only if it is outside visible bounds
-  // (Prevents jarring page jumping and forced center-snapping when clicking tabs directly)
-  useEffect(() => {
-    if (tabsContainerRef.current) {
-      const container = tabsContainerRef.current;
-      const activeEl = container.querySelector('[data-active="true"]');
-      if (activeEl) {
-        const containerRect = container.getBoundingClientRect();
-        const activeRect = activeEl.getBoundingClientRect();
-
-        const isLeftHidden = activeRect.left < containerRect.left;
-        const isRightHidden = activeRect.right > containerRect.right;
-
-        if (isLeftHidden || isRightHidden) {
-          const scrollTarget = activeEl.offsetLeft - (container.clientWidth / 2) + (activeEl.clientWidth / 2);
-          container.scrollTo({
-            left: Math.max(0, scrollTarget),
-            behavior: 'smooth'
-          });
-        }
-      }
-    }
-  }, [activeTab]);
 
   const [activeRowMenuId, setActiveRowMenuId] = useState(null);
   const [showImportDropdown, setShowImportDropdown] = useState(false);
   const [showExportDropdown, setShowExportDropdown] = useState(false);
   const [showAddDropdown, setShowAddDropdown] = useState(false);
-  const [showMoreMenu, setShowMoreMenu] = useState(false);
 
   // Global Modals
   const [showImportModal, setShowImportModal] = useState(false);
@@ -293,9 +263,6 @@ export function MasterDataSetup() {
   // Close menus on outside click
   useEffect(() => {
     const handleClickOutside = (e) => {
-      if (moreMenuRef.current && !moreMenuRef.current.contains(e.target)) {
-        setShowMoreMenu(false);
-      }
       if (importDropdownRef.current && !importDropdownRef.current.contains(e.target)) {
         setShowImportDropdown(false);
       }
@@ -463,7 +430,6 @@ export function MasterDataSetup() {
                 setShowImportDropdown(!showImportDropdown);
                 setShowExportDropdown(false);
                 setShowAddDropdown(false);
-                setShowMoreMenu(false);
               }}
               className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             >
@@ -525,7 +491,6 @@ export function MasterDataSetup() {
                 setShowExportDropdown(!showExportDropdown);
                 setShowImportDropdown(false);
                 setShowAddDropdown(false);
-                setShowMoreMenu(false);
               }}
               className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             >
@@ -583,7 +548,6 @@ export function MasterDataSetup() {
                   setShowAddDropdown(!showAddDropdown);
                   setShowImportDropdown(false);
                   setShowExportDropdown(false);
-                  setShowMoreMenu(false);
                 }}
                 className="px-2 py-2.5 hover:bg-[#5B21B6] text-white text-xs transition-all border-l border-white/20 cursor-pointer"
                 title="Creation Options"
@@ -625,86 +589,6 @@ export function MasterDataSetup() {
             )}
           </div>
         </div>}
-      </div>
-
-      {/* Horizontal Master Data Navigation Bar */}
-      <div className="flex items-center justify-between gap-3 border-b border-slate-200/80 pb-1">
-        {/* Scrollable Tabs matching Left Sidebar */}
-        <div
-          ref={tabsContainerRef}
-          className="flex items-center gap-2 overflow-x-auto pb-0.5 scrollbar-none flex-1 py-0.5"
-        >
-          {TABS.map((t) => {
-            const IconComponent = t.icon;
-            const isActive = activeTab === t.id;
-            return (
-              <button
-                key={t.id}
-                data-active={isActive ? 'true' : undefined}
-                onClick={() => handleTabChange(t.id)}
-                className={clsx(
-                  'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-2 whitespace-nowrap transition-colors duration-150 cursor-pointer border shrink-0',
-                  isActive
-                    ? 'bg-purple-50 text-[#6C2BD9] border-[#6C2BD9] font-bold shadow-2xs'
-                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-                )}
-              >
-                <IconComponent className={clsx('w-3.5 h-3.5', isActive ? 'text-[#6C2BD9]' : 'text-slate-400')} />
-                <span>{t.name}</span>
-              </button>
-            );
-          })}
-        </div>
-
-        {/* More Dropdown (Placed OUTSIDE overflow container so dropdown is fully visible) */}
-        <div className="relative shrink-0 pb-0.5" ref={moreMenuRef}>
-          <button
-            onClick={() => {
-              setShowMoreMenu((prev) => !prev);
-              setShowImportDropdown(false);
-              setShowExportDropdown(false);
-              setShowAddDropdown(false);
-            }}
-            className={clsx(
-              'px-3.5 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5 whitespace-nowrap transition-all cursor-pointer border shadow-2xs',
-              MORE_TABS.some((mt) => mt.id === activeTab)
-                ? 'bg-purple-50 text-[#6C2BD9] border-[#6C2BD9] font-bold'
-                : 'bg-white text-slate-700 border-slate-200 hover:bg-slate-50 hover:text-slate-900'
-            )}
-            title="More Options"
-          >
-            <MoreHorizontal className="w-4 h-4 text-slate-500" />
-            <span>More</span>
-            <ChevronDown className={clsx('w-3.5 h-3.5 text-slate-400 transition-transform duration-200', showMoreMenu && 'rotate-180')} />
-          </button>
-
-          {showMoreMenu && (
-            <div className="absolute right-0 mt-2 w-56 bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 z-[100] space-y-1 animate-in fade-in slide-in-from-top-1 duration-150">
-              <div className="px-2.5 py-1 text-[10px] font-bold tracking-wider uppercase text-slate-400 border-b border-slate-100 mb-1">
-                More Tools & Policies
-              </div>
-              {MORE_TABS.map((mt) => {
-                const MtIcon = mt.icon;
-                const isMtActive = activeTab === mt.id;
-                return (
-                  <button
-                    key={mt.id}
-                    onClick={() => handleTabChange(mt.id)}
-                    className={clsx(
-                      'w-full text-left px-3 py-2 rounded-lg text-xs font-semibold flex items-center gap-2.5 transition-colors cursor-pointer',
-                      isMtActive ? 'bg-purple-50 text-[#6C2BD9] font-bold' : 'text-slate-700 hover:bg-slate-50'
-                    )}
-                  >
-                    <MtIcon className={clsx('w-4 h-4 shrink-0', isMtActive ? 'text-[#6C2BD9]' : 'text-slate-400')} />
-                    <div className="flex-1 truncate">
-                      <div className="truncate">{mt.name}</div>
-                    </div>
-                  </button>
-                );
-              })}
-            </div>
-          )}
-        </div>
       </div>
 
       {/* RENDER MODULAR TABS */}
