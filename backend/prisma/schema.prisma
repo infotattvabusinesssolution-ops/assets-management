@@ -89,6 +89,10 @@ model Site {
   name          String
   city          String?
   country       String?
+  type          String?  @default("Internal")
+  level         String?  @default("Level 1")
+  parentLocation String?
+  fullPath      String?
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt

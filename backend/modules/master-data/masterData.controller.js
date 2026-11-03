@@ -398,63 +398,350 @@ export async function deleteCompany(req, res, next) {
   } catch (err) { next(err); }
 }
 
+const LOCATIONS_FILE = path.join(process.cwd(), 'data', 'locations.json');
+
+const DEFAULT_4TIER_LOCATIONS = [
+  {
+    id: 'loc-01',
+    code: 'UAE-HQ',
+    name: 'Dubai Technology Campus',
+    type: 'Internal',
+    level: 'Level 1',
+    parentLocation: '-',
+    fullPath: 'Dubai Technology Campus',
+    city: 'Dubai',
+    country: 'United Arab Emirates',
+    address: 'Dubai Technology Campus, Dubai, United Arab Emirates',
+    active: true
+  },
+  {
+    id: 'loc-02',
+    code: 'DXB-TOW-A',
+    name: 'Tower A - Corporate Office',
+    type: 'Internal',
+    level: 'Level 2',
+    parentLocation: 'UAE-HQ',
+    fullPath: 'Dubai Technology Campus > Tower A - Corporate Office',
+    city: 'Dubai',
+    country: 'United Arab Emirates',
+    address: 'Tower A, Dubai Technology Campus, Dubai',
+    active: true
+  },
+  {
+    id: 'loc-03',
+    code: 'DXB-FL-02',
+    name: '2nd Floor - IT Operations',
+    type: 'Internal',
+    level: 'Level 3',
+    parentLocation: 'DXB-TOW-A',
+    fullPath: 'Dubai Technology Campus > Tower A - Corporate Office > 2nd Floor - IT Operations',
+    city: 'Dubai',
+    country: 'United Arab Emirates',
+    address: '2nd Floor, Tower A, Dubai Technology Campus',
+    active: true
+  },
+  {
+    id: 'loc-04',
+    code: 'DXB-RM-SRV',
+    name: 'Server Room 204',
+    type: 'Internal',
+    level: 'Level 4',
+    parentLocation: 'DXB-FL-02',
+    fullPath: 'Dubai Technology Campus > Tower A - Corporate Office > 2nd Floor - IT Operations > Server Room 204',
+    city: 'Dubai',
+    country: 'United Arab Emirates',
+    address: 'Room 204, 2nd Floor, Tower A',
+    active: true
+  },
+  {
+    id: 'loc-05',
+    code: 'EXT-REPAIR-01',
+    name: 'Authorized Service Center (External)',
+    type: 'External',
+    level: 'Level 1',
+    parentLocation: '-',
+    fullPath: 'Authorized Service Center (External)',
+    city: 'Abu Dhabi',
+    country: 'United Arab Emirates',
+    address: 'Industrial Zone 1, Abu Dhabi',
+    active: true
+  }
+];
+
+function readLocationsFromFile() {
+  try {
+    if (fs.existsSync(LOCATIONS_FILE)) {
+      const data = fs.readFileSync(LOCATIONS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_4TIER_LOCATIONS;
+    }
+  } catch (e) {
+    console.warn('Failed to read locations.json, using defaults:', e.message);
+  }
+  return DEFAULT_4TIER_LOCATIONS;
+}
+
+function writeLocationsToFile(list) {
+  try {
+    const dir = path.dirname(LOCATIONS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(LOCATIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write locations.json:', e.message);
+  }
+}
+
+let inMemoryLocations = readLocationsFromFile();
+let sitesTableEnsured = false;
+
+export function computeLocationFullPath(loc, allLocs = []) {
+  if (!loc) return '';
+  const parts = [loc.name || loc.code];
+  let current = loc;
+  let depth = 0;
+  while (current && current.parentLocation && current.parentLocation !== '-' && depth < 6) {
+    const parent = allLocs.find(l => (l.code && l.code.toUpperCase() === current.parentLocation.toUpperCase()) || l.id === current.parentLocation || (l.name && l.name.toLowerCase() === current.parentLocation.toLowerCase()));
+    if (parent) {
+      parts.unshift(parent.name || parent.code);
+      current = parent;
+    } else {
+      parts.unshift(current.parentLocation);
+      break;
+    }
+    depth++;
+  }
+  return parts.join(' > ');
+}
+
+async function ensureSitesTable() {
+  if (sitesTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'level')
+      ALTER TABLE sites ADD level NVARCHAR(50) DEFAULT 'Level 1';
+
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'type')
+      ALTER TABLE sites ADD type NVARCHAR(50) DEFAULT 'Internal';
+
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'parentLocation')
+      ALTER TABLE sites ADD parentLocation NVARCHAR(100) NULL;
+
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'fullPath')
+      ALTER TABLE sites ADD fullPath NVARCHAR(500) NULL;
+    `);
+
+    // Seed defaults into DB if empty
+    try {
+      const countRes = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM sites`);
+      const cnt = countRes?.[0]?.cnt || 0;
+      if (Number(cnt) === 0) {
+        let firstCompanyId = null;
+        try {
+          const comp = await prisma.company.findFirst();
+          firstCompanyId = comp ? comp.id : 'comp-default';
+        } catch (_) {}
+        for (const loc of DEFAULT_4TIER_LOCATIONS) {
+          await prisma.$executeRawUnsafe(`
+            INSERT INTO sites (id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt)
+            VALUES ('${loc.id}', '${loc.code}', '${loc.name.replace(/'/g, "''")}', '${(loc.city || '').replace(/'/g, "''")}', '${(loc.country || '').replace(/'/g, "''")}', ${firstCompanyId ? `'${firstCompanyId}'` : 'NULL'}, '${loc.type}', '${loc.level}', '${loc.parentLocation}', '${loc.fullPath.replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          `);
+        }
+      }
+    } catch (seedErr) {
+      console.warn('Sites default seed skipped:', seedErr.message);
+    }
+
+    sitesTableEnsured = true;
+  } catch (err) {
+    console.warn('sites table check skipped:', err.message);
+  }
+}
+
 export async function getSites(req, res, next) {
   try {
-    const where = {};
-    if (req.query.companyId) where.companyId = req.query.companyId;
-    if (req.query.includeInactive !== 'true') where.active = true;
-    const sites = await prisma.site.findMany({ where, include: { company: true }, orderBy: { name: 'asc' } });
-    res.json({ success: true, sites });
-  } catch (err) {
-    res.json({
-      success: true,
-      sites: [
-        { id: 'SITE-DXB-01', code: 'DXB-HQ', name: 'Dubai HQ - IT Store', city: 'Dubai', country: 'United Arab Emirates' },
-        { id: 'SITE-AUH-02', code: 'AUH-BR', name: 'Abu Dhabi Branch', city: 'Abu Dhabi', country: 'United Arab Emirates' },
-        { id: 'SITE-DOH-03', code: 'DOH-DC', name: 'Doha Data Center', city: 'Doha', country: 'Qatar' },
-        { id: 'SITE-RUH-04', code: 'RUH-HQ', name: 'Riyadh Regional Office', city: 'Riyadh', country: 'Saudi Arabia' }
-      ]
-    });
-  }
+    await ensureSitesTable();
+    if (isDbConnected()) {
+      try {
+        const includeInactive = req.query.includeInactive === 'true';
+        const query = includeInactive
+          ? `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt FROM sites ORDER BY level ASC, name ASC`
+          : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt FROM sites WHERE active = 1 ORDER BY level ASC, name ASC`;
+        const rows = await prisma.$queryRawUnsafe(query);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const raw = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            city: r.city || '',
+            country: r.country || '',
+            companyId: r.companyId,
+            type: r.type === 'External' ? 'External' : 'Internal',
+            level: ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(r.level) ? r.level : 'Level 1',
+            parentLocation: r.parentLocation || '-',
+            fullPath: r.fullPath || '',
+            active: Boolean(r.active),
+            status: Boolean(r.active) ? 'Active' : 'Inactive',
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
+          }));
+
+          const resolved = raw.map(loc => ({
+            ...loc,
+            fullPath: loc.fullPath || computeLocationFullPath(loc, raw)
+          }));
+
+          inMemoryLocations = resolved;
+          writeLocationsToFile(resolved);
+          return res.json({ success: true, sites: resolved });
+        }
+      } catch (dbErr) {
+        console.warn('DB getSites query skipped, using persistent store:', dbErr.message);
+      }
+    }
+
+    const resolvedMem = inMemoryLocations.map(loc => ({
+      ...loc,
+      fullPath: loc.fullPath || computeLocationFullPath(loc, inMemoryLocations)
+    }));
+    res.json({ success: true, sites: resolvedMem });
+  } catch (err) { next(err); }
 }
 
 export async function createSite(req, res, next) {
   try {
-    const { code, name, city, country, active, status } = req.body;
-    let targetCompanyId = req.body.companyId;
-    if (!targetCompanyId) {
-      const firstComp = await prisma.company.findFirst();
-      targetCompanyId = firstComp ? firstComp.id : null;
+    const { code, name, type, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
+    if (!code || !name) {
+      return res.status(400).json({ success: false, message: 'Location Code and Name are required.' });
     }
+
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
+    // System enumeration: strictly 'Internal' or 'External'
+    const cleanType = (type === 'External') ? 'External' : 'Internal';
+    const cleanLevel = ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(level) ? level : 'Level 1';
+    const cleanParent = (cleanLevel === 'Level 1' || !parentLocation) ? '-' : parentLocation.trim();
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
-    const site = await prisma.site.create({
-      data: {
-        code: (code || `SITE-${Date.now()}`).trim().toUpperCase(),
-        name: (name || 'New Location').trim(),
-        city: city || null,
-        country: country || null,
-        companyId: targetCompanyId,
-        active: isAct
+
+    // Strict duplicate check on code and name
+    const exists = inMemoryLocations.some(l => 
+      (l.code && l.code.toUpperCase() === cleanCode) || 
+      (l.name && l.name.toLowerCase() === cleanName.toLowerCase())
+    );
+    if (exists) {
+      return res.status(409).json({
+        success: false,
+        message: `Duplicate Error: Location with code "${cleanCode}" or name "${cleanName}" already exists.`
+      });
+    }
+
+    const id = `loc-${Date.now()}`;
+    const allForPath = [...inMemoryLocations];
+    const computedPath = computeLocationFullPath({ name: cleanName, parentLocation: cleanParent }, allForPath);
+
+    const newLoc = {
+      id,
+      code: cleanCode,
+      name: cleanName,
+      type: cleanType,
+      level: cleanLevel,
+      parentLocation: cleanParent,
+      fullPath: computedPath,
+      city: city || 'Dubai',
+      country: country || 'UAE',
+      address: address || `${cleanName}, ${city || 'Dubai'}, ${country || 'UAE'}`,
+      postalCode: postalCode || '',
+      active: isAct,
+      status: isAct ? 'Active' : 'Inactive',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    console.log('📍 [Backend Location Created]:', JSON.stringify(newLoc));
+
+    await ensureSitesTable();
+    if (isDbConnected()) {
+      try {
+        let firstCompanyId = null;
+        try {
+          const comp = await prisma.company.findFirst();
+          firstCompanyId = comp ? comp.id : null;
+        } catch (_) {}
+
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO sites (id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(city || '').replace(/'/g, "''")}', '${(country || '').replace(/'/g, "''")}', ${firstCompanyId ? `'${firstCompanyId}'` : 'NULL'}, '${cleanType}', '${cleanLevel}', '${cleanParent.replace(/'/g, "''")}', '${computedPath.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert sites skipped:', dbErr.message);
       }
-    });
-    res.status(201).json({ success: true, site });
+    }
+
+    inMemoryLocations.unshift(newLoc);
+    writeLocationsToFile(inMemoryLocations);
+    res.status(201).json({ success: true, site: newLoc });
   } catch (err) { next(err); }
 }
 
 export async function updateSite(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, city, country, active, status } = req.body;
-    const updateData = {};
-    if (code) updateData.code = code.trim().toUpperCase();
-    if (name) updateData.name = name.trim();
-    if (city !== undefined) updateData.city = city;
-    if (country !== undefined) updateData.country = country;
-    if (active !== undefined) updateData.active = Boolean(active);
-    else if (status !== undefined) updateData.active = status === 'Active';
+    const { code, name, type, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
 
-    const site = await prisma.site.update({ where: { id }, data: updateData });
-    res.json({ success: true, site });
+    const idx = inMemoryLocations.findIndex(l => l.id === id || l.code === id);
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Location not found' });
+
+    const cleanCode = code ? code.trim().toUpperCase() : inMemoryLocations[idx].code;
+    const cleanName = name ? name.trim() : inMemoryLocations[idx].name;
+    const cleanType = type !== undefined ? (type === 'External' ? 'External' : 'Internal') : inMemoryLocations[idx].type;
+    const cleanLevel = level !== undefined && ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(level) ? level : inMemoryLocations[idx].level;
+    const cleanParent = (cleanLevel === 'Level 1' || parentLocation === '-') ? '-' : (parentLocation ? parentLocation.trim() : inMemoryLocations[idx].parentLocation);
+    const isAct = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : inMemoryLocations[idx].active);
+
+    const computedPath = computeLocationFullPath({ name: cleanName, parentLocation: cleanParent }, inMemoryLocations);
+
+    inMemoryLocations[idx] = {
+      ...inMemoryLocations[idx],
+      code: cleanCode,
+      name: cleanName,
+      type: cleanType,
+      level: cleanLevel,
+      parentLocation: cleanParent,
+      fullPath: computedPath,
+      city: city !== undefined ? city : inMemoryLocations[idx].city,
+      country: country !== undefined ? country : inMemoryLocations[idx].country,
+      address: address !== undefined ? address : inMemoryLocations[idx].address,
+      postalCode: postalCode !== undefined ? postalCode : inMemoryLocations[idx].postalCode,
+      active: isAct,
+      status: isAct ? 'Active' : 'Inactive',
+      updatedAt: new Date().toISOString()
+    };
+
+    console.log('✏️ [Backend Location Updated]:', JSON.stringify(inMemoryLocations[idx]));
+
+    await ensureSitesTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE sites
+          SET code = '${cleanCode.replace(/'/g, "''")}',
+              name = '${cleanName.replace(/'/g, "''")}',
+              type = '${cleanType}',
+              level = '${cleanLevel}',
+              parentLocation = '${cleanParent.replace(/'/g, "''")}',
+              fullPath = '${computedPath.replace(/'/g, "''")}',
+              city = '${(city || '').replace(/'/g, "''")}',
+              country = '${(country || '').replace(/'/g, "''")}',
+              active = ${isAct ? 1 : 0},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB update sites skipped:', dbErr.message);
+      }
+    }
+
+    writeLocationsToFile(inMemoryLocations);
+    res.json({ success: true, site: inMemoryLocations[idx] });
   } catch (err) { next(err); }
 }
 
@@ -462,26 +749,47 @@ export async function deleteSite(req, res, next) {
   try {
     const { id } = req.params;
     const force = req.query.force === 'true';
-    const assetCount = await prisma.asset.count({ where: { siteId: id } }).catch(() => 0);
-    if (assetCount > 0 && !force) {
+
+    const targetLoc = inMemoryLocations.find(l => l.id === id || l.code === id);
+    const targetCode = targetLoc ? targetLoc.code : id;
+
+    // Check if any child location references this location as parent
+    const childCount = inMemoryLocations.filter(l => l.parentLocation === id || l.parentLocation === targetCode).length;
+    if (childCount > 0 && !force) {
       return res.status(400).json({
         success: false,
-        message: `This location is currently referenced by ${assetCount} asset(s) and cannot be deleted.`
+        message: `Cannot delete location: it has ${childCount} child location(s) referencing it. Please delete or reassign child locations first, or set its status to Inactive.`
       });
     }
-    if (assetCount > 0 && force) {
-      await prisma.asset.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
+
+    // Check if referenced by assets in DB
+    if (isDbConnected()) {
+      try {
+        const assetCount = await prisma.asset.count({ where: { siteId: id } }).catch(() => 0);
+        if (assetCount > 0 && !force) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot delete location: it is currently referenced by ${assetCount} active asset(s). Please set its status to Inactive to preserve audit history.`
+          });
+        }
+      } catch (_) {}
     }
-    await prisma.building.updateMany({ where: { siteId: id }, data: { active: false } }).catch(() => null);
-    await prisma.site.delete({ where: { id } });
+
+    console.log('🗑️ [Backend Location Deleted]:', id);
+    inMemoryLocations = inMemoryLocations.filter(l => l.id !== id && l.code !== id);
+
+    await ensureSitesTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`DELETE FROM sites WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+      } catch (dbErr) {
+        console.warn('DB delete sites skipped:', dbErr.message);
+      }
+    }
+
+    writeLocationsToFile(inMemoryLocations);
     res.json({ success: true, message: 'Location deleted successfully.' });
-  } catch (err) {
-    try {
-      await prisma.site.update({ where: { id: req.params.id }, data: { active: false } }).catch(() => null);
-      return res.json({ success: true, message: 'Location deactivated successfully.' });
-    } catch (_) {}
-    res.json({ success: true, message: 'Location removed from view.' });
-  }
+  } catch (err) { next(err); }
 }
 
 export async function getBuildings(req, res, next) {

@@ -3045,7 +3045,7 @@ export function AssetForm() {
             {sites
               .filter(s => !formData.companyId || s.companyId === formData.companyId)
               .map(s => (
-                <option key={s.id} value={s.id}>{s.name || s.code}</option>
+                <option key={s.id} value={s.id}>{s.fullPath || s.name || s.code}</option>
               ))}
           </select>
         </div>
@@ -3085,7 +3085,7 @@ export function AssetForm() {
               .map(b => (
                 <option key={b.id} value={b.id}>{b.name || b.code}</option>
               ))}
-            <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Building...</option>
+            
           </select>
         </div>
 
@@ -4727,7 +4727,7 @@ export function AssetForm() {
                       {sites
                         .filter(s => !formData.companyId || s.companyId === formData.companyId)
                         .map(s => (
-                          <option key={s.id} value={s.id}>{s.name || s.code}</option>
+                          <option key={s.id} value={s.id}>{s.fullPath || s.name || s.code}</option>
                         ))}
                     </select>
                   </div>
@@ -4765,7 +4765,7 @@ export function AssetForm() {
                         .map(b => (
                           <option key={b.id} value={b.id}>{b.name || b.code}</option>
                         ))}
-                      <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Building...</option>
+                      
                     </select>
                   </div>
                 </div>

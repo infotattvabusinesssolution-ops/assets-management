@@ -16,7 +16,8 @@ import {
   Clock,
   Trash2,
   X,
-  Plus
+  Plus,
+  Lock
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -119,32 +120,34 @@ export function LocationsTab({
   const loadLocations = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/sites');
+      const res = await api.get('/master-data/sites?includeInactive=true');
       if (res?.sites && res.sites.length > 0) {
         const mapped = res.sites.map((site, idx) => ({
           id: site.id,
           code: site.code,
           name: site.name,
           type: site.type === 'External' ? 'External' : 'Internal',
-          level: site.level || (site.code.includes('HQ') ? 'Level 1' : (site.code.includes('FL') ? 'Level 3' : (site.code.includes('RM') ? 'Level 4' : 'Level 2'))),
-          parentLocation: site.code.includes('HQ') ? '-' : 'UAE-HQ',
-          country: site.country || 'UAE',
+          level: site.level || 'Level 1',
+          parentLocation: site.parentLocation || '-',
+          fullPath: site.fullPath || computeFullPath(site, res.sites),
+          country: site.country || 'United Arab Emirates',
           city: site.city || 'Dubai',
-          address: `${site.name}, ${site.city || 'Dubai'}, ${site.country || 'UAE'}`,
-          postalCode: '12345',
-          totalAssets: (idx + 1) * 65,
-          status: site.active === false ? 'Inactive' : 'Active',
-          createdBy: 'Admin',
+          address: site.address || `${site.name}, ${site.city || 'Dubai'}, ${site.country || 'United Arab Emirates'}`,
+          postalCode: site.postalCode || '',
+          totalAssets: site.totalAssets ?? ((idx + 1) * 35),
+          status: site.active === false || site.status === 'Inactive' ? 'Inactive' : 'Active',
+          createdBy: site.createdBy || 'Admin User',
           createdOn: site.createdAt ? new Date(site.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:15 AM' : '12 Jan 2025 09:15 AM',
-          lastModifiedBy: 'Admin',
+          lastModifiedBy: site.lastModifiedBy || 'Admin User',
           lastModifiedOn: site.updatedAt ? new Date(site.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:30 PM' : '25 Aug 2025 02:30 PM',
           relatedInfo: {
-            childLocations: 2,
-            assets: (idx + 1) * 65,
-            departments: 5,
-            costCenters: 3
+            childLocations: res.sites.filter(s => s.parentLocation === site.code || s.parentLocation === site.id).length,
+            assets: site.totalAssets ?? ((idx + 1) * 35),
+            departments: 3,
+            costCenters: 2
           }
         }));
+        console.log('📋 [Locations Loaded dynamically from Database]:', mapped);
         setLocationsList(mapped);
         setSelectedLocation((prev) => (prev ? mapped.find((c) => c.id === prev.id) || mapped[0] || null : mapped[0] || null));
       }
@@ -259,40 +262,53 @@ export function LocationsTab({
     e.preventDefault();
     if (!locFormState.code || !locFormState.name) return;
 
+    const cleanCode = locFormState.code.trim().toUpperCase();
+    const cleanName = locFormState.name.trim();
+
+    // STRICT DUPLICATE VALIDATION: Code & Name must be unique
+    const isDuplicate = locationsList.some((it) => {
+      if (editingLocation && it.id === editingLocation.id) return false;
+      const codeMatches = cleanCode && (it.code || '').trim().toUpperCase() === cleanCode;
+      const nameMatches = cleanName && (it.name || '').trim().toLowerCase() === cleanName.toLowerCase();
+      return codeMatches || nameMatches;
+    });
+
+    if (isDuplicate) {
+      triggerToast && triggerToast(`Duplicate Error: A location with code "${cleanCode}" or name "${cleanName}" already exists.`);
+      return;
+    }
+
+    const payload = {
+      code: cleanCode,
+      name: cleanName,
+      type: locFormState.type === 'External' ? 'External' : 'Internal',
+      level: locFormState.level || 'Level 1',
+      parentLocation: (locFormState.level === 'Level 1' || !locFormState.parentLocation) ? '-' : locFormState.parentLocation,
+      country: locFormState.country || 'United Arab Emirates',
+      city: locFormState.city || 'Dubai',
+      address: locFormState.address || '',
+      postalCode: locFormState.postalCode || '',
+      active: locFormState.status === 'Active',
+      status: locFormState.status
+    };
+
     if (editingLocation) {
+      console.log('✏️ [Updating Location in Frontend]:', { id: editingLocation.id, ...payload });
       try {
-        await api.put(`/master-data/sites/${editingLocation.id}`, {
-          code: locFormState.code.toUpperCase(),
-          name: locFormState.name,
-          city: locFormState.city,
-          country: locFormState.country,
-          active: locFormState.status === 'Active',
-          status: locFormState.status
-        });
+        const updateRes = await api.put(`/master-data/sites/${editingLocation.id}`, payload);
+        console.log('✅ [Location Updated Successfully in Database]:', updateRes?.site || updateRes);
         await loadLocations();
-        triggerToast && triggerToast(`Location "${locFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Location "${cleanName}" updated successfully.`);
       } catch (err) {
         console.warn('Save location error:', err);
         const updated = locationsList.map((loc) =>
           loc.id === editingLocation.id
             ? {
                 ...loc,
-                code: locFormState.code.toUpperCase(),
-                name: locFormState.name,
-                type: locFormState.type,
-                level: locFormState.level,
-                parentLocation: locFormState.parentLocation,
-                country: locFormState.country,
-                city: locFormState.city,
-                address: locFormState.address,
-                postalCode: locFormState.postalCode,
-                status: locFormState.status,
-                lastModifiedBy: 'Logged In User',
-                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                }) + ' 02:30 PM'
+                ...payload,
+                fullPath: computeFullPath({ ...loc, ...payload }, locationsList),
+                lastModifiedBy: 'Admin User',
+                lastModifiedOn: new Date().toLocaleDateString('en-GB')
               }
             : loc
         );
@@ -300,56 +316,31 @@ export function LocationsTab({
         if (selectedLocation?.id === editingLocation.id) {
           setSelectedLocation(updated.find((item) => item.id === editingLocation.id));
         }
-        triggerToast && triggerToast(`Location "${locFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Location "${cleanName}" updated successfully.`);
       }
     } else {
+      console.log('🚀 [Adding New Location in Frontend]:', payload);
       try {
-        await api.post('/master-data/sites', {
-          code: locFormState.code.toUpperCase(),
-          name: locFormState.name,
-          city: locFormState.city,
-          country: locFormState.country,
-          active: locFormState.status === 'Active',
-          status: locFormState.status
-        });
+        const createRes = await api.post('/master-data/sites', payload);
+        console.log('✅ [Location Created Successfully in Database]:', createRes?.site || createRes);
         await loadLocations();
-        triggerToast && triggerToast(`Location "${locFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Location "${cleanName}" created successfully.`);
       } catch (err) {
         console.warn('Create location error:', err);
         const newLoc = {
-          id: Date.now(),
-          code: locFormState.code.toUpperCase(),
-          name: locFormState.name,
-          type: locFormState.type,
-          parentLocation: locFormState.parentLocation,
-          country: locFormState.country,
-          city: locFormState.city,
-          address: locFormState.address,
-          postalCode: locFormState.postalCode,
+          id: `loc-${Date.now()}`,
+          ...payload,
+          fullPath: computeFullPath(payload, locationsList),
           totalAssets: 0,
-          status: locFormState.status,
           createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }) + ' 09:15 AM',
+          createdOn: new Date().toLocaleDateString('en-GB') + ' 09:15 AM',
           lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }) + ' 09:15 AM',
-          relatedInfo: {
-            childLocations: 0,
-            assets: 0,
-            departments: 0,
-            costCenters: 0
-          }
+          lastModifiedOn: new Date().toLocaleDateString('en-GB') + ' 09:15 AM',
+          relatedInfo: { childLocations: 0, assets: 0, departments: 0, costCenters: 0 }
         };
         setLocationsList([newLoc, ...locationsList]);
         setSelectedLocation(newLoc);
-        triggerToast && triggerToast(`Location "${locFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Location "${cleanName}" created successfully.`);
       }
     }
     setShowAddLocModal(false);
@@ -397,16 +388,19 @@ export function LocationsTab({
   const handleDeleteLocation = async (loc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Location "${loc.name}" (${loc.code})?`)) {
+      console.log('🗑️ [Deleting Location in Frontend]:', loc);
       try {
-        await api.delete(`/master-data/sites/${loc.id}`);
+        const delRes = await api.delete(`/master-data/sites/${loc.id}`);
+        console.log('✅ [Location Deleted Successfully from Database]:', delRes);
         await loadLocations();
         triggerToast && triggerToast(`Location "${loc.code}" deleted successfully.`);
       } catch (err) {
         console.warn('Delete location error:', err);
+        const errMsg = err?.response?.data?.message || err?.message || 'Cannot delete location.';
+        triggerToast && triggerToast(errMsg);
         const remaining = locationsList.filter((l) => l.id !== loc.id);
         setLocationsList(remaining);
         if (remaining.length > 0) setSelectedLocation(remaining[0]);
-        triggerToast && triggerToast(`Location "${loc.code}" deleted successfully.`);
       }
     }
   };
@@ -674,7 +668,28 @@ export function LocationsTab({
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{loc.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{loc.name}</td>
-                      <td className="py-2.5 px-3 text-slate-700">{loc.type}</td>
+                      <td className="py-2.5 px-3">
+                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-[#6C2BD9] border border-purple-200 whitespace-nowrap">
+                          {loc.level || 'Level 1'}
+                        </span>
+                      </td>
+                      <td className="py-2.5 px-3 font-medium text-slate-600 max-w-[220px] truncate" title={loc.fullPath || loc.name}>
+                        {loc.fullPath || loc.name}
+                      </td>
+                      <td className="py-2.5 px-3 text-center">
+                        <span
+                          className={clsx(
+                            'inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold border',
+                            loc.type === 'External'
+                              ? 'bg-amber-50 text-amber-700 border-amber-200'
+                              : 'bg-blue-50 text-blue-700 border-blue-200'
+                          )}
+                          title="System-defined enumeration (Fixed logic)"
+                        >
+                          <Lock className="w-2.5 h-2.5" />
+                          {loc.type || 'Internal'}
+                        </span>
+                      </td>
                       <td className="py-2.5 px-3 text-slate-700">{loc.country}</td>
                       <td className="py-2.5 px-3 text-slate-700">{loc.city}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
@@ -969,22 +984,48 @@ export function LocationsTab({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Parent Location</label>
-                <select
-                  value={locFormState.parentLocation}
-                  onChange={(e) => setLocFormState({ ...locFormState, parentLocation: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                >
-                  <option value="-">- (Root / None)</option>
-                  {locationsList
-                    .filter((loc) => !editingLocation || loc.id !== editingLocation.id)
-                    .map((loc) => (
-                      <option key={loc.id} value={loc.code}>
-                        {loc.code} ({loc.name})
-                      </option>
-                    ))}
-                </select>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Parent Location {locFormState.level === 'Level 1' && <span className="text-[10px] text-slate-400 font-normal">(Root / Level 1 has no parent)</span>}
+                  </label>
+                  <select
+                    disabled={locFormState.level === 'Level 1'}
+                    value={locFormState.level === 'Level 1' ? '-' : locFormState.parentLocation}
+                    onChange={(e) => setLocFormState({ ...locFormState, parentLocation: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
+                  >
+                    <option value="-">- (Root / None)</option>
+                    {locationsList
+                      .filter((loc) => {
+                        if (editingLocation && loc.id === editingLocation.id) return false;
+                        if (locFormState.level === 'Level 2') return loc.level === 'Level 1';
+                        if (locFormState.level === 'Level 3') return loc.level === 'Level 2';
+                        if (locFormState.level === 'Level 4') return loc.level === 'Level 3';
+                        return true;
+                      })
+                      .map((loc) => (
+                        <option key={loc.id} value={loc.code}>
+                          {loc.code} ({loc.fullPath || loc.name})
+                        </option>
+                      ))}
+                  </select>
+                </div>
               </div>
+
+              {/* Live Full Path Preview */}
+              <div className="bg-purple-50/70 border border-purple-200/80 rounded-xl p-2.5">
+                <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider block mb-0.5">
+                  Hierarchical Full Path Preview (Used in Audits, Repairs & Transfers)
+                </span>
+                <span className="text-xs font-bold text-slate-900 font-mono">
+                  {(() => {
+                    if (!locFormState.name) return '—';
+                    if (locFormState.level === 'Level 1' || !locFormState.parentLocation || locFormState.parentLocation === '-') {
+                      return locFormState.name;
+                    }
+                    const parent = locationsList.find(l => l.code === locFormState.parentLocation || l.id === locFormState.parentLocation);
+                    return parent ? `${parent.fullPath || parent.name} > ${locFormState.name}` : locFormState.name;
+                  })()}
+                </span>
               </div>
 
               <div className="grid grid-cols-2 gap-3">

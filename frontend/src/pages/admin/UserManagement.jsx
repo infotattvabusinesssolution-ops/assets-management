@@ -1535,53 +1535,22 @@ export function UserManagement() {
                   )}
                 </div>
 
-                {/* Dynamic Primary Location */}
+                {/* Primary Location from Master Data */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-medium text-slate-700">Primary Location *</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingLocation(!isAddingLocation)}
-                      className="text-[11px] text-[#6C2BD9] hover:underline font-semibold"
-                    >
-                      {isAddingLocation ? 'Cancel' : '+ Add Location'}
-                    </button>
-                  </div>
-                  {isAddingLocation ? (
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        placeholder="Enter location / site name"
-                        value={newLocationInput}
-                        onChange={(e) => setNewLocationInput(e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-purple-50/40 text-xs focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddLocation}
-                        className="px-2.5 py-1.5 bg-[#6C2BD9] text-white text-xs font-semibold rounded-lg hover:bg-[#5B21B6]"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ) : (
-                    <select
-                      value={userFormData.location}
-                      onChange={(e) => {
-                        if (e.target.value === '__add_new__') {
-                          setIsAddingLocation(true);
-                        } else {
-                          setUserFormData({ ...userFormData, location: e.target.value });
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                    >
-                      {sitesList.map(s => (
-                        <option key={s.id} value={s.name}>{s.name} {s.code ? `(${s.code})` : ''}</option>
-                      ))}
-                      <option value="__add_new__">+ Add New Location...</option>
-                    </select>
-                  )}
+                  <label className="block font-medium text-slate-700 mb-1">
+                    Primary Location * <span className="text-[10px] text-slate-400 font-normal">(From Location Master)</span>
+                  </label>
+                  <select
+                    value={userFormData.location}
+                    onChange={(e) => setUserFormData({ ...userFormData, location: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                  >
+                    <option value="">Select Master Location...</option>
+                    {sitesList.map(s => (
+                      <option key={s.id} value={s.name}>{s.fullPath || s.name} {s.code ? `(${s.code})` : ''}</option>
+                    ))}
+                  </select>
+                  <p className="text-[10px] text-slate-400 mt-1">Configured in Master Data. Ordinary users cannot add locations on the fly.</p>
                 </div>
 
                 <div>
