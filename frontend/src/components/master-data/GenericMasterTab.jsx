@@ -226,16 +226,7 @@ export function GenericMasterTab({
         setSelectedItem(combined[0] || null);
         return;
       }
-      if (activeTab === 'uom') {
-      console.log('🗑️ [Deleting UOM]:', itemToDelete);
-      api.delete(`/master-data/uoms/${itemToDelete.id}`).then((res) => {
-        console.log('✅ [UOM Deleted Successfully from Database]:', res?.data || res);
-      }).catch((err) => console.warn('Failed to delete UOM:', err));
-      try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
-        localStorage.setItem('fams_custom_uoms', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
-      } catch (_) {}
-    }
+
     if (activeTab === 'asset-types') {
 
         const res = await api.get('/master-data/asset-types').catch(() => null);
@@ -534,6 +525,23 @@ export function GenericMasterTab({
     setItems(updated);
     if (selectedItem?.id === itemToDelete.id) {
       setSelectedItem(updated[0] || null);
+    }
+    if (activeTab === 'uom') {
+      console.log('🗑️ [Deleting UOM in Frontend]:', itemToDelete);
+      api.delete(`/master-data/uoms/${itemToDelete.id}`).then((res) => {
+        console.log('✅ [UOM Deleted Successfully from Database]:', {
+          id: itemToDelete.id,
+          code: itemToDelete.code,
+          name: itemToDelete.name,
+          response: res?.data || res
+        });
+      }).catch((err) => {
+        console.error('❌ Failed to delete UOM from backend:', err);
+      });
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
+        localStorage.setItem('fams_custom_uoms', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+      } catch (_) {}
     }
     if (activeTab === 'asset-types') {
       api.delete(`/master-data/asset-types/${itemToDelete.id}`).catch(() => null);
