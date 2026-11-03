@@ -29,60 +29,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-// Standard Enterprise Baseline Master Data (guarantees options exist even if DB tables are empty)
-const DEFAULT_ASSET_GROUPS = [
-  { id: 'grp-01', code: 'GRP-IT', name: 'Information Technology' },
-  { id: 'grp-02', code: 'GRP-FUR', name: 'Furniture & Fixtures' },
-  { id: 'grp-03', code: 'GRP-VEH', name: 'Motor Vehicles' },
-  { id: 'grp-04', code: 'GRP-FAC', name: 'Facilities & Building Equipment' },
-  { id: 'grp-05', code: 'GRP-OFF', name: 'Office Electronics' }
-];
-
-const DEFAULT_ASSET_SUBGROUPS = [
-  { id: 'subgrp-01', code: 'CLS-LAP', name: 'Laptops', groupName: 'Information Technology' },
-  { id: 'subgrp-02', code: 'CLS-DSK', name: 'Desktops & Workstations', groupName: 'Information Technology' },
-  { id: 'subgrp-03', code: 'CLS-SRV', name: 'Servers & Storage', groupName: 'Information Technology' },
-  { id: 'subgrp-04', code: 'CLS-NET', name: 'Network Switches & Routers', groupName: 'Information Technology' },
-  { id: 'subgrp-05', code: 'CLS-MON', name: 'Monitors & Displays', groupName: 'Information Technology' },
-  { id: 'subgrp-06', code: 'CLS-CHR', name: 'Executive & Task Chairs', groupName: 'Furniture & Fixtures' },
-  { id: 'subgrp-07', code: 'CLS-DSK2', name: 'Workstations & Desks', groupName: 'Furniture & Fixtures' },
-  { id: 'subgrp-08', code: 'CLS-SED', name: 'Sedan & Passenger Cars', groupName: 'Motor Vehicles' },
-  { id: 'subgrp-09', code: 'CLS-VAN', name: 'Delivery Vans & Trucks', groupName: 'Motor Vehicles' },
-  { id: 'subgrp-10', code: 'CLS-PRN', name: 'Multifunction Printers', groupName: 'Office Electronics' }
-];
-
-const DEFAULT_CATEGORIES = [
-  { id: 'cat-01', code: 'CAT-IT', name: 'Computer Equipment', groupName: 'Information Technology' },
-  { id: 'cat-02', code: 'CAT-FUR', name: 'Office Furniture', groupName: 'Furniture & Fixtures' },
-  { id: 'cat-03', code: 'CAT-VEH', name: 'Vehicles', groupName: 'Motor Vehicles' },
-  { id: 'cat-04', code: 'CAT-PLT', name: 'Plant & Machinery', groupName: 'Facilities & Building Equipment' },
-  { id: 'cat-05', code: 'CAT-OFF', name: 'Office Equipment', groupName: 'Office Electronics' }
-];
-
-const DEFAULT_SUBCATEGORIES = [
-  { id: 'subcat-01', code: 'SCAT-PORT', name: 'Portable Computing', categoryName: 'Computer Equipment' },
-  { id: 'subcat-02', code: 'SCAT-DESK', name: 'Fixed Workstations', categoryName: 'Computer Equipment' },
-  { id: 'subcat-03', code: 'SCAT-SEAT', name: 'Ergonomic Seating', categoryName: 'Office Furniture' },
-  { id: 'subcat-04', code: 'SCAT-TABL', name: 'Conference & Office Tables', categoryName: 'Office Furniture' },
-  { id: 'subcat-05', code: 'SCAT-FLEET', name: 'Corporate Fleet', categoryName: 'Vehicles' }
-];
-
-const DEFAULT_MANUFACTURERS = [];
-
-const DEFAULT_BRANDS = [
-  { id: 'brd-dell', code: 'BRD-DELL', name: 'Dell', manufacturerName: 'Dell Technologies' },
-  { id: 'brd-apple', code: 'BRD-APPLE', name: 'Apple', manufacturerName: 'Apple Inc.' },
-  { id: 'brd-thinkpad', code: 'BRD-THINKPAD', name: 'ThinkPad', manufacturerName: 'Lenovo' },
-  { id: 'brd-lenovo', code: 'BRD-LENOVO', name: 'Lenovo', manufacturerName: 'Lenovo' },
-  { id: 'brd-hp', code: 'BRD-HP', name: 'HP', manufacturerName: 'HP Inc.' },
-  { id: 'brd-cisco', code: 'BRD-CISCO', name: 'Cisco', manufacturerName: 'Cisco Systems' },
-  { id: 'brd-samsung', code: 'BRD-SAMSUNG', name: 'Samsung', manufacturerName: 'Samsung Electronics' },
-  { id: 'brd-logi', code: 'BRD-LOGI', name: 'Logitech', manufacturerName: 'Logitech' },
-  { id: 'brd-steel', code: 'BRD-STEEL', name: 'Steelcase', manufacturerName: 'Steelcase' },
-  { id: 'brd-hm', code: 'BRD-HM', name: 'Herman Miller', manufacturerName: 'Herman Miller' },
-  { id: 'brd-toyota', code: 'BRD-TOYOTA', name: 'Toyota', manufacturerName: 'Toyota Motor Corp' },
-  { id: 'brd-sony', code: 'BRD-SONY', name: 'Sony', manufacturerName: 'Sony Group' }
-];
+// Dynamic Master Data State (strictly driven from database / master data screens)
 
 export function ItemMasterTab({
   triggerToast,
@@ -110,7 +57,7 @@ export function ItemMasterTab({
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [manufacturers, setManufacturers] = useState([]);
-  const [brands, setBrands] = useState(DEFAULT_BRANDS);
+  const [brands, setBrands] = useState([]);
   const [uoms, setUoms] = useState([]);
 
   // Modal State
@@ -159,23 +106,26 @@ export function ItemMasterTab({
 
       const customItems = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
       const serverItems = (itemRes?.items && Array.isArray(itemRes.items)) ? itemRes.items : [];
+      const mockIds = new Set(['itm-001', 'itm-002', 'itm-003']);
       const seenItemCodes = new Set();
-      const mergedItems = [...customItems, ...serverItems].filter(itm => {
-        const c = (itm.itemCode || itm.id || '').toUpperCase().trim();
-        if (!c || seenItemCodes.has(c)) return false;
-        seenItemCodes.add(c);
-        return true;
-      });
+      const mergedItems = [...customItems, ...serverItems]
+        .filter(itm => !mockIds.has(itm.id))
+        .filter(itm => {
+          const c = (itm.itemCode || itm.id || '').toUpperCase().trim();
+          if (!c || seenItemCodes.has(c)) return false;
+          seenItemCodes.add(c);
+          return true;
+        });
       if (mergedItems.length > 0) {
         setItems(mergedItems);
         setSelectedItem(mergedItems[0] || null);
       }
 
-      // Merge Asset Groups: API + LocalStorage + Defaults
+      // Merge Asset Groups: Server + Local Custom
       const localGroups = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
       const serverGroups = grpRes?.assetGroups || [];
       const seenGroupNames = new Set();
-      const mergedGroups = [...serverGroups, ...localGroups, ...DEFAULT_ASSET_GROUPS].filter(g => {
+      const mergedGroups = [...serverGroups, ...localGroups].filter(g => {
         const name = (g.name || g.code || '').trim().toLowerCase();
         if (!name || seenGroupNames.has(name)) return false;
         seenGroupNames.add(name);
@@ -183,11 +133,11 @@ export function ItemMasterTab({
       });
       setAssetGroups(mergedGroups);
 
-      // Merge Asset Subgroups (Classes): API + LocalStorage + Defaults
+      // Merge Asset Subgroups (Classes): Server + Local Custom
       const localClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
       const serverClasses = clsRes?.assetClasses || [];
       const seenClassNames = new Set();
-      const mergedClasses = [...serverClasses, ...localClasses, ...DEFAULT_ASSET_SUBGROUPS].filter(c => {
+      const mergedClasses = [...serverClasses, ...localClasses].filter(c => {
         const name = (c.name || c.code || '').trim().toLowerCase();
         if (!name || seenClassNames.has(name)) return false;
         seenClassNames.add(name);
@@ -195,11 +145,11 @@ export function ItemMasterTab({
       });
       setAssetSubGroups(mergedClasses);
 
-      // Merge Categories: API + LocalStorage + Defaults
+      // Merge Categories: Server + Local Custom
       const localCats = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
       const serverCats = catRes?.categories || [];
       const seenCatNames = new Set();
-      const mergedCats = [...serverCats, ...localCats, ...DEFAULT_CATEGORIES].filter(c => {
+      const mergedCats = [...serverCats, ...localCats].filter(c => {
         const name = (c.name || c.code || '').trim().toLowerCase();
         if (!name || seenCatNames.has(name)) return false;
         seenCatNames.add(name);
@@ -207,11 +157,11 @@ export function ItemMasterTab({
       });
       setCategories(mergedCats);
 
-      // Merge Sub Categories: API + LocalStorage + Defaults
+      // Merge Sub Categories: Server + Local Custom
       const localSubCats = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
       const serverSubCats = subCatRes?.assetClasses || [];
       const seenSubCatNames = new Set();
-      const mergedSubCats = [...serverSubCats, ...localSubCats, ...DEFAULT_SUBCATEGORIES].filter(s => {
+      const mergedSubCats = [...serverSubCats, ...localSubCats].filter(s => {
         const name = (s.name || s.code || '').trim().toLowerCase();
         if (!name || seenSubCatNames.has(name)) return false;
         seenSubCatNames.add(name);
@@ -219,7 +169,7 @@ export function ItemMasterTab({
       });
       setSubCategories(mergedSubCats);
 
-      // Merge Manufacturers
+      // Merge Manufacturers: Server + Local Custom
       const localMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
       const serverMfrs = mfrRes?.manufacturers || [];
       const seenMfrs = new Set();
@@ -231,11 +181,11 @@ export function ItemMasterTab({
       });
       setManufacturers(mergedMfrs);
 
-      // Merge Brands
+      // Merge Brands: Server + Local Custom
       const localBrands = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
       const serverBrands = brandRes?.brands || [];
       const seenBrands = new Set();
-      const mergedBrands = [...serverBrands, ...localBrands, ...DEFAULT_BRANDS].filter(b => {
+      const mergedBrands = [...serverBrands, ...localBrands].filter(b => {
         const name = (b.name || b.code || '').trim().toLowerCase();
         if (!name || seenBrands.has(name)) return false;
         seenBrands.add(name);

@@ -2327,12 +2327,14 @@ function readItemMastersFromFile() {
     if (fs.existsSync(ITEM_MASTERS_FILE)) {
       const data = fs.readFileSync(ITEM_MASTERS_FILE, 'utf8');
       const parsed = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_ITEMS;
+      if (Array.isArray(parsed)) {
+        return parsed.filter(i => !['itm-001', 'itm-002', 'itm-003'].includes(i.id));
+      }
     }
   } catch (e) {
-    console.warn('Failed to read item_masters.json, using defaults:', e.message);
+    console.warn('Failed to read item_masters.json:', e.message);
   }
-  return DEFAULT_ITEMS;
+  return [];
 }
 
 function writeItemMastersToFile(list) {

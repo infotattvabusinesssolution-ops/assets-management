@@ -169,68 +169,7 @@ const BASELINE_MANUFACTURERS = [
   { id: 'mfr-10', name: 'Caterpillar' }
 ];
 
-const DEFAULT_CATALOG_ITEMS = [
-  {
-    id: 'itm-001',
-    itemCode: 'ITM-000101',
-    itemName: 'Lenovo ThinkPad T14 Gen 4',
-    supplierBarcode: '019534827101',
-    description: 'Enterprise 14-inch professional business laptop with Intel Core i7, 32GB RAM, 512GB SSD',
-    assetGroupId: 'grp-01',
-    assetGroupName: 'Information Technology',
-    assetSubGroupId: 'subgrp-11',
-    assetSubGroupName: 'Hardware',
-    categoryId: 'cat-06',
-    categoryName: 'Laptops & Notebooks',
-    subCategoryId: 'subcat-06',
-    subCategoryName: 'Business Laptops',
-    manufacturerId: 'mfr-01',
-    manufacturerName: 'Lenovo',
-    model: 'ThinkPad T14 Gen 4',
-    uom: 'Each',
-    active: true
-  },
-  {
-    id: 'itm-002',
-    itemCode: 'ITM-000102',
-    itemName: 'Dell PowerEdge R750 Rack Server',
-    supplierBarcode: '088411638290',
-    description: '2U Dual-Socket enterprise rack server optimized for virtualization',
-    assetGroupId: 'grp-01',
-    assetGroupName: 'Information Technology',
-    assetSubGroupId: 'subgrp-11',
-    assetSubGroupName: 'Hardware',
-    categoryId: 'cat-07',
-    categoryName: 'Enterprise Servers',
-    subCategoryId: 'subcat-07',
-    subCategoryName: 'Rack Servers',
-    manufacturerId: 'mfr-02',
-    manufacturerName: 'Dell Technologies',
-    model: 'PowerEdge R750',
-    uom: 'Each',
-    active: true
-  },
-  {
-    id: 'itm-003',
-    itemCode: 'ITM-000103',
-    itemName: 'Steelcase Gesture Ergonomic Office Chair',
-    supplierBarcode: '072481923018',
-    description: 'High-performance ergonomic executive task chair',
-    assetGroupId: 'grp-02',
-    assetGroupName: 'Furniture & Fixtures',
-    assetSubGroupId: 'subgrp-06',
-    assetSubGroupName: 'Office Furniture',
-    categoryId: 'cat-08',
-    categoryName: 'Ergonomic Chairs',
-    subCategoryId: 'subcat-08',
-    subCategoryName: 'Executive Task Chairs',
-    manufacturerId: 'mfr-06',
-    manufacturerName: 'Steelcase',
-    model: 'Gesture-Black/Platinum',
-    uom: 'Each',
-    active: true
-  }
-];
+const DEFAULT_CATALOG_ITEMS = [];
 
 // --- Cascading Hierarchy Matchers ---
 const normalizeStr = (s) => (s || '').toLowerCase().trim();
@@ -673,7 +612,8 @@ export function AssetForm() {
           api.get('/master-data/items?includeInactive=false').catch(() => null)
         ]);
         if (itemRes?.items && Array.isArray(itemRes.items)) {
-          setItemMasters(itemRes.items);
+          const realItems = itemRes.items.filter(i => !['itm-001', 'itm-002', 'itm-003'].includes(i.id));
+          setItemMasters(realItems);
         }
         if (typeRes?.assetTypes && Array.isArray(typeRes.assetTypes) && typeRes.assetTypes.length > 0) {
           setAssetTypes(typeRes.assetTypes);
