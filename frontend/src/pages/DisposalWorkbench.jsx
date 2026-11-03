@@ -70,20 +70,54 @@ export function DisposalWorkbench() {
         api.get('/assets', { params: { status: 'PENDING_DISPOSAL', limit: 100 } }).catch(() => null)
       ]);
 
+      let disposedList = [];
       if (disposalsRes?.assets && Array.isArray(disposalsRes.assets)) {
-        setDisposedAssets(disposalsRes.assets);
+        disposedList = disposalsRes.assets;
+        setDisposedAssets(disposedList);
       } else {
         setDisposedAssets([]);
       }
 
+      const disposedIds = new Set(disposedList.map(d => d.id || d.assetId).filter(Boolean));
+
+      // Retrieve cached pending items from localStorage
+      let cachedPending = [];
+      try {
+        cachedPending = JSON.parse(localStorage.getItem('fams_pending_disposals') || '[]');
+      } catch (_) {}
+
       const pendingMap = new Map();
+
+      // 1. From localStorage cache (if not yet disposed)
+      cachedPending.forEach(a => {
+        if (a && (a.id || a.assetId) && !disposedIds.has(a.id) && !disposedIds.has(a.assetId)) {
+          pendingMap.set(a.id || a.assetId, a);
+        }
+      });
+
+      // 2. From /disposals/pending endpoint
       if (pendingRes?.assets && Array.isArray(pendingRes.assets)) {
-        pendingRes.assets.forEach(a => { if (a && (a.id || a.assetId)) pendingMap.set(a.id || a.assetId, a); });
+        pendingRes.assets.forEach(a => {
+          if (a && (a.id || a.assetId) && !disposedIds.has(a.id) && !disposedIds.has(a.assetId)) {
+            pendingMap.set(a.id || a.assetId, a);
+          }
+        });
       }
+
+      // 3. From /assets?status=PENDING_DISPOSAL
       if (assetsPendingRes?.assets && Array.isArray(assetsPendingRes.assets)) {
-        assetsPendingRes.assets.forEach(a => { if (a && (a.id || a.assetId)) pendingMap.set(a.id || a.assetId, a); });
+        assetsPendingRes.assets.forEach(a => {
+          if (a && (a.id || a.assetId) && !disposedIds.has(a.id) && !disposedIds.has(a.assetId)) {
+            pendingMap.set(a.id || a.assetId, a);
+          }
+        });
       }
-      setPendingAssets(Array.from(pendingMap.values()));
+
+      const finalPending = Array.from(pendingMap.values());
+      setPendingAssets(finalPending);
+      try {
+        localStorage.setItem('fams_pending_disposals', JSON.stringify(finalPending));
+      } catch (_) {}
     } catch (err) {
       console.warn('Failed to load disposal records:', err.message);
       setDisposedAssets([]);

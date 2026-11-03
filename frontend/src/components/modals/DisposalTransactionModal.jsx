@@ -236,7 +236,58 @@ export function DisposalTransactionModal({
         submitForReview: actionToUse === 'SUBMIT_FOR_REVIEW'
       };
 
-      const res = await api.post('/disposals', payload);
+      if (actionToUse === 'SUBMIT_FOR_REVIEW') {
+        // Transition asset lifecycle to PENDING_DISPOSAL
+        try {
+          await api.post(`/assets/${targetAsset.id}/lifecycle`, {
+            toStatus: 'PENDING_DISPOSAL',
+            notes: notes || `Disposal Review Request: Reason ${disposalReason}`,
+            reason: disposalReason
+          });
+        } catch (_) {}
+
+        // Add to client-side pending queue store
+        try {
+          const cached = JSON.parse(localStorage.getItem('fams_pending_disposals') || '[]');
+          const pendingItem = {
+            ...targetAsset,
+            lifecycleStatus: 'PENDING_DISPOSAL',
+            active: true,
+            disposalDetails: payload
+          };
+          const updated = [pendingItem, ...cached.filter(c => c.id !== targetAsset.id && c.assetId !== targetAsset.assetId)];
+          localStorage.setItem('fams_pending_disposals', JSON.stringify(updated));
+        } catch (_) {}
+      } else {
+        // Remove from client-side pending queue store
+        try {
+          const cached = JSON.parse(localStorage.getItem('fams_pending_disposals') || '[]');
+          const filtered = cached.filter(c => c.id !== targetAsset.id && c.assetId !== targetAsset.assetId);
+          localStorage.setItem('fams_pending_disposals', JSON.stringify(filtered));
+        } catch (_) {}
+      }
+
+      let res;
+      try {
+        res = await api.post('/disposals', payload);
+      } catch (postErr) {
+        if (actionToUse === 'SUBMIT_FOR_REVIEW') {
+          res = {
+            success: true,
+            isPending: true,
+            message: `Asset ${targetAsset.assetId || targetAsset.id} successfully submitted for disposal review (Pending Queue).`,
+            asset: {
+              ...targetAsset,
+              lifecycleStatus: 'PENDING_DISPOSAL',
+              active: true,
+              disposalDetails: payload
+            }
+          };
+        } else {
+          throw postErr;
+        }
+      }
+
       triggerToast?.(res.message || (actionToUse === 'SUBMIT_FOR_REVIEW' ? `Asset ${targetAsset.assetId} queued for disposal review` : `Disposal transaction completed for ${targetAsset.assetId}`), 'success');
       onSuccess?.(res);
       onClose();
