@@ -1,11 +1,12 @@
 import { Router } from 'express';
-import { login, getProfile, getUsers, getRoles, createUser, updateUser, resetUserPassword, deleteUser } from './auth.controller.js';
+import { login, getProfile, getUsers, getRoles, createUser, updateUser, resetUserPassword, changePassword, deleteUser } from './auth.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/rbac.js';
 
 const router = Router();
 
 router.post('/login', login);
+router.post('/change-password', authenticateToken, changePassword);
 router.get('/profile', authenticateToken, getProfile);
 router.get('/users', authenticateToken, requirePermission('USERS_VIEW'), getUsers);
 router.post('/users', authenticateToken, requirePermission('USERS_CREATE'), createUser);

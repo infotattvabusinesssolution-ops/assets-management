@@ -143,11 +143,35 @@ export function AuthProvider({ children }) {
       localStorage.setItem('fams_primary_role', res.user.role?.code || '');
       setUser(res.user);
       setToken(res.token);
-      return { success: true, user: res.user };
+      return {
+        success: true,
+        user: res.user,
+        mustChangePassword: Boolean(res.mustChangePassword ?? res.user?.forcePasswordChange)
+      };
     } catch (err) {
       return { success: false, message: err?.response?.data?.message || err?.message || 'Login failed.' };
     } finally {
       setLoading(false);
+    }
+  };
+
+  const changePassword = async (newPassword, oldPassword = '') => {
+    try {
+      const res = await api.post('/auth/change-password', { newPassword, oldPassword });
+      if (res?.success) {
+        setUser(prev => prev ? { ...prev, forcePasswordChange: false } : prev);
+        const stored = localStorage.getItem('fams_user');
+        if (stored) {
+          try {
+            const parsed = JSON.parse(stored);
+            parsed.forcePasswordChange = false;
+            localStorage.setItem('fams_user', JSON.stringify(parsed));
+          } catch (_) {}
+        }
+      }
+      return res || { success: true };
+    } catch (err) {
+      return { success: false, message: err?.response?.data?.message || err?.message || 'Password update failed' };
     }
   };
 
@@ -170,7 +194,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, token, isAuthenticated: !!user, loading, login, logout,
+      user, token, isAuthenticated: !!user, loading, login, logout, changePassword,
       switchRole: () => false, hasPermission, hasRole
     }}>
       {children}

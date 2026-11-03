@@ -246,9 +246,20 @@ export function Login() {
   const [supportMessage, setSupportMessage] = useState('');
   const [supportSent, setSupportSent] = useState(false);
 
+  // First Login — Mandatory Force Password Change States
+  const [showForcePassModal, setShowForcePassModal] = useState(false);
+  const [forcePassUser, setForcePassUser] = useState(null);
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [showNewPass, setShowNewPass] = useState(false);
+  const [showConfirmPass, setShowConfirmPass] = useState(false);
+  const [forcePassError, setForcePassError] = useState('');
+  const [forcePassSubmitting, setForcePassSubmitting] = useState(false);
+  const [forcePassSuccess, setForcePassSuccess] = useState(false);
+
   const langRef = useRef(null);
 
-  const { login, loading } = useAuth();
+  const { login, changePassword, logout, loading } = useAuth();
   const navigate = useNavigate();
 
   const t = TRANSLATIONS[selectedLang.code] || TRANSLATIONS.en;
@@ -280,6 +291,11 @@ export function Login() {
       res = await login('admin', 'Admin@123');
     }
     if (res && res.success) {
+      if (res.mustChangePassword || res.user?.forcePasswordChange) {
+        setForcePassUser(res.user);
+        setShowForcePassModal(true);
+        return;
+      }
       redirectByUserRole(res.user);
     } else {
       setError(res?.message || 'Admin login failed');
@@ -302,6 +318,12 @@ export function Login() {
 
     const res = await login(targetUser, targetPass);
     if (res && res.success) {
+      // Check if user is required to change password on first login
+      if (res.mustChangePassword || res.user?.forcePasswordChange) {
+        setForcePassUser(res.user);
+        setShowForcePassModal(true);
+        return;
+      }
       redirectByUserRole(res.user);
     } else {
       // Smart fallback for admin account
@@ -314,6 +336,48 @@ export function Login() {
       }
       setError(res?.message || 'Invalid username or password');
     }
+  };
+
+  const handleForcePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setForcePassError('');
+
+    if (!newPassword || newPassword.length < 6) {
+      setForcePassError('New password must be at least 6 characters long.');
+      return;
+    }
+    if (newPassword !== confirmPassword) {
+      setForcePassError('Passwords do not match. Please ensure both fields are identical.');
+      return;
+    }
+
+    setForcePassSubmitting(true);
+    try {
+      const res = await changePassword(newPassword);
+      if (res?.success) {
+        setForcePassSuccess(true);
+        setTimeout(() => {
+          setShowForcePassModal(false);
+          redirectByUserRole(forcePassUser);
+        }, 1200);
+      } else {
+        setForcePassError(res?.message || 'Failed to update password');
+      }
+    } catch (err) {
+      setForcePassError(err.message || 'Failed to update password');
+    } finally {
+      setForcePassSubmitting(false);
+    }
+  };
+
+  const handleCancelForcePassword = () => {
+    logout();
+    setShowForcePassModal(false);
+    setForcePassUser(null);
+    setNewPassword('');
+    setConfirmPassword('');
+    setForcePassError('');
+    setForcePassSuccess(false);
   };
 
   // Single Sign-On (SSO) Authentication
@@ -880,6 +944,134 @@ export function Login() {
                   <Send className="w-3.5 h-3.5" />
                   Submit Request
                 </button>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Mandatory First-Login Password Change Modal */}
+      {showForcePassModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md shadow-2xl p-6 sm:p-7 relative overflow-hidden animate-in zoom-in-95 duration-200 text-slate-900">
+            {/* Top decorative gradient bar */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-[#6C2BD9] via-purple-500 to-indigo-500"></div>
+
+            <div className="text-center mb-5 pt-2">
+              <div className="w-14 h-14 rounded-2xl bg-purple-50 border border-purple-200 text-[#6C2BD9] flex items-center justify-center mx-auto mb-3 shadow-sm">
+                <LockKeyhole className="w-7 h-7 text-[#6C2BD9]" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Create Permanent Password
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Welcome, <span className="font-semibold text-slate-800">{forcePassUser?.fullName || forcePassUser?.username}</span>! As this is your first login with temporary credentials, system security policy requires you to create your own secure password before accessing your account.
+              </p>
+            </div>
+
+            {forcePassError && (
+              <div className="p-3 mb-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{forcePassError}</span>
+              </div>
+            )}
+
+            {forcePassSuccess ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-semibold flex flex-col items-center justify-center gap-2 text-center py-6">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 animate-bounce" />
+                <span className="text-sm font-bold text-emerald-900">Password Updated Successfully!</span>
+                <span className="text-[11px] text-emerald-700">Redirecting to your dashboard...</span>
+              </div>
+            ) : (
+              <form onSubmit={handleForcePasswordSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1.5">
+                    New Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showNewPass ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      value={newPassword}
+                      onChange={(e) => setNewPassword(e.target.value)}
+                      placeholder="At least 6 characters..."
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewPass(!showNewPass)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
+                    <span className={`w-1.5 h-1.5 rounded-full ${newPassword.length >= 6 ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
+                    Minimum 6 characters
+                  </div>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1.5">
+                    Confirm New Password *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type={showConfirmPass ? 'text' : 'password'}
+                      required
+                      minLength={6}
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      placeholder="Re-enter your new password..."
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowConfirmPass(!showConfirmPass)}
+                      className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600"
+                    >
+                      {showConfirmPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                    </button>
+                  </div>
+                  {confirmPassword && (
+                    <div className="text-[11px] mt-1 flex items-center gap-1 font-medium">
+                      {newPassword === confirmPassword ? (
+                        <span className="text-emerald-600 flex items-center gap-1">
+                          <Check className="w-3.5 h-3.5" /> Passwords match
+                        </span>
+                      ) : (
+                        <span className="text-rose-500 flex items-center gap-1">
+                          <AlertCircle className="w-3.5 h-3.5" /> Passwords do not match
+                        </span>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-2 flex flex-col gap-2">
+                  <button
+                    type="submit"
+                    disabled={forcePassSubmitting || !newPassword || newPassword !== confirmPassword || newPassword.length < 6}
+                    className="w-full py-3 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {forcePassSubmitting ? (
+                      <span>Updating Security Credentials...</span>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Save Password & Continue</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleCancelForcePassword}
+                    className="w-full py-2.5 text-slate-500 hover:text-slate-800 text-xs font-semibold rounded-xl transition cursor-pointer"
+                  >
+                    Cancel and Sign Out
+                  </button>
+                </div>
               </form>
             )}
           </div>

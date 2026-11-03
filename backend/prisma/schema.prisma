@@ -506,9 +506,10 @@ model User {
   siteId        String?
   departmentId  String?
   costCenterId  String?
-  employeeId    String?
-  active        Boolean   @default(true)
-  lastLogin     DateTime?
+  employeeId          String?
+  active              Boolean   @default(true)
+  forcePasswordChange Boolean   @default(true)
+  lastLogin           DateTime?
   createdAt     DateTime  @default(now())
   updatedAt     DateTime  @updatedAt
 
