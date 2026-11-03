@@ -140,8 +140,8 @@ export function CategoriesTab({
   const [catFormState, setCatFormState] = useState({
     code: '',
     name: '',
-    className: 'Hardware',
-    groupName: 'Information Technology',
+    className: '',
+    groupName: '',
     description: '',
     status: 'Active'
   });
@@ -199,8 +199,8 @@ export function CategoriesTab({
       setCatFormState({
         code: '',
         name: '',
-        className: 'Hardware',
-        groupName: 'Information Technology',
+        className: '',
+        groupName: '',
         description: '',
         status: 'Active'
       });
@@ -902,6 +902,14 @@ export function CategoriesTab({
                   value={catFormState.className}
                   onChange={(e) => {
                     const selectedVal = e.target.value;
+                    if (!selectedVal) {
+                      setCatFormState({
+                        ...catFormState,
+                        className: '',
+                        groupName: ''
+                      });
+                      return;
+                    }
                     const selectedClass = availableAssetClasses.find(cls => (cls.name || cls.code) === selectedVal);
                     const derivedGroup = selectedClass?.groupName || 'General';
                     setCatFormState({

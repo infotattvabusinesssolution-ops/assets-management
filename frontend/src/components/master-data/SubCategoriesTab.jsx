@@ -163,9 +163,10 @@ export function SubCategoriesTab({
   const [subCatFormState, setSubCatFormState] = useState({
     code: '',
     name: '',
-    categoryName: 'Laptops & Notebooks',
-    className: 'Hardware',
-    groupName: 'Information Technology',
+    categoryId: '',
+    categoryName: '',
+    className: '',
+    groupName: '',
     description: '',
     status: 'Active'
   });
@@ -228,9 +229,10 @@ export function SubCategoriesTab({
       setSubCatFormState({
         code: '',
         name: '',
-        categoryName: 'Laptops & Notebooks',
-        className: 'Hardware',
-        groupName: 'Information Technology',
+        categoryId: '',
+        categoryName: '',
+        className: '',
+        groupName: '',
         description: '',
         status: 'Active'
       });
@@ -884,6 +886,16 @@ export function SubCategoriesTab({
                   value={subCatFormState.categoryId || ''}
                   onChange={(e) => {
                     const catId = e.target.value;
+                    if (!catId) {
+                      setSubCatFormState({
+                        ...subCatFormState,
+                        categoryId: '',
+                        categoryName: '',
+                        className: '',
+                        groupName: ''
+                      });
+                      return;
+                    }
                     const selectedCat = categories.find((c) => c.id === catId);
                     const classMatch = (selectedCat?.description || '').match(/\[class:([^\]]+)\]/);
                     const groupMatch = (selectedCat?.description || '').match(/\[group:([^\]]+)\]/);
