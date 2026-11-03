@@ -64,15 +64,21 @@ export function SubCategoriesTab({
         );
 
         const mapped = trueSubCats.map((ac, idx) => {
-          const descClean = (ac.description || '').replace(/\[kind:[^\]]+\]/g, '').trim();
+          const descClean = (ac.description || '')
+            .replace(/\[kind:[^\]]+\]/g, '')
+            .replace(/\[class:[^\]]+\]/g, '')
+            .replace(/\[group:[^\]]+\]/g, '')
+            .trim();
+          const classMatch = (ac.description || '').match(/\[class:([^\]]+)\]/) || (ac.category?.description || '').match(/\[class:([^\]]+)\]/);
+          const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/) || (ac.category?.description || '').match(/\[group:([^\]]+)\]/);
           return {
             id: ac.id,
             code: ac.code,
             name: ac.name,
             categoryId: ac.categoryId,
             categoryName: ac.category?.name || 'General',
-            className: ac.className || 'General',
-            groupName: ac.groupName || 'General',
+            className: classMatch ? classMatch[1] : (ac.className || 'General'),
+            groupName: groupMatch ? groupMatch[1] : (ac.groupName || 'General'),
             description: descClean,
             totalAssets: ac.totalAssets || 0,
             status: ac.active === false ? 'Inactive' : 'Active',
@@ -249,13 +255,20 @@ export function SubCategoriesTab({
       targetCatId = found?.id;
     }
 
+    const cleanDesc = (subCatFormState.description || '')
+      .replace(/\[kind:[^\]]+\]/g, '')
+      .replace(/\[class:[^\]]+\]/g, '')
+      .replace(/\[group:[^\]]+\]/g, '')
+      .trim();
+    const taggedDesc = `${cleanDesc} [class:${subCatFormState.className || 'General'}] [group:${subCatFormState.groupName || 'General'}]`.trim();
+
     if (editingSubCategory) {
       try {
         await api.put(`/master-data/asset-classes/${editingSubCategory.id}`, {
           code: subCatFormState.code.toUpperCase(),
           name: subCatFormState.name,
           categoryId: targetCatId,
-          description: subCatFormState.description,
+          description: taggedDesc,
           status: subCatFormState.status
         });
         await loadSubCategories();
@@ -269,7 +282,7 @@ export function SubCategoriesTab({
           code: subCatFormState.code.toUpperCase(),
           name: subCatFormState.name,
           categoryId: targetCatId,
-          description: subCatFormState.description,
+          description: taggedDesc,
           kind: 'SUBCATEGORY',
           status: subCatFormState.status
         });
@@ -281,7 +294,9 @@ export function SubCategoriesTab({
             name: subCatFormState.name,
             categoryId: targetCatId,
             categoryName: categories.find(c => c.id === targetCatId)?.name || 'General',
-            description: subCatFormState.description,
+            className: subCatFormState.className || 'General',
+            groupName: subCatFormState.groupName || 'General',
+            description: taggedDesc,
             status: subCatFormState.status
           };
           localStorage.setItem('fams_custom_subcategories', JSON.stringify([newSub, ...custom]));
@@ -863,53 +878,53 @@ export function SubCategoriesTab({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Category *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Parent Category *</label>
                 <select
                   required
                   value={subCatFormState.categoryId || ''}
                   onChange={(e) => {
-                    const selectedCat = categories.find((c) => c.id === e.target.value);
+                    const catId = e.target.value;
+                    const selectedCat = categories.find((c) => c.id === catId);
+                    const classMatch = (selectedCat?.description || '').match(/\[class:([^\]]+)\]/);
+                    const groupMatch = (selectedCat?.description || '').match(/\[group:([^\]]+)\]/);
+                    const derivedClass = classMatch ? classMatch[1] : (selectedCat?.className || 'General');
+                    const matchingClassObj = availableAssetClasses.find(cls => (cls.name || cls.code) === derivedClass);
+                    const derivedGroup = groupMatch ? groupMatch[1] : (matchingClassObj?.groupName || selectedCat?.groupName || 'General');
+
                     setSubCatFormState({
                       ...subCatFormState,
-                      categoryId: e.target.value,
-                      categoryName: selectedCat?.name || ''
+                      categoryId: catId,
+                      categoryName: selectedCat?.name || '',
+                      className: derivedClass,
+                      groupName: derivedGroup
                     });
                   }}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
-                  <option value="">Select Category *</option>
+                  <option value="">-- Select Parent Category --</option>
                   {categories.map((c) => (
                     <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
                   ))}
                 </select>
-              </div>
 
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Asset Sub Group</label>
-                <select
-                  value={subCatFormState.className}
-                  onChange={(e) => setSubCatFormState({ ...subCatFormState, className: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                >
-                  {availableAssetClasses.map((cls) => {
-                    const name = cls.name || cls.code;
-                    return <option key={cls.id || name} value={name}>{name}</option>;
-                  })}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Asset Group</label>
-                <select
-                  value={subCatFormState.groupName}
-                  onChange={(e) => setSubCatFormState({ ...subCatFormState, groupName: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                >
-                  {availableAssetGroups.map((g) => {
-                    const name = g.name || g.code;
-                    return <option key={g.id || name} value={name}>{name}</option>;
-                  })}
-                </select>
+                {subCatFormState.categoryId && (
+                  <div className="mt-2 p-2.5 bg-purple-50/70 border border-purple-100 rounded-xl text-[11px] space-y-1">
+                    <div className="text-slate-500 font-semibold uppercase tracking-wider text-[10px]">Auto-Inherited Classification:</div>
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800 flex-wrap">
+                      <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
+                        Group: {subCatFormState.groupName || 'General'}
+                      </span>
+                      <span className="text-slate-400">&rsaquo;</span>
+                      <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
+                        Sub Group: {subCatFormState.className || 'General'}
+                      </span>
+                      <span className="text-slate-400">&rsaquo;</span>
+                      <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
+                        Category: {subCatFormState.categoryName}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>

@@ -896,39 +896,46 @@ export function CategoriesTab({
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Parent Asset Group *</label>
+                <label className="block font-semibold text-slate-700 mb-1">Parent Asset Sub Group *</label>
                 <select
-                  value={catFormState.groupName}
+                  required
+                  value={catFormState.className}
                   onChange={(e) => {
-                    const newGroup = e.target.value;
-                    const filteredClasses = availableAssetClasses.filter(c => c.groupName === newGroup);
-                    const newClass = filteredClasses.length > 0 ? (filteredClasses[0].name || filteredClasses[0].code) : (availableAssetClasses[0]?.name || 'Hardware');
-                    setCatFormState({ ...catFormState, groupName: newGroup, className: newClass });
+                    const selectedVal = e.target.value;
+                    const selectedClass = availableAssetClasses.find(cls => (cls.name || cls.code) === selectedVal);
+                    const derivedGroup = selectedClass?.groupName || 'General';
+                    setCatFormState({
+                      ...catFormState,
+                      className: selectedVal,
+                      groupName: derivedGroup
+                    });
                   }}
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
-                  {availableAssetGroups.map((g) => {
-                    const name = g.name || g.code;
-                    return <option key={g.id || name} value={name}>{name}</option>;
-                  })}
-                </select>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Parent Asset Sub Group *</label>
-                <select
-                  value={catFormState.className}
-                  onChange={(e) => setCatFormState({ ...catFormState, className: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                >
-                  {(availableAssetClasses.filter(c => !catFormState.groupName || c.groupName === catFormState.groupName).length > 0
-                    ? availableAssetClasses.filter(c => !catFormState.groupName || c.groupName === catFormState.groupName)
-                    : availableAssetClasses
-                  ).map((cls) => {
+                  <option value="">-- Select Parent Asset Sub Group --</option>
+                  {availableAssetClasses.map((cls) => {
                     const name = cls.name || cls.code;
-                    return <option key={cls.id || name} value={name}>{name}</option>;
+                    return (
+                      <option key={cls.id || name} value={name}>
+                        {name} {cls.groupName ? `(Group: ${cls.groupName})` : ''}
+                      </option>
+                    );
                   })}
                 </select>
+                {catFormState.className && (
+                  <div className="mt-2 p-2.5 bg-purple-50/70 border border-purple-100 rounded-xl text-[11px] space-y-1">
+                    <div className="text-slate-500 font-semibold uppercase tracking-wider text-[10px]">Auto-Inherited Classification:</div>
+                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                      <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
+                        Group: {catFormState.groupName || 'General'}
+                      </span>
+                      <span className="text-slate-400">&rsaquo;</span>
+                      <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
+                        Sub Group: {catFormState.className}
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div>
