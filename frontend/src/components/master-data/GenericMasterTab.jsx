@@ -23,7 +23,34 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-export const DEFAULT_MANUFACTURERS = [];
+export const DEFAULT_MANUFACTURERS = [
+  { id: '1', code: 'MFG-DELL', name: 'Dell Technologies', website: 'https://www.dell.com', supportContact: 'support@dell.com', country: 'United States', status: 'Active', totalAssets: 0 },
+  { id: '2', code: 'MFG-HP', name: 'HP Inc.', website: 'https://www.hp.com', supportContact: 'support@hp.com', country: 'United States', status: 'Active', totalAssets: 0 },
+  { id: '3', code: 'MFG-APPLE', name: 'Apple Inc.', website: 'https://www.apple.com', supportContact: 'applecare@apple.com', country: 'United States', status: 'Active', totalAssets: 0 },
+  { id: '4', code: 'MFG-LENOVO', name: 'Lenovo', website: 'https://www.lenovo.com', supportContact: 'support@lenovo.com', country: 'China', status: 'Active', totalAssets: 0 },
+  { id: '5', code: 'MFG-CISCO', name: 'Cisco Systems', website: 'https://www.cisco.com', supportContact: 'tac@cisco.com', country: 'United States', status: 'Active', totalAssets: 0 },
+  { id: '6', code: 'MFG-SAMSUNG', name: 'Samsung Electronics', website: 'https://www.samsung.com', supportContact: 'b2bsupport@samsung.com', country: 'South Korea', status: 'Active', totalAssets: 0 },
+  { id: '7', code: 'MFG-LOGI', name: 'Logitech', website: 'https://www.logitech.com', supportContact: 'help@logitech.com', country: 'Switzerland', status: 'Active', totalAssets: 0 },
+  { id: '8', code: 'MFG-STEEL', name: 'Steelcase', website: 'https://www.steelcase.com', supportContact: 'lineone@steelcase.com', country: 'United States', status: 'Active', totalAssets: 0 },
+  { id: '9', code: 'MFG-HM', name: 'Herman Miller', website: 'https://www.hermanmiller.com', supportContact: 'service@hermanmiller.com', country: 'United States', status: 'Active', totalAssets: 0 },
+  { id: '10', code: 'MFG-TOYOTA', name: 'Toyota Motor Corp', website: 'https://www.toyota.com', supportContact: 'fleet@toyota.com', country: 'Japan', status: 'Active', totalAssets: 0 },
+  { id: '11', code: 'MFG-SONY', name: 'Sony Group', website: 'https://www.sony.com', supportContact: 'prosupport@sony.com', country: 'Japan', status: 'Active', totalAssets: 0 }
+];
+
+export const DEFAULT_BRANDS = [
+  { id: '1', code: 'BRD-DELL', name: 'Dell', manufacturerName: 'Dell Technologies', description: 'Enterprise PCs, Latitude laptops, Precision workstations, PowerEdge servers', status: 'Active', totalAssets: 0 },
+  { id: '2', code: 'BRD-APPLE', name: 'Apple', manufacturerName: 'Apple Inc.', description: 'MacBook Pro, MacBook Air, iMac, iPad systems', status: 'Active', totalAssets: 0 },
+  { id: '3', code: 'BRD-THINKPAD', name: 'ThinkPad', manufacturerName: 'Lenovo', description: 'Commercial enterprise business laptops and workstations', status: 'Active', totalAssets: 0 },
+  { id: '4', code: 'BRD-LENOVO', name: 'Lenovo', manufacturerName: 'Lenovo', description: 'ThinkCentre desktops, Yoga convertibles, Legion hardware', status: 'Active', totalAssets: 0 },
+  { id: '5', code: 'BRD-HP', name: 'HP', manufacturerName: 'HP Inc.', description: 'EliteBook notebooks, ProBook laptops, ZBook Workstations', status: 'Active', totalAssets: 0 },
+  { id: '6', code: 'BRD-CISCO', name: 'Cisco', manufacturerName: 'Cisco Systems', description: 'Catalyst network switches, routers, Webex video endpoints', status: 'Active', totalAssets: 0 },
+  { id: '7', code: 'BRD-SAMSUNG', name: 'Samsung', manufacturerName: 'Samsung Electronics', description: 'High-resolution monitors, enterprise SSD storage', status: 'Active', totalAssets: 0 },
+  { id: '8', code: 'BRD-LOGI', name: 'Logitech', manufacturerName: 'Logitech', description: 'MX Master wireless peripherals, conference room Rally bars', status: 'Active', totalAssets: 0 },
+  { id: '9', code: 'BRD-STEEL', name: 'Steelcase', manufacturerName: 'Steelcase', description: 'Gesture & Leap ergonomic task chairs, height-adjustable Migration desks', status: 'Active', totalAssets: 0 },
+  { id: '10', code: 'BRD-HM', name: 'Herman Miller', manufacturerName: 'Herman Miller', description: 'Aeron and Embody ergonomic seating, modular office systems', status: 'Active', totalAssets: 0 },
+  { id: '11', code: 'BRD-TOYOTA', name: 'Toyota', manufacturerName: 'Toyota Motor Corp', description: 'Corporate fleet sedans, SUVs, and warehouse electric forklifts', status: 'Active', totalAssets: 0 },
+  { id: '12', code: 'BRD-SONY', name: 'Sony', manufacturerName: 'Sony Group', description: 'Professional 4K display monitors, studio audio, conference cameras', status: 'Active', totalAssets: 0 }
+];
 
 export const DEFAULT_UOM = [
   { id: '1', code: 'EA', name: 'Each / Pieces', symbol: 'ea', category: 'Discrete Count', description: 'Individual units, parts, or pieces', status: 'Active' },
@@ -73,6 +100,7 @@ export function GenericMasterTab({
   const [formState, setFormState] = useState({
     code: '',
     name: '',
+    manufacturerName: '',
     website: '',
     supportContact: '',
     country: 'United States',
@@ -94,6 +122,15 @@ export function GenericMasterTab({
           icon: Factory,
           defaultItems: DEFAULT_MANUFACTURERS,
           apiEndpoint: '/master-data/manufacturers'
+        };
+      case 'brands':
+        return {
+          title: 'Brands',
+          singular: 'Brand',
+          icon: Tag,
+          defaultItems: DEFAULT_BRANDS,
+          apiEndpoint: '/master-data/brands',
+          storageKey: 'fams_custom_brands'
         };
       case 'uom':
         return {
@@ -135,6 +172,36 @@ export function GenericMasterTab({
   const loadRecords = async () => {
     setIsLoading(true);
     try {
+      if (activeTab === 'brands') {
+        const res = await api.get('/master-data/brands').catch(() => null);
+        let custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
+        let serverBrands = [];
+        if (res?.brands && res.brands.length > 0) {
+          serverBrands = res.brands.map((b) => ({
+            id: b.id,
+            code: b.code || `BRD-${(b.name || '').substring(0, 4).toUpperCase()}`,
+            name: b.name,
+            manufacturerName: b.manufacturerName || '',
+            description: b.description || '',
+            status: b.active === false ? 'Inactive' : 'Active',
+            totalAssets: b.totalAssets || 0
+          }));
+        }
+        const serverKeys = new Set(serverBrands.map(x => (x.code || x.name || '').toUpperCase().trim()));
+        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
+        const defaultMissing = DEFAULT_BRANDS.filter(d => !serverKeys.has((d.code || d.name || '').toUpperCase().trim()));
+        const rawCombined = [...serverBrands, ...missingCustom, ...defaultMissing];
+        const seen = new Set();
+        const combined = rawCombined.filter(it => {
+          const key = (it.code || it.name || '').toUpperCase().trim();
+          if (!key || seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+        setItems(combined);
+        setSelectedItem(combined[0] || null);
+        return;
+      }
       if (activeTab === 'asset-types') {
 
         const res = await api.get('/master-data/asset-types').catch(() => null);
@@ -229,6 +296,7 @@ export function GenericMasterTab({
       setFormState({
         code: itemToEdit.code || '',
         name: itemToEdit.name || '',
+        manufacturerName: itemToEdit.manufacturerName || '',
         website: itemToEdit.website || '',
         supportContact: itemToEdit.supportContact || '',
         country: itemToEdit.country || 'United States',
@@ -244,6 +312,7 @@ export function GenericMasterTab({
       setFormState({
         code: '',
         name: '',
+        manufacturerName: '',
         website: '',
         supportContact: '',
         country: 'United States',
@@ -268,7 +337,23 @@ export function GenericMasterTab({
   // Save handler
   const handleSave = async (e) => {
     e.preventDefault();
-    if (!formState.name) return;
+    if (!formState.name || !formState.name.trim()) return;
+
+    const cleanName = (formState.name || '').trim();
+    const cleanCode = (formState.code || '').trim().toUpperCase();
+
+    // STRICT DUPLICATE VALIDATION: Code & Name must be unique
+    const isDuplicate = items.some((it) => {
+      if (editingItem && it.id === editingItem.id) return false;
+      const codeMatches = cleanCode && (it.code || '').trim().toUpperCase() === cleanCode;
+      const nameMatches = cleanName && (it.name || '').trim().toLowerCase() === cleanName.toLowerCase();
+      return codeMatches || nameMatches;
+    });
+
+    if (isDuplicate) {
+      triggerToast && triggerToast(`Duplicate Error: A ${tabConfig.singular.toLowerCase()} with code "${cleanCode}" or name "${cleanName}" already exists.`);
+      return;
+    }
 
     try {
       if (activeTab === 'manufacturers' && !editingItem) {
@@ -281,6 +366,26 @@ export function GenericMasterTab({
       }
 
       if (editingItem) {
+        if (activeTab === 'brands') {
+          api.put(`/master-data/brands/${editingItem.id}`, {
+            ...formState,
+            active: formState.status === 'Active'
+          }).catch(() => null);
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
+            localStorage.setItem('fams_custom_brands', JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
+          } catch (_) {}
+        }
+        if (activeTab === 'manufacturers') {
+          api.put(`/master-data/manufacturers/${editingItem.id}`, {
+            ...formState,
+            active: formState.status === 'Active'
+          }).catch(() => null);
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+            localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
+          } catch (_) {}
+        }
         const updated = items.map((it) => (it.id === editingItem.id ? { ...it, ...formState } : it));
         setItems(updated);
         if (selectedItem?.id === editingItem.id) setSelectedItem({ ...selectedItem, ...formState });
@@ -307,6 +412,19 @@ export function GenericMasterTab({
           try {
             const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
             localStorage.setItem('fams_custom_asset_types', JSON.stringify([newItem, ...custom]));
+          } catch (_) {}
+        }
+        if (activeTab === 'brands') {
+          api.post('/master-data/brands', {
+            code: newItem.code,
+            name: newItem.name,
+            manufacturerName: newItem.manufacturerName || '',
+            description: newItem.description || '',
+            active: newItem.status === 'Active'
+          }).catch(() => null);
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
+            localStorage.setItem('fams_custom_brands', JSON.stringify([newItem, ...custom]));
           } catch (_) {}
         }
         if (activeTab === 'manufacturers') {
@@ -343,6 +461,13 @@ export function GenericMasterTab({
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
         localStorage.setItem('fams_custom_asset_types', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+      } catch (_) {}
+    }
+    if (activeTab === 'brands') {
+      api.delete(`/master-data/brands/${itemToDelete.id}`).catch(() => null);
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
+        localStorage.setItem('fams_custom_brands', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
       } catch (_) {}
     }
     if (activeTab === 'manufacturers') {
@@ -457,6 +582,8 @@ export function GenericMasterTab({
                   <th className="py-3 px-3">Name</th>
                   {activeTab === 'manufacturers' && <th className="py-3 px-3">Support Contact</th>}
                   {activeTab === 'manufacturers' && <th className="py-3 px-3">Country</th>}
+                  {activeTab === 'brands' && <th className="py-3 px-3">Manufacturer</th>}
+                  {activeTab === 'brands' && <th className="py-3 px-3">Description</th>}
                   {activeTab === 'uom' && <th className="py-3 px-3 text-center">Symbol</th>}
                   {activeTab === 'uom' && <th className="py-3 px-3">Category</th>}
                   {activeTab === 'status-codes' && <th className="py-3 px-3">Lifecycle Stage</th>}
@@ -498,6 +625,16 @@ export function GenericMasterTab({
                         )}
                         {activeTab === 'manufacturers' && (
                           <td className="py-2.5 px-3 text-slate-600">{item.country || 'Global'}</td>
+                        )}
+                        {activeTab === 'brands' && (
+                          <td className="py-2.5 px-3 font-semibold text-slate-800">
+                            {item.manufacturerName || <span className="text-slate-300 italic">None</span>}
+                          </td>
+                        )}
+                        {activeTab === 'brands' && (
+                          <td className="py-2.5 px-3 text-slate-500 max-w-[240px] truncate">
+                            {item.description || '-'}
+                          </td>
                         )}
                         {activeTab === 'uom' && (
                           <td className="py-2.5 px-3 text-center font-mono font-bold text-[#6C2BD9]">
@@ -732,6 +869,25 @@ export function GenericMasterTab({
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
                     />
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'brands' && (
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Manufacturer</label>
+                  <input
+                    type="text"
+                    list="brand-mfr-list"
+                    value={formState.manufacturerName || ''}
+                    onChange={(e) => setFormState({ ...formState, manufacturerName: e.target.value })}
+                    placeholder="e.g. Dell Technologies, Lenovo, Apple, HP Inc."
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
+                  />
+                  <datalist id="brand-mfr-list">
+                    {DEFAULT_MANUFACTURERS.map((m) => (
+                      <option key={m.id || m.name} value={m.name} />
+                    ))}
+                  </datalist>
                 </div>
               )}
 

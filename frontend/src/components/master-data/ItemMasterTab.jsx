@@ -67,6 +67,36 @@ const DEFAULT_SUBCATEGORIES = [
   { id: 'subcat-05', code: 'SCAT-FLEET', name: 'Corporate Fleet', categoryName: 'Vehicles' }
 ];
 
+const DEFAULT_MANUFACTURERS = [
+  { id: 'mfr-dell', code: 'MFG-DELL', name: 'Dell Technologies' },
+  { id: 'mfr-hp', code: 'MFG-HP', name: 'HP Inc.' },
+  { id: 'mfr-apple', code: 'MFG-APPLE', name: 'Apple Inc.' },
+  { id: 'mfr-lenovo', code: 'MFG-LENOVO', name: 'Lenovo' },
+  { id: 'mfr-cisco', code: 'MFG-CISCO', name: 'Cisco Systems' },
+  { id: 'mfr-samsung', code: 'MFG-SAMSUNG', name: 'Samsung Electronics' },
+  { id: 'mfr-logi', code: 'MFG-LOGI', name: 'Logitech' },
+  { id: 'mfr-steel', code: 'MFG-STEEL', name: 'Steelcase' },
+  { id: 'mfr-hm', code: 'MFG-HM', name: 'Herman Miller' },
+  { id: 'mfr-toyota', code: 'MFG-TOYOTA', name: 'Toyota Motor Corp' },
+  { id: 'mfr-sony', code: 'MFG-SONY', name: 'Sony Group' },
+  { id: 'mfr-canon', code: 'MFG-CANON', name: 'Canon Inc.' }
+];
+
+const DEFAULT_BRANDS = [
+  { id: 'brd-dell', code: 'BRD-DELL', name: 'Dell', manufacturerName: 'Dell Technologies' },
+  { id: 'brd-apple', code: 'BRD-APPLE', name: 'Apple', manufacturerName: 'Apple Inc.' },
+  { id: 'brd-thinkpad', code: 'BRD-THINKPAD', name: 'ThinkPad', manufacturerName: 'Lenovo' },
+  { id: 'brd-lenovo', code: 'BRD-LENOVO', name: 'Lenovo', manufacturerName: 'Lenovo' },
+  { id: 'brd-hp', code: 'BRD-HP', name: 'HP', manufacturerName: 'HP Inc.' },
+  { id: 'brd-cisco', code: 'BRD-CISCO', name: 'Cisco', manufacturerName: 'Cisco Systems' },
+  { id: 'brd-samsung', code: 'BRD-SAMSUNG', name: 'Samsung', manufacturerName: 'Samsung Electronics' },
+  { id: 'brd-logi', code: 'BRD-LOGI', name: 'Logitech', manufacturerName: 'Logitech' },
+  { id: 'brd-steel', code: 'BRD-STEEL', name: 'Steelcase', manufacturerName: 'Steelcase' },
+  { id: 'brd-hm', code: 'BRD-HM', name: 'Herman Miller', manufacturerName: 'Herman Miller' },
+  { id: 'brd-toyota', code: 'BRD-TOYOTA', name: 'Toyota', manufacturerName: 'Toyota Motor Corp' },
+  { id: 'brd-sony', code: 'BRD-SONY', name: 'Sony', manufacturerName: 'Sony Group' }
+];
+
 export function ItemMasterTab({
   triggerToast,
   externalShowAddModal,
@@ -92,7 +122,8 @@ export function ItemMasterTab({
   const [assetSubGroups, setAssetSubGroups] = useState([]);
   const [categories, setCategories] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
-  const [manufacturers, setManufacturers] = useState([]);
+  const [manufacturers, setManufacturers] = useState(DEFAULT_MANUFACTURERS);
+  const [brands, setBrands] = useState(DEFAULT_BRANDS);
   const [uoms, setUoms] = useState([]);
 
   // Modal State
@@ -114,7 +145,10 @@ export function ItemMasterTab({
     categoryName: '',
     subCategoryId: '',
     subCategoryName: '',
+    manufacturerId: '',
     manufacturerName: '',
+    brandId: '',
+    brandName: '',
     model: '',
     uom: 'Each',
     specifications: '',
@@ -125,14 +159,15 @@ export function ItemMasterTab({
   const loadItemMasters = async () => {
     setIsLoading(true);
     try {
-      const [itemRes, grpRes, clsRes, subCatRes, catRes, mfrRes, uomRes] = await Promise.all([
+      const [itemRes, grpRes, clsRes, subCatRes, catRes, mfrRes, uomRes, brandRes] = await Promise.all([
         api.get('/master-data/items?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-classes?kind=CLASS').catch(() => null),
         api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null),
         api.get('/master-data/categories').catch(() => null),
         api.get('/master-data/manufacturers').catch(() => null),
-        api.get('/master-data/uoms').catch(() => null)
+        api.get('/master-data/uoms').catch(() => null),
+        api.get('/master-data/brands').catch(() => null)
       ]);
 
       const customItems = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
@@ -197,7 +232,30 @@ export function ItemMasterTab({
       });
       setSubCategories(mergedSubCats);
 
-      if (mfrRes?.manufacturers) setManufacturers(mfrRes.manufacturers);
+      // Merge Manufacturers
+      const localMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+      const serverMfrs = mfrRes?.manufacturers || [];
+      const seenMfrs = new Set();
+      const mergedMfrs = [...serverMfrs, ...localMfrs, ...DEFAULT_MANUFACTURERS].filter(m => {
+        const name = (m.name || m.code || '').trim().toLowerCase();
+        if (!name || seenMfrs.has(name)) return false;
+        seenMfrs.add(name);
+        return true;
+      });
+      setManufacturers(mergedMfrs);
+
+      // Merge Brands
+      const localBrands = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
+      const serverBrands = brandRes?.brands || [];
+      const seenBrands = new Set();
+      const mergedBrands = [...serverBrands, ...localBrands, ...DEFAULT_BRANDS].filter(b => {
+        const name = (b.name || b.code || '').trim().toLowerCase();
+        if (!name || seenBrands.has(name)) return false;
+        seenBrands.add(name);
+        return true;
+      });
+      setBrands(mergedBrands);
+
       if (uomRes?.uoms) setUoms(uomRes.uoms);
     } catch (err) {
       console.warn('Failed to load item masters:', err);
@@ -258,6 +316,17 @@ export function ItemMasterTab({
     return filtered.length > 0 ? filtered : subCategories;
   }, [subCategories, formState.categoryId, formState.categoryName]);
 
+  // Derived Brands matching selected Manufacturer (or all brands if no manufacturer selected)
+  const availableModalBrands = useMemo(() => {
+    if (!formState.manufacturerName) return brands;
+    const targetMfr = formState.manufacturerName.toLowerCase();
+    const filtered = brands.filter(b => {
+      const mfr = (b.manufacturerName || '').toLowerCase();
+      return mfr === targetMfr || mfr.includes(targetMfr) || targetMfr.includes(mfr);
+    });
+    return filtered.length > 0 ? filtered : brands;
+  }, [brands, formState.manufacturerName]);
+
   // Filtered Items for List
   const filteredItems = useMemo(() => {
     return items.filter(item => {
@@ -265,6 +334,7 @@ export function ItemMasterTab({
         (item.itemCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.itemName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.supplierBarcode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (item.brandName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.model || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (item.manufacturerName || '').toLowerCase().includes(searchQuery.toLowerCase());
 
@@ -317,7 +387,10 @@ export function ItemMasterTab({
         categoryName: itemToEdit.categoryName || '',
         subCategoryId: itemToEdit.subCategoryId || '',
         subCategoryName: itemToEdit.subCategoryName || '',
+        manufacturerId: itemToEdit.manufacturerId || '',
         manufacturerName: itemToEdit.manufacturerName || '',
+        brandId: itemToEdit.brandId || '',
+        brandName: itemToEdit.brandName || '',
         model: itemToEdit.model || '',
         uom: itemToEdit.uom || 'Each',
         specifications: itemToEdit.specifications || '',
@@ -338,7 +411,10 @@ export function ItemMasterTab({
         categoryName: '',
         subCategoryId: '',
         subCategoryName: '',
+        manufacturerId: '',
         manufacturerName: '',
+        brandId: '',
+        brandName: '',
         model: '',
         uom: 'Each',
         specifications: '',
@@ -350,8 +426,30 @@ export function ItemMasterTab({
 
   const handleSaveItem = async (e) => {
     e.preventDefault();
-    if (!formState.itemName || !formState.itemName.trim()) {
+    const cleanName = (formState.itemName || '').trim();
+    const cleanCode = (formState.itemCode || '').trim().toUpperCase();
+    const cleanBarcode = (formState.supplierBarcode || '').trim();
+
+    if (!cleanName) {
       setModalError('Item Name is required.');
+      return;
+    }
+
+    // STRICT DUPLICATE VALIDATION: Item Code uniqueness
+    if (cleanCode && items.some(i => i.id !== editingItem?.id && (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
+      setModalError(`An item with Item Code "${cleanCode}" already exists. Duplicate item codes are not allowed.`);
+      return;
+    }
+
+    // STRICT DUPLICATE VALIDATION: Item Name uniqueness
+    if (items.some(i => i.id !== editingItem?.id && (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
+      setModalError(`An item with Item Name "${cleanName}" already exists. Duplicate item names are not allowed.`);
+      return;
+    }
+
+    // STRICT DUPLICATE VALIDATION: Supplier Barcode uniqueness (if provided)
+    if (cleanBarcode && items.some(i => i.id !== editingItem?.id && i.supplierBarcode && i.supplierBarcode.trim().toLowerCase() === cleanBarcode.toLowerCase())) {
+      setModalError(`An item with Supplier Barcode "${cleanBarcode}" already exists. Supplier barcodes must be unique.`);
       return;
     }
 
@@ -566,8 +664,13 @@ export function ItemMasterTab({
                           <div className="font-bold text-slate-900 group-hover:text-[#6C2BD9] transition-colors leading-snug">
                             {item.itemName}
                           </div>
-                          {(item.model || item.manufacturerName) && (
-                            <div className="text-[10px] text-slate-400 flex items-center gap-1.5 mt-0.5">
+                          {(item.brandName || item.manufacturerName || item.model) && (
+                            <div className="text-[10px] text-slate-500 flex flex-wrap items-center gap-1.5 mt-0.5">
+                              {item.brandName && (
+                                <span className="font-bold text-[#6C2BD9] bg-purple-50 px-1.5 py-0.5 rounded border border-purple-200/60">
+                                  {item.brandName}
+                                </span>
+                              )}
                               {item.manufacturerName && <span>{item.manufacturerName}</span>}
                               {item.model && <span>• {item.model}</span>}
                             </div>
@@ -709,6 +812,12 @@ export function ItemMasterTab({
                       {selectedItem.supplierBarcode || 'Not assigned'}
                     </span>
                   </div>
+                  {selectedItem.brandName && (
+                    <div className="flex items-center justify-between text-xs pt-1 border-t border-purple-100/60">
+                      <span className="text-[#6C2BD9] font-bold">Brand:</span>
+                      <span className="font-bold text-[#6C2BD9] bg-purple-100/80 px-2 py-0.5 rounded">{selectedItem.brandName}</span>
+                    </div>
+                  )}
                   {selectedItem.manufacturerName && (
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-purple-100/60">
                       <span className="text-slate-500 font-medium">Manufacturer:</span>
@@ -955,18 +1064,63 @@ export function ItemMasterTab({
                 </div>
               </div>
 
-              {/* Manufacturer & Model */}
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Manufacturer</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Lenovo, Dell, Steelcase"
-                    value={formState.manufacturerName}
-                    onChange={(e) => setFormState({ ...formState, manufacturerName: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
-                  />
+              {/* Linked Manufacturer, Brand & Model */}
+              <div className="p-3.5 bg-slate-50/80 rounded-xl border border-slate-200/80 space-y-3">
+                <div className="text-[11px] font-bold text-slate-700 uppercase tracking-wider flex items-center gap-1.5">
+                  <Tag className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                  <span>Linked Manufacturer & Brand</span>
                 </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Manufacturer</label>
+                    <select
+                      value={formState.manufacturerName}
+                      onChange={(e) => {
+                        const mfr = manufacturers.find(m => m.name === e.target.value);
+                        setFormState({
+                          ...formState,
+                          manufacturerName: e.target.value,
+                          manufacturerId: mfr?.id || ''
+                        });
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                    >
+                      <option value="">-- Select Manufacturer --</option>
+                      {manufacturers.map(m => (
+                        <option key={m.id || m.name} value={m.name}>{m.name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Brand</label>
+                    <select
+                      value={formState.brandName}
+                      onChange={(e) => {
+                        const brd = brands.find(b => b.name === e.target.value);
+                        const autoMfr = brd?.manufacturerName || formState.manufacturerName;
+                        const mfrObj = manufacturers.find(m => m.name === autoMfr);
+                        setFormState({
+                          ...formState,
+                          brandName: e.target.value,
+                          brandId: brd?.id || '',
+                          manufacturerName: autoMfr,
+                          manufacturerId: mfrObj?.id || formState.manufacturerId
+                        });
+                      }}
+                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                    >
+                      <option value="">-- Select Brand --</option>
+                      {availableModalBrands.map(b => (
+                        <option key={b.id || b.name} value={b.name}>
+                          {b.name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                </div>
+
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Model / Part No.</label>
                   <input
@@ -974,7 +1128,7 @@ export function ItemMasterTab({
                     placeholder="e.g. 21HD0006US / ThinkPad T14"
                     value={formState.model}
                     onChange={(e) => setFormState({ ...formState, model: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
+                    className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
                   />
                 </div>
               </div>

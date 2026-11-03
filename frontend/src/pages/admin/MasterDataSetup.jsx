@@ -60,6 +60,7 @@ import { SuppliersTab, INITIAL_SUPPLIERS } from '../../components/master-data/Su
 import {
   GenericMasterTab,
   DEFAULT_MANUFACTURERS,
+  DEFAULT_BRANDS,
   DEFAULT_UOM,
   DEFAULT_STATUS_CODES,
   DEFAULT_ASSET_TYPES
@@ -324,6 +325,7 @@ export function MasterDataSetup() {
     const isCostCenters = activeTab === 'cost-centers';
     const isSuppliers = activeTab === 'suppliers';
     const isMfg = activeTab === 'manufacturers';
+    const isBrands = activeTab === 'brands';
     const isUom = activeTab === 'uom';
     const isStatusCodes = activeTab === 'status-codes';
     let headers, rows, filename;
@@ -360,6 +362,10 @@ export function MasterDataSetup() {
       headers = ['Manufacturer Code', 'Manufacturer Name', 'Website', 'Support Contact', 'Country', 'Status'];
       rows = DEFAULT_MANUFACTURERS.map((m) => [m.code, `"${m.name}"`, m.website, m.supportContact, m.country, m.status]);
       filename = 'Asset_Manufacturers';
+    } else if (isBrands) {
+      headers = ['Brand Code', 'Brand Name', 'Manufacturer', 'Description', 'Status'];
+      rows = DEFAULT_BRANDS.map((b) => [b.code, `"${b.name}"`, `"${b.manufacturerName || ''}"`, `"${b.description || ''}"`, b.status]);
+      filename = 'Asset_Brands';
     } else if (isUom) {
       headers = ['UOM Code', 'UOM Name', 'Symbol', 'Category', 'Description', 'Status'];
       rows = DEFAULT_UOM.map((u) => [u.code, `"${u.name}"`, u.symbol, u.category, `"${u.description}"`, u.status]);
@@ -399,6 +405,7 @@ export function MasterDataSetup() {
     { id: 'cost-centers', name: 'Cost Centers', icon: BarChart3, desc: 'Define and manage cost centers for budget allocation, depreciation charging, and financial reporting.' },
     { id: 'suppliers', name: 'Suppliers', icon: Truck, desc: 'Manage approved vendors and suppliers for asset procurement, warranties, and maintenance services.' },
     { id: 'manufacturers', name: 'Manufacturers', icon: Factory, desc: 'Manage approved equipment manufacturers, OEM specs, vendor portals, and technical support.' },
+    { id: 'brands', name: 'Brands', icon: Tag, desc: 'Manage equipment and product brands linked to items and asset catalog.' },
     { id: 'uom', name: 'UOM', icon: Scale, desc: 'Define standard Units of Measure (UOM) for inventory parts, bulk materials, and asset counting.' },
     { id: 'status-codes', name: 'Status Codes', icon: ShieldCheck, desc: 'Configure lifecycle status codes, operational states, and workflow status indicators.' },
     { id: 'disposal-statuses', name: 'Disposal Statuses', icon: Trash2, desc: 'Manage disposal statuses (Scrapped, Sold, Donated, Written Off, Traded In) for asset retirement transactions.' }
@@ -824,7 +831,7 @@ export function MasterDataSetup() {
       )}
 
       {/* GENERIC MASTER DATA TABS (Asset Types, Manufacturers, UOM, Status Codes & Custom Views) */}
-      {(['manufacturers', 'uom', 'status-codes', 'asset-types'].includes(activeTab) ||
+      {(['manufacturers', 'brands', 'uom', 'status-codes', 'asset-types'].includes(activeTab) ||
         (MORE_TABS.some((mt) => mt.id === activeTab) && activeTab !== 'depreciation')) && (
         <GenericMasterTab
           activeTab={activeTab}

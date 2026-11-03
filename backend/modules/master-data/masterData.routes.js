@@ -12,7 +12,8 @@ import {
 
   getAssetTypes, createAssetType, updateAssetType, deleteAssetType,
   getDepreciationPolicies, updateDepreciationPolicy,
-  getManufacturers, createManufacturer,
+  getManufacturers, createManufacturer, updateManufacturer, deleteManufacturer,
+  getBrands, createBrand, updateBrand, deleteBrand,
   getModels, createModel,
   getDepartments, createDepartment, updateDepartment, deleteDepartment,
   getCostCenters, createCostCenter, updateCostCenter, deleteCostCenter,
@@ -83,6 +84,14 @@ router.put('/depreciation-policies/:id', updateDepreciationPolicy);
 
 router.get('/manufacturers', getManufacturers);
 router.post('/manufacturers', createManufacturer);
+router.put('/manufacturers/:id', updateManufacturer);
+router.delete('/manufacturers/:id', deleteManufacturer);
+
+// Brands (Master Data)
+router.get('/brands', getBrands);
+router.post('/brands', createBrand);
+router.put('/brands/:id', updateBrand);
+router.delete('/brands/:id', deleteBrand);
 
 router.get('/models', getModels);
 router.post('/models', createModel);

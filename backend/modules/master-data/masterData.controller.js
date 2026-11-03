@@ -199,20 +199,24 @@ export async function createAssetGroup(req, res, next) {
       return res.status(400).json({ success: false, message: 'Code and Name are required.' });
     }
     const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
 
     // Check duplicate in memory first
-    if (memoryAssetGroups.some(g => g.code.toUpperCase() === cleanCode)) {
-      return res.status(400).json({ success: false, message: `Asset Group code "${cleanCode}" already exists.` });
+    if (memoryAssetGroups.some(g => (g.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Asset Group code "${cleanCode}" already exists. Duplicate codes are not allowed.` });
+    }
+    if (memoryAssetGroups.some(g => (g.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Asset Group name "${cleanName}" already exists. Duplicate names are not allowed.` });
     }
 
     // Try checking duplicate in DB if connected
     if (isDbConnected()) {
       try {
         const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM asset_groups WHERE code = '${cleanCode.replace(/'/g, "''")}'`
+          `SELECT id FROM asset_groups WHERE code = '${cleanCode.replace(/'/g, "''")}' OR name = '${cleanName.replace(/'/g, "''")}'`
         );
         if (existing && existing.length > 0) {
-          return res.status(400).json({ success: false, message: `Asset Group code "${cleanCode}" already exists.` });
+          return res.status(409).json({ success: false, message: `Asset Group with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
       } catch (dbErr) {
         console.warn('DB check duplicate skipped (offline/error):', dbErr.message);
@@ -545,6 +549,26 @@ export async function createCategory(req, res, next) {
     if (!code || !name) {
       return res.status(400).json({ success: false, message: 'Category Code and Name are required.' });
     }
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.category.findFirst({
+          where: {
+            OR: [
+              { code: cleanCode },
+              { name: { equals: cleanName, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Category with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate category skipped:', dbErr.message);
+      }
+    }
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const category = await prisma.category.create({
       data: {
@@ -766,6 +790,26 @@ export async function createAssetClass(req, res, next) {
     if (!code || !name) {
       return res.status(400).json({ success: false, message: 'Class Code and Name are required.' });
     }
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.assetClass.findFirst({
+          where: {
+            OR: [
+              { code: cleanCode },
+              { name: { equals: cleanName, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Asset Sub Group with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate asset class skipped:', dbErr.message);
+      }
+    }
     let targetCatId = categoryId;
     if (!targetCatId) {
       const firstCat = await prisma.category.findFirst();
@@ -896,21 +940,157 @@ export async function updateDepreciationPolicy(req, res, next) {
 
 export async function getManufacturers(req, res, next) {
   try {
-    const where = req.query.includeInactive === 'true' ? {} : { active: true };
-    const manufacturers = await prisma.manufacturer.findMany({ where, orderBy: { name: 'asc' } });
-    res.json({ success: true, manufacturers });
-  } catch (err) {
-    res.json({
-      success: true,
-      manufacturers: []
-    });
-  }
+    if (isDbConnected()) {
+      try {
+        const where = req.query.includeInactive === 'true' ? {} : { active: true };
+        const manufacturers = await prisma.manufacturer.findMany({ where, orderBy: { name: 'asc' } });
+        if (Array.isArray(manufacturers) && manufacturers.length > 0) {
+          const list = manufacturers.map(m => ({
+            id: m.id,
+            code: m.code || `MFG-${(m.name || '').substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`,
+            name: m.name,
+            website: m.website || '',
+            supportContact: m.supportContact || '',
+            country: m.country || 'Global',
+            active: m.active !== false
+          }));
+          inMemoryManufacturers = list;
+          writeManufacturersToFile(list);
+          return res.json({ success: true, manufacturers: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getManufacturers query skipped:', dbErr.message);
+      }
+    }
+    const list = req.query.includeInactive === 'true'
+      ? inMemoryManufacturers
+      : inMemoryManufacturers.filter(m => m.active !== false);
+    res.json({ success: true, manufacturers: list });
+  } catch (err) { next(err); }
 }
 
 export async function createManufacturer(req, res, next) {
   try {
-    const manufacturer = await prisma.manufacturer.create({ data: req.body });
-    res.status(201).json({ success: true, manufacturer });
+    const { code, name, website, supportContact, country, active, status } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Manufacturer Name is required.' });
+
+    const cleanName = name.trim();
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : `MFG-${cleanName.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+
+    // Duplicate check
+    if (inMemoryManufacturers.some(m => (m.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Manufacturer with code "${cleanCode}" already exists. Duplicate manufacturer codes are not allowed.` });
+    }
+    if (inMemoryManufacturers.some(m => (m.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists. Duplicate manufacturer names are not allowed.` });
+    }
+
+    const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
+    const newMfr = {
+      id: `mfr-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      website: website || '',
+      supportContact: supportContact || '',
+      country: country || 'United States',
+      active: isAct
+    };
+
+    if (isDbConnected()) {
+      try {
+        const created = await prisma.manufacturer.create({
+          data: {
+            code: cleanCode,
+            name: cleanName,
+            website: website || null,
+            supportContact: supportContact || null,
+            country: country || null,
+            active: isAct
+          }
+        });
+        if (created?.id) newMfr.id = created.id;
+      } catch (dbErr) {
+        console.warn('DB create manufacturer skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryManufacturers.unshift(newMfr);
+    writeManufacturersToFile(inMemoryManufacturers);
+    res.status(201).json({ success: true, manufacturer: newMfr });
+  } catch (err) { next(err); }
+}
+
+export async function updateManufacturer(req, res, next) {
+  try {
+    const { id } = req.params;
+    const idx = inMemoryManufacturers.findIndex(m => m.id === id || m.code === id);
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Manufacturer not found' });
+
+    const existing = inMemoryManufacturers[idx];
+    const { code, name, website, supportContact, country, active, status } = req.body;
+    const cleanCode = code ? code.trim().toUpperCase() : existing.code;
+    const cleanName = name ? name.trim() : existing.name;
+
+    // Duplicate check excluding self
+    if (cleanCode && inMemoryManufacturers.some(m => m.id !== existing.id && (m.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Manufacturer with code "${cleanCode}" already exists.` });
+    }
+    if (cleanName && inMemoryManufacturers.some(m => m.id !== existing.id && (m.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists.` });
+    }
+
+    const updated = {
+      ...existing,
+      ...req.body,
+      code: cleanCode,
+      name: cleanName
+    };
+    if (active !== undefined) updated.active = Boolean(active);
+    else if (status !== undefined) updated.active = status === 'Active';
+
+    inMemoryManufacturers[idx] = updated;
+
+    if (isDbConnected()) {
+      try {
+        await prisma.manufacturer.update({
+          where: { id: existing.id },
+          data: {
+            code: cleanCode,
+            name: cleanName,
+            website: updated.website || null,
+            supportContact: updated.supportContact || null,
+            country: updated.country || null,
+            active: updated.active
+          }
+        });
+      } catch (dbErr) {
+        console.warn('DB update manufacturer skipped:', dbErr.message);
+      }
+    }
+
+    writeManufacturersToFile(inMemoryManufacturers);
+    res.json({ success: true, manufacturer: updated });
+  } catch (err) { next(err); }
+}
+
+export async function deleteManufacturer(req, res, next) {
+  try {
+    const { id } = req.params;
+    const mfr = inMemoryManufacturers.find(m => m.id === id || m.code === id);
+    if (!mfr) return res.status(404).json({ success: false, message: 'Manufacturer not found' });
+
+    inMemoryManufacturers = inMemoryManufacturers.filter(m => m.id !== id && m.code !== id);
+
+    if (isDbConnected()) {
+      try {
+        await prisma.manufacturer.delete({ where: { id: mfr.id } });
+      } catch (dbErr) {
+        console.warn('DB delete manufacturer skipped:', dbErr.message);
+      }
+    }
+
+    writeManufacturersToFile(inMemoryManufacturers);
+    res.json({ success: true, message: 'Manufacturer deleted successfully' });
   } catch (err) { next(err); }
 }
 
@@ -1590,6 +1770,37 @@ export async function deleteAssetType(req, res, next) {
 const ITEM_MASTERS_FILE = path.join(process.cwd(), 'data', 'item_masters.json');
 const UOMS_FILE = path.join(process.cwd(), 'data', 'uoms.json');
 const DISPOSAL_STATUSES_FILE = path.join(process.cwd(), 'data', 'disposal_statuses.json');
+const BRANDS_FILE = path.join(process.cwd(), 'data', 'brands.json');
+const MANUFACTURERS_FILE = path.join(process.cwd(), 'data', 'manufacturers.json');
+
+const DEFAULT_BRANDS = [
+  { id: 'brd-001', code: 'BRD-DELL', name: 'Dell', manufacturerId: 'mfr-dell', manufacturerName: 'Dell Technologies', description: 'Enterprise PCs, Latitude laptops, Precision workstations, PowerEdge servers', active: true },
+  { id: 'brd-002', code: 'BRD-APPLE', name: 'Apple', manufacturerId: 'mfr-apple', manufacturerName: 'Apple Inc.', description: 'MacBook Pro, MacBook Air, iMac, iPad, Apple Silicon systems', active: true },
+  { id: 'brd-003', code: 'BRD-THINKPAD', name: 'ThinkPad', manufacturerId: 'mfr-lenovo', manufacturerName: 'Lenovo', description: 'Commercial enterprise business laptops and workstations', active: true },
+  { id: 'brd-004', code: 'BRD-LENOVO', name: 'Lenovo', manufacturerId: 'mfr-lenovo', manufacturerName: 'Lenovo', description: 'ThinkCentre desktop computers, Yoga convertibles, Legion hardware', active: true },
+  { id: 'brd-005', code: 'BRD-HP', name: 'HP', manufacturerId: 'mfr-hp', manufacturerName: 'HP Inc.', description: 'EliteBook notebooks, ProBook laptops, ZBook Workstations, LaserJet printers', active: true },
+  { id: 'brd-006', code: 'BRD-CISCO', name: 'Cisco', manufacturerId: 'mfr-cisco', manufacturerName: 'Cisco Systems', description: 'Catalyst network switches, ISR/ASR routers, Webex video endpoints', active: true },
+  { id: 'brd-007', code: 'BRD-SAMSUNG', name: 'Samsung', manufacturerId: 'mfr-samsung', manufacturerName: 'Samsung Electronics', description: 'High-resolution monitors, enterprise SSD storage, Galaxy mobile devices', active: true },
+  { id: 'brd-008', code: 'BRD-LOGITECH', name: 'Logitech', manufacturerId: 'mfr-logi', manufacturerName: 'Logitech', description: 'MX Master wireless peripherals, conference room Rally bars, webcams', active: true },
+  { id: 'brd-009', code: 'BRD-STEELCASE', name: 'Steelcase', manufacturerId: 'mfr-steel', manufacturerName: 'Steelcase', description: 'Gesture & Leap ergonomic task chairs, height-adjustable Migration desks', active: true },
+  { id: 'brd-010', code: 'BRD-HERMANMILLER', name: 'Herman Miller', manufacturerId: 'mfr-hm', manufacturerName: 'Herman Miller', description: 'Aeron and Embody ergonomic seating, modular office systems', active: true },
+  { id: 'brd-011', code: 'BRD-TOYOTA', name: 'Toyota', manufacturerId: 'mfr-toyota', manufacturerName: 'Toyota Motor Corp', description: 'Corporate fleet sedans, SUVs, and warehouse electric forklifts', active: true },
+  { id: 'brd-012', code: 'BRD-SONY', name: 'Sony', manufacturerId: 'mfr-sony', manufacturerName: 'Sony Group', description: 'Professional 4K display monitors, studio audio, conference cameras', active: true }
+];
+
+const DEFAULT_MANUFACTURERS = [
+  { id: 'mfr-dell', code: 'MFG-DELL', name: 'Dell Technologies', website: 'https://www.dell.com', supportContact: 'support@dell.com', country: 'United States', active: true },
+  { id: 'mfr-hp', code: 'MFG-HP', name: 'HP Inc.', website: 'https://www.hp.com', supportContact: 'support@hp.com', country: 'United States', active: true },
+  { id: 'mfr-apple', code: 'MFG-APPLE', name: 'Apple Inc.', website: 'https://www.apple.com', supportContact: 'applecare@apple.com', country: 'United States', active: true },
+  { id: 'mfr-lenovo', code: 'MFG-LENOVO', name: 'Lenovo', website: 'https://www.lenovo.com', supportContact: 'support@lenovo.com', country: 'China', active: true },
+  { id: 'mfr-cisco', code: 'MFG-CISCO', name: 'Cisco Systems', website: 'https://www.cisco.com', supportContact: 'tac@cisco.com', country: 'United States', active: true },
+  { id: 'mfr-samsung', code: 'MFG-SAMSUNG', name: 'Samsung Electronics', website: 'https://www.samsung.com', supportContact: 'b2bsupport@samsung.com', country: 'South Korea', active: true },
+  { id: 'mfr-logi', code: 'MFG-LOGI', name: 'Logitech', website: 'https://www.logitech.com', supportContact: 'help@logitech.com', country: 'Switzerland', active: true },
+  { id: 'mfr-steel', code: 'MFG-STEEL', name: 'Steelcase', website: 'https://www.steelcase.com', supportContact: 'lineone@steelcase.com', country: 'United States', active: true },
+  { id: 'mfr-hm', code: 'MFG-HM', name: 'Herman Miller', website: 'https://www.hermanmiller.com', supportContact: 'service@hermanmiller.com', country: 'United States', active: true },
+  { id: 'mfr-toyota', code: 'MFG-TOYOTA', name: 'Toyota Motor Corp', website: 'https://www.toyota.com', supportContact: 'fleet@toyota.com', country: 'Japan', active: true },
+  { id: 'mfr-sony', code: 'MFG-SONY', name: 'Sony Group', website: 'https://www.sony.com', supportContact: 'prosupport@sony.com', country: 'Japan', active: true }
+];
 
 const DEFAULT_DISPOSAL_STATUSES = [
   { id: 'disp-01', code: 'SCRAPPED', name: 'Scrapped', description: 'Asset sent to recycling or salvage yard with zero or scrap residual value', active: true },
@@ -1724,6 +1935,79 @@ function writeDisposalStatusesToFile(list) {
   }
 }
 
+function readBrandsFromFile() {
+  try {
+    if (fs.existsSync(BRANDS_FILE)) {
+      const data = fs.readFileSync(BRANDS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_BRANDS;
+    }
+  } catch (e) {
+    console.warn('Failed to read brands.json, using defaults:', e.message);
+  }
+  return DEFAULT_BRANDS;
+}
+
+function writeBrandsToFile(list) {
+  try {
+    const dir = path.dirname(BRANDS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(BRANDS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write brands.json:', e.message);
+  }
+}
+
+function readManufacturersFromFile() {
+  try {
+    if (fs.existsSync(MANUFACTURERS_FILE)) {
+      const data = fs.readFileSync(MANUFACTURERS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_MANUFACTURERS;
+    }
+  } catch (e) {
+    console.warn('Failed to read manufacturers.json, using defaults:', e.message);
+  }
+  return DEFAULT_MANUFACTURERS;
+}
+
+function writeManufacturersToFile(list) {
+  try {
+    const dir = path.dirname(MANUFACTURERS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(MANUFACTURERS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write manufacturers.json:', e.message);
+  }
+}
+
+let inMemoryBrands = readBrandsFromFile();
+let inMemoryManufacturers = readManufacturersFromFile();
+let brandsTableEnsured = false;
+
+async function ensureBrandsTable() {
+  if (brandsTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='brands' and xtype='U')
+      CREATE TABLE brands (
+        id NVARCHAR(100) PRIMARY KEY,
+        code NVARCHAR(50) NOT NULL UNIQUE,
+        name NVARCHAR(100) NOT NULL,
+        manufacturerId NVARCHAR(100) NULL,
+        manufacturerName NVARCHAR(200) NULL,
+        description NVARCHAR(500) NULL,
+        active BIT DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    brandsTableEnsured = true;
+  } catch (err) {
+    console.warn('brands table check skipped:', err.message);
+  }
+}
+
 let inMemoryDisposalStatuses = readDisposalStatusesFromFile();
 let disposalStatusesTableEnsured = false;
 
@@ -1797,6 +2081,8 @@ async function ensureItemMastersTable() {
         subCategoryName NVARCHAR(200) NULL,
         manufacturerId NVARCHAR(100) NULL,
         manufacturerName NVARCHAR(200) NULL,
+        brandId NVARCHAR(100) NULL,
+        brandName NVARCHAR(200) NULL,
         model NVARCHAR(100) NULL,
         uom NVARCHAR(50) DEFAULT 'Each',
         specifications NVARCHAR(MAX) NULL,
@@ -1805,6 +2091,10 @@ async function ensureItemMastersTable() {
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('item_masters') AND name = 'brandId')
+      ALTER TABLE item_masters ADD brandId NVARCHAR(100) NULL;
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('item_masters') AND name = 'brandName')
+      ALTER TABLE item_masters ADD brandName NVARCHAR(200) NULL;
     `);
     itemMastersTableEnsured = true;
   } catch (err) {
@@ -1873,6 +2163,8 @@ export async function getItemMasters(req, res, next) {
             subCategoryName: r.subCategoryName || '',
             manufacturerId: r.manufacturerId || '',
             manufacturerName: r.manufacturerName || '',
+            brandId: r.brandId || '',
+            brandName: r.brandName || '',
             model: r.model || '',
             uom: r.uom || 'Each',
             specifications: r.specifications || '',
@@ -1922,6 +2214,8 @@ export async function createItemMaster(req, res, next) {
       subCategoryName,
       manufacturerId,
       manufacturerName,
+      brandId,
+      brandName,
       model,
       uom,
       specifications,
@@ -1939,23 +2233,33 @@ export async function createItemMaster(req, res, next) {
     const isAct = active !== undefined ? Boolean(active) : true;
     const id = `ITM-${Date.now()}`;
 
-    // Check duplicate code and auto-resolve to next sequential code if duplicate
-    let finalCode = cleanCode;
-    if (inMemoryItemMasters.some(i => i.itemCode === finalCode)) {
-      let maxNum = 100;
-      for (const itm of inMemoryItemMasters) {
-        const m = (itm.itemCode || '').match(/ITM-(\d+)/);
-        if (m) {
-          const n = parseInt(m[1], 10);
-          if (!isNaN(n) && n > maxNum) maxNum = n;
-        }
-      }
-      finalCode = `ITM-${String(maxNum + 1).padStart(6, '0')}`;
+    // STRICT DUPLICATE VALIDATION ON ITEM CODE
+    if (inMemoryItemMasters.some(i => (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
+      return res.status(409).json({
+        success: false,
+        message: `An item with Item Code "${cleanCode}" already exists. Duplicate item codes are not allowed.`
+      });
+    }
+
+    // STRICT DUPLICATE VALIDATION ON ITEM NAME
+    if (inMemoryItemMasters.some(i => (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({
+        success: false,
+        message: `An item with Item Name "${cleanName}" already exists. Duplicate item names are not allowed.`
+      });
+    }
+
+    // STRICT DUPLICATE VALIDATION ON SUPPLIER BARCODE (IF PROVIDED)
+    if (cleanBarcode && inMemoryItemMasters.some(i => i.supplierBarcode && i.supplierBarcode.trim().toLowerCase() === cleanBarcode.toLowerCase())) {
+      return res.status(409).json({
+        success: false,
+        message: `An item with Supplier Barcode "${cleanBarcode}" already exists. Barcodes must be unique.`
+      });
     }
 
     const newItem = {
       id,
-      itemCode: finalCode,
+      itemCode: cleanCode,
       itemName: cleanName,
       supplierBarcode: cleanBarcode,
       description: description || '',
@@ -1969,6 +2273,8 @@ export async function createItemMaster(req, res, next) {
       subCategoryName: subCategoryName || '',
       manufacturerId: manufacturerId || '',
       manufacturerName: manufacturerName || '',
+      brandId: brandId || '',
+      brandName: brandName || '',
       model: model || '',
       uom: uom || 'Each',
       specifications: specifications || '',
@@ -1986,7 +2292,7 @@ export async function createItemMaster(req, res, next) {
             id, itemCode, itemName, supplierBarcode, description,
             assetGroupId, assetGroupName, assetSubGroupId, assetSubGroupName,
             categoryId, categoryName, subCategoryId, subCategoryName,
-            manufacturerId, manufacturerName, model, uom,
+            manufacturerId, manufacturerName, brandId, brandName, model, uom,
             specifications, imageUrl, active, createdAt, updatedAt
           ) VALUES (
             '${id}',
@@ -2004,6 +2310,8 @@ export async function createItemMaster(req, res, next) {
             '${(subCategoryName || '').replace(/'/g, "''")}',
             '${(manufacturerId || '').replace(/'/g, "''")}',
             '${(manufacturerName || '').replace(/'/g, "''")}',
+            '${(brandId || '').replace(/'/g, "''")}',
+            '${(brandName || '').replace(/'/g, "''")}',
             '${(model || '').replace(/'/g, "''")}',
             '${(uom || 'Each').replace(/'/g, "''")}',
             '${(specifications || '').replace(/'/g, "''")}',
@@ -2031,9 +2339,33 @@ export async function updateItemMaster(req, res, next) {
     if (idx === -1) return res.status(404).json({ success: false, message: 'Item not found' });
 
     const existing = inMemoryItemMasters[idx];
+    const cleanCode = req.body.itemCode ? req.body.itemCode.trim().toUpperCase() : existing.itemCode;
+    const cleanName = req.body.itemName ? req.body.itemName.trim() : existing.itemName;
+    const cleanBarcode = req.body.supplierBarcode !== undefined ? req.body.supplierBarcode.trim() : (existing.supplierBarcode || '');
+
+    // Duplicate check on Item Code excluding current
+    if (cleanCode && inMemoryItemMasters.some(i => i.id !== existing.id && (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Another item with Item Code "${cleanCode}" already exists.` });
+    }
+
+    // Duplicate check on Item Name excluding current
+    if (cleanName && inMemoryItemMasters.some(i => i.id !== existing.id && (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Another item with Item Name "${cleanName}" already exists.` });
+    }
+
+    // Duplicate check on Barcode excluding current
+    if (cleanBarcode && inMemoryItemMasters.some(i => i.id !== existing.id && i.supplierBarcode && i.supplierBarcode.trim().toLowerCase() === cleanBarcode.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Another item with Supplier Barcode "${cleanBarcode}" already exists.` });
+    }
+
     const updated = {
       ...existing,
       ...req.body,
+      itemCode: cleanCode,
+      itemName: cleanName,
+      supplierBarcode: cleanBarcode,
+      brandId: req.body.brandId !== undefined ? req.body.brandId : (existing.brandId || ''),
+      brandName: req.body.brandName !== undefined ? req.body.brandName : (existing.brandName || ''),
       updatedAt: new Date().toISOString()
     };
     if (req.body.active !== undefined) updated.active = Boolean(req.body.active);
@@ -2057,6 +2389,8 @@ export async function updateItemMaster(req, res, next) {
               subCategoryName = '${(updated.subCategoryName || '').replace(/'/g, "''")}',
               manufacturerId = '${(updated.manufacturerId || '').replace(/'/g, "''")}',
               manufacturerName = '${(updated.manufacturerName || '').replace(/'/g, "''")}',
+              brandId = '${(updated.brandId || '').replace(/'/g, "''")}',
+              brandName = '${(updated.brandName || '').replace(/'/g, "''")}',
               model = '${(updated.model || '').replace(/'/g, "''")}',
               uom = '${(updated.uom || 'Each').replace(/'/g, "''")}',
               specifications = '${(updated.specifications || '').replace(/'/g, "''")}',
@@ -2263,5 +2597,164 @@ export async function deleteDisposalStatus(req, res, next) {
     inMemoryDisposalStatuses = inMemoryDisposalStatuses.filter(s => s.id !== id && s.code !== id);
     writeDisposalStatusesToFile(inMemoryDisposalStatuses);
     res.json({ success: true, message: 'Disposal status deleted successfully' });
+  } catch (err) { next(err); }
+}
+
+// ============================================================================
+// BRAND MASTER HANDLERS
+// ============================================================================
+export async function getBrands(req, res, next) {
+  try {
+    await ensureBrandsTable();
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM brands WHERE active = 1 ORDER BY name ASC`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            manufacturerId: r.manufacturerId || '',
+            manufacturerName: r.manufacturerName || '',
+            description: r.description || '',
+            active: Boolean(r.active)
+          }));
+          inMemoryBrands = list;
+          writeBrandsToFile(list);
+          return res.json({ success: true, brands: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getBrands query skipped:', dbErr.message);
+      }
+    }
+    const list = req.query.includeInactive === 'true'
+      ? inMemoryBrands
+      : inMemoryBrands.filter(b => b.active !== false);
+    res.json({ success: true, brands: list });
+  } catch (err) { next(err); }
+}
+
+export async function createBrand(req, res, next) {
+  try {
+    await ensureBrandsTable();
+    const { code, name, manufacturerId, manufacturerName, description, active, status } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Brand Name is required.' });
+
+    const cleanName = name.trim();
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : `BRD-${cleanName.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+
+    // Duplicate check on Code and Name
+    if (inMemoryBrands.some(b => (b.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" already exists. Duplicate brand codes are not allowed.` });
+    }
+    if (inMemoryBrands.some(b => (b.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Brand with name "${cleanName}" already exists. Duplicate brand names are not allowed.` });
+    }
+
+    const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
+    const id = `brd-${Date.now()}`;
+
+    const newBrand = {
+      id,
+      code: cleanCode,
+      name: cleanName,
+      manufacturerId: manufacturerId || '',
+      manufacturerName: manufacturerName || '',
+      description: description ? description.trim() : '',
+      active: isAct,
+      createdAt: new Date().toISOString()
+    };
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO brands (id, code, name, manufacturerId, manufacturerName, description, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(manufacturerId || '').replace(/'/g, "''")}', '${(manufacturerName || '').replace(/'/g, "''")}', '${(description || '').replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert brands skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryBrands.unshift(newBrand);
+    writeBrandsToFile(inMemoryBrands);
+    res.status(201).json({ success: true, brand: newBrand });
+  } catch (err) { next(err); }
+}
+
+export async function updateBrand(req, res, next) {
+  try {
+    const { id } = req.params;
+    const idx = inMemoryBrands.findIndex(b => b.id === id || b.code === id);
+    if (idx === -1) return res.status(404).json({ success: false, message: 'Brand not found' });
+
+    const existing = inMemoryBrands[idx];
+    const { code, name, manufacturerId, manufacturerName, description, active, status } = req.body;
+    const cleanCode = code ? code.trim().toUpperCase() : existing.code;
+    const cleanName = name ? name.trim() : existing.name;
+
+    // Duplicate check excluding current
+    if (cleanCode && inMemoryBrands.some(b => b.id !== existing.id && (b.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" already exists.` });
+    }
+    if (cleanName && inMemoryBrands.some(b => b.id !== existing.id && (b.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Brand with name "${cleanName}" already exists.` });
+    }
+
+    const updated = {
+      ...existing,
+      ...req.body,
+      code: cleanCode,
+      name: cleanName,
+      updatedAt: new Date().toISOString()
+    };
+    if (active !== undefined) updated.active = Boolean(active);
+    else if (status !== undefined) updated.active = status === 'Active';
+
+    inMemoryBrands[idx] = updated;
+
+    await ensureBrandsTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE brands
+          SET code = '${cleanCode.replace(/'/g, "''")}',
+              name = '${cleanName.replace(/'/g, "''")}',
+              manufacturerId = '${(updated.manufacturerId || '').replace(/'/g, "''")}',
+              manufacturerName = '${(updated.manufacturerName || '').replace(/'/g, "''")}',
+              description = '${(updated.description || '').replace(/'/g, "''")}',
+              active = ${updated.active ? 1 : 0},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${existing.id.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB update brands skipped:', dbErr.message);
+      }
+    }
+
+    writeBrandsToFile(inMemoryBrands);
+    res.json({ success: true, brand: updated });
+  } catch (err) { next(err); }
+}
+
+export async function deleteBrand(req, res, next) {
+  try {
+    const { id } = req.params;
+    const brand = inMemoryBrands.find(b => b.id === id || b.code === id);
+    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
+
+    inMemoryBrands = inMemoryBrands.filter(b => b.id !== id && b.code !== id);
+
+    await ensureBrandsTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`DELETE FROM brands WHERE id = '${brand.id.replace(/'/g, "''")}'`);
+      } catch (dbErr) {
+        console.warn('DB delete brands skipped:', dbErr.message);
+      }
+    }
+
+    writeBrandsToFile(inMemoryBrands);
+    res.json({ success: true, message: 'Brand deleted successfully' });
   } catch (err) { next(err); }
 }

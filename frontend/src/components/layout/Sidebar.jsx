@@ -194,6 +194,7 @@ const NAV_STRUCTURE = [
       { name: 'Cost Centers', path: '/admin/master-data?tab=cost-centers' },
       { name: 'Suppliers', path: '/admin/master-data?tab=suppliers' },
       { name: 'Manufacturers', path: '/admin/master-data?tab=manufacturers' },
+      { name: 'Brands', path: '/admin/master-data?tab=brands' },
       { name: 'UOM', path: '/admin/master-data?tab=uom' },
       { name: 'Status Codes', path: '/admin/master-data?tab=status-codes' },
       { name: 'Disposal Statuses', path: '/admin/master-data?tab=disposal-statuses' }
