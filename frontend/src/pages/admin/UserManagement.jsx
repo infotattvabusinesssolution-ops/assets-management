@@ -50,6 +50,7 @@ export function UserManagement() {
   const [sitesList, setSitesList] = useState([]);
   const [custodiansList, setCustodiansList] = useState([]);
   const [employeeLookupCode, setEmployeeLookupCode] = useState('');
+  const [showLookupDropdown, setShowLookupDropdown] = useState(false);
   const [employeeLookupStatus, setEmployeeLookupStatus] = useState(null);
   const [departmentsList, setDepartmentsList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
@@ -1371,40 +1372,84 @@ export function UserManagement() {
                     </label>
                     <span className="text-[10px] text-slate-500">Auto-populates user details</span>
                   </div>
-                  <div className="flex items-center gap-2">
-                    <input
-                      type="text"
-                      list="employee-lookup-datalist"
-                      placeholder="Type or select Employee / Custodian (e.g. EMP-1001 or Sarah)..."
-                      value={employeeLookupCode}
-                      onChange={(e) => {
-                        setEmployeeLookupCode(e.target.value);
-                        // If exact match from datalist option selected, auto lookup
-                        const val = e.target.value.trim().toUpperCase();
-                        const foundDirect = custodiansList.find(c => (c.employeeCode || c.code || '').toUpperCase() === val);
-                        if (foundDirect) handleLookupEmployee(e.target.value);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') {
-                          e.preventDefault();
-                          handleLookupEmployee();
-                        }
-                      }}
-                      className="flex-1 px-3 py-1.5 border border-purple-200 rounded-lg text-xs bg-white focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
-                    />
-                    <datalist id="employee-lookup-datalist">
-                      {custodiansList.map((c, i) => {
-                        const nameStr = typeof c.fullName === 'string' ? c.fullName : (typeof c.name === 'string' ? c.name : (c.name?.name || 'Unnamed'));
-                        const codeStr = typeof c.employeeCode === 'string' ? c.employeeCode : (typeof c.code === 'string' ? c.code : nameStr);
-                        const typeStr = typeof c.custodianType === 'string' ? c.custodianType : (c.custodianType?.name || 'Internal');
-                        const deptStr = typeof c.department === 'string' ? c.department : (c.department?.name || 'General');
-                        return (
-                          <option key={c.id || i} value={codeStr}>
-                            {`${nameStr} — ${typeStr} (${deptStr})`}
-                          </option>
-                        );
-                      })}
-                    </datalist>
+                  <div className="relative flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type="text"
+                        placeholder="Type or select Employee / Custodian (e.g. EMP-1001 or Sarah)..."
+                        value={employeeLookupCode}
+                        onFocus={() => setShowLookupDropdown(true)}
+                        onBlur={() => setTimeout(() => setShowLookupDropdown(false), 200)}
+                        onChange={(e) => {
+                          setEmployeeLookupCode(e.target.value);
+                          setShowLookupDropdown(true);
+                          const val = e.target.value.trim().toUpperCase();
+                          const foundDirect = custodiansList.find(c => (c.employeeCode || c.code || '').toUpperCase() === val);
+                          if (foundDirect) handleLookupEmployee(e.target.value);
+                        }}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') {
+                            e.preventDefault();
+                            handleLookupEmployee();
+                            setShowLookupDropdown(false);
+                          } else if (e.key === 'Escape') {
+                            setShowLookupDropdown(false);
+                          }
+                        }}
+                        className="w-full px-3 py-1.5 border border-purple-200 rounded-lg text-xs bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
+                      />
+
+                      {/* Clean White Custom Dropdown Menu (Guaranteed Light Background) */}
+                      {showLookupDropdown && custodiansList.length > 0 && (
+                        <div className="absolute left-0 top-full mt-1 w-full max-h-56 overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-2xl z-50 py-1 divide-y divide-slate-100 text-left">
+                          {custodiansList
+                            .filter(c => {
+                              if (!employeeLookupCode) return true;
+                              const q = employeeLookupCode.toUpperCase().trim();
+                              return (
+                                (c.employeeCode && String(c.employeeCode).toUpperCase().includes(q)) ||
+                                (c.code && String(c.code).toUpperCase().includes(q)) ||
+                                (c.fullName && String(c.fullName).toUpperCase().includes(q)) ||
+                                (c.name && String(c.name).toUpperCase().includes(q)) ||
+                                (c.department && String(c.department).toUpperCase().includes(q))
+                              );
+                            })
+                            .slice(0, 8)
+                            .map((c, i) => {
+                              const nameStr = typeof c.fullName === 'string' ? c.fullName : (typeof c.name === 'string' ? c.name : (c.name?.name || 'Unnamed'));
+                              const codeStr = typeof c.employeeCode === 'string' ? c.employeeCode : (typeof c.code === 'string' ? c.code : nameStr);
+                              const typeStr = typeof c.custodianType === 'string' ? c.custodianType : 'Internal';
+                              const deptStr = typeof c.department === 'string' ? c.department : (c.department?.name || 'General');
+
+                              return (
+                                <button
+                                  key={c.id || i}
+                                  type="button"
+                                  onMouseDown={(e) => {
+                                    e.preventDefault();
+                                    setEmployeeLookupCode(codeStr);
+                                    handleLookupEmployee(codeStr);
+                                    setShowLookupDropdown(false);
+                                  }}
+                                  className="w-full text-left px-3 py-2 hover:bg-purple-50 transition-colors flex items-center justify-between text-xs cursor-pointer group bg-white text-slate-800"
+                                >
+                                  <div>
+                                    <div className="font-semibold text-slate-900 group-hover:text-[#6C2BD9]">{nameStr}</div>
+                                    <div className="text-[10px] text-slate-500">{deptStr} • {c.email || 'No email'}</div>
+                                  </div>
+                                  <div className="flex items-center gap-1.5 shrink-0">
+                                    <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-[#6C2BD9] font-bold">{codeStr}</span>
+                                    <span className={`text-[9px] px-1.5 py-0.5 rounded font-medium ${typeStr === 'External' ? 'bg-amber-100 text-amber-800' : 'bg-slate-100 text-slate-700'}`}>
+                                      {typeStr}
+                                    </span>
+                                  </div>
+                                </button>
+                              );
+                            })}
+                        </div>
+                      )}
+                    </div>
+
                     <button
                       type="button"
                       onClick={() => handleLookupEmployee()}
