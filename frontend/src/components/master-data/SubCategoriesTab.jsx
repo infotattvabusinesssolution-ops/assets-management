@@ -17,7 +17,8 @@ import {
   FileText,
   X,
   Tag,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -149,6 +150,7 @@ export function SubCategoriesTab({
 
   // Modal state
   const [showAddSubCatModal, setShowAddSubCatModal] = useState(false);
+  const [modalError, setModalError] = useState('');
   const [editingSubCategory, setEditingSubCategory] = useState(null);
   const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
     try {
@@ -223,6 +225,8 @@ export function SubCategoriesTab({
   };
 
   const handleOpenAddSubCatModal = (scToEdit = null) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
     if (scToEdit) {
       setEditingSubCategory(scToEdit);
       setSubCatFormState({
@@ -259,7 +263,29 @@ export function SubCategoriesTab({
 
   const handleSaveSubCategory = async (e) => {
     e.preventDefault();
-    if (!subCatFormState.code || !subCatFormState.name) return;
+    const cleanCode = (subCatFormState.code || '').trim().toUpperCase();
+    const cleanName = (subCatFormState.name || '').trim();
+
+    if (!cleanCode || !cleanName) {
+      setModalError('Sub Category Code and Name are required.');
+      return;
+    }
+
+    const dupCode = subCategoriesList.find(s => (s.code || '').trim().toUpperCase() === cleanCode && (!editingSubCategory || s.id !== editingSubCategory.id));
+    if (dupCode) {
+      const msg = `Sub Category with code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
+    const dupName = subCategoriesList.find(s => (s.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingSubCategory || s.id !== editingSubCategory.id));
+    if (dupName) {
+      const msg = `Sub Category with name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
 
     let targetCatId = subCatFormState.categoryId;
     if (!targetCatId && categories.length > 0) {
@@ -280,31 +306,33 @@ export function SubCategoriesTab({
     try {
       if (editingSubCategory) {
         await api.put(`/master-data/sub-categories/${editingSubCategory.id}`, {
-          code: subCatFormState.code.toUpperCase(),
-          name: subCatFormState.name,
+          code: cleanCode,
+          name: cleanName,
           categoryId: targetCatId,
           description: taggedDesc,
           status: subCatFormState.status
         });
         await loadSubCategories();
-        triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Sub Category "${cleanName}" updated successfully.`);
       } else {
         await api.post('/master-data/sub-categories', {
-          code: subCatFormState.code.toUpperCase(),
-          name: subCatFormState.name,
+          code: cleanCode,
+          name: cleanName,
           categoryId: targetCatId,
           description: taggedDesc,
           kind: 'SUBCATEGORY',
           status: subCatFormState.status
         });
         await loadSubCategories();
-        triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Sub Category "${cleanName}" created successfully.`);
       }
       setShowAddSubCatModal(false);
       setEditingSubCategory(null);
     } catch (err) {
       console.error('Save sub-category error:', err);
-      triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to save sub category.');
+      const msg = err.response?.data?.message || err.message || 'Failed to save sub category.';
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
     }
   };
 
@@ -855,6 +883,13 @@ export function SubCategoriesTab({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium animate-in fade-in duration-150">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveSubCategory} className="space-y-3.5 text-xs">
               <div>

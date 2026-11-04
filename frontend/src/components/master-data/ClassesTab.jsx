@@ -18,7 +18,8 @@ import {
   FileText,
   X,
   Layers,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -122,6 +123,7 @@ export function ClassesTab({
 
   // Modal state
   const [showAddClsModal, setShowAddClsModal] = useState(false);
+  const [modalError, setModalError] = useState('');
   const [editingClass, setEditingClass] = useState(null);
   const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
     try {
@@ -189,6 +191,8 @@ export function ClassesTab({
   };
 
   const handleOpenAddClsModal = (clsToEdit = null) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
     if (clsToEdit) {
       setEditingClass(clsToEdit);
       setClsFormState({
@@ -222,7 +226,29 @@ export function ClassesTab({
 
   const handleSaveClass = async (e) => {
     e.preventDefault();
-    if (!clsFormState.code || !clsFormState.name) return;
+    const cleanCode = (clsFormState.code || '').trim().toUpperCase();
+    const cleanName = (clsFormState.name || '').trim();
+
+    if (!cleanCode || !cleanName) {
+      setModalError('Sub Group Code and Name are required.');
+      return;
+    }
+
+    const dupCode = classesList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingClass || c.id !== editingClass.id));
+    if (dupCode) {
+      const msg = `Asset Sub Group code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
+    const dupName = classesList.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingClass || c.id !== editingClass.id));
+    if (dupName) {
+      const msg = `Asset Sub Group name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
 
     try {
       if (editingClass) {
@@ -231,30 +257,31 @@ export function ClassesTab({
           .replace(/\[group:[^\]]+\]/g, '')
           .trim();
         await api.put(`/master-data/asset-sub-groups/${editingClass.id}`, {
-          code: clsFormState.code,
-          name: clsFormState.name,
+          code: cleanCode,
+          name: cleanName,
           description: `${cleanDesc} [kind:class] [group:${clsFormState.groupName}]`.trim(),
           status: clsFormState.status
         });
         await loadClasses();
-        triggerToast && triggerToast(`Asset Sub Group "${clsFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Asset Sub Group "${cleanName}" updated successfully.`);
       } else {
         await api.post('/master-data/asset-sub-groups', {
-          code: clsFormState.code,
-          name: clsFormState.name,
+          code: cleanCode,
+          name: cleanName,
           description: clsFormState.description,
           groupName: clsFormState.groupName,
           kind: 'CLASS',
           status: clsFormState.status
         });
         await loadClasses();
-        triggerToast && triggerToast(`Asset Sub Group "${clsFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Asset Sub Group "${cleanName}" created successfully.`);
       }
       setShowAddClsModal(false);
       setEditingClass(null);
     } catch (err) {
       const errMsg = err?.response?.data?.message || err?.message || 'Operation failed';
-      triggerToast && triggerToast(`Error saving sub group: ${errMsg}`);
+      setModalError(errMsg);
+      triggerToast && triggerToast(errMsg);
     }
   };
 
@@ -823,6 +850,13 @@ export function ClassesTab({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium animate-in fade-in duration-150">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveClass} className="space-y-3.5 text-xs">
               <div>

@@ -20,7 +20,8 @@ import {
   Phone,
   MapPin,
   Building2,
-  DollarSign
+  DollarSign,
+  AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -42,6 +43,7 @@ export function SuppliersTab({
   const [selectedSupIds, setSelectedSupIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   // Load live suppliers / service providers from database
   const loadSuppliers = async () => {
@@ -161,6 +163,7 @@ export function SuppliersTab({
   };
 
   const handleOpenAddSupModal = (supToEdit = null) => {
+    setModalError('');
     if (supToEdit) {
       setEditingSupplier(supToEdit);
       setSupFormState({
@@ -212,7 +215,29 @@ export function SuppliersTab({
 
   const handleSaveSup = async (e) => {
     e.preventDefault();
+    setModalError('');
     if (!supFormState.code || !supFormState.name) return;
+
+    const trimmedCode = supFormState.code.trim();
+    const trimmedName = supFormState.name.trim();
+
+    // Check duplicate code
+    const dupCode = suppliersList.find(
+      (s) => s.code?.toUpperCase() === trimmedCode.toUpperCase() && (!editingSupplier || s.id !== editingSupplier.id)
+    );
+    if (dupCode) {
+      setModalError(`Supplier Code "${trimmedCode}" already exists.`);
+      return;
+    }
+
+    // Check duplicate name
+    const dupName = suppliersList.find(
+      (s) => s.name?.toUpperCase() === trimmedName.toUpperCase() && (!editingSupplier || s.id !== editingSupplier.id)
+    );
+    if (dupName) {
+      setModalError(`Supplier Name "${trimmedName}" already exists.`);
+      return;
+    }
 
     if (editingSupplier) {
       try {
@@ -233,7 +258,9 @@ export function SuppliersTab({
         triggerToast && triggerToast(`Supplier "${supFormState.name}" updated successfully.`);
       } catch (err) {
         console.error('Save supplier error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update supplier.');
+        const errMsg = err.response?.data?.message || err.message || 'Failed to update supplier.';
+        setModalError(errMsg);
+        triggerToast && triggerToast(errMsg);
         return;
       }
     } else {
@@ -255,7 +282,9 @@ export function SuppliersTab({
         triggerToast && triggerToast(`Supplier "${supFormState.name}" created successfully.`);
       } catch (err) {
         console.error('Add supplier error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create supplier.');
+        const errMsg = err.response?.data?.message || err.message || 'Failed to create supplier.';
+        setModalError(errMsg);
+        triggerToast && triggerToast(errMsg);
         return;
       }
     }
@@ -851,6 +880,13 @@ export function SuppliersTab({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveSup} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">

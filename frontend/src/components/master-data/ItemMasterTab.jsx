@@ -400,7 +400,7 @@ export function ItemMasterTab({
       };
 
       if (editingItem) {
-        const res = await api.put(`/master-data/items/${editingItem.id}`, payload).catch(() => null);
+        const res = await api.put(`/master-data/items/${editingItem.id}`, payload);
         const saved = res?.item || { ...editingItem, ...payload };
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
@@ -411,7 +411,7 @@ export function ItemMasterTab({
         if (selectedItem?.id === editingItem.id) setSelectedItem(saved);
         triggerToast && triggerToast(`Item "${saved.itemName}" updated successfully.`);
       } else {
-        const res = await api.post('/master-data/items', payload).catch(() => null);
+        const res = await api.post('/master-data/items', payload);
         const newItem = res?.item || { ...payload, id: `ITM-${Date.now()}` };
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');

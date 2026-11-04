@@ -80,6 +80,7 @@ export function GenericMasterTab({
   const [editingItem, setEditingItem] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [modalError, setModalError] = useState('');
 
   // Form State
   const [formState, setFormState] = useState({
@@ -325,6 +326,7 @@ export function GenericMasterTab({
 
   // External trigger handler
   const handleOpenAddModal = (itemToEdit = null) => {
+    setModalError('');
     fetchRealManufacturers();
     if (itemToEdit) {
       setEditingItem(itemToEdit);
@@ -372,58 +374,71 @@ export function GenericMasterTab({
   // Save handler
   const handleSave = async (e) => {
     e.preventDefault();
+    setModalError('');
     if (!formState.name || !formState.name.trim()) return;
 
     const cleanName = (formState.name || '').trim();
     const cleanCode = (formState.code || '').trim().toUpperCase();
 
     // STRICT DUPLICATE VALIDATION: Code & Name must be unique
-    const isDuplicate = items.some((it) => {
-      if (editingItem && it.id === editingItem.id) return false;
-      const codeMatches = cleanCode && (it.code || '').trim().toUpperCase() === cleanCode;
-      const nameMatches = cleanName && (it.name || '').trim().toLowerCase() === cleanName.toLowerCase();
-      return codeMatches || nameMatches;
-    });
+    if (cleanCode) {
+      const dupCode = items.find((it) => (!editingItem || it.id !== editingItem.id) && (it.code || '').trim().toUpperCase() === cleanCode);
+      if (dupCode) {
+        const msg = `${tabConfig.singular} Code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
+    }
 
-    if (isDuplicate) {
-      triggerToast && triggerToast(`Duplicate Error: A ${tabConfig.singular.toLowerCase()} with code "${cleanCode}" or name "${cleanName}" already exists.`);
+    const dupName = items.find((it) => (!editingItem || it.id !== editingItem.id) && (it.name || '').trim().toLowerCase() === cleanName.toLowerCase());
+    if (dupName) {
+      const msg = `${tabConfig.singular} Name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
       return;
     }
 
     try {
-
       if (editingItem) {
         if (activeTab === 'uom') {
-          console.log('✏️ [Updating UOM in Frontend]:', { id: editingItem.id, ...formState });
-          api.put(`/master-data/uoms/${editingItem.id}`, {
+          await api.put(`/master-data/uoms/${editingItem.id}`, {
             ...formState,
             active: formState.status === 'Active'
-          }).then((res) => {
-            console.log('✅ [UOM Updated Successfully in Database]:', res?.data || res);
-          }).catch((err) => console.warn('Failed to update UOM:', err));
+          });
           try {
             const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
             localStorage.setItem('fams_custom_uoms', JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
           } catch (_) {}
         }
         if (activeTab === 'brands') {
-          api.put(`/master-data/brands/${editingItem.id}`, {
+          await api.put(`/master-data/brands/${editingItem.id}`, {
             ...formState,
             active: formState.status === 'Active'
-          }).catch(() => null);
+          });
           try {
             const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
             localStorage.setItem('fams_custom_brands', JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
           } catch (_) {}
         }
         if (activeTab === 'manufacturers') {
-          api.put(`/master-data/manufacturers/${editingItem.id}`, {
+          await api.put(`/master-data/manufacturers/${editingItem.id}`, {
             ...formState,
             active: formState.status === 'Active'
-          }).catch(() => null);
+          });
           try {
             const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
             localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
+          } catch (_) {}
+        }
+        if (activeTab === 'asset-types') {
+          await api.put(`/master-data/asset-types/${editingItem.id}`, {
+            ...formState,
+            active: formState.status === 'Active'
+          });
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+            localStorage.setItem('fams_custom_asset_types', JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
           } catch (_) {}
         }
         const updated = items.map((it) => (it.id === editingItem.id ? { ...it, ...formState } : it));
@@ -437,79 +452,61 @@ export function GenericMasterTab({
           ...formState,
           totalAssets: 0
         };
-        const updated = [newItem, ...items];
-        setItems(updated);
-        setSelectedItem(newItem);
-        if (activeTab === 'uom') {
-          console.log('🚀 [Adding New UOM in Frontend]:', {
-            id: newItem.id,
-            code: newItem.code,
-            name: newItem.name,
-            symbol: newItem.symbol || '',
-            category: newItem.category || 'Discrete Count',
-            description: newItem.description || '',
-            status: newItem.status
-          });
 
-          api.post('/master-data/uoms', {
+        if (activeTab === 'uom') {
+          const res = await api.post('/master-data/uoms', {
             code: newItem.code,
             name: newItem.name,
             symbol: newItem.symbol || '',
             category: newItem.category || 'Discrete Count',
             description: newItem.description || '',
             active: newItem.status === 'Active'
-          }).then((res) => {
-            console.log('✅ [UOM Created Successfully in Database]:', res?.data || res);
-          }).catch((err) => {
-            console.error('❌ Failed to save UOM to backend:', err);
           });
-
+          if (res?.uom?.id) newItem.id = res.uom.id;
           try {
             const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
             localStorage.setItem('fams_custom_uoms', JSON.stringify([newItem, ...custom]));
           } catch (_) {}
         }
         if (activeTab === 'asset-types') {
-          api.post('/master-data/asset-types', {
+          const res = await api.post('/master-data/asset-types', {
             code: newItem.code,
             name: newItem.name,
             description: newItem.description,
             category: newItem.category || 'Discrete Count',
             stage: newItem.stage || 'Operational',
             active: newItem.status === 'Active'
-          }).catch(() => null);
+          });
+          if (res?.assetType?.id) newItem.id = res.assetType.id;
           try {
             const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
             localStorage.setItem('fams_custom_asset_types', JSON.stringify([newItem, ...custom]));
           } catch (_) {}
         }
         if (activeTab === 'brands') {
-          api.post('/master-data/brands', {
+          const res = await api.post('/master-data/brands', {
             code: newItem.code,
             name: newItem.name,
             manufacturerName: newItem.manufacturerName || '',
             description: newItem.description || '',
             active: newItem.status === 'Active'
-          }).catch(() => null);
+          });
+          if (res?.brand?.id) newItem.id = res.brand.id;
           try {
             const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
             localStorage.setItem('fams_custom_brands', JSON.stringify([newItem, ...custom]));
           } catch (_) {}
         }
         if (activeTab === 'manufacturers') {
-          try {
-            const res = await api.post('/master-data/manufacturers', {
-              code: newItem.code,
-              name: newItem.name,
-              website: newItem.website,
-              supportContact: newItem.supportContact,
-              active: newItem.status === 'Active'
-            });
-            if (res?.manufacturer?.id) {
-              newItem.id = res.manufacturer.id;
-            }
-          } catch (err) {
-            console.warn('Saved locally:', err);
+          const res = await api.post('/master-data/manufacturers', {
+            code: newItem.code,
+            name: newItem.name,
+            website: newItem.website,
+            supportContact: newItem.supportContact,
+            active: newItem.status === 'Active'
+          });
+          if (res?.manufacturer?.id) {
+            newItem.id = res.manufacturer.id;
           }
           try {
             const deletedMfrs = JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]');
@@ -534,11 +531,19 @@ export function GenericMasterTab({
             localStorage.setItem('fams_custom_status_codes', JSON.stringify(custom));
           } catch (_) {}
         }
+
+        const updated = [newItem, ...items];
+        setItems(updated);
+        setSelectedItem(newItem);
         triggerToast && triggerToast(`${tabConfig.singular} "${formState.name}" created successfully.`);
       }
       setShowAddModal(false);
     } catch (err) {
-      triggerToast && triggerToast(`Failed to save ${tabConfig.singular.toLowerCase()}.`);
+      console.error('Failed to save entity:', err);
+      const errMsg = err.response?.data?.message || err.message || `Failed to save ${tabConfig.singular.toLowerCase()}.`;
+      setModalError(errMsg);
+      triggerToast && triggerToast(errMsg);
+      return;
     }
   };
 
@@ -993,6 +998,13 @@ export function GenericMasterTab({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSave} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">

@@ -33,6 +33,7 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
   const [editingStatus, setEditingStatus] = useState(null);
   const [statusToDelete, setStatusToDelete] = useState(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [modalError, setModalError] = useState('');
 
   // Form State
   const [formData, setFormData] = useState({
@@ -75,6 +76,7 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
   }, [externalShowAddModal]);
 
   const handleOpenAdd = () => {
+    setModalError('');
     setEditingStatus(null);
     setFormData({
       code: '',
@@ -86,6 +88,7 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
   };
 
   const handleOpenEdit = (item) => {
+    setModalError('');
     setEditingStatus(item);
     setFormData({
       code: item.code,
@@ -98,15 +101,40 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
 
   const handleSave = async (e) => {
     e.preventDefault();
+    setModalError('');
     if (!formData.name.trim()) {
+      setModalError('Name is required');
       triggerToast?.('Name is required', 'error');
+      return;
+    }
+
+    const trimmedCode = (formData.code || '').trim().toUpperCase();
+    const trimmedName = formData.name.trim().toLowerCase();
+
+    // Check duplicate code
+    if (trimmedCode) {
+      const dupCode = statuses.find(s => s.id !== editingStatus?.id && (s.code || '').trim().toUpperCase() === trimmedCode);
+      if (dupCode) {
+        const msg = `Disposal Status Code "${trimmedCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast?.(msg, 'error');
+        return;
+      }
+    }
+
+    // Check duplicate name
+    const dupName = statuses.find(s => s.id !== editingStatus?.id && (s.name || '').trim().toLowerCase() === trimmedName);
+    if (dupName) {
+      const msg = `Disposal Status Name "${formData.name.trim()}" already exists. Duplicate names are not allowed.`;
+      setModalError(msg);
+      triggerToast?.(msg, 'error');
       return;
     }
 
     setIsSaving(true);
     try {
       if (editingStatus) {
-        await api.put(`/master-data/disposal-statuses/${editingStatus.id}`, formData).catch(() => null);
+        await api.put(`/master-data/disposal-statuses/${editingStatus.id}`, formData);
         setStatuses(prev => {
           const updated = prev.map(s => s.id === editingStatus.id ? { ...s, ...formData } : s);
           try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
@@ -114,7 +142,7 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
         });
         triggerToast?.('Disposal status updated successfully', 'success');
       } else {
-        const res = await api.post('/master-data/disposal-statuses', formData).catch(() => null);
+        const res = await api.post('/master-data/disposal-statuses', formData);
         const newRecord = res?.disposalStatus || {
           id: 'disp-' + Date.now().toString(36),
           code: formData.code || formData.name.toUpperCase().replace(/\s+/g, '_'),
@@ -131,7 +159,9 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
       }
       setShowAddModal(false);
     } catch (err) {
-      triggerToast?.(err.message || 'Failed to save disposal status', 'error');
+      const errMsg = err.response?.data?.message || err.message || 'Failed to save disposal status';
+      setModalError(errMsg);
+      triggerToast?.(errMsg, 'error');
     } finally {
       setIsSaving(false);
     }
@@ -341,6 +371,13 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="mx-6 mt-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSave} className="p-6 space-y-4">
               <div>

@@ -17,7 +17,8 @@ import {
   Trash2,
   X,
   FolderTree,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -116,6 +117,7 @@ export function DepartmentsTab({
 
   // Modal state
   const [showAddDeptModal, setShowAddDeptModal] = useState(false);
+  const [modalError, setModalError] = useState('');
   const [editingDepartment, setEditingDepartment] = useState(null);
   const [deptFormState, setDeptFormState] = useState({
     code: '',
@@ -166,6 +168,8 @@ export function DepartmentsTab({
   };
 
   const handleOpenAddDeptModal = (deptToEdit = null) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
     if (deptToEdit) {
       setEditingDepartment(deptToEdit);
       setDeptFormState({
@@ -210,7 +214,29 @@ export function DepartmentsTab({
 
   const handleSaveDept = async (e) => {
     e.preventDefault();
-    if (!deptFormState.code || !deptFormState.name) return;
+    const cleanCode = (deptFormState.code || '').trim().toUpperCase();
+    const cleanName = (deptFormState.name || '').trim();
+
+    if (!cleanCode || !cleanName) {
+      setModalError('Department Code and Name are required.');
+      return;
+    }
+
+    const dupCode = departmentsList.find(d => (d.code || '').trim().toUpperCase() === cleanCode && (!editingDepartment || d.id !== editingDepartment.id));
+    if (dupCode) {
+      const msg = `Department code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
+    const dupName = departmentsList.find(d => (d.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingDepartment || d.id !== editingDepartment.id));
+    if (dupName) {
+      const msg = `Department name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
 
     const matchedComp = companiesList.find(c => c.name === deptFormState.company || c.code === deptFormState.company || c.id === deptFormState.company);
     const companyId = matchedComp?.id || null;
@@ -218,33 +244,37 @@ export function DepartmentsTab({
     if (editingDepartment) {
       try {
         await api.put(`/master-data/departments/${editingDepartment.id}`, {
-          code: deptFormState.code.toUpperCase(),
-          name: deptFormState.name,
+          code: cleanCode,
+          name: cleanName,
           companyId,
           active: deptFormState.status === 'Active',
           status: deptFormState.status
         });
         await loadDepartments();
-        triggerToast && triggerToast(`Department "${deptFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Department "${cleanName}" updated successfully.`);
       } catch (err) {
         console.error('Save department error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update department.');
+        const msg = err.response?.data?.message || err.message || 'Failed to update department.';
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
         return;
       }
     } else {
       try {
         await api.post('/master-data/departments', {
-          code: deptFormState.code.toUpperCase(),
-          name: deptFormState.name,
+          code: cleanCode,
+          name: cleanName,
           companyId,
           active: deptFormState.status === 'Active',
           status: deptFormState.status
         });
         await loadDepartments();
-        triggerToast && triggerToast(`Department "${deptFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Department "${cleanName}" created successfully.`);
       } catch (err) {
         console.error('Add department error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create department.');
+        const msg = err.response?.data?.message || err.message || 'Failed to create department.';
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
         return;
       }
     }
@@ -812,6 +842,13 @@ export function DepartmentsTab({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium animate-in fade-in duration-150">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveDept} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">

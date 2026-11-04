@@ -269,13 +269,23 @@ export function AssetGroupsTab({
       return;
     }
 
-    // Client-side pre-validation: check for duplicate group code
-    const duplicate = assetGroups.find(
-      (g) => g.code?.toUpperCase() === cleanCode && (!editingGroup || g.id !== editingGroup.id)
+    // Client-side pre-validation: check for duplicate group code or name
+    const duplicateCode = assetGroups.find(
+      (g) => (g.code || '').trim().toUpperCase() === cleanCode && (!editingGroup || g.id !== editingGroup.id)
     );
-    if (duplicate) {
-      const msg = `Asset Group code "${cleanCode}" already exists (used by "${duplicate.name}"). Please use a different code.`;
+    if (duplicateCode) {
+      const msg = `Asset Group code "${cleanCode}" already exists (used by "${duplicateCode.name}"). Please use a different code.`;
       console.warn('⚠️ [AssetGroupsTab] Duplicate Code detected:', msg);
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+    const duplicateName = assetGroups.find(
+      (g) => (g.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingGroup || g.id !== editingGroup.id)
+    );
+    if (duplicateName) {
+      const msg = `Asset Group name "${cleanName}" already exists. Please use a different name.`;
+      console.warn('⚠️ [AssetGroupsTab] Duplicate Name detected:', msg);
       setModalError(msg);
       triggerToast && triggerToast(msg);
       return;

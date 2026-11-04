@@ -17,7 +17,8 @@ import {
   Trash2,
   X,
   Plus,
-  Lock
+  Lock,
+  AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -165,6 +166,7 @@ export function LocationsTab({
 
   // Modal state
   const [showAddLocModal, setShowAddLocModal] = useState(false);
+  const [modalError, setModalError] = useState('');
   const [editingLocation, setEditingLocation] = useState(null);
   const [locFormState, setLocFormState] = useState({
     code: '',
@@ -213,6 +215,8 @@ export function LocationsTab({
   };
 
   const handleOpenAddLocModal = (locToEdit = null) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
     if (locToEdit) {
       setEditingLocation(locToEdit);
       setLocFormState({
@@ -254,7 +258,10 @@ export function LocationsTab({
 
   const handleSaveLoc = async (e) => {
     e.preventDefault();
-    if (!locFormState.code || !locFormState.name) return;
+    if (!locFormState.code || !locFormState.name) {
+      setModalError('Location Code and Name are required.');
+      return;
+    }
 
     const cleanCode = locFormState.code.trim().toUpperCase();
     const cleanName = locFormState.name.trim();
@@ -268,7 +275,9 @@ export function LocationsTab({
     });
 
     if (isDuplicate) {
-      triggerToast && triggerToast(`Duplicate Error: A location with code "${cleanCode}" or name "${cleanName}" already exists.`);
+      const msg = `Duplicate Error: A location with code "${cleanCode}" or name "${cleanName}" already exists.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
       return;
     }
 
@@ -295,7 +304,9 @@ export function LocationsTab({
         triggerToast && triggerToast(`Location "${cleanName}" updated successfully.`);
       } catch (err) {
         console.error('Save location error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update location.');
+        const msg = err.response?.data?.message || err.message || 'Failed to update location.';
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
         return;
       }
     } else {
@@ -307,7 +318,9 @@ export function LocationsTab({
         triggerToast && triggerToast(`Location "${cleanName}" created successfully.`);
       } catch (err) {
         console.error('Add location error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create location.');
+        const msg = err.response?.data?.message || err.message || 'Failed to create location.';
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
         return;
       }
     }
@@ -934,6 +947,13 @@ export function LocationsTab({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium animate-in fade-in duration-150">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveLoc} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">

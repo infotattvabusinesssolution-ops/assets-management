@@ -188,14 +188,38 @@ export function CustodiansTab({
     setIsSaving(true);
     setModalError('');
 
+    const cleanCode = formState.employeeCode.trim().toUpperCase();
+    const cleanName = formState.fullName.trim();
+    const cleanEmail = formState.email.trim();
+
+    if (cleanCode) {
+      const dupCode = custodians.find(c => (c.employeeCode || c.code || '').trim().toUpperCase() === cleanCode && (!editingCustodian || c.id !== editingCustodian.id));
+      if (dupCode) {
+        const msg = `Custodian code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
+    }
+
+    if (cleanEmail) {
+      const dupEmail = custodians.find(c => (c.email || '').trim().toLowerCase() === cleanEmail.toLowerCase() && (!editingCustodian || c.id !== editingCustodian.id));
+      if (dupEmail) {
+        const msg = `Custodian email "${cleanEmail}" already exists. Duplicate emails are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
+    }
+
     try {
       const selectedComp = companies.find(c => c.id === formState.companyId);
       const selectedDept = departments.find(d => d.id === formState.departmentId);
 
       const payload = {
-        employeeCode: formState.employeeCode.trim().toUpperCase(),
-        fullName: formState.fullName.trim(),
-        email: formState.email.trim(),
+        employeeCode: cleanCode,
+        fullName: cleanName,
+        email: cleanEmail,
         phone: formState.phone.trim(),
         custodianType: formState.custodianType,
         companyId: formState.companyId,
@@ -209,7 +233,7 @@ export function CustodiansTab({
       };
 
       if (editingCustodian) {
-        const res = await api.put(`/master-data/employees/${editingCustodian.id}`, payload).catch(() => null);
+        const res = await api.put(`/master-data/employees/${editingCustodian.id}`, payload);
         const updated = res?.employee || { ...editingCustodian, ...payload };
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
@@ -220,7 +244,7 @@ export function CustodiansTab({
         if (selectedCustodian?.id === editingCustodian.id) setSelectedCustodian(updated);
         triggerToast && triggerToast(`Custodian "${updated.fullName}" updated successfully.`);
       } else {
-        const res = await api.post('/master-data/employees', payload).catch(() => null);
+        const res = await api.post('/master-data/employees', payload);
         const newCust = res?.employee || { ...payload, id: `cust-${Date.now()}` };
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');

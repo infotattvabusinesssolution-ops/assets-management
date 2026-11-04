@@ -18,7 +18,8 @@ import {
   Clock,
   Trash2,
   X,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -100,6 +101,7 @@ export function CostCentersTab({
 
   // Modal state
   const [showAddCCModal, setShowAddCCModal] = useState(false);
+  const [modalError, setModalError] = useState('');
   const [editingCostCenter, setEditingCostCenter] = useState(null);
   const [ccFormState, setCcFormState] = useState({
     code: '',
@@ -141,6 +143,8 @@ export function CostCentersTab({
   };
 
   const handleOpenAddCCModal = (ccToEdit = null) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
     if (ccToEdit) {
       setEditingCostCenter(ccToEdit);
       setCcFormState({
@@ -176,7 +180,29 @@ export function CostCentersTab({
 
   const handleSaveCC = async (e) => {
     e.preventDefault();
-    if (!ccFormState.code || !ccFormState.name) return;
+    const cleanCode = (ccFormState.code || '').trim().toUpperCase();
+    const cleanName = (ccFormState.name || '').trim();
+
+    if (!cleanCode || !cleanName) {
+      setModalError('Cost Center Code and Name are required.');
+      return;
+    }
+
+    const dupCode = costCentersList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCostCenter || c.id !== editingCostCenter.id));
+    if (dupCode) {
+      const msg = `Cost Center code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
+    const dupName = costCentersList.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCostCenter || c.id !== editingCostCenter.id));
+    if (dupName) {
+      const msg = `Cost Center name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
 
     const matchedComp = companiesList.find(c => c.name === ccFormState.company || c.code === ccFormState.company || c.id === ccFormState.company);
     const companyId = matchedComp?.id || null;
@@ -184,33 +210,37 @@ export function CostCentersTab({
     if (editingCostCenter) {
       try {
         await api.put(`/master-data/cost-centers/${editingCostCenter.id}`, {
-          code: ccFormState.code.toUpperCase(),
-          name: ccFormState.name,
+          code: cleanCode,
+          name: cleanName,
           companyId,
           active: ccFormState.status === 'Active',
           status: ccFormState.status
         });
         await loadCostCenters();
-        triggerToast && triggerToast(`Cost Center "${ccFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Cost Center "${cleanName}" updated successfully.`);
       } catch (err) {
         console.error('Save cost center error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update cost center.');
+        const msg = err.response?.data?.message || err.message || 'Failed to update cost center.';
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
         return;
       }
     } else {
       try {
         await api.post('/master-data/cost-centers', {
-          code: ccFormState.code.toUpperCase(),
-          name: ccFormState.name,
+          code: cleanCode,
+          name: cleanName,
           companyId,
           active: ccFormState.status === 'Active',
           status: ccFormState.status
         });
         await loadCostCenters();
-        triggerToast && triggerToast(`Cost Center "${ccFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Cost Center "${cleanName}" created successfully.`);
       } catch (err) {
         console.error('Add cost center error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create cost center.');
+        const msg = err.response?.data?.message || err.message || 'Failed to create cost center.';
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
         return;
       }
     }
@@ -772,6 +802,13 @@ export function CostCentersTab({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-red-700 text-xs flex items-center gap-2">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-red-500" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveCC} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">

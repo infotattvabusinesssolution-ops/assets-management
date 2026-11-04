@@ -136,13 +136,32 @@ export function CompaniesTab({
       return;
     }
 
+    const cleanCode = formState.code.trim().toUpperCase();
+    const cleanName = formState.name.trim();
+
+    const dupCode = companies.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCompany || c.id !== editingCompany.id));
+    if (dupCode) {
+      const msg = `Company code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
+    const dupName = companies.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCompany || c.id !== editingCompany.id));
+    if (dupName) {
+      const msg = `Company name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
     setIsSaving(true);
     setModalError('');
 
     try {
       const payload = {
-        code: formState.code.trim().toUpperCase(),
-        name: formState.name.trim(),
+        code: cleanCode,
+        name: cleanName,
         currency: formState.currency,
         taxId: formState.taxId.trim(),
         address: formState.address.trim(),

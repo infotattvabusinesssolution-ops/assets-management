@@ -18,7 +18,8 @@ import {
   FileText,
   X,
   Layers,
-  Plus
+  Plus,
+  AlertTriangle
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
@@ -128,6 +129,7 @@ export function CategoriesTab({
 
   // Modal state
   const [showAddCatModal, setShowAddCatModal] = useState(false);
+  const [modalError, setModalError] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
   const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
     try {
@@ -196,6 +198,8 @@ export function CategoriesTab({
   };
 
   const handleOpenAddCatModal = (catToEdit = null) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
     if (catToEdit) {
       setEditingCategory(catToEdit);
       setCatFormState({
@@ -229,7 +233,29 @@ export function CategoriesTab({
 
   const handleSaveCategory = async (e) => {
     e.preventDefault();
-    if (!catFormState.code || !catFormState.name) return;
+    const cleanCode = (catFormState.code || '').trim().toUpperCase();
+    const cleanName = (catFormState.name || '').trim();
+
+    if (!cleanCode || !cleanName) {
+      setModalError('Category Code and Name are required.');
+      return;
+    }
+
+    const dupCode = categories.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCategory || c.id !== editingCategory.id));
+    if (dupCode) {
+      const msg = `Category with code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
+    const dupName = categories.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCategory || c.id !== editingCategory.id));
+    if (dupName) {
+      const msg = `Category with name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
 
     const groupToTag = {
       'Information Technology': '[type:it]',
@@ -253,31 +279,35 @@ export function CategoriesTab({
     if (editingCategory) {
       try {
         await api.put(`/master-data/categories/${editingCategory.id}`, {
-          code: catFormState.code.toUpperCase(),
-          name: catFormState.name,
+          code: cleanCode,
+          name: cleanName,
           description: taggedDescription,
           status: catFormState.status
         });
         await loadCategories();
-        triggerToast && triggerToast(`Category "${catFormState.name}" updated successfully.`);
+        triggerToast && triggerToast(`Category "${cleanName}" updated successfully.`);
       } catch (err) {
         console.error('Save category error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update category.');
+        const msg = err.response?.data?.message || err.message || 'Failed to update category.';
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
         return;
       }
     } else {
       try {
         await api.post('/master-data/categories', {
-          code: catFormState.code.toUpperCase(),
-          name: catFormState.name,
+          code: cleanCode,
+          name: cleanName,
           description: taggedDescription,
           status: catFormState.status
         });
         await loadCategories();
-        triggerToast && triggerToast(`Category "${catFormState.name}" created successfully.`);
+        triggerToast && triggerToast(`Category "${cleanName}" created successfully.`);
       } catch (err) {
         console.error('Add category error:', err);
-        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create category.');
+        const msg = err.response?.data?.message || err.message || 'Failed to create category.';
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
         return;
       }
     }
@@ -887,6 +917,13 @@ export function CategoriesTab({
                 <X className="w-4 h-4" />
               </button>
             </div>
+
+            {modalError && (
+              <div className="flex items-center gap-2 px-3.5 py-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs font-medium animate-in fade-in duration-150">
+                <AlertTriangle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{modalError}</span>
+              </div>
+            )}
 
             <form onSubmit={handleSaveCategory} className="space-y-3.5 text-xs">
               <div>

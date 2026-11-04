@@ -293,16 +293,40 @@ export async function updateAssetGroup(req, res, next) {
 
     const memIndex = memoryAssetGroups.findIndex(g => g.id === id);
     const cleanCode = code ? code.trim().toUpperCase() : (memIndex !== -1 ? memoryAssetGroups[memIndex].code : 'GRP');
+    const cleanName = (name || '').trim();
     const isAct = status ? (status === 'Inactive' ? 0 : 1) : 1;
     const cleanType = assetType || 'Both';
     const cleanDesc = description ? `'${description.replace(/'/g, "''")}'` : 'NULL';
+
+    if (cleanCode && memoryAssetGroups.some(g => g.id !== id && (g.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Asset Group code "${cleanCode}" already exists. Duplicate codes are not allowed.` });
+    }
+    if (cleanName && memoryAssetGroups.some(g => g.id !== id && (g.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Asset Group name "${cleanName}" already exists. Duplicate names are not allowed.` });
+    }
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const whereParts = [];
+        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM asset_groups WHERE id != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
+        );
+        if (existing && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Another Asset Group with this code or name already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate asset group skipped:', dbErr.message);
+      }
+    }
 
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
           UPDATE asset_groups
           SET code = '${cleanCode}',
-              name = '${(name || '').trim().replace(/'/g, "''")}',
+              name = '${cleanName.replace(/'/g, "''")}',
               description = ${cleanDesc},
               assetType = '${cleanType}',
               active = ${isAct},
@@ -317,7 +341,7 @@ export async function updateAssetGroup(req, res, next) {
     const updatedGroup = {
       id,
       code: cleanCode,
-      name: (name || '').trim(),
+      name: cleanName,
       description: description || '',
       assetType: cleanType,
       assetTypeLabel: cleanType === 'Physical' ? 'Physical Tangible' : cleanType === 'Intangible' ? 'Intangible / Digital' : 'Both (Physical & Intangible)',
@@ -365,7 +389,38 @@ export async function getCompanies(req, res, next) {
 
 export async function createCompany(req, res, next) {
   try {
-    const company = await prisma.company.create({ data: req.body });
+    const { code, name } = req.body;
+    if (!code || !name) {
+      return res.status(400).json({ success: false, message: 'Company Code and Name are required.' });
+    }
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.company.findFirst({
+          where: {
+            OR: [
+              { code: cleanCode },
+              { name: { equals: cleanName, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Company with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate company skipped:', dbErr.message);
+      }
+    }
+
+    const company = await prisma.company.create({
+      data: {
+        ...req.body,
+        code: cleanCode,
+        name: cleanName
+      }
+    });
     res.status(201).json({ success: true, company });
   } catch (err) { next(err); }
 }
@@ -375,9 +430,31 @@ export async function updateCompany(req, res, next) {
   try {
     const { id } = req.params;
     const { code, name, currency, taxId, address, active, status } = req.body;
+    const cleanCode = code ? code.trim().toUpperCase() : undefined;
+    const cleanName = name ? name.trim() : undefined;
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const existing = await prisma.company.findFirst({
+          where: {
+            id: { not: id },
+            OR: [
+              ...(cleanCode ? [{ code: cleanCode }] : []),
+              ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Another company with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate company skipped:', dbErr.message);
+      }
+    }
+
     const updateData = {};
-    if (code) updateData.code = code.trim().toUpperCase();
-    if (name) updateData.name = name.trim();
+    if (cleanCode) updateData.code = cleanCode;
+    if (cleanName) updateData.name = cleanName;
     if (currency) updateData.currency = currency;
     if (taxId !== undefined) updateData.taxId = taxId;
     if (address !== undefined) updateData.address = address;
@@ -606,6 +683,22 @@ export async function createSite(req, res, next) {
       });
     }
 
+    if (isDbConnected()) {
+      try {
+        const dbExisting = await prisma.$queryRawUnsafe(
+          `SELECT id FROM sites WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
+        );
+        if (Array.isArray(dbExisting) && dbExisting.length > 0) {
+          return res.status(409).json({
+            success: false,
+            message: `Duplicate Error: Location with code "${cleanCode}" or name "${cleanName}" already exists.`
+          });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate location skipped:', dbErr.message);
+      }
+    }
+
     const id = `loc-${Date.now()}`;
     const allForPath = [...inMemoryLocations];
     const computedPath = computeLocationFullPath({ name: cleanName, parentLocation: cleanParent }, allForPath);
@@ -668,6 +761,27 @@ export async function updateSite(req, res, next) {
     const cleanLevel = level !== undefined && ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(level) ? level : inMemoryLocations[idx].level;
     const cleanParent = (cleanLevel === 'Level 1' || parentLocation === '-') ? '-' : (parentLocation ? parentLocation.trim() : inMemoryLocations[idx].parentLocation);
     const isAct = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : inMemoryLocations[idx].active);
+
+    const dup = inMemoryLocations.find(l => (l.id !== id && l.code !== id) && (
+      (cleanCode && l.code && l.code.toUpperCase() === cleanCode) || 
+      (cleanName && l.name && l.name.toLowerCase() === cleanName.toLowerCase())
+    ));
+    if (dup) {
+      return res.status(409).json({ success: false, message: `Duplicate Error: Location with code "${cleanCode}" or name "${cleanName}" already exists.` });
+    }
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const whereParts = [];
+        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM sites WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Duplicate Error: Location with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        }
+      } catch (err) {}
+    }
 
     const computedPath = computeLocationFullPath({ name: cleanName, parentLocation: cleanParent }, inMemoryLocations);
 
@@ -900,9 +1014,31 @@ export async function updateCategory(req, res, next) {
   try {
     const { id } = req.params;
     const { code, name, description, active, status, depreciationMethod, annualDepreciationRatePercent } = req.body;
+    const cleanCode = code ? code.trim().toUpperCase() : undefined;
+    const cleanName = name ? name.trim() : undefined;
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const existing = await prisma.category.findFirst({
+          where: {
+            id: { not: id },
+            OR: [
+              ...(cleanCode ? [{ code: cleanCode }] : []),
+              ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Another category with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate category skipped:', dbErr.message);
+      }
+    }
+
     const updateData = {};
-    if (code) updateData.code = code.trim().toUpperCase();
-    if (name) updateData.name = name.trim();
+    if (cleanCode) updateData.code = cleanCode;
+    if (cleanName) updateData.name = cleanName;
     if (description !== undefined) updateData.description = description;
     if (depreciationMethod) updateData.depreciationMethod = depreciationMethod;
     if (annualDepreciationRatePercent !== undefined) updateData.annualDepreciationRatePercent = Number(annualDepreciationRatePercent);
@@ -1230,11 +1366,19 @@ export async function createAssetSubGroup(req, res, next) {
       updatedAt: new Date().toISOString()
     };
 
+    const current = readAssetSubGroupsFromFile();
+    if (current.some(sg => (sg.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Asset Sub Group with code "${cleanCode}" already exists.` });
+    }
+    if (current.some(sg => (sg.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Asset Sub Group with name "${cleanName}" already exists.` });
+    }
+
     if (isDbConnected()) {
       try {
-        const existing = await prisma.$queryRawUnsafe(`SELECT id FROM asset_sub_groups WHERE code = '${cleanCode.replace(/'/g, "''")}'`);
+        const existing = await prisma.$queryRawUnsafe(`SELECT id FROM asset_sub_groups WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
         if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Asset Sub Group with code "${cleanCode}" already exists.` });
+          return res.status(409).json({ success: false, message: `Asset Sub Group with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
         await prisma.$executeRawUnsafe(`
           INSERT INTO asset_sub_groups (id, code, name, assetGroupId, assetGroupName, assetType, description, totalAssets, active, createdAt, updatedAt)
@@ -1257,7 +1401,6 @@ export async function createAssetSubGroup(req, res, next) {
       }
     }
 
-    const current = readAssetSubGroupsFromFile();
     current.unshift(newSubGroup);
     writeAssetSubGroupsToFile(current);
     res.status(201).json({ success: true, assetSubGroup: newSubGroup, assetClass: newSubGroup });
@@ -1273,6 +1416,32 @@ export async function updateAssetSubGroup(req, res, next) {
     const cleanName = name ? name.trim() : undefined;
     const cleanGroup = groupName || assetGroupName;
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : undefined);
+
+    const current = readAssetSubGroupsFromFile();
+    const idx = current.findIndex(s => s.id === id || s.code === id);
+
+    if (cleanCode && current.some(s => s.id !== id && s.code !== id && (s.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Another Asset Sub Group with code "${cleanCode}" already exists.` });
+    }
+    if (cleanName && current.some(s => s.id !== id && s.code !== id && (s.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Another Asset Sub Group with name "${cleanName}" already exists.` });
+    }
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const whereParts = [];
+        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM asset_sub_groups WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Another Asset Sub Group with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate asset sub group skipped:', dbErr.message);
+      }
+    }
 
     if (isDbConnected()) {
       try {
@@ -1296,8 +1465,6 @@ export async function updateAssetSubGroup(req, res, next) {
       }
     }
 
-    const current = readAssetSubGroupsFromFile();
-    const idx = current.findIndex(s => s.id === id || s.code === id);
     if (idx >= 0) {
       current[idx] = {
         ...current[idx],
@@ -1417,11 +1584,19 @@ export async function createSubCategory(req, res, next) {
       updatedAt: new Date().toISOString()
     };
 
+    const current = readSubCategoriesFromFile();
+    if (current.some(sc => (sc.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" already exists.` });
+    }
+    if (current.some(sc => (sc.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Sub Category with name "${cleanName}" already exists.` });
+    }
+
     if (isDbConnected()) {
       try {
-        const existing = await prisma.$queryRawUnsafe(`SELECT id FROM sub_categories WHERE code = '${cleanCode.replace(/'/g, "''")}'`);
+        const existing = await prisma.$queryRawUnsafe(`SELECT id FROM sub_categories WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
         if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" already exists.` });
+          return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
         await prisma.$executeRawUnsafe(`
           INSERT INTO sub_categories (id, code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, assetGroupId, assetGroupName, description, totalAssets, active, createdAt, updatedAt)
@@ -1447,7 +1622,6 @@ export async function createSubCategory(req, res, next) {
       }
     }
 
-    const current = readSubCategoriesFromFile();
     current.unshift(newSubCat);
     writeSubCategoriesToFile(current);
     res.status(201).json({ success: true, subCategory: newSubCat, assetClass: newSubCat });
@@ -1464,6 +1638,32 @@ export async function updateSubCategory(req, res, next) {
     const cleanSubGroup = assetSubGroupName || className;
     const cleanGroup = assetGroupName || groupName;
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : undefined);
+
+    const current = readSubCategoriesFromFile();
+    const idx = current.findIndex(s => s.id === id || s.code === id);
+
+    if (cleanCode && current.some(s => s.id !== id && s.code !== id && (s.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Another Sub Category with code "${cleanCode}" already exists.` });
+    }
+    if (cleanName && current.some(s => s.id !== id && s.code !== id && (s.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Another Sub Category with name "${cleanName}" already exists.` });
+    }
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const whereParts = [];
+        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM sub_categories WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Another Sub Category with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate sub category skipped:', dbErr.message);
+      }
+    }
 
     if (isDbConnected()) {
       try {
@@ -1490,8 +1690,6 @@ export async function updateSubCategory(req, res, next) {
       }
     }
 
-    const current = readSubCategoriesFromFile();
-    const idx = current.findIndex(s => s.id === id || s.code === id);
     if (idx >= 0) {
       current[idx] = {
         ...current[idx],
@@ -1656,6 +1854,17 @@ export async function createManufacturer(req, res, next) {
       return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists. Duplicate manufacturer names are not allowed.` });
     }
 
+    if (isDbConnected()) {
+      try {
+        const existingMfr = await prisma.manufacturer.findFirst({
+          where: { name: { equals: cleanName, mode: 'insensitive' } }
+        });
+        if (existingMfr) {
+          return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists.` });
+        }
+      } catch (err) {}
+    }
+
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const newMfr = {
       id: `mfr-${Date.now()}`,
@@ -1706,6 +1915,20 @@ export async function updateManufacturer(req, res, next) {
     }
     if (cleanName && inMemoryManufacturers.some(m => m.id !== existing.id && (m.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists.` });
+    }
+
+    if (isDbConnected() && cleanName) {
+      try {
+        const existingMfr = await prisma.manufacturer.findFirst({
+          where: {
+            id: { not: existing.id },
+            name: { equals: cleanName, mode: 'insensitive' }
+          }
+        });
+        if (existingMfr) {
+          return res.status(409).json({ success: false, message: `Another manufacturer with name "${cleanName}" already exists.` });
+        }
+      } catch (err) {}
     }
 
     const updated = {
@@ -1876,6 +2099,30 @@ export async function getDepartments(req, res, next) {
 export async function createDepartment(req, res, next) {
   try {
     const { code, name, active, status } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Department Name is required.' });
+    }
+    const cleanName = name.trim();
+    const cleanCode = (code || `DEP-${Date.now()}`).trim().toUpperCase();
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.department.findFirst({
+          where: {
+            OR: [
+              { code: cleanCode },
+              { name: { equals: cleanName, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Department with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate department skipped:', dbErr.message);
+      }
+    }
+
     let targetCompanyId = req.body.companyId;
     if (!targetCompanyId) {
       const firstComp = await prisma.company.findFirst();
@@ -1884,8 +2131,8 @@ export async function createDepartment(req, res, next) {
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const department = await prisma.department.create({
       data: {
-        code: (code || `DEP-${Date.now()}`).trim().toUpperCase(),
-        name: (name || 'New Department').trim(),
+        code: cleanCode,
+        name: cleanName,
         companyId: targetCompanyId,
         active: isAct
       }
@@ -1898,9 +2145,31 @@ export async function updateDepartment(req, res, next) {
   try {
     const { id } = req.params;
     const { code, name, active, status, companyId } = req.body;
+    const cleanCode = code ? code.trim().toUpperCase() : undefined;
+    const cleanName = name ? name.trim() : undefined;
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const existing = await prisma.department.findFirst({
+          where: {
+            id: { not: id },
+            OR: [
+              ...(cleanCode ? [{ code: cleanCode }] : []),
+              ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Another department with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate department skipped:', dbErr.message);
+      }
+    }
+
     const updateData = {};
-    if (code) updateData.code = code.trim().toUpperCase();
-    if (name) updateData.name = name.trim();
+    if (cleanCode) updateData.code = cleanCode;
+    if (cleanName) updateData.name = cleanName;
     if (companyId) updateData.companyId = companyId;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
@@ -1946,6 +2215,30 @@ export async function getCostCenters(req, res, next) {
 export async function createCostCenter(req, res, next) {
   try {
     const { code, name, active, status } = req.body;
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Cost Center Name is required.' });
+    }
+    const cleanName = name.trim();
+    const cleanCode = (code || `CC-${Date.now()}`).trim().toUpperCase();
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.costCenter.findFirst({
+          where: {
+            OR: [
+              { code: cleanCode },
+              { name: { equals: cleanName, mode: 'insensitive' } }
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Cost Center with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate cost center skipped:', dbErr.message);
+      }
+    }
+
     let targetCompanyId = req.body.companyId;
     if (!targetCompanyId) {
       const firstComp = await prisma.company.findFirst();
@@ -1954,8 +2247,8 @@ export async function createCostCenter(req, res, next) {
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const costCenter = await prisma.costCenter.create({
       data: {
-        code: (code || `CC-${Date.now()}`).trim().toUpperCase(),
-        name: (name || 'New Cost Center').trim(),
+        code: cleanCode,
+        name: cleanName,
         companyId: targetCompanyId,
         active: isAct
       }
@@ -1968,9 +2261,31 @@ export async function updateCostCenter(req, res, next) {
   try {
     const { id } = req.params;
     const { code, name, active, status, companyId } = req.body;
+    const cleanCode = code ? code.trim().toUpperCase() : undefined;
+    const cleanName = name ? name.trim() : undefined;
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const existing = await prisma.costCenter.findFirst({
+          where: {
+            id: { not: id },
+            OR: [
+              ...(cleanCode ? [{ code: cleanCode }] : []),
+              ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Another Cost Center with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate cost center skipped:', dbErr.message);
+      }
+    }
+
     const updateData = {};
-    if (code) updateData.code = code.trim().toUpperCase();
-    if (name) updateData.name = name.trim();
+    if (cleanCode) updateData.code = cleanCode;
+    if (cleanName) updateData.name = cleanName;
     if (companyId) updateData.companyId = companyId;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
@@ -2062,6 +2377,24 @@ export async function createEmployee(req, res, next) {
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const mail = (email || `${code.toLowerCase()}@company.local`).trim();
 
+    if (isDbConnected()) {
+      try {
+        const orConditions = [{ employeeCode: code }];
+        if (mail) orConditions.push({ email: mail });
+        const existing = await prisma.employee.findFirst({
+          where: { OR: orConditions }
+        });
+        if (existing) {
+          return res.status(409).json({
+            success: false,
+            message: `Custodian with employee code "${code}"${mail ? ` or email "${mail}"` : ''} already exists.`
+          });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate employee skipped:', dbErr.message);
+      }
+    }
+
     let targetCompanyId = companyId;
     if (!targetCompanyId && isDbConnected()) {
       const firstComp = await prisma.company.findFirst().catch(() => null);
@@ -2097,6 +2430,12 @@ export async function createEmployee(req, res, next) {
         });
       } catch (dbErr) {
         console.warn('DB create employee failed/skipped:', dbErr.message);
+        return res.status(409).json({
+          success: false,
+          message: dbErr.message?.includes('Unique constraint')
+            ? `Custodian with code "${code}" or email "${mail}" already exists.`
+            : `Failed to create custodian: ${dbErr.message}`
+        });
       }
     }
 
@@ -2120,20 +2459,7 @@ export async function createEmployee(req, res, next) {
       updatedAt: new Date().toISOString()
     };
     return res.status(201).json({ success: true, employee: fallbackEmployee });
-  } catch (err) {
-    console.error('Create employee error handled:', err.message);
-    res.json({
-      success: true,
-      employee: {
-        id: `cust-${Date.now()}`,
-        employeeCode: (req.body.employeeCode || `EMP-${Date.now()}`).trim().toUpperCase(),
-        fullName: req.body.fullName || 'New Custodian',
-        email: req.body.email || '',
-        active: true,
-        ...req.body
-      }
-    });
-  }
+  } catch (err) { next(err); }
 }
 
 
@@ -2141,10 +2467,36 @@ export async function updateEmployee(req, res, next) {
   try {
     const { id } = req.params;
     const { employeeCode, fullName, email, companyId, departmentId, costCenterId, active, status, custodianType, organization, section, location, phone } = req.body;
+    const cleanCode = employeeCode ? employeeCode.trim().toUpperCase() : undefined;
+    const cleanEmail = email ? email.trim() : undefined;
+
+    if (isDbConnected() && (cleanCode || cleanEmail)) {
+      try {
+        const orConditions = [];
+        if (cleanCode) orConditions.push({ employeeCode: cleanCode });
+        if (cleanEmail) orConditions.push({ email: cleanEmail });
+        const existing = await prisma.employee.findFirst({
+          where: {
+            id: { not: id },
+            OR: orConditions
+          }
+        });
+        if (existing) {
+          return res.status(409).json({
+            success: false,
+            message: `Another custodian with code "${cleanCode || ''}"${cleanEmail ? ` or email "${cleanEmail}"` : ''} already exists.`
+          });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate employee in update skipped:', dbErr.message);
+      }
+    }
+
     const updateData = {};
-    if (employeeCode) updateData.employeeCode = employeeCode.trim().toUpperCase();
+    if (cleanCode) updateData.code = cleanCode;
+    if (cleanCode) updateData.employeeCode = cleanCode;
     if (fullName) updateData.fullName = fullName.trim();
-    if (email) updateData.email = email.trim();
+    if (cleanEmail) updateData.email = cleanEmail;
     if (companyId) updateData.companyId = companyId;
     if (departmentId !== undefined) updateData.departmentId = departmentId || null;
     if (costCenterId !== undefined) updateData.costCenterId = costCenterId || null;
@@ -2468,6 +2820,22 @@ export async function createAssetType(req, res, next) {
     const isAct = active !== undefined ? Boolean(active) : true;
     const id = `TYPE-${Date.now()}`;
 
+    if (inMemoryAssetTypes.some(t => (t.code || '').toUpperCase() === cleanCode || (t.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Status Code / Asset Type with code "${cleanCode}" or name "${cleanName}" already exists.` });
+    }
+
+    await ensureAssetTypesTable();
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM asset_types WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Status Code / Asset Type with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (err) {}
+    }
+
     const newType = {
       id,
       code: cleanCode,
@@ -2515,6 +2883,33 @@ export async function updateAssetType(req, res, next) {
         }
       } catch (dbErr) {
         console.warn('DB check system enum skipped:', dbErr.message);
+      }
+    }
+
+    const cleanCode = code ? code.trim().toUpperCase() : undefined;
+    const cleanName = name ? name.trim() : undefined;
+
+    if (cleanCode || cleanName) {
+      if (inMemoryAssetTypes.some(t => t.id !== id && (
+        (cleanCode && (t.code || '').toUpperCase() === cleanCode) ||
+        (cleanName && (t.name || '').toLowerCase() === cleanName.toLowerCase())
+      ))) {
+        return res.status(409).json({ success: false, message: `Another Status Code / Asset Type with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+      }
+      if (isDbConnected()) {
+        try {
+          const whereParts = [];
+          if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+          if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+          const existing = await prisma.$queryRawUnsafe(
+            `SELECT id FROM asset_types WHERE id != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
+          );
+          if (Array.isArray(existing) && existing.length > 0) {
+            return res.status(409).json({ success: false, message: `Another Status Code / Asset Type with this code or name already exists.` });
+          }
+        } catch (dbErr) {
+          console.warn('DB check duplicate asset type skipped:', dbErr.message);
+        }
       }
     }
 
@@ -3136,6 +3531,23 @@ export async function createItemMaster(req, res, next) {
       });
     }
 
+    await ensureItemMastersTable();
+    if (isDbConnected()) {
+      try {
+        const whereParts = [
+          `UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}'`,
+          `UPPER(itemName) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
+        ];
+        if (cleanBarcode) whereParts.push(`UPPER(supplierBarcode) = '${cleanBarcode.toUpperCase().replace(/'/g, "''")}'`);
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM item_masters WHERE ${whereParts.join(' OR ')}`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Item Master with code "${cleanCode}", name "${cleanName}" or barcode "${cleanBarcode}" already exists.` });
+        }
+      } catch (err) {}
+    }
+
     const newItem = {
       id,
       itemCode: cleanCode,
@@ -3317,6 +3729,22 @@ export async function updateItemMaster(req, res, next) {
       return res.status(409).json({ success: false, message: `Another item with Supplier Barcode "${cleanBarcode}" already exists.` });
     }
 
+    if (isDbConnected() && (cleanCode || cleanName || cleanBarcode)) {
+      try {
+        const whereParts = [];
+        if (cleanCode) whereParts.push(`UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}'`);
+        if (cleanName) whereParts.push(`UPPER(itemName) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        if (cleanBarcode) whereParts.push(`UPPER(supplierBarcode) = '${cleanBarcode.toUpperCase().replace(/'/g, "''")}'`);
+        const safeId = (id || '').replace(/'/g, "''");
+        const existingDb = await prisma.$queryRawUnsafe(
+          `SELECT id FROM item_masters WHERE id != '${safeId}' AND itemCode != '${safeId}' AND (${whereParts.join(' OR ')})`
+        );
+        if (Array.isArray(existingDb) && existingDb.length > 0) {
+          return res.status(409).json({ success: false, message: `Another item with this code, name, or barcode already exists.` });
+        }
+      } catch (err) {}
+    }
+
     const updated = {
       ...existing,
       ...req.body,
@@ -3447,7 +3875,17 @@ export async function createUom(req, res, next) {
       return res.status(409).json({ success: false, message: `Duplicate Error: UOM with code "${cleanCode}" or name "${cleanName}" already exists.` });
     }
 
-    const id = `uom-${Date.now()}`;
+    await ensureUomsTable();
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM units_of_measure WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Duplicate Error: UOM with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (err) {}
+    }
     const newUom = {
       id,
       code: cleanCode,
@@ -3491,6 +3929,27 @@ export async function updateUom(req, res, next) {
     const cleanCategory = category !== undefined ? category.trim() : inMemoryUoms[idx].category;
     const cleanDesc = description !== undefined ? description.trim() : inMemoryUoms[idx].description;
     const isAct = active !== undefined ? Boolean(active) : inMemoryUoms[idx].active;
+
+    const dup = inMemoryUoms.find(u => (u.id !== id && u.code !== id) && (
+      (cleanCode && u.code && u.code.toUpperCase() === cleanCode) || 
+      (cleanName && u.name && u.name.toLowerCase() === cleanName.toLowerCase())
+    ));
+    if (dup) {
+      return res.status(409).json({ success: false, message: `Duplicate Error: UOM with code "${cleanCode}" or name "${cleanName}" already exists.` });
+    }
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const whereParts = [];
+        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM units_of_measure WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Duplicate Error: UOM with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        }
+      } catch (err) {}
+    }
 
     inMemoryUoms[idx] = {
       ...inMemoryUoms[idx],
@@ -3585,7 +4044,21 @@ export async function createDisposalStatus(req, res, next) {
     const cleanName = name.trim();
 
     if (inMemoryDisposalStatuses.some(s => s.code.toLowerCase() === cleanCode.toLowerCase())) {
-      return res.status(409).json({ success: false, message: 'Disposal status code already exists' });
+      return res.status(409).json({ success: false, message: `Disposal status code "${cleanCode}" already exists.` });
+    }
+    if (inMemoryDisposalStatuses.some(s => s.name.toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Disposal status name "${cleanName}" already exists.` });
+    }
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM disposal_statuses WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Disposal status with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (err) {}
     }
 
     const newStatus = {
@@ -3617,9 +4090,36 @@ export async function createDisposalStatus(req, res, next) {
 export async function updateDisposalStatus(req, res, next) {
   try {
     const { id } = req.params;
+    const { code, name, description } = req.body;
     const idx = inMemoryDisposalStatuses.findIndex(s => s.id === id || s.code === id);
     if (idx === -1) return res.status(404).json({ success: false, message: 'Disposal status not found' });
-    inMemoryDisposalStatuses[idx] = { ...inMemoryDisposalStatuses[idx], ...req.body, updatedAt: new Date().toISOString() };
+    const existing = inMemoryDisposalStatuses[idx];
+    const cleanCode = code ? code.trim().toUpperCase() : existing.code;
+    const cleanName = name ? name.trim() : existing.name;
+
+    if (inMemoryDisposalStatuses.some(s => s.id !== existing.id && s.code !== existing.code && (
+      (cleanCode && s.code.toLowerCase() === cleanCode.toLowerCase()) ||
+      (cleanName && s.name.toLowerCase() === cleanName.toLowerCase())
+    ))) {
+      return res.status(409).json({ success: false, message: `Another Disposal status with code "${cleanCode}" or name "${cleanName}" already exists.` });
+    }
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const whereParts = [];
+        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        const safeId = (id || '').replace(/'/g, "''");
+        const dbEx = await prisma.$queryRawUnsafe(
+          `SELECT id FROM disposal_statuses WHERE id != '${safeId}' AND code != '${safeId}' AND (${whereParts.join(' OR ')})`
+        );
+        if (Array.isArray(dbEx) && dbEx.length > 0) {
+          return res.status(409).json({ success: false, message: `Another Disposal status with this code or name already exists.` });
+        }
+      } catch (err) {}
+    }
+
+    inMemoryDisposalStatuses[idx] = { ...inMemoryDisposalStatuses[idx], ...req.body, code: cleanCode, name: cleanName, updatedAt: new Date().toISOString() };
     writeDisposalStatusesToFile(inMemoryDisposalStatuses);
     res.json({ success: true, disposalStatus: inMemoryDisposalStatuses[idx] });
   } catch (err) { next(err); }
@@ -3685,6 +4185,19 @@ export async function createBrand(req, res, next) {
       return res.status(409).json({ success: false, message: `Brand with name "${cleanName}" already exists. Duplicate brand names are not allowed.` });
     }
 
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM brands WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate brand skipped:', dbErr.message);
+      }
+    }
+
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const id = `brd-${Date.now()}`;
 
@@ -3733,6 +4246,23 @@ export async function updateBrand(req, res, next) {
     }
     if (cleanName && inMemoryBrands.some(b => b.id !== existing.id && (b.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Brand with name "${cleanName}" already exists.` });
+    }
+
+    if (isDbConnected() && (cleanCode || cleanName)) {
+      try {
+        const whereParts = [];
+        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        const safeId = (id || '').replace(/'/g, "''");
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM brands WHERE id != '${safeId}' AND code != '${safeId}' AND (${whereParts.join(' OR ')})`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Another brand with this code or name already exists.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate brand in update skipped:', dbErr.message);
+      }
     }
 
     const updated = {
