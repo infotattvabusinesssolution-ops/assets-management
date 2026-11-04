@@ -369,6 +369,24 @@ export function SubCategoriesTab({
     }
   };
 
+  const handleInitiateDeleteSubCategory = (sc) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    const totalLinked = sc.totalAssets || 0;
+    if (totalLinked > 0) {
+      setSmartDeleteState({
+        isOpen: true,
+        item: sc,
+        linkedCount: totalLinked,
+        details: {
+          assetsCount: totalLinked
+        },
+        isProcessing: false
+      });
+      return;
+    }
+    handleDeleteSubCategory(sc);
+  };
+
   const handleDeleteSubCategory = async (sc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Sub Category "${sc.name}" (${sc.code})?`)) {
@@ -770,7 +788,7 @@ export function SubCategoriesTab({
                             <div className="my-1 border-t border-slate-100" />
 
                             <button
-                              onClick={() => handleDeleteSubCategory(sc)}
+                              onClick={() => handleInitiateDeleteSubCategory(sc)}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-rose-600" />

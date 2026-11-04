@@ -41,16 +41,19 @@ export function CategoriesTab({
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedCatIds, setSelectedCatIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [liveSubCategories, setLiveSubCategories] = useState([]);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Load live categories from backend database
   const loadCategories = async () => {
     setIsLoading(true);
     try {
-      const [res, grpRes, clsRes] = await Promise.all([
+      const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+      const [res, grpRes, clsRes, subcatRes] = await Promise.all([
         api.get('/master-data/categories?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
-        api.get('/master-data/asset-sub-groups?includeInactive=true').catch(() => null)
+        api.get('/master-data/asset-sub-groups?includeInactive=true').catch(() => null),
+        api.get('/master-data/sub-categories?includeInactive=true').catch(() => null)
       ]);
       if (grpRes?.assetGroups && Array.isArray(grpRes.assetGroups)) {
         setAvailableAssetGroups(grpRes.assetGroups);
@@ -58,6 +61,8 @@ export function CategoriesTab({
       if (clsRes?.assetClasses && Array.isArray(clsRes.assetClasses)) {
         setAvailableAssetClasses(clsRes.assetClasses);
       }
+      const allLiveSubCats = [...(subcatRes?.assetClasses || subcatRes?.subCategories || []), ...subcatCustom];
+      setLiveSubCategories(allLiveSubCats);
       if (res?.categories && res.categories.length > 0) {
         const mapped = res.categories.map((cat, idx) => ({
           id: cat.id,
@@ -79,7 +84,13 @@ export function CategoriesTab({
           lastModifiedBy: 'Admin',
           lastModifiedOn: cat.updatedAt ? new Date(cat.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           relatedInfo: {
-            subCategories: cat.subCategoriesCount || 0,
+            subCategories: (() => {
+              const childSubCats = allLiveSubCats.filter(sc =>
+                (sc.categoryId && (sc.categoryId === cat.id || sc.categoryId === cat.code)) ||
+                (sc.categoryName && cat.name && sc.categoryName.trim().toLowerCase() === cat.name.trim().toLowerCase())
+              );
+              return childSubCats.length || cat.subCategoriesCount || 0;
+            })(),
             assets: cat.totalAssets || 0,
             maintenancePlans: 0,
             documents: 0,
@@ -353,6 +364,29 @@ export function CategoriesTab({
     }
   };
 
+  const handleInitiateDeleteCategory = (cat) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    const childSubCats = (liveSubCategories || []).filter(sc =>
+      (sc.categoryId && (sc.categoryId === cat.id || sc.categoryId === cat.code)) ||
+      (sc.categoryName && cat.name && sc.categoryName.trim().toLowerCase() === cat.name.trim().toLowerCase())
+    );
+    const totalLinked = childSubCats.length + (cat.totalAssets || 0);
+    if (totalLinked > 0) {
+      setSmartDeleteState({
+        isOpen: true,
+        item: cat,
+        linkedCount: totalLinked,
+        details: {
+          classCount: childSubCats.length,
+          assetsCount: cat.totalAssets || 0
+        },
+        isProcessing: false
+      });
+      return;
+    }
+    handleDeleteCategory(cat);
+  };
+
   const handleDeleteCategory = async (cat) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (!window.confirm(`Are you sure you want to delete Category "${cat.name}" (${cat.code})?`)) return;
@@ -398,7 +432,9 @@ export function CategoriesTab({
     if (!smartDeleteState.item) return;
     setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
     try {
-      const res = await api.delete(`/master-data/categories/${smartDeleteState.item.id}?action=deactivate`);
+      const res = await api.delete(
+        `/master-data/categories/${smartDeleteState.item.id}?action=deactivate&name=${encodeURIComponent(smartDeleteState.item.name || '')}&code=${encodeURIComponent(smartDeleteState.item.code || '')}`
+      );
       setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
       triggerToast && triggerToast(res?.message || 'Category deactivated successfully.');
       await loadCategories();
@@ -745,7 +781,7 @@ export function CategoriesTab({
                             <div className="my-1 border-t border-slate-100" />
 
                             <button
-                              onClick={() => handleDeleteCategory(cat)}
+                              onClick={() => handleInitiateDeleteCategory(cat)}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-rose-600" />

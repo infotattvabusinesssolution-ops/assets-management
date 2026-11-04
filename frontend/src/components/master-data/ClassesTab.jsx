@@ -40,6 +40,8 @@ export function ClassesTab({
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedClassIds, setSelectedClassIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [liveCategories, setLiveCategories] = useState([]);
+  const [liveSubCategories, setLiveSubCategories] = useState([]);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Load live classes from database (Filtered strictly to true Asset Classes, excluding Sub Categories)
@@ -48,15 +50,23 @@ export function ClassesTab({
     try {
       const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
       const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-      const [res, grpRes, subcatRes] = await Promise.all([
+      const customCats = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+      const [res, grpRes, subcatRes, catRes] = await Promise.all([
         api.get('/master-data/asset-sub-groups?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
-        api.get('/master-data/sub-categories?includeInactive=true').catch(() => null)
+        api.get('/master-data/sub-categories?includeInactive=true').catch(() => null),
+        api.get('/master-data/categories?includeInactive=true').catch(() => null)
       ]);
 
-      const serverSubcatCodes = (subcatRes?.assetClasses || []).map(s => (s.code || '').toUpperCase());
+      const serverSubcatCodes = (subcatRes?.assetClasses || subcatRes?.subCategories || []).map(s => (s.code || '').toUpperCase());
       const customSubcatCodes = subcatCustom.map(s => (s.code || '').toUpperCase());
       const subcatCodes = new Set([...serverSubcatCodes, ...customSubcatCodes]);
+
+      const allLiveCats = [...(catRes?.categories || []), ...customCats];
+      setLiveCategories(allLiveCats);
+
+      const allLiveSubCats = [...(subcatRes?.assetClasses || subcatRes?.subCategories || []), ...subcatCustom];
+      setLiveSubCategories(allLiveSubCats);
 
       if (grpRes?.assetGroups && Array.isArray(grpRes.assetGroups)) {
         setAvailableAssetGroups(grpRes.assetGroups);
@@ -73,6 +83,22 @@ export function ClassesTab({
           const descClean = (ac.description || '').replace(/\[kind:[^\]]+\]/g, '').replace(/\[group:[^\]]+\]/g, '').trim();
           const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/);
           const parsedGroup = groupMatch ? groupMatch[1] : (ac.groupName || '-');
+
+          const childCats = allLiveCats.filter(cat => {
+            const catClass = (cat.description || '').match(/\[class:([^\]]+)\]/)?.[1] || cat.className || '';
+            return (
+              (catClass && (catClass.toLowerCase() === (ac.name || '').toLowerCase() || catClass.toLowerCase() === (ac.code || '').toLowerCase())) ||
+              ((cat.description || '').toLowerCase().includes(`[class:${(ac.name || '').toLowerCase()}]`)) ||
+              ((cat.description || '').toLowerCase().includes(`[class:${(ac.code || '').toLowerCase()}]`))
+            );
+          });
+
+          const childSubCats = allLiveSubCats.filter(sc =>
+            (sc.assetSubGroupId && (sc.assetSubGroupId === ac.id || sc.assetSubGroupId === ac.code)) ||
+            (sc.assetSubGroupName && ac.name && sc.assetSubGroupName.trim().toLowerCase() === ac.name.trim().toLowerCase()) ||
+            (sc.className && ac.name && sc.className.trim().toLowerCase() === ac.name.trim().toLowerCase())
+          );
+
           return {
             id: ac.id,
             code: ac.code,
@@ -87,7 +113,7 @@ export function ClassesTab({
             createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
             lastModifiedBy: 'Admin',
             lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-            relatedInfo: { categories: 0, subCategories: 0, assets: 0, maintenancePlans: 0, documents: 0 }
+            relatedInfo: { categories: childCats.length, subCategories: childSubCats.length, assets: ac.totalAssets || 0, maintenancePlans: 0, documents: 0 }
           };
         });
       }
@@ -322,6 +348,42 @@ export function ClassesTab({
     triggerToast && triggerToast(`Asset Sub Group "${cls.code}" status changed to ${newStatus}.`);
   };
 
+  const handleInitiateDeleteClass = (cls) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    const childCats = (liveCategories || []).filter(cat => {
+      const catClass = (cat.description || '').match(/\[class:([^\]]+)\]/)?.[1] || cat.className || '';
+      return (
+        (catClass && (catClass.toLowerCase() === (cls.name || '').toLowerCase() || catClass.toLowerCase() === (cls.code || '').toLowerCase())) ||
+        ((cat.description || '').toLowerCase().includes(`[class:${(cls.name || '').toLowerCase()}]`)) ||
+        ((cat.description || '').toLowerCase().includes(`[class:${(cls.code || '').toLowerCase()}]`))
+      );
+    });
+
+    const childSubCats = (liveSubCategories || []).filter(sc =>
+      (sc.assetSubGroupId && (sc.assetSubGroupId === cls.id || sc.assetSubGroupId === cls.code)) ||
+      (sc.assetSubGroupName && cls.name && sc.assetSubGroupName.trim().toLowerCase() === cls.name.trim().toLowerCase()) ||
+      (sc.className && cls.name && sc.className.trim().toLowerCase() === cls.name.trim().toLowerCase())
+    );
+
+    const totalLinked = childCats.length + childSubCats.length + (cls.totalAssets || 0);
+    if (totalLinked > 0) {
+      setSmartDeleteState({
+        isOpen: true,
+        item: cls,
+        linkedCount: totalLinked,
+        details: {
+          categoriesCount: childCats.length,
+          subCatsCount: childSubCats.length,
+          assetsCount: cls.totalAssets || 0
+        },
+        isProcessing: false
+      });
+      return;
+    }
+
+    handleDeleteClass(cls);
+  };
+
   const handleDeleteClass = async (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Asset Sub Group "${cls.name}" (${cls.code})?`)) {
@@ -366,7 +428,9 @@ export function ClassesTab({
     if (!smartDeleteState.item) return;
     setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
     try {
-      const res = await api.delete(`/master-data/asset-sub-groups/${smartDeleteState.item.id}?action=deactivate`);
+      const res = await api.delete(
+        `/master-data/asset-sub-groups/${smartDeleteState.item.id}?action=deactivate&name=${encodeURIComponent(smartDeleteState.item.name || '')}&code=${encodeURIComponent(smartDeleteState.item.code || '')}`
+      );
       setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
       await loadClasses();
       triggerToast && triggerToast(res?.message || 'Asset Sub Group marked Inactive.');
@@ -715,7 +779,7 @@ export function ClassesTab({
                             <div className="my-1 border-t border-slate-100" />
 
                             <button
-                              onClick={() => handleDeleteClass(cls)}
+                              onClick={() => handleInitiateDeleteClass(cls)}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-rose-600" />

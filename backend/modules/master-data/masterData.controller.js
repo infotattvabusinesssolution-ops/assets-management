@@ -415,12 +415,26 @@ export async function deleteAssetGroup(req, res, next) {
     let categoriesCount = 0;
     if (isDbConnected()) {
       try {
+        const pCatCount = await prisma.category.count({
+          where: {
+            OR: [
+              ...(groupName ? [{ description: { contains: `[group:${groupName}]` } }, { description: { contains: groupName } }] : []),
+              ...(groupCode ? [{ description: { contains: `[group:${groupCode}]` } }, { description: { contains: groupCode } }] : [])
+            ]
+          }
+        }).catch(() => 0);
+        if (pCatCount > categoriesCount) categoriesCount = pCatCount;
+      } catch (_) {}
+
+      try {
         const catRows = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*) as cnt FROM category
-          WHERE (groupName IS NOT NULL AND (groupName = '${groupName.replace(/'/g, "''")}' OR UPPER(groupName) = '${groupName.toUpperCase().replace(/'/g, "''")}'))
-             OR description LIKE '%[group:${groupName.replace(/'/g, "''")}]%'
+          SELECT COUNT(*) as cnt FROM categories
+          WHERE description LIKE '%[group:${groupName.replace(/'/g, "''")}]%'
+             OR description LIKE '%[group:${groupCode.replace(/'/g, "''")}]%'
+             ${groupName ? `OR description LIKE '%${groupName.replace(/'/g, "''")}%'` : ''}
         `);
-        categoriesCount = Number(catRows?.[0]?.cnt || 0);
+        const dbCatCount = Number(catRows?.[0]?.cnt || 0);
+        if (dbCatCount > categoriesCount) categoriesCount = dbCatCount;
       } catch (dbErr) {
         console.warn('DB check categoriesCount in deleteAssetGroup skipped:', dbErr.message);
       }
@@ -1692,12 +1706,26 @@ export async function deleteAssetSubGroup(req, res, next) {
     let categoriesCount = 0;
     if (isDbConnected()) {
       try {
+        const pCatCount = await prisma.category.count({
+          where: {
+            OR: [
+              ...(subGroupName ? [{ description: { contains: `[class:${subGroupName}]` } }, { description: { contains: subGroupName } }] : []),
+              ...(subGroupCode ? [{ description: { contains: `[class:${subGroupCode}]` } }, { description: { contains: subGroupCode } }] : [])
+            ]
+          }
+        }).catch(() => 0);
+        if (pCatCount > categoriesCount) categoriesCount = pCatCount;
+      } catch (_) {}
+
+      try {
         const catRows = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*) as cnt FROM category
-          WHERE (className IS NOT NULL AND (className = '${subGroupName.replace(/'/g, "''")}' OR UPPER(className) = '${subGroupName.toUpperCase().replace(/'/g, "''")}'))
-             OR description LIKE '%[class:${subGroupName.replace(/'/g, "''")}]%'
+          SELECT COUNT(*) as cnt FROM categories
+          WHERE description LIKE '%[class:${subGroupName.replace(/'/g, "''")}]%'
+             OR description LIKE '%[class:${subGroupCode.replace(/'/g, "''")}]%'
+             ${subGroupName ? `OR description LIKE '%${subGroupName.replace(/'/g, "''")}%'` : ''}
         `);
-        categoriesCount = Number(catRows?.[0]?.cnt || 0);
+        const dbCatCount = Number(catRows?.[0]?.cnt || 0);
+        if (dbCatCount > categoriesCount) categoriesCount = dbCatCount;
       } catch (dbErr) {
         console.warn('DB check categories in deleteAssetSubGroup skipped:', dbErr.message);
       }
@@ -1733,13 +1761,25 @@ export async function deleteAssetSubGroup(req, res, next) {
     let assetsCount = 0;
     if (isDbConnected()) {
       try {
+        const pAssetCount = await prisma.asset.count({
+          where: {
+            OR: [
+              { assetClassId: id },
+              ...(subGroupCode ? [{ assetClassId: subGroupCode }] : [])
+            ]
+          }
+        }).catch(() => 0);
+        if (pAssetCount > assetsCount) assetsCount = pAssetCount;
+      } catch (_) {}
+
+      try {
         const assetRows = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM assets
-          WHERE assetSubGroupId = '${id.replace(/'/g, "''")}'
-             OR subGroupId = '${id.replace(/'/g, "''")}'
-             OR assetSubGroupId = '${subGroupCode.replace(/'/g, "''")}'
+          WHERE assetClassId = '${id.replace(/'/g, "''")}'
+             OR assetClassId = '${subGroupCode.replace(/'/g, "''")}'
         `);
-        assetsCount = Number(assetRows?.[0]?.cnt || 0);
+        const dbAssetCount = Number(assetRows?.[0]?.cnt || 0);
+        if (dbAssetCount > assetsCount) assetsCount = dbAssetCount;
       } catch (dbErr) {
         console.warn('DB check assets in deleteAssetSubGroup skipped:', dbErr.message);
       }
@@ -1755,9 +1795,10 @@ export async function deleteAssetSubGroup(req, res, next) {
         entityName: 'Asset Sub Group',
         details: {
           categoriesCount,
+          subCatsCount,
           assetsCount
         },
-        message: `This Asset Sub Group is linked to ${totalLinked} active record(s) (${categoriesCount} categories, ${assetsCount} assets). Deletion is blocked because child records exist under this sub group. You must delete or reassign child records first.`
+        message: `This Asset Sub Group is linked to ${totalLinked} active record(s) (${categoriesCount} categories, ${subCatsCount} sub categories, ${assetsCount} assets). Deletion is blocked because child records exist under this sub group. You must delete or reassign child records first.`
       });
     }
 
@@ -1785,8 +1826,8 @@ export async function deleteAssetSubGroup(req, res, next) {
       try {
         await prisma.$executeRawUnsafe(`
           UPDATE assets
-          SET assetSubGroupId = NULL, subGroupId = NULL
-          WHERE assetSubGroupId = '${id.replace(/'/g, "''")}' OR subGroupId = '${id.replace(/'/g, "''")}'
+          SET assetClassId = NULL
+          WHERE assetClassId = '${id.replace(/'/g, "''")}' OR assetClassId = '${subGroupCode.replace(/'/g, "''")}'
         `).catch(() => null);
         await prisma.$executeRawUnsafe(`
           DELETE FROM asset_sub_groups
