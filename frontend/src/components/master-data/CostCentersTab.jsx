@@ -193,32 +193,9 @@ export function CostCentersTab({
         await loadCostCenters();
         triggerToast && triggerToast(`Cost Center "${ccFormState.name}" updated successfully.`);
       } catch (err) {
-        console.warn('Save cost center error:', err);
-        const updated = costCentersList.map((c) =>
-          c.id === editingCostCenter.id
-            ? {
-                ...c,
-                code: ccFormState.code.toUpperCase(),
-                name: ccFormState.name,
-                company: ccFormState.company,
-                type: ccFormState.type,
-                manager: ccFormState.manager,
-                description: ccFormState.description,
-                status: ccFormState.status,
-                lastModifiedBy: 'Logged In User',
-                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                })
-              }
-            : c
-        );
-        setCostCentersList(updated);
-        if (selectedCostCenter?.id === editingCostCenter.id) {
-          setSelectedCostCenter(updated.find((item) => item.id === editingCostCenter.id));
-        }
-        triggerToast && triggerToast(`Cost Center "${ccFormState.name}" updated successfully.`);
+        console.error('Save cost center error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update cost center.');
+        return;
       }
     } else {
       try {
@@ -232,41 +209,9 @@ export function CostCentersTab({
         await loadCostCenters();
         triggerToast && triggerToast(`Cost Center "${ccFormState.name}" created successfully.`);
       } catch (err) {
-        console.warn('Add cost center error:', err);
-        const newCC = {
-          id: Date.now(),
-          code: ccFormState.code.toUpperCase(),
-          name: ccFormState.name,
-          company: ccFormState.company,
-          type: ccFormState.type,
-          manager: ccFormState.manager,
-          description: ccFormState.description,
-          totalAssets: 0,
-          status: ccFormState.status,
-          createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          relatedInfo: {
-            departments: 0,
-            locations: 0,
-            assets: 0,
-            maintenancePlans: 0,
-            budgets: 0,
-            documents: 0
-          }
-        };
-        setCostCentersList([newCC, ...costCentersList]);
-        setSelectedCostCenter(newCC);
-        triggerToast && triggerToast(`Cost Center "${ccFormState.name}" created successfully.`);
+        console.error('Add cost center error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create cost center.');
+        return;
       }
     }
     setShowAddCCModal(false);

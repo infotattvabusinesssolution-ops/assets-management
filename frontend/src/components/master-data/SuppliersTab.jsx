@@ -232,39 +232,9 @@ export function SuppliersTab({
         await loadSuppliers();
         triggerToast && triggerToast(`Supplier "${supFormState.name}" updated successfully.`);
       } catch (err) {
-        console.warn('Save supplier error:', err);
-        const updated = suppliersList.map((s) =>
-          s.id === editingSupplier.id
-            ? {
-              ...s,
-              code: supFormState.code.toUpperCase(),
-              name: supFormState.name,
-              type: supFormState.type,
-              company: supFormState.company,
-              country: supFormState.country,
-              contactPerson: supFormState.contactPerson,
-              email: supFormState.email,
-              phone: supFormState.phone,
-              address: supFormState.address,
-              website: supFormState.website,
-              paymentTerms: supFormState.paymentTerms,
-              taxNo: supFormState.taxNo,
-              description: supFormState.description,
-              status: supFormState.status,
-              lastModifiedBy: 'Logged In User',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              })
-            }
-            : s
-        );
-        setSuppliersList(updated);
-        if (selectedSupplier?.id === editingSupplier.id) {
-          setSelectedSupplier(updated.find((item) => item.id === editingSupplier.id));
-        }
-        triggerToast && triggerToast(`Supplier "${supFormState.name}" updated successfully.`);
+        console.error('Save supplier error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update supplier.');
+        return;
       }
     } else {
       try {
@@ -284,45 +254,9 @@ export function SuppliersTab({
         await loadSuppliers();
         triggerToast && triggerToast(`Supplier "${supFormState.name}" created successfully.`);
       } catch (err) {
-        console.warn('Add supplier error:', err);
-        const newSup = {
-          id: Date.now(),
-          code: supFormState.code.toUpperCase(),
-          name: supFormState.name,
-          type: supFormState.type,
-          company: supFormState.company,
-          country: supFormState.country,
-          contactPerson: supFormState.contactPerson,
-          email: supFormState.email,
-          phone: supFormState.phone,
-          address: supFormState.address,
-          website: supFormState.website,
-          paymentTerms: supFormState.paymentTerms,
-          taxNo: supFormState.taxNo,
-          description: supFormState.description,
-          status: supFormState.status,
-          createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          relatedInfo: {
-            purchaseOrders: 0,
-            assets: 0,
-            contracts: 0,
-            documents: 0
-          }
-        };
-        setSuppliersList([newSup, ...suppliersList]);
-        setSelectedSupplier(newSup);
-        triggerToast && triggerToast(`Supplier "${supFormState.name}" created successfully.`);
+        console.error('Add supplier error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create supplier.');
+        return;
       }
     }
     setShowAddSupModal(false);

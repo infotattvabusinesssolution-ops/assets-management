@@ -292,23 +292,9 @@ export function LocationsTab({
         await loadLocations();
         triggerToast && triggerToast(`Location "${cleanName}" updated successfully.`);
       } catch (err) {
-        console.warn('Save location error:', err);
-        const updated = locationsList.map((loc) =>
-          loc.id === editingLocation.id
-            ? {
-                ...loc,
-                ...payload,
-                fullPath: computeFullPath({ ...loc, ...payload }, locationsList),
-                lastModifiedBy: 'Admin User',
-                lastModifiedOn: new Date().toLocaleDateString('en-GB')
-              }
-            : loc
-        );
-        setLocationsList(updated);
-        if (selectedLocation?.id === editingLocation.id) {
-          setSelectedLocation(updated.find((item) => item.id === editingLocation.id));
-        }
-        triggerToast && triggerToast(`Location "${cleanName}" updated successfully.`);
+        console.error('Save location error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update location.');
+        return;
       }
     } else {
       console.log('🚀 [Adding New Location in Frontend]:', payload);
@@ -318,21 +304,9 @@ export function LocationsTab({
         await loadLocations();
         triggerToast && triggerToast(`Location "${cleanName}" created successfully.`);
       } catch (err) {
-        console.warn('Add location error:', err);
-        const newLoc = {
-          id: `loc-${Date.now()}`,
-          ...payload,
-          fullPath: computeFullPath(payload, locationsList),
-          totalAssets: 0,
-          createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB'),
-          lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB'),
-          relatedInfo: { childLocations: 0, assets: 0, departments: 0, costCenters: 0 }
-        };
-        setLocationsList([newLoc, ...locationsList]);
-        setSelectedLocation(newLoc);
-        triggerToast && triggerToast(`Location "${cleanName}" created successfully.`);
+        console.error('Add location error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create location.');
+        return;
       }
     }
     setShowAddLocModal(false);

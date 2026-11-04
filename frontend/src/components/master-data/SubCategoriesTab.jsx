@@ -277,8 +277,8 @@ export function SubCategoriesTab({
     if (subCatFormState.groupName) parts.push(`[group:${subCatFormState.groupName}]`);
     const taggedDesc = parts.join(' ').trim();
 
-    if (editingSubCategory) {
-      try {
+    try {
+      if (editingSubCategory) {
         await api.put(`/master-data/asset-classes/${editingSubCategory.id}`, {
           code: subCatFormState.code.toUpperCase(),
           name: subCatFormState.name,
@@ -288,11 +288,7 @@ export function SubCategoriesTab({
         });
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" updated successfully.`);
-      } catch (err) {
-        console.warn('Save sub-category error:', err);
-      }
-    } else {
-      try {
+      } else {
         await api.post('/master-data/asset-classes', {
           code: subCatFormState.code.toUpperCase(),
           name: subCatFormState.name,
@@ -301,28 +297,15 @@ export function SubCategoriesTab({
           kind: 'SUBCATEGORY',
           status: subCatFormState.status
         });
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-          const newSub = {
-            id: `SUBCAT-${Date.now()}`,
-            code: subCatFormState.code.toUpperCase(),
-            name: subCatFormState.name,
-            categoryId: targetCatId,
-            categoryName: categories.find(c => c.id === targetCatId)?.name || '',
-            className: subCatFormState.className || '',
-            groupName: subCatFormState.groupName || '',
-            description: taggedDesc,
-            status: subCatFormState.status
-          };
-          localStorage.setItem('fams_custom_subcategories', JSON.stringify([newSub, ...custom]));
-        } catch (_) { }
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
-      } catch (err) {
-        console.warn('Create sub-category error:', err);
       }
+      setShowAddSubCatModal(false);
+      setEditingSubCategory(null);
+    } catch (err) {
+      console.error('Save sub-category error:', err);
+      triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to save sub category.');
     }
-    setShowAddSubCatModal(false);
   };
 
   const handleDuplicateSubCategory = (sc) => {

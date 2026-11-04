@@ -226,98 +226,36 @@ export function ClassesTab({
 
     try {
       if (editingClass) {
-        if (typeof editingClass.id === 'string' && editingClass.id.length > 10) {
-          const cleanDesc = (clsFormState.description || '')
-            .replace(/\[kind:[^\]]+\]/g, '')
-            .replace(/\[group:[^\]]+\]/g, '')
-            .trim();
-          await api.put(`/master-data/asset-classes/${editingClass.id}`, {
-            code: clsFormState.code,
-            name: clsFormState.name,
-            description: `${cleanDesc} [kind:class] [group:${clsFormState.groupName}]`.trim(),
-            status: clsFormState.status
-          }).catch(() => null);
-        }
-        const updated = classesList.map((c) =>
-          c.id === editingClass.id
-            ? {
-              ...c,
-              code: clsFormState.code.toUpperCase(),
-              name: clsFormState.name,
-              groupName: clsFormState.groupName,
-              description: clsFormState.description,
-              assetType: clsFormState.assetType,
-              status: clsFormState.status,
-              lastModifiedBy: 'Admin',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              })
-            }
-            : c
-        );
-        setClassesList(updated);
-        if (selectedClass.id === editingClass.id) {
-          setSelectedClass(updated.find((item) => item.id === editingClass.id));
-        }
+        const cleanDesc = (clsFormState.description || '')
+          .replace(/\[kind:[^\]]+\]/g, '')
+          .replace(/\[group:[^\]]+\]/g, '')
+          .trim();
+        await api.put(`/master-data/asset-classes/${editingClass.id}`, {
+          code: clsFormState.code,
+          name: clsFormState.name,
+          description: `${cleanDesc} [kind:class] [group:${clsFormState.groupName}]`.trim(),
+          status: clsFormState.status
+        });
+        await loadClasses();
         triggerToast && triggerToast(`Asset Sub Group "${clsFormState.name}" updated successfully.`);
       } else {
-        let createdId = Date.now();
-        try {
-          const res = await api.post('/master-data/asset-classes', {
-            code: clsFormState.code,
-            name: clsFormState.name,
-            description: clsFormState.description,
-            groupName: clsFormState.groupName,
-            kind: 'CLASS',
-            status: clsFormState.status
-          });
-          if (res?.assetClass?.id) createdId = res.assetClass.id;
-        } catch (apiErr) {
-          console.warn('Backend create error, using local state:', apiErr);
-        }
-        const newClass = {
-          id: createdId,
-          code: clsFormState.code.toUpperCase(),
+        await api.post('/master-data/asset-classes', {
+          code: clsFormState.code,
           name: clsFormState.name,
-          groupName: clsFormState.groupName,
           description: clsFormState.description,
-          assetType: clsFormState.assetType,
-          totalAssets: 0,
-          status: clsFormState.status,
-          createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          relatedInfo: {
-            categories: 0,
-            subCategories: 0,
-            assets: 0,
-            maintenancePlans: 0,
-            documents: 0
-          }
-        };
-        setClassesList([newClass, ...classesList]);
-        setSelectedClass(newClass);
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-          localStorage.setItem('fams_custom_asset_classes', JSON.stringify([newClass, ...custom]));
-        } catch (_) { }
+          groupName: clsFormState.groupName,
+          kind: 'CLASS',
+          status: clsFormState.status
+        });
+        await loadClasses();
         triggerToast && triggerToast(`Asset Sub Group "${clsFormState.name}" created successfully.`);
       }
+      setShowAddClsModal(false);
+      setEditingClass(null);
     } catch (err) {
-      triggerToast && triggerToast(`Error saving class: ${err.message || 'Operation failed'}`);
+      const errMsg = err?.response?.data?.message || err?.message || 'Operation failed';
+      triggerToast && triggerToast(`Error saving sub group: ${errMsg}`);
     }
-    setShowAddClsModal(false);
   };
 
   const handleDuplicateClass = (cls) => {

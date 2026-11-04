@@ -227,36 +227,9 @@ export function DepartmentsTab({
         await loadDepartments();
         triggerToast && triggerToast(`Department "${deptFormState.name}" updated successfully.`);
       } catch (err) {
-        console.warn('Save department error:', err);
-        const updated = departmentsList.map((d) =>
-          d.id === editingDepartment.id
-            ? {
-                ...d,
-                code: deptFormState.code.toUpperCase(),
-                name: deptFormState.name,
-                type: deptFormState.type,
-                parentDepartment: deptFormState.parentDepartment,
-                location: deptFormState.location,
-                company: deptFormState.company,
-                manager: deptFormState.manager,
-                email: deptFormState.email,
-                phone: deptFormState.phone,
-                description: deptFormState.description,
-                status: deptFormState.status,
-                lastModifiedBy: 'Logged In User',
-                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                })
-              }
-            : d
-        );
-        setDepartmentsList(updated);
-        if (selectedDepartment?.id === editingDepartment.id) {
-          setSelectedDepartment(updated.find((item) => item.id === editingDepartment.id));
-        }
-        triggerToast && triggerToast(`Department "${deptFormState.name}" updated successfully.`);
+        console.error('Save department error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update department.');
+        return;
       }
     } else {
       try {
@@ -270,43 +243,9 @@ export function DepartmentsTab({
         await loadDepartments();
         triggerToast && triggerToast(`Department "${deptFormState.name}" created successfully.`);
       } catch (err) {
-        console.warn('Add department error:', err);
-        const newDept = {
-          id: Date.now(),
-          code: deptFormState.code.toUpperCase(),
-          name: deptFormState.name,
-          type: deptFormState.type,
-          parentDepartment: deptFormState.parentDepartment,
-          location: deptFormState.location,
-          company: deptFormState.company,
-          manager: deptFormState.manager,
-          email: deptFormState.email,
-          phone: deptFormState.phone,
-          description: deptFormState.description,
-          employees: 0,
-          status: deptFormState.status,
-          createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          relatedInfo: {
-            subDepartments: 0,
-            locations: 0,
-            assets: 0,
-            users: 0
-          }
-        };
-        setDepartmentsList([newDept, ...departmentsList]);
-        setSelectedDepartment(newDept);
-        triggerToast && triggerToast(`Department "${deptFormState.name}" created successfully.`);
+        console.error('Add department error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create department.');
+        return;
       }
     }
     setShowAddDeptModal(false);

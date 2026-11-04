@@ -259,31 +259,9 @@ export function CategoriesTab({
         await loadCategories();
         triggerToast && triggerToast(`Category "${catFormState.name}" updated successfully.`);
       } catch (err) {
-        console.warn('Save category error:', err);
-        const updated = categoriesList.map((c) =>
-          c.id === editingCategory.id
-            ? {
-              ...c,
-              code: catFormState.code.toUpperCase(),
-              name: catFormState.name,
-              className: catFormState.className,
-              groupName: catFormState.groupName,
-              description: taggedDescription,
-              status: catFormState.status,
-              lastModifiedBy: 'Logged In User',
-              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                day: '2-digit',
-                month: 'short',
-                year: 'numeric'
-              })
-            }
-            : c
-        );
-        setCategoriesList(updated);
-        if (selectedCategory.id === editingCategory.id) {
-          setSelectedCategory(updated.find((item) => item.id === editingCategory.id));
-        }
-        triggerToast && triggerToast(`Category "${catFormState.name}" updated successfully.`);
+        console.error('Save category error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to update category.');
+        return;
       }
     } else {
       try {
@@ -296,39 +274,9 @@ export function CategoriesTab({
         await loadCategories();
         triggerToast && triggerToast(`Category "${catFormState.name}" created successfully.`);
       } catch (err) {
-        console.warn('Add category error:', err);
-        const newCat = {
-          id: Date.now(),
-          code: catFormState.code.toUpperCase(),
-          name: catFormState.name,
-          className: catFormState.className,
-          groupName: catFormState.groupName,
-          description: taggedDescription,
-          totalAssets: 0,
-          status: catFormState.status,
-          createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          }),
-          relatedInfo: {
-            subCategories: 0,
-            assets: 0,
-            maintenancePlans: 0,
-            documents: 0,
-            spareParts: 0
-          }
-        };
-        setCategoriesList([newCat, ...categoriesList]);
-        setSelectedCategory(newCat);
-        triggerToast && triggerToast(`Category "${catFormState.name}" created successfully.`);
+        console.error('Add category error:', err);
+        triggerToast && triggerToast(err.response?.data?.message || err.message || 'Failed to create category.');
+        return;
       }
     }
     setShowAddCatModal(false);

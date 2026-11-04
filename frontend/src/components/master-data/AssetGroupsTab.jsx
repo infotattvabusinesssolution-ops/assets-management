@@ -286,78 +286,30 @@ export function AssetGroupsTab({
     try {
       if (editingGroup) {
         console.log(`📡 [AssetGroupsTab] Updating Asset Group ID ${editingGroup.id}:`, grpFormState);
-        let res = null;
-        try {
-          res = await api.put(`/master-data/asset-groups/${editingGroup.id}`, {
-            ...grpFormState,
-            code: cleanCode,
-            name: cleanName
-          });
-          console.log('✅ [AssetGroupsTab] Update Success:', res);
-        } catch (apiErr) {
-          console.warn('API update failed, updating locally:', apiErr);
-        }
-        const saved = res?.assetGroup || { ...editingGroup, ...grpFormState, code: cleanCode, name: cleanName };
-        const updated = assetGroups.map((g) => (g.id === editingGroup.id ? { ...g, ...saved } : g));
-        setAssetGroups(updated);
-        if (selectedGroup?.id === editingGroup.id) {
-          setSelectedGroup(updated.find((g) => g.id === editingGroup.id) || saved);
-        }
+        await api.put(`/master-data/asset-groups/${editingGroup.id}`, {
+          ...grpFormState,
+          code: cleanCode,
+          name: cleanName
+        });
+        await loadAssetGroups();
         triggerToast && triggerToast(`Asset Group "${cleanName}" updated successfully.`);
       } else {
         console.log('📡 [AssetGroupsTab] Creating new Asset Group via POST /master-data/asset-groups:', grpFormState);
-        let res = null;
-        try {
-          res = await api.post('/master-data/asset-groups', {
-            ...grpFormState,
-            code: cleanCode,
-            name: cleanName
-          });
-          console.log('🎉 [AssetGroupsTab] Create Success Response:', res);
-        } catch (apiErr) {
-          console.warn('API Adding asset group failed, saving locally:', apiErr);
-        }
-
-        const newGroup = res?.assetGroup || {
-          id: `grp-${Date.now()}`,
+        await api.post('/master-data/asset-groups', {
+          ...grpFormState,
           code: cleanCode,
-          name: cleanName,
-          description: grpFormState.description,
-          assetType: grpFormState.assetType,
-          assetTypeLabel:
-            grpFormState.assetType === 'Both'
-              ? 'Both (Physical & Intangible)'
-              : grpFormState.assetType === 'Physical'
-                ? 'Physical Tangible'
-                : 'Intangible / Digital',
-          totalAssets: 0,
-          status: grpFormState.status,
-          createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-          lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-          relatedInfo: { classes: 0, categories: 0, subCategories: 0, assets: 0, documents: 0 }
-        };
-
-        try {
-          const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-          localStorage.setItem('fams_custom_asset_groups', JSON.stringify([newGroup, ...currentCustom.filter(g => g.code !== cleanCode)]));
-        } catch (e) { }
-
-        const updated = [newGroup, ...assetGroups];
-        setAssetGroups(updated);
-        setSelectedGroup(newGroup);
-        if (grpStatusFilter !== 'All' && grpStatusFilter.toLowerCase() !== newGroup.status.toLowerCase()) {
-          setGrpStatusFilter('All');
-        }
+          name: cleanName
+        });
+        await loadAssetGroups();
         triggerToast && triggerToast(`Asset Group "${cleanName}" created successfully.`);
       }
       setShowAddGrpModal(false);
+      setEditingGroup(null);
     } catch (err) {
-      console.error('❌ [AssetGroupsTab] Save Asset Group Failed:', err);
-      const errMsg = err?.message || err?.response?.data?.message || 'Failed to save asset group.';
+      const errMsg = err?.response?.data?.message || err?.message || 'Failed to save asset group.';
       setModalError(errMsg);
       triggerToast && triggerToast(errMsg);
+      return;
     } finally {
       setIsSaving(false);
     }
