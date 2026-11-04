@@ -658,7 +658,6 @@ export function CategoriesTab({
                   <th className="py-3 px-3">Category Code</th>
                   <th className="py-3 px-3">Category Name</th>
                   <th className="py-3 px-3">Asset Sub Group</th>
-                  <th className="py-3 px-3">Asset Group</th>
                   <th className="py-3 px-4">Description</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
@@ -692,7 +691,6 @@ export function CategoriesTab({
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{cat.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{cat.name}</td>
                       <td className="py-3.5 px-3 text-slate-700">{cat.className}</td>
-                      <td className="py-3.5 px-3 text-slate-700">{cat.groupName}</td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={cat.description}>
                         {cat.description || '-'}
                       </td>
