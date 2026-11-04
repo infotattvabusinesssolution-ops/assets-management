@@ -320,7 +320,8 @@ export function Sidebar({ collapsed, setCollapsed }) {
     maintenance: location.pathname.startsWith('/maintenance') || location.pathname.startsWith('/service-providers') || location.pathname.startsWith('/spare-parts') || location.pathname.startsWith('/preventive-maintenance') || location.pathname.startsWith('/inventory'),
     disposal: location.pathname.startsWith('/disposals') || location.pathname.startsWith('/disposal'),
     reports: location.pathname.startsWith('/reports'),
-    administration: location.pathname.startsWith('/admin') || location.pathname.startsWith('/master-data') || location.pathname.startsWith('/audit-trail') || location.pathname.startsWith('/notifications') || location.pathname.startsWith('/backup-scheduler') || location.pathname.startsWith('/integrations')
+    'master-data': false,
+    administration: false
   });
 
   useEffect(() => {
