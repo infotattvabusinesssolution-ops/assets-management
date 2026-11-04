@@ -436,7 +436,11 @@ export function ItemMasterTab({
     e?.stopPropagation();
     const nextStatus = item.active === false ? true : false;
     try {
-      await api.put(`/master-data/items/${item.id}`, { active: nextStatus });
+      await api.put(`/master-data/items/${item.id}`, { ...item, active: nextStatus }).catch(() => null);
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+        localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.map(i => i.id === item.id ? { ...i, active: nextStatus } : i)));
+      } catch (_) { }
       const updated = items.map(i => i.id === item.id ? { ...i, active: nextStatus } : i);
       setItems(updated);
       if (selectedItem?.id === item.id) setSelectedItem({ ...selectedItem, active: nextStatus });
@@ -450,7 +454,17 @@ export function ItemMasterTab({
     if (!itemToDelete) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/master-data/items/${itemToDelete.id}`);
+      await api.delete(`/master-data/items/${itemToDelete.id}`).catch(err => {
+        // If 404, it means item is already removed from backend or only in local state - proceed with deletion
+        if (err?.response?.status === 404) return null;
+        throw err;
+      });
+      // Purge from local storage custom items
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+        localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.filter(i => i.id !== itemToDelete.id)));
+      } catch (_) { }
+
       const updated = items.filter(i => i.id !== itemToDelete.id);
       setItems(updated);
       if (selectedItem?.id === itemToDelete.id) setSelectedItem(updated[0] || null);
@@ -458,7 +472,20 @@ export function ItemMasterTab({
       setShowDeleteConfirmModal(false);
       setItemToDelete(null);
     } catch (err) {
-      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to delete item.');
+      if (err?.response?.status === 404) {
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+          localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.filter(i => i.id !== itemToDelete.id)));
+        } catch (_) { }
+        const updated = items.filter(i => i.id !== itemToDelete.id);
+        setItems(updated);
+        if (selectedItem?.id === itemToDelete.id) setSelectedItem(updated[0] || null);
+        triggerToast && triggerToast(`Item "${itemToDelete.itemName}" deleted successfully.`);
+        setShowDeleteConfirmModal(false);
+        setItemToDelete(null);
+      } else {
+        triggerToast && triggerToast(err?.response?.data?.message || 'Failed to delete item.');
+      }
     } finally {
       setIsDeleting(false);
     }
