@@ -1099,7 +1099,7 @@ export function GenericMasterTab({
                   type="submit"
                   className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm"
                 >
-                  {editingItem ? 'Save Changes' : `Create ${tabConfig.singular}`}
+                  {editingItem ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>
