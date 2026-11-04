@@ -206,7 +206,7 @@ export function CostCentersTab({
                   day: '2-digit',
                   month: 'short',
                   year: 'numeric'
-                }) + ' 02:30 PM'
+                })
               }
             : c
         );
@@ -243,19 +243,19 @@ export function CostCentersTab({
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 09:15 AM',
+          }),
           lastModifiedBy: 'Admin User',
           lastModifiedOn: new Date().toLocaleDateString('en-GB', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 09:15 AM',
+          }),
           relatedInfo: {
-            departments: 1,
-            locations: 1,
+            departments: 0,
+            locations: 0,
             assets: 0,
             maintenancePlans: 0,
-            budgets: 1,
+            budgets: 0,
             documents: 0
           }
         };
@@ -279,7 +279,7 @@ export function CostCentersTab({
         day: '2-digit',
         month: 'short',
         year: 'numeric'
-      }) + ' 09:15 AM'
+      })
     };
     setCostCentersList([duplicated, ...costCentersList]);
     setSelectedCostCenter(duplicated);

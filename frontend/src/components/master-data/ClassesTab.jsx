@@ -253,7 +253,7 @@ export function ClassesTab({
                 day: '2-digit',
                 month: 'short',
                 year: 'numeric'
-              }) + ' 02:30 PM'
+              })
             }
             : c
         );
@@ -291,13 +291,13 @@ export function ClassesTab({
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 09:20 AM',
+          }),
           lastModifiedBy: 'Admin User',
           lastModifiedOn: new Date().toLocaleDateString('en-GB', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 09:20 AM',
+          }),
           relatedInfo: {
             categories: 0,
             subCategories: 0,
@@ -332,7 +332,7 @@ export function ClassesTab({
         day: '2-digit',
         month: 'short',
         year: 'numeric'
-      }) + ' 05:30 PM'
+      })
     };
     setClassesList([duplicated, ...classesList]);
     setSelectedClass(duplicated);

@@ -325,9 +325,9 @@ export function LocationsTab({
           fullPath: computeFullPath(payload, locationsList),
           totalAssets: 0,
           createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB') + ' 09:15 AM',
+          createdOn: new Date().toLocaleDateString('en-GB'),
           lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB') + ' 09:15 AM',
+          lastModifiedOn: new Date().toLocaleDateString('en-GB'),
           relatedInfo: { childLocations: 0, assets: 0, departments: 0, costCenters: 0 }
         };
         setLocationsList([newLoc, ...locationsList]);
@@ -350,7 +350,7 @@ export function LocationsTab({
         day: '2-digit',
         month: 'short',
         year: 'numeric'
-      }) + ' 09:15 AM'
+      })
     };
     setLocationsList([duplicated, ...locationsList]);
     setSelectedLocation(duplicated);

@@ -256,7 +256,7 @@ export function SuppliersTab({
                 day: '2-digit',
                 month: 'short',
                 year: 'numeric'
-              }) + ' 02:30 PM'
+              })
             }
             : s
         );
@@ -306,13 +306,13 @@ export function SuppliersTab({
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 09:15 AM',
+          }),
           lastModifiedBy: 'Admin User',
           lastModifiedOn: new Date().toLocaleDateString('en-GB', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 09:15 AM',
+          }),
           relatedInfo: {
             purchaseOrders: 0,
             assets: 0,
@@ -339,7 +339,7 @@ export function SuppliersTab({
         day: '2-digit',
         month: 'short',
         year: 'numeric'
-      }) + ' 09:15 AM'
+      })
     };
     setSuppliersList([duplicated, ...suppliersList]);
     setSelectedSupplier(duplicated);

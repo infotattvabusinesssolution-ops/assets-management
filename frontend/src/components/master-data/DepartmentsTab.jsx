@@ -244,7 +244,7 @@ export function DepartmentsTab({
                   day: '2-digit',
                   month: 'short',
                   year: 'numeric'
-                }) + ' 03:15 PM'
+                })
               }
             : d
         );
@@ -285,16 +285,16 @@ export function DepartmentsTab({
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 10:00 AM',
+          }),
           lastModifiedBy: 'Admin User',
           lastModifiedOn: new Date().toLocaleDateString('en-GB', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 10:00 AM',
+          }),
           relatedInfo: {
             subDepartments: 0,
-            locations: 1,
+            locations: 0,
             assets: 0,
             users: 0
           }
@@ -319,7 +319,7 @@ export function DepartmentsTab({
         day: '2-digit',
         month: 'short',
         year: 'numeric'
-      }) + ' 10:00 AM'
+      })
     };
     setDepartmentsList([duplicated, ...departmentsList]);
     setSelectedDepartment(duplicated);

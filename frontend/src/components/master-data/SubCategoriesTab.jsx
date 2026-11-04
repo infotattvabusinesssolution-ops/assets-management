@@ -337,7 +337,7 @@ export function SubCategoriesTab({
         day: '2-digit',
         month: 'short',
         year: 'numeric'
-      }) + ' 05:30 PM'
+      })
     };
     setSubCategoriesList([duplicated, ...subCategoriesList]);
     setSelectedSubCategory(duplicated);

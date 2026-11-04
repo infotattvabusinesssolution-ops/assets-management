@@ -275,7 +275,7 @@ export function CategoriesTab({
                 day: '2-digit',
                 month: 'short',
                 year: 'numeric'
-              }) + ' 02:30 PM'
+              })
             }
             : c
         );
@@ -311,13 +311,13 @@ export function CategoriesTab({
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 09:30 AM',
+          }),
           lastModifiedBy: 'Admin User',
           lastModifiedOn: new Date().toLocaleDateString('en-GB', {
             day: '2-digit',
             month: 'short',
             year: 'numeric'
-          }) + ' 09:30 AM',
+          }),
           relatedInfo: {
             subCategories: 0,
             assets: 0,
@@ -346,7 +346,7 @@ export function CategoriesTab({
         day: '2-digit',
         month: 'short',
         year: 'numeric'
-      }) + ' 05:30 PM'
+      })
     };
     setCategoriesList([duplicated, ...categoriesList]);
     setSelectedCategory(duplicated);

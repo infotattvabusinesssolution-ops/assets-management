@@ -333,9 +333,9 @@ export function AssetGroupsTab({
           totalAssets: 0,
           status: grpFormState.status,
           createdBy: 'Admin User',
-          createdOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 10:30 AM',
+          createdOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
           lastModifiedBy: 'Admin User',
-          lastModifiedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 10:30 AM',
+          lastModifiedOn: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
           relatedInfo: { classes: 0, categories: 0, subCategories: 0, assets: 0, documents: 0 }
         };
 
