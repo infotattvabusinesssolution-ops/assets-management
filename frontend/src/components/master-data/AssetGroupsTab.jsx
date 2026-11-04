@@ -332,7 +332,7 @@ export function AssetGroupsTab({
     const grpName = (grp.name || '').trim().toLowerCase();
     const grpCode = (grp.code || '').trim().toLowerCase();
 
-    // Check if any Sub Groups are linked:
+    // Check if any Sub Groups are linked (Immediate direct child):
     const linkedSubGroups = liveClasses.filter(c => {
       const cGrp = (c.groupName || c.assetGroupName || c.assetGroup?.name || '').trim().toLowerCase();
       const cCode = (c.groupCode || '').trim().toLowerCase();
@@ -345,18 +345,7 @@ export function AssetGroupsTab({
       );
     });
 
-    // Check if any Categories are linked:
-    const linkedCategories = liveCategories.filter(cat => {
-      const cGrp = (cat.groupName || '').trim().toLowerCase();
-      const desc = (cat.description || '').toLowerCase();
-      return (
-        cGrp === grpName ||
-        (grpName && cGrp.includes(grpName)) ||
-        (grpName && desc.includes(`[group:${grpName}]`))
-      );
-    });
-
-    const totalClientLinked = linkedSubGroups.length + linkedCategories.length;
+    const totalClientLinked = linkedSubGroups.length;
 
     if (totalClientLinked > 0) {
       setSmartDeleteState({
@@ -364,8 +353,7 @@ export function AssetGroupsTab({
         item: grp,
         linkedCount: totalClientLinked,
         details: {
-          subGroupsCount: linkedSubGroups.length,
-          categoriesCount: linkedCategories.length
+          subGroupsCount: linkedSubGroups.length
         },
         isProcessing: false
       });

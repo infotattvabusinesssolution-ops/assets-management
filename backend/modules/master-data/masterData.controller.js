@@ -411,62 +411,7 @@ export async function deleteAssetGroup(req, res, next) {
       }
     }
 
-    // 2. Categories
-    let categoriesCount = 0;
-    if (isDbConnected()) {
-      try {
-        const pCatCount = await prisma.category.count({
-          where: {
-            OR: [
-              ...(groupName ? [{ description: { contains: `[group:${groupName}]` } }, { description: { contains: groupName } }] : []),
-              ...(groupCode ? [{ description: { contains: `[group:${groupCode}]` } }, { description: { contains: groupCode } }] : [])
-            ]
-          }
-        }).catch(() => 0);
-        if (pCatCount > categoriesCount) categoriesCount = pCatCount;
-      } catch (_) {}
-
-      try {
-        const catRows = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*) as cnt FROM categories
-          WHERE description LIKE '%[group:${groupName.replace(/'/g, "''")}]%'
-             OR description LIKE '%[group:${groupCode.replace(/'/g, "''")}]%'
-             ${groupName ? `OR description LIKE '%${groupName.replace(/'/g, "''")}%'` : ''}
-        `);
-        const dbCatCount = Number(catRows?.[0]?.cnt || 0);
-        if (dbCatCount > categoriesCount) categoriesCount = dbCatCount;
-      } catch (dbErr) {
-        console.warn('DB check categoriesCount in deleteAssetGroup skipped:', dbErr.message);
-      }
-    }
-
-    // 3. Sub Categories
-    let subCatsCount = 0;
-    try {
-      const fileSubCats = readSubCategoriesFromFile();
-      subCatsCount = fileSubCats.filter(sc =>
-        (sc.assetGroupId && (sc.assetGroupId === id || sc.assetGroupId === groupCode)) ||
-        (groupName && sc.assetGroupName && sc.assetGroupName.trim().toLowerCase() === groupName.toLowerCase()) ||
-        (groupName && sc.groupName && sc.groupName.trim().toLowerCase() === groupName.toLowerCase())
-      ).length;
-    } catch (_) {}
-
-    if (isDbConnected()) {
-      try {
-        const scRows = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*) as cnt FROM sub_categories
-          WHERE assetGroupId = '${id.replace(/'/g, "''")}'
-             OR assetGroupId = '${groupCode.replace(/'/g, "''")}'
-             OR (assetGroupName IS NOT NULL AND (assetGroupName = '${groupName.replace(/'/g, "''")}' OR UPPER(assetGroupName) = '${groupName.toUpperCase().replace(/'/g, "''")}'))
-        `);
-        const dbScCount = Number(scRows?.[0]?.cnt || 0);
-        if (dbScCount > subCatsCount) subCatsCount = dbScCount;
-      } catch (dbErr) {
-        console.warn('DB check subCatsCount in deleteAssetGroup skipped:', dbErr.message);
-      }
-    }
-
-    // 4. Assets
+    // 2. Assets directly linked (if any)
     let assetsCount = 0;
     if (isDbConnected()) {
       try {
@@ -479,7 +424,8 @@ export async function deleteAssetGroup(req, res, next) {
       } catch (_) {}
     }
 
-    const totalLinked = subGroupsCount + categoriesCount + subCatsCount + assetsCount;
+    // Asset Group only blocks on its immediate direct children (Asset Sub Groups)
+    const totalLinked = subGroupsCount + assetsCount;
 
     if (totalLinked > 0 && !deactivateOnly) {
       return res.json({
@@ -489,11 +435,9 @@ export async function deleteAssetGroup(req, res, next) {
         entityName: 'Asset Group',
         details: {
           subGroupsCount,
-          categoriesCount,
-          classCount: subCatsCount,
           assetsCount
         },
-        message: `This Asset Group is linked to ${totalLinked} active record(s) (${subGroupsCount} sub groups, ${categoriesCount} categories, ${subCatsCount} sub categories, ${assetsCount} assets). Deletion is blocked because child records exist under this group. You must delete or reassign child records first.`
+        message: `This Asset Group is linked to ${totalLinked} active record(s) (${subGroupsCount} sub groups, ${assetsCount} assets). Deletion is blocked because child sub groups exist under this group. You must delete or reassign child sub groups first.`
       });
     }
 
@@ -1731,61 +1675,8 @@ export async function deleteAssetSubGroup(req, res, next) {
       }
     }
 
-    // 2. Sub Categories linked to this sub group
-    let subCatsCount = 0;
-    try {
-      const fileSubCats = readSubCategoriesFromFile();
-      subCatsCount = fileSubCats.filter(sc =>
-        (sc.assetSubGroupId && (sc.assetSubGroupId === id || sc.assetSubGroupId === subGroupCode)) ||
-        (subGroupName && sc.assetSubGroupName && sc.assetSubGroupName.trim().toLowerCase() === subGroupName.toLowerCase()) ||
-        (subGroupName && sc.className && sc.className.trim().toLowerCase() === subGroupName.toLowerCase())
-      ).length;
-    } catch (_) {}
-
-    if (isDbConnected()) {
-      try {
-        const scRows = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*) as cnt FROM sub_categories
-          WHERE assetSubGroupId = '${id.replace(/'/g, "''")}'
-             OR assetSubGroupId = '${subGroupCode.replace(/'/g, "''")}'
-             OR (assetSubGroupName IS NOT NULL AND (assetSubGroupName = '${subGroupName.replace(/'/g, "''")}' OR UPPER(assetSubGroupName) = '${subGroupName.toUpperCase().replace(/'/g, "''")}'))
-        `);
-        const dbScCount = Number(scRows?.[0]?.cnt || 0);
-        if (dbScCount > subCatsCount) subCatsCount = dbScCount;
-      } catch (dbErr) {
-        console.warn('DB check subCategories in deleteAssetSubGroup skipped:', dbErr.message);
-      }
-    }
-
-    // 3. Assets linked to this sub group
-    let assetsCount = 0;
-    if (isDbConnected()) {
-      try {
-        const pAssetCount = await prisma.asset.count({
-          where: {
-            OR: [
-              { assetClassId: id },
-              ...(subGroupCode ? [{ assetClassId: subGroupCode }] : [])
-            ]
-          }
-        }).catch(() => 0);
-        if (pAssetCount > assetsCount) assetsCount = pAssetCount;
-      } catch (_) {}
-
-      try {
-        const assetRows = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*) as cnt FROM assets
-          WHERE assetClassId = '${id.replace(/'/g, "''")}'
-             OR assetClassId = '${subGroupCode.replace(/'/g, "''")}'
-        `);
-        const dbAssetCount = Number(assetRows?.[0]?.cnt || 0);
-        if (dbAssetCount > assetsCount) assetsCount = dbAssetCount;
-      } catch (dbErr) {
-        console.warn('DB check assets in deleteAssetSubGroup skipped:', dbErr.message);
-      }
-    }
-
-    const totalLinked = categoriesCount + subCatsCount + assetsCount;
+    // Asset Sub Group only blocks on its immediate direct children (Categories)
+    const totalLinked = categoriesCount + assetsCount;
 
     if (totalLinked > 0 && !deactivateOnly) {
       return res.json({
@@ -1795,10 +1686,9 @@ export async function deleteAssetSubGroup(req, res, next) {
         entityName: 'Asset Sub Group',
         details: {
           categoriesCount,
-          subCatsCount,
           assetsCount
         },
-        message: `This Asset Sub Group is linked to ${totalLinked} active record(s) (${categoriesCount} categories, ${subCatsCount} sub categories, ${assetsCount} assets). Deletion is blocked because child records exist under this sub group. You must delete or reassign child records first.`
+        message: `This Asset Sub Group is linked to ${totalLinked} active record(s) (${categoriesCount} categories, ${assetsCount} assets). Deletion is blocked because child categories exist under this sub group. You must delete or reassign child categories first.`
       });
     }
 

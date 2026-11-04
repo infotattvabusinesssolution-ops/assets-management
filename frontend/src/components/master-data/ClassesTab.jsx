@@ -359,13 +359,7 @@ export function ClassesTab({
       );
     });
 
-    const childSubCats = (liveSubCategories || []).filter(sc =>
-      (sc.assetSubGroupId && (sc.assetSubGroupId === cls.id || sc.assetSubGroupId === cls.code)) ||
-      (sc.assetSubGroupName && cls.name && sc.assetSubGroupName.trim().toLowerCase() === cls.name.trim().toLowerCase()) ||
-      (sc.className && cls.name && sc.className.trim().toLowerCase() === cls.name.trim().toLowerCase())
-    );
-
-    const totalLinked = childCats.length + childSubCats.length + (cls.totalAssets || 0);
+    const totalLinked = childCats.length + (cls.totalAssets || 0);
     if (totalLinked > 0) {
       setSmartDeleteState({
         isOpen: true,
@@ -373,7 +367,6 @@ export function ClassesTab({
         linkedCount: totalLinked,
         details: {
           categoriesCount: childCats.length,
-          subCatsCount: childSubCats.length,
           assetsCount: cls.totalAssets || 0
         },
         isProcessing: false
