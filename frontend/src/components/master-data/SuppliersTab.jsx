@@ -48,38 +48,43 @@ export function SuppliersTab({
     try {
       const res = await api.get('/maintenance/service-providers');
       if (res?.providers && res.providers.length > 0) {
-        const mapped = res.providers.map((p, idx) => ({
+        const mapped = res.providers.map((p) => ({
           id: p.id,
           code: p.providerCode,
           name: p.providerName,
-          type: p.providerType === 'AMC_PROVIDER' ? 'AMC Partner' : 'Hardware',
-          company: 'Wavelogix FZC',
-          country: p.country || 'UAE',
-          contactPerson: p.primaryContact || 'Support Lead',
-          email: p.email || `${p.providerCode.toLowerCase()}@partner.com`,
-          phone: p.phone || '+971 4 332 9000',
-          address: p.addressLine1 || 'Dubai Internet City, Dubai, UAE',
-          website: p.website || 'www.partner.com',
-          paymentTerms: `${p.paymentTermsDays || 30} Days`,
-          taxNo: p.taxRegistrationNo || '100023456700003',
-          description: p.remarks || `Authorized service provider & vendor: ${p.providerName}`,
+          type: p.providerType === 'AMC_PROVIDER' ? 'AMC Partner' : (p.providerType || 'Hardware'),
+          company: p.company?.name || p.companyName || '-',
+          country: p.country || '-',
+          contactPerson: p.primaryContact || '-',
+          email: p.email || '-',
+          phone: p.phone || '-',
+          address: p.addressLine1 || '-',
+          website: p.website || '-',
+          paymentTerms: p.paymentTermsDays ? `${p.paymentTermsDays} Days` : '-',
+          taxNo: p.taxRegistrationNo || '-',
+          description: p.remarks || `Service provider & vendor: ${p.providerName}`,
           status: p.status === 'ACTIVE' || p.status === 'DRAFT' ? 'Active' : 'Inactive',
-          createdBy: 'Admin',
-          createdOn: p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:15 AM' : '12 Jan 2025 09:15 AM',
-          lastModifiedBy: 'Admin',
-          lastModifiedOn: p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:30 PM' : '28 Aug 2025 02:30 PM',
+          createdBy: p.createdBy || 'System',
+          createdOn: p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+          lastModifiedBy: p.lastModifiedBy || 'System',
+          lastModifiedOn: p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           relatedInfo: {
-            purchaseOrders: (idx + 1) * 8,
-            assets: (idx + 1) * 50,
-            contracts: 2,
-            documents: 4
+            purchaseOrders: p.purchaseOrdersCount || 0,
+            assets: p.assetsCount || 0,
+            contracts: p.contractsCount || 0,
+            documents: p.documentsCount || 0
           }
         }));
         setSuppliersList(mapped);
         setSelectedSupplier((prev) => (prev ? mapped.find((s) => s.id === prev.id) || mapped[0] || null : mapped[0] || null));
+      } else {
+        setSuppliersList([]);
+        setSelectedSupplier(null);
       }
     } catch (err) {
       console.warn('Failed to fetch service providers/suppliers:', err);
+      setSuppliersList([]);
+      setSelectedSupplier(null);
     } finally {
       setIsLoading(false);
     }
@@ -103,14 +108,14 @@ export function SuppliersTab({
     code: '',
     name: '',
     type: 'Hardware',
-    company: 'Wavelogix FZC',
-    country: 'USA',
+    company: '',
+    country: '',
     contactPerson: '',
     email: '',
     phone: '',
     address: '',
     website: '',
-    paymentTerms: '30 Days',
+    paymentTerms: '',
     taxNo: '',
     description: '',
     status: 'Active'

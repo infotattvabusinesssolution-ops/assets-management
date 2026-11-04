@@ -20,16 +20,10 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 
-export const INITIAL_DISPOSAL_STATUSES = [
-  { id: 'disp-01', code: 'SCRAPPED', name: 'Scrapped', description: 'Asset sent to recycling or salvage yard with zero or scrap residual value', active: true },
-  { id: 'disp-02', code: 'SOLD', name: 'Sold', description: 'Asset sold to third party or employee with recovered disposal proceeds', active: true },
-  { id: 'disp-03', code: 'DONATED', name: 'Donated', description: 'Asset donated to charitable, educational, or non-profit organization', active: true },
-  { id: 'disp-04', code: 'WRITTEN_OFF', name: 'Written Off', description: 'Asset written off books due to total loss, severe casualty, or obsolescence', active: true },
-  { id: 'disp-05', code: 'TRADED_IN', name: 'Traded In', description: 'Asset returned or exchanged toward the purchase of replacement equipment', active: true }
-];
+export const INITIAL_DISPOSAL_STATUSES = [];
 
 export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExternalShowAddModal }) {
-  const [statuses, setStatuses] = useState(INITIAL_DISPOSAL_STATUSES);
+  const [statuses, setStatuses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('ALL'); // ALL, ACTIVE, INACTIVE
@@ -57,13 +51,13 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
       } else {
         const stored = localStorage.getItem('fams_disposal_statuses');
         if (stored) {
-          try { setStatuses(JSON.parse(stored)); } catch (_) { setStatuses(INITIAL_DISPOSAL_STATUSES); }
+          try { setStatuses(JSON.parse(stored)); } catch (_) { setStatuses([]); }
         } else {
-          setStatuses(INITIAL_DISPOSAL_STATUSES);
+          setStatuses([]);
         }
       }
     } catch (_) {
-      setStatuses(INITIAL_DISPOSAL_STATUSES);
+      setStatuses([]);
     } finally {
       setIsLoading(false);
     }

@@ -126,7 +126,7 @@ export function ClassesTab({
   const [clsFormState, setClsFormState] = useState({
     code: '',
     name: '',
-    groupName: 'Information Technology',
+    groupName: '',
     description: '',
     assetType: 'Physical',
     status: 'Active'

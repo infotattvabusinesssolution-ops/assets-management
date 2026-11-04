@@ -45,34 +45,39 @@ export function CostCentersTab({
     try {
       const res = await api.get('/master-data/cost-centers');
       if (res?.costCenters && res.costCenters.length > 0) {
-        const mapped = res.costCenters.map((cc, idx) => ({
+        const mapped = res.costCenters.map((cc) => ({
           id: cc.id,
           code: cc.code,
           name: cc.name,
-          company: 'Wavelogix FZC',
-          type: cc.code.includes('OPS') ? 'Operational' : (cc.code.includes('FIN') ? 'Financial' : 'Administrative'),
-          manager: cc.name.includes('IT') ? 'Priya Nair' : 'Department Manager',
-          description: `Cost center for ${cc.name}`,
-          totalAssets: (idx + 1) * 45,
+          company: cc.company?.name || cc.company || '-',
+          type: cc.type || (cc.code.includes('OPS') ? 'Operational' : (cc.code.includes('FIN') ? 'Financial' : 'Administrative')),
+          manager: cc.manager || cc.head || '-',
+          description: cc.description || `Cost center for ${cc.name}`,
+          totalAssets: cc.totalAssets ?? (cc._count?.assets || 0),
           status: cc.active === false ? 'Inactive' : 'Active',
-          createdBy: 'Admin',
-          createdOn: cc.createdAt ? new Date(cc.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:15 AM' : '10 Jan 2025 09:15 AM',
-          lastModifiedBy: 'Admin',
-          lastModifiedOn: cc.updatedAt ? new Date(cc.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 11:30 AM' : '15 Aug 2025 11:30 AM',
+          createdBy: cc.createdBy || 'System',
+          createdOn: cc.createdAt ? new Date(cc.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+          lastModifiedBy: cc.lastModifiedBy || 'System',
+          lastModifiedOn: cc.updatedAt ? new Date(cc.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           relatedInfo: {
-            departments: 2,
-            locations: 2,
-            assets: (idx + 1) * 45,
-            maintenancePlans: 2,
-            budgets: 1,
-            documents: 2
+            departments: cc.departmentsCount || 0,
+            locations: cc.locationsCount || 0,
+            assets: cc.assetsCount || 0,
+            maintenancePlans: 0,
+            budgets: 0,
+            documents: 0
           }
         }));
         setCostCentersList(mapped);
         setSelectedCostCenter((prev) => (prev ? mapped.find((c) => c.id === prev.id) || mapped[0] || null : mapped[0] || null));
+      } else {
+        setCostCentersList([]);
+        setSelectedCostCenter(null);
       }
     } catch (err) {
-      console.warn('Failed to fetch cost centers, using fallback dataset:', err);
+      console.warn('Failed to fetch cost centers:', err);
+      setCostCentersList([]);
+      setSelectedCostCenter(null);
     } finally {
       setIsLoading(false);
     }
@@ -94,7 +99,7 @@ export function CostCentersTab({
   const [ccFormState, setCcFormState] = useState({
     code: '',
     name: '',
-    company: 'Wavelogix FZC',
+    company: '',
     type: 'Operational',
     manager: '',
     description: '',

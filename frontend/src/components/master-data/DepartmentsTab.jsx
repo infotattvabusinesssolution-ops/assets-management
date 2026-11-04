@@ -51,42 +51,47 @@ export function DepartmentsTab({
       setCostCenters(loadedCCs);
 
       if (res?.departments && res.departments.length > 0) {
-        const mapped = res.departments.map((dept, idx) => {
+        const mapped = res.departments.map((dept) => {
           const matchedCC = loadedCCs.find((c) => c.companyId === dept.companyId || c.code.includes(dept.code) || c.name.toLowerCase().includes(dept.name.toLowerCase()));
           return {
             id: dept.id,
             code: dept.code,
             name: dept.name,
-            costCenterCode: matchedCC ? matchedCC.code : `CC-${dept.code}`,
-            costCenterName: matchedCC ? matchedCC.name : `${dept.name} Cost Center`,
+            costCenterCode: matchedCC ? matchedCC.code : '-',
+            costCenterName: matchedCC ? matchedCC.name : '-',
             costCenterId: matchedCC ? matchedCC.id : '',
-            type: dept.code.includes('OPS') ? 'Operations' : 'Support',
-            parentDepartment: '-',
-            location: 'Dubai HQ',
-            company: 'Wavelogix FZC',
-            manager: dept.name.includes('IT') ? 'Michael Chen' : (dept.name.includes('Finance') ? 'Ahmed Khan' : 'Department Head'),
-            email: `${dept.code.toLowerCase()}@wavelogix.com`,
-            phone: '+971 4 398 2211',
-            description: `Department overseeing ${dept.name}`,
-            employees: (idx + 1) * 15,
+            type: dept.type || (dept.code.includes('OPS') ? 'Operations' : 'Support'),
+            parentDepartment: dept.parentDepartment || '-',
+            location: dept.location || dept.site?.name || '-',
+            company: dept.company?.name || dept.company || '-',
+            manager: dept.manager || dept.head || '-',
+            email: dept.email || '-',
+            phone: dept.phone || '-',
+            description: dept.description || `Department overseeing ${dept.name}`,
+            employees: dept.employees ?? (dept._count?.employees || 0),
             status: dept.active === false ? 'Inactive' : 'Active',
-            createdBy: 'Admin',
-            createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:00 AM' : '15 Jan 2025 09:00 AM',
-            lastModifiedBy: 'Admin',
-            lastModifiedOn: dept.updatedAt ? new Date(dept.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 03:00 PM' : '20 Aug 2025 03:00 PM',
+            createdBy: dept.createdBy || 'System',
+            createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+            lastModifiedBy: dept.lastModifiedBy || 'System',
+            lastModifiedOn: dept.updatedAt ? new Date(dept.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
             relatedInfo: {
-              subDepartments: 2,
-              locations: 2,
-              assets: (idx + 1) * 35,
-              users: (idx + 1) * 15
+              subDepartments: dept.subDepartmentsCount || 0,
+              locations: dept.locationsCount || 0,
+              assets: dept.assetsCount || 0,
+              users: dept.usersCount || 0
             }
           };
         });
         setDepartmentsList(mapped);
         setSelectedDepartment((prev) => (prev ? mapped.find((d) => d.id === prev.id) || mapped[0] || null : mapped[0] || null));
+      } else {
+        setDepartmentsList([]);
+        setSelectedDepartment(null);
       }
     } catch (err) {
-      console.warn('Failed to fetch departments, using fallback dataset:', err);
+      console.warn('Failed to fetch departments:', err);
+      setDepartmentsList([]);
+      setSelectedDepartment(null);
     } finally {
       setIsLoading(false);
     }
@@ -110,9 +115,9 @@ export function DepartmentsTab({
     code: '',
     name: '',
     type: 'Support',
-    parentDepartment: '-',
-    location: 'Dubai HQ',
-    company: 'Wavelogix FZC',
+    parentDepartment: '',
+    location: '',
+    company: '',
     manager: '',
     email: '',
     phone: '',

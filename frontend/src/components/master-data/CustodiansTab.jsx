@@ -89,57 +89,14 @@ export function CustodiansTab({
         setCustodians(merged);
         setSelectedCustodian(merged[0] || null);
       } else {
-        // Fallback enterprise sample custodians if empty
-        const defaultCustodians = [
-          {
-            id: 'cust-01',
-            employeeCode: 'EMP-1001',
-            fullName: 'Sarah Ahmed',
-            email: 'sarah.ahmed@infotattva.com',
-            phone: '+971 50 123 4567',
-            custodianType: 'Internal',
-            companyId: compRes?.companies?.[0]?.id || '',
-            company: { name: 'InfoTattva Business Solutions LLC' },
-            departmentId: deptRes?.departments?.[0]?.id || '',
-            department: { name: 'Information Technology' },
-            section: 'Infrastructure & Cloud',
-            location: 'Dubai HQ - Floor 14',
-            active: true
-          },
-          {
-            id: 'cust-02',
-            employeeCode: 'EMP-1002',
-            fullName: 'Johnathan Miller',
-            email: 'j.miller@infotattva.com',
-            phone: '+971 50 987 6543',
-            custodianType: 'Internal',
-            companyId: compRes?.companies?.[0]?.id || '',
-            company: { name: 'InfoTattva Business Solutions LLC' },
-            department: { name: 'Finance & Accounts' },
-            section: 'Financial Controlling',
-            location: 'Dubai HQ - Floor 12',
-            active: true
-          },
-          {
-            id: 'cust-03',
-            employeeCode: 'EXT-5001',
-            fullName: 'David Vance (Third-Party Lead)',
-            email: 'david.vance@facilities-contractor.com',
-            phone: '+971 55 444 3322',
-            custodianType: 'External',
-            organization: 'Facilities Pro Maintenance LLC',
-            department: { name: 'Facilities Management' },
-            section: 'HVAC & MEP Contractors',
-            location: 'Warehouse Campus Site',
-            active: true
-          }
-        ];
-        const merged = [...customCustodians, ...defaultCustodians.filter(d => !customIds.has(d.id))];
-        setCustodians(merged);
-        setSelectedCustodian(merged[0] || null);
+        setCustodians(customCustodians);
+        setSelectedCustodian(customCustodians[0] || null);
       }
     } catch (err) {
       console.warn('Failed to load custodians:', err);
+      const customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      setCustodians(customCustodians);
+      setSelectedCustodian(customCustodians[0] || null);
     } finally {
       setIsLoading(false);
     }

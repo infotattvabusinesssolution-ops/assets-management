@@ -24,20 +24,7 @@ import { api } from '../../services/api';
 
 export const INITIAL_LOCATIONS = [];
 
-export const DEFAULT_COUNTRIES = [
-  'United Arab Emirates',
-  'Saudi Arabia',
-  'Qatar',
-  'Bahrain',
-  'Oman',
-  'Kuwait',
-  'India',
-  'United States',
-  'United Kingdom',
-  'Germany',
-  'Singapore',
-  'Other'
-];
+export const DEFAULT_COUNTRIES = [];
 
 // System-defined enumerations (fixed, not user-defined)
 export const SYSTEM_LOCATION_TYPES = ['Internal', 'External'];
@@ -178,8 +165,8 @@ export function LocationsTab({
     type: 'Internal',
     level: 'Level 1',
     parentLocation: '-',
-    country: 'UAE',
-    city: 'Dubai',
+    country: '',
+    city: '',
     address: '',
     postalCode: '',
     status: 'Active'

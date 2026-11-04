@@ -2217,30 +2217,11 @@ const DISPOSAL_STATUSES_FILE = path.join(process.cwd(), 'data', 'disposal_status
 const BRANDS_FILE = path.join(process.cwd(), 'data', 'brands.json');
 const MANUFACTURERS_FILE = path.join(process.cwd(), 'data', 'manufacturers.json');
 
-const DEFAULT_BRANDS = [
-  { id: 'brd-001', code: 'BRD-DELL', name: 'Dell', manufacturerId: 'mfr-dell', manufacturerName: 'Dell Technologies', description: 'Enterprise PCs, Latitude laptops, Precision workstations, PowerEdge servers', active: true },
-  { id: 'brd-002', code: 'BRD-APPLE', name: 'Apple', manufacturerId: 'mfr-apple', manufacturerName: 'Apple Inc.', description: 'MacBook Pro, MacBook Air, iMac, iPad, Apple Silicon systems', active: true },
-  { id: 'brd-003', code: 'BRD-THINKPAD', name: 'ThinkPad', manufacturerId: 'mfr-lenovo', manufacturerName: 'Lenovo', description: 'Commercial enterprise business laptops and workstations', active: true },
-  { id: 'brd-004', code: 'BRD-LENOVO', name: 'Lenovo', manufacturerId: 'mfr-lenovo', manufacturerName: 'Lenovo', description: 'ThinkCentre desktop computers, Yoga convertibles, Legion hardware', active: true },
-  { id: 'brd-005', code: 'BRD-HP', name: 'HP', manufacturerId: 'mfr-hp', manufacturerName: 'HP Inc.', description: 'EliteBook notebooks, ProBook laptops, ZBook Workstations, LaserJet printers', active: true },
-  { id: 'brd-006', code: 'BRD-CISCO', name: 'Cisco', manufacturerId: 'mfr-cisco', manufacturerName: 'Cisco Systems', description: 'Catalyst network switches, ISR/ASR routers, Webex video endpoints', active: true },
-  { id: 'brd-007', code: 'BRD-SAMSUNG', name: 'Samsung', manufacturerId: 'mfr-samsung', manufacturerName: 'Samsung Electronics', description: 'High-resolution monitors, enterprise SSD storage, Galaxy mobile devices', active: true },
-  { id: 'brd-008', code: 'BRD-LOGITECH', name: 'Logitech', manufacturerId: 'mfr-logi', manufacturerName: 'Logitech', description: 'MX Master wireless peripherals, conference room Rally bars, webcams', active: true },
-  { id: 'brd-009', code: 'BRD-STEELCASE', name: 'Steelcase', manufacturerId: 'mfr-steel', manufacturerName: 'Steelcase', description: 'Gesture & Leap ergonomic task chairs, height-adjustable Migration desks', active: true },
-  { id: 'brd-010', code: 'BRD-HERMANMILLER', name: 'Herman Miller', manufacturerId: 'mfr-hm', manufacturerName: 'Herman Miller', description: 'Aeron and Embody ergonomic seating, modular office systems', active: true },
-  { id: 'brd-011', code: 'BRD-TOYOTA', name: 'Toyota', manufacturerId: 'mfr-toyota', manufacturerName: 'Toyota Motor Corp', description: 'Corporate fleet sedans, SUVs, and warehouse electric forklifts', active: true },
-  { id: 'brd-012', code: 'BRD-SONY', name: 'Sony', manufacturerId: 'mfr-sony', manufacturerName: 'Sony Group', description: 'Professional 4K display monitors, studio audio, conference cameras', active: true }
-];
+const DEFAULT_BRANDS = [];
 
 const DEFAULT_MANUFACTURERS = [];
 
-const DEFAULT_DISPOSAL_STATUSES = [
-  { id: 'disp-01', code: 'SCRAPPED', name: 'Scrapped', description: 'Asset sent to recycling or salvage yard with zero or scrap residual value', active: true },
-  { id: 'disp-02', code: 'SOLD', name: 'Sold', description: 'Asset sold to third party or employee with recovered disposal proceeds', active: true },
-  { id: 'disp-03', code: 'DONATED', name: 'Donated', description: 'Asset donated to charitable, educational, or non-profit organization', active: true },
-  { id: 'disp-04', code: 'WRITTEN_OFF', name: 'Written Off', description: 'Asset written off books due to total loss, severe casualty, or obsolescence', active: true },
-  { id: 'disp-05', code: 'TRADED_IN', name: 'Traded In', description: 'Asset returned or exchanged toward the purchase of replacement equipment', active: true }
-];
+const DEFAULT_DISPOSAL_STATUSES = [];
 
 const DEFAULT_UOMS = [
   { id: 'uom-1', code: 'EA', name: 'Each / Pieces', symbol: 'ea', category: 'Discrete Count', description: 'Individual single units, parts, or pieces', active: true },
@@ -2253,74 +2234,7 @@ const DEFAULT_UOMS = [
   { id: 'uom-8', code: 'ROLL', name: 'Roll', symbol: 'rl', category: 'Dimension', description: 'Continuous roll of cable, wiring, or RFID labels', active: true }
 ];
 
-const DEFAULT_ITEMS = [
-  {
-    id: 'itm-001',
-    itemCode: 'ITM-000101',
-    itemName: 'Lenovo ThinkPad T14 Gen 4',
-    supplierBarcode: '019534827101',
-    description: 'Enterprise 14-inch professional business laptop with Intel Core i7, 32GB RAM, 512GB SSD',
-    assetGroupId: 'grp-it',
-    assetGroupName: 'Information Technology',
-    assetSubGroupId: 'cls-hw',
-    assetSubGroupName: 'Hardware',
-    categoryId: 'cat-lap',
-    categoryName: 'Laptops & Notebooks',
-    subCategoryId: 'sub-lap',
-    subCategoryName: 'Business Laptops',
-    manufacturerId: 'mfr-lenovo',
-    manufacturerName: 'Lenovo',
-    model: 'ThinkPad T14 Gen 4',
-    uom: 'Each',
-    specifications: 'CPU: Intel Core i7-1365U | RAM: 32GB DDR5 | Storage: 512GB NVMe SSD | OS: Windows 11 Pro',
-    imageUrl: '',
-    active: true
-  },
-  {
-    id: 'itm-002',
-    itemCode: 'ITM-000102',
-    itemName: 'Dell PowerEdge R750 Rack Server',
-    supplierBarcode: '088411638290',
-    description: '2U Dual-Socket enterprise rack server optimized for application performance and virtualization',
-    assetGroupId: 'grp-it',
-    assetGroupName: 'Information Technology',
-    assetSubGroupId: 'cls-hw',
-    assetSubGroupName: 'Hardware',
-    categoryId: 'cat-srv',
-    categoryName: 'Enterprise Servers',
-    subCategoryId: 'sub-srv',
-    subCategoryName: 'Rack Servers',
-    manufacturerId: 'mfr-dell',
-    manufacturerName: 'Dell Technologies',
-    model: 'PowerEdge R750',
-    uom: 'Each',
-    specifications: 'CPU: 2x Intel Xeon Gold 6330 | RAM: 128GB ECC DDR4 | Storage: 4x 1.92TB SSD SAS | PSU: Dual 1400W Redundant',
-    imageUrl: '',
-    active: true
-  },
-  {
-    id: 'itm-003',
-    itemCode: 'ITM-000103',
-    itemName: 'Steelcase Gesture Ergonomic Office Chair',
-    supplierBarcode: '072481923018',
-    description: 'High-performance ergonomic executive task chair designed to support diverse postures with 360-degree arms',
-    assetGroupId: 'grp-corp',
-    assetGroupName: 'Corporate Assets',
-    assetSubGroupId: 'cls-furn',
-    assetSubGroupName: 'Office Furniture',
-    categoryId: 'cat-seat',
-    categoryName: 'Ergonomic Chairs',
-    subCategoryId: 'sub-seat',
-    subCategoryName: 'Executive Task Chairs',
-    manufacturerId: 'mfr-steelcase',
-    manufacturerName: 'Steelcase',
-    model: 'Gesture-Black/Platinum',
-    uom: 'Each',
-    specifications: 'Core Equalizer Lumbar Support | 360-degree Rotating Armrests | Pneumatic Cylinder Height Adjustment',
-    imageUrl: '',
-    active: true
-  }
-];
+const DEFAULT_ITEMS = [];
 
 function readItemMastersFromFile() {
   try {

@@ -26,34 +26,13 @@ import { api } from '../../services/api';
 
 export const DEFAULT_MANUFACTURERS = [];
 
-export const DEFAULT_BRANDS = [
-  { id: '1', code: 'BRD-DELL', name: 'Dell', manufacturerName: 'Dell Technologies', description: 'Enterprise PCs, Latitude laptops, Precision workstations, PowerEdge servers', status: 'Active', totalAssets: 0 },
-  { id: '2', code: 'BRD-APPLE', name: 'Apple', manufacturerName: 'Apple Inc.', description: 'MacBook Pro, MacBook Air, iMac, iPad systems', status: 'Active', totalAssets: 0 },
-  { id: '3', code: 'BRD-THINKPAD', name: 'ThinkPad', manufacturerName: 'Lenovo', description: 'Commercial enterprise business laptops and workstations', status: 'Active', totalAssets: 0 },
-  { id: '4', code: 'BRD-LENOVO', name: 'Lenovo', manufacturerName: 'Lenovo', description: 'ThinkCentre desktops, Yoga convertibles, Legion hardware', status: 'Active', totalAssets: 0 },
-  { id: '5', code: 'BRD-HP', name: 'HP', manufacturerName: 'HP Inc.', description: 'EliteBook notebooks, ProBook laptops, ZBook Workstations', status: 'Active', totalAssets: 0 },
-  { id: '6', code: 'BRD-CISCO', name: 'Cisco', manufacturerName: 'Cisco Systems', description: 'Catalyst network switches, routers, Webex video endpoints', status: 'Active', totalAssets: 0 },
-  { id: '7', code: 'BRD-SAMSUNG', name: 'Samsung', manufacturerName: 'Samsung Electronics', description: 'High-resolution monitors, enterprise SSD storage', status: 'Active', totalAssets: 0 },
-  { id: '8', code: 'BRD-LOGI', name: 'Logitech', manufacturerName: 'Logitech', description: 'MX Master wireless peripherals, conference room Rally bars', status: 'Active', totalAssets: 0 },
-  { id: '9', code: 'BRD-STEEL', name: 'Steelcase', manufacturerName: 'Steelcase', description: 'Gesture & Leap ergonomic task chairs, height-adjustable Migration desks', status: 'Active', totalAssets: 0 },
-  { id: '10', code: 'BRD-HM', name: 'Herman Miller', manufacturerName: 'Herman Miller', description: 'Aeron and Embody ergonomic seating, modular office systems', status: 'Active', totalAssets: 0 },
-  { id: '11', code: 'BRD-TOYOTA', name: 'Toyota', manufacturerName: 'Toyota Motor Corp', description: 'Corporate fleet sedans, SUVs, and warehouse electric forklifts', status: 'Active', totalAssets: 0 },
-  { id: '12', code: 'BRD-SONY', name: 'Sony', manufacturerName: 'Sony Group', description: 'Professional 4K display monitors, studio audio, conference cameras', status: 'Active', totalAssets: 0 }
-];
+export const DEFAULT_BRANDS = [];
 
 export const DEFAULT_UOM = [];
 
 export const DEFAULT_ASSET_TYPES = [];
 
-export const DEFAULT_STATUS_CODES = [
-  { id: '1', code: 'ACTIVE', name: 'In Service / Operational', stage: 'Operational', color: 'emerald', description: 'Asset is actively deployed, operating, and assigned.', status: 'Active' },
-  { id: '2', code: 'IN_STORE', name: 'In Stock / Warehouse', stage: 'Inventory', color: 'blue', description: 'Asset is in warehouse, tested and ready for assignment.', status: 'Active' },
-  { id: '3', code: 'UNDER_MAINTENANCE', name: 'Under Repair', stage: 'Maintenance', color: 'purple', description: 'Asset undergoing scheduled service or maintenance repair.', status: 'Active' },
-  { id: '4', code: 'IN_TRANSIT', name: 'In Movement / Transfer', stage: 'Logistics', color: 'amber', description: 'Asset being physically moved between facilities or custodians.', status: 'Active' },
-  { id: '5', code: 'RESERVED', name: 'Reserved / Allocated', stage: 'Allocation', color: 'indigo', description: 'Asset allocated to an upcoming project or requisition.', status: 'Active' },
-  { id: '6', code: 'DISPOSED', name: 'Decommissioned / Retired', stage: 'Retirement', color: 'slate', description: 'Asset decommissioned, sold, recycled, or scrapped.', status: 'Active' },
-  { id: '7', code: 'LOST_STOLEN', name: 'Missing / Lost', stage: 'Audit Alert', color: 'rose', description: 'Asset unaccounted for during inventory verification.', status: 'Active' }
-];
+export const DEFAULT_STATUS_CODES = [];
 
 export function GenericMasterTab({
   activeTab,
@@ -213,8 +192,7 @@ export function GenericMasterTab({
         }
         const serverKeys = new Set(serverBrands.map(x => (x.code || x.name || '').toUpperCase().trim()));
         const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
-        const defaultMissing = DEFAULT_BRANDS.filter(d => !serverKeys.has((d.code || d.name || '').toUpperCase().trim()));
-        const rawCombined = [...serverBrands, ...missingCustom, ...defaultMissing];
+        const rawCombined = [...serverBrands, ...missingCustom];
         const seen = new Set();
         const combined = rawCombined.filter(it => {
           const key = (it.code || it.name || '').toUpperCase().trim();
@@ -224,6 +202,13 @@ export function GenericMasterTab({
         });
         setItems(combined);
         setSelectedItem(combined[0] || null);
+        return;
+      }
+
+      if (activeTab === 'status-codes') {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_status_codes') || '[]');
+        setItems(custom);
+        setSelectedItem(custom[0] || null);
         return;
       }
 
@@ -510,6 +495,15 @@ export function GenericMasterTab({
             localStorage.setItem('fams_custom_manufacturers', JSON.stringify([newItem, ...custom]));
           } catch (_) {}
         }
+        if (activeTab === 'status-codes') {
+          try {
+            const custom = JSON.parse(localStorage.getItem('fams_custom_status_codes') || '[]');
+            const idx = custom.findIndex(c => c.id === newItem.id);
+            if (idx >= 0) custom[idx] = newItem;
+            else custom.unshift(newItem);
+            localStorage.setItem('fams_custom_status_codes', JSON.stringify(custom));
+          } catch (_) {}
+        }
         triggerToast && triggerToast(`${tabConfig.singular} "${formState.name}" created successfully.`);
       }
       setShowAddModal(false);
@@ -562,6 +556,12 @@ export function GenericMasterTab({
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
         localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+      } catch (_) {}
+    }
+    if (activeTab === 'status-codes') {
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_status_codes') || '[]');
+        localStorage.setItem('fams_custom_status_codes', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
       } catch (_) {}
     }
     triggerToast && triggerToast(`${tabConfig.singular} "${itemToDelete.name}" deleted.`);

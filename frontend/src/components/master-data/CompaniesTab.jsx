@@ -62,32 +62,13 @@ export function CompaniesTab({
         setCompanies(res.companies);
         setSelectedCompany(res.companies[0] || null);
       } else {
-        // Fallback seed if empty
-        const defaultCompanies = [
-          {
-            id: 'cmp-01',
-            code: 'INFOTATTVA',
-            name: 'InfoTattva Business Solutions LLC',
-            currency: 'AED',
-            taxId: '100293847500003',
-            address: 'Level 14, Tower A, Business Bay, Dubai, UAE',
-            active: true
-          },
-          {
-            id: 'cmp-02',
-            code: 'CORP-HOLDING',
-            name: 'Global Enterprise Holdings Inc.',
-            currency: 'USD',
-            taxId: 'US-983210492',
-            address: '500 Madison Avenue, New York, NY 10022',
-            active: true
-          }
-        ];
-        setCompanies(defaultCompanies);
-        setSelectedCompany(defaultCompanies[0]);
+        setCompanies([]);
+        setSelectedCompany(null);
       }
     } catch (err) {
       console.warn('Failed to load companies:', err);
+      setCompanies([]);
+      setSelectedCompany(null);
     } finally {
       setIsLoading(false);
     }
