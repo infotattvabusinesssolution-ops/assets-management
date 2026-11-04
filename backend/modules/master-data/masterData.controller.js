@@ -617,16 +617,16 @@ export async function deleteCompany(req, res, next) {
         return res.json({ success: true, deactivated: true, message: `Company deactivated successfully (${totalLinked} linked records preserved).` });
       }
 
-      // Hard delete: if force is true and records are linked, unlink them first
+      // Hard delete: if force is true and records are linked, unlink or cascade empty structures
       if (force && totalLinked > 0) {
-        await prisma.asset.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
-        await prisma.site.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
-        await prisma.department.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
-        await prisma.employee.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
-        await prisma.costCenter.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.asset.deleteMany({ where: { companyId: id } }).catch(() => null);
+        await prisma.site.deleteMany({ where: { companyId: id } }).catch(() => null);
+        await prisma.costCenter.deleteMany({ where: { companyId: id } }).catch(() => null);
+        await prisma.department.deleteMany({ where: { companyId: id } }).catch(() => null);
+        await prisma.employee.deleteMany({ where: { companyId: id } }).catch(() => null);
         await prisma.user.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
         await prisma.fiscalPeriod.deleteMany({ where: { companyId: id } }).catch(() => null);
-        await prisma.receipt.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.receipt.deleteMany({ where: { companyId: id } }).catch(() => null);
         await prisma.depreciationRun.deleteMany({ where: { companyId: id } }).catch(() => null);
       }
 
