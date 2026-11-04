@@ -344,7 +344,7 @@ export function SubCategoriesTab({
     if (window.confirm(`Are you sure you want to delete Sub Category "${sc.name}" (${sc.code})?`)) {
       try {
         if (typeof sc.id === 'string' && sc.id.length > 10) {
-          await api.delete(`/master-data/asset-classes/${sc.id}`).catch(() => null);
+          await api.delete(`/master-data/sub-categories/${sc.id}`).catch(() => null);
         }
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');

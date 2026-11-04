@@ -48,7 +48,7 @@ export function ClassesTab({
       const [res, grpRes, subcatRes] = await Promise.all([
         api.get('/master-data/asset-sub-groups?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
-        api.get('/master-data/asset-classes?kind=SUBCATEGORY&includeInactive=true').catch(() => null)
+        api.get('/master-data/sub-categories?includeInactive=true').catch(() => null)
       ]);
 
       const serverSubcatCodes = (subcatRes?.assetClasses || []).map(s => (s.code || '').toUpperCase());
@@ -297,7 +297,7 @@ export function ClassesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Asset Sub Group "${cls.name}" (${cls.code})?`)) {
       if (typeof cls.id === 'string' && cls.id.length > 10) {
-        await api.delete(`/master-data/asset-classes/${cls.id}`).catch(() => null);
+        await api.delete(`/master-data/asset-sub-groups/${cls.id}`).catch(() => null);
       }
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');

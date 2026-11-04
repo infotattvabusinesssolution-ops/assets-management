@@ -934,7 +934,7 @@ export async function deleteCategory(req, res, next) {
     const [assetCount, modelCount, classCount] = await Promise.all([
       prisma.asset.count({ where: { categoryId: id } }).catch(() => 0),
       prisma.assetModel.count({ where: { categoryId: id } }).catch(() => 0),
-      prisma.assetClass.count({ where: { categoryId: id } }).catch(() => 0)
+      prisma.subCategory.count({ where: { categoryId: id } }).catch(() => 0)
     ]);
     const totalLinked = assetCount + modelCount + classCount;
 

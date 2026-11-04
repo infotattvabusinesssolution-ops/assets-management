@@ -267,7 +267,6 @@ model Category {
   createdAt                   DateTime           @default(now())
   updatedAt                   DateTime           @updatedAt
 
-  assetClasses     AssetClass[]
   models           AssetModel[]
   assets           Asset[]
   customFields     CustomFieldDefinition[]
@@ -276,21 +275,39 @@ model Category {
   @@map("categories")
 }
 
-model AssetClass {
-  id            String   @id @default(uuid())
-  legacyMongoId String?
-  code          String   @unique
-  name          String
-  categoryId    String
-  description   String?
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+model AssetSubGroup {
+  id             String    @id @default(uuid())
+  code           String    @unique
+  name           String
+  assetGroupId   String?
+  assetGroupName String?
+  assetType      String?   @default("Both")
+  description    String?
+  totalAssets    Int?      @default(0)
+  active         Boolean?  @default(true)
+  createdAt      DateTime? @default(now())
+  updatedAt      DateTime? @updatedAt
 
-  category Category @relation(fields: [categoryId], references: [id])
-  assets   Asset[]
+  @@map("asset_sub_groups")
+}
 
-  @@map("asset_classes")
+model SubCategory {
+  id                String    @id @default(uuid())
+  code              String    @unique
+  name              String
+  categoryId        String?
+  categoryName      String?
+  assetSubGroupId   String?
+  assetSubGroupName String?
+  assetGroupId      String?
+  assetGroupName    String?
+  description       String?
+  totalAssets       Int?      @default(0)
+  active            Boolean?  @default(true)
+  createdAt         DateTime? @default(now())
+  updatedAt         DateTime? @updatedAt
+
+  @@map("sub_categories")
 }
 
 model Manufacturer {
@@ -389,7 +406,6 @@ model Asset {
 
   // Relations
   category     Category      @relation(fields: [categoryId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  assetClass   AssetClass?   @relation(fields: [assetClassId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   manufacturer Manufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   model        AssetModel?   @relation(fields: [modelId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   parentAsset  Asset?        @relation("ChildAssets", fields: [parentAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)

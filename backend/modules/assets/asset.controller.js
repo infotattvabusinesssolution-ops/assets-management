@@ -160,7 +160,6 @@ export async function getAsset360(req, res, next) {
 
     const assetIncludes = {
       category: true,
-      assetClass: true,
       company: true,
       site: true,
       building: true,
@@ -367,7 +366,7 @@ export async function createAsset(req, res, next) {
       const possibleCodes = [rawAssetClass, subName, 'SUB-' + cleanKey, 'CLS-' + cleanKey, cleanKey];
 
       // 1. Find by ID, name, or possible codes (active or inactive)
-      assetClass = await prisma.assetClass.findFirst({
+      assetClass = await prisma.subCategory.findFirst({
         where: {
           OR: [
             { id: rawAssetClass },
@@ -384,7 +383,7 @@ export async function createAsset(req, res, next) {
         if (!assetClass.active) updates.active = true;
         if (!assetClass.categoryId && categoryId) updates.categoryId = categoryId;
         if (Object.keys(updates).length > 0) {
-          await prisma.assetClass.update({
+          await prisma.subCategory.update({
             where: { id: assetClass.id },
             data: updates
           }).catch(() => null);
@@ -393,7 +392,7 @@ export async function createAsset(req, res, next) {
         // 2. Not found, create with a guaranteed unique code
         try {
           const uniqueCode = 'SUB-' + cleanKey.slice(0, 6) + '-' + Math.floor(100 + Math.random() * 900);
-          assetClass = await prisma.assetClass.create({
+          assetClass = await prisma.subCategory.create({
             data: {
               categoryId: categoryId || null,
               name: subName,
