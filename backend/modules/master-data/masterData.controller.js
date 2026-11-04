@@ -367,15 +367,126 @@ export async function updateAssetGroup(req, res, next) {
 export async function deleteAssetGroup(req, res, next) {
   try {
     const { id } = req.params;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
+
+    let group = memoryAssetGroups.find(g => g.id === id || g.code === id);
+    if (!group && isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM asset_groups WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+        if (rows && rows.length > 0) group = rows[0];
+      } catch (_) {}
+    }
+
+    const groupName = group?.name || '';
+    const groupCode = group?.code || '';
+
+    // Check child dependencies:
+    // 1. Asset Sub Groups
+    let subGroupsCount = 0;
+    try {
+      const fileSubGroups = readAssetSubGroupsFromFile();
+      const matchedFileSubGroups = fileSubGroups.filter(s =>
+        (s.assetGroupId && s.assetGroupId === id) ||
+        (groupName && s.groupName && s.groupName.toLowerCase() === groupName.toLowerCase()) ||
+        (groupCode && s.groupCode && s.groupCode.toLowerCase() === groupCode.toLowerCase())
+      );
+      subGroupsCount = matchedFileSubGroups.length;
+    } catch (_) {}
+
     if (isDbConnected()) {
       try {
-        await prisma.$executeRawUnsafe(`DELETE FROM asset_groups WHERE id = '${id.replace(/'/g, "''")}'`);
+        const dbSg = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM asset_sub_groups
+          WHERE assetGroupId = '${id.replace(/'/g, "''")}'
+             OR (groupName IS NOT NULL AND groupName = '${groupName.replace(/'/g, "''")}')
+        `);
+        const dbCount = Number(dbSg?.[0]?.cnt || 0);
+        if (dbCount > subGroupsCount) subGroupsCount = dbCount;
+      } catch (_) {}
+    }
+
+    // 2. Categories
+    let categoriesCount = 0;
+    if (isDbConnected()) {
+      try {
+        const catRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM category
+          WHERE (groupName IS NOT NULL AND groupName = '${groupName.replace(/'/g, "''")}')
+             OR description LIKE '%[group:${groupName.replace(/'/g, "''")}]%'
+        `);
+        categoriesCount = Number(catRows?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+
+    // 3. Assets
+    let assetsCount = 0;
+    if (isDbConnected()) {
+      try {
+        const assetRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM assets
+          WHERE assetGroupId = '${id.replace(/'/g, "''")}'
+        `);
+        assetsCount = Number(assetRows?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+
+    const totalLinked = subGroupsCount + categoriesCount + assetsCount;
+
+    if (totalLinked > 0 && !force && !deactivateOnly) {
+      return res.json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        entityName: 'Asset Group',
+        details: {
+          subGroupsCount,
+          categoriesCount,
+          assetsCount
+        },
+        message: `This Asset Group is linked to ${totalLinked} active record(s) (${subGroupsCount} sub groups, ${categoriesCount} categories, ${assetsCount} assets). Cannot be deleted while child records exist.`
+      });
+    }
+
+    if (deactivateOnly) {
+      if (isDbConnected()) {
+        try {
+          await prisma.$executeRawUnsafe(`
+            UPDATE asset_groups
+            SET active = 0, status = 'Inactive', updatedAt = CURRENT_TIMESTAMP
+            WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+          `);
+        } catch (_) {}
+      }
+      memoryAssetGroups = memoryAssetGroups.map(g => (g.id === id || g.code === id) ? { ...g, active: false, status: 'Inactive' } : g);
+      return res.json({
+        success: true,
+        deactivated: true,
+        message: `Asset Group marked as Inactive (${totalLinked} linked records preserved).`
+      });
+    }
+
+    // Hard delete (force or no linked children)
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE asset_sub_groups
+          SET assetGroupId = NULL
+          WHERE assetGroupId = '${id.replace(/'/g, "''")}'
+        `).catch(() => null);
+        await prisma.$executeRawUnsafe(`
+          UPDATE assets
+          SET assetGroupId = NULL
+          WHERE assetGroupId = '${id.replace(/'/g, "''")}'
+        `).catch(() => null);
+        await prisma.$executeRawUnsafe(`DELETE FROM asset_groups WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
       } catch (dbErr) {
         console.warn('DB delete skipped:', dbErr.message);
       }
     }
-    memoryAssetGroups = memoryAssetGroups.filter(g => g.id !== id);
-    res.json({ success: true, message: 'Asset Group deleted successfully' });
+    memoryAssetGroups = memoryAssetGroups.filter(g => g.id !== id && g.code !== id);
+    res.json({ success: true, hardDeleted: true, message: 'Asset Group permanently deleted from database.' });
   } catch (err) { next(err); }
 }
 
@@ -1485,8 +1596,91 @@ export async function deleteAssetSubGroup(req, res, next) {
   try {
     await ensureAssetSubGroupsTable();
     const { id } = req.params;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
+
+    const allSubGroups = readAssetSubGroupsFromFile();
+    let subGroup = allSubGroups.find(s => s.id === id || s.code === id);
+    if (!subGroup && isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM asset_sub_groups WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+        if (rows && rows.length > 0) subGroup = rows[0];
+      } catch (_) {}
+    }
+
+    const subGroupName = subGroup?.name || '';
+
+    // Check child dependencies:
+    // 1. Categories linked to this sub group
+    let categoriesCount = 0;
     if (isDbConnected()) {
       try {
+        const catRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM category
+          WHERE (className IS NOT NULL AND className = '${subGroupName.replace(/'/g, "''")}')
+             OR description LIKE '%[class:${subGroupName.replace(/'/g, "''")}]%'
+        `);
+        categoriesCount = Number(catRows?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+
+    // 2. Assets linked to this sub group
+    let assetsCount = 0;
+    if (isDbConnected()) {
+      try {
+        const assetRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM assets
+          WHERE assetSubGroupId = '${id.replace(/'/g, "''")}'
+             OR subGroupId = '${id.replace(/'/g, "''")}'
+        `);
+        assetsCount = Number(assetRows?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+
+    const totalLinked = categoriesCount + assetsCount;
+
+    if (totalLinked > 0 && !force && !deactivateOnly) {
+      return res.json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        entityName: 'Asset Sub Group',
+        details: {
+          categoriesCount,
+          assetsCount
+        },
+        message: `This Asset Sub Group is linked to ${totalLinked} active record(s) (${categoriesCount} categories, ${assetsCount} assets). Cannot be deleted while child records exist.`
+      });
+    }
+
+    if (deactivateOnly) {
+      if (isDbConnected()) {
+        try {
+          await prisma.$executeRawUnsafe(`
+            UPDATE asset_sub_groups
+            SET active = 0, status = 'Inactive', updatedAt = CURRENT_TIMESTAMP
+            WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+          `);
+        } catch (_) {}
+      }
+      const updatedSubGroups = allSubGroups.map(s => (s.id === id || s.code === id) ? { ...s, active: false, status: 'Inactive' } : s);
+      writeAssetSubGroupsToFile(updatedSubGroups);
+      return res.json({
+        success: true,
+        deactivated: true,
+        message: `Asset Sub Group marked as Inactive (${totalLinked} linked records preserved).`
+      });
+    }
+
+    // Hard delete (force or no linked children)
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE assets
+          SET assetSubGroupId = NULL, subGroupId = NULL
+          WHERE assetSubGroupId = '${id.replace(/'/g, "''")}' OR subGroupId = '${id.replace(/'/g, "''")}'
+        `).catch(() => null);
         await prisma.$executeRawUnsafe(`
           DELETE FROM asset_sub_groups
           WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
@@ -1495,10 +1689,9 @@ export async function deleteAssetSubGroup(req, res, next) {
         console.warn('DB deleteAssetSubGroup skipped:', dbErr.message);
       }
     }
-    const current = readAssetSubGroupsFromFile();
-    const filtered = current.filter(s => s.id !== id && s.code !== id);
+    const filtered = allSubGroups.filter(s => s.id !== id && s.code !== id);
     writeAssetSubGroupsToFile(filtered);
-    res.json({ success: true, message: 'Asset Sub Group deleted successfully.' });
+    res.json({ success: true, hardDeleted: true, message: 'Asset Sub Group permanently deleted.' });
   } catch (err) { next(err); }
 }
 
@@ -1711,8 +1904,95 @@ export async function deleteSubCategory(req, res, next) {
   try {
     await ensureSubCategoriesTable();
     const { id } = req.params;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
+
+    const allSubCats = readSubCategoriesFromFile();
+    let subCat = allSubCats.find(s => s.id === id || s.code === id);
+    if (!subCat && isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM sub_categories WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+        if (rows && rows.length > 0) subCat = rows[0];
+      } catch (_) {}
+    }
+
+    const subCatName = subCat?.name || '';
+
+    // Check dependencies:
+    // 1. Assets linked to this sub category
+    let assetsCount = 0;
     if (isDbConnected()) {
       try {
+        const assetRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM assets
+          WHERE subCategoryId = '${id.replace(/'/g, "''")}'
+        `);
+        assetsCount = Number(assetRows?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+
+    // 2. Item Master products linked to this sub category
+    let itemsCount = 0;
+    if (isDbConnected()) {
+      try {
+        const itemRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM item_masters
+          WHERE subCategoryId = '${id.replace(/'/g, "''")}'
+             OR (subCategoryName IS NOT NULL AND subCategoryName = '${subCatName.replace(/'/g, "''")}')
+        `);
+        itemsCount = Number(itemRows?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+
+    const totalLinked = assetsCount + itemsCount;
+
+    if (totalLinked > 0 && !force && !deactivateOnly) {
+      return res.json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        entityName: 'Sub Category',
+        details: {
+          assetsCount,
+          itemsCount
+        },
+        message: `This Sub Category is linked to ${totalLinked} active record(s) (${assetsCount} assets, ${itemsCount} items). Action required before deletion.`
+      });
+    }
+
+    if (deactivateOnly) {
+      if (isDbConnected()) {
+        try {
+          await prisma.$executeRawUnsafe(`
+            UPDATE sub_categories
+            SET active = 0, status = 'Inactive', updatedAt = CURRENT_TIMESTAMP
+            WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+          `);
+        } catch (_) {}
+      }
+      const updatedSubCats = allSubCats.map(s => (s.id === id || s.code === id) ? { ...s, active: false, status: 'Inactive' } : s);
+      writeSubCategoriesToFile(updatedSubCats);
+      return res.json({
+        success: true,
+        deactivated: true,
+        message: `Sub Category marked as Inactive (${totalLinked} linked records preserved).`
+      });
+    }
+
+    // Hard delete (force or no linked children)
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE assets
+          SET subCategoryId = NULL
+          WHERE subCategoryId = '${id.replace(/'/g, "''")}'
+        `).catch(() => null);
+        await prisma.$executeRawUnsafe(`
+          UPDATE item_masters
+          SET subCategoryId = NULL
+          WHERE subCategoryId = '${id.replace(/'/g, "''")}'
+        `).catch(() => null);
         await prisma.$executeRawUnsafe(`
           DELETE FROM sub_categories
           WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
@@ -1721,10 +2001,9 @@ export async function deleteSubCategory(req, res, next) {
         console.warn('DB deleteSubCategory skipped:', dbErr.message);
       }
     }
-    const current = readSubCategoriesFromFile();
-    const filtered = current.filter(s => s.id !== id && s.code !== id);
+    const filtered = allSubCats.filter(s => s.id !== id && s.code !== id);
     writeSubCategoriesToFile(filtered);
-    res.json({ success: true, message: 'Sub Category deleted successfully.' });
+    res.json({ success: true, hardDeleted: true, message: 'Sub Category permanently deleted.' });
   } catch (err) { next(err); }
 }
 

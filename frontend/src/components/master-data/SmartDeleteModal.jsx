@@ -100,6 +100,30 @@ export function SmartDeleteModal({
                     <span>{details.modelCount} Model(s)</span>
                   </div>
                 )}
+                {Boolean(details.subGroupsCount) && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>{details.subGroupsCount} Sub Group(s)</span>
+                  </div>
+                )}
+                {Boolean(details.categoriesCount) && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>{details.categoriesCount} Category(ies)</span>
+                  </div>
+                )}
+                {Boolean(details.classCount) && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>{details.classCount} Sub Category(ies)</span>
+                  </div>
+                )}
+                {Boolean(details.itemsCount) && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>{details.itemsCount} Item Master(s)</span>
+                  </div>
+                )}
               </div>
             </div>
           )}

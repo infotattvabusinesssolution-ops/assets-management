@@ -24,6 +24,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
 import { INITIAL_CLASSES } from './ClassesTab';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const INITIAL_SUB_CATEGORIES = [];
 
@@ -39,6 +40,7 @@ export function SubCategoriesTab({
   const [selectedSubCategory, setSelectedSubCategory] = useState(null);
   const [selectedSubCatIds, setSelectedSubCatIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
   const [categories, setCategories] = useState([]);
 
   // Load live sub-categories / asset classes from backend database
@@ -371,18 +373,69 @@ export function SubCategoriesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Sub Category "${sc.name}" (${sc.code})?`)) {
       try {
-        if (typeof sc.id === 'string' && sc.id.length > 10) {
-          await api.delete(`/master-data/sub-categories/${sc.id}`).catch(() => null);
+        const res = await api.delete(`/master-data/sub-categories/${sc.id}`);
+        if (res?.requiresConfirmation) {
+          setSmartDeleteState({
+            isOpen: true,
+            item: sc,
+            linkedCount: res.linkedCount || 0,
+            details: res.details || null,
+            isProcessing: false
+          });
+          return;
         }
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
           localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => c.id !== sc.id)));
         } catch (_) { }
         await loadSubCategories();
-        triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
+        triggerToast && triggerToast(`Sub Category "${sc.name || sc.code}" deleted successfully.`);
       } catch (err) {
-        console.warn('Delete sub-category error:', err);
+        const data = err?.response?.data;
+        if (data?.requiresConfirmation) {
+          setSmartDeleteState({
+            isOpen: true,
+            item: sc,
+            linkedCount: data.linkedCount || 0,
+            details: data.details || null,
+            isProcessing: false
+          });
+          return;
+        }
+        triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete Sub Category.');
       }
+    }
+  };
+
+  const handleSmartDeactivateSubCategory = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/sub-categories/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      await loadSubCategories();
+      triggerToast && triggerToast(res?.message || 'Sub Category marked Inactive.');
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast('Failed to deactivate Sub Category.');
+    }
+  };
+
+  const handleSmartForceDeleteSubCategory = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/sub-categories/${smartDeleteState.item.id}?action=force_delete`);
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+        localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => c.id !== smartDeleteState.item.id)));
+      } catch (_) { }
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      await loadSubCategories();
+      triggerToast && triggerToast(res?.message || 'Sub Category permanently deleted.');
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast('Failed to force delete Sub Category.');
     }
   };
 
@@ -1011,6 +1064,18 @@ export function SubCategoriesTab({
           </div>
         </div>
       )}
+      {/* Smart Delete Modal (Linked Dependencies Protection) */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Sub Category"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateSubCategory}
+        onForceDelete={handleSmartForceDeleteSubCategory}
+        isProcessing={smartDeleteState.isProcessing}
+      />
     </div>
   );
 }

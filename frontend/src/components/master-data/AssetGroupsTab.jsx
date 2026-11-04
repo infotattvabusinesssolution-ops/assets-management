@@ -21,6 +21,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { DEFAULT_ASSET_TYPES } from './GenericMasterTab';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const INITIAL_ASSET_GROUPS = [];
 
@@ -41,6 +42,7 @@ export function AssetGroupsTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Related items explorer modal state
   const [selectedRelatedType, setSelectedRelatedType] = useState(null); // 'classes' | 'categories' | 'subcategories'
@@ -329,7 +331,18 @@ export function AssetGroupsTab({
     if (!groupToDelete) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/master-data/asset-groups/${groupToDelete.id}`);
+      const res = await api.delete(`/master-data/asset-groups/${groupToDelete.id}`);
+      if (res?.requiresConfirmation) {
+        setShowDeleteConfirmModal(false);
+        setSmartDeleteState({
+          isOpen: true,
+          item: groupToDelete,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
+      }
       try {
         const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
         localStorage.setItem('fams_custom_asset_groups', JSON.stringify(currentCustom.filter(g => g.id !== groupToDelete.id && g.code !== groupToDelete.code)));
@@ -344,9 +357,53 @@ export function AssetGroupsTab({
       setShowDeleteConfirmModal(false);
       setGroupToDelete(null);
     } catch (err) {
+      const data = err?.response?.data;
+      if (data?.requiresConfirmation) {
+        setShowDeleteConfirmModal(false);
+        setSmartDeleteState({
+          isOpen: true,
+          item: groupToDelete,
+          linkedCount: data.linkedCount || 0,
+          details: data.details || null,
+          isProcessing: false
+        });
+        return;
+      }
       triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete asset group.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSmartDeactivateGroup = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/asset-groups/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      await loadAssetGroups();
+      triggerToast && triggerToast(res?.message || 'Asset Group marked Inactive.');
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast('Failed to deactivate asset group.');
+    }
+  };
+
+  const handleSmartForceDeleteGroup = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/asset-groups/${smartDeleteState.item.id}?action=force_delete`);
+      try {
+        const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+        localStorage.setItem('fams_custom_asset_groups', JSON.stringify(currentCustom.filter(g => g.id !== smartDeleteState.item.id)));
+      } catch (e) { }
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      await loadAssetGroups();
+      triggerToast && triggerToast(res?.message || 'Asset Group permanently deleted.');
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast('Failed to force delete asset group.');
     }
   };
 
@@ -1041,6 +1098,18 @@ export function AssetGroupsTab({
           </div>
         </div>
       )}
+      {/* Smart Delete Modal (Linked Dependencies Protection) */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Asset Group"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateGroup}
+        onForceDelete={handleSmartForceDeleteGroup}
+        isProcessing={smartDeleteState.isProcessing}
+      />
     </div>
   );
 }

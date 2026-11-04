@@ -24,6 +24,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const INITIAL_CLASSES = [];
 
@@ -39,6 +40,7 @@ export function ClassesTab({
   const [selectedClass, setSelectedClass] = useState(null);
   const [selectedClassIds, setSelectedClassIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Load live classes from database (Filtered strictly to true Asset Classes, excluding Sub Categories)
   const loadClasses = async () => {
@@ -323,17 +325,70 @@ export function ClassesTab({
   const handleDeleteClass = async (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Asset Sub Group "${cls.name}" (${cls.code})?`)) {
-      if (typeof cls.id === 'string' && cls.id.length > 10) {
-        await api.delete(`/master-data/asset-sub-groups/${cls.id}`).catch(() => null);
+      try {
+        const res = await api.delete(`/master-data/asset-sub-groups/${cls.id}`);
+        if (res?.requiresConfirmation) {
+          setSmartDeleteState({
+            isOpen: true,
+            item: cls,
+            linkedCount: res.linkedCount || 0,
+            details: res.details || null,
+            isProcessing: false
+          });
+          return;
+        }
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+          localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== cls.id)));
+        } catch (_) { }
+        await loadClasses();
+        triggerToast && triggerToast(`Asset Sub Group "${cls.name || cls.code}" deleted successfully.`);
+      } catch (err) {
+        const data = err?.response?.data;
+        if (data?.requiresConfirmation) {
+          setSmartDeleteState({
+            isOpen: true,
+            item: cls,
+            linkedCount: data.linkedCount || 0,
+            details: data.details || null,
+            isProcessing: false
+          });
+          return;
+        }
+        triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete Asset Sub Group.');
       }
+    }
+  };
+
+  const handleSmartDeactivateClass = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/asset-sub-groups/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      await loadClasses();
+      triggerToast && triggerToast(res?.message || 'Asset Sub Group marked Inactive.');
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast('Failed to deactivate Asset Sub Group.');
+    }
+  };
+
+  const handleSmartForceDeleteClass = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/asset-sub-groups/${smartDeleteState.item.id}?action=force_delete`);
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-        localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== cls.id)));
+        localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== smartDeleteState.item.id)));
       } catch (_) { }
-      const remaining = classesList.filter((c) => c.id !== cls.id);
-      setClassesList(remaining);
-      if (remaining.length > 0) setSelectedClass(remaining[0]);
-      triggerToast && triggerToast(`Asset Sub Group "${cls.code}" deleted successfully.`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      await loadClasses();
+      triggerToast && triggerToast(res?.message || 'Asset Sub Group permanently deleted.');
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast('Failed to force delete Asset Sub Group.');
     }
   };
 
@@ -933,6 +988,18 @@ export function ClassesTab({
           </div>
         </div>
       )}
+      {/* Smart Delete Modal (Linked Dependencies Protection) */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Asset Sub Group"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateClass}
+        onForceDelete={handleSmartForceDeleteClass}
+        isProcessing={smartDeleteState.isProcessing}
+      />
     </div>
   );
 }
