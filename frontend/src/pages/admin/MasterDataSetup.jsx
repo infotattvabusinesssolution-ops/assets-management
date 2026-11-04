@@ -433,7 +433,7 @@ export function MasterDataSetup() {
               }}
               className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             >
-              <Upload className="w-3.5 h-3.5 text-slate-500" />
+              <Download className="w-3.5 h-3.5 text-slate-500" />
               <span>Import</span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
@@ -494,7 +494,7 @@ export function MasterDataSetup() {
               }}
               className="px-3.5 py-2 rounded-xl bg-white border border-slate-200 hover:border-slate-300 text-slate-700 hover:text-slate-900 text-xs font-semibold flex items-center gap-1.5 transition-all shadow-2xs cursor-pointer"
             >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <Upload className="w-3.5 h-3.5 text-slate-500" />
               <span>Export</span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>
@@ -582,7 +582,7 @@ export function MasterDataSetup() {
                   }}
                   className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2 cursor-pointer"
                 >
-                  <Upload className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                  <Download className="w-3.5 h-3.5 text-[#6C2BD9]" />
                   <span>Import from Template</span>
                 </button>
               </div>
@@ -928,7 +928,7 @@ export function MasterDataSetup() {
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-md w-full p-6 space-y-4">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
-                <Upload className="w-4 h-4 text-[#6C2BD9]" />
+                <Download className="w-4 h-4 text-[#6C2BD9]" />
                 <span>Import {currentTabObject?.name || 'Records'}</span>
               </h3>
               <button onClick={() => setShowImportModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">

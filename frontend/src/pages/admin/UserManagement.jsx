@@ -687,13 +687,13 @@ export function UserManagement() {
               onClick={() => alert('Import Users Wizard: Select an Excel or CSV template to upload user records.')}
               className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-medium rounded-lg hover:bg-slate-50 transition shadow-sm"
             >
-              <Upload className="w-3.5 h-3.5 text-slate-500" />
+              <Download className="w-3.5 h-3.5 text-slate-500" />
               Import Users
             </button>
 
             <div className="relative group">
               <button className="inline-flex items-center gap-1.5 px-3.5 py-2 bg-white border border-slate-300 text-slate-700 text-xs font-medium rounded-lg hover:bg-slate-50 transition shadow-sm">
-                <Download className="w-3.5 h-3.5 text-slate-500" />
+                <Upload className="w-3.5 h-3.5 text-slate-500" />
                 Export &or;
               </button>
             </div>

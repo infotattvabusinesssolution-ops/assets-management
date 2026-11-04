@@ -14,6 +14,7 @@ import {
   DollarSign,
   Info,
   Download,
+  Upload,
   Filter
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -239,7 +240,7 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
             onClick={handleExportCSV}
             className="px-3.5 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 font-bold text-xs rounded-xl flex items-center gap-1.5 transition-all cursor-pointer"
           >
-            <Download className="w-3.5 h-3.5 text-slate-500" /> Export CSV
+            <Upload className="w-3.5 h-3.5 text-slate-500" /> Export CSV
           </button>
         </div>
       </div>

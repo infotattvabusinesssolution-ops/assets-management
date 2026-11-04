@@ -12,6 +12,7 @@ import {
   Pause,
   RotateCcw,
   Download,
+  Upload,
   ShieldCheck,
   Calendar,
   Layers,
@@ -703,7 +704,7 @@ export function BackupScheduler() {
                       onClick={() => setShowExportDropdown(!showExportDropdown)}
                       className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 text-xs font-semibold text-slate-600 hover:bg-slate-50 hover:text-slate-900 transition-all cursor-pointer"
                     >
-                      <Download className="w-3.5 h-3.5 text-purple-600" />
+                      <Upload className="w-3.5 h-3.5 text-purple-600" />
                       <span>Export</span>
                       <ChevronDown className="w-3 h-3 text-slate-400" />
                     </button>

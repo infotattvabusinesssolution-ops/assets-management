@@ -20,6 +20,7 @@ import {
   ChevronDown,
   ArrowUpDown,
   Download,
+  Upload,
   X
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -521,7 +522,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
               onClick={() => triggerToast && triggerToast('Exporting Departments data...')}
               className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
-              <Download className="w-3.5 h-3.5 text-slate-500" />
+              <Upload className="w-3.5 h-3.5 text-slate-500" />
               <span>Export</span>
               <ChevronDown className="w-3 h-3 text-slate-400" />
             </button>

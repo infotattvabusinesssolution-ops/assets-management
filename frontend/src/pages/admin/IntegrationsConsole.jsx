@@ -15,6 +15,7 @@ import {
   Link2,
   Play,
   Download,
+  Upload,
   MoreHorizontal,
   ChevronDown,
   ChevronUp,
@@ -1025,7 +1026,7 @@ export function IntegrationsConsole() {
                 onClick={handleExportCSV}
                 className="flex items-center gap-1.5 px-3 py-1.5 border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-semibold rounded-lg shadow-2xs transition-colors cursor-pointer"
               >
-                <Download className="w-3.5 h-3.5" />
+                <Upload className="w-3.5 h-3.5" />
                 <span>Export</span>
                 <ChevronDown className="w-3 h-3 text-slate-400" />
               </button>

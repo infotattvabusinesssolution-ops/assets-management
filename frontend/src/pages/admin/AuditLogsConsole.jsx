@@ -2,6 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Filter,
   Download,
+  Upload,
   Calendar,
   Search,
   RefreshCw,
@@ -323,7 +324,7 @@ export function AuditLogsConsole() {
             onClick={() => setIsExportDropdownOpen(!isExportDropdownOpen)}
             className="flex items-center gap-2 rounded-lg border border-[#6C2BD9] bg-white px-4 py-2 text-xs font-semibold text-[#6C2BD9] shadow-2xs hover:bg-purple-50 transition-colors"
           >
-            <Download className="h-3.5 w-3.5 text-[#6C2BD9]" />
+            <Upload className="h-3.5 w-3.5 text-[#6C2BD9]" />
             <span>Export Logs</span>
             <ChevronDown className="h-3.5 w-3.5 text-[#6C2BD9]" />
           </button>
