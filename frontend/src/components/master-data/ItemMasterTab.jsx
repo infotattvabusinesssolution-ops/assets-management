@@ -84,7 +84,7 @@ export function ItemMasterTab({
     brandId: '',
     brandName: '',
     model: '',
-    uom: 'Each',
+    uom: '',
     specifications: '',
     status: 'Active'
   });
@@ -975,18 +975,13 @@ export function ItemMasterTab({
                       onChange={(e) => setFormState({ ...formState, uom: e.target.value })}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
                     >
+                      <option value="">-- Select UOM --</option>
                       {uoms.length > 0 ? (
                         uoms.map(u => (
                           <option key={u.id || u.code} value={u.name || u.code}>{u.name} ({u.code})</option>
                         ))
                       ) : (
-                        <>
-                          <option value="Each">Each (EA)</option>
-                          <option value="Unit">Unit (UNT)</option>
-                          <option value="Set">Set (SET)</option>
-                          <option value="Box">Box (BOX)</option>
-                          <option value="Meter">Meter (MTR)</option>
-                        </>
+                        <option value="" disabled>No UOMs configured</option>
                       )}
                     </select>
                   </div>

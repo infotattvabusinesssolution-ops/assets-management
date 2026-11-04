@@ -34,6 +34,8 @@ export function DepartmentsTab({
 }) {
   const [departmentsList, setDepartmentsList] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
+  const [companiesList, setCompaniesList] = useState([]);
+  const [locationsList, setLocationsList] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [selectedDeptIds, setSelectedDeptIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -43,12 +45,16 @@ export function DepartmentsTab({
   const loadDepartments = async () => {
     setIsLoading(true);
     try {
-      const [res, ccRes] = await Promise.all([
+      const [res, ccRes, compRes, siteRes] = await Promise.all([
         api.get('/master-data/departments'),
-        api.get('/master-data/cost-centers').catch(() => ({ costCenters: [] }))
+        api.get('/master-data/cost-centers').catch(() => ({ costCenters: [] })),
+        api.get('/master-data/companies?includeInactive=true').catch(() => null),
+        api.get('/master-data/sites').catch(() => null)
       ]);
       const loadedCCs = ccRes?.costCenters || [];
       setCostCenters(loadedCCs);
+      if (compRes?.companies) setCompaniesList(compRes.companies);
+      if (siteRes?.sites) setLocationsList(siteRes.sites);
 
       if (res?.departments && res.departments.length > 0) {
         const mapped = res.departments.map((dept) => {
@@ -166,9 +172,9 @@ export function DepartmentsTab({
         code: deptToEdit.code,
         name: deptToEdit.name,
         type: deptToEdit.type || 'Support',
-        parentDepartment: deptToEdit.parentDepartment || '-',
-        location: deptToEdit.location || 'Dubai HQ',
-        company: deptToEdit.company || 'Wavelogix FZC',
+        parentDepartment: deptToEdit.parentDepartment || '',
+        location: deptToEdit.location || '',
+        company: deptToEdit.company || '',
         manager: deptToEdit.manager || '',
         email: deptToEdit.email || '',
         phone: deptToEdit.phone || '',
@@ -182,9 +188,9 @@ export function DepartmentsTab({
         code: '',
         name: '',
         type: 'Support',
-        parentDepartment: '-',
-        location: 'Dubai HQ',
-        company: 'Wavelogix FZC',
+        parentDepartment: '',
+        location: '',
+        company: '',
         manager: '',
         email: '',
         phone: '',
@@ -456,8 +462,11 @@ export function DepartmentsTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Locations">All Locations</option>
-              <option value="Dubai HQ">Dubai HQ</option>
-              <option value="Jebel Ali">Jebel Ali</option>
+              {locationsList.map((loc) => (
+                <option key={loc.id || loc.name} value={loc.name || loc.code}>
+                  {loc.name || loc.code}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -469,7 +478,11 @@ export function DepartmentsTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Companies">All Companies</option>
-              <option value="Wavelogix FZC">Wavelogix FZC</option>
+              {companiesList.map((c) => (
+                <option key={c.id || c.name} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -952,9 +965,12 @@ export function DepartmentsTab({
                     onChange={(e) => setDeptFormState({ ...deptFormState, company: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    <option value="Wavelogix FZC">Wavelogix FZC</option>
-                    <option value="Wavelogix KSA">Wavelogix KSA</option>
-                    <option value="Wavelogix Qatar">Wavelogix Qatar</option>
+                    <option value="">- Select Company -</option>
+                    {companiesList.map((c) => (
+                      <option key={c.id || c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
@@ -976,7 +992,7 @@ export function DepartmentsTab({
                     type="email"
                     value={deptFormState.email}
                     onChange={(e) => setDeptFormState({ ...deptFormState, email: e.target.value })}
-                    placeholder="email@wavelogix.com"
+                    placeholder="department@company.com"
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
                   />
                 </div>

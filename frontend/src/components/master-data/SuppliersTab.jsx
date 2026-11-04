@@ -37,6 +37,7 @@ export function SuppliersTab({
   setExternalShowAddModal
 }) {
   const [suppliersList, setSuppliersList] = useState([]);
+  const [companiesList, setCompaniesList] = useState([]);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [selectedSupIds, setSelectedSupIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -46,7 +47,11 @@ export function SuppliersTab({
   const loadSuppliers = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/maintenance/service-providers');
+      const [res, compRes] = await Promise.all([
+        api.get('/maintenance/service-providers'),
+        api.get('/master-data/companies?includeInactive=true').catch(() => null)
+      ]);
+      if (compRes?.companies) setCompaniesList(compRes.companies);
       if (res?.providers && res.providers.length > 0) {
         const mapped = res.providers.map((p) => ({
           id: p.id,
@@ -162,14 +167,14 @@ export function SuppliersTab({
         code: supToEdit.code,
         name: supToEdit.name,
         type: supToEdit.type || 'Hardware',
-        company: supToEdit.company || 'Wavelogix FZC',
-        country: supToEdit.country || 'USA',
+        company: supToEdit.company || '',
+        country: supToEdit.country || '',
         contactPerson: supToEdit.contactPerson || '',
         email: supToEdit.email || '',
         phone: supToEdit.phone || '',
         address: supToEdit.address || '',
         website: supToEdit.website || '',
-        paymentTerms: supToEdit.paymentTerms || '30 Days',
+        paymentTerms: supToEdit.paymentTerms || '',
         taxNo: supToEdit.taxNo || '',
         description: supToEdit.description || '',
         status: supToEdit.status || 'Active'
@@ -180,14 +185,14 @@ export function SuppliersTab({
         code: '',
         name: '',
         type: 'Hardware',
-        company: 'Wavelogix FZC',
-        country: 'USA',
+        company: '',
+        country: '',
         contactPerson: '',
         email: '',
         phone: '',
         address: '',
         website: '',
-        paymentTerms: '30 Days',
+        paymentTerms: '',
         taxNo: '',
         description: '',
         status: 'Active'
@@ -481,11 +486,11 @@ export function SuppliersTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All">All</option>
-              <option value="USA">USA</option>
-              <option value="Lithuania">Lithuania</option>
-              <option value="Germany">Germany</option>
-              <option value="China">China</option>
-              <option value="UAE">UAE</option>
+              {Array.from(new Set(suppliersList.map(s => s.country).filter(c => c && c !== '-'))).map((country) => (
+                <option key={country} value={country}>
+                  {country}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -497,8 +502,11 @@ export function SuppliersTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Companies">All Companies</option>
-              <option value="Wavelogix FZC">Wavelogix FZC</option>
-              <option value="Wavelogix KSA">Wavelogix KSA</option>
+              {companiesList.map((c) => (
+                <option key={c.id || c.name} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -964,23 +972,23 @@ export function SuppliersTab({
                     onChange={(e) => setSupFormState({ ...supFormState, company: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    <option value="Wavelogix FZC">Wavelogix FZC</option>
-                    <option value="Wavelogix KSA">Wavelogix KSA</option>
+                    <option value="">- Select Company -</option>
+                    {companiesList.map((c) => (
+                      <option key={c.id || c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Country</label>
-                  <select
+                  <input
+                    type="text"
                     value={supFormState.country}
                     onChange={(e) => setSupFormState({ ...supFormState, country: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="USA">USA</option>
-                    <option value="Lithuania">Lithuania</option>
-                    <option value="Germany">Germany</option>
-                    <option value="China">China</option>
-                    <option value="UAE">UAE</option>
-                  </select>
+                    placeholder="e.g. United States, UAE, Germany"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
+                  />
                 </div>
               </div>
 

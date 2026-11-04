@@ -21,9 +21,6 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { DEFAULT_ASSET_TYPES } from './GenericMasterTab';
-import { INITIAL_CLASSES } from './ClassesTab';
-import { INITIAL_CATEGORIES } from './CategoriesTab';
-import { INITIAL_SUB_CATEGORIES } from './SubCategoriesTab';
 
 export const INITIAL_ASSET_GROUPS = [];
 
@@ -35,6 +32,9 @@ export function AssetGroupsTab({
   onNavigateTab
 }) {
   const [assetGroups, setAssetGroups] = useState([]);
+  const [liveClasses, setLiveClasses] = useState([]);
+  const [liveCategories, setLiveCategories] = useState([]);
+  const [liveSubCategories, setLiveSubCategories] = useState([]);
   const [selectedGroup, setSelectedGroup] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -88,10 +88,18 @@ export function AssetGroupsTab({
   // Load Asset Groups from Backend Database on Mount
   const loadAssetGroups = async () => {
     try {
-      const typeRes = await api.get('/master-data/asset-types').catch(() => null);
+      const [typeRes, classRes, catRes, subCatRes] = await Promise.all([
+        api.get('/master-data/asset-types').catch(() => null),
+        api.get('/master-data/asset-classes?kind=CLASS').catch(() => null),
+        api.get('/master-data/categories').catch(() => null),
+        api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null)
+      ]);
       if (typeRes?.assetTypes && Array.isArray(typeRes.assetTypes) && typeRes.assetTypes.length > 0) {
         setAvailableAssetTypes(typeRes.assetTypes);
       }
+      if (classRes?.assetClasses) setLiveClasses(classRes.assetClasses);
+      if (catRes?.categories) setLiveCategories(catRes.categories);
+      if (subCatRes?.assetClasses) setLiveSubCategories(subCatRes.assetClasses);
     } catch (_) { }
     setIsLoading(true);
     let customGroups = [];
@@ -155,10 +163,10 @@ export function AssetGroupsTab({
   // Calculate related classes for the selected group
   const relatedClassesList = useMemo(() => {
     if (!selectedGroup) return [];
-    return INITIAL_CLASSES.filter((c) => {
+    return liveClasses.filter((c) => {
       const grpName = (selectedGroup.name || '').toLowerCase();
       const grpCode = (selectedGroup.code || '').toLowerCase();
-      const cGrp = (c.groupName || '').toLowerCase();
+      const cGrp = (c.groupName || c.assetGroup?.name || '').toLowerCase();
       const cCode = (c.code || '').toLowerCase();
       return (
         cGrp === grpName ||
@@ -167,15 +175,15 @@ export function AssetGroupsTab({
         (grpCode && cCode.startsWith(grpCode))
       );
     });
-  }, [selectedGroup]);
+  }, [selectedGroup, liveClasses]);
 
   // Calculate related categories for the selected group
   const relatedCategoriesList = useMemo(() => {
     if (!selectedGroup) return [];
-    return INITIAL_CATEGORIES.filter((c) => {
+    return liveCategories.filter((c) => {
       const grpName = (selectedGroup.name || '').toLowerCase();
       const grpCode = (selectedGroup.code || '').toLowerCase();
-      const cGrp = (c.groupName || '').toLowerCase();
+      const cGrp = (c.groupName || c.assetGroup?.name || '').toLowerCase();
       const cCode = (c.code || '').toLowerCase();
       return (
         cGrp === grpName ||
@@ -184,15 +192,15 @@ export function AssetGroupsTab({
         (grpCode && cCode.startsWith(grpCode))
       );
     });
-  }, [selectedGroup]);
+  }, [selectedGroup, liveCategories]);
 
   // Calculate related subcategories for the selected group
   const relatedSubCategoriesList = useMemo(() => {
     if (!selectedGroup) return [];
-    return INITIAL_SUB_CATEGORIES.filter((c) => {
+    return liveSubCategories.filter((c) => {
       const grpName = (selectedGroup.name || '').toLowerCase();
       const grpCode = (selectedGroup.code || '').toLowerCase();
-      const cGrp = (c.groupName || '').toLowerCase();
+      const cGrp = (c.groupName || c.assetGroup?.name || '').toLowerCase();
       const cCode = (c.code || '').toLowerCase();
       return (
         cGrp === grpName ||
@@ -201,7 +209,7 @@ export function AssetGroupsTab({
         (grpCode && cCode.startsWith(grpCode))
       );
     });
-  }, [selectedGroup]);
+  }, [selectedGroup, liveSubCategories]);
 
   // Filtered list inside the explorer modal
   const activeRelatedItems = useMemo(() => {

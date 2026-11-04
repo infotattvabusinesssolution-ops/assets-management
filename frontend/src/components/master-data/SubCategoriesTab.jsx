@@ -449,11 +449,14 @@ export function SubCategoriesTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Classes">All Sub Groups</option>
-              <option value="Hardware">Hardware</option>
-              <option value="Network Equipment">Network Equipment</option>
-              <option value="HVAC Systems">HVAC Systems</option>
-              <option value="Electrical Systems">Electrical Systems</option>
-              <option value="Office Furniture">Office Furniture</option>
+              {availableAssetClasses.map((c) => {
+                const name = c.name || c.code;
+                return (
+                  <option key={c.id || name} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -465,11 +468,14 @@ export function SubCategoriesTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Groups">All Groups</option>
-              <option value="Information Technology">Information Technology</option>
-              <option value="Buildings & Facilities MEP">Buildings & Facilities MEP</option>
-              <option value="Heavy Plant & Machinery">Heavy Plant & Machinery</option>
-              <option value="Fleet & Vehicles">Fleet & Vehicles</option>
-              <option value="Furniture, Fixtures & Equipment">Furniture, Fixtures & Equipment</option>
+              {availableAssetGroups.map((g) => {
+                const name = g.name || g.code;
+                return (
+                  <option key={g.id || name} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

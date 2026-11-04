@@ -461,11 +461,14 @@ export function CategoriesTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Classes">All Sub Groups</option>
-              <option value="Hardware">Hardware</option>
-              <option value="Network Equipment">Network Equipment</option>
-              <option value="Building Structure">Building Structure</option>
-              <option value="MEP Systems">MEP Systems</option>
-              <option value="Production Equipment">Production Equipment</option>
+              {availableAssetClasses.map((c) => {
+                const name = c.name || c.code;
+                return (
+                  <option key={c.id || name} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -477,9 +480,14 @@ export function CategoriesTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Groups">All Groups</option>
-              <option value="Information Technology">Information Technology</option>
-              <option value="Buildings & Facilities">Buildings & Facilities</option>
-              <option value="Plant & Machinery">Plant & Machinery</option>
+              {availableAssetGroups.map((g) => {
+                const name = g.name || g.code;
+                return (
+                  <option key={g.id || name} value={name}>
+                    {name}
+                  </option>
+                );
+              })}
             </select>
           </div>
 

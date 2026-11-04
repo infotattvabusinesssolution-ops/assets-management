@@ -34,6 +34,7 @@ export function CostCentersTab({
   setExternalShowAddModal
 }) {
   const [costCentersList, setCostCentersList] = useState([]);
+  const [companiesList, setCompaniesList] = useState([]);
   const [selectedCostCenter, setSelectedCostCenter] = useState(null);
   const [selectedCCIds, setSelectedCCIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -43,7 +44,11 @@ export function CostCentersTab({
   const loadCostCenters = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/cost-centers');
+      const [res, compRes] = await Promise.all([
+        api.get('/master-data/cost-centers'),
+        api.get('/master-data/companies?includeInactive=true').catch(() => null)
+      ]);
+      if (compRes?.companies) setCompaniesList(compRes.companies);
       if (res?.costCenters && res.costCenters.length > 0) {
         const mapped = res.costCenters.map((cc) => ({
           id: cc.id,
@@ -141,7 +146,7 @@ export function CostCentersTab({
       setCcFormState({
         code: ccToEdit.code,
         name: ccToEdit.name,
-        company: ccToEdit.company || 'Wavelogix FZC',
+        company: ccToEdit.company || '',
         type: ccToEdit.type || 'Operational',
         manager: ccToEdit.manager || '',
         description: ccToEdit.description || '',
@@ -152,7 +157,7 @@ export function CostCentersTab({
       setCcFormState({
         code: '',
         name: '',
-        company: 'Wavelogix FZC',
+        company: '',
         type: 'Operational',
         manager: '',
         description: '',
@@ -389,7 +394,11 @@ export function CostCentersTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Companies">All Companies</option>
-              <option value="Wavelogix FZC">Wavelogix FZC</option>
+              {companiesList.map((c) => (
+                <option key={c.id || c.name} value={c.name}>
+                  {c.name}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -845,9 +854,12 @@ export function CostCentersTab({
                     onChange={(e) => setCcFormState({ ...ccFormState, company: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    <option value="Wavelogix FZC">Wavelogix FZC</option>
-                    <option value="Wavelogix KSA">Wavelogix KSA</option>
-                    <option value="Wavelogix Qatar">Wavelogix Qatar</option>
+                    <option value="">- Select Company -</option>
+                    {companiesList.map((c) => (
+                      <option key={c.id || c.name} value={c.name}>
+                        {c.name}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>
