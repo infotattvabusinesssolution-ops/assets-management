@@ -70,6 +70,7 @@ import { DisposalStatusesTab } from '../../components/master-data/DisposalStatus
 import { api } from '../../services/api';
 
 const getSingularName = (name = '') => {
+  if (name === 'Asset Sub Groups' || name === 'Sub Groups') return 'Asset Sub Group';
   if (name.endsWith('Classes')) return name.slice(0, -2);
   if (name.endsWith('Statuses')) return name.slice(0, -2);
   if (name.endsWith('ies')) return name.slice(0, -3) + 'y';
@@ -349,7 +350,7 @@ export function MasterDataSetup() {
     } else {
       headers = ['Class Code', 'Class Name', 'Asset Group', 'Description', 'Asset Type', 'Total Assets', 'Status'];
       rows = INITIAL_CLASSES.map((c) => [c.code, c.name, `"${c.groupName}"`, `"${c.description}"`, c.assetType, c.totalAssets, c.status]);
-      filename = 'Asset_Classes';
+      filename = 'Asset_SubGroups';
     }
 
     const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
@@ -616,7 +617,7 @@ export function MasterDataSetup() {
         />
       )}
 
-      {activeTab === 'classes' && (
+      {(activeTab === 'classes' || activeTab === 'sub-groups') && (
         <ClassesTab
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}

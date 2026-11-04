@@ -45,10 +45,10 @@ export function SubCategoriesTab({
     setIsLoading(true);
     try {
       const [classRes, catRes, grpRes, clsRes] = await Promise.all([
-        api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null),
+        api.get('/master-data/sub-categories').catch(() => null),
         api.get('/master-data/categories').catch(() => null),
         api.get('/master-data/asset-groups').catch(() => null),
-        api.get('/master-data/asset-classes?kind=CLASS').catch(() => null)
+        api.get('/master-data/asset-sub-groups').catch(() => null)
       ]);
 
       if (catRes?.categories) {
@@ -279,7 +279,7 @@ export function SubCategoriesTab({
 
     try {
       if (editingSubCategory) {
-        await api.put(`/master-data/asset-classes/${editingSubCategory.id}`, {
+        await api.put(`/master-data/sub-categories/${editingSubCategory.id}`, {
           code: subCatFormState.code.toUpperCase(),
           name: subCatFormState.name,
           categoryId: targetCatId,
@@ -289,7 +289,7 @@ export function SubCategoriesTab({
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" updated successfully.`);
       } else {
-        await api.post('/master-data/asset-classes', {
+        await api.post('/master-data/sub-categories', {
           code: subCatFormState.code.toUpperCase(),
           name: subCatFormState.name,
           categoryId: targetCatId,
@@ -331,7 +331,7 @@ export function SubCategoriesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = sc.status === 'Active' ? 'Inactive' : 'Active';
     try {
-      await api.put(`/master-data/asset-classes/${sc.id}`, { status: newStatus });
+      await api.put(`/master-data/sub-categories/${sc.id}`, { status: newStatus });
       await loadSubCategories();
       triggerToast && triggerToast(`Sub Category "${sc.code}" status changed to ${newStatus}.`);
     } catch (err) {
@@ -366,7 +366,7 @@ export function SubCategoriesTab({
     if (window.confirm(`Are you sure you want to delete ${count} selected sub categor${count === 1 ? 'y' : 'ies'}?`)) {
       setIsBulkDeleting(true);
       try {
-        await Promise.allSettled(selectedSubCatIds.map(id => api.delete(`/master-data/asset-classes/${id}`)));
+        await Promise.allSettled(selectedSubCatIds.map(id => api.delete(`/master-data/sub-categories/${id}`)));
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
           const idSet = new Set(selectedSubCatIds);
@@ -575,7 +575,7 @@ export function SubCategoriesTab({
                   <th className="py-3 px-3">Sub Category Code</th>
                   <th className="py-3 px-3">Sub Category Name</th>
                   <th className="py-3 px-3">Category</th>
-                  <th className="py-3 px-3">Class</th>
+                  <th className="py-3 px-3">Asset Sub Group</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-center">Actions</th>

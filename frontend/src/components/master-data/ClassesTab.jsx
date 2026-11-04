@@ -46,7 +46,7 @@ export function ClassesTab({
       const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
       const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
       const [res, grpRes, subcatRes] = await Promise.all([
-        api.get('/master-data/asset-classes?kind=CLASS').catch(() => null),
+        api.get('/master-data/asset-sub-groups').catch(() => null),
         api.get('/master-data/asset-groups').catch(() => null),
         api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null)
       ]);
@@ -230,7 +230,7 @@ export function ClassesTab({
           .replace(/\[kind:[^\]]+\]/g, '')
           .replace(/\[group:[^\]]+\]/g, '')
           .trim();
-        await api.put(`/master-data/asset-classes/${editingClass.id}`, {
+        await api.put(`/master-data/asset-sub-groups/${editingClass.id}`, {
           code: clsFormState.code,
           name: clsFormState.name,
           description: `${cleanDesc} [kind:class] [group:${clsFormState.groupName}]`.trim(),
@@ -239,7 +239,7 @@ export function ClassesTab({
         await loadClasses();
         triggerToast && triggerToast(`Asset Sub Group "${clsFormState.name}" updated successfully.`);
       } else {
-        await api.post('/master-data/asset-classes', {
+        await api.post('/master-data/asset-sub-groups', {
           code: clsFormState.code,
           name: clsFormState.name,
           description: clsFormState.description,
@@ -274,14 +274,14 @@ export function ClassesTab({
     };
     setClassesList([duplicated, ...classesList]);
     setSelectedClass(duplicated);
-    triggerToast && triggerToast(`Class "${cls.name}" duplicated as "${duplicated.code}".`);
+    triggerToast && triggerToast(`Asset Sub Group "${cls.name}" duplicated as "${duplicated.code}".`);
   };
 
   const handleToggleClassStatus = async (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = cls.status === 'Active' ? 'Inactive' : 'Active';
     if (typeof cls.id === 'string' && cls.id.length > 10) {
-      await api.put(`/master-data/asset-classes/${cls.id}`, { status: newStatus }).catch(() => null);
+      await api.put(`/master-data/asset-sub-groups/${cls.id}`, { status: newStatus }).catch(() => null);
     }
     const updated = classesList.map((c) =>
       c.id === cls.id ? { ...c, status: newStatus } : c
@@ -290,12 +290,12 @@ export function ClassesTab({
     if (selectedClass.id === cls.id) {
       setSelectedClass({ ...selectedClass, status: newStatus });
     }
-    triggerToast && triggerToast(`Class "${cls.code}" status changed to ${newStatus}.`);
+    triggerToast && triggerToast(`Asset Sub Group "${cls.code}" status changed to ${newStatus}.`);
   };
 
   const handleDeleteClass = async (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Class "${cls.name}" (${cls.code})?`)) {
+    if (window.confirm(`Are you sure you want to delete Asset Sub Group "${cls.name}" (${cls.code})?`)) {
       if (typeof cls.id === 'string' && cls.id.length > 10) {
         await api.delete(`/master-data/asset-classes/${cls.id}`).catch(() => null);
       }
@@ -306,7 +306,7 @@ export function ClassesTab({
       const remaining = classesList.filter((c) => c.id !== cls.id);
       setClassesList(remaining);
       if (remaining.length > 0) setSelectedClass(remaining[0]);
-      triggerToast && triggerToast(`Class "${cls.code}" deleted successfully.`);
+      triggerToast && triggerToast(`Asset Sub Group "${cls.code}" deleted successfully.`);
     }
   };
 
@@ -315,10 +315,10 @@ export function ClassesTab({
   const handleBulkDelete = async () => {
     if (selectedClassIds.length === 0) return;
     const count = selectedClassIds.length;
-    if (window.confirm(`Are you sure you want to delete ${count} selected class${count === 1 ? '' : 'es'}?`)) {
+    if (window.confirm(`Are you sure you want to delete ${count} selected asset sub group${count === 1 ? '' : 's'}?`)) {
       setIsBulkDeleting(true);
       try {
-        await Promise.allSettled(selectedClassIds.map(id => api.delete(`/master-data/asset-classes/${id}`)));
+        await Promise.allSettled(selectedClassIds.map(id => api.delete(`/master-data/asset-sub-groups/${id}`)));
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
           const idSet = new Set(selectedClassIds);
@@ -432,11 +432,11 @@ export function ClassesTab({
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Asset Sub Groups List</h2>
-              <p className="text-xs text-slate-500">Showing all asset classes.</p>
+              <p className="text-xs text-slate-500">Showing all asset sub groups.</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-                {filteredClasses.length} Classes
+                {filteredClasses.length} Sub Groups
               </span>
               <button
                 onClick={loadClasses}
@@ -678,7 +678,7 @@ export function ClassesTab({
         {/* Selected Class Detail Drawer */}
         <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-900">Class Details</h3>
+            <h3 className="text-sm font-bold text-slate-900">Asset Sub Group Details</h3>
             <button
               onClick={() => handleOpenAddClsModal(selectedClass)}
               className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
@@ -870,7 +870,7 @@ export function ClassesTab({
                   rows={3}
                   value={clsFormState.description}
                   onChange={(e) => setClsFormState({ ...clsFormState, description: e.target.value })}
-                  placeholder="Enter class description..."
+                  placeholder="Enter asset sub group description..."
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
                 />
               </div>
