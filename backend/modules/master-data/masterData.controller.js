@@ -2386,6 +2386,9 @@ export async function getItemMasters(req, res, next) {
         console.warn('DB getItemMasters query skipped, using persistent store:', dbErr.message);
       }
     }
+    if (inMemoryItemMasters.length === 0) {
+      inMemoryItemMasters = readItemMastersFromFile();
+    }
     const list = req.query.includeInactive === 'true'
       ? inMemoryItemMasters
       : inMemoryItemMasters.filter(i => i.active !== false);
@@ -2396,7 +2399,51 @@ export async function getItemMasters(req, res, next) {
 export async function getItemMasterById(req, res, next) {
   try {
     const { id } = req.params;
-    const item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id);
+    let item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id || (i.code && i.code === id));
+    if (!item) {
+      inMemoryItemMasters = readItemMastersFromFile();
+      item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id || (i.code && i.code === id));
+    }
+    if (!item && isDbConnected()) {
+      try {
+        await ensureItemMastersTable();
+        const safeId = (id || '').replace(/'/g, "''");
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM item_masters WHERE id = '${safeId}' OR itemCode = '${safeId}'`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const r = rows[0];
+          item = {
+            id: r.id,
+            itemCode: r.itemCode,
+            itemName: r.itemName,
+            supplierBarcode: r.supplierBarcode || '',
+            description: r.description || '',
+            assetGroupId: r.assetGroupId || '',
+            assetGroupName: r.assetGroupName || '',
+            assetSubGroupId: r.assetSubGroupId || '',
+            assetSubGroupName: r.assetSubGroupName || '',
+            categoryId: r.categoryId || '',
+            categoryName: r.categoryName || '',
+            subCategoryId: r.subCategoryId || '',
+            subCategoryName: r.subCategoryName || '',
+            manufacturerId: r.manufacturerId || '',
+            manufacturerName: r.manufacturerName || '',
+            brandId: r.brandId || '',
+            brandName: r.brandName || '',
+            model: r.model || '',
+            uom: r.uom || 'Each',
+            specifications: r.specifications || '',
+            imageUrl: r.imageUrl || '',
+            active: Boolean(r.active),
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
+          };
+          inMemoryItemMasters.push(item);
+          writeItemMastersToFile(inMemoryItemMasters);
+        }
+      } catch (dbErr) {
+        console.warn('DB getItemMasterById query skipped:', dbErr.message);
+      }
+    }
     if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
     res.json({ success: true, item });
   } catch (err) { next(err); }
@@ -2540,8 +2587,88 @@ export async function createItemMaster(req, res, next) {
 export async function updateItemMaster(req, res, next) {
   try {
     const { id } = req.params;
-    const idx = inMemoryItemMasters.findIndex(i => i.id === id || i.itemCode === id);
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Item not found' });
+    let idx = inMemoryItemMasters.findIndex(i => i.id === id || i.itemCode === id);
+    if (idx === -1) {
+      inMemoryItemMasters = readItemMastersFromFile();
+      idx = inMemoryItemMasters.findIndex(i => i.id === id || i.itemCode === id);
+    }
+
+    if (idx === -1 && isDbConnected()) {
+      try {
+        await ensureItemMastersTable();
+        const safeId = (id || '').replace(/'/g, "''");
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM item_masters WHERE id = '${safeId}' OR itemCode = '${safeId}'`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const r = rows[0];
+          inMemoryItemMasters.push({
+            id: r.id,
+            itemCode: r.itemCode,
+            itemName: r.itemName,
+            supplierBarcode: r.supplierBarcode || '',
+            description: r.description || '',
+            assetGroupId: r.assetGroupId || '',
+            assetGroupName: r.assetGroupName || '',
+            assetSubGroupId: r.assetSubGroupId || '',
+            assetSubGroupName: r.assetSubGroupName || '',
+            categoryId: r.categoryId || '',
+            categoryName: r.categoryName || '',
+            subCategoryId: r.subCategoryId || '',
+            subCategoryName: r.subCategoryName || '',
+            manufacturerId: r.manufacturerId || '',
+            manufacturerName: r.manufacturerName || '',
+            brandId: r.brandId || '',
+            brandName: r.brandName || '',
+            model: r.model || '',
+            uom: r.uom || 'Each',
+            specifications: r.specifications || '',
+            imageUrl: r.imageUrl || '',
+            active: Boolean(r.active),
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
+          });
+          idx = inMemoryItemMasters.length - 1;
+        }
+      } catch (dbErr) {
+        console.warn('DB lookup in updateItemMaster skipped:', dbErr.message);
+      }
+    }
+
+    if (idx === -1) {
+      if (req.body.itemName || req.body.active !== undefined) {
+        const cleanName = (req.body.itemName || `Item ${id}`).trim();
+        const cleanCode = (req.body.itemCode && req.body.itemCode.trim()) ? req.body.itemCode.trim().toUpperCase() : id;
+        const upserted = {
+          id,
+          itemCode: cleanCode,
+          itemName: cleanName,
+          supplierBarcode: req.body.supplierBarcode || '',
+          description: req.body.description || '',
+          assetGroupId: req.body.assetGroupId || '',
+          assetGroupName: req.body.assetGroupName || '',
+          assetSubGroupId: req.body.assetSubGroupId || '',
+          assetSubGroupName: req.body.assetSubGroupName || '',
+          categoryId: req.body.categoryId || '',
+          categoryName: req.body.categoryName || '',
+          subCategoryId: req.body.subCategoryId || '',
+          subCategoryName: req.body.subCategoryName || '',
+          manufacturerId: req.body.manufacturerId || '',
+          manufacturerName: req.body.manufacturerName || '',
+          brandId: req.body.brandId || '',
+          brandName: req.body.brandName || '',
+          model: req.body.model || '',
+          uom: req.body.uom || 'Each',
+          specifications: req.body.specifications || '',
+          imageUrl: req.body.imageUrl || '',
+          active: req.body.active !== undefined ? Boolean(req.body.active) : true,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        inMemoryItemMasters.unshift(upserted);
+        writeItemMastersToFile(inMemoryItemMasters);
+        return res.json({ success: true, item: upserted });
+      }
+      return res.status(404).json({ success: false, message: 'Item not found' });
+    }
 
     const existing = inMemoryItemMasters[idx];
     const cleanCode = req.body.itemCode ? req.body.itemCode.trim().toUpperCase() : existing.itemCode;
@@ -2617,8 +2744,14 @@ export async function updateItemMaster(req, res, next) {
 export async function deleteItemMaster(req, res, next) {
   try {
     const { id } = req.params;
-    const item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id);
-    if (!item) return res.status(404).json({ success: false, message: 'Item not found' });
+    let item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id);
+    if (!item) {
+      inMemoryItemMasters = readItemMastersFromFile();
+      item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id);
+    }
+    if (!item) {
+      return res.json({ success: true, message: 'Item deleted or already removed' });
+    }
 
     inMemoryItemMasters = inMemoryItemMasters.filter(i => i.id !== id && i.itemCode !== id);
 
