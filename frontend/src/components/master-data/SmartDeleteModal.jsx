@@ -48,7 +48,7 @@ export function SmartDeleteModal({
         <div className="p-5 space-y-4 text-xs">
           <p className="text-slate-600 leading-relaxed">
             <span className="font-semibold text-slate-800">{entityName} "{itemName}"</span> {itemCode ? `(${itemCode})` : ''} cannot be erased because{' '}
-            <strong className="text-amber-700 font-bold">{linkedCount} child record(s)</strong> are currently assigned underneath it in the hierarchy.
+            <strong className="text-amber-700 font-bold">{linkedCount} {linkedCount === 1 ? 'child record is' : 'child records are'}</strong> currently assigned underneath it in the hierarchy.
           </p>
 
           {/* Breakdown if details exist */}
@@ -61,67 +61,70 @@ export function SmartDeleteModal({
                 {Boolean(details.assetsCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.assetsCount} Asset(s)</span>
+                    <span>{details.assetsCount} {details.assetsCount === 1 ? 'Asset' : 'Assets'}</span>
                   </div>
                 )}
                 {Boolean(details.sitesCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.sitesCount} Location(s)</span>
+                    <span>{details.sitesCount} {details.sitesCount === 1 ? 'Location' : 'Locations'}</span>
                   </div>
                 )}
                 {Boolean(details.childCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.childCount} Sub-location(s)</span>
+                    <span>{details.childCount} {details.childCount === 1 ? 'Sub-location' : 'Sub-locations'}</span>
                   </div>
                 )}
                 {Boolean(details.deptsCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.deptsCount} Department(s)</span>
+                    <span>{details.deptsCount} {details.deptsCount === 1 ? 'Department' : 'Departments'}</span>
                   </div>
                 )}
                 {Boolean(details.employeesCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.employeesCount} Custodian(s)</span>
+                    <span>{details.employeesCount} {details.employeesCount === 1 ? 'Custodian' : 'Custodians'}</span>
                   </div>
                 )}
                 {Boolean(details.assignmentsCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.assignmentsCount} Assignment(s)</span>
+                    <span>{details.assignmentsCount} {details.assignmentsCount === 1 ? 'Assignment' : 'Assignments'}</span>
                   </div>
                 )}
                 {Boolean(details.modelCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.modelCount} Model(s)</span>
+                    <span>{details.modelCount} {details.modelCount === 1 ? 'Model' : 'Models'}</span>
                   </div>
                 )}
                 {Boolean(details.subGroupsCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.subGroupsCount} Sub Group(s)</span>
+                    <span>{details.subGroupsCount} {details.subGroupsCount === 1 ? 'Sub Group' : 'Sub Groups'}</span>
                   </div>
                 )}
                 {Boolean(details.categoriesCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.categoriesCount} Category(ies)</span>
+                    <span>{details.categoriesCount} {details.categoriesCount === 1 ? 'Category' : 'Categories'}</span>
                   </div>
                 )}
-                {Boolean(details.classCount) && (
+                {Boolean(details.subCatsCount || details.classCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.classCount} Sub Category(ies)</span>
+                    <span>
+                      {(details.subCatsCount || details.classCount)}{' '}
+                      {(details.subCatsCount || details.classCount) === 1 ? 'Sub Category' : 'Sub Categories'}
+                    </span>
                   </div>
                 )}
                 {Boolean(details.itemsCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.itemsCount} Item Master(s)</span>
+                    <span>{details.itemsCount} {details.itemsCount === 1 ? 'Item Master' : 'Item Masters'}</span>
                   </div>
                 )}
               </div>
