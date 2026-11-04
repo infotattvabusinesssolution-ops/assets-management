@@ -167,10 +167,10 @@ export function CategoriesTab({
         cat.description.toLowerCase().includes(catSearchQuery.toLowerCase());
 
       const matchesClass =
-        catClassFilter === 'All Classes' || catClassFilter === 'All' || cat.className === catClassFilter;
+        catClassFilter === 'All Classes' || catClassFilter === 'All' || catClassFilter === 'All Sub Groups' || !catClassFilter || cat.className === catClassFilter;
 
       const matchesGroup =
-        catGroupFilter === 'All Groups' || catGroupFilter === 'All' || cat.groupName === catGroupFilter;
+        catGroupFilter === 'All Groups' || catGroupFilter === 'All' || !catGroupFilter || cat.groupName === catGroupFilter;
 
       const matchesStatus =
         catStatusFilter === 'All' || cat.status.toLowerCase() === catStatusFilter.toLowerCase();
