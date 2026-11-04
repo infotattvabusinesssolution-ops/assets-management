@@ -434,7 +434,7 @@ export async function deleteAssetGroup(req, res, next) {
 
     const totalLinked = subGroupsCount + categoriesCount + assetsCount;
 
-    if (totalLinked > 0 && !force && !deactivateOnly) {
+    if (totalLinked > 0 && !deactivateOnly) {
       return res.json({
         success: false,
         requiresConfirmation: true,
@@ -445,7 +445,7 @@ export async function deleteAssetGroup(req, res, next) {
           categoriesCount,
           assetsCount
         },
-        message: `This Asset Group is linked to ${totalLinked} active record(s) (${subGroupsCount} sub groups, ${categoriesCount} categories, ${assetsCount} assets). Cannot be deleted while child records exist.`
+        message: `This Asset Group is linked to ${totalLinked} active record(s) (${subGroupsCount} sub groups, ${categoriesCount} categories, ${assetsCount} assets). Deletion is blocked because child records exist under this group. You must delete or reassign child records first.`
       });
     }
 
@@ -1185,14 +1185,14 @@ export async function deleteCategory(req, res, next) {
     ]);
     const totalLinked = assetCount + modelCount + classCount;
 
-    if (totalLinked > 0 && !force && !deactivateOnly) {
+    if (totalLinked > 0 && !deactivateOnly) {
       return res.json({
         success: false,
         requiresConfirmation: true,
         linkedCount: totalLinked,
         entityName: 'Category',
         details: { assetsCount: assetCount, modelCount, classCount },
-        message: `This Category is linked to ${totalLinked} active record(s) (${assetCount} assets, ${modelCount} models, ${classCount} sub-categories).`
+        message: `This Category is linked to ${totalLinked} active record(s) (${assetCount} assets, ${modelCount} models, ${classCount} sub-categories). Deletion is blocked because child records exist under this category. You must delete or reassign child records first.`
       });
     }
 
@@ -1640,7 +1640,7 @@ export async function deleteAssetSubGroup(req, res, next) {
 
     const totalLinked = categoriesCount + assetsCount;
 
-    if (totalLinked > 0 && !force && !deactivateOnly) {
+    if (totalLinked > 0 && !deactivateOnly) {
       return res.json({
         success: false,
         requiresConfirmation: true,
@@ -1650,7 +1650,7 @@ export async function deleteAssetSubGroup(req, res, next) {
           categoriesCount,
           assetsCount
         },
-        message: `This Asset Sub Group is linked to ${totalLinked} active record(s) (${categoriesCount} categories, ${assetsCount} assets). Cannot be deleted while child records exist.`
+        message: `This Asset Sub Group is linked to ${totalLinked} active record(s) (${categoriesCount} categories, ${assetsCount} assets). Deletion is blocked because child records exist under this sub group. You must delete or reassign child records first.`
       });
     }
 
@@ -1947,7 +1947,7 @@ export async function deleteSubCategory(req, res, next) {
 
     const totalLinked = assetsCount + itemsCount;
 
-    if (totalLinked > 0 && !force && !deactivateOnly) {
+    if (totalLinked > 0 && !deactivateOnly) {
       return res.json({
         success: false,
         requiresConfirmation: true,
@@ -1957,7 +1957,7 @@ export async function deleteSubCategory(req, res, next) {
           assetsCount,
           itemsCount
         },
-        message: `This Sub Category is linked to ${totalLinked} active record(s) (${assetsCount} assets, ${itemsCount} items). Action required before deletion.`
+        message: `This Sub Category is linked to ${totalLinked} active record(s) (${assetsCount} assets, ${itemsCount} items). Deletion is blocked because records are assigned to this sub category. You must delete or reassign them first.`
       });
     }
 

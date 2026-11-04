@@ -389,24 +389,6 @@ export function AssetGroupsTab({
     }
   };
 
-  const handleSmartForceDeleteGroup = async () => {
-    if (!smartDeleteState.item) return;
-    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
-    try {
-      const res = await api.delete(`/master-data/asset-groups/${smartDeleteState.item.id}?action=force_delete`);
-      try {
-        const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-        localStorage.setItem('fams_custom_asset_groups', JSON.stringify(currentCustom.filter(g => g.id !== smartDeleteState.item.id)));
-      } catch (e) { }
-      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
-      await loadAssetGroups();
-      triggerToast && triggerToast(res?.message || 'Asset Group permanently deleted.');
-    } catch (err) {
-      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
-      triggerToast && triggerToast('Failed to force delete asset group.');
-    }
-  };
-
   const handleToggleStatus = async (grp, e) => {
     e?.stopPropagation();
     const nextStatus = grp.status === 'Active' ? 'Inactive' : 'Active';
@@ -1107,7 +1089,6 @@ export function AssetGroupsTab({
         linkedCount={smartDeleteState.linkedCount}
         details={smartDeleteState.details}
         onDeactivate={handleSmartDeactivateGroup}
-        onForceDelete={handleSmartForceDeleteGroup}
         isProcessing={smartDeleteState.isProcessing}
       />
     </div>

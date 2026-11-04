@@ -421,24 +421,6 @@ export function SubCategoriesTab({
     }
   };
 
-  const handleSmartForceDeleteSubCategory = async () => {
-    if (!smartDeleteState.item) return;
-    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
-    try {
-      const res = await api.delete(`/master-data/sub-categories/${smartDeleteState.item.id}?action=force_delete`);
-      try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-        localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => c.id !== smartDeleteState.item.id)));
-      } catch (_) { }
-      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
-      await loadSubCategories();
-      triggerToast && triggerToast(res?.message || 'Sub Category permanently deleted.');
-    } catch (err) {
-      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
-      triggerToast && triggerToast('Failed to force delete Sub Category.');
-    }
-  };
-
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const handleBulkDelete = async () => {
@@ -1073,7 +1055,6 @@ export function SubCategoriesTab({
         linkedCount={smartDeleteState.linkedCount}
         details={smartDeleteState.details}
         onDeactivate={handleSmartDeactivateSubCategory}
-        onForceDelete={handleSmartForceDeleteSubCategory}
         isProcessing={smartDeleteState.isProcessing}
       />
     </div>

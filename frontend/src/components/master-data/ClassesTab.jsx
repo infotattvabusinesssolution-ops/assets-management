@@ -374,24 +374,6 @@ export function ClassesTab({
     }
   };
 
-  const handleSmartForceDeleteClass = async () => {
-    if (!smartDeleteState.item) return;
-    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
-    try {
-      const res = await api.delete(`/master-data/asset-sub-groups/${smartDeleteState.item.id}?action=force_delete`);
-      try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-        localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== smartDeleteState.item.id)));
-      } catch (_) { }
-      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
-      await loadClasses();
-      triggerToast && triggerToast(res?.message || 'Asset Sub Group permanently deleted.');
-    } catch (err) {
-      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
-      triggerToast && triggerToast('Failed to force delete Asset Sub Group.');
-    }
-  };
-
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const handleBulkDelete = async () => {
@@ -997,7 +979,6 @@ export function ClassesTab({
         linkedCount={smartDeleteState.linkedCount}
         details={smartDeleteState.details}
         onDeactivate={handleSmartDeactivateClass}
-        onForceDelete={handleSmartForceDeleteClass}
         isProcessing={smartDeleteState.isProcessing}
       />
     </div>

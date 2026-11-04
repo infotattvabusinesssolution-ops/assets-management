@@ -406,24 +406,6 @@ export function CategoriesTab({
     }
   };
 
-  const handleSmartForceDeleteCategory = async () => {
-    if (!smartDeleteState.item) return;
-    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
-    try {
-      const res = await api.delete(`/master-data/categories/${smartDeleteState.item.id}?action=force_delete`);
-      try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-        localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== smartDeleteState.item.id && c.code !== smartDeleteState.item.code)));
-      } catch (_) { }
-      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
-      triggerToast && triggerToast(res?.message || 'Category and asset links removed, permanently deleted from database.');
-      await loadCategories();
-    } catch (err) {
-      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
-      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to force delete category.');
-    }
-  };
-
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const handleBulkDelete = async () => {
@@ -1045,7 +1027,6 @@ export function CategoriesTab({
         linkedCount={smartDeleteState.linkedCount}
         details={smartDeleteState.details}
         onDeactivate={handleSmartDeactivateCategory}
-        onForceDelete={handleSmartForceDeleteCategory}
         isProcessing={smartDeleteState.isProcessing}
       />
     </div>
