@@ -71,7 +71,8 @@ import { api } from '../../services/api';
 
 const getSingularName = (name = '') => {
   if (name.endsWith('Classes')) return name.slice(0, -2);
-  if (name.endsWith('Categories')) return name.slice(0, -3) + 'y';
+  if (name.endsWith('Statuses')) return name.slice(0, -2);
+  if (name.endsWith('ies')) return name.slice(0, -3) + 'y';
   if (name === 'Status Codes') return 'Status Code';
   if (name === 'UOM' || name === 'UOM (Units)') return 'UOM';
   if (name.endsWith('s')) return name.slice(0, -1);
