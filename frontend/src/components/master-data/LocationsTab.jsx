@@ -326,7 +326,7 @@ export function LocationsTab({
         await loadLocations();
         triggerToast && triggerToast(`Location "${cleanName}" created successfully.`);
       } catch (err) {
-        console.warn('Create location error:', err);
+        console.warn('Add location error:', err);
         const newLoc = {
           id: `loc-${Date.now()}`,
           ...payload,
@@ -1108,7 +1108,7 @@ export function LocationsTab({
                   Cancel
                 </button>
                 <button type="submit" className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm">
-                  {editingLocation ? 'Save Changes' : 'Create Location'}
+                  {editingLocation ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>

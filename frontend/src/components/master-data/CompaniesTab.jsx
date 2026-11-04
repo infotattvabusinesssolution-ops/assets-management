@@ -576,7 +576,7 @@ export function CompaniesTab({
                   className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#581c87] text-white font-bold rounded-xl text-xs transition-colors shadow-md shadow-purple-500/20 cursor-pointer disabled:opacity-60 flex items-center gap-2"
                 >
                   {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{editingCompany ? 'Save Changes' : 'Create Company'}</span>
+                  <span>{editingCompany ? 'Save Changes' : 'Add'}</span>
                 </button>
               </div>
             </form>

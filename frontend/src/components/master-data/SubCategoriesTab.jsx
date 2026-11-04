@@ -58,7 +58,7 @@ export function SubCategoriesTab({
 
       if (classRes?.assetClasses && classRes.assetClasses.length > 0) {
         // Exclude any true asset classes!
-        const trueSubCats = classRes.assetClasses.filter(ac => 
+        const trueSubCats = classRes.assetClasses.filter(ac =>
           !classCodes.has((ac.code || '').toUpperCase()) &&
           !(ac.description || '').includes('[kind:class]')
         );
@@ -302,7 +302,7 @@ export function SubCategoriesTab({
             status: subCatFormState.status
           };
           localStorage.setItem('fams_custom_subcategories', JSON.stringify([newSub, ...custom]));
-        } catch (_) {}
+        } catch (_) { }
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${subCatFormState.name}" created successfully.`);
       } catch (err) {
@@ -353,7 +353,7 @@ export function SubCategoriesTab({
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
           localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => c.id !== sc.id)));
-        } catch (_) {}
+        } catch (_) { }
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${sc.code}" deleted successfully.`);
       } catch (err) {
@@ -375,7 +375,7 @@ export function SubCategoriesTab({
           const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
           const idSet = new Set(selectedSubCatIds);
           localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => !idSet.has(c.id))));
-        } catch (_) {}
+        } catch (_) { }
 
         const remaining = subCategoriesList.filter(c => !selectedSubCatIds.includes(c.id));
         setSubCategoriesList(remaining);
@@ -967,7 +967,7 @@ export function SubCategoriesTab({
                   Cancel
                 </button>
                 <button type="submit" className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm">
-                  {editingSubCategory ? 'Save Changes' : 'Create Sub Category'}
+                  {editingSubCategory ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>

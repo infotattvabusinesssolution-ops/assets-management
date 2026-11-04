@@ -92,12 +92,12 @@ export function AssetGroupsTab({
       if (typeRes?.assetTypes && Array.isArray(typeRes.assetTypes) && typeRes.assetTypes.length > 0) {
         setAvailableAssetTypes(typeRes.assetTypes);
       }
-    } catch (_) {}
+    } catch (_) { }
     setIsLoading(true);
     let customGroups = [];
     try {
       customGroups = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-    } catch (e) {}
+    } catch (e) { }
 
     try {
       const res = await api.get('/master-data/asset-groups?includeInactive=true');
@@ -307,7 +307,7 @@ export function AssetGroupsTab({
           });
           console.log('🎉 [AssetGroupsTab] Create Success Response:', res);
         } catch (apiErr) {
-          console.warn('API create asset group failed, saving locally:', apiErr);
+          console.warn('API Adding asset group failed, saving locally:', apiErr);
         }
 
         const newGroup = res?.assetGroup || {
@@ -334,7 +334,7 @@ export function AssetGroupsTab({
         try {
           const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
           localStorage.setItem('fams_custom_asset_groups', JSON.stringify([newGroup, ...currentCustom.filter(g => g.code !== cleanCode)]));
-        } catch (e) {}
+        } catch (e) { }
 
         const updated = [newGroup, ...assetGroups];
         setAssetGroups(updated);
@@ -363,7 +363,7 @@ export function AssetGroupsTab({
       try {
         const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
         localStorage.setItem('fams_custom_asset_groups', JSON.stringify(currentCustom.filter(g => g.id !== groupToDelete.id && g.code !== groupToDelete.code)));
-      } catch (e) {}
+      } catch (e) { }
 
       const updated = assetGroups.filter((g) => g.id !== groupToDelete.id);
       setAssetGroups(updated);
@@ -475,7 +475,7 @@ export function AssetGroupsTab({
                   <th className="py-3 px-3.5">Group Code</th>
                   <th className="py-3 px-3.5">Group Name</th>
                   <th className="py-3 px-4">Description</th>
-                  
+
                   <th className="py-3 px-3.5 text-right">Total Assets</th>
                   <th className="py-3 px-3.5 text-center">Status</th>
                   <th className="py-3 px-3.5 text-center">Actions</th>
@@ -515,7 +515,7 @@ export function AssetGroupsTab({
                         <td className="py-3.5 px-4 text-slate-600 max-w-[220px] truncate" title={grp.description}>
                           {grp.description || '-'}
                         </td>
-                        
+
                         <td className="py-3.5 px-3.5 text-right font-mono font-bold text-slate-900">
                           {(grp.totalAssets ?? 0).toLocaleString()}
                         </td>
@@ -860,7 +860,7 @@ export function AssetGroupsTab({
                 </button>
                 <button type="submit" disabled={isSaving} className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm flex items-center gap-1.5">
                   {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{editingGroup ? 'Save Changes' : 'Create Asset Group'}</span>
+                  <span>{editingGroup ? 'Save Changes' : 'ADD'}</span>
                 </button>
               </div>
             </form>

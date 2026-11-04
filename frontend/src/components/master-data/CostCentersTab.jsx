@@ -217,7 +217,7 @@ export function CostCentersTab({
         await loadCostCenters();
         triggerToast && triggerToast(`Cost Center "${ccFormState.name}" created successfully.`);
       } catch (err) {
-        console.warn('Create cost center error:', err);
+        console.warn('Add cost center error:', err);
         const newCC = {
           id: Date.now(),
           code: ccFormState.code.toUpperCase(),
@@ -898,7 +898,7 @@ export function CostCentersTab({
                   Cancel
                 </button>
                 <button type="submit" className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm">
-                  {editingCostCenter ? 'Save Changes' : 'Create Cost Center'}
+                  {editingCostCenter ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>

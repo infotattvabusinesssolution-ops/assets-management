@@ -1032,7 +1032,7 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
                   type="submit"
                   className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl shadow-xs cursor-pointer"
                 >
-                  {editingLoc ? 'Save Changes' : 'Create Location'}
+                  {editingLoc ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>

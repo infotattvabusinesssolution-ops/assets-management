@@ -274,7 +274,7 @@ export function SuppliersTab({
         await loadSuppliers();
         triggerToast && triggerToast(`Supplier "${supFormState.name}" created successfully.`);
       } catch (err) {
-        console.warn('Create supplier error:', err);
+        console.warn('Add supplier error:', err);
         const newSup = {
           id: Date.now(),
           code: supFormState.code.toUpperCase(),
@@ -1088,7 +1088,7 @@ export function SuppliersTab({
                   Cancel
                 </button>
                 <button type="submit" className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm">
-                  {editingSupplier ? 'Save Changes' : 'Create Supplier'}
+                  {editingSupplier ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>

@@ -249,20 +249,20 @@ export function CategoriesTab({
         const updated = categoriesList.map((c) =>
           c.id === editingCategory.id
             ? {
-                ...c,
-                code: catFormState.code.toUpperCase(),
-                name: catFormState.name,
-                className: catFormState.className,
-                groupName: catFormState.groupName,
-                description: taggedDescription,
-                status: catFormState.status,
-                lastModifiedBy: 'Logged In User',
-                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                }) + ' 02:30 PM'
-              }
+              ...c,
+              code: catFormState.code.toUpperCase(),
+              name: catFormState.name,
+              className: catFormState.className,
+              groupName: catFormState.groupName,
+              description: taggedDescription,
+              status: catFormState.status,
+              lastModifiedBy: 'Logged In User',
+              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+              }) + ' 02:30 PM'
+            }
             : c
         );
         setCategoriesList(updated);
@@ -282,7 +282,7 @@ export function CategoriesTab({
         await loadCategories();
         triggerToast && triggerToast(`Category "${catFormState.name}" created successfully.`);
       } catch (err) {
-        console.warn('Create category error:', err);
+        console.warn('Add category error:', err);
         const newCat = {
           id: Date.now(),
           code: catFormState.code.toUpperCase(),
@@ -367,7 +367,7 @@ export function CategoriesTab({
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
           localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
-        } catch (_) {}
+        } catch (_) { }
         await loadCategories();
         triggerToast && triggerToast(res?.message || `Category "${cat.name || cat.code}" deleted successfully.`);
       } catch (err) {
@@ -375,7 +375,7 @@ export function CategoriesTab({
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
           localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
-        } catch (_) {}
+        } catch (_) { }
         const remaining = categoriesList.filter((c) => c.id !== cat.id);
         setCategoriesList(remaining);
         setSelectedCategory(remaining[0] || null);
@@ -401,7 +401,7 @@ export function CategoriesTab({
           const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
           const idSet = new Set(selectedCatIds);
           localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => !idSet.has(c.id))));
-        } catch (_) {}
+        } catch (_) { }
 
         const remaining = categoriesList.filter(c => !selectedCatIds.includes(c.id));
         setCategoriesList(remaining);
@@ -974,7 +974,7 @@ export function CategoriesTab({
                   Cancel
                 </button>
                 <button type="submit" className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm">
-                  {editingCategory ? 'Save Changes' : 'Create Category'}
+                  {editingCategory ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>

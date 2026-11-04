@@ -405,7 +405,7 @@ export function ItemMasterTab({
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
           localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.map(i => i.id === editingItem.id ? saved : i)));
-        } catch (_) {}
+        } catch (_) { }
         const updated = items.map(i => i.id === editingItem.id ? saved : i);
         setItems(updated);
         if (selectedItem?.id === editingItem.id) setSelectedItem(saved);
@@ -416,7 +416,7 @@ export function ItemMasterTab({
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
           localStorage.setItem('fams_custom_item_masters', JSON.stringify([newItem, ...custom.filter(c => c.id !== newItem.id)]));
-        } catch (_) {}
+        } catch (_) { }
         const updated = [newItem, ...items];
         setItems(updated);
         setSelectedItem(newItem);
@@ -564,7 +564,7 @@ export function ItemMasterTab({
                 <thead>
                   <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
                     <th className="py-3 px-4">Item Code</th>
-                    <th className="py-3 px-4">Item Name / Model</th>
+                    <th className="py-3 px-4">Item Name</th>
                     <th className="py-3 px-3">Supplier Barcode</th>
                     <th className="py-3 px-3">Classification</th>
                     <th className="py-3 px-3">UOM</th>
@@ -1127,7 +1127,7 @@ export function ItemMasterTab({
                   className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#581c87] text-white font-bold rounded-xl text-xs transition-colors shadow-md shadow-purple-500/20 cursor-pointer disabled:opacity-60 flex items-center gap-2"
                 >
                   {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{editingItem ? 'Save Changes' : 'Create Item'}</span>
+                  <span>{editingItem ? 'Save Changes' : 'Add'}</span>
                 </button>
               </div>
             </form>

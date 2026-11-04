@@ -52,7 +52,7 @@ export function ClassesTab({
       let serverClasses = [];
       if (res?.assetClasses && res.assetClasses.length > 0) {
         // Filter strictly to classes: exclude anything that is a subcategory
-        const trueClasses = res.assetClasses.filter(ac => 
+        const trueClasses = res.assetClasses.filter(ac =>
           !subcatCodes.has((ac.code || '').toUpperCase()) &&
           !(ac.description || '').includes('[kind:subcat]')
         );
@@ -231,20 +231,20 @@ export function ClassesTab({
         const updated = classesList.map((c) =>
           c.id === editingClass.id
             ? {
-                ...c,
-                code: clsFormState.code.toUpperCase(),
-                name: clsFormState.name,
-                groupName: clsFormState.groupName,
-                description: clsFormState.description,
-                assetType: clsFormState.assetType,
-                status: clsFormState.status,
-                lastModifiedBy: 'Admin',
-                lastModifiedOn: new Date().toLocaleDateString('en-GB', {
-                  day: '2-digit',
-                  month: 'short',
-                  year: 'numeric'
-                }) + ' 02:30 PM'
-              }
+              ...c,
+              code: clsFormState.code.toUpperCase(),
+              name: clsFormState.name,
+              groupName: clsFormState.groupName,
+              description: clsFormState.description,
+              assetType: clsFormState.assetType,
+              status: clsFormState.status,
+              lastModifiedBy: 'Admin',
+              lastModifiedOn: new Date().toLocaleDateString('en-GB', {
+                day: '2-digit',
+                month: 'short',
+                year: 'numeric'
+              }) + ' 02:30 PM'
+            }
             : c
         );
         setClassesList(updated);
@@ -301,7 +301,7 @@ export function ClassesTab({
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
           localStorage.setItem('fams_custom_asset_classes', JSON.stringify([newClass, ...custom]));
-        } catch (_) {}
+        } catch (_) { }
         triggerToast && triggerToast(`Asset Sub Group "${clsFormState.name}" created successfully.`);
       }
     } catch (err) {
@@ -354,7 +354,7 @@ export function ClassesTab({
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
         localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== cls.id)));
-      } catch (_) {}
+      } catch (_) { }
       const remaining = classesList.filter((c) => c.id !== cls.id);
       setClassesList(remaining);
       if (remaining.length > 0) setSelectedClass(remaining[0]);
@@ -375,7 +375,7 @@ export function ClassesTab({
           const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
           const idSet = new Set(selectedClassIds);
           localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => !idSet.has(c.id))));
-        } catch (_) {}
+        } catch (_) { }
 
         const remaining = classesList.filter(c => !selectedClassIds.includes(c.id));
         setClassesList(remaining);
@@ -546,7 +546,7 @@ export function ClassesTab({
                   <th className="py-3 px-3">Sub Group Name</th>
                   <th className="py-3 px-3.5">Asset Group</th>
                   <th className="py-3 px-4">Description</th>
-                  
+
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-center">Actions</th>
@@ -582,7 +582,7 @@ export function ClassesTab({
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={cls.description}>
                         {cls.description}
                       </td>
-                      
+
                       <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900">
                         {(cls.totalAssets ?? 0).toLocaleString()}
                       </td>
@@ -943,7 +943,7 @@ export function ClassesTab({
                   Cancel
                 </button>
                 <button type="submit" className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm">
-                  {editingClass ? 'Save Changes' : 'Create Class'}
+                  {editingClass ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>

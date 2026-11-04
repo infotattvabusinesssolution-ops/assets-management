@@ -254,7 +254,7 @@ export function DepartmentsTab({
         await loadDepartments();
         triggerToast && triggerToast(`Department "${deptFormState.name}" created successfully.`);
       } catch (err) {
-        console.warn('Create department error:', err);
+        console.warn('Add department error:', err);
         const newDept = {
           id: Date.now(),
           code: deptFormState.code.toUpperCase(),
@@ -1015,7 +1015,7 @@ export function DepartmentsTab({
                   Cancel
                 </button>
                 <button type="submit" className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm">
-                  {editingDepartment ? 'Save Changes' : 'Create Department'}
+                  {editingDepartment ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>

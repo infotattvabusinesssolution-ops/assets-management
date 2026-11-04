@@ -599,7 +599,7 @@ export function CustodiansTab({
                 </div>
                 <div>
                   <h3 className="text-sm font-bold text-slate-900">
-                    {editingCustodian ? 'Edit Custodian' : 'Register New Custodian'}
+                    {editingCustodian ? 'Edit Custodian' : 'Add New Custodian'}
                   </h3>
                   <p className="text-[10px] text-slate-400 font-medium">
                     Internal employees & external contractor asset holders
@@ -811,7 +811,7 @@ export function CustodiansTab({
                   className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#581c87] text-white font-bold rounded-xl text-xs transition-colors shadow-md shadow-purple-500/20 cursor-pointer disabled:opacity-60 flex items-center gap-2"
                 >
                   {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                  <span>{editingCustodian ? 'Save Changes' : 'Register Custodian'}</span>
+                  <span>{editingCustodian ? 'Save Changes' : 'Add'}</span>
                 </button>
               </div>
             </form>

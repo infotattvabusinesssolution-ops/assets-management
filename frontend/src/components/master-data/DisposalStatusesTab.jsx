@@ -423,7 +423,7 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
                   className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
                 >
                   <Check className="w-4 h-4" />
-                  {isSaving ? 'Saving...' : editingStatus ? 'Update Status' : 'Create Status'}
+                  {isSaving ? 'Saving...' : editingStatus ? 'Update Status' : 'Add'}
                 </button>
               </div>
             </form>

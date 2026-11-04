@@ -214,7 +214,7 @@ export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger })
           createdId = res.company.id;
         }
       } catch (err) {
-        console.error('Failed to create company on backend:', err);
+        console.error('Failed to Add company on backend:', err);
       }
 
       const newCompany = {
@@ -863,7 +863,7 @@ export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger })
                   type="submit"
                   className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl shadow-xs cursor-pointer"
                 >
-                  {editingCompany ? 'Save Changes' : 'Create Company'}
+                  {editingCompany ? 'Save Changes' : 'Add'}
                 </button>
               </div>
             </form>
