@@ -47,7 +47,14 @@ export function ClassesTab({
       const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
       const subcatCodes = new Set(subcatCustom.map(s => (s.code || '').toUpperCase()));
 
-      const res = await api.get('/master-data/asset-classes?kind=CLASS').catch(() => null);
+      const [res, grpRes] = await Promise.all([
+        api.get('/master-data/asset-classes?kind=CLASS').catch(() => null),
+        api.get('/master-data/asset-groups').catch(() => null)
+      ]);
+
+      if (grpRes?.assetGroups && Array.isArray(grpRes.assetGroups)) {
+        setAvailableAssetGroups(grpRes.assetGroups);
+      }
 
       let serverClasses = [];
       if (res?.assetClasses && res.assetClasses.length > 0) {
@@ -908,6 +915,7 @@ export function ClassesTab({
                   onChange={(e) => setClsFormState({ ...clsFormState, groupName: e.target.value })}
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
+                  <option value="">-- Select Parent Asset Group --</option>
                   {availableAssetGroups.map((g) => {
                     const name = g.name || g.code;
                     return <option key={g.id || name} value={name}>{name}</option>;

@@ -423,8 +423,11 @@ export function CostCentersTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All">All</option>
-              <option value="Operational">Operational</option>
-              <option value="Administrative">Administrative</option>
+              {Array.from(new Set(costCentersList.map(c => c.type).filter(Boolean))).map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
           </div>
 

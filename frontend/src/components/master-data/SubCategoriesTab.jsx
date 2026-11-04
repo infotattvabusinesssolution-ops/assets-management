@@ -44,13 +44,21 @@ export function SubCategoriesTab({
   const loadSubCategories = async () => {
     setIsLoading(true);
     try {
-      const [classRes, catRes] = await Promise.all([
+      const [classRes, catRes, grpRes, clsRes] = await Promise.all([
         api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null),
-        api.get('/master-data/categories').catch(() => null)
+        api.get('/master-data/categories').catch(() => null),
+        api.get('/master-data/asset-groups').catch(() => null),
+        api.get('/master-data/asset-classes?kind=CLASS').catch(() => null)
       ]);
 
       if (catRes?.categories) {
         setCategories(catRes.categories);
+      }
+      if (grpRes?.assetGroups && Array.isArray(grpRes.assetGroups)) {
+        setAvailableAssetGroups(grpRes.assetGroups);
+      }
+      if (clsRes?.assetClasses && Array.isArray(clsRes.assetClasses)) {
+        setAvailableAssetClasses(clsRes.assetClasses);
       }
 
       const customClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');

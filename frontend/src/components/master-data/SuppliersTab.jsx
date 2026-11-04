@@ -57,7 +57,7 @@ export function SuppliersTab({
           id: p.id,
           code: p.providerCode,
           name: p.providerName,
-          type: p.providerType === 'AMC_PROVIDER' ? 'AMC Partner' : (p.providerType || 'Hardware'),
+          type: p.providerType === 'AMC_PROVIDER' ? 'AMC Partner' : (p.providerType || '-'),
           company: p.company?.name || p.companyName || '-',
           country: p.country || '-',
           contactPerson: p.primaryContact || '-',
@@ -112,7 +112,7 @@ export function SuppliersTab({
   const [supFormState, setSupFormState] = useState({
     code: '',
     name: '',
-    type: 'Hardware',
+    type: '',
     company: '',
     country: '',
     contactPerson: '',
@@ -166,7 +166,7 @@ export function SuppliersTab({
       setSupFormState({
         code: supToEdit.code,
         name: supToEdit.name,
-        type: supToEdit.type || 'Hardware',
+        type: supToEdit.type || '',
         company: supToEdit.company || '',
         country: supToEdit.country || '',
         contactPerson: supToEdit.contactPerson || '',
@@ -184,7 +184,7 @@ export function SuppliersTab({
       setSupFormState({
         code: '',
         name: '',
-        type: 'Hardware',
+        type: '',
         company: '',
         country: '',
         contactPerson: '',
@@ -454,14 +454,11 @@ export function SuppliersTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Types">All Types</option>
-              <option value="Hardware">Hardware</option>
-              <option value="Consumables">Consumables</option>
-              <option value="RFID Tags">RFID Tags</option>
-              <option value="Telematics">Telematics</option>
-              <option value="Handheld Devices">Handheld Devices</option>
-              <option value="Scanners">Scanners</option>
-              <option value="Rugged Tablets">Rugged Tablets</option>
-              <option value="Local Supplier">Local Supplier</option>
+              {Array.from(new Set(suppliersList.map(s => s.type).filter(t => t && t !== '-'))).map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -950,20 +947,13 @@ export function SuppliersTab({
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Supplier Type</label>
-                  <select
+                  <input
+                    type="text"
                     value={supFormState.type}
                     onChange={(e) => setSupFormState({ ...supFormState, type: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="Hardware">Hardware</option>
-                    <option value="Consumables">Consumables</option>
-                    <option value="RFID Tags">RFID Tags</option>
-                    <option value="Telematics">Telematics</option>
-                    <option value="Handheld Devices">Handheld Devices</option>
-                    <option value="Scanners">Scanners</option>
-                    <option value="Rugged Tablets">Rugged Tablets</option>
-                    <option value="Local Supplier">Local Supplier</option>
-                  </select>
+                    placeholder="e.g. Hardware, Vendor, Services"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
+                  />
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Company</label>

@@ -435,9 +435,11 @@ export function DepartmentsTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Types">All Types</option>
-              <option value="Support">Support</option>
-              <option value="Operational">Operational</option>
-              <option value="Management">Management</option>
+              {Array.from(new Set(departmentsList.map(d => d.type).filter(Boolean))).map((type) => (
+                <option key={type} value={type}>
+                  {type}
+                </option>
+              ))}
             </select>
           </div>
 
