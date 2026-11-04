@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export function CompaniesTab({
   triggerToast,
@@ -34,6 +35,7 @@ export function CompaniesTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -186,21 +188,68 @@ export function CompaniesTab({
     }
   };
 
-  const handleDeleteCompany = async () => {
-    if (!companyToDelete) return;
+  const handleInitiateDeleteCompany = async (comp) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    if (!window.confirm(`Are you sure you want to delete Company "${comp.name}" (${comp.code})?`)) return;
+
     setIsDeleting(true);
     try {
-      await api.delete(`/master-data/companies/${companyToDelete.id}`);
-      const updated = companies.filter(c => c.id !== companyToDelete.id);
-      setCompanies(updated);
-      if (selectedCompany?.id === companyToDelete.id) setSelectedCompany(updated[0] || null);
-      triggerToast && triggerToast(`Company "${companyToDelete.name}" deleted successfully.`);
-      setShowDeleteConfirmModal(false);
-      setCompanyToDelete(null);
+      const res = await api.delete(`/master-data/companies/${comp.id}`);
+      if (res?.requiresConfirmation) {
+        setSmartDeleteState({
+          isOpen: true,
+          item: comp,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      await loadCompanies();
+      triggerToast && triggerToast(res?.message || `Company "${comp.name}" deleted successfully.`);
     } catch (err) {
-      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to delete company.');
+      const data = err?.response?.data;
+      if (data?.requiresConfirmation) {
+        setSmartDeleteState({
+          isOpen: true,
+          item: comp,
+          linkedCount: data.linkedCount || 0,
+          details: data.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete company.');
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSmartDeactivateCompany = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/companies/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Company deactivated successfully.');
+      await loadCompanies();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate company.');
+    }
+  };
+
+  const handleSmartForceDeleteCompany = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/companies/${smartDeleteState.item.id}?action=force_delete`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Company and references unlinked, permanently deleted from database.');
+      await loadCompanies();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to force delete company.');
     }
   };
 
@@ -344,12 +393,9 @@ export function CompaniesTab({
                             </button>
                             <button
                               type="button"
-                              onClick={() => {
-                                setCompanyToDelete(c);
-                                setShowDeleteConfirmModal(true);
-                              }}
-                              title="Deactivate Company"
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
+                              onClick={() => handleInitiateDeleteCompany(c)}
+                              title="Delete Company"
+                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>
@@ -555,43 +601,18 @@ export function CompaniesTab({
         </div>
       )}
 
-      {/* MODAL: Delete Confirmation */}
-      {showDeleteConfirmModal && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-sm w-full p-6 space-y-4">
-            <div className="flex items-center gap-3 text-rose-600">
-              <div className="w-10 h-10 rounded-full bg-rose-50 flex items-center justify-center">
-                <Trash2 className="w-5 h-5" />
-              </div>
-              <div>
-                <h3 className="text-sm font-bold text-slate-900">Deactivate Company</h3>
-                <p className="text-[11px] text-slate-500">Deactivate rather than delete to preserve asset history.</p>
-              </div>
-            </div>
-            <p className="text-xs text-slate-600">
-              Are you sure you want to deactivate <span className="font-bold text-slate-900">"{companyToDelete?.name}"</span> ({companyToDelete?.code})?
-            </p>
-            <div className="flex items-center justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setShowDeleteConfirmModal(false)}
-                className="px-3.5 py-2 bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold rounded-xl text-xs transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteCompany}
-                disabled={isDeleting}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold rounded-xl text-xs transition-colors shadow-md shadow-rose-600/20 cursor-pointer disabled:opacity-60 flex items-center gap-1.5"
-              >
-                {isDeleting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                <span>Deactivate</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* SMART DELETE MODAL */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Company"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateCompany}
+        onForceDelete={handleSmartForceDeleteCompany}
+        isProcessing={smartDeleteState.isProcessing}
+      />
     </div>
   );
 }

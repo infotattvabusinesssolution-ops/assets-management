@@ -24,6 +24,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
 import { INITIAL_CLASSES } from './ClassesTab';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const INITIAL_CATEGORIES = [];
 
@@ -39,6 +40,7 @@ export function CategoriesTab({
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [selectedCatIds, setSelectedCatIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Load live categories from backend database
   const loadCategories = async () => {
@@ -323,26 +325,72 @@ export function CategoriesTab({
 
   const handleDeleteCategory = async (cat) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Category "${cat.name}" (${cat.code})?`)) {
-      try {
-        const res = await api.delete(`/master-data/categories/${cat.id}`);
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-          localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
-        } catch (_) { }
-        await loadCategories();
-        triggerToast && triggerToast(res?.message || `Category "${cat.name || cat.code}" deleted successfully.`);
-      } catch (err) {
-        console.warn('Delete category error:', err);
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-          localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
-        } catch (_) { }
-        const remaining = categoriesList.filter((c) => c.id !== cat.id);
-        setCategoriesList(remaining);
-        setSelectedCategory(remaining[0] || null);
-        triggerToast && triggerToast(`Category "${cat.name || cat.code}" deleted.`);
+    if (!window.confirm(`Are you sure you want to delete Category "${cat.name}" (${cat.code})?`)) return;
+
+    try {
+      const res = await api.delete(`/master-data/categories/${cat.id}`);
+      if (res?.requiresConfirmation) {
+        setSmartDeleteState({
+          isOpen: true,
+          item: cat,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
       }
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+        localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
+      } catch (_) { }
+      await loadCategories();
+      triggerToast && triggerToast(res?.message || `Category "${cat.name || cat.code}" deleted successfully.`);
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.requiresConfirmation) {
+        setSmartDeleteState({
+          isOpen: true,
+          item: cat,
+          linkedCount: data.linkedCount || 0,
+          details: data.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      console.warn('Delete category error:', err);
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete category.');
+    }
+  };
+
+  const handleSmartDeactivateCategory = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/categories/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Category deactivated successfully.');
+      await loadCategories();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate category.');
+    }
+  };
+
+  const handleSmartForceDeleteCategory = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/categories/${smartDeleteState.item.id}?action=force_delete`);
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+        localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== smartDeleteState.item.id && c.code !== smartDeleteState.item.code)));
+      } catch (_) { }
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Category and asset links removed, permanently deleted from database.');
+      await loadCategories();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to force delete category.');
     }
   };
 
@@ -951,6 +999,18 @@ export function CategoriesTab({
           </div>
         </div>
       )}
+
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Category"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateCategory}
+        onForceDelete={handleSmartForceDeleteCategory}
+        isProcessing={smartDeleteState.isProcessing}
+      />
     </div>
   );
 }

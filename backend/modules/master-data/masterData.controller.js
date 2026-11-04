@@ -402,19 +402,58 @@ export async function updateCompany(req, res, next) {
 export async function deleteCompany(req, res, next) {
   try {
     const { id } = req.params;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
+
     if (isDbConnected()) {
-      try {
+      // Count dependent references
+      const [assetsCount, sitesCount, deptsCount, employeesCount, costCentersCount, usersCount] = await Promise.all([
+        prisma.asset.count({ where: { companyId: id } }).catch(() => 0),
+        prisma.site.count({ where: { companyId: id } }).catch(() => 0),
+        prisma.department.count({ where: { companyId: id } }).catch(() => 0),
+        prisma.employee.count({ where: { companyId: id } }).catch(() => 0),
+        prisma.costCenter.count({ where: { companyId: id } }).catch(() => 0),
+        prisma.user.count({ where: { companyId: id } }).catch(() => 0)
+      ]);
+      const totalLinked = assetsCount + sitesCount + deptsCount + employeesCount + costCentersCount + usersCount;
+
+      if (totalLinked > 0 && !force && !deactivateOnly) {
+        return res.json({
+          success: false,
+          requiresConfirmation: true,
+          linkedCount: totalLinked,
+          entityName: 'Company',
+          details: { assetsCount, sitesCount, deptsCount, employeesCount, costCentersCount, usersCount },
+          message: `This Company is referenced by ${totalLinked} active record(s) (${assetsCount} assets, ${sitesCount} locations, ${deptsCount} departments, ${employeesCount} employees).`
+        });
+      }
+
+      if (deactivateOnly) {
         await prisma.company.update({
           where: { id },
           data: { active: false }
-        }).catch(async () => {
-          await prisma.company.delete({ where: { id } });
         });
-      } catch (dbErr) {
-        console.warn('DB delete company skipped:', dbErr.message);
+        return res.json({ success: true, deactivated: true, message: `Company deactivated successfully (${totalLinked} linked records preserved).` });
       }
+
+      // Hard delete: if force is true and records are linked, unlink them first
+      if (force && totalLinked > 0) {
+        await prisma.asset.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.site.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.department.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.employee.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.costCenter.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.user.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.fiscalPeriod.deleteMany({ where: { companyId: id } }).catch(() => null);
+        await prisma.receipt.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
+        await prisma.depreciationRun.deleteMany({ where: { companyId: id } }).catch(() => null);
+      }
+
+      await prisma.company.delete({ where: { id } });
+      return res.json({ success: true, hardDeleted: true, message: 'Company permanently deleted from database.' });
     }
-    res.json({ success: true, message: 'Company deactivated successfully' });
+    res.json({ success: true, hardDeleted: true, message: 'Company removed successfully.' });
   } catch (err) { next(err); }
 }
 
@@ -681,47 +720,79 @@ export async function updateSite(req, res, next) {
 export async function deleteSite(req, res, next) {
   try {
     const { id } = req.params;
-    const force = req.query.force === 'true';
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
 
     const targetLoc = inMemoryLocations.find(l => l.id === id || l.code === id);
     const targetCode = targetLoc ? targetLoc.code : id;
 
     // Check if any child location references this location as parent
     const childCount = inMemoryLocations.filter(l => l.parentLocation === id || l.parentLocation === targetCode).length;
-    if (childCount > 0 && !force) {
-      return res.status(400).json({
+    let assetCount = 0;
+    let buildingCount = 0;
+    if (isDbConnected()) {
+      try {
+        [assetCount, buildingCount] = await Promise.all([
+          prisma.asset.count({ where: { siteId: id } }).catch(() => 0),
+          prisma.building.count({ where: { siteId: id } }).catch(() => 0)
+        ]);
+      } catch (_) {}
+    }
+    const totalLinked = childCount + assetCount + buildingCount;
+
+    if (totalLinked > 0 && !force && !deactivateOnly) {
+      return res.json({
         success: false,
-        message: `Cannot delete location: it has ${childCount} child location(s) referencing it. Please delete or reassign child locations first, or set its status to Inactive.`
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        entityName: 'Location',
+        details: { childCount, assetCount, buildingCount },
+        message: `This Location is referenced by ${totalLinked} record(s) (${assetCount} assets, ${childCount} child locations, ${buildingCount} buildings).`
       });
     }
 
-    // Check if referenced by assets in DB
-    if (isDbConnected()) {
-      try {
-        const assetCount = await prisma.asset.count({ where: { siteId: id } }).catch(() => 0);
-        if (assetCount > 0 && !force) {
-          return res.status(400).json({
-            success: false,
-            message: `Cannot delete location: it is currently referenced by ${assetCount} active asset(s). Please set its status to Inactive to preserve audit history.`
-          });
-        }
-      } catch (_) {}
+    if (deactivateOnly) {
+      if (targetLoc) targetLoc.active = false;
+      writeLocationsToFile(inMemoryLocations);
+      if (isDbConnected()) {
+        try {
+          await prisma.$executeRawUnsafe(`UPDATE sites SET active = 0 WHERE id = '${id.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
+        } catch (_) {}
+      }
+      return res.json({ success: true, deactivated: true, message: `Location deactivated successfully (${totalLinked} linked records preserved).` });
     }
 
-    console.log('🗑️ [Backend Location Deleted]:', id);
-    inMemoryLocations = inMemoryLocations.filter(l => l.id !== id && l.code !== id);
+    // Hard delete: if forced, unlink references first
+    if (force && totalLinked > 0) {
+      inMemoryLocations.forEach(l => {
+        if (l.parentLocation === id || l.parentLocation === targetCode) {
+          l.parentLocation = '-';
+        }
+      });
+      if (isDbConnected()) {
+        try {
+          await prisma.asset.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
+          await prisma.building.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
+          await prisma.receipt.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
+          await prisma.user.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
+        } catch (_) {}
+      }
+    }
+
+    inMemoryLocations = inMemoryLocations.filter(l => l.id !== id && l.code !== id && (!targetCode || l.code !== targetCode));
+    writeLocationsToFile(inMemoryLocations);
 
     await ensureSitesTable();
     if (isDbConnected()) {
       try {
-        await prisma.$executeRawUnsafe(`DELETE FROM sites WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+        await prisma.$executeRawUnsafe(`DELETE FROM sites WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
       } catch (dbErr) {
         console.warn('DB delete sites skipped:', dbErr.message);
       }
     }
 
-    writeLocationsToFile(inMemoryLocations);
-    res.json({ success: true, message: 'Location deleted successfully.' });
+    res.json({ success: true, hardDeleted: true, message: 'Location permanently deleted from database.' });
   } catch (err) { next(err); }
 }
 
@@ -849,7 +920,9 @@ export async function updateCategory(req, res, next) {
 export async function deleteCategory(req, res, next) {
   try {
     const { id } = req.params;
-    const force = req.query.force === 'true';
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
 
     // Check if category exists
     const category = await prisma.category.findUnique({ where: { id } }).catch(() => null);
@@ -857,87 +930,87 @@ export async function deleteCategory(req, res, next) {
       return res.json({ success: true, message: 'Category not found or already deleted.' });
     }
 
-    // Check if any assets are referencing this category directly
-    const assetCount = await prisma.asset.count({ where: { categoryId: id } }).catch(() => 0);
-    if (assetCount > 0 && !force) {
-      // Soft-delete by marking inactive to preserve database integrity and accounting history
+    // Check dependencies
+    const [assetCount, modelCount, classCount] = await Promise.all([
+      prisma.asset.count({ where: { categoryId: id } }).catch(() => 0),
+      prisma.assetModel.count({ where: { categoryId: id } }).catch(() => 0),
+      prisma.assetClass.count({ where: { categoryId: id } }).catch(() => 0)
+    ]);
+    const totalLinked = assetCount + modelCount + classCount;
+
+    if (totalLinked > 0 && !force && !deactivateOnly) {
+      return res.json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        entityName: 'Category',
+        details: { assetsCount: assetCount, modelCount, classCount },
+        message: `This Category is linked to ${totalLinked} active record(s) (${assetCount} assets, ${modelCount} models, ${classCount} sub-categories).`
+      });
+    }
+
+    if (deactivateOnly) {
       await prisma.category.update({
         where: { id },
         data: { active: false }
       }).catch(() => null);
       return res.json({
         success: true,
-        message: `Category deactivated and hidden from active lists (${assetCount} assets are linked).`
+        deactivated: true,
+        message: `Category deactivated successfully (${totalLinked} linked records preserved).`
       });
     }
 
-    // When no assets exist, cascade delete child asset classes (subcategories) and models
-    try {
-      await prisma.$transaction(async (tx) => {
-        // 1. Delete or unlink child asset models
-        await tx.assetModel.deleteMany({
-          where: { categoryId: id }
-        }).catch(() => null);
+    // Hard delete:
+    await prisma.$transaction(async (tx) => {
+      // 1. Unlink any assets referencing this category
+      await tx.asset.updateMany({
+        where: { categoryId: id },
+        data: { categoryId: null }
+      }).catch(() => null);
 
-        // 2. Unlink any assets referencing child asset classes of this category
-        const childClasses = await tx.assetClass.findMany({
-          where: { categoryId: id },
-          select: { id: true }
+      // 2. Unlink or delete child asset models
+      await tx.assetModel.deleteMany({
+        where: { categoryId: id }
+      }).catch(() => null);
+
+      // 3. Unlink and delete child asset classes
+      const childClasses = await tx.assetClass.findMany({
+        where: { categoryId: id },
+        select: { id: true }
+      });
+      const classIds = childClasses.map(c => c.id);
+      if (classIds.length > 0) {
+        await tx.asset.updateMany({
+          where: { assetClassId: { in: classIds } },
+          data: { assetClassId: null }
+        }).catch(() => null);
+        await tx.assetClass.deleteMany({
+          where: { id: { in: classIds } }
         });
-        const classIds = childClasses.map(c => c.id);
-        if (classIds.length > 0) {
-          await tx.asset.updateMany({
-            where: { assetClassId: { in: classIds } },
-            data: { assetClassId: null }
-          }).catch(() => null);
+      }
 
-          // Delete child asset classes
-          await tx.assetClass.deleteMany({
-            where: { id: { in: classIds } }
-          });
-        }
+      // 4. Unlink custom field definitions
+      await tx.customFieldDefinition.updateMany({
+        where: { categoryId: id },
+        data: { categoryId: null }
+      }).catch(() => null);
 
-        // 3. Unlink custom field definitions
-        await tx.customFieldDefinition.updateMany({
-          where: { categoryId: id },
-          data: { categoryId: null }
-        }).catch(() => null);
+      // 5. Unlink receipt line items
+      await tx.receiptLineItem.updateMany({
+        where: { categoryId: id },
+        data: { categoryId: null }
+      }).catch(() => null);
 
-        // 4. Unlink receipt line items
-        await tx.receiptLineItem.updateMany({
-          where: { categoryId: id },
-          data: { categoryId: null }
-        }).catch(() => null);
-
-        // 5. Delete category
-        await tx.category.delete({
-          where: { id }
-        });
+      // 6. Delete category permanently from SQL database
+      await tx.category.delete({
+        where: { id }
       });
+    });
 
-      return res.json({ success: true, message: 'Category and linked subcategories deleted successfully.' });
-    } catch (cascadeErr) {
-      console.warn('Cascade hard-delete failed, falling back to soft-delete:', cascadeErr.message);
-      await prisma.category.update({
-        where: { id },
-        data: { active: false }
-      });
-      return res.json({
-        success: true,
-        message: 'Category deactivated and hidden from active lists.'
-      });
-    }
+    return res.json({ success: true, hardDeleted: true, message: 'Category permanently deleted from database.' });
   } catch (err) {
-    console.error('Delete category error:', err);
-    try {
-      await prisma.category.update({
-        where: { id: req.params.id },
-        data: { active: false }
-      }).catch(() => null);
-      return res.json({ success: true, message: 'Category deactivated successfully.' });
-    } catch (softErr) {
-      return res.json({ success: true, message: 'Category deleted successfully.' });
-    }
+    next(err);
   }
 }
 
@@ -2071,22 +2144,56 @@ export async function updateEmployee(req, res, next) {
 export async function deleteEmployee(req, res, next) {
   try {
     const { id } = req.params;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
+
     if (isDbConnected()) {
-      try {
+      const [assetsCount, assignmentsCount, transfersCount] = await Promise.all([
+        prisma.asset.count({ where: { custodianId: id } }).catch(() => 0),
+        prisma.custodyAssignment.count({ where: { custodianId: id } }).catch(() => 0),
+        prisma.assetTransfer.count({
+          where: {
+            OR: [{ fromCustodianId: id }, { toCustodianId: id }]
+          }
+        }).catch(() => 0)
+      ]);
+      const totalLinked = assetsCount + assignmentsCount + transfersCount;
+
+      if (totalLinked > 0 && !force && !deactivateOnly) {
+        return res.json({
+          success: false,
+          requiresConfirmation: true,
+          linkedCount: totalLinked,
+          entityName: 'Custodian',
+          details: { assetsCount, assignmentsCount, transfersCount },
+          message: `This Custodian is assigned to ${totalLinked} active record(s) (${assetsCount} assets, ${assignmentsCount} custody assignments).`
+        });
+      }
+
+      if (deactivateOnly) {
         await prisma.employee.update({
           where: { id },
           data: { active: false }
-        }).catch(async () => {
-          await prisma.employee.delete({ where: { id } });
         });
-      } catch (dbErr) {
-        console.warn('DB delete employee skipped:', dbErr.message);
+        return res.json({ success: true, deactivated: true, message: `Custodian deactivated successfully (${totalLinked} linked records preserved).` });
       }
+
+      // Hard delete:
+      if (force && totalLinked > 0) {
+        await prisma.asset.updateMany({ where: { custodianId: id }, data: { custodianId: null } }).catch(() => null);
+        await prisma.custodyAssignment.deleteMany({ where: { custodianId: id } }).catch(() => null);
+        await prisma.assetTransfer.updateMany({ where: { fromCustodianId: id }, data: { fromCustodianId: null } }).catch(() => null);
+        await prisma.assetTransfer.updateMany({ where: { toCustodianId: id }, data: { toCustodianId: null } }).catch(() => null);
+        await prisma.stocktakeObservation.updateMany({ where: { observedCustodianId: id }, data: { observedCustodianId: null } }).catch(() => null);
+        await prisma.user.updateMany({ where: { employeeId: id }, data: { employeeId: null } }).catch(() => null);
+      }
+
+      await prisma.employee.delete({ where: { id } });
+      return res.json({ success: true, hardDeleted: true, message: 'Custodian permanently deleted from database.' });
     }
-    res.json({ success: true, message: 'Custodian deactivated successfully' });
-  } catch (err) {
-    res.json({ success: true, message: 'Custodian removed from view.' });
-  }
+    res.json({ success: true, hardDeleted: true, message: 'Custodian deleted successfully.' });
+  } catch (err) { next(err); }
 }
 
 export async function getCustomFields(req, res, next) {

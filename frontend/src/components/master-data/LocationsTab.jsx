@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const INITIAL_LOCATIONS = [];
 
@@ -102,6 +103,7 @@ export function LocationsTab({
   };
 
     const [isLoading, setIsLoading] = useState(false);
+    const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Load live locations from database
   const loadLocations = async () => {
@@ -353,21 +355,65 @@ export function LocationsTab({
 
   const handleDeleteLocation = async (loc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Location "${loc.name}" (${loc.code})?`)) {
-      console.log('🗑️ [Deleting Location in Frontend]:', loc);
-      try {
-        const delRes = await api.delete(`/master-data/sites/${loc.id}`);
-        console.log('✅ [Location Deleted Successfully from Database]:', delRes);
-        await loadLocations();
-        triggerToast && triggerToast(`Location "${loc.code}" deleted successfully.`);
-      } catch (err) {
-        console.warn('Delete location error:', err);
-        const errMsg = err?.response?.data?.message || err?.message || 'Cannot delete location.';
-        triggerToast && triggerToast(errMsg);
-        const remaining = locationsList.filter((l) => l.id !== loc.id);
-        setLocationsList(remaining);
-        if (remaining.length > 0) setSelectedLocation(remaining[0]);
+    if (!window.confirm(`Are you sure you want to delete Location "${loc.name}" (${loc.code})?`)) return;
+
+    try {
+      const res = await api.delete(`/master-data/sites/${loc.id}`);
+      if (res?.requiresConfirmation) {
+        setSmartDeleteState({
+          isOpen: true,
+          item: loc,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
       }
+      await loadLocations();
+      triggerToast && triggerToast(res?.message || `Location "${loc.code}" deleted successfully.`);
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.requiresConfirmation) {
+        setSmartDeleteState({
+          isOpen: true,
+          item: loc,
+          linkedCount: data.linkedCount || 0,
+          details: data.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      console.warn('Delete location error:', err);
+      const errMsg = data?.message || err?.message || 'Cannot delete location.';
+      triggerToast && triggerToast(errMsg);
+    }
+  };
+
+  const handleSmartDeactivateLocation = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/sites/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Location deactivated successfully.');
+      await loadLocations();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate location.');
+    }
+  };
+
+  const handleSmartForceDeleteLocation = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/sites/${smartDeleteState.item.id}?action=force_delete`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Location and references unlinked, permanently deleted from database.');
+      await loadLocations();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to force delete location.');
     }
   };
 
@@ -1081,6 +1127,19 @@ export function LocationsTab({
           </div>
         </div>
       )}
+
+      {/* SMART DELETE MODAL */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Location"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateLocation}
+        onForceDelete={handleSmartForceDeleteLocation}
+        isProcessing={smartDeleteState.isProcessing}
+      />
     </div>
   );
 }
