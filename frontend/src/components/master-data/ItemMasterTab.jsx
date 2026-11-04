@@ -1108,30 +1108,20 @@ export function ItemMasterTab({
               </div>
 
               {/* Status */}
-              <div className="flex items-center gap-3 pt-1">
-                <span className="font-semibold text-slate-700">Status:</span>
-                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="Active"
-                    checked={formState.status === 'Active'}
-                    onChange={() => setFormState({ ...formState, status: 'Active' })}
-                    className="accent-[#6C2BD9]"
-                  />
-                  <span>Active</span>
-                </label>
-                <label className="flex items-center gap-2 cursor-pointer font-semibold text-slate-700">
-                  <input
-                    type="radio"
-                    name="status"
-                    value="Inactive"
-                    checked={formState.status === 'Inactive'}
-                    onChange={() => setFormState({ ...formState, status: 'Inactive' })}
-                    className="accent-[#6C2BD9]"
-                  />
-                  <span>Inactive</span>
-                </label>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Status</label>
+                <select
+                  value={formState.status || (formState.active !== false ? 'Active' : 'Inactive')}
+                  onChange={(e) => setFormState({
+                    ...formState,
+                    status: e.target.value,
+                    active: e.target.value === 'Active'
+                  })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-semibold text-slate-800"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
 
               {/* Action Buttons */}

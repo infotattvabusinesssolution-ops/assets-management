@@ -390,17 +390,16 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
                 />
               </div>
 
-              <div className="flex items-center gap-2 pt-2">
-                <input
-                  type="checkbox"
-                  id="statusActiveCheck"
-                  checked={formData.active}
-                  onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.checked }))}
-                  className="w-4 h-4 text-[#6C2BD9] rounded border-slate-300 focus:ring-[#6C2BD9]"
-                />
-                <label htmlFor="statusActiveCheck" className="text-xs font-bold text-slate-700 cursor-pointer">
-                  Active (Available for asset disposal transactions)
-                </label>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Status</label>
+                <select
+                  value={formData.active !== false ? 'Active' : 'Inactive'}
+                  onChange={(e) => setFormData(prev => ({ ...prev, active: e.target.value === 'Active' }))}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-semibold text-slate-800"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
