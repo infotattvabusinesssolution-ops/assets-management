@@ -46,7 +46,7 @@ export function CostCentersTab({
     setIsLoading(true);
     try {
       const [res, compRes] = await Promise.all([
-        api.get('/master-data/cost-centers'),
+        api.get('/master-data/cost-centers?includeInactive=true'),
         api.get('/master-data/companies?includeInactive=true').catch(() => null)
       ]);
       if (compRes?.companies) setCompaniesList(compRes.companies);

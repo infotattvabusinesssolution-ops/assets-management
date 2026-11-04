@@ -2621,7 +2621,11 @@ export async function deleteDepartment(req, res, next) {
 export async function getCostCenters(req, res, next) {
   try {
     const where = req.query.includeInactive === 'true' ? {} : { active: true };
-    const costCenters = await prisma.costCenter.findMany({ where, orderBy: { name: 'asc' } });
+    const costCenters = await prisma.costCenter.findMany({
+      where,
+      include: { company: true },
+      orderBy: { name: 'asc' }
+    });
     res.json({ success: true, costCenters });
   } catch (err) { next(err); }
 }
