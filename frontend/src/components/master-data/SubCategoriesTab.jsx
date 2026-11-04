@@ -62,7 +62,9 @@ export function SubCategoriesTab({
       }
 
       const customClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-      const classCodes = new Set(customClasses.map(c => (c.code || '').toUpperCase()));
+      const serverClassCodes = (clsRes?.assetClasses || []).map(c => (c.code || '').toUpperCase());
+      const customClassCodes = customClasses.map(c => (c.code || '').toUpperCase());
+      const classCodes = new Set([...serverClassCodes, ...customClassCodes]);
 
       if (classRes?.assetClasses && classRes.assetClasses.length > 0) {
         // Exclude any true asset classes!

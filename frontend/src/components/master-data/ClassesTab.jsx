@@ -45,12 +45,15 @@ export function ClassesTab({
     try {
       const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
       const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-      const subcatCodes = new Set(subcatCustom.map(s => (s.code || '').toUpperCase()));
-
-      const [res, grpRes] = await Promise.all([
+      const [res, grpRes, subcatRes] = await Promise.all([
         api.get('/master-data/asset-classes?kind=CLASS').catch(() => null),
-        api.get('/master-data/asset-groups').catch(() => null)
+        api.get('/master-data/asset-groups').catch(() => null),
+        api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null)
       ]);
+
+      const serverSubcatCodes = (subcatRes?.assetClasses || []).map(s => (s.code || '').toUpperCase());
+      const customSubcatCodes = subcatCustom.map(s => (s.code || '').toUpperCase());
+      const subcatCodes = new Set([...serverSubcatCodes, ...customSubcatCodes]);
 
       if (grpRes?.assetGroups && Array.isArray(grpRes.assetGroups)) {
         setAvailableAssetGroups(grpRes.assetGroups);

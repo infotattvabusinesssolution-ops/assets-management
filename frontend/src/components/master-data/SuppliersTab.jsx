@@ -67,7 +67,7 @@ export function SuppliersTab({
           website: p.website || '-',
           paymentTerms: p.paymentTermsDays ? `${p.paymentTermsDays} Days` : '-',
           taxNo: p.taxRegistrationNo || '-',
-          description: p.remarks || `Service provider & vendor: ${p.providerName}`,
+          description: p.remarks || '',
           status: p.status === 'ACTIVE' || p.status === 'DRAFT' ? 'Active' : 'Inactive',
           createdBy: p.createdBy || 'System',
           createdOn: p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',

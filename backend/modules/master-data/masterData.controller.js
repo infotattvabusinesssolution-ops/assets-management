@@ -559,9 +559,9 @@ export async function createSite(req, res, next) {
       level: cleanLevel,
       parentLocation: cleanParent,
       fullPath: computedPath,
-      city: city || 'Dubai',
-      country: country || 'UAE',
-      address: address || `${cleanName}, ${city || 'Dubai'}, ${country || 'UAE'}`,
+      city: city || '',
+      country: country || '',
+      address: address || cleanName,
       postalCode: postalCode || '',
       active: isAct,
       status: isAct ? 'Active' : 'Inactive',
@@ -1172,7 +1172,7 @@ export async function getManufacturers(req, res, next) {
             name: m.name,
             website: m.website || '',
             supportContact: m.supportContact || '',
-            country: m.country || 'Global',
+            country: m.country || '',
             active: m.active !== false
           }));
           inMemoryManufacturers = list;
@@ -1213,7 +1213,7 @@ export async function createManufacturer(req, res, next) {
       name: cleanName,
       website: website || '',
       supportContact: supportContact || '',
-      country: country || 'United States',
+      country: country || '',
       active: isAct
     };
 
