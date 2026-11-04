@@ -2,6 +2,27 @@ import prisma from '../../config/prisma.js';
 import { isDbConnected } from '../../config/db.js';
 import fs from 'fs';
 import path from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function resolveDataFile(filename) {
+  const candidates = [
+    path.resolve(__dirname, '../../data', filename),
+    path.join(process.cwd(), 'data', filename),
+    path.join(process.cwd(), 'assets-management', 'backend', 'data', filename)
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  const defaultPath = candidates[0];
+  const dir = path.dirname(defaultPath);
+  if (!fs.existsSync(dir)) {
+    try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+  }
+  return defaultPath;
+}
 
 // System-defined enumeration for Disposal Reasons (Per requirements doc: immutable system enumeration)
 export const SYSTEM_DISPOSAL_REASONS = [
@@ -12,8 +33,8 @@ export const SYSTEM_DISPOSAL_REASONS = [
   { code: 'TRADE_IN', label: 'Trade-in / Lease Expiry', description: 'Asset exchanged for vendor replacement credit or lease concluded' }
 ];
 
-const DISPOSED_ASSETS_FILE = path.join(process.cwd(), 'data', 'disposed_assets.json');
-const PENDING_DISPOSALS_FILE = path.join(process.cwd(), 'data', 'pending_disposals.json');
+const DISPOSED_ASSETS_FILE = resolveDataFile('disposed_assets.json');
+const PENDING_DISPOSALS_FILE = resolveDataFile('pending_disposals.json');
 
 function readDisposedAssetsFromFile() {
   try {

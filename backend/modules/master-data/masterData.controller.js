@@ -5,6 +5,26 @@ import crypto from 'crypto';
 import prisma from '../../config/prisma.js';
 import { isDbConnected } from '../../config/db.js';
 
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+function resolveDataFile(filename) {
+  const candidates = [
+    path.resolve(__dirname, '../../data', filename),
+    path.join(process.cwd(), 'data', filename),
+    path.join(process.cwd(), 'assets-management', 'backend', 'data', filename)
+  ];
+  for (const c of candidates) {
+    if (fs.existsSync(c)) return c;
+  }
+  const defaultPath = candidates[0];
+  const dir = path.dirname(defaultPath);
+  if (!fs.existsSync(dir)) {
+    try { fs.mkdirSync(dir, { recursive: true }); } catch (_) {}
+  }
+  return defaultPath;
+}
+
 export async function getMasterDataStats(req, res, next) {
   try {
     let assetGroupsCount = memoryAssetGroups.length;
@@ -398,7 +418,7 @@ export async function deleteCompany(req, res, next) {
   } catch (err) { next(err); }
 }
 
-const LOCATIONS_FILE = path.join(process.cwd(), 'data', 'locations.json');
+const LOCATIONS_FILE = resolveDataFile('locations.json');
 
 const DEFAULT_4TIER_LOCATIONS = [];
 
@@ -1817,9 +1837,7 @@ function getPrismaModelName(entityType) {
 
 
 // Persistent Database & File Store for Asset Types
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const ASSET_TYPES_FILE = path.resolve(__dirname, '../../data/asset_types.json');
+const ASSET_TYPES_FILE = resolveDataFile('asset_types.json');
 
 function readAssetTypesFromFile() {
   try {
@@ -2069,11 +2087,11 @@ export async function deleteAssetType(req, res, next) {
 // ============================================================================
 // ITEM MASTER & UNITS OF MEASURE (UOM)
 // ============================================================================
-const ITEM_MASTERS_FILE = path.join(process.cwd(), 'data', 'item_masters.json');
-const UOMS_FILE = path.join(process.cwd(), 'data', 'uoms.json');
-const DISPOSAL_STATUSES_FILE = path.join(process.cwd(), 'data', 'disposal_statuses.json');
-const BRANDS_FILE = path.join(process.cwd(), 'data', 'brands.json');
-const MANUFACTURERS_FILE = path.join(process.cwd(), 'data', 'manufacturers.json');
+const ITEM_MASTERS_FILE = resolveDataFile('item_masters.json');
+const UOMS_FILE = resolveDataFile('uoms.json');
+const DISPOSAL_STATUSES_FILE = resolveDataFile('disposal_statuses.json');
+const BRANDS_FILE = resolveDataFile('brands.json');
+const MANUFACTURERS_FILE = resolveDataFile('manufacturers.json');
 
 const DEFAULT_BRANDS = [];
 
