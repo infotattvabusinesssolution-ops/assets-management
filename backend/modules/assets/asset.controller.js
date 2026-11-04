@@ -2453,24 +2453,42 @@ export async function deleteAsset(req, res, next) {
 
     // Parallel cascade delete of all child relations before removing core asset
     await prisma.$transaction(async (tx) => {
+      // 1. Delete child records of work orders to prevent foreign key errors
+      const wos = await tx.maintenanceWorkOrder.findMany({
+        where: { assetId: assetDbId },
+        select: { id: true }
+      });
+      const woIds = wos.map(w => w.id);
+      if (woIds.length > 0) {
+        await Promise.all([
+          tx.workOrderChecklist.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+          tx.workOrderPart.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+          tx.workOrderTimeLog.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+          tx.workOrderStatusHistory.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null)
+        ]);
+      }
+
+      // 2. Delete all direct relations
       await Promise.all([
-        tx.assetBookValue.deleteMany({ where: { assetId: assetDbId } }),
-        tx.assetTransaction.deleteMany({ where: { assetId: assetDbId } }),
-        tx.custodyAssignment.deleteMany({ where: { assetId: assetDbId } }),
-        tx.maintenanceWorkOrder.deleteMany({ where: { assetId: assetDbId } }),
-        tx.maintenanceSchedule.deleteMany({ where: { assetId: assetDbId } }),
-        tx.contractAsset.deleteMany({ where: { assetId: assetDbId } }),
-        tx.warranty.deleteMany({ where: { assetId: assetDbId } }),
-        tx.tagHistory.deleteMany({ where: { assetId: assetDbId } }),
-        tx.tag.deleteMany({ where: { assetId: assetDbId } }),
-        tx.assetMapPosition.deleteMany({ where: { assetId: assetDbId } }),
-        tx.discoveryMatch.deleteMany({ where: { matchedAssetId: assetDbId } }),
-        tx.aIRecommendation.deleteMany({ where: { assetId: assetDbId } }),
-        tx.assetCustomFieldValue.deleteMany({ where: { assetId: assetDbId } }),
-        tx.assetTransfer.deleteMany({ where: { assetId: assetDbId } }),
-        tx.rtlsMovement.deleteMany({ where: { assetId: assetDbId } }),
-        tx.rtlsAssetLocation.deleteMany({ where: { assetId: assetDbId } }),
-        tx.asset.updateMany({ where: { parentAssetId: assetDbId }, data: { parentAssetId: null } })
+        tx.assetBookValue.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.assetTransaction.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.custodyAssignment.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.maintenanceWorkOrder.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.maintenanceSchedule.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.contractAsset.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.warranty.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.tagHistory.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.tag.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.assetMapPosition.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.discoveryMatch.deleteMany({ where: { matchedAssetId: assetDbId } }).catch(() => null),
+        tx.aIRecommendation.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.assetCustomFieldValue.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.assetTransfer.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.rtlsMovement.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.rtlsAssetLocation.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.stocktakeExpectedAsset.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+        tx.attachment.deleteMany({ where: { entityType: 'Asset', entityId: assetDbId } }).catch(() => null),
+        tx.asset.updateMany({ where: { parentAssetId: assetDbId }, data: { parentAssetId: null } }).catch(() => null)
       ]);
 
       await tx.asset.delete({ where: { id: assetDbId } });
@@ -2521,24 +2539,42 @@ export async function bulkDeleteAssets(req, res, next) {
 
         const assetDbId = existing.id;
         await prisma.$transaction(async (tx) => {
+          // 1. Delete child records of work orders to prevent foreign key errors
+          const wos = await tx.maintenanceWorkOrder.findMany({
+            where: { assetId: assetDbId },
+            select: { id: true }
+          });
+          const woIds = wos.map(w => w.id);
+          if (woIds.length > 0) {
+            await Promise.all([
+              tx.workOrderChecklist.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+              tx.workOrderPart.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+              tx.workOrderTimeLog.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+              tx.workOrderStatusHistory.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null)
+            ]);
+          }
+
+          // 2. Delete all direct relations
           await Promise.all([
-            tx.assetBookValue.deleteMany({ where: { assetId: assetDbId } }),
-            tx.assetTransaction.deleteMany({ where: { assetId: assetDbId } }),
-            tx.custodyAssignment.deleteMany({ where: { assetId: assetDbId } }),
-            tx.maintenanceWorkOrder.deleteMany({ where: { assetId: assetDbId } }),
-            tx.maintenanceSchedule.deleteMany({ where: { assetId: assetDbId } }),
-            tx.contractAsset.deleteMany({ where: { assetId: assetDbId } }),
-            tx.warranty.deleteMany({ where: { assetId: assetDbId } }),
-            tx.tagHistory.deleteMany({ where: { assetId: assetDbId } }),
-            tx.tag.deleteMany({ where: { assetId: assetDbId } }),
-            tx.assetMapPosition.deleteMany({ where: { assetId: assetDbId } }),
-            tx.discoveryMatch.deleteMany({ where: { matchedAssetId: assetDbId } }),
-            tx.aIRecommendation.deleteMany({ where: { assetId: assetDbId } }),
-            tx.assetCustomFieldValue.deleteMany({ where: { assetId: assetDbId } }),
-            tx.assetTransfer.deleteMany({ where: { assetId: assetDbId } }),
-            tx.rtlsMovement.deleteMany({ where: { assetId: assetDbId } }),
-            tx.rtlsAssetLocation.deleteMany({ where: { assetId: assetDbId } }),
-            tx.asset.updateMany({ where: { parentAssetId: assetDbId }, data: { parentAssetId: null } })
+            tx.assetBookValue.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.assetTransaction.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.custodyAssignment.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.maintenanceWorkOrder.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.maintenanceSchedule.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.contractAsset.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.warranty.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.tagHistory.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.tag.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.assetMapPosition.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.discoveryMatch.deleteMany({ where: { matchedAssetId: assetDbId } }).catch(() => null),
+            tx.aIRecommendation.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.assetCustomFieldValue.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.assetTransfer.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.rtlsMovement.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.rtlsAssetLocation.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.stocktakeExpectedAsset.deleteMany({ where: { assetId: assetDbId } }).catch(() => null),
+            tx.attachment.deleteMany({ where: { entityType: 'Asset', entityId: assetDbId } }).catch(() => null),
+            tx.asset.updateMany({ where: { parentAssetId: assetDbId }, data: { parentAssetId: null } }).catch(() => null)
           ]);
           await tx.asset.delete({ where: { id: assetDbId } });
         }, { timeout: 30000, maxWait: 10000 });
