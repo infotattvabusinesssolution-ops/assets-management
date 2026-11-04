@@ -946,26 +946,46 @@ export async function deleteSite(req, res, next) {
 
     // Check if any child location references this location as parent
     const childCount = inMemoryLocations.filter(l => l.parentLocation === id || l.parentLocation === targetCode).length;
-    let assetCount = 0;
-    let buildingCount = 0;
+    let siteAssets = 0;
+    let buildingAssets = 0;
+    let receiptCount = 0;
+    let siteBuildings = [];
+
     if (isDbConnected()) {
       try {
-        [assetCount, buildingCount] = await Promise.all([
+        const [directAssets, bldgs, receipts] = await Promise.all([
           prisma.asset.count({ where: { siteId: id } }).catch(() => 0),
-          prisma.building.count({ where: { siteId: id } }).catch(() => 0)
+          prisma.building.findMany({ where: { siteId: id }, select: { id: true, code: true, name: true } }).catch(() => []),
+          prisma.receipt.count({ where: { siteId: id } }).catch(() => 0)
         ]);
+        siteAssets = directAssets;
+        siteBuildings = bldgs || [];
+        receiptCount = receipts;
+
+        if (siteBuildings.length > 0) {
+          const bldgIds = siteBuildings.map(b => b.id);
+          buildingAssets = await prisma.asset.count({ where: { buildingId: { in: bldgIds } } }).catch(() => 0);
+        }
       } catch (_) {}
     }
-    const totalLinked = childCount + assetCount + buildingCount;
 
-    if (totalLinked > 0 && !force && !deactivateOnly) {
+    const totalAssets = siteAssets + buildingAssets;
+    // Hard blocking connections: assets, purchase receipts, or direct child sub-locations in the hierarchy
+    const totalBlocking = childCount + totalAssets + receiptCount;
+
+    if (totalBlocking > 0 && !force && !deactivateOnly) {
       return res.json({
         success: false,
         requiresConfirmation: true,
-        linkedCount: totalLinked,
+        linkedCount: totalBlocking,
         entityName: 'Location',
-        details: { childCount, assetCount, buildingCount },
-        message: `This Location is referenced by ${totalLinked} record(s) (${assetCount} assets, ${childCount} child locations, ${buildingCount} buildings).`
+        details: {
+          assetsCount: totalAssets,
+          receiptsCount: receiptCount,
+          childCount,
+          buildingsCount: siteBuildings.length
+        },
+        message: `This Location cannot be deleted because it is referenced by active records (${totalAssets} assets, ${receiptCount} receipts, ${childCount} child locations).`
       });
     }
 
@@ -977,37 +997,44 @@ export async function deleteSite(req, res, next) {
           await prisma.$executeRawUnsafe(`UPDATE sites SET active = 0 WHERE id = '${id.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
         } catch (_) {}
       }
-      return res.json({ success: true, deactivated: true, message: `Location deactivated successfully (${totalLinked} linked records preserved).` });
+      return res.json({ success: true, deactivated: true, message: `Location deactivated successfully (${totalBlocking} linked records preserved).` });
     }
 
-    // Hard delete: if forced, unlink references first
-    if (force && totalLinked > 0) {
-      inMemoryLocations.forEach(l => {
-        if (l.parentLocation === id || l.parentLocation === targetCode) {
-          l.parentLocation = '-';
+    // Hard delete:
+    // If no real assets/receipts exist (or if forced), cascade-delete empty child buildings, floors, and rooms first
+    if (isDbConnected()) {
+      try {
+        const bldgIds = siteBuildings.map(b => b.id);
+        if (bldgIds.length > 0) {
+          const siteFloors = await prisma.floor.findMany({ where: { buildingId: { in: bldgIds } }, select: { id: true } });
+          const floorIds = siteFloors.map(f => f.id);
+          if (floorIds.length > 0) {
+            await prisma.room.deleteMany({ where: { floorId: { in: floorIds } } }).catch(() => {});
+          }
+          await prisma.floor.deleteMany({ where: { buildingId: { in: bldgIds } } }).catch(() => {});
+          await prisma.building.deleteMany({ where: { siteId: id } }).catch(() => {});
         }
-      });
-      if (isDbConnected()) {
-        try {
-          await prisma.asset.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
-          await prisma.building.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
-          await prisma.receipt.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
-          await prisma.user.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => null);
-        } catch (_) {}
+
+        if (force) {
+          await prisma.user.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => {});
+          await prisma.receipt.deleteMany({ where: { siteId: id } }).catch(() => {});
+          await prisma.asset.deleteMany({ where: { siteId: id } }).catch(() => {});
+        }
+
+        await ensureSitesTable();
+        await prisma.$executeRawUnsafe(`DELETE FROM sites WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
+      } catch (dbErr) {
+        console.warn('DB delete sites error:', dbErr.message);
       }
     }
 
     inMemoryLocations = inMemoryLocations.filter(l => l.id !== id && l.code !== id && (!targetCode || l.code !== targetCode));
-    writeLocationsToFile(inMemoryLocations);
-
-    await ensureSitesTable();
-    if (isDbConnected()) {
-      try {
-        await prisma.$executeRawUnsafe(`DELETE FROM sites WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
-      } catch (dbErr) {
-        console.warn('DB delete sites skipped:', dbErr.message);
+    inMemoryLocations.forEach(l => {
+      if (l.parentLocation === id || l.parentLocation === targetCode) {
+        l.parentLocation = '-';
       }
-    }
+    });
+    writeLocationsToFile(inMemoryLocations);
 
     res.json({ success: true, hardDeleted: true, message: 'Location permanently deleted from database.' });
   } catch (err) { next(err); }

@@ -64,6 +64,18 @@ export function SmartDeleteModal({
                     <span>{details.assetsCount} {details.assetsCount === 1 ? 'Asset' : 'Assets'}</span>
                   </div>
                 )}
+                {Boolean(details.receiptsCount) && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>{details.receiptsCount} {details.receiptsCount === 1 ? 'Receipt' : 'Receipts'}</span>
+                  </div>
+                )}
+                {Boolean(details.buildingsCount) && (
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
+                    <span>{details.buildingsCount} {details.buildingsCount === 1 ? 'Building' : 'Buildings'}</span>
+                  </div>
+                )}
                 {Boolean(details.sitesCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
