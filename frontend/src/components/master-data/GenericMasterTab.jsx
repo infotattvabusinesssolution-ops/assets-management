@@ -51,10 +51,16 @@ export function GenericMasterTab({
     try {
       const res = await api.get('/master-data/manufacturers?includeInactive=false').catch(() => null);
       const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+      const deletedMfrs = new Set(
+        (JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]')).map(x => String(x).toLowerCase().trim())
+      );
       const serverMfrs = (res?.manufacturers && Array.isArray(res.manufacturers)) ? res.manufacturers : [];
       const seen = new Set();
       const combined = [...serverMfrs, ...custom].filter(m => {
+        const id = String(m.id || '').toLowerCase().trim();
+        const code = String(m.code || '').toLowerCase().trim();
         const name = (m.name || m.code || '').trim();
+        if (deletedMfrs.has(id) || deletedMfrs.has(code) || deletedMfrs.has(name.toLowerCase())) return false;
         if (!name || seen.has(name.toLowerCase())) return false;
         seen.add(name.toLowerCase());
         return true;
@@ -257,21 +263,37 @@ export function GenericMasterTab({
       if (tabConfig.apiEndpoint) {
         const res = await api.get(tabConfig.apiEndpoint).catch(() => null);
         const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        const deletedMfrs = new Set(
+          (JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]')).map(x => String(x).toLowerCase().trim())
+        );
         let mapped = [];
-        if (res?.manufacturers && res.manufacturers.length > 0) {
-          mapped = res.manufacturers.map((m, idx) => ({
-            id: m.id,
-            code: m.code || `MFG-${(m.name || '').substring(0, 4).toUpperCase()}`,
-            name: m.name,
-            website: m.website || '',
-            supportContact: m.supportContact || '',
-            country: m.country || 'Global',
-            status: m.active === false ? 'Inactive' : 'Active',
-            totalAssets: m.totalAssets || 0
-          }));
+        if (res?.manufacturers && Array.isArray(res.manufacturers)) {
+          mapped = res.manufacturers
+            .filter(m => {
+              const id = String(m.id || '').toLowerCase().trim();
+              const code = String(m.code || '').toLowerCase().trim();
+              const name = String(m.name || '').toLowerCase().trim();
+              return !deletedMfrs.has(id) && !deletedMfrs.has(code) && !deletedMfrs.has(name);
+            })
+            .map((m) => ({
+              id: m.id,
+              code: m.code || `MFG-${(m.name || '').substring(0, 4).toUpperCase()}`,
+              name: m.name,
+              website: m.website || '',
+              supportContact: m.supportContact || '',
+              country: m.country || 'Global',
+              status: m.active === false ? 'Inactive' : 'Active',
+              totalAssets: m.totalAssets || 0
+            }));
         }
         const serverKeys = new Set(mapped.map(x => (x.code || x.name || '').toUpperCase().trim()));
-        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
+        const missingCustom = custom.filter(c => {
+          const id = String(c.id || '').toLowerCase().trim();
+          const code = String(c.code || '').toLowerCase().trim();
+          const name = String(c.name || '').toLowerCase().trim();
+          if (deletedMfrs.has(id) || deletedMfrs.has(code) || deletedMfrs.has(name)) return false;
+          return !serverKeys.has((c.code || c.name || '').toUpperCase().trim());
+        });
         const rawCombined = [...mapped, ...missingCustom];
         const seen = new Set();
         const combined = rawCombined.filter(it => {
@@ -341,11 +363,11 @@ export function GenericMasterTab({
   };
 
   useEffect(() => {
-    if (addModalTrigger > 0 || externalShowAddModal) {
+    if (externalShowAddModal) {
       handleOpenAddModal(null);
       if (setExternalShowAddModal) setExternalShowAddModal(false);
     }
-  }, [addModalTrigger, externalShowAddModal]);
+  }, [externalShowAddModal]);
 
   // Save handler
   const handleSave = async (e) => {
@@ -369,14 +391,6 @@ export function GenericMasterTab({
     }
 
     try {
-      if (activeTab === 'manufacturers' && !editingItem) {
-        await api.post('/master-data/manufacturers', {
-          name: formState.name,
-          website: formState.website,
-          supportContact: formState.supportContact,
-          active: formState.status === 'Active'
-        }).catch((err) => console.warn('Saved locally:', err));
-      }
 
       if (editingItem) {
         if (activeTab === 'uom') {
@@ -483,17 +497,33 @@ export function GenericMasterTab({
           } catch (_) {}
         }
         if (activeTab === 'manufacturers') {
-          api.post('/master-data/manufacturers', {
-            code: newItem.code,
-            name: newItem.name,
-            website: newItem.website,
-            supportContact: newItem.supportContact,
-            active: newItem.status === 'Active'
-          }).catch(() => null);
           try {
+            const res = await api.post('/master-data/manufacturers', {
+              code: newItem.code,
+              name: newItem.name,
+              website: newItem.website,
+              supportContact: newItem.supportContact,
+              active: newItem.status === 'Active'
+            });
+            if (res?.manufacturer?.id) {
+              newItem.id = res.manufacturer.id;
+            }
+          } catch (err) {
+            console.warn('Saved locally:', err);
+          }
+          try {
+            const deletedMfrs = JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]');
+            const cleanedDeleted = deletedMfrs.filter(x => {
+              const str = String(x).toLowerCase().trim();
+              return str !== String(newItem.id).toLowerCase() &&
+                     str !== String(newItem.code).toLowerCase() &&
+                     str !== String(newItem.name).toLowerCase();
+            });
+            localStorage.setItem('fams_deleted_manufacturers', JSON.stringify(cleanedDeleted));
             const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
             localStorage.setItem('fams_custom_manufacturers', JSON.stringify([newItem, ...custom]));
           } catch (_) {}
+          fetchRealManufacturers();
         }
         if (activeTab === 'status-codes') {
           try {
@@ -515,18 +545,22 @@ export function GenericMasterTab({
   // Delete handler
   const handleDeleteConfirm = () => {
     if (!itemToDelete) return;
-    const updated = items.filter((it) => it.id !== itemToDelete.id);
+    const targetId = itemToDelete.id;
+    const targetCode = (itemToDelete.code || '').trim().toUpperCase();
+    const targetName = (itemToDelete.name || '').trim().toLowerCase();
+
+    const updated = items.filter((it) => it.id !== targetId);
     setItems(updated);
-    if (selectedItem?.id === itemToDelete.id) {
+    if (selectedItem?.id === targetId) {
       setSelectedItem(updated[0] || null);
     }
     if (activeTab === 'uom') {
       console.log('🗑️ [Deleting UOM in Frontend]:', itemToDelete);
-      api.delete(`/master-data/uoms/${itemToDelete.id}`).then((res) => {
+      api.delete(`/master-data/uoms/${targetId}`).then((res) => {
         console.log('✅ [UOM Deleted Successfully from Database]:', {
-          id: itemToDelete.id,
-          code: itemToDelete.code,
-          name: itemToDelete.name,
+          id: targetId,
+          code: targetCode,
+          name: targetName,
           response: res?.data || res
         });
       }).catch((err) => {
@@ -534,34 +568,90 @@ export function GenericMasterTab({
       });
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
-        localStorage.setItem('fams_custom_uoms', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+        localStorage.setItem(
+          'fams_custom_uoms',
+          JSON.stringify(
+            custom.filter(c =>
+              c.id !== targetId &&
+              (c.code || '').trim().toUpperCase() !== targetCode &&
+              (c.name || '').trim().toLowerCase() !== targetName
+            )
+          )
+        );
       } catch (_) {}
     }
     if (activeTab === 'asset-types') {
-      api.delete(`/master-data/asset-types/${itemToDelete.id}`).catch(() => null);
+      api.delete(`/master-data/asset-types/${targetId}`).catch(() => null);
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
-        localStorage.setItem('fams_custom_asset_types', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+        localStorage.setItem(
+          'fams_custom_asset_types',
+          JSON.stringify(
+            custom.filter(c =>
+              c.id !== targetId &&
+              (c.code || '').trim().toUpperCase() !== targetCode &&
+              (c.name || '').trim().toLowerCase() !== targetName
+            )
+          )
+        );
       } catch (_) {}
     }
     if (activeTab === 'brands') {
-      api.delete(`/master-data/brands/${itemToDelete.id}`).catch(() => null);
+      api.delete(`/master-data/brands/${targetId}`).catch(() => null);
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
-        localStorage.setItem('fams_custom_brands', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+        localStorage.setItem(
+          'fams_custom_brands',
+          JSON.stringify(
+            custom.filter(c =>
+              c.id !== targetId &&
+              (c.code || '').trim().toUpperCase() !== targetCode &&
+              (c.name || '').trim().toLowerCase() !== targetName
+            )
+          )
+        );
+        const deletedBrands = JSON.parse(localStorage.getItem('fams_deleted_brands') || '[]');
+        deletedBrands.push(targetId);
+        if (targetCode) deletedBrands.push(targetCode);
+        if (targetName) deletedBrands.push(targetName);
+        localStorage.setItem('fams_deleted_brands', JSON.stringify([...new Set(deletedBrands)]));
       } catch (_) {}
     }
     if (activeTab === 'manufacturers') {
-      api.delete(`/master-data/manufacturers/${itemToDelete.id}`).catch(() => null);
+      api.delete(`/master-data/manufacturers/${targetId}`).catch((err) => console.warn('Delete mfr err:', err));
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
-        localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+        localStorage.setItem(
+          'fams_custom_manufacturers',
+          JSON.stringify(
+            custom.filter(c =>
+              c.id !== targetId &&
+              (c.code || '').trim().toUpperCase() !== targetCode &&
+              (c.name || '').trim().toLowerCase() !== targetName
+            )
+          )
+        );
+        const deletedMfrs = JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]');
+        deletedMfrs.push(targetId);
+        if (targetCode) deletedMfrs.push(targetCode);
+        if (targetName) deletedMfrs.push(targetName);
+        localStorage.setItem('fams_deleted_manufacturers', JSON.stringify([...new Set(deletedMfrs)]));
       } catch (_) {}
+      fetchRealManufacturers();
     }
     if (activeTab === 'status-codes') {
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_status_codes') || '[]');
-        localStorage.setItem('fams_custom_status_codes', JSON.stringify(custom.filter(c => c.id !== itemToDelete.id)));
+        localStorage.setItem(
+          'fams_custom_status_codes',
+          JSON.stringify(
+            custom.filter(c =>
+              c.id !== targetId &&
+              (c.code || '').trim().toUpperCase() !== targetCode &&
+              (c.name || '').trim().toLowerCase() !== targetName
+            )
+          )
+        );
       } catch (_) {}
     }
     triggerToast && triggerToast(`${tabConfig.singular} "${itemToDelete.name}" deleted.`);

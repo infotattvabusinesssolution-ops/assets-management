@@ -204,11 +204,11 @@ export function SuppliersTab({
   const handleOpenAddSupModalInternal = handleOpenAddSupModal;
 
   useEffect(() => {
-    if (addModalTrigger > 0 || externalShowAddModal) {
+    if (externalShowAddModal) {
       handleOpenAddSupModal(null);
       if (setExternalShowAddModal) setExternalShowAddModal(false);
     }
-  }, [addModalTrigger, externalShowAddModal]);
+  }, [externalShowAddModal]);
 
   const handleSaveSup = async (e) => {
     e.preventDefault();

@@ -116,8 +116,13 @@ export function MasterDataSetup() {
   // External trigger for Add Modal in active tab
   const [showAddGroupModal, setShowAddGroupModal] = useState(false);
   const [activeAddModalTab, setActiveAddModalTab] = useState(null);
-  const [addModalTrigger, setAddModalTrigger] = useState(0);
   const [groupReloadTrigger, setGroupReloadTrigger] = useState(0);
+
+  // Reset active add modal tab when switching tabs so popups never open on tab switch
+  useEffect(() => {
+    setActiveAddModalTab(null);
+    setShowAddGroupModal(false);
+  }, [activeTab]);
 
   // State for Add Multiple Records
   const [multipleRecordsRows, setMultipleRecordsRows] = useState([
@@ -142,7 +147,6 @@ export function MasterDataSetup() {
 
   const handleTriggerAddSingle = () => {
     setShowAddDropdown(false);
-    setAddModalTrigger(Date.now());
     if (activeTab === 'asset-groups') {
       setShowAddGroupModal(true);
     } else {
@@ -701,7 +705,6 @@ export function MasterDataSetup() {
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
-          addModalTrigger={addModalTrigger}
           externalShowAddModal={activeAddModalTab === 'suppliers'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
@@ -722,7 +725,6 @@ export function MasterDataSetup() {
           activeTab={activeTab}
           tabName={currentTabObject?.name}
           triggerToast={triggerToast}
-          addModalTrigger={addModalTrigger}
           externalShowAddModal={activeAddModalTab === activeTab}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
           onResetToDefault={() => handleTabChange('asset-groups')}

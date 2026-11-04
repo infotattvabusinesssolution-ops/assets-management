@@ -1185,7 +1185,7 @@ export async function getManufacturers(req, res, next) {
       try {
         const where = req.query.includeInactive === 'true' ? {} : { active: true };
         const manufacturers = await prisma.manufacturer.findMany({ where, orderBy: { name: 'asc' } });
-        if (Array.isArray(manufacturers) && manufacturers.length > 0) {
+        if (Array.isArray(manufacturers)) {
           const list = manufacturers.map(m => ({
             id: m.id,
             code: m.code || `MFG-${(m.name || '').substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`,
@@ -1241,11 +1241,9 @@ export async function createManufacturer(req, res, next) {
       try {
         const created = await prisma.manufacturer.create({
           data: {
-            code: cleanCode,
             name: cleanName,
             website: website || null,
             supportContact: supportContact || null,
-            country: country || null,
             active: isAct
           }
         });
@@ -1296,11 +1294,9 @@ export async function updateManufacturer(req, res, next) {
         await prisma.manufacturer.update({
           where: { id: existing.id },
           data: {
-            code: cleanCode,
             name: cleanName,
             website: updated.website || null,
             supportContact: updated.supportContact || null,
-            country: updated.country || null,
             active: updated.active
           }
         });
@@ -1317,16 +1313,76 @@ export async function updateManufacturer(req, res, next) {
 export async function deleteManufacturer(req, res, next) {
   try {
     const { id } = req.params;
-    const mfr = inMemoryManufacturers.find(m => m.id === id || m.code === id);
-    if (!mfr) return res.status(404).json({ success: false, message: 'Manufacturer not found' });
+    let mfr = inMemoryManufacturers.find(m => m.id === id || m.code === id);
 
-    inMemoryManufacturers = inMemoryManufacturers.filter(m => m.id !== id && m.code !== id);
-
+    let dbMfr = null;
     if (isDbConnected()) {
       try {
-        await prisma.manufacturer.delete({ where: { id: mfr.id } });
+        dbMfr = await prisma.manufacturer.findFirst({
+          where: {
+            OR: [
+              { id },
+              ...(mfr ? [{ name: mfr.name }] : [])
+            ]
+          }
+        });
+      } catch (e) {
+        console.warn('DB find manufacturer error:', e.message);
+      }
+    }
+
+    if (!mfr && !dbMfr) return res.status(404).json({ success: false, message: 'Manufacturer not found' });
+
+    const targetId = dbMfr?.id || mfr?.id || id;
+    const targetName = dbMfr?.name || mfr?.name;
+    const targetCode = mfr?.code;
+
+    inMemoryManufacturers = inMemoryManufacturers.filter(m =>
+      m.id !== targetId &&
+      m.id !== id &&
+      (!targetCode || m.code !== targetCode) &&
+      (!targetName || m.name.toLowerCase() !== targetName.toLowerCase())
+    );
+
+    if (isDbConnected() && dbMfr) {
+      try {
+        // 1. Unlink any assets referencing this manufacturer
+        await prisma.asset.updateMany({
+          where: { manufacturerId: dbMfr.id },
+          data: { manufacturerId: null }
+        }).catch(err => console.warn('Unlink assets manufacturerId warning:', err.message));
+
+        // 2. Unlink assets referencing asset_models of this manufacturer, then delete asset_models
+        const relatedModels = await prisma.assetModel.findMany({
+          where: { manufacturerId: dbMfr.id },
+          select: { id: true }
+        }).catch(() => []);
+
+        if (relatedModels.length > 0) {
+          const modelIds = relatedModels.map(rm => rm.id);
+          await prisma.asset.updateMany({
+            where: { modelId: { in: modelIds } },
+            data: { modelId: null }
+          }).catch(err => console.warn('Unlink assets modelId warning:', err.message));
+
+          await prisma.assetModel.deleteMany({
+            where: { manufacturerId: dbMfr.id }
+          }).catch(err => console.warn('Delete related asset_models warning:', err.message));
+        }
+
+        // 3. Delete manufacturer from DB
+        await prisma.manufacturer.delete({
+          where: { id: dbMfr.id }
+        });
+        console.log(`✅ [Database]: Deleted manufacturer ${dbMfr.name} (${dbMfr.id})`);
       } catch (dbErr) {
-        console.warn('DB delete manufacturer skipped:', dbErr.message);
+        console.error('❌ DB delete manufacturer failed:', dbErr.message);
+        try {
+          await prisma.manufacturer.update({
+            where: { id: dbMfr.id },
+            data: { active: false }
+          });
+        } catch (_) {}
       }
     }
 
@@ -3205,15 +3261,29 @@ export async function updateBrand(req, res, next) {
 export async function deleteBrand(req, res, next) {
   try {
     const { id } = req.params;
-    const brand = inMemoryBrands.find(b => b.id === id || b.code === id);
-    if (!brand) return res.status(404).json({ success: false, message: 'Brand not found' });
-
-    inMemoryBrands = inMemoryBrands.filter(b => b.id !== id && b.code !== id);
+    let brand = inMemoryBrands.find(b => b.id === id || b.code === id);
 
     await ensureBrandsTable();
+    let dbBrand = null;
     if (isDbConnected()) {
       try {
-        await prisma.$executeRawUnsafe(`DELETE FROM brands WHERE id = '${brand.id.replace(/'/g, "''")}'`);
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM brands WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+        if (Array.isArray(rows) && rows.length > 0) dbBrand = rows[0];
+      } catch (e) {
+        console.warn('DB find brand error:', e.message);
+      }
+    }
+
+    if (!brand && !dbBrand) return res.status(404).json({ success: false, message: 'Brand not found' });
+
+    const targetId = dbBrand?.id || brand?.id || id;
+    const targetCode = dbBrand?.code || brand?.code;
+
+    inMemoryBrands = inMemoryBrands.filter(b => b.id !== targetId && b.id !== id && (!targetCode || b.code !== targetCode));
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`DELETE FROM brands WHERE id = '${targetId.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
       } catch (dbErr) {
         console.warn('DB delete brands skipped:', dbErr.message);
       }
