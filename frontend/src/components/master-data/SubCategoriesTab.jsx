@@ -668,6 +668,7 @@ export function SubCategoriesTab({
                   <th className="py-3 px-3">Sub Category Name</th>
                   <th className="py-3 px-3">Category</th>
                   <th className="py-3 px-3">Asset Sub Group</th>
+                  <th className="py-3 px-4">Description</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-center">Actions</th>
@@ -701,6 +702,9 @@ export function SubCategoriesTab({
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{sc.name}</td>
                       <td className="py-3.5 px-3 text-slate-700">{sc.categoryName}</td>
                       <td className="py-3.5 px-3 text-slate-700">{sc.className}</td>
+                      <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={sc.description}>
+                        {sc.description || '-'}
+                      </td>
                       <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900">
                         {(sc.totalAssets ?? 0).toLocaleString()}
                       </td>

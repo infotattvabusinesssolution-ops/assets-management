@@ -76,7 +76,14 @@ export function CategoriesTab({
             const m = (cat.description || '').match(/\[group:([^\]]+)\]/);
             return m ? m[1] : (cat.groupName || '-');
           })(),
-          description: cat.description || '',
+          description: (() => {
+            const clean = (cat.description || '')
+              .replace(/\[type:[^\]]+\]/g, '')
+              .replace(/\[group:[^\]]+\]/g, '')
+              .replace(/\[class:[^\]]+\]/g, '')
+              .trim();
+            return clean || '-';
+          })(),
           totalAssets: cat.totalAssets || 0,
           status: cat.active === false ? 'Inactive' : 'Active',
           createdBy: 'Admin',
@@ -652,6 +659,7 @@ export function CategoriesTab({
                   <th className="py-3 px-3">Category Name</th>
                   <th className="py-3 px-3">Asset Sub Group</th>
                   <th className="py-3 px-3">Asset Group</th>
+                  <th className="py-3 px-4">Description</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-center">Actions</th>
@@ -685,6 +693,9 @@ export function CategoriesTab({
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{cat.name}</td>
                       <td className="py-3.5 px-3 text-slate-700">{cat.className}</td>
                       <td className="py-3.5 px-3 text-slate-700">{cat.groupName}</td>
+                      <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={cat.description}>
+                        {cat.description || '-'}
+                      </td>
                       <td className="py-3.5 px-3 text-right font-mono font-bold text-slate-900">
                         {(cat.totalAssets ?? 0).toLocaleString()}
                       </td>
