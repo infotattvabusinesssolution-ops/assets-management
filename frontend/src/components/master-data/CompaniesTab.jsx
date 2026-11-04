@@ -26,7 +26,9 @@ import { SmartDeleteModal } from './SmartDeleteModal';
 export function CompaniesTab({
   triggerToast,
   externalShowAddModal,
-  setExternalShowAddModal
+  setExternalShowAddModal,
+  activeRowMenuId,
+  setActiveRowMenuId
 }) {
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
@@ -208,7 +210,6 @@ export function CompaniesTab({
   };
 
   const handleInitiateDeleteCompany = async (comp) => {
-    setActiveRowMenuId && setActiveRowMenuId(null);
     if (!window.confirm(`Are you sure you want to delete Company "${comp.name}" (${comp.code})?`)) return;
 
     setIsDeleting(true);

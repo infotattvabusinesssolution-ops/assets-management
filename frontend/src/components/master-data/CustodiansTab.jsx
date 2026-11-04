@@ -31,7 +31,9 @@ import { SmartDeleteModal } from './SmartDeleteModal';
 export function CustodiansTab({
   triggerToast,
   externalShowAddModal,
-  setExternalShowAddModal
+  setExternalShowAddModal,
+  activeRowMenuId,
+  setActiveRowMenuId
 }) {
   const [custodians, setCustodians] = useState([]);
   const [selectedCustodian, setSelectedCustodian] = useState(null);
@@ -280,7 +282,6 @@ export function CustodiansTab({
   };
 
   const handleInitiateDeleteCustodian = async (cust) => {
-    setActiveRowMenuId && setActiveRowMenuId(null);
     if (!window.confirm(`Are you sure you want to delete Custodian "${cust.fullName}" (${cust.employeeCode || cust.id})?`)) return;
 
     setIsDeleting(true);
