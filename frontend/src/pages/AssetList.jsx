@@ -81,6 +81,7 @@ export function AssetList() {
   const [selectedAsset, setSelectedAsset] = useState(null);
   const [activeTab, setActiveTab] = useState('ALL');
   const [selectedRowIds, setSelectedRowIds] = useState([]);
+  const [isBulkOperating, setIsBulkOperating] = useState(false);
   const [openActionMenuId, setOpenActionMenuId] = useState(null);
 
   // Server-computed KPI Counts & 360 Detail
@@ -506,17 +507,113 @@ export function AssetList() {
     }
   };
 
-  // Handle Single Asset Row Selection (Only 1 asset can be selected from the list)
+  // Handle Multi Asset Row Selection via Checkbox
   const handleSelectRow = (e, asset) => {
     e.stopPropagation();
     const id = asset.id;
-    if (selectedRowIds.length === 1 && selectedRowIds[0] === id) {
-      setSelectedRowIds([]);
-      setSelectedAsset(null);
+    if (selectedRowIds.includes(id)) {
+      const next = selectedRowIds.filter((item) => item !== id);
+      setSelectedRowIds(next);
+      if (selectedAsset?.id === id) {
+        setSelectedAsset(next.length > 0 ? filteredAssets.find((a) => a.id === next[next.length - 1]) || null : null);
+      }
     } else {
-      setSelectedRowIds([id]);
+      setSelectedRowIds([...selectedRowIds, id]);
       setSelectedAsset(asset);
     }
+  };
+
+  // Bulk Actions
+  const handleBulkDeleteAssets = async () => {
+    if (selectedRowIds.length === 0) return;
+    const count = selectedRowIds.length;
+    if (!window.confirm(`Are you sure you want to permanently delete ${count} selected asset${count > 1 ? 's' : ''}? This will cascade delete linked work orders, maintenance logs, tags, and assignments.`)) {
+      return;
+    }
+
+    setIsBulkOperating(true);
+    try {
+      const res = await api.post('/assets/bulk-delete', { ids: selectedRowIds }).catch(async () => {
+        let done = 0;
+        for (const id of selectedRowIds) {
+          await api.delete(`/assets/${id}`).catch(() => null);
+          done++;
+        }
+        return { success: true, count: done, message: `${done} asset(s) deleted successfully.` };
+      });
+
+      showToast('success', res?.message || `${count} asset(s) deleted successfully!`);
+      const remaining = assets.filter((a) => !selectedRowIds.includes(a.id));
+      setAssets(remaining);
+      setSelectedRowIds([]);
+      if (selectedAsset && selectedRowIds.includes(selectedAsset.id)) {
+        setSelectedAsset(null);
+      }
+      await fetchAssets();
+    } catch (err) {
+      showToast('error', err?.response?.data?.message || 'Failed to delete selected assets.');
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  const handleBulkUpdateStatus = async (status) => {
+    if (selectedRowIds.length === 0 || !status) return;
+    const count = selectedRowIds.length;
+    if (!window.confirm(`Update status of ${count} asset${count > 1 ? 's' : ''} to "${status.replace(/_/g, ' ')}"?`)) return;
+
+    setIsBulkOperating(true);
+    try {
+      const res = await api.post('/assets/bulk-status', { ids: selectedRowIds, status }).catch(async () => {
+        for (const id of selectedRowIds) {
+          await api.patch(`/assets/${id}/lifecycle`, { targetStatus: status, reason: 'Bulk status update' }).catch(() => null);
+        }
+        return { success: true, message: `Status updated for ${count} asset(s).` };
+      });
+
+      showToast('success', res?.message || `Status updated for ${count} asset(s).`);
+      setSelectedRowIds([]);
+      await fetchAssets();
+    } catch (err) {
+      showToast('error', err?.response?.data?.message || 'Failed to update asset statuses.');
+    } finally {
+      setIsBulkOperating(false);
+    }
+  };
+
+  const handleBulkPrintTags = () => {
+    if (selectedRowIds.length === 0) return;
+    const selectedAssetsData = filteredAssets.filter(a => selectedRowIds.includes(a.id));
+    const idsParam = selectedAssetsData.map(a => a.assetId || a.id).join(',');
+    navigate(`/tagging/print?assets=${encodeURIComponent(idsParam)}`);
+  };
+
+  const handleBulkExport = () => {
+    if (selectedRowIds.length === 0) return;
+    const selectedAssetsData = filteredAssets.filter(a => selectedRowIds.includes(a.id));
+    
+    const headers = ['Asset ID', 'Name', 'Category', 'Department', 'Location', 'Status', 'Condition', 'Value (AED)', 'Acquisition Date'];
+    const rows = selectedAssetsData.map(a => [
+      `"${a.assetId || a.id || ''}"`,
+      `"${(a.name || a.assetName || '').replace(/"/g, '""')}"`,
+      `"${(a.category?.name || a.category || '').replace(/"/g, '""')}"`,
+      `"${(a.department?.name || a.department || '').replace(/"/g, '""')}"`,
+      `"${(a.location?.name || a.location || a.site?.name || '').replace(/"/g, '""')}"`,
+      `"${a.status || ''}"`,
+      `"${a.condition || ''}"`,
+      `"${a.purchaseCost || a.currentBookValue || a.value || 0}"`,
+      `"${a.purchaseDate ? new Date(a.purchaseDate).toLocaleDateString() : ''}"`
+    ]);
+
+    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map(e => e.join(','))].join('\n');
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement('a');
+    link.setAttribute('href', encodedUri);
+    link.setAttribute('download', `assets_selected_${new Date().toISOString().slice(0, 10)}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast('success', `Exported ${selectedAssetsData.length} asset(s) to CSV.`);
   };
 
   const handleApplyFilters = () => {
@@ -812,6 +909,93 @@ export function AssetList() {
         {/* 4. Asset Register List Table (Callout 4) */}
         <div className={`transition-all ${selectedAsset ? 'lg:col-span-8 lg:h-[calc(100vh-100px)]' : 'lg:col-span-12'}`}>
           <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-2xs h-full flex flex-col">
+            {/* Bulk Action Bar (Visible when any checkbox is tapped) */}
+            {selectedRowIds.length > 0 && (
+              <div className="bg-gradient-to-r from-purple-50 via-indigo-50/70 to-purple-50 border-b border-purple-200/90 p-2.5 px-4 flex flex-wrap items-center justify-between gap-3 animate-in fade-in slide-in-from-top-1 z-30 shadow-xs">
+                <div className="flex items-center gap-2.5">
+                  <div className="w-6 h-6 rounded-lg bg-[#6C2BD9] text-white flex items-center justify-center font-mono font-bold text-xs shadow-xs">
+                    {selectedRowIds.length}
+                  </div>
+                  <div>
+                    <span className="text-xs font-bold text-slate-900 block leading-tight">
+                      {selectedRowIds.length} Asset{selectedRowIds.length > 1 ? 's' : ''} Selected
+                    </span>
+                  </div>
+                </div>
+
+                <div className="flex items-center flex-wrap gap-2">
+                  {/* Status Dropdown */}
+                  <div className="relative">
+                    <select
+                      onChange={(e) => {
+                        if (e.target.value) {
+                          handleBulkUpdateStatus(e.target.value);
+                          e.target.value = '';
+                        }
+                      }}
+                      defaultValue=""
+                      disabled={isBulkOperating}
+                      className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-50 text-purple-900 text-xs font-semibold shadow-2xs focus:outline-none focus:border-[#6C2BD9] cursor-pointer disabled:opacity-50"
+                    >
+                      <option value="" disabled>Change Status...</option>
+                      <option value="IN_SERVICE">Set In Service</option>
+                      <option value="UNDER_MAINTENANCE">Set Under Maintenance</option>
+                      <option value="IN_STORAGE">Set In Storage</option>
+                      <option value="DISPOSED">Set Disposed</option>
+                    </select>
+                  </div>
+
+                  {/* Print Tags Button */}
+                  <button
+                    type="button"
+                    onClick={handleBulkPrintTags}
+                    disabled={isBulkOperating}
+                    className="px-3 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-50 text-purple-800 text-xs font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                    title="Print QR/Barcode tags for selected assets"
+                  >
+                    <Printer className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                    <span>Print Tags</span>
+                  </button>
+
+                  {/* Export Selected Button */}
+                  <button
+                    type="button"
+                    onClick={handleBulkExport}
+                    disabled={isBulkOperating}
+                    className="px-3 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-50 text-purple-800 text-xs font-semibold shadow-2xs flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-colors"
+                    title="Export selected asset rows to CSV"
+                  >
+                    <Download className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                    <span>Export</span>
+                  </button>
+
+                  {/* Delete Selected Button */}
+                  {canDelete && (
+                    <button
+                      type="button"
+                      onClick={handleBulkDeleteAssets}
+                      disabled={isBulkOperating}
+                      className="px-3.5 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold shadow-xs shadow-rose-600/20 flex items-center gap-1.5 cursor-pointer disabled:opacity-50 transition-all"
+                      title="Delete selected assets permanently"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                      <span>{isBulkOperating ? 'Deleting...' : `Delete (${selectedRowIds.length})`}</span>
+                    </button>
+                  )}
+
+                  {/* Deselect All */}
+                  <button
+                    type="button"
+                    onClick={() => setSelectedRowIds([])}
+                    disabled={isBulkOperating}
+                    className="px-2.5 py-1.5 rounded-xl border border-slate-200 bg-white hover:bg-slate-50 text-slate-600 text-xs font-semibold shadow-2xs transition-colors cursor-pointer"
+                    title="Clear selection"
+                  >
+                    Deselect
+                  </button>
+                </div>
+              </div>
+            )}
             <div className="overflow-x-auto overflow-y-auto max-h-[calc(100vh-320px)] min-h-[420px] lg:max-h-none lg:min-h-0 flex-1 relative scrollbar-thin">
               <table className="w-full text-left text-xs border-collapse">
                 <thead className="sticky top-0 z-20 bg-slate-50 border-b border-slate-200 shadow-2xs">

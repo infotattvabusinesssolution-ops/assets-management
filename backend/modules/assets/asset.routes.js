@@ -9,6 +9,8 @@ import {
   assignAssetCustodian,
   transitionLifecycle,
   deleteAsset,
+  bulkDeleteAssets,
+  bulkUpdateAssetStatus,
   acknowledgeAsset,
   requestAssetTransfer,
   requestAssetReturn,
@@ -48,6 +50,8 @@ router.post('/:id/transfer-request', requirePermission('ASSETS_VIEW'), requestAs
 router.post('/:id/return-request', requirePermission('ASSETS_VIEW'), requestAssetReturn);
 router.post('/:id/report-issue', requirePermission('ASSETS_VIEW'), reportAssetIssue);
 
+router.post('/bulk-delete', requirePermission('ASSETS_DELETE'), bulkDeleteAssets);
+router.post('/bulk-status', requirePermission('ASSETS_TRANSITION', 'ASSETS_EDIT'), bulkUpdateAssetStatus);
 router.post('/', requirePermission('ASSETS_CREATE'), createAsset);
 router.post('/:id/location-transfer', requirePermission('ASSETS_EDIT'), transferAssetLocation);
 router.post('/:id/custodian-assignment', requirePermission('ASSETS_EDIT'), assignAssetCustodian);

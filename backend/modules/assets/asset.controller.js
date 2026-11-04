@@ -2503,6 +2503,80 @@ export async function deleteAsset(req, res, next) {
   }
 }
 
+export async function bulkDeleteAssets(req, res, next) {
+  try {
+    const { ids } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0) {
+      return res.status(400).json({ success: false, message: 'No asset IDs provided.' });
+    }
+
+    let deletedCount = 0;
+    for (const id of ids) {
+      try {
+        let existing = await prisma.asset.findUnique({ where: { id } });
+        if (!existing) {
+          existing = await prisma.asset.findFirst({ where: { assetId: id } });
+        }
+        if (!existing) continue;
+
+        const assetDbId = existing.id;
+        await prisma.$transaction(async (tx) => {
+          await Promise.all([
+            tx.assetBookValue.deleteMany({ where: { assetId: assetDbId } }),
+            tx.assetTransaction.deleteMany({ where: { assetId: assetDbId } }),
+            tx.custodyAssignment.deleteMany({ where: { assetId: assetDbId } }),
+            tx.maintenanceWorkOrder.deleteMany({ where: { assetId: assetDbId } }),
+            tx.maintenanceSchedule.deleteMany({ where: { assetId: assetDbId } }),
+            tx.contractAsset.deleteMany({ where: { assetId: assetDbId } }),
+            tx.warranty.deleteMany({ where: { assetId: assetDbId } }),
+            tx.tagHistory.deleteMany({ where: { assetId: assetDbId } }),
+            tx.tag.deleteMany({ where: { assetId: assetDbId } }),
+            tx.assetMapPosition.deleteMany({ where: { assetId: assetDbId } }),
+            tx.discoveryMatch.deleteMany({ where: { matchedAssetId: assetDbId } }),
+            tx.aIRecommendation.deleteMany({ where: { assetId: assetDbId } }),
+            tx.assetCustomFieldValue.deleteMany({ where: { assetId: assetDbId } }),
+            tx.assetTransfer.deleteMany({ where: { assetId: assetDbId } }),
+            tx.rtlsMovement.deleteMany({ where: { assetId: assetDbId } }),
+            tx.rtlsAssetLocation.deleteMany({ where: { assetId: assetDbId } }),
+            tx.asset.updateMany({ where: { parentAssetId: assetDbId }, data: { parentAssetId: null } })
+          ]);
+          await tx.asset.delete({ where: { id: assetDbId } });
+        }, { timeout: 30000, maxWait: 10000 });
+        deletedCount++;
+      } catch (err) {
+        console.warn('Failed to delete asset ' + id + ':', err.message);
+      }
+    }
+
+    res.json({ success: true, count: deletedCount, message: deletedCount + ' asset(s) deleted successfully.' });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function bulkUpdateAssetStatus(req, res, next) {
+  try {
+    const { ids, status } = req.body;
+    if (!Array.isArray(ids) || ids.length === 0 || !status) {
+      return res.status(400).json({ success: false, message: 'Invalid payload: ids and status are required.' });
+    }
+
+    const result = await prisma.asset.updateMany({
+      where: {
+        OR: [
+          { id: { in: ids } },
+          { assetId: { in: ids } }
+        ]
+      },
+      data: { status }
+    });
+
+    res.json({ success: true, count: result.count, message: 'Status updated for ' + result.count + ' asset(s).' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 export async function getAssetHierarchyTree(req, res, next) {
   try {
     const { search } = req.query;
