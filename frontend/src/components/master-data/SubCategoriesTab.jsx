@@ -82,16 +82,22 @@ export function SubCategoriesTab({
             .replace(/\[class:[^\]]+\]/g, '')
             .replace(/\[group:[^\]]+\]/g, '')
             .trim();
-          const classMatch = (ac.description || '').match(/\[class:([^\]]+)\]/) || (ac.category?.description || '').match(/\[class:([^\]]+)\]/);
-          const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/) || (ac.category?.description || '').match(/\[group:([^\]]+)\]/);
+          const liveCats = catRes?.categories || categories || [];
+          const matchedCat = liveCats.find(c =>
+            (ac.categoryId && (c.id === ac.categoryId || c.code === ac.categoryId)) ||
+            (ac.categoryName && ac.categoryName !== '-' && c.name && c.name.toLowerCase() === ac.categoryName.toLowerCase())
+          );
+          const resolvedCategoryName = (ac.categoryName && ac.categoryName !== '-' && ac.categoryName !== '') ? ac.categoryName : (matchedCat?.name || ac.category?.name || '-');
+          const classMatch = (ac.description || '').match(/\[class:([^\]]+)\]/) || (matchedCat?.description || '').match(/\[class:([^\]]+)\]/) || (ac.category?.description || '').match(/\[class:([^\]]+)\]/);
+          const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/) || (matchedCat?.description || '').match(/\[group:([^\]]+)\]/) || (ac.category?.description || '').match(/\[group:([^\]]+)\]/);
           return {
             id: ac.id,
             code: ac.code,
             name: ac.name,
             categoryId: ac.categoryId,
-            categoryName: ac.category?.name || '-',
-            className: classMatch ? classMatch[1] : (ac.className || '-'),
-            groupName: groupMatch ? groupMatch[1] : (ac.groupName || '-'),
+            categoryName: resolvedCategoryName,
+            className: classMatch ? classMatch[1] : (ac.className && ac.className !== '-' ? ac.className : (matchedCat?.className || '-')),
+            groupName: groupMatch ? groupMatch[1] : (ac.groupName && ac.groupName !== '-' ? ac.groupName : (matchedCat?.groupName || '-')),
             description: descClean,
             totalAssets: ac.totalAssets || 0,
             status: ac.active === false ? 'Inactive' : 'Active',
@@ -305,25 +311,28 @@ export function SubCategoriesTab({
     if (subCatFormState.groupName) parts.push(`[group:${subCatFormState.groupName}]`);
     const taggedDesc = parts.join(' ').trim();
 
+    const payload = {
+      code: cleanCode,
+      name: cleanName,
+      categoryId: targetCatId,
+      categoryName: subCatFormState.categoryName || (categories.find(c => c.id === targetCatId)?.name || ''),
+      assetSubGroupName: subCatFormState.className || '',
+      className: subCatFormState.className || '',
+      assetGroupName: subCatFormState.groupName || '',
+      groupName: subCatFormState.groupName || '',
+      description: taggedDesc,
+      status: subCatFormState.status
+    };
+
     try {
       if (editingSubCategory) {
-        await api.put(`/master-data/sub-categories/${editingSubCategory.id}`, {
-          code: cleanCode,
-          name: cleanName,
-          categoryId: targetCatId,
-          description: taggedDesc,
-          status: subCatFormState.status
-        });
+        await api.put(`/master-data/sub-categories/${editingSubCategory.id}`, payload);
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${cleanName}" updated successfully.`);
       } else {
         await api.post('/master-data/sub-categories', {
-          code: cleanCode,
-          name: cleanName,
-          categoryId: targetCatId,
-          description: taggedDesc,
-          kind: 'SUBCATEGORY',
-          status: subCatFormState.status
+          ...payload,
+          kind: 'SUBCATEGORY'
         });
         await loadSubCategories();
         triggerToast && triggerToast(`Sub Category "${cleanName}" created successfully.`);

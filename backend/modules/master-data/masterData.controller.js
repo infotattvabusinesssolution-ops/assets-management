@@ -1852,34 +1852,48 @@ export async function getSubCategories(req, res, next) {
     await ensureSubCategoriesTable();
     if (isDbConnected()) {
       try {
-        let whereClause = req.query.includeInactive === 'true' ? '1=1' : 'active = 1';
+        let whereClause = req.query.includeInactive === 'true' ? '1=1' : 'sc.active = 1';
         if (req.query.categoryId) {
-          whereClause += ` AND categoryId = '${String(req.query.categoryId).replace(/'/g, "''")}'`;
+          whereClause += ` AND sc.categoryId = '${String(req.query.categoryId).replace(/'/g, "''")}'`;
         }
         if (req.query.assetSubGroupId) {
-          whereClause += ` AND assetSubGroupId = '${String(req.query.assetSubGroupId).replace(/'/g, "''")}'`;
+          whereClause += ` AND sc.assetSubGroupId = '${String(req.query.assetSubGroupId).replace(/'/g, "''")}'`;
         }
-        const query = `SELECT * FROM sub_categories WHERE ${whereClause} ORDER BY name ASC`;
+        const query = `
+          SELECT sc.*, c.name as resolvedCategoryName, c.description as categoryDesc
+          FROM sub_categories sc
+          LEFT JOIN categories c ON sc.categoryId = c.id
+          WHERE ${whereClause}
+          ORDER BY sc.name ASC
+        `;
         const rows = await prisma.$queryRawUnsafe(query);
-        const list = (rows || []).map(r => ({
-          id: r.id,
-          code: r.code,
-          name: r.name,
-          categoryId: r.categoryId || null,
-          categoryName: r.categoryName || '-',
-          assetSubGroupId: r.assetSubGroupId || null,
-          assetSubGroupName: r.assetSubGroupName || '-',
-          className: r.assetSubGroupName || '-',
-          assetGroupId: r.assetGroupId || null,
-          assetGroupName: r.assetGroupName || '-',
-          groupName: r.assetGroupName || '-',
-          description: r.description || '',
-          totalAssets: r.totalAssets || 0,
-          active: Boolean(r.active),
-          status: r.active ? 'Active' : 'Inactive',
-          createdAt: r.createdAt,
-          updatedAt: r.updatedAt
-        }));
+        const list = (rows || []).map(r => {
+          const resolvedCatName = r.resolvedCategoryName || (r.categoryName && r.categoryName !== '-' ? r.categoryName : '-');
+          const classMatch = (r.description || '').match(/\[class:([^\]]+)\]/) || (r.categoryDesc || '').match(/\[class:([^\]]+)\]/);
+          const groupMatch = (r.description || '').match(/\[group:([^\]]+)\]/) || (r.categoryDesc || '').match(/\[group:([^\]]+)\]/);
+          const resolvedSubGroup = (r.assetSubGroupName && r.assetSubGroupName !== '-' && r.assetSubGroupName !== '') ? r.assetSubGroupName : (classMatch ? classMatch[1] : '-');
+          const resolvedGroup = (r.assetGroupName && r.assetGroupName !== '-' && r.assetGroupName !== '') ? r.assetGroupName : (groupMatch ? groupMatch[1] : '-');
+
+          return {
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            categoryId: r.categoryId || null,
+            categoryName: resolvedCatName,
+            assetSubGroupId: r.assetSubGroupId || null,
+            assetSubGroupName: resolvedSubGroup,
+            className: resolvedSubGroup,
+            assetGroupId: r.assetGroupId || null,
+            assetGroupName: resolvedGroup,
+            groupName: resolvedGroup,
+            description: r.description || '',
+            totalAssets: r.totalAssets || 0,
+            active: Boolean(r.active),
+            status: r.active ? 'Active' : 'Inactive',
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
+          };
+        });
         writeSubCategoriesToFile(list);
         return res.json({ success: true, subCategories: list, assetClasses: list });
       } catch (dbErr) {
@@ -1901,8 +1915,29 @@ export async function createSubCategory(req, res, next) {
     }
     const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
-    const cleanSubGroup = (assetSubGroupName || className || '').trim();
-    const cleanGroup = (assetGroupName || groupName || '').trim();
+    let resolvedCatName = (categoryName || '').trim();
+    let cleanSubGroup = (assetSubGroupName || className || '').trim();
+    let cleanGroup = (assetGroupName || groupName || '').trim();
+
+    // Auto-resolve missing categoryName / subGroup / group from Category if possible
+    if ((!resolvedCatName || resolvedCatName === '-') && categoryId && isDbConnected()) {
+      try {
+        const cat = await prisma.category.findUnique({ where: { id: categoryId } }).catch(() => null);
+        if (cat) {
+          resolvedCatName = cat.name;
+          if (!cleanSubGroup) {
+            const m = (cat.description || '').match(/\[class:([^\]]+)\]/);
+            if (m) cleanSubGroup = m[1];
+          }
+          if (!cleanGroup) {
+            const m = (cat.description || '').match(/\[group:([^\]]+)\]/);
+            if (m) cleanGroup = m[1];
+          }
+        }
+      } catch (_) {}
+    }
+    if (!resolvedCatName) resolvedCatName = '-';
+
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
 
     const newSubCat = {
@@ -1910,13 +1945,13 @@ export async function createSubCategory(req, res, next) {
       code: cleanCode,
       name: cleanName,
       categoryId: categoryId || null,
-      categoryName: categoryName || '-',
+      categoryName: resolvedCatName,
       assetSubGroupId: assetSubGroupId || null,
-      assetSubGroupName: cleanSubGroup,
-      className: cleanSubGroup,
+      assetSubGroupName: cleanSubGroup || '-',
+      className: cleanSubGroup || '-',
       assetGroupId: assetGroupId || null,
-      assetGroupName: cleanGroup,
-      groupName: cleanGroup,
+      assetGroupName: cleanGroup || '-',
+      groupName: cleanGroup || '-',
       description: description || '',
       totalAssets: 0,
       active: isAct,
@@ -1946,7 +1981,7 @@ export async function createSubCategory(req, res, next) {
             '${cleanCode.replace(/'/g, "''")}',
             '${cleanName.replace(/'/g, "''")}',
             ${categoryId ? `'${String(categoryId).replace(/'/g, "''")}'` : 'NULL'},
-            '${(categoryName || '').replace(/'/g, "''")}',
+            '${resolvedCatName.replace(/'/g, "''")}',
             ${assetSubGroupId ? `'${String(assetSubGroupId).replace(/'/g, "''")}'` : 'NULL'},
             '${cleanSubGroup.replace(/'/g, "''")}',
             ${assetGroupId ? `'${String(assetGroupId).replace(/'/g, "''")}'` : 'NULL'},
@@ -1976,8 +2011,28 @@ export async function updateSubCategory(req, res, next) {
     const { code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, className, assetGroupId, assetGroupName, groupName, description, active, status } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
-    const cleanSubGroup = assetSubGroupName || className;
-    const cleanGroup = assetGroupName || groupName;
+    let resolvedCatName = categoryName !== undefined ? categoryName.trim() : undefined;
+    let cleanSubGroup = assetSubGroupName !== undefined ? assetSubGroupName : className;
+    let cleanGroup = assetGroupName !== undefined ? assetGroupName : groupName;
+
+    // Auto-resolve categoryName if categoryId changed or resolvedCatName is missing
+    if ((resolvedCatName === undefined || resolvedCatName === '' || resolvedCatName === '-') && categoryId && isDbConnected()) {
+      try {
+        const cat = await prisma.category.findUnique({ where: { id: categoryId } }).catch(() => null);
+        if (cat) {
+          resolvedCatName = cat.name;
+          if (cleanSubGroup === undefined) {
+            const m = (cat.description || '').match(/\[class:([^\]]+)\]/);
+            if (m) cleanSubGroup = m[1];
+          }
+          if (cleanGroup === undefined) {
+            const m = (cat.description || '').match(/\[group:([^\]]+)\]/);
+            if (m) cleanGroup = m[1];
+          }
+        }
+      } catch (_) {}
+    }
+
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : undefined);
 
     const current = readSubCategoriesFromFile();
@@ -2012,7 +2067,7 @@ export async function updateSubCategory(req, res, next) {
         if (cleanCode) sets.push(`code = '${cleanCode.replace(/'/g, "''")}'`);
         if (cleanName) sets.push(`name = '${cleanName.replace(/'/g, "''")}'`);
         if (categoryId !== undefined) sets.push(`categoryId = ${categoryId ? `'${String(categoryId).replace(/'/g, "''")}'` : 'NULL'}`);
-        if (categoryName !== undefined) sets.push(`categoryName = '${categoryName.replace(/'/g, "''")}'`);
+        if (resolvedCatName !== undefined) sets.push(`categoryName = '${resolvedCatName.replace(/'/g, "''")}'`);
         if (assetSubGroupId !== undefined) sets.push(`assetSubGroupId = ${assetSubGroupId ? `'${String(assetSubGroupId).replace(/'/g, "''")}'` : 'NULL'}`);
         if (cleanSubGroup !== undefined) sets.push(`assetSubGroupName = '${cleanSubGroup.replace(/'/g, "''")}'`);
         if (assetGroupId !== undefined) sets.push(`assetGroupId = ${assetGroupId ? `'${String(assetGroupId).replace(/'/g, "''")}'` : 'NULL'}`);
