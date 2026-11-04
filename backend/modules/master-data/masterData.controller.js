@@ -2399,6 +2399,46 @@ export async function getItemMasters(req, res, next) {
           inMemoryItemMasters = list;
           writeItemMastersToFile(list);
           return res.json({ success: true, items: list });
+        } else if (isDbConnected()) {
+          // If DB table is empty, auto-sync file records into database
+          const fileRecords = readItemMastersFromFile();
+          for (const item of fileRecords) {
+            try {
+              await prisma.$executeRawUnsafe(`
+                IF NOT EXISTS (SELECT 1 FROM item_masters WHERE id = '${item.id}' OR itemCode = '${item.itemCode}')
+                INSERT INTO item_masters (
+                  id, itemCode, itemName, supplierBarcode, description,
+                  assetGroupId, assetGroupName, assetSubGroupId, assetSubGroupName,
+                  categoryId, categoryName, subCategoryId, subCategoryName,
+                  manufacturerId, manufacturerName, brandId, brandName, model, uom,
+                  specifications, imageUrl, active
+                ) VALUES (
+                  '${item.id}',
+                  '${(item.itemCode || '').replace(/'/g, "''")}',
+                  '${(item.itemName || '').replace(/'/g, "''")}',
+                  '${(item.supplierBarcode || '').replace(/'/g, "''")}',
+                  '${(item.description || '').replace(/'/g, "''")}',
+                  '${(item.assetGroupId || '').replace(/'/g, "''")}',
+                  '${(item.assetGroupName || '').replace(/'/g, "''")}',
+                  '${(item.assetSubGroupId || '').replace(/'/g, "''")}',
+                  '${(item.assetSubGroupName || '').replace(/'/g, "''")}',
+                  '${(item.categoryId || '').replace(/'/g, "''")}',
+                  '${(item.categoryName || '').replace(/'/g, "''")}',
+                  '${(item.subCategoryId || '').replace(/'/g, "''")}',
+                  '${(item.subCategoryName || '').replace(/'/g, "''")}',
+                  '${(item.manufacturerId || '').replace(/'/g, "''")}',
+                  '${(item.manufacturerName || '').replace(/'/g, "''")}',
+                  '${(item.brandId || '').replace(/'/g, "''")}',
+                  '${(item.brandName || '').replace(/'/g, "''")}',
+                  '${(item.model || '').replace(/'/g, "''")}',
+                  '${(item.uom || 'Each').replace(/'/g, "''")}',
+                  '${(item.specifications || '').replace(/'/g, "''")}',
+                  '${(item.imageUrl || '').replace(/'/g, "''")}',
+                  ${item.active !== false ? 1 : 0}
+                )
+              `);
+            } catch (_) {}
+          }
         }
       } catch (dbErr) {
         console.warn('DB getItemMasters query skipped, using persistent store:', dbErr.message);
