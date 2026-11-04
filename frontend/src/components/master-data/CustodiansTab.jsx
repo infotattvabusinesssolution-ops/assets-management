@@ -315,6 +315,15 @@ export function CustodiansTab({
         });
         return;
       }
+      if (cust.id?.startsWith('cust-')) {
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+          localStorage.setItem('fams_custom_custodians', JSON.stringify(custom.filter(c => c.id !== cust.id)));
+        } catch (_) {}
+        setCustodians(prev => prev.filter(c => c.id !== cust.id));
+        triggerToast && triggerToast(`Custodian "${cust.fullName}" removed.`);
+        return;
+      }
       triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete custodian.');
     } finally {
       setIsDeleting(false);

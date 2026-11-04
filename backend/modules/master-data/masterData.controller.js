@@ -2941,12 +2941,18 @@ export async function deleteEmployee(req, res, next) {
     const deactivateOnly = action === 'deactivate';
 
     if (isDbConnected()) {
+      const emp = await prisma.employee.findFirst({
+        where: { OR: [{ id }, { employeeCode: id }] }
+      }).catch(() => null);
+
+      const actualId = emp?.id || id;
+
       const [assetsCount, assignmentsCount, transfersCount] = await Promise.all([
-        prisma.asset.count({ where: { custodianId: id } }).catch(() => 0),
-        prisma.custodyAssignment.count({ where: { custodianId: id } }).catch(() => 0),
+        prisma.asset.count({ where: { custodianId: actualId } }).catch(() => 0),
+        prisma.custodyAssignment.count({ where: { custodianId: actualId } }).catch(() => 0),
         prisma.assetTransfer.count({
           where: {
-            OR: [{ fromCustodianId: id }, { toCustodianId: id }]
+            OR: [{ fromCustodianId: actualId }, { toCustodianId: actualId }]
           }
         }).catch(() => 0)
       ]);
@@ -2964,24 +2970,28 @@ export async function deleteEmployee(req, res, next) {
       }
 
       if (deactivateOnly) {
-        await prisma.employee.update({
-          where: { id },
-          data: { active: false }
-        });
+        if (emp) {
+          await prisma.employee.update({
+            where: { id: emp.id },
+            data: { active: false }
+          }).catch(() => null);
+        }
         return res.json({ success: true, deactivated: true, message: `Custodian deactivated successfully (${totalLinked} linked records preserved).` });
       }
 
       // Hard delete:
       if (force && totalLinked > 0) {
-        await prisma.asset.updateMany({ where: { custodianId: id }, data: { custodianId: null } }).catch(() => null);
-        await prisma.custodyAssignment.deleteMany({ where: { custodianId: id } }).catch(() => null);
-        await prisma.assetTransfer.updateMany({ where: { fromCustodianId: id }, data: { fromCustodianId: null } }).catch(() => null);
-        await prisma.assetTransfer.updateMany({ where: { toCustodianId: id }, data: { toCustodianId: null } }).catch(() => null);
-        await prisma.stocktakeObservation.updateMany({ where: { observedCustodianId: id }, data: { observedCustodianId: null } }).catch(() => null);
-        await prisma.user.updateMany({ where: { employeeId: id }, data: { employeeId: null } }).catch(() => null);
+        await prisma.asset.updateMany({ where: { custodianId: actualId }, data: { custodianId: null } }).catch(() => null);
+        await prisma.custodyAssignment.deleteMany({ where: { custodianId: actualId } }).catch(() => null);
+        await prisma.assetTransfer.updateMany({ where: { fromCustodianId: actualId }, data: { fromCustodianId: null } }).catch(() => null);
+        await prisma.assetTransfer.updateMany({ where: { toCustodianId: actualId }, data: { toCustodianId: null } }).catch(() => null);
+        await prisma.stocktakeObservation.updateMany({ where: { observedCustodianId: actualId }, data: { observedCustodianId: null } }).catch(() => null);
+        await prisma.user.updateMany({ where: { employeeId: actualId }, data: { employeeId: null } }).catch(() => null);
       }
 
-      await prisma.employee.delete({ where: { id } });
+      if (emp) {
+        await prisma.employee.delete({ where: { id: emp.id } }).catch(() => null);
+      }
       return res.json({ success: true, hardDeleted: true, message: 'Custodian permanently deleted from database.' });
     }
     res.json({ success: true, hardDeleted: true, message: 'Custodian deleted successfully.' });
