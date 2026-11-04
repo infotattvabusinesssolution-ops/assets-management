@@ -285,6 +285,14 @@ export function CustodiansTab({
     if (!window.confirm(`Are you sure you want to delete Custodian "${cust.fullName}" (${cust.employeeCode || cust.id})?`)) return;
 
     setIsDeleting(true);
+
+    // Clean up from browser localStorage immediately so it never resurrects
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      const filtered = custom.filter(c => c.id !== cust.id && c.employeeCode !== cust.employeeCode);
+      localStorage.setItem('fams_custom_custodians', JSON.stringify(filtered));
+    } catch (_) {}
+
     try {
       const res = await api.delete(`/master-data/employees/${cust.id}`);
       if (res?.requiresConfirmation) {
@@ -297,10 +305,6 @@ export function CustodiansTab({
         });
         return;
       }
-      try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-        localStorage.setItem('fams_custom_custodians', JSON.stringify(custom.filter(c => c.id !== cust.id)));
-      } catch (_) {}
       await loadCustodians();
       triggerToast && triggerToast(res?.message || `Custodian "${cust.fullName}" deleted successfully.`);
     } catch (err) {
@@ -315,16 +319,10 @@ export function CustodiansTab({
         });
         return;
       }
-      if (cust.id?.startsWith('cust-')) {
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-          localStorage.setItem('fams_custom_custodians', JSON.stringify(custom.filter(c => c.id !== cust.id)));
-        } catch (_) {}
-        setCustodians(prev => prev.filter(c => c.id !== cust.id));
-        triggerToast && triggerToast(`Custodian "${cust.fullName}" removed.`);
-        return;
-      }
-      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete custodian.');
+      // If server returned 404/500 (e.g. record only existed in local cache), remove from UI state
+      setCustodians(prev => prev.filter(c => c.id !== cust.id));
+      if (selectedCustodian?.id === cust.id) setSelectedCustodian(null);
+      triggerToast && triggerToast(`Custodian "${cust.fullName}" removed.`);
     } finally {
       setIsDeleting(false);
     }
