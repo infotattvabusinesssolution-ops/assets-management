@@ -327,11 +327,62 @@ export function AssetGroupsTab({
     }
   };
 
+  const handleInitiateDeleteGroup = (grp) => {
+    if (!grp) return;
+    const grpName = (grp.name || '').trim().toLowerCase();
+    const grpCode = (grp.code || '').trim().toLowerCase();
+
+    // Check if any Sub Groups are linked:
+    const linkedSubGroups = liveClasses.filter(c => {
+      const cGrp = (c.groupName || c.assetGroupName || c.assetGroup?.name || '').trim().toLowerCase();
+      const cCode = (c.groupCode || '').trim().toLowerCase();
+      return (
+        cGrp === grpName ||
+        (grpName && cGrp.includes(grpName)) ||
+        (grpName && grpName.includes(cGrp)) ||
+        (c.assetGroupId && (c.assetGroupId === grp.id || c.assetGroupId === grp.code)) ||
+        (grpCode && (cCode === grpCode || c.code?.toLowerCase().startsWith(grpCode)))
+      );
+    });
+
+    // Check if any Categories are linked:
+    const linkedCategories = liveCategories.filter(cat => {
+      const cGrp = (cat.groupName || '').trim().toLowerCase();
+      const desc = (cat.description || '').toLowerCase();
+      return (
+        cGrp === grpName ||
+        (grpName && cGrp.includes(grpName)) ||
+        (grpName && desc.includes(`[group:${grpName}]`))
+      );
+    });
+
+    const totalClientLinked = linkedSubGroups.length + linkedCategories.length;
+
+    if (totalClientLinked > 0) {
+      setSmartDeleteState({
+        isOpen: true,
+        item: grp,
+        linkedCount: totalClientLinked,
+        details: {
+          subGroupsCount: linkedSubGroups.length,
+          categoriesCount: linkedCategories.length
+        },
+        isProcessing: false
+      });
+      return;
+    }
+
+    setGroupToDelete(grp);
+    setShowDeleteConfirmModal(true);
+  };
+
   const handleConfirmDelete = async () => {
     if (!groupToDelete) return;
     setIsDeleting(true);
     try {
-      const res = await api.delete(`/master-data/asset-groups/${groupToDelete.id}`);
+      const res = await api.delete(
+        `/master-data/asset-groups/${groupToDelete.id}?name=${encodeURIComponent(groupToDelete.name || '')}&code=${encodeURIComponent(groupToDelete.code || '')}`
+      );
       if (res?.requiresConfirmation) {
         setShowDeleteConfirmModal(false);
         setSmartDeleteState({
@@ -558,10 +609,7 @@ export function AssetGroupsTab({
                               <Edit className="w-3.5 h-3.5" />
                             </button>
                             <button
-                              onClick={() => {
-                                setGroupToDelete(grp);
-                                setShowDeleteConfirmModal(true);
-                              }}
+                              onClick={() => handleInitiateDeleteGroup(grp)}
                               title="Delete Group"
                               className="p-1 hover:bg-rose-50 rounded text-slate-400 hover:text-rose-600 cursor-pointer"
                             >
@@ -601,10 +649,7 @@ export function AssetGroupsTab({
                   <span>Edit</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setGroupToDelete(selectedGroup);
-                    setShowDeleteConfirmModal(true);
-                  }}
+                  onClick={() => handleInitiateDeleteGroup(selectedGroup)}
                   className="p-1.5 rounded-xl border border-slate-200 hover:bg-rose-50 text-slate-400 hover:text-rose-600 cursor-pointer"
                   title="Delete Group"
                 >

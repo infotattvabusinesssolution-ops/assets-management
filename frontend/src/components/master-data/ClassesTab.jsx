@@ -326,7 +326,9 @@ export function ClassesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Asset Sub Group "${cls.name}" (${cls.code})?`)) {
       try {
-        const res = await api.delete(`/master-data/asset-sub-groups/${cls.id}`);
+        const res = await api.delete(
+          `/master-data/asset-sub-groups/${cls.id}?name=${encodeURIComponent(cls.name || '')}&code=${encodeURIComponent(cls.code || '')}`
+        );
         if (res?.requiresConfirmation) {
           setSmartDeleteState({
             isOpen: true,

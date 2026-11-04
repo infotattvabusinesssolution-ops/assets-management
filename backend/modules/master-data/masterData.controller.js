@@ -379,8 +379,8 @@ export async function deleteAssetGroup(req, res, next) {
       } catch (_) {}
     }
 
-    const groupName = group?.name || '';
-    const groupCode = group?.code || '';
+    const groupName = (req.query.name || req.body?.name || group?.name || '').trim();
+    const groupCode = (req.query.code || req.body?.code || group?.code || '').trim();
 
     // Check child dependencies:
     // 1. Asset Sub Groups
@@ -388,9 +388,10 @@ export async function deleteAssetGroup(req, res, next) {
     try {
       const fileSubGroups = readAssetSubGroupsFromFile();
       const matchedFileSubGroups = fileSubGroups.filter(s =>
-        (s.assetGroupId && s.assetGroupId === id) ||
-        (groupName && s.groupName && s.groupName.toLowerCase() === groupName.toLowerCase()) ||
-        (groupCode && s.groupCode && s.groupCode.toLowerCase() === groupCode.toLowerCase())
+        (s.assetGroupId && (s.assetGroupId === id || s.assetGroupId === groupCode)) ||
+        (groupName && s.assetGroupName && s.assetGroupName.trim().toLowerCase() === groupName.toLowerCase()) ||
+        (groupName && s.groupName && s.groupName.trim().toLowerCase() === groupName.toLowerCase()) ||
+        (groupCode && s.groupCode && s.groupCode.trim().toLowerCase() === groupCode.toLowerCase())
       );
       subGroupsCount = matchedFileSubGroups.length;
     } catch (_) {}
@@ -400,11 +401,14 @@ export async function deleteAssetGroup(req, res, next) {
         const dbSg = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM asset_sub_groups
           WHERE assetGroupId = '${id.replace(/'/g, "''")}'
-             OR (groupName IS NOT NULL AND groupName = '${groupName.replace(/'/g, "''")}')
+             OR assetGroupId = '${groupCode.replace(/'/g, "''")}'
+             OR (assetGroupName IS NOT NULL AND (assetGroupName = '${groupName.replace(/'/g, "''")}' OR UPPER(assetGroupName) = '${groupName.toUpperCase().replace(/'/g, "''")}'))
         `);
         const dbCount = Number(dbSg?.[0]?.cnt || 0);
         if (dbCount > subGroupsCount) subGroupsCount = dbCount;
-      } catch (_) {}
+      } catch (dbErr) {
+        console.warn('DB check subGroupsCount in deleteAssetGroup skipped:', dbErr.message);
+      }
     }
 
     // 2. Categories
@@ -413,26 +417,55 @@ export async function deleteAssetGroup(req, res, next) {
       try {
         const catRows = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM category
-          WHERE (groupName IS NOT NULL AND groupName = '${groupName.replace(/'/g, "''")}')
+          WHERE (groupName IS NOT NULL AND (groupName = '${groupName.replace(/'/g, "''")}' OR UPPER(groupName) = '${groupName.toUpperCase().replace(/'/g, "''")}'))
              OR description LIKE '%[group:${groupName.replace(/'/g, "''")}]%'
         `);
         categoriesCount = Number(catRows?.[0]?.cnt || 0);
-      } catch (_) {}
+      } catch (dbErr) {
+        console.warn('DB check categoriesCount in deleteAssetGroup skipped:', dbErr.message);
+      }
     }
 
-    // 3. Assets
+    // 3. Sub Categories
+    let subCatsCount = 0;
+    try {
+      const fileSubCats = readSubCategoriesFromFile();
+      subCatsCount = fileSubCats.filter(sc =>
+        (sc.assetGroupId && (sc.assetGroupId === id || sc.assetGroupId === groupCode)) ||
+        (groupName && sc.assetGroupName && sc.assetGroupName.trim().toLowerCase() === groupName.toLowerCase()) ||
+        (groupName && sc.groupName && sc.groupName.trim().toLowerCase() === groupName.toLowerCase())
+      ).length;
+    } catch (_) {}
+
+    if (isDbConnected()) {
+      try {
+        const scRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM sub_categories
+          WHERE assetGroupId = '${id.replace(/'/g, "''")}'
+             OR assetGroupId = '${groupCode.replace(/'/g, "''")}'
+             OR (assetGroupName IS NOT NULL AND (assetGroupName = '${groupName.replace(/'/g, "''")}' OR UPPER(assetGroupName) = '${groupName.toUpperCase().replace(/'/g, "''")}'))
+        `);
+        const dbScCount = Number(scRows?.[0]?.cnt || 0);
+        if (dbScCount > subCatsCount) subCatsCount = dbScCount;
+      } catch (dbErr) {
+        console.warn('DB check subCatsCount in deleteAssetGroup skipped:', dbErr.message);
+      }
+    }
+
+    // 4. Assets
     let assetsCount = 0;
     if (isDbConnected()) {
       try {
         const assetRows = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM assets
           WHERE assetGroupId = '${id.replace(/'/g, "''")}'
+             OR assetGroupId = '${groupCode.replace(/'/g, "''")}'
         `);
         assetsCount = Number(assetRows?.[0]?.cnt || 0);
       } catch (_) {}
     }
 
-    const totalLinked = subGroupsCount + categoriesCount + assetsCount;
+    const totalLinked = subGroupsCount + categoriesCount + subCatsCount + assetsCount;
 
     if (totalLinked > 0 && !deactivateOnly) {
       return res.json({
@@ -443,9 +476,10 @@ export async function deleteAssetGroup(req, res, next) {
         details: {
           subGroupsCount,
           categoriesCount,
+          classCount: subCatsCount,
           assetsCount
         },
-        message: `This Asset Group is linked to ${totalLinked} active record(s) (${subGroupsCount} sub groups, ${categoriesCount} categories, ${assetsCount} assets). Deletion is blocked because child records exist under this group. You must delete or reassign child records first.`
+        message: `This Asset Group is linked to ${totalLinked} active record(s) (${subGroupsCount} sub groups, ${categoriesCount} categories, ${subCatsCount} sub categories, ${assetsCount} assets). Deletion is blocked because child records exist under this group. You must delete or reassign child records first.`
       });
     }
 
@@ -1177,12 +1211,53 @@ export async function deleteCategory(req, res, next) {
       return res.json({ success: true, message: 'Category not found or already deleted.' });
     }
 
+    const catName = (req.query.name || req.body?.name || category?.name || '').trim();
+    const catCode = (req.query.code || req.body?.code || category?.code || '').trim();
+
     // Check dependencies
-    const [assetCount, modelCount, classCount] = await Promise.all([
-      prisma.asset.count({ where: { categoryId: id } }).catch(() => 0),
-      prisma.assetModel.count({ where: { categoryId: id } }).catch(() => 0),
-      prisma.subCategory.count({ where: { categoryId: id } }).catch(() => 0)
+    let [assetCount, modelCount, classCount] = await Promise.all([
+      prisma.asset.count({ where: { OR: [{ categoryId: id }, ...(catCode ? [{ categoryId: catCode }] : [])] } }).catch(() => 0),
+      prisma.assetModel.count({ where: { OR: [{ categoryId: id }, ...(catCode ? [{ categoryId: catCode }] : [])] } }).catch(() => 0),
+      prisma.subCategory.count({ where: { OR: [{ categoryId: id }, ...(catCode ? [{ categoryId: catCode }] : []), ...(catName ? [{ categoryName: catName }] : [])] } }).catch(() => 0)
     ]);
+
+    // Check sub_categories in JSON file
+    try {
+      const fileSubCats = readSubCategoriesFromFile();
+      const matchedFileSubCats = fileSubCats.filter(sc =>
+        (sc.categoryId && (sc.categoryId === id || sc.categoryId === catCode)) ||
+        (catName && sc.categoryName && sc.categoryName.trim().toLowerCase() === catName.toLowerCase())
+      );
+      if (matchedFileSubCats.length > classCount) {
+        classCount = matchedFileSubCats.length;
+      }
+    } catch (_) {}
+
+    // Check sub_categories in DB
+    if (isDbConnected()) {
+      try {
+        const scRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM sub_categories
+          WHERE categoryId = '${id.replace(/'/g, "''")}'
+             OR categoryId = '${catCode.replace(/'/g, "''")}'
+             OR (categoryName IS NOT NULL AND (categoryName = '${catName.replace(/'/g, "''")}' OR UPPER(categoryName) = '${catName.toUpperCase().replace(/'/g, "''")}'))
+        `);
+        const dbScCount = Number(scRows?.[0]?.cnt || 0);
+        if (dbScCount > classCount) classCount = dbScCount;
+      } catch (dbErr) {
+        console.warn('DB check sub_categories in deleteCategory skipped:', dbErr.message);
+      }
+
+      try {
+        const dbAssets = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM assets
+          WHERE categoryId = '${id.replace(/'/g, "''")}'
+             OR categoryId = '${catCode.replace(/'/g, "''")}'
+        `);
+        const dbAssetCount = Number(dbAssets?.[0]?.cnt || 0);
+        if (dbAssetCount > assetCount) assetCount = dbAssetCount;
+      } catch (_) {}
+    }
     const totalLinked = assetCount + modelCount + classCount;
 
     if (totalLinked > 0 && !deactivateOnly) {
@@ -1609,7 +1684,8 @@ export async function deleteAssetSubGroup(req, res, next) {
       } catch (_) {}
     }
 
-    const subGroupName = subGroup?.name || '';
+    const subGroupName = (req.query.name || req.body?.name || subGroup?.name || '').trim();
+    const subGroupCode = (req.query.code || req.body?.code || subGroup?.code || '').trim();
 
     // Check child dependencies:
     // 1. Categories linked to this sub group
@@ -1618,14 +1694,42 @@ export async function deleteAssetSubGroup(req, res, next) {
       try {
         const catRows = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM category
-          WHERE (className IS NOT NULL AND className = '${subGroupName.replace(/'/g, "''")}')
+          WHERE (className IS NOT NULL AND (className = '${subGroupName.replace(/'/g, "''")}' OR UPPER(className) = '${subGroupName.toUpperCase().replace(/'/g, "''")}'))
              OR description LIKE '%[class:${subGroupName.replace(/'/g, "''")}]%'
         `);
         categoriesCount = Number(catRows?.[0]?.cnt || 0);
-      } catch (_) {}
+      } catch (dbErr) {
+        console.warn('DB check categories in deleteAssetSubGroup skipped:', dbErr.message);
+      }
     }
 
-    // 2. Assets linked to this sub group
+    // 2. Sub Categories linked to this sub group
+    let subCatsCount = 0;
+    try {
+      const fileSubCats = readSubCategoriesFromFile();
+      subCatsCount = fileSubCats.filter(sc =>
+        (sc.assetSubGroupId && (sc.assetSubGroupId === id || sc.assetSubGroupId === subGroupCode)) ||
+        (subGroupName && sc.assetSubGroupName && sc.assetSubGroupName.trim().toLowerCase() === subGroupName.toLowerCase()) ||
+        (subGroupName && sc.className && sc.className.trim().toLowerCase() === subGroupName.toLowerCase())
+      ).length;
+    } catch (_) {}
+
+    if (isDbConnected()) {
+      try {
+        const scRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM sub_categories
+          WHERE assetSubGroupId = '${id.replace(/'/g, "''")}'
+             OR assetSubGroupId = '${subGroupCode.replace(/'/g, "''")}'
+             OR (assetSubGroupName IS NOT NULL AND (assetSubGroupName = '${subGroupName.replace(/'/g, "''")}' OR UPPER(assetSubGroupName) = '${subGroupName.toUpperCase().replace(/'/g, "''")}'))
+        `);
+        const dbScCount = Number(scRows?.[0]?.cnt || 0);
+        if (dbScCount > subCatsCount) subCatsCount = dbScCount;
+      } catch (dbErr) {
+        console.warn('DB check subCategories in deleteAssetSubGroup skipped:', dbErr.message);
+      }
+    }
+
+    // 3. Assets linked to this sub group
     let assetsCount = 0;
     if (isDbConnected()) {
       try {
@@ -1633,12 +1737,15 @@ export async function deleteAssetSubGroup(req, res, next) {
           SELECT COUNT(*) as cnt FROM assets
           WHERE assetSubGroupId = '${id.replace(/'/g, "''")}'
              OR subGroupId = '${id.replace(/'/g, "''")}'
+             OR assetSubGroupId = '${subGroupCode.replace(/'/g, "''")}'
         `);
         assetsCount = Number(assetRows?.[0]?.cnt || 0);
-      } catch (_) {}
+      } catch (dbErr) {
+        console.warn('DB check assets in deleteAssetSubGroup skipped:', dbErr.message);
+      }
     }
 
-    const totalLinked = categoriesCount + assetsCount;
+    const totalLinked = categoriesCount + subCatsCount + assetsCount;
 
     if (totalLinked > 0 && !deactivateOnly) {
       return res.json({
@@ -1917,7 +2024,8 @@ export async function deleteSubCategory(req, res, next) {
       } catch (_) {}
     }
 
-    const subCatName = subCat?.name || '';
+    const subCatName = (req.query.name || req.body?.name || subCat?.name || '').trim();
+    const subCatCode = (req.query.code || req.body?.code || subCat?.code || '').trim();
 
     // Check dependencies:
     // 1. Assets linked to this sub category
@@ -1927,6 +2035,7 @@ export async function deleteSubCategory(req, res, next) {
         const assetRows = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM assets
           WHERE subCategoryId = '${id.replace(/'/g, "''")}'
+             OR subCategoryId = '${subCatCode.replace(/'/g, "''")}'
         `);
         assetsCount = Number(assetRows?.[0]?.cnt || 0);
       } catch (_) {}
@@ -1939,11 +2048,24 @@ export async function deleteSubCategory(req, res, next) {
         const itemRows = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM item_masters
           WHERE subCategoryId = '${id.replace(/'/g, "''")}'
-             OR (subCategoryName IS NOT NULL AND subCategoryName = '${subCatName.replace(/'/g, "''")}')
+             OR subCategoryId = '${subCatCode.replace(/'/g, "''")}'
+             OR (subCategoryName IS NOT NULL AND (subCategoryName = '${subCatName.replace(/'/g, "''")}' OR UPPER(subCategoryName) = '${subCatName.toUpperCase().replace(/'/g, "''")}'))
         `);
         itemsCount = Number(itemRows?.[0]?.cnt || 0);
       } catch (_) {}
     }
+
+    try {
+      const itemMastersPath = path.join(process.cwd(), 'data', 'item_masters.json');
+      if (fs.existsSync(itemMastersPath)) {
+        const items = JSON.parse(fs.readFileSync(itemMastersPath, 'utf8'));
+        const matched = items.filter(it =>
+          (it.subCategoryId && (it.subCategoryId === id || it.subCategoryId === subCatCode)) ||
+          (subCatName && it.subCategoryName && it.subCategoryName.trim().toLowerCase() === subCatName.toLowerCase())
+        );
+        if (matched.length > itemsCount) itemsCount = matched.length;
+      }
+    } catch (_) {}
 
     const totalLinked = assetsCount + itemsCount;
 

@@ -358,7 +358,9 @@ export function CategoriesTab({
     if (!window.confirm(`Are you sure you want to delete Category "${cat.name}" (${cat.code})?`)) return;
 
     try {
-      const res = await api.delete(`/master-data/categories/${cat.id}`);
+      const res = await api.delete(
+        `/master-data/categories/${cat.id}?name=${encodeURIComponent(cat.name || '')}&code=${encodeURIComponent(cat.code || '')}`
+      );
       if (res?.requiresConfirmation) {
         setSmartDeleteState({
           isOpen: true,

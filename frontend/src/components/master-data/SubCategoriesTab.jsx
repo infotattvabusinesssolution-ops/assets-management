@@ -373,7 +373,7 @@ export function SubCategoriesTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     if (window.confirm(`Are you sure you want to delete Sub Category "${sc.name}" (${sc.code})?`)) {
       try {
-        const res = await api.delete(`/master-data/sub-categories/${sc.id}`);
+        const res = await api.delete(`/master-data/sub-categories/${sc.id}?name=${encodeURIComponent(sc.name || '')}&code=${encodeURIComponent(sc.code || '')}`);
         if (res?.requiresConfirmation) {
           setSmartDeleteState({
             isOpen: true,
@@ -411,7 +411,9 @@ export function SubCategoriesTab({
     if (!smartDeleteState.item) return;
     setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
     try {
-      const res = await api.delete(`/master-data/sub-categories/${smartDeleteState.item.id}?action=deactivate`);
+      const res = await api.delete(
+        `/master-data/sub-categories/${smartDeleteState.item.id}?action=deactivate&name=${encodeURIComponent(smartDeleteState.item.name || '')}&code=${encodeURIComponent(smartDeleteState.item.code || '')}`
+      );
       setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
       await loadSubCategories();
       triggerToast && triggerToast(res?.message || 'Sub Category marked Inactive.');
