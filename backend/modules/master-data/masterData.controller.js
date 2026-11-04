@@ -963,49 +963,57 @@ export async function deleteCategory(req, res, next) {
 
     // Hard delete:
     await prisma.$transaction(async (tx) => {
-      // 1. Unlink any assets referencing this category
-      await tx.asset.updateMany({
-        where: { categoryId: id },
-        data: { categoryId: null }
-      }).catch(() => null);
-
-      // 2. Unlink or delete child asset models
-      await tx.assetModel.deleteMany({
-        where: { categoryId: id }
-      }).catch(() => null);
-
-      // 3. Unlink and delete child asset classes
-      const childClasses = await tx.assetClass.findMany({
-        where: { categoryId: id },
-        select: { id: true }
-      });
-      const classIds = childClasses.map(c => c.id);
-      if (classIds.length > 0) {
-        await tx.asset.updateMany({
-          where: { assetClassId: { in: classIds } },
-          data: { assetClassId: null }
-        }).catch(() => null);
-        await tx.assetClass.deleteMany({
-          where: { id: { in: classIds } }
-        });
+      // 1. If force delete, cascade delete linked assets
+      if (assetCount > 0 && force) {
+        const assets = await tx.asset.findMany({ where: { categoryId: id }, select: { id: true } });
+        const assetIds = assets.map(a => a.id);
+        if (assetIds.length > 0) {
+          const wos = await tx.maintenanceWorkOrder.findMany({ where: { assetId: { in: assetIds } }, select: { id: true } });
+          const woIds = wos.map(w => w.id);
+          if (woIds.length > 0) {
+            await Promise.all([
+              tx.workOrderChecklist.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+              tx.workOrderPart.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+              tx.workOrderTimeLog.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+              tx.workOrderStatusHistory.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null)
+            ]);
+            await tx.maintenanceWorkOrder.deleteMany({ where: { id: { in: woIds } } }).catch(() => null);
+          }
+          await Promise.all([
+            tx.assetBookValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.assetTransaction.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.custodyAssignment.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.maintenanceSchedule.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.contractAsset.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.warranty.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.tagHistory.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.tag.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.assetMapPosition.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.discoveryMatch.deleteMany({ where: { matchedAssetId: { in: assetIds } } }).catch(() => null),
+            tx.aIRecommendation.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.assetCustomFieldValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.assetTransfer.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.rtlsMovement.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.rtlsAssetLocation.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.stocktakeExpectedAsset.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+            tx.attachment.deleteMany({ where: { entityType: 'Asset', entityId: { in: assetIds } } }).catch(() => null)
+          ]);
+          await tx.asset.deleteMany({ where: { id: { in: assetIds } } }).catch(() => null);
+        }
       }
 
-      // 4. Unlink custom field definitions
-      await tx.customFieldDefinition.updateMany({
-        where: { categoryId: id },
-        data: { categoryId: null }
-      }).catch(() => null);
+      // 2. Unlink custom field definitions & receipt line items
+      await tx.customFieldDefinition.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
+      await tx.receiptLineItem.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
 
-      // 5. Unlink receipt line items
-      await tx.receiptLineItem.updateMany({
-        where: { categoryId: id },
-        data: { categoryId: null }
-      }).catch(() => null);
+      // 3. Delete or unlink child asset models
+      await tx.assetModel.deleteMany({ where: { categoryId: id } }).catch(() => null);
 
-      // 6. Delete category permanently from SQL database
-      await tx.category.delete({
-        where: { id }
-      });
+      // 4. Delete child sub-categories
+      await tx.subCategory.deleteMany({ where: { categoryId: id } }).catch(() => null);
+
+      // 5. Delete category permanently from SQL database
+      await tx.category.delete({ where: { id } });
     });
 
     return res.json({ success: true, hardDeleted: true, message: 'Category permanently deleted from database.' });
@@ -1039,26 +1047,44 @@ export async function bulkDeleteCategories(req, res, next) {
               const assets = await tx.asset.findMany({ where: { categoryId: id }, select: { id: true } });
               const assetIds = assets.map(a => a.id);
               if (assetIds.length > 0) {
-                await tx.assetActivity.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
-                await tx.assetMaintenanceLog.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
-                await tx.assetBookValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
-                await tx.assetCustomFieldValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
-                await tx.assetDocument.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
-                await tx.ticket.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
-                await tx.workOrder.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+                const wos = await tx.maintenanceWorkOrder.findMany({ where: { assetId: { in: assetIds } }, select: { id: true } });
+                const woIds = wos.map(w => w.id);
+                if (woIds.length > 0) {
+                  await Promise.all([
+                    tx.workOrderChecklist.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+                    tx.workOrderPart.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+                    tx.workOrderTimeLog.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null),
+                    tx.workOrderStatusHistory.deleteMany({ where: { workOrderId: { in: woIds } } }).catch(() => null)
+                  ]);
+                  await tx.maintenanceWorkOrder.deleteMany({ where: { id: { in: woIds } } }).catch(() => null);
+                }
+                await Promise.all([
+                  tx.assetBookValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.assetTransaction.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.custodyAssignment.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.maintenanceSchedule.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.contractAsset.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.warranty.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.tagHistory.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.tag.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.assetMapPosition.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.discoveryMatch.deleteMany({ where: { matchedAssetId: { in: assetIds } } }).catch(() => null),
+                  tx.aIRecommendation.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.assetCustomFieldValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.assetTransfer.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.rtlsMovement.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.rtlsAssetLocation.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.stocktakeExpectedAsset.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null),
+                  tx.attachment.deleteMany({ where: { entityType: 'Asset', entityId: { in: assetIds } } }).catch(() => null)
+                ]);
                 await tx.asset.deleteMany({ where: { id: { in: assetIds } } }).catch(() => null);
               }
             }
 
-            await tx.assetModel.deleteMany({ where: { categoryId: id } }).catch(() => null);
-            const childClasses = await tx.assetClass.findMany({ where: { categoryId: id }, select: { id: true } });
-            const classIds = childClasses.map(c => c.id);
-            if (classIds.length > 0) {
-              await tx.asset.deleteMany({ where: { assetClassId: { in: classIds } } }).catch(() => null);
-              await tx.assetClass.deleteMany({ where: { id: { in: classIds } } });
-            }
             await tx.customFieldDefinition.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
             await tx.receiptLineItem.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
+            await tx.assetModel.deleteMany({ where: { categoryId: id } }).catch(() => null);
+            await tx.subCategory.deleteMany({ where: { categoryId: id } }).catch(() => null);
             await tx.category.delete({ where: { id } });
           });
           deletedCount++;
