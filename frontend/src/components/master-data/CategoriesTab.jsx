@@ -241,7 +241,7 @@ export function CategoriesTab({
       return;
     }
 
-    const dupCode = categories.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCategory || c.id !== editingCategory.id));
+    const dupCode = categoriesList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCategory || c.id !== editingCategory.id));
     if (dupCode) {
       const msg = `Category with code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
       setModalError(msg);
@@ -249,7 +249,7 @@ export function CategoriesTab({
       return;
     }
 
-    const dupName = categories.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCategory || c.id !== editingCategory.id));
+    const dupName = categoriesList.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCategory || c.id !== editingCategory.id));
     if (dupName) {
       const msg = `Category with name "${cleanName}" already exists. Duplicate names are not allowed.`;
       setModalError(msg);
