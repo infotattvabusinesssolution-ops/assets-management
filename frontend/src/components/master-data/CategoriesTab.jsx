@@ -45,9 +45,9 @@ export function CategoriesTab({
     setIsLoading(true);
     try {
       const [res, grpRes, clsRes] = await Promise.all([
-        api.get('/master-data/categories').catch(() => null),
-        api.get('/master-data/asset-groups').catch(() => null),
-        api.get('/master-data/asset-sub-groups').catch(() => null)
+        api.get('/master-data/categories?includeInactive=true').catch(() => null),
+        api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
+        api.get('/master-data/asset-sub-groups?includeInactive=true').catch(() => null)
       ]);
       if (grpRes?.assetGroups && Array.isArray(grpRes.assetGroups)) {
         setAvailableAssetGroups(grpRes.assetGroups);

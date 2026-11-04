@@ -46,9 +46,9 @@ export function ClassesTab({
       const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
       const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
       const [res, grpRes, subcatRes] = await Promise.all([
-        api.get('/master-data/asset-sub-groups').catch(() => null),
-        api.get('/master-data/asset-groups').catch(() => null),
-        api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null)
+        api.get('/master-data/asset-sub-groups?includeInactive=true').catch(() => null),
+        api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
+        api.get('/master-data/asset-classes?kind=SUBCATEGORY&includeInactive=true').catch(() => null)
       ]);
 
       const serverSubcatCodes = (subcatRes?.assetClasses || []).map(s => (s.code || '').toUpperCase());
