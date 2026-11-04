@@ -212,11 +212,15 @@ export function DepartmentsTab({
     e.preventDefault();
     if (!deptFormState.code || !deptFormState.name) return;
 
+    const matchedComp = companiesList.find(c => c.name === deptFormState.company || c.code === deptFormState.company || c.id === deptFormState.company);
+    const companyId = matchedComp?.id || null;
+
     if (editingDepartment) {
       try {
         await api.put(`/master-data/departments/${editingDepartment.id}`, {
           code: deptFormState.code.toUpperCase(),
           name: deptFormState.name,
+          companyId,
           active: deptFormState.status === 'Active',
           status: deptFormState.status
         });
@@ -259,6 +263,7 @@ export function DepartmentsTab({
         await api.post('/master-data/departments', {
           code: deptFormState.code.toUpperCase(),
           name: deptFormState.name,
+          companyId,
           active: deptFormState.status === 'Active',
           status: deptFormState.status
         });

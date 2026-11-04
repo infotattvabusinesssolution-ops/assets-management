@@ -178,11 +178,15 @@ export function CostCentersTab({
     e.preventDefault();
     if (!ccFormState.code || !ccFormState.name) return;
 
+    const matchedComp = companiesList.find(c => c.name === ccFormState.company || c.code === ccFormState.company || c.id === ccFormState.company);
+    const companyId = matchedComp?.id || null;
+
     if (editingCostCenter) {
       try {
         await api.put(`/master-data/cost-centers/${editingCostCenter.id}`, {
           code: ccFormState.code.toUpperCase(),
           name: ccFormState.name,
+          companyId,
           active: ccFormState.status === 'Active',
           status: ccFormState.status
         });
@@ -221,6 +225,7 @@ export function CostCentersTab({
         await api.post('/master-data/cost-centers', {
           code: ccFormState.code.toUpperCase(),
           name: ccFormState.name,
+          companyId,
           active: ccFormState.status === 'Active',
           status: ccFormState.status
         });

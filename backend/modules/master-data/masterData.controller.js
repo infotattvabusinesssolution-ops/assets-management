@@ -1391,10 +1391,11 @@ export async function createDepartment(req, res, next) {
 export async function updateDepartment(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, active, status } = req.body;
+    const { code, name, active, status, companyId } = req.body;
     const updateData = {};
     if (code) updateData.code = code.trim().toUpperCase();
     if (name) updateData.name = name.trim();
+    if (companyId) updateData.companyId = companyId;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
 
@@ -1460,10 +1461,11 @@ export async function createCostCenter(req, res, next) {
 export async function updateCostCenter(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, active, status } = req.body;
+    const { code, name, active, status, companyId } = req.body;
     const updateData = {};
     if (code) updateData.code = code.trim().toUpperCase();
     if (name) updateData.name = name.trim();
+    if (companyId) updateData.companyId = companyId;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
 
