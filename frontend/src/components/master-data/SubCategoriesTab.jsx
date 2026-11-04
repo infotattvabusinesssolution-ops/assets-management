@@ -76,16 +76,16 @@ export function SubCategoriesTab({
             code: ac.code,
             name: ac.name,
             categoryId: ac.categoryId,
-            categoryName: ac.category?.name || 'General',
-            className: classMatch ? classMatch[1] : (ac.className || 'General'),
-            groupName: groupMatch ? groupMatch[1] : (ac.groupName || 'General'),
+            categoryName: ac.category?.name || '-',
+            className: classMatch ? classMatch[1] : (ac.className || '-'),
+            groupName: groupMatch ? groupMatch[1] : (ac.groupName || '-'),
             description: descClean,
             totalAssets: ac.totalAssets || 0,
             status: ac.active === false ? 'Inactive' : 'Active',
             createdBy: 'Admin',
-            createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2025',
+            createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
             lastModifiedBy: 'Admin',
-            lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2025',
+            lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
             relatedInfo: {
               assets: ac.totalAssets || 0,
               maintenancePlans: 0,
@@ -262,7 +262,10 @@ export function SubCategoriesTab({
       .replace(/\[class:[^\]]+\]/g, '')
       .replace(/\[group:[^\]]+\]/g, '')
       .trim();
-    const taggedDesc = `${cleanDesc} [class:${subCatFormState.className || 'General'}] [group:${subCatFormState.groupName || 'General'}]`.trim();
+    const parts = [cleanDesc];
+    if (subCatFormState.className) parts.push(`[class:${subCatFormState.className}]`);
+    if (subCatFormState.groupName) parts.push(`[group:${subCatFormState.groupName}]`);
+    const taggedDesc = parts.join(' ').trim();
 
     if (editingSubCategory) {
       try {
@@ -295,9 +298,9 @@ export function SubCategoriesTab({
             code: subCatFormState.code.toUpperCase(),
             name: subCatFormState.name,
             categoryId: targetCatId,
-            categoryName: categories.find(c => c.id === targetCatId)?.name || 'General',
-            className: subCatFormState.className || 'General',
-            groupName: subCatFormState.groupName || 'General',
+            categoryName: categories.find(c => c.id === targetCatId)?.name || '',
+            className: subCatFormState.className || '',
+            groupName: subCatFormState.groupName || '',
             description: taggedDesc,
             status: subCatFormState.status
           };
@@ -905,9 +908,9 @@ export function SubCategoriesTab({
                     const selectedCat = categories.find((c) => c.id === catId);
                     const classMatch = (selectedCat?.description || '').match(/\[class:([^\]]+)\]/);
                     const groupMatch = (selectedCat?.description || '').match(/\[group:([^\]]+)\]/);
-                    const derivedClass = classMatch ? classMatch[1] : (selectedCat?.className || 'General');
+                    const derivedClass = classMatch ? classMatch[1] : (selectedCat?.className || '');
                     const matchingClassObj = availableAssetClasses.find(cls => (cls.name || cls.code) === derivedClass);
-                    const derivedGroup = groupMatch ? groupMatch[1] : (matchingClassObj?.groupName || selectedCat?.groupName || 'General');
+                    const derivedGroup = groupMatch ? groupMatch[1] : (matchingClassObj?.groupName || selectedCat?.groupName || '');
 
                     setSubCatFormState({
                       ...subCatFormState,
@@ -930,11 +933,11 @@ export function SubCategoriesTab({
                     <div className="text-slate-500 font-semibold uppercase tracking-wider text-[10px]">Auto-Inherited Classification:</div>
                     <div className="flex items-center gap-1.5 font-bold text-slate-800 flex-wrap">
                       <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
-                        Group: {subCatFormState.groupName || 'General'}
+                        Group: {subCatFormState.groupName || '-'}
                       </span>
                       <span className="text-slate-400">&rsaquo;</span>
                       <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
-                        Sub Group: {subCatFormState.className || 'General'}
+                        Sub Group: {subCatFormState.className || '-'}
                       </span>
                       <span className="text-slate-400">&rsaquo;</span>
                       <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">

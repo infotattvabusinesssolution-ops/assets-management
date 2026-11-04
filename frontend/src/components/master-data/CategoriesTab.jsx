@@ -52,25 +52,25 @@ export function CategoriesTab({
           name: cat.name,
           className: (() => {
             const m = (cat.description || '').match(/\[class:([^\]]+)\]/);
-            return m ? m[1] : (cat.code.startsWith('IT') ? 'Hardware' : (cat.code.startsWith('BLD') ? 'Building Structure' : 'General'));
+            return m ? m[1] : (cat.className || '-');
           })(),
           groupName: (() => {
             const m = (cat.description || '').match(/\[group:([^\]]+)\]/);
-            return m ? m[1] : (cat.code.startsWith('IT') ? 'Information Technology' : (cat.code.startsWith('BLD') ? 'Buildings & Facilities' : 'Corporate Assets'));
+            return m ? m[1] : (cat.groupName || '-');
           })(),
-          description: cat.description || `Classification for ${cat.name}`,
-          totalAssets: (idx + 1) * 28,
+          description: cat.description || '',
+          totalAssets: cat.totalAssets || 0,
           status: cat.active === false ? 'Inactive' : 'Active',
           createdBy: 'Admin',
-          createdOn: cat.createdAt ? new Date(cat.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:30 AM' : '15 Jan 2025 09:30 AM',
+          createdOn: cat.createdAt ? new Date(cat.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           lastModifiedBy: 'Admin',
-          lastModifiedOn: cat.updatedAt ? new Date(cat.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:30 PM' : '02 Sep 2025 04:15 PM',
+          lastModifiedOn: cat.updatedAt ? new Date(cat.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           relatedInfo: {
-            subCategories: 4,
-            assets: (idx + 1) * 28,
-            maintenancePlans: 3,
-            documents: 2,
-            spareParts: 6
+            subCategories: cat.subCategoriesCount || 0,
+            assets: cat.totalAssets || 0,
+            maintenancePlans: 0,
+            documents: 0,
+            spareParts: 0
           }
         }));
         const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
@@ -226,13 +226,17 @@ export function CategoriesTab({
       'Vehicles': '[type:vehicle]',
       'Furniture, Fixtures & Equipment': '[type:furniture]'
     };
-    const tag = groupToTag[catFormState.groupName] || '[type:it]';
+    const tag = groupToTag[catFormState.groupName] || (catFormState.groupName ? `[type:${catFormState.groupName.toLowerCase().replace(/\s+/g, '_')}]` : '');
     let cleanDesc = (catFormState.description || '')
       .replace(/\[type:[^\]]+\]/g, '')
       .replace(/\[group:[^\]]+\]/g, '')
       .replace(/\[class:[^\]]+\]/g, '')
       .trim();
-    const taggedDescription = `${cleanDesc} ${tag} [group:${catFormState.groupName}] [class:${catFormState.className}]`.trim();
+    const parts = [cleanDesc];
+    if (tag) parts.push(tag);
+    if (catFormState.groupName) parts.push(`[group:${catFormState.groupName}]`);
+    if (catFormState.className) parts.push(`[class:${catFormState.className}]`);
+    const taggedDescription = parts.filter(Boolean).join(' ').trim();
 
     if (editingCategory) {
       try {
@@ -919,7 +923,7 @@ export function CategoriesTab({
                       return;
                     }
                     const selectedClass = availableAssetClasses.find(cls => (cls.name || cls.code) === selectedVal);
-                    const derivedGroup = selectedClass?.groupName || 'General';
+                    const derivedGroup = selectedClass?.groupName || '';
                     setCatFormState({
                       ...catFormState,
                       className: selectedVal,
@@ -943,7 +947,7 @@ export function CategoriesTab({
                     <div className="text-slate-500 font-semibold uppercase tracking-wider text-[10px]">Auto-Inherited Classification:</div>
                     <div className="flex items-center gap-1.5 font-bold text-slate-800">
                       <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
-                        Group: {catFormState.groupName || 'General'}
+                        Group: {catFormState.groupName || '-'}
                       </span>
                       <span className="text-slate-400">&rsaquo;</span>
                       <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">

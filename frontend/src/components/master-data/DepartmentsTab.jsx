@@ -934,10 +934,12 @@ export function DepartmentsTab({
                     onChange={(e) => setDeptFormState({ ...deptFormState, location: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    <option value="Dubai HQ">Dubai HQ</option>
-                    <option value="Jebel Ali">Jebel Ali</option>
-                    <option value="Abu Dhabi Office">Abu Dhabi Office</option>
-                    <option value="Riyadh Office">Riyadh Office</option>
+                    <option value="">- Select Location -</option>
+                    {locationsList.map((loc) => (
+                      <option key={loc.id || loc.name} value={loc.name || loc.code}>
+                        {loc.name || loc.code}
+                      </option>
+                    ))}
                   </select>
                 </div>
                 <div>

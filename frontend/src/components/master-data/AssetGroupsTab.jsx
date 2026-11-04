@@ -1035,12 +1035,12 @@ export function AssetGroupsTab({
                           </td>
                         )}
                         {selectedRelatedType === 'categories' && (
-                          <td className="py-2.5 px-3 text-slate-600 font-medium">{item.className || 'Hardware'}</td>
+                          <td className="py-2.5 px-3 text-slate-600 font-medium">{item.className || '-'}</td>
                         )}
                         {selectedRelatedType === 'subcategories' && (
                           <td className="py-2.5 px-3 text-slate-600">
-                            <div>{item.categoryName || 'Standard'}</div>
-                            <div className="text-[10px] text-slate-400">{item.className || 'Hardware'}</div>
+                            <div>{item.categoryName || '-'}</div>
+                            <div className="text-[10px] text-slate-400">{item.className || '-'}</div>
                           </td>
                         )}
                         <td className="py-2.5 px-3 text-right font-mono font-semibold text-slate-900">

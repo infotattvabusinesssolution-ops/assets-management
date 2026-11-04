@@ -400,85 +400,19 @@ export async function deleteCompany(req, res, next) {
 
 const LOCATIONS_FILE = path.join(process.cwd(), 'data', 'locations.json');
 
-const DEFAULT_4TIER_LOCATIONS = [
-  {
-    id: 'loc-01',
-    code: 'UAE-HQ',
-    name: 'Dubai Technology Campus',
-    type: 'Internal',
-    level: 'Level 1',
-    parentLocation: '-',
-    fullPath: 'Dubai Technology Campus',
-    city: 'Dubai',
-    country: 'United Arab Emirates',
-    address: 'Dubai Technology Campus, Dubai, United Arab Emirates',
-    active: true
-  },
-  {
-    id: 'loc-02',
-    code: 'DXB-TOW-A',
-    name: 'Tower A - Corporate Office',
-    type: 'Internal',
-    level: 'Level 2',
-    parentLocation: 'UAE-HQ',
-    fullPath: 'Dubai Technology Campus > Tower A - Corporate Office',
-    city: 'Dubai',
-    country: 'United Arab Emirates',
-    address: 'Tower A, Dubai Technology Campus, Dubai',
-    active: true
-  },
-  {
-    id: 'loc-03',
-    code: 'DXB-FL-02',
-    name: '2nd Floor - IT Operations',
-    type: 'Internal',
-    level: 'Level 3',
-    parentLocation: 'DXB-TOW-A',
-    fullPath: 'Dubai Technology Campus > Tower A - Corporate Office > 2nd Floor - IT Operations',
-    city: 'Dubai',
-    country: 'United Arab Emirates',
-    address: '2nd Floor, Tower A, Dubai Technology Campus',
-    active: true
-  },
-  {
-    id: 'loc-04',
-    code: 'DXB-RM-SRV',
-    name: 'Server Room 204',
-    type: 'Internal',
-    level: 'Level 4',
-    parentLocation: 'DXB-FL-02',
-    fullPath: 'Dubai Technology Campus > Tower A - Corporate Office > 2nd Floor - IT Operations > Server Room 204',
-    city: 'Dubai',
-    country: 'United Arab Emirates',
-    address: 'Room 204, 2nd Floor, Tower A',
-    active: true
-  },
-  {
-    id: 'loc-05',
-    code: 'EXT-REPAIR-01',
-    name: 'Authorized Service Center (External)',
-    type: 'External',
-    level: 'Level 1',
-    parentLocation: '-',
-    fullPath: 'Authorized Service Center (External)',
-    city: 'Abu Dhabi',
-    country: 'United Arab Emirates',
-    address: 'Industrial Zone 1, Abu Dhabi',
-    active: true
-  }
-];
+const DEFAULT_4TIER_LOCATIONS = [];
 
 function readLocationsFromFile() {
   try {
     if (fs.existsSync(LOCATIONS_FILE)) {
       const data = fs.readFileSync(LOCATIONS_FILE, 'utf8');
       const parsed = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_4TIER_LOCATIONS;
+      return Array.isArray(parsed) ? parsed : [];
     }
   } catch (e) {
-    console.warn('Failed to read locations.json, using defaults:', e.message);
+    console.warn('Failed to read locations.json:', e.message);
   }
-  return DEFAULT_4TIER_LOCATIONS;
+  return [];
 }
 
 function writeLocationsToFile(list) {
@@ -529,27 +463,6 @@ async function ensureSitesTable() {
       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'fullPath')
       ALTER TABLE sites ADD fullPath NVARCHAR(500) NULL;
     `);
-
-    // Seed defaults into DB if empty
-    try {
-      const countRes = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM sites`);
-      const cnt = countRes?.[0]?.cnt || 0;
-      if (Number(cnt) === 0) {
-        let firstCompanyId = null;
-        try {
-          const comp = await prisma.company.findFirst();
-          firstCompanyId = comp ? comp.id : 'comp-default';
-        } catch (_) {}
-        for (const loc of DEFAULT_4TIER_LOCATIONS) {
-          await prisma.$executeRawUnsafe(`
-            INSERT INTO sites (id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt)
-            VALUES ('${loc.id}', '${loc.code}', '${loc.name.replace(/'/g, "''")}', '${(loc.city || '').replace(/'/g, "''")}', '${(loc.country || '').replace(/'/g, "''")}', ${firstCompanyId ? `'${firstCompanyId}'` : 'NULL'}, '${loc.type}', '${loc.level}', '${loc.parentLocation}', '${loc.fullPath.replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          `);
-        }
-      }
-    } catch (seedErr) {
-      console.warn('Sites default seed skipped:', seedErr.message);
-    }
 
     sitesTableEnsured = true;
   } catch (err) {
@@ -1573,64 +1486,7 @@ export async function deleteCostCenter(req, res, next) {
   }
 }
 
-const DEFAULT_ENTERPRISE_EMPLOYEES = [
-  {
-    id: 'emp-101',
-    employeeCode: 'EMP-1001',
-    code: 'EMP-1001',
-    fullName: 'Sarah Ahmed',
-    name: 'Sarah Ahmed',
-    email: 'sarah.ahmed@infotattva.com',
-    phone: '+971 50 123 4567',
-    department: 'Information Technology',
-    company: 'Corporate Operations',
-    custodianType: 'Internal',
-    location: 'Dubai Technology Campus',
-    active: true
-  },
-  {
-    id: 'emp-102',
-    employeeCode: 'EMP-1002',
-    code: 'EMP-1002',
-    fullName: 'Mohammed Al-Mansoor',
-    name: 'Mohammed Al-Mansoor',
-    email: 'm.mansoor@infotattva.com',
-    phone: '+971 50 234 5678',
-    department: 'Finance & Accounts',
-    company: 'Corporate Operations',
-    custodianType: 'Internal',
-    location: 'Dubai Technology Campus',
-    active: true
-  },
-  {
-    id: 'emp-103',
-    employeeCode: 'EMP-1003',
-    code: 'EMP-1003',
-    fullName: 'Rahul Sharma',
-    name: 'Rahul Sharma',
-    email: 'rahul.sharma@infotattva.com',
-    phone: '+971 50 345 6789',
-    department: 'Facilities & Fleet',
-    company: 'Corporate Operations',
-    custodianType: 'Internal',
-    location: 'Abu Dhabi Branch',
-    active: true
-  },
-  {
-    id: 'emp-104',
-    employeeCode: 'CUST-EXT-01',
-    code: 'CUST-EXT-01',
-    fullName: 'Apex Facility Solutions (Contractor)',
-    name: 'Apex Facility Solutions',
-    email: 'contracts@apexfacilities.com',
-    phone: '+971 55 987 6543',
-    department: 'Facility Subcontractor',
-    company: 'Apex Facility Solutions',
-    custodianType: 'External',
-    location: 'Off-site Repair Facility',
-    active: true
-  }
-];
+const DEFAULT_ENTERPRISE_EMPLOYEES = [];
 
 export async function getEmployees(req, res, next) {
   try {
@@ -1652,11 +1508,11 @@ export async function getEmployees(req, res, next) {
             email: e.email,
             phone: e.phone || '',
             companyId: e.companyId,
-            company: e.company?.name || 'Corporate Operations',
+            company: e.company?.name || '',
             departmentId: e.departmentId,
-            department: e.department?.name || 'General Operations',
-            custodianType: 'Internal',
-            location: 'Dubai Technology Campus',
+            department: e.department?.name || '',
+            custodianType: e.custodianType || 'Internal',
+            location: e.location || '',
             active: e.active,
             status: e.active ? 'Active' : 'Inactive'
           }));
@@ -2223,16 +2079,7 @@ const DEFAULT_MANUFACTURERS = [];
 
 const DEFAULT_DISPOSAL_STATUSES = [];
 
-const DEFAULT_UOMS = [
-  { id: 'uom-1', code: 'EA', name: 'Each / Pieces', symbol: 'ea', category: 'Discrete Count', description: 'Individual single units, parts, or pieces', active: true },
-  { id: 'uom-2', code: 'SET', name: 'Set / Kit', symbol: 'set', category: 'Bundle', description: 'Coordinated set of multiple matched components', active: true },
-  { id: 'uom-3', code: 'BOX', name: 'Box', symbol: 'box', category: 'Packaging', description: 'Standard packaged box containing components', active: true },
-  { id: 'uom-4', code: 'PK', name: 'Pack', symbol: 'pk', category: 'Packaging', description: 'Blister pack or shrink-wrap container', active: true },
-  { id: 'uom-5', code: 'MTR', name: 'Meter', symbol: 'm', category: 'Dimension', description: 'Metric linear length for cabling and rails', active: true },
-  { id: 'uom-6', code: 'KG', name: 'Kilogram', symbol: 'kg', category: 'Weight', description: 'Metric mass for raw materials or bulk equipment', active: true },
-  { id: 'uom-7', code: 'LTR', name: 'Liter', symbol: 'L', category: 'Volume', description: 'Liquid volume for lubricants, coolants and fluids', active: true },
-  { id: 'uom-8', code: 'ROLL', name: 'Roll', symbol: 'rl', category: 'Dimension', description: 'Continuous roll of cable, wiring, or RFID labels', active: true }
-];
+const DEFAULT_UOMS = [];
 
 const DEFAULT_ITEMS = [];
 
@@ -2386,12 +2233,12 @@ function readUomsFromFile() {
     if (fs.existsSync(UOMS_FILE)) {
       const data = fs.readFileSync(UOMS_FILE, 'utf8');
       const parsed = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_UOMS;
+      return Array.isArray(parsed) ? parsed : [];
     }
   } catch (e) {
-    console.warn('Failed to read uoms.json, using defaults:', e.message);
+    console.warn('Failed to read uoms.json:', e.message);
   }
-  return DEFAULT_UOMS;
+  return [];
 }
 
 function writeUomsToFile(list) {
@@ -2472,21 +2319,6 @@ async function ensureUomsTable() {
       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('units_of_measure') AND name = 'category')
       ALTER TABLE units_of_measure ADD category NVARCHAR(100) NULL;
     `);
-
-    try {
-      const countRes = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM units_of_measure`);
-      const cnt = countRes?.[0]?.cnt || 0;
-      if (Number(cnt) === 0) {
-        for (const u of DEFAULT_UOMS) {
-          await prisma.$executeRawUnsafe(`
-            INSERT INTO units_of_measure (id, code, name, symbol, category, description, active, createdAt, updatedAt)
-            VALUES ('${u.id}', '${u.code}', '${u.name.replace(/'/g, "''")}', '${(u.symbol || '').replace(/'/g, "''")}', '${(u.category || '').replace(/'/g, "''")}', '${(u.description || '').replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-          `);
-        }
-      }
-    } catch (seedErr) {
-      console.warn('UOM seed check skipped:', seedErr.message);
-    }
 
     uomsTableEnsured = true;
   } catch (err) {

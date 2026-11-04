@@ -744,20 +744,10 @@ export function MasterDataSetup() {
             </div>
 
             <div className="space-y-3 text-xs max-h-80 overflow-y-auto pr-1">
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between font-bold text-slate-900">
-                  <span>Record Updated (Status Active)</span>
-                  <span className="text-[11px] text-slate-400 font-mono">02 Sep 2025 04:15 PM</span>
-                </div>
-                <p className="text-slate-600">Updated by Sarah Ahmed (Asset Manager)</p>
-              </div>
-
-              <div className="p-3 rounded-xl bg-slate-50 border border-slate-100 space-y-1">
-                <div className="flex items-center justify-between font-bold text-slate-900">
-                  <span>Record Created</span>
-                  <span className="text-[11px] text-slate-400 font-mono">15 Jan 2025 09:20 AM</span>
-                </div>
-                <p className="text-slate-600">Created by Admin User</p>
+              <div className="p-8 text-center text-slate-500">
+                <History className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                <p className="font-semibold text-slate-700">No Audit Logs Available</p>
+                <p className="text-[11px] text-slate-400 mt-1">Audit log records will be tracked dynamically when master data records are created, updated, or removed.</p>
               </div>
             </div>
 

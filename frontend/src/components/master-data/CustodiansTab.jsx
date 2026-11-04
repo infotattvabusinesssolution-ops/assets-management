@@ -629,7 +629,7 @@ export function CustodiansTab({
                   <label className="block font-bold text-slate-700 mb-1">Full Name *</label>
                   <input
                     type="text"
-                    placeholder="e.g. Sarah Ahmed"
+                    placeholder="e.g. Jane Doe"
                     value={formState.fullName}
                     onChange={(e) => setFormState({ ...formState, fullName: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
@@ -643,7 +643,7 @@ export function CustodiansTab({
                   <label className="block font-semibold text-slate-700 mb-1">Email Address *</label>
                   <input
                     type="email"
-                    placeholder="e.g. sarah.ahmed@infotattva.com"
+                    placeholder="e.g. jane.doe@company.com"
                     value={formState.email}
                     onChange={(e) => setFormState({ ...formState, email: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
@@ -720,7 +720,7 @@ export function CustodiansTab({
                   <label className="block font-semibold text-slate-700 mb-1">Assigned Location</label>
                   <input
                     type="text"
-                    placeholder="e.g. Dubai HQ - Floor 14"
+                    placeholder="e.g. Headquarters - Floor 2"
                     value={formState.location}
                     onChange={(e) => setFormState({ ...formState, location: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"

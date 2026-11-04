@@ -59,7 +59,7 @@ export function ClassesTab({
         serverClasses = trueClasses.map((ac, idx) => {
           const descClean = (ac.description || '').replace(/\[kind:[^\]]+\]/g, '').replace(/\[group:[^\]]+\]/g, '').trim();
           const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/);
-          const parsedGroup = groupMatch ? groupMatch[1] : (ac.groupName || 'General');
+          const parsedGroup = groupMatch ? groupMatch[1] : (ac.groupName || '-');
           return {
             id: ac.id,
             code: ac.code,
@@ -71,9 +71,9 @@ export function ClassesTab({
             totalAssets: ac.totalAssets || 0,
             status: ac.active === false ? 'Inactive' : 'Active',
             createdBy: 'Admin',
-            createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2025',
+            createdOn: ac.createdAt ? new Date(ac.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
             lastModifiedBy: 'Admin',
-            lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '15 Jan 2025',
+            lastModifiedOn: ac.updatedAt ? new Date(ac.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
             relatedInfo: { categories: 0, subCategories: 0, assets: 0, maintenancePlans: 0, documents: 0 }
           };
         });

@@ -999,7 +999,7 @@ export function SuppliersTab({
                     type="text"
                     value={supFormState.contactPerson}
                     onChange={(e) => setSupFormState({ ...supFormState, contactPerson: e.target.value })}
-                    placeholder="e.g. Michael Brown"
+                    placeholder="e.g. Contact Person"
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
                   />
                 </div>

@@ -117,29 +117,34 @@ export function LocationsTab({
           level: site.level || 'Level 1',
           parentLocation: site.parentLocation || '-',
           fullPath: site.fullPath || computeFullPath(site, res.sites),
-          country: site.country || 'United Arab Emirates',
-          city: site.city || 'Dubai',
-          address: site.address || `${site.name}, ${site.city || 'Dubai'}, ${site.country || 'United Arab Emirates'}`,
+          country: site.country || '',
+          city: site.city || '',
+          address: site.address || (site.city || site.country ? `${site.name}, ${site.city || ''} ${site.country || ''}`.trim() : site.name),
           postalCode: site.postalCode || '',
-          totalAssets: site.totalAssets ?? ((idx + 1) * 35),
+          totalAssets: site.totalAssets || 0,
           status: site.active === false || site.status === 'Inactive' ? 'Inactive' : 'Active',
           createdBy: site.createdBy || 'Admin User',
-          createdOn: site.createdAt ? new Date(site.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 09:15 AM' : '12 Jan 2025 09:15 AM',
+          createdOn: site.createdAt ? new Date(site.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           lastModifiedBy: site.lastModifiedBy || 'Admin User',
-          lastModifiedOn: site.updatedAt ? new Date(site.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' 02:30 PM' : '25 Aug 2025 02:30 PM',
+          lastModifiedOn: site.updatedAt ? new Date(site.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           relatedInfo: {
             childLocations: res.sites.filter(s => s.parentLocation === site.code || s.parentLocation === site.id).length,
-            assets: site.totalAssets ?? ((idx + 1) * 35),
-            departments: 3,
-            costCenters: 2
+            assets: site.totalAssets || 0,
+            departments: site.departmentsCount || 0,
+            costCenters: site.costCentersCount || 0
           }
         }));
         console.log('📋 [Locations Loaded dynamically from Database]:', mapped);
         setLocationsList(mapped);
         setSelectedLocation((prev) => (prev ? mapped.find((c) => c.id === prev.id) || mapped[0] || null : mapped[0] || null));
+      } else {
+        setLocationsList([]);
+        setSelectedLocation(null);
       }
     } catch (err) {
-      console.warn('Failed to fetch sites/locations, using fallback dataset:', err);
+      console.warn('Failed to fetch sites/locations:', err);
+      setLocationsList([]);
+      setSelectedLocation(null);
     } finally {
       setIsLoading(false);
     }
