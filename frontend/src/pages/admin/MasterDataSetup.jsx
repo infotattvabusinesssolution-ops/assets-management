@@ -150,6 +150,8 @@ export function MasterDataSetup() {
     setShowAddDropdown(false);
     if (activeTab === 'asset-groups') {
       setShowAddGroupModal(true);
+    } else if (activeTab === 'classes' || activeTab === 'sub-groups') {
+      setActiveAddModalTab('sub-groups');
     } else {
       setActiveAddModalTab(activeTab);
     }
@@ -290,7 +292,7 @@ export function MasterDataSetup() {
   const handleExportCSV = () => {
     setShowExportDropdown(false);
     const isGroups = activeTab === 'asset-groups';
-    const isClasses = activeTab === 'classes';
+    const isClasses = activeTab === 'classes' || activeTab === 'sub-groups';
     const isCats = activeTab === 'categories';
     const isSubCats = activeTab === 'subcategories';
     const isLocations = activeTab === 'locations';
@@ -368,7 +370,7 @@ export function MasterDataSetup() {
   const TABS = [
     { id: 'item-master', name: 'Item Master', icon: Box, desc: 'Central catalog of items defining code, name, barcode, and classification hierarchy before asset registration.' },
     { id: 'asset-groups', name: 'Asset Groups', icon: Box, desc: 'Define and manage asset groups to classify your assets across the Asset360 enterprise platform.' },
-    { id: 'classes', name: 'Asset Sub Groups', icon: Layers, desc: 'Define and manage asset sub groups within each asset group for classification and lifecycle control.' },
+    { id: 'sub-groups', aliasId: 'classes', name: 'Asset Sub Groups', icon: Layers, desc: 'Define and manage asset sub groups within each asset group for classification and lifecycle control.' },
     { id: 'categories', name: 'Categories', icon: Tag, desc: 'Define and manage asset categories within each class.' },
     { id: 'subcategories', name: 'Sub Categories', icon: FolderTree, desc: 'Define and manage granular asset sub categories within each category.' },
     { id: 'companies', name: 'Companies', icon: Building2, desc: 'Define legal entities and corporate operating units for asset ownership and financial reporting.' },
@@ -390,7 +392,7 @@ export function MasterDataSetup() {
     { id: 'import-guidelines', name: 'Import Guidelines', icon: BookOpen, desc: 'Read standard CSV data guidelines and column specifications for master data bulk imports.', action: 'guidelines' }
   ];
 
-  const currentTabObject = TABS.find((t) => t.id === activeTab) || MORE_TABS.find((t) => t.id === activeTab);
+  const currentTabObject = TABS.find((t) => t.id === activeTab || t.aliasId === activeTab) || MORE_TABS.find((t) => t.id === activeTab);
 
   return (
     <div className="space-y-4 pb-12 select-none text-slate-900">
@@ -623,7 +625,7 @@ export function MasterDataSetup() {
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
-          externalShowAddModal={activeAddModalTab === 'classes'}
+          externalShowAddModal={activeAddModalTab === 'classes' || activeAddModalTab === 'sub-groups'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
