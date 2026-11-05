@@ -38,50 +38,6 @@ export const LOCATION_LEVELS = [
   { id: 'Level 4', label: 'Level 4 (e.g. Room / Zone / Area)' }
 ];
 
-export const SYSTEM_COUNTRY_ENUM = [
-  'United Arab Emirates',
-  'Saudi Arabia',
-  'Qatar',
-  'Oman',
-  'Kuwait',
-  'Bahrain',
-  'United States',
-  'United Kingdom',
-  'India',
-  'Canada',
-  'Australia',
-  'Germany',
-  'France',
-  'Singapore',
-  'Japan',
-  'China',
-  'Egypt',
-  'Jordan',
-  'Lebanon',
-  'Malaysia',
-  'South Africa',
-  'Brazil',
-  'Netherlands',
-  'Switzerland',
-  'Italy',
-  'Spain',
-  'Turkey',
-  'South Korea',
-  'Indonesia',
-  'Pakistan',
-  'Philippines',
-  'New Zealand',
-  'Ireland',
-  'Sweden',
-  'Norway',
-  'Denmark',
-  'Belgium',
-  'Austria',
-  'Poland',
-  'Portugal',
-  'Greece'
-];
-
 export const computeFullPath = (loc, allLocs = []) => {
   if (!loc) return '';
   const parts = [loc.name || loc.code];
@@ -110,22 +66,35 @@ export function LocationsTab({
   setExternalShowAddModal
 }) {
   const [locationsList, setLocationsList] = useState([]);
+  const [countriesList, setCountriesList] = useState([]);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const allCountries = useMemo(() => {
-    const combined = [...SYSTEM_COUNTRY_ENUM];
+    const combined = [...countriesList];
     locationsList.forEach((l) => {
       if (l.country && !combined.includes(l.country)) {
         combined.push(l.country);
       }
     });
     return Array.from(new Set(combined)).filter(Boolean);
-  }, [locationsList]);
+  }, [countriesList, locationsList]);
 
-    const [isLoading, setIsLoading] = useState(false);
-    const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+  const [isLoading, setIsLoading] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+
+  // Load live countries from database
+  const loadCountries = async () => {
+    try {
+      const res = await api.get('/master-data/countries');
+      if (res?.countries && Array.isArray(res.countries)) {
+        setCountriesList(res.countries.map(c => c.name));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch countries from database:', err);
+    }
+  };
 
   // Load live locations from database
   const loadLocations = async () => {
@@ -176,6 +145,7 @@ export function LocationsTab({
 
   useEffect(() => {
     loadLocations();
+    loadCountries();
   }, []);
 
   // Filter state
@@ -260,7 +230,7 @@ export function LocationsTab({
         type: 'Internal',
         level: 'Level 1',
         parentLocation: '-',
-        country: 'UAE',
+        country: allCountries[0] || 'United Arab Emirates',
         city: 'Dubai',
         address: '',
         postalCode: '',
@@ -1077,10 +1047,10 @@ export function LocationsTab({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Country * <span className="text-[10px] text-slate-400 font-normal">(System Enumeration)</span>
+                    Country *
                   </label>
                   <select
-                    value={locFormState.country || 'United Arab Emirates'}
+                    value={locFormState.country || (allCountries[0] || 'United Arab Emirates')}
                     onChange={(e) => setLocFormState({ ...locFormState, country: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >

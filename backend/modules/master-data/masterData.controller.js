@@ -3435,6 +3435,7 @@ const UOMS_FILE = resolveDataFile('uoms.json');
 const DISPOSAL_STATUSES_FILE = resolveDataFile('disposal_statuses.json');
 const BRANDS_FILE = resolveDataFile('brands.json');
 const MANUFACTURERS_FILE = resolveDataFile('manufacturers.json');
+const COUNTRIES_FILE = resolveDataFile('countries.json');
 
 const DEFAULT_BRANDS = [];
 
@@ -3445,6 +3446,52 @@ const DEFAULT_DISPOSAL_STATUSES = [];
 const DEFAULT_UOMS = [];
 
 const DEFAULT_ITEMS = [];
+
+function readCountriesFromFile() {
+  try {
+    if (fs.existsSync(COUNTRIES_FILE)) {
+      const data = fs.readFileSync(COUNTRIES_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : [];
+    }
+  } catch (e) {
+    console.warn('Failed to read countries.json:', e.message);
+  }
+  return [];
+}
+
+function writeCountriesToFile(list) {
+  try {
+    const dir = path.dirname(COUNTRIES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(COUNTRIES_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write countries.json:', e.message);
+  }
+}
+
+let inMemoryCountries = readCountriesFromFile();
+let countriesTableEnsured = false;
+
+async function ensureCountriesTable() {
+  if (countriesTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='countries' and xtype='U')
+      CREATE TABLE countries (
+        id NVARCHAR(100) PRIMARY KEY,
+        code NVARCHAR(20) NOT NULL UNIQUE,
+        name NVARCHAR(100) NOT NULL UNIQUE,
+        active BIT DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    countriesTableEnsured = true;
+  } catch (err) {
+    console.warn('countries table check skipped:', err.message);
+  }
+}
 
 function readItemMastersFromFile() {
   try {
@@ -4762,5 +4809,81 @@ export async function deleteBrand(req, res, next) {
 
     writeBrandsToFile(inMemoryBrands);
     res.json({ success: true, message: 'Brand deleted successfully' });
+  } catch (err) { next(err); }
+}
+
+// Country Handlers (Master Data - Dynamic Lookup / Enum)
+export async function getCountries(req, res, next) {
+  try {
+    await ensureCountriesTable();
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM countries WHERE active = 1 ORDER BY name ASC`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            active: Boolean(r.active)
+          }));
+          inMemoryCountries = list;
+          writeCountriesToFile(list);
+          return res.json({ success: true, countries: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getCountries skipped, using persistent store:', dbErr.message);
+      }
+    }
+    res.json({ success: true, countries: inMemoryCountries.filter(c => c.active !== false) });
+  } catch (err) { next(err); }
+}
+
+export async function createCountry(req, res, next) {
+  try {
+    await ensureCountriesTable();
+    const { code, name } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Country name is required' });
+
+    const cleanName = name.trim();
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase().replace(/\s+/g, '_') : cleanName.substring(0, 3).toUpperCase();
+
+    if (inMemoryCountries.some(c => c.name.toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Country "${cleanName}" already exists.` });
+    }
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM countries WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' OR UPPER(code) = '${cleanCode.toUpperCase().replace(/'/g, "''")}'`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Country "${cleanName}" or code "${cleanCode}" already exists.` });
+        }
+      } catch (err) {}
+    }
+
+    const newCountry = {
+      id: `cnt-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO countries (id, code, name, active, createdAt, updatedAt)
+          VALUES ('${newCountry.id}', '${newCountry.code}', '${newCountry.name.replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert country skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryCountries.push(newCountry);
+    writeCountriesToFile(inMemoryCountries);
+    res.status(201).json({ success: true, country: newCountry });
   } catch (err) { next(err); }
 }
