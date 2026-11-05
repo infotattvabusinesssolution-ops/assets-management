@@ -38,6 +38,50 @@ export const LOCATION_LEVELS = [
   { id: 'Level 4', label: 'Level 4 (e.g. Room / Zone / Area)' }
 ];
 
+export const SYSTEM_COUNTRY_ENUM = [
+  'United Arab Emirates',
+  'Saudi Arabia',
+  'Qatar',
+  'Oman',
+  'Kuwait',
+  'Bahrain',
+  'United States',
+  'United Kingdom',
+  'India',
+  'Canada',
+  'Australia',
+  'Germany',
+  'France',
+  'Singapore',
+  'Japan',
+  'China',
+  'Egypt',
+  'Jordan',
+  'Lebanon',
+  'Malaysia',
+  'South Africa',
+  'Brazil',
+  'Netherlands',
+  'Switzerland',
+  'Italy',
+  'Spain',
+  'Turkey',
+  'South Korea',
+  'Indonesia',
+  'Pakistan',
+  'Philippines',
+  'New Zealand',
+  'Ireland',
+  'Sweden',
+  'Norway',
+  'Denmark',
+  'Belgium',
+  'Austria',
+  'Poland',
+  'Portugal',
+  'Greece'
+];
+
 export const computeFullPath = (loc, allLocs = []) => {
   if (!loc) return '';
   const parts = [loc.name || loc.code];
@@ -69,39 +113,16 @@ export function LocationsTab({
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-  const [customCountries, setCustomCountries] = useState(() => {
-    try {
-      const saved = JSON.parse(localStorage.getItem('fams_custom_countries') || '[]');
-      return Array.isArray(saved) ? saved : [];
-    } catch {
-      return [];
-    }
-  });
 
   const allCountries = useMemo(() => {
-    const combined = [...DEFAULT_COUNTRIES, ...customCountries];
+    const combined = [...SYSTEM_COUNTRY_ENUM];
     locationsList.forEach((l) => {
       if (l.country && !combined.includes(l.country)) {
         combined.push(l.country);
       }
     });
     return Array.from(new Set(combined)).filter(Boolean);
-  }, [customCountries, locationsList]);
-
-  const handleAddNewCountry = () => {
-    const newCountry = window.prompt('Enter new Country name (e.g. Canada, Japan, Australia, France):');
-    if (!newCountry || !newCountry.trim()) return;
-    const clean = newCountry.trim();
-    if (!allCountries.includes(clean)) {
-      const updated = [...customCountries, clean];
-      setCustomCountries(updated);
-      try {
-        localStorage.setItem('fams_custom_countries', JSON.stringify(updated));
-      } catch (_) {}
-    }
-    setLocFormState((prev) => ({ ...prev, country: clean }));
-    triggerToast && triggerToast(`Country "${clean}" added successfully.`);
-  };
+  }, [locationsList]);
 
     const [isLoading, setIsLoading] = useState(false);
     const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
@@ -1055,27 +1076,12 @@ export function LocationsTab({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="font-semibold text-slate-700">Country *</label>
-                    <button
-                      type="button"
-                      onClick={handleAddNewCountry}
-                      className="text-[11px] font-bold text-[#6C2BD9] hover:text-[#5B21B6] hover:underline flex items-center gap-0.5 cursor-pointer"
-                      title="Add a custom Country"
-                    >
-                      <Plus className="w-3 h-3 stroke-[3]" />
-                      <span>Add Country</span>
-                    </button>
-                  </div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Country * <span className="text-[10px] text-slate-400 font-normal">(System Enumeration)</span>
+                  </label>
                   <select
-                    value={locFormState.country}
-                    onChange={(e) => {
-                      if (e.target.value === '__NEW__') {
-                        handleAddNewCountry();
-                      } else {
-                        setLocFormState({ ...locFormState, country: e.target.value });
-                      }
-                    }}
+                    value={locFormState.country || 'United Arab Emirates'}
+                    onChange={(e) => setLocFormState({ ...locFormState, country: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
                     {allCountries.map((c) => (
@@ -1083,9 +1089,6 @@ export function LocationsTab({
                         {c}
                       </option>
                     ))}
-                    <option value="__NEW__" className="text-[#6C2BD9] font-bold">
-                      + Add New Country...
-                    </option>
                   </select>
                 </div>
                 <div>
