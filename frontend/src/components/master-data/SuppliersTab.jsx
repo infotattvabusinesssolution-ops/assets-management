@@ -52,7 +52,7 @@ export function SuppliersTab({
     setIsLoading(true);
     try {
       const [res, compRes, countriesRes] = await Promise.all([
-        api.get('/maintenance/service-providers'),
+        api.get('/maintenance/service-providers?includeInactive=true'),
         api.get('/master-data/companies?includeInactive=true').catch(() => null),
         api.get('/master-data/countries').catch(() => null)
       ]);
@@ -187,16 +187,16 @@ export function SuppliersTab({
       setSupFormState({
         code: supToEdit.code,
         name: supToEdit.name,
-        type: supToEdit.type || '',
-        company: supToEdit.company || '',
-        country: supToEdit.country || '',
-        contactPerson: supToEdit.contactPerson || '',
-        email: supToEdit.email || '',
-        phone: supToEdit.phone || '',
-        address: supToEdit.address || '',
-        website: supToEdit.website || '',
-        paymentTerms: supToEdit.paymentTerms || '',
-        taxNo: supToEdit.taxNo || '',
+        type: supToEdit.type === '-' ? '' : (supToEdit.type || ''),
+        company: supToEdit.company === '-' ? '' : (supToEdit.company || ''),
+        country: supToEdit.country === '-' ? '' : (supToEdit.country || ''),
+        contactPerson: supToEdit.contactPerson === '-' ? '' : (supToEdit.contactPerson || ''),
+        email: supToEdit.email === '-' ? '' : (supToEdit.email || ''),
+        phone: supToEdit.phone === '-' ? '' : (supToEdit.phone || ''),
+        address: supToEdit.address === '-' ? '' : (supToEdit.address || ''),
+        website: supToEdit.website === '-' ? '' : (supToEdit.website || ''),
+        paymentTerms: supToEdit.paymentTerms === '-' ? '' : (supToEdit.paymentTerms || ''),
+        taxNo: supToEdit.taxNo === '-' ? '' : (supToEdit.taxNo || ''),
         description: supToEdit.description || '',
         status: supToEdit.status || 'Active'
       });
@@ -261,6 +261,7 @@ export function SuppliersTab({
       try {
         await api.put(`/maintenance/service-providers/${editingSupplier.id}`, {
           providerName: supFormState.name,
+          companyId: companiesList.find(c => c.name === supFormState.company)?.id || null,
           providerCode: supFormState.code.toUpperCase(),
           primaryContact: supFormState.contactPerson,
           email: supFormState.email,
@@ -285,6 +286,7 @@ export function SuppliersTab({
       try {
         await api.post('/maintenance/service-providers', {
           providerName: supFormState.name,
+          companyId: companiesList.find(c => c.name === supFormState.company)?.id || null,
           providerCode: supFormState.code.toUpperCase(),
           primaryContact: supFormState.contactPerson,
           email: supFormState.email,

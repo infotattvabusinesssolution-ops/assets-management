@@ -28,7 +28,7 @@ function master(body, old = {}) {
     primaryContact: trim(body.primaryContact ?? old.primaryContact) || null, email: trim(body.email ?? old.email) || null,
     phone: trim(body.phone ?? old.phone) || null, addressLine1: trim(body.addressLine1 ?? old.addressLine1) || null,
     addressLine2: trim(body.addressLine2 ?? old.addressLine2) || null, city: trim(body.city ?? old.city) || null,
-    state: trim(body.state ?? old.state) || null, country: trim(body.country ?? old.country) || null
+    state: trim(body.state ?? old.state) || null, country: trim(body.country ?? old.country) || null, companyId: body.companyId !== undefined ? (trim(body.companyId) || null) : (old.companyId ?? null)
   };
   if (!data.providerName) return { error: 'Provider name is required.' };
   if (!['DRAFT', 'ACTIVE', 'INACTIVE'].includes(data.status)) return { error: 'Choose Draft, Active, or Inactive.' };
@@ -76,7 +76,18 @@ export async function getServiceProviders(req, res, next) {
     if (req.query.type && req.query.type !== 'ALL') where.providerType = String(req.query.type);
     if (req.query.status && req.query.status !== 'ALL') { where.status = String(req.query.status); } else if (req.query.includeInactive !== 'true') { where.status = { not: 'INACTIVE' }; }
     const providers = await prisma.serviceProvider.findMany({ where, orderBy: { providerName: 'asc' } });
-    res.json({ success: true, count: providers.length, providers });
+    const companyIds = [...new Set(providers.map(p => p.companyId).filter(Boolean))];
+    let companyMap = new Map();
+    if (companyIds.length > 0) {
+      const companies = await prisma.company.findMany({ where: { id: { in: companyIds } }, select: { id: true, name: true } });
+      companyMap = new Map(companies.map(c => [c.id, c.name]));
+    }
+    const mappedProviders = providers.map(p => ({
+      ...p,
+      company: p.companyId && companyMap.has(p.companyId) ? { id: p.companyId, name: companyMap.get(p.companyId) } : null,
+      companyName: p.companyId ? companyMap.get(p.companyId) || null : null
+    }));
+    res.json({ success: true, count: mappedProviders.length, providers: mappedProviders });
   } catch (error) { next(error); }
 }
 
