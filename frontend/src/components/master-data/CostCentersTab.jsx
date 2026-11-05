@@ -62,8 +62,8 @@ export function CostCentersTab({
           companyId: cc.companyId || cc.company?.id || '',
           department: cc.department?.name || cc.department || '-',
           departmentId: cc.departmentId || cc.department?.id || '',
-          type: cc.type || '-',
-          manager: cc.manager || cc.head || '-',
+          type: cc.type || '',
+          manager: cc.manager || cc.head || '',
           description: cc.description || '',
           totalAssets: cc.totalAssets ?? (cc._count?.assets || 0),
           status: cc.active === false ? 'Inactive' : 'Active',
@@ -161,12 +161,12 @@ export function CostCentersTab({
     if (ccToEdit) {
       setEditingCostCenter(ccToEdit);
       setCcFormState({
-        code: ccToEdit.code,
-        name: ccToEdit.name,
-        company: ccToEdit.company || '',
+        code: ccToEdit.code || '',
+        name: ccToEdit.name || '',
+        company: ccToEdit.company && ccToEdit.company !== '-' ? ccToEdit.company : (companiesList[0]?.name || ''),
         departmentId: ccToEdit.departmentId || '',
-        type: ccToEdit.type || 'Operational',
-        manager: ccToEdit.manager || '',
+        type: ccToEdit.type && ccToEdit.type !== '-' ? ccToEdit.type : 'Operational',
+        manager: ccToEdit.manager && ccToEdit.manager !== '-' ? ccToEdit.manager : '',
         description: ccToEdit.description || '',
         status: ccToEdit.status || 'Active'
       });
@@ -175,7 +175,7 @@ export function CostCentersTab({
       setCcFormState({
         code: '',
         name: '',
-        company: '',
+        company: companiesList[0]?.name || '',
         departmentId: '',
         type: 'Operational',
         manager: '',
@@ -226,16 +226,21 @@ export function CostCentersTab({
       if (matchedDept?.companyId) companyId = matchedDept.companyId;
     }
 
+    const payload = {
+      code: cleanCode,
+      name: cleanName,
+      companyId,
+      departmentId: ccFormState.departmentId || null,
+      type: ccFormState.type || null,
+      manager: ccFormState.manager ? ccFormState.manager.trim() : null,
+      description: ccFormState.description ? ccFormState.description.trim() : null,
+      active: ccFormState.status === 'Active',
+      status: ccFormState.status
+    };
+
     if (editingCostCenter) {
       try {
-        await api.put(`/master-data/cost-centers/${editingCostCenter.id}`, {
-          code: cleanCode,
-          name: cleanName,
-          companyId,
-          departmentId: ccFormState.departmentId || null,
-          active: ccFormState.status === 'Active',
-          status: ccFormState.status
-        });
+        await api.put(`/master-data/cost-centers/${editingCostCenter.id}`, payload);
         await loadCostCenters();
         triggerToast && triggerToast(`Cost Center "${cleanName}" updated successfully.`);
       } catch (err) {
@@ -247,14 +252,7 @@ export function CostCentersTab({
       }
     } else {
       try {
-        await api.post('/master-data/cost-centers', {
-          code: cleanCode,
-          name: cleanName,
-          companyId,
-          departmentId: ccFormState.departmentId || null,
-          active: ccFormState.status === 'Active',
-          status: ccFormState.status
-        });
+        await api.post('/master-data/cost-centers', payload);
         await loadCostCenters();
         triggerToast && triggerToast(`Cost Center "${cleanName}" created successfully.`);
       } catch (err) {
@@ -580,8 +578,8 @@ export function CostCentersTab({
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{cc.name}</td>
                       <td className="py-2.5 px-3 text-slate-700">{cc.company}</td>
                       <td className="py-2.5 px-3 text-slate-700 font-semibold">{cc.department}</td>
-                      <td className="py-2.5 px-3 text-slate-700">{cc.type}</td>
-                      <td className="py-2.5 px-3 text-slate-800">{cc.manager}</td>
+                      <td className="py-2.5 px-3 text-slate-700">{cc.type || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-800 font-medium">{cc.manager || '-'}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                         {(cc.totalAssets ?? 0).toLocaleString()}
                       </td>
@@ -721,17 +719,17 @@ export function CostCentersTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Type</span>
-                <span className="col-span-2 text-slate-700">{selectedCostCenter.type}</span>
+                <span className="col-span-2 text-slate-700">{selectedCostCenter.type || '-'}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Manager</span>
-                <span className="col-span-2 font-semibold text-slate-900">{selectedCostCenter.manager}</span>
+                <span className="col-span-2 font-semibold text-slate-900">{selectedCostCenter.manager || '-'}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Description</span>
-                <span className="col-span-2 text-slate-700 leading-relaxed">{selectedCostCenter.description}</span>
+                <span className="col-span-2 text-slate-700 leading-relaxed">{selectedCostCenter.description || '-'}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">

@@ -2705,7 +2705,7 @@ export async function getCostCenters(req, res, next) {
 
 export async function createCostCenter(req, res, next) {
   try {
-    const { code, name, active, status, companyId, departmentId } = req.body;
+    const { code, name, active, status, companyId, departmentId, type, manager, description } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Cost Center Name is required.' });
     }
@@ -2748,7 +2748,10 @@ export async function createCostCenter(req, res, next) {
         name: cleanName,
         companyId: targetCompanyId,
         departmentId: departmentId || null,
-        active: isAct
+        active: isAct,
+        type: type || null,
+        manager: manager ? manager.trim() : null,
+        description: description ? description.trim() : null
       },
       include: { company: true, department: true }
     });
@@ -2759,7 +2762,7 @@ export async function createCostCenter(req, res, next) {
 export async function updateCostCenter(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, active, status, companyId, departmentId } = req.body;
+    const { code, name, active, status, companyId, departmentId, type, manager, description } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
 
@@ -2789,6 +2792,9 @@ export async function updateCostCenter(req, res, next) {
     if (departmentId !== undefined) updateData.departmentId = departmentId || null;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
+    if (type !== undefined) updateData.type = type || null;
+    if (manager !== undefined) updateData.manager = manager ? manager.trim() : null;
+    if (description !== undefined) updateData.description = description ? description.trim() : null;
 
     const costCenter = await prisma.costCenter.update({
       where: { id },
