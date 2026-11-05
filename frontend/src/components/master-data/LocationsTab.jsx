@@ -26,7 +26,49 @@ import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const INITIAL_LOCATIONS = [];
 
-export const DEFAULT_COUNTRIES = [];
+export const DEFAULT_COUNTRIES = [
+  'United Arab Emirates',
+  'Saudi Arabia',
+  'Qatar',
+  'Oman',
+  'Kuwait',
+  'Bahrain',
+  'United States',
+  'United Kingdom',
+  'India',
+  'Canada',
+  'Australia',
+  'Germany',
+  'France',
+  'Singapore',
+  'Japan',
+  'China',
+  'Egypt',
+  'Jordan',
+  'Lebanon',
+  'Malaysia',
+  'South Africa',
+  'Brazil',
+  'Netherlands',
+  'Switzerland',
+  'Italy',
+  'Spain',
+  'Turkey',
+  'South Korea',
+  'Indonesia',
+  'Pakistan',
+  'Philippines',
+  'New Zealand',
+  'Ireland',
+  'Sweden',
+  'Norway',
+  'Denmark',
+  'Belgium',
+  'Austria',
+  'Poland',
+  'Portugal',
+  'Greece'
+];
 
 // System-defined enumerations (fixed, not user-defined)
 export const SYSTEM_LOCATION_TYPES = ['Internal', 'External'];
@@ -66,13 +108,14 @@ export function LocationsTab({
   setExternalShowAddModal
 }) {
   const [locationsList, setLocationsList] = useState([]);
-  const [countriesList, setCountriesList] = useState([]);
+  const [countriesList, setCountriesList] = useState(DEFAULT_COUNTRIES);
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
 
   const allCountries = useMemo(() => {
-    const combined = [...countriesList];
+    const base = countriesList && countriesList.length > 0 ? countriesList : DEFAULT_COUNTRIES;
+    const combined = [...base];
     locationsList.forEach((l) => {
       if (l.country && !combined.includes(l.country)) {
         combined.push(l.country);
@@ -88,11 +131,11 @@ export function LocationsTab({
   const loadCountries = async () => {
     try {
       const res = await api.get('/master-data/countries');
-      if (res?.countries && Array.isArray(res.countries)) {
+      if (res?.countries && Array.isArray(res.countries) && res.countries.length > 0) {
         setCountriesList(res.countries.map(c => c.name));
       }
     } catch (err) {
-      console.warn('Failed to fetch countries from database:', err);
+      console.warn('Failed to fetch countries from database, using defaults:', err);
     }
   };
 
@@ -1054,6 +1097,7 @@ export function LocationsTab({
                     onChange={(e) => setLocFormState({ ...locFormState, country: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
+                    <option value="">Select Country</option>
                     {allCountries.map((c) => (
                       <option key={c} value={c}>
                         {c}
