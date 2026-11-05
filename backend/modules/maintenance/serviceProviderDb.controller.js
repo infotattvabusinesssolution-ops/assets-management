@@ -108,10 +108,18 @@ export async function createServiceProvider(req, res, next) {
     const parsed = master(req.body);
     if (parsed.error) return fail(res, parsed.error);
     if (await prisma.serviceProvider.findFirst({ where: { providerName: parsed.data.providerName, ...scope(req) } })) return fail(res, 'A provider with this name already exists.', 409);
-    const requestedCode = req.body.autoGenerateCode === false ? trim(req.body.providerCode) : '';
-    if (req.body.autoGenerateCode === false && !requestedCode) return fail(res, 'Provider code is required when automatic generation is off.');
+    const requestedCode = trim(req.body.providerCode);
     if (requestedCode && await prisma.serviceProvider.findUnique({ where: { providerCode: requestedCode } })) return fail(res, 'Provider code already exists.', 409);
-    const provider = await prisma.serviceProvider.create({ data: { ...parsed.data, companyId: scope(req).companyId || req.user?.companyId || null, providerCode: requestedCode || 'SP-' + new Date().getUTCFullYear() + '-' + randomUUID().slice(0, 8).toUpperCase(), notes: { create: { text: 'Provider created', authorName: actor(req) } } } });
+    const finalCode = requestedCode || 'SP-' + new Date().getUTCFullYear() + '-' + randomUUID().slice(0, 8).toUpperCase();
+    const finalCompanyId = parsed.data.companyId || scope(req).companyId || req.user?.companyId || null;
+    const provider = await prisma.serviceProvider.create({
+      data: {
+        ...parsed.data,
+        companyId: finalCompanyId,
+        providerCode: finalCode,
+        notes: { create: { text: 'Provider created', authorName: actor(req) } }
+      }
+    });
     res.status(201).json({ success: true, provider });
   } catch (error) { next(error); }
 }
@@ -130,10 +138,18 @@ export async function updateServiceProvider(req, res, next) {
       if (contracts || workOrders) return fail(res, 'This provider has linked contracts or work orders. Keep its name so those records remain connected.', 409);
     }
     if (await prisma.serviceProvider.findFirst({ where: { providerName: parsed.data.providerName, id: { not: old.id }, ...scope(req) } })) return fail(res, 'A provider with this name already exists.', 409);
-    const requestedCode = req.body.autoGenerateCode === false ? trim(req.body.providerCode) : old.providerCode;
+    const requestedCode = trim(req.body.providerCode) || old.providerCode;
     if (!requestedCode) return fail(res, 'Provider code is required.');
     if (requestedCode !== old.providerCode && await prisma.serviceProvider.findUnique({ where: { providerCode: requestedCode } })) return fail(res, 'Provider code already exists.', 409);
-    const provider = await prisma.serviceProvider.update({ where: { id: old.id }, data: { ...parsed.data, providerCode: requestedCode, notes: { create: { text: 'Provider information updated', authorName: actor(req) } } } });
+    const provider = await prisma.serviceProvider.update({
+      where: { id: old.id },
+      data: {
+        ...parsed.data,
+        companyId: parsed.data.companyId !== undefined ? parsed.data.companyId : old.companyId,
+        providerCode: requestedCode,
+        notes: { create: { text: 'Provider information updated', authorName: actor(req) } }
+      }
+    });
     res.json({ success: true, provider });
   } catch (error) { next(error); }
 }

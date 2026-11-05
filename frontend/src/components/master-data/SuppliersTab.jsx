@@ -73,7 +73,7 @@ export function SuppliersTab({
           phone: p.phone || '-',
           address: p.addressLine1 || '-',
           website: p.website || '-',
-          paymentTerms: p.paymentTermsDays ? `${p.paymentTermsDays} Days` : '-',
+          paymentTerms: p.paymentTermsDays === 0 ? 'Advance' : (p.paymentTermsDays ? `${p.paymentTermsDays} Days` : '30 Days'),
           taxNo: p.taxRegistrationNo || '-',
           description: p.remarks || '',
           status: p.status === 'ACTIVE' || p.status === 'DRAFT' ? 'Active' : 'Inactive',
@@ -257,22 +257,35 @@ export function SuppliersTab({
       return;
     }
 
+    const parsePaymentTerms = (terms) => {
+      if (!terms) return 30;
+      if (terms === 'Advance') return 0;
+      const num = parseInt(terms, 10);
+      return isNaN(num) ? 30 : num;
+    };
+
+    const targetCompany = companiesList.find(c => c.name === supFormState.company);
+    const payload = {
+      providerName: supFormState.name.trim(),
+      providerType: supFormState.type.trim() || 'Hardware',
+      companyId: targetCompany?.id || null,
+      providerCode: supFormState.code.trim().toUpperCase(),
+      autoGenerateCode: false,
+      paymentTermsDays: parsePaymentTerms(supFormState.paymentTerms),
+      primaryContact: supFormState.contactPerson.trim(),
+      email: supFormState.email.trim(),
+      phone: supFormState.phone.trim(),
+      addressLine1: supFormState.address.trim(),
+      country: supFormState.country || null,
+      website: supFormState.website.trim() || null,
+      taxRegistrationNo: supFormState.taxNo.trim() || null,
+      remarks: supFormState.description.trim() || null,
+      status: supFormState.status === 'Active' ? 'ACTIVE' : 'INACTIVE'
+    };
+
     if (editingSupplier) {
       try {
-        await api.put(`/maintenance/service-providers/${editingSupplier.id}`, {
-          providerName: supFormState.name,
-          companyId: companiesList.find(c => c.name === supFormState.company)?.id || null,
-          providerCode: supFormState.code.toUpperCase(),
-          primaryContact: supFormState.contactPerson,
-          email: supFormState.email,
-          phone: supFormState.phone,
-          addressLine1: supFormState.address,
-          country: supFormState.country,
-          website: supFormState.website,
-          taxRegistrationNo: supFormState.taxNo,
-          remarks: supFormState.description,
-          status: supFormState.status === 'Active' ? 'ACTIVE' : 'INACTIVE'
-        });
+        await api.put(`/maintenance/service-providers/${editingSupplier.id}`, payload);
         await loadSuppliers();
         triggerToast && triggerToast(`Supplier "${supFormState.name}" updated successfully.`);
       } catch (err) {
@@ -284,20 +297,7 @@ export function SuppliersTab({
       }
     } else {
       try {
-        await api.post('/maintenance/service-providers', {
-          providerName: supFormState.name,
-          companyId: companiesList.find(c => c.name === supFormState.company)?.id || null,
-          providerCode: supFormState.code.toUpperCase(),
-          primaryContact: supFormState.contactPerson,
-          email: supFormState.email,
-          phone: supFormState.phone,
-          addressLine1: supFormState.address,
-          country: supFormState.country,
-          website: supFormState.website,
-          taxRegistrationNo: supFormState.taxNo,
-          remarks: supFormState.description,
-          status: supFormState.status === 'Active' ? 'ACTIVE' : 'INACTIVE'
-        });
+        await api.post('/maintenance/service-providers', payload);
         await loadSuppliers();
         triggerToast && triggerToast(`Supplier "${supFormState.name}" created successfully.`);
       } catch (err) {
