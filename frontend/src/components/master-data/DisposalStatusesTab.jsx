@@ -269,14 +269,6 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
         </div>
       </div>
 
-      {/* Guidance Note regarding Master Data vs System Enumeration */}
-      <div className="bg-purple-50/60 border border-purple-200/60 p-4 rounded-2xl flex items-start gap-3">
-        <Info className="w-5 h-5 text-[#6C2BD9] shrink-0 mt-0.5" />
-        <div className="text-xs text-slate-700 leading-relaxed">
-          <span className="font-bold text-purple-900 block mb-0.5">Disposal Master vs System Enumeration Architecture:</span>
-          Per the Asset 360 requirements, <span className="font-semibold text-slate-900">Disposal Status</span> is user-configurable master data representing what happens to the asset (e.g. Scrapped, Sold, Donated, Written Off), while <span className="font-semibold text-slate-900">Disposal Reason</span> (End of Life, Theft/Loss, Damaged, Impairment) is kept as a strict system-defined enumeration.
-        </div>
-      </div>
 
       {/* Main Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
