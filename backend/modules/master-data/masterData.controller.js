@@ -2508,16 +2508,25 @@ export async function getDepartments(req, res, next) {
     if (req.query.companyId) {
       where.companyId = req.query.companyId;
     }
-    const departments = await prisma.department.findMany({
-      where,
-      include: {
-        company: true,
-        costCenters: {
-          select: { id: true, code: true, name: true, active: true }
-        }
-      },
-      orderBy: { name: 'asc' }
-    });
+    let departments;
+    try {
+      departments = await prisma.department.findMany({
+        where,
+        include: {
+          company: true,
+          costCenters: {
+            select: { id: true, code: true, name: true, active: true }
+          }
+        },
+        orderBy: { name: 'asc' }
+      });
+    } catch (relErr) {
+      departments = await prisma.department.findMany({
+        where,
+        include: { company: true },
+        orderBy: { name: 'asc' }
+      });
+    }
     res.json({ success: true, departments });
   } catch (err) { next(err); }
 }
@@ -2694,11 +2703,20 @@ export async function getCostCenters(req, res, next) {
     if (req.query.companyId) {
       where.companyId = req.query.companyId;
     }
-    const costCenters = await prisma.costCenter.findMany({
-      where,
-      include: { company: true, department: true },
-      orderBy: { name: 'asc' }
-    });
+    let costCenters;
+    try {
+      costCenters = await prisma.costCenter.findMany({
+        where,
+        include: { company: true, department: true },
+        orderBy: { name: 'asc' }
+      });
+    } catch (relErr) {
+      costCenters = await prisma.costCenter.findMany({
+        where,
+        include: { company: true },
+        orderBy: { name: 'asc' }
+      });
+    }
     res.json({ success: true, costCenters });
   } catch (err) { next(err); }
 }
