@@ -198,6 +198,11 @@ model Employee {
   employeeCode  String   @unique
   fullName      String
   email         String
+  phone         String?
+  custodianType String?  @default("Internal")
+  organization  String?
+  section       String?
+  location      String?
   companyId     String
   departmentId  String?
   costCenterId  String?

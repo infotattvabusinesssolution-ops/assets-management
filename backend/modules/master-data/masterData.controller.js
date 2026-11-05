@@ -2845,6 +2845,8 @@ export async function getEmployees(req, res, next) {
             departmentId: e.departmentId,
             department: e.department?.name || '',
             custodianType: e.custodianType || 'Internal',
+            organization: e.organization || '',
+            section: e.section || '',
             location: e.location || '',
             active: e.active,
             status: e.active ? 'Active' : 'Inactive'
@@ -2917,6 +2919,11 @@ export async function createEmployee(req, res, next) {
           employeeCode: code,
           fullName: fullName.trim(),
           email: mail,
+          phone: (phone || '').trim() || null,
+          custodianType: custodianType || 'Internal',
+          organization: (organization || '').trim() || null,
+          section: (section || '').trim() || null,
+          location: (location || '').trim() || null,
           companyId: targetCompanyId,
           active: isAct
         };
@@ -3012,6 +3019,11 @@ export async function updateEmployee(req, res, next) {
     if (costCenterId !== undefined) updateData.costCenterId = costCenterId || null;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
+    if (phone !== undefined) updateData.phone = (phone || '').trim() || null;
+    if (custodianType !== undefined) updateData.custodianType = custodianType || 'Internal';
+    if (organization !== undefined) updateData.organization = (organization || '').trim() || null;
+    if (section !== undefined) updateData.section = (section || '').trim() || null;
+    if (location !== undefined) updateData.location = (location || '').trim() || null;
 
     if (isDbConnected()) {
       try {
