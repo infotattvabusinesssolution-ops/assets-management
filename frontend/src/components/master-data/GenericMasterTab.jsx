@@ -89,7 +89,6 @@ export function GenericMasterTab({
     manufacturerName: '',
     website: '',
     supportContact: '',
-    country: 'United States',
     symbol: '',
     category: '',
     stage: '',
@@ -352,7 +351,6 @@ export function GenericMasterTab({
         manufacturerName: '',
         website: '',
         supportContact: '',
-        country: 'United States',
         symbol: '',
         category: activeTab === 'uom' ? 'Discrete Count' : '',
         stage: activeTab === 'status-codes' ? 'Operational' : '',
@@ -756,7 +754,7 @@ export function GenericMasterTab({
                   <th className="py-3 px-3">Code</th>
                   <th className="py-3 px-3">Name</th>
                   {activeTab === 'manufacturers' && <th className="py-3 px-3">Support Contact</th>}
-                  {activeTab === 'manufacturers' && <th className="py-3 px-3">Country</th>}
+                  {activeTab === 'manufacturers' && <th className="py-3 px-3">Website</th>}
                   {activeTab === 'brands' && <th className="py-3 px-3">Manufacturer</th>}
                   {activeTab === 'brands' && <th className="py-3 px-3">Description</th>}
                   {activeTab === 'uom' && <th className="py-3 px-3 text-center">Symbol</th>}
@@ -799,7 +797,20 @@ export function GenericMasterTab({
                           </td>
                         )}
                         {activeTab === 'manufacturers' && (
-                          <td className="py-2.5 px-3 text-slate-600">{item.country || 'Global'}</td>
+                          <td className="py-2.5 px-3 text-slate-600">
+                            {item.website ? (
+                              <a
+                                href={item.website.startsWith('http') ? item.website : `https://${item.website}`}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                onClick={(e) => e.stopPropagation()}
+                                className="text-[#6C2BD9] hover:underline flex items-center gap-1 font-mono text-[11px]"
+                              >
+                                <Globe className="w-3 h-3 text-slate-400 shrink-0" />
+                                <span className="truncate max-w-[150px]">{item.website.replace(/^https?:\/\//, '')}</span>
+                              </a>
+                            ) : '-'}
+                          </td>
                         )}
                         {activeTab === 'brands' && (
                           <td className="py-2.5 px-3 font-semibold text-slate-800">
@@ -948,12 +959,7 @@ export function GenericMasterTab({
                   </div>
                 )}
 
-                {activeTab === 'manufacturers' && selectedItem.country && (
-                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
-                    <span className="text-slate-500 font-semibold">Country</span>
-                    <span className="font-semibold text-slate-900">{selectedItem.country}</span>
-                  </div>
-                )}
+
 
                 {activeTab === 'brands' && selectedItem.manufacturerName && (
                   <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
