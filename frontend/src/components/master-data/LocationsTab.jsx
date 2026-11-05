@@ -70,8 +70,10 @@ export const DEFAULT_COUNTRIES = [
   'Greece'
 ];
 
-// System-defined enumerations (fixed, not user-defined)
-export const SYSTEM_LOCATION_TYPES = ['Internal', 'External'];
+export const DEFAULT_LOCATION_TYPES = [
+  { id: 'Internal', code: 'INTERNAL', name: 'Internal', description: 'Company Owned / Leased' },
+  { id: 'External', code: 'EXTERNAL', name: 'External', description: 'Client Site / 3rd Party / Vendor' }
+];
 
 export const LOCATION_LEVELS = [
   { id: 'Level 1', label: 'Level 1 (e.g. Campus / Site)' },
@@ -109,6 +111,7 @@ export function LocationsTab({
 }) {
   const [locationsList, setLocationsList] = useState([]);
   const [countriesList, setCountriesList] = useState(DEFAULT_COUNTRIES);
+  const [locationTypesList, setLocationTypesList] = useState(DEFAULT_LOCATION_TYPES.map(t => t.name));
   const [selectedLocation, setSelectedLocation] = useState(null);
   const [selectedLocIds, setSelectedLocIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -124,8 +127,31 @@ export function LocationsTab({
     return Array.from(new Set(combined)).filter(Boolean);
   }, [countriesList, locationsList]);
 
+  const allLocationTypes = useMemo(() => {
+    const base = locationTypesList && locationTypesList.length > 0 ? locationTypesList : DEFAULT_LOCATION_TYPES.map(t => t.name);
+    const combined = [...base];
+    locationsList.forEach((l) => {
+      if (l.type && !combined.includes(l.type)) {
+        combined.push(l.type);
+      }
+    });
+    return Array.from(new Set(combined)).filter(Boolean);
+  }, [locationTypesList, locationsList]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+
+  // Load live location types from database
+  const loadLocationTypes = async () => {
+    try {
+      const res = await api.get('/master-data/location-types');
+      if (res?.locationTypes && Array.isArray(res.locationTypes) && res.locationTypes.length > 0) {
+        setLocationTypesList(res.locationTypes.map(t => t.name));
+      }
+    } catch (err) {
+      console.warn('Failed to fetch location types from database, using defaults:', err);
+    }
+  };
 
   // Load live countries from database
   const loadCountries = async () => {
@@ -189,6 +215,7 @@ export function LocationsTab({
   useEffect(() => {
     loadLocations();
     loadCountries();
+    loadLocationTypes();
   }, []);
 
   // Filter state
@@ -270,7 +297,7 @@ export function LocationsTab({
       setLocFormState({
         code: '',
         name: '',
-        type: 'Internal',
+        type: allLocationTypes[0] || 'Internal',
         level: 'Level 1',
         parentLocation: '-',
         country: allCountries[0] || 'United Arab Emirates',
@@ -318,7 +345,7 @@ export function LocationsTab({
     const payload = {
       code: cleanCode,
       name: cleanName,
-      type: locFormState.type === 'External' ? 'External' : 'Internal',
+      type: locFormState.type || (allLocationTypes[0] || 'Internal'),
       level: locFormState.level || 'Level 1',
       parentLocation: (locFormState.level === 'Level 1' || !locFormState.parentLocation) ? '-' : locFormState.parentLocation,
       country: locFormState.country || 'United Arab Emirates',
@@ -536,8 +563,11 @@ export function LocationsTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Types">All Location Types</option>
-              <option value="Internal">Internal</option>
-              <option value="External">External</option>
+              {allLocationTypes.map((t) => (
+                <option key={t} value={t}>
+                  {t}
+                </option>
+              ))}
             </select>
           </div>
 
@@ -1004,15 +1034,18 @@ export function LocationsTab({
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Location Type * <span className="text-[10px] text-slate-400 font-normal">(System Enumeration)</span>
+                    Location Type *
                   </label>
                   <select
-                    value={locFormState.type}
+                    value={locFormState.type || (allLocationTypes[0] || 'Internal')}
                     onChange={(e) => setLocFormState({ ...locFormState, type: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    <option value="Internal">Internal (Company Owned / Leased)</option>
-                    <option value="External">External (Client Site / 3rd Party / Vendor)</option>
+                    {allLocationTypes.map((t) => (
+                      <option key={t} value={t}>
+                        {t === 'Internal' ? 'Internal (Company Owned / Leased)' : t === 'External' ? 'External (Client Site / 3rd Party / Vendor)' : t}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

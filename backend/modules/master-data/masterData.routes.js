@@ -26,7 +26,8 @@ import {
   getItemMasters, getItemMasterById, createItemMaster, updateItemMaster, deleteItemMaster,
   getUoms, createUom, updateUom, deleteUom,
   getDisposalStatuses, createDisposalStatus, updateDisposalStatus, deleteDisposalStatus,
-  getCountries, createCountry
+  getCountries, createCountry,
+  getLocationTypes, createLocationType
 } from './masterData.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
@@ -161,5 +162,9 @@ router.delete('/disposal-statuses/:id', deleteDisposalStatus);
 // Countries (Dynamic Master Data Lookup / Enum)
 router.get('/countries', getCountries);
 router.post('/countries', createCountry);
+
+// Location Types (Dynamic Master Data Lookup / Enum)
+router.get('/location-types', getLocationTypes);
+router.post('/location-types', createLocationType);
 
 export default router;

@@ -3436,6 +3436,7 @@ const DISPOSAL_STATUSES_FILE = resolveDataFile('disposal_statuses.json');
 const BRANDS_FILE = resolveDataFile('brands.json');
 const MANUFACTURERS_FILE = resolveDataFile('manufacturers.json');
 const COUNTRIES_FILE = resolveDataFile('countries.json');
+const LOCATION_TYPES_FILE = resolveDataFile('location_types.json');
 
 const DEFAULT_BRANDS = [];
 
@@ -3490,6 +3491,53 @@ async function ensureCountriesTable() {
     countriesTableEnsured = true;
   } catch (err) {
     console.warn('countries table check skipped:', err.message);
+  }
+}
+
+function readLocationTypesFromFile() {
+  try {
+    if (fs.existsSync(LOCATION_TYPES_FILE)) {
+      const data = fs.readFileSync(LOCATION_TYPES_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : [];
+    }
+  } catch (e) {
+    console.warn('Failed to read location_types.json:', e.message);
+  }
+  return [];
+}
+
+function writeLocationTypesToFile(list) {
+  try {
+    const dir = path.dirname(LOCATION_TYPES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(LOCATION_TYPES_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write location_types.json:', e.message);
+  }
+}
+
+let inMemoryLocationTypes = readLocationTypesFromFile();
+let locationTypesTableEnsured = false;
+
+async function ensureLocationTypesTable() {
+  if (locationTypesTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='location_types' and xtype='U')
+      CREATE TABLE location_types (
+        id NVARCHAR(100) PRIMARY KEY,
+        code NVARCHAR(50) NOT NULL UNIQUE,
+        name NVARCHAR(100) NOT NULL UNIQUE,
+        description NVARCHAR(255) NULL,
+        active BIT DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    locationTypesTableEnsured = true;
+  } catch (err) {
+    console.warn('location_types table check skipped:', err.message);
   }
 }
 
@@ -4885,5 +4933,83 @@ export async function createCountry(req, res, next) {
     inMemoryCountries.push(newCountry);
     writeCountriesToFile(inMemoryCountries);
     res.status(201).json({ success: true, country: newCountry });
+  } catch (err) { next(err); }
+}
+
+// Location Type Handlers (Master Data - Dynamic Lookup / Enum)
+export async function getLocationTypes(req, res, next) {
+  try {
+    await ensureLocationTypesTable();
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM location_types WHERE active = 1 ORDER BY name ASC`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            description: r.description || '',
+            active: Boolean(r.active)
+          }));
+          inMemoryLocationTypes = list;
+          writeLocationTypesToFile(list);
+          return res.json({ success: true, locationTypes: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getLocationTypes skipped, using persistent store:', dbErr.message);
+      }
+    }
+    res.json({ success: true, locationTypes: inMemoryLocationTypes.filter(t => t.active !== false) });
+  } catch (err) { next(err); }
+}
+
+export async function createLocationType(req, res, next) {
+  try {
+    await ensureLocationTypesTable();
+    const { code, name, description } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Location Type name is required' });
+
+    const cleanName = name.trim();
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase().replace(/\s+/g, '_') : cleanName.toUpperCase().replace(/\s+/g, '_');
+
+    if (inMemoryLocationTypes.some(t => t.name.toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Location Type "${cleanName}" already exists.` });
+    }
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM location_types WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' OR UPPER(code) = '${cleanCode.toUpperCase().replace(/'/g, "''")}'`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Location Type "${cleanName}" or code "${cleanCode}" already exists.` });
+        }
+      } catch (err) {}
+    }
+
+    const newType = {
+      id: `lt-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      description: description || '',
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO location_types (id, code, name, description, active, createdAt, updatedAt)
+          VALUES ('${newType.id}', '${newType.code}', '${newType.name.replace(/'/g, "''")}', '${(newType.description || '').replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert location_type skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryLocationTypes.push(newType);
+    writeLocationTypesToFile(inMemoryLocationTypes);
+    res.status(201).json({ success: true, locationType: newType });
   } catch (err) { next(err); }
 }
