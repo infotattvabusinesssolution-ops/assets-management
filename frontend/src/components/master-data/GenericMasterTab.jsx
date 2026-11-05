@@ -91,8 +91,8 @@ export function GenericMasterTab({
     supportContact: '',
     country: 'United States',
     symbol: '',
-    category: 'Discrete Count',
-    stage: 'Operational',
+    category: '',
+    stage: '',
     color: 'emerald',
     description: '',
     status: 'Active'
@@ -354,8 +354,8 @@ export function GenericMasterTab({
         supportContact: '',
         country: 'United States',
         symbol: '',
-        category: 'Discrete Count',
-        stage: 'Operational',
+        category: activeTab === 'uom' ? 'Discrete Count' : '',
+        stage: activeTab === 'status-codes' ? 'Operational' : '',
         color: 'emerald',
         description: '',
         status: 'Active'
@@ -948,14 +948,28 @@ export function GenericMasterTab({
                   </div>
                 )}
 
-                {selectedItem.category && (
+                {activeTab === 'manufacturers' && selectedItem.country && (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-slate-500 font-semibold">Country</span>
+                    <span className="font-semibold text-slate-900">{selectedItem.country}</span>
+                  </div>
+                )}
+
+                {activeTab === 'brands' && selectedItem.manufacturerName && (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-slate-500 font-semibold">Manufacturer</span>
+                    <span className="font-semibold text-slate-900">{selectedItem.manufacturerName}</span>
+                  </div>
+                )}
+
+                {activeTab === 'uom' && selectedItem.category && (
                   <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
                     <span className="text-slate-500 font-semibold">Category Type</span>
                     <span className="font-semibold text-slate-900">{selectedItem.category}</span>
                   </div>
                 )}
 
-                {selectedItem.stage && (
+                {activeTab === 'status-codes' && selectedItem.stage && (
                   <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
                     <span className="text-slate-500 font-semibold">Lifecycle Stage</span>
                     <span className="font-semibold text-slate-900">{selectedItem.stage}</span>
