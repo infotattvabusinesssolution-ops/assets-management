@@ -4501,6 +4501,7 @@ export async function createUom(req, res, next) {
         }
       } catch (err) {}
     }
+    const id = req.body.id || crypto.randomUUID();
     const newUom = {
       id,
       code: cleanCode,
