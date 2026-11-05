@@ -59,14 +59,18 @@ export function DepartmentsTab({
 
       if (res?.departments && res.departments.length > 0) {
         const mapped = res.departments.map((dept) => {
-          const matchedCC = loadedCCs.find((c) => c.companyId === dept.companyId || c.code.includes(dept.code) || c.name.toLowerCase().includes(dept.name.toLowerCase()));
+          const linkedCCs = (dept.costCenters && dept.costCenters.length > 0)
+            ? dept.costCenters
+            : loadedCCs.filter((c) => c.departmentId === dept.id || c.department?.id === dept.id);
           return {
             id: dept.id,
             code: dept.code,
             name: dept.name,
-            costCenterCode: matchedCC ? matchedCC.code : '-',
-            costCenterName: matchedCC ? matchedCC.name : '-',
-            costCenterId: matchedCC ? matchedCC.id : '',
+            costCenters: linkedCCs,
+            costCenterCount: linkedCCs.length,
+            costCenterCode: linkedCCs.length > 0 ? linkedCCs[0].code : '-',
+            costCenterName: linkedCCs.length > 0 ? linkedCCs[0].name : '-',
+            costCenterId: linkedCCs.length > 0 ? linkedCCs[0].id : '',
             type: dept.type || '-',
             parentDepartment: dept.parentDepartment || '-',
             location: dept.location || dept.site?.name || '-',
@@ -550,7 +554,7 @@ export function DepartmentsTab({
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Dept Code</th>
                   <th className="py-3 px-3">Dept Name</th>
-                  <th className="py-3 px-3">Cost Center</th>
+                  <th className="py-3 px-3">Linked Cost Centers</th>
                   <th className="py-3 px-3">Type</th>
                   <th className="py-3 px-3">Manager</th>
                   <th className="py-3 px-3">Location</th>
@@ -592,7 +596,22 @@ export function DepartmentsTab({
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{dept.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{dept.name}</td>
-                      <td className="py-2.5 px-3 font-mono font-bold text-xs text-[#6C2BD9]">{dept.costCenterCode || `CC-${dept.code}`}</td>
+                      <td className="py-2.5 px-3">
+                        {dept.costCenters && dept.costCenters.length > 0 ? (
+                          <div className="flex items-center gap-1.5 flex-wrap">
+                            <span className="font-mono font-bold text-xs text-[#6C2BD9]">
+                              {dept.costCenters[0].code}
+                            </span>
+                            {dept.costCenters.length > 1 && (
+                              <span className="px-1.5 py-0.5 rounded-full bg-purple-100 text-[#6C2BD9] text-[10px] font-bold">
+                                +{dept.costCenters.length - 1}
+                              </span>
+                            )}
+                          </div>
+                        ) : (
+                          <span className="text-slate-400 font-normal text-xs">-</span>
+                        )}
+                      </td>
                       <td className="py-2.5 px-3 text-slate-700">{dept.type}</td>
                       <td className="py-2.5 px-3 text-slate-800">{dept.manager}</td>
                       <td className="py-2.5 px-3 text-slate-700">{dept.location}</td>
@@ -765,19 +784,52 @@ export function DepartmentsTab({
                 <span className="col-span-2 font-mono font-bold text-slate-900">{selectedDepartment.employees}</span>
               </div>
 
-              <div className="pt-3 border-t border-slate-200 space-y-2">
+              <div className="pt-3 border-t border-slate-200 space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
+                    <BarChart3 className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                    <span>Linked Cost Centers</span>
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[#6C2BD9] text-[10px] font-bold">
+                    {(selectedDepartment.costCenters || []).length} assigned
+                  </span>
+                </div>
+
+                {selectedDepartment.costCenters && selectedDepartment.costCenters.length > 0 ? (
+                  <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
+                    {selectedDepartment.costCenters.map((cc) => (
+                      <div
+                        key={cc.id}
+                        className="p-2 rounded-xl bg-purple-50/50 border border-purple-100/80 flex items-center justify-between hover:bg-purple-50 transition-colors"
+                      >
+                        <div className="min-w-0 pr-2">
+                          <div className="font-mono font-bold text-[#6C2BD9] text-[11px]">{cc.code}</div>
+                          <div className="text-slate-700 text-[11px] font-medium truncate">{cc.name}</div>
+                        </div>
+                        <span
+                          className={clsx(
+                            'text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap',
+                            cc.active === false ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'
+                          )}
+                        >
+                          {cc.active === false ? 'Inactive' : 'Active'}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-3 rounded-xl border border-dashed border-slate-200 text-center text-slate-400">
+                    <p className="text-[11px] font-medium text-slate-500">No cost centers assigned</p>
+                    <p className="text-[10px] text-slate-400 mt-0.5">
+                      Cost centers can be linked to this department from the Cost Centers master.
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="pt-2 border-t border-slate-200 space-y-2">
                 <h4 className="text-xs font-bold text-slate-900">Related Information</h4>
                 <div className="space-y-1.5">
-                  <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-purple-200 hover:bg-purple-50/50 transition-colors cursor-pointer group">
-                    <div className="flex items-center gap-2 text-slate-700 group-hover:text-[#6C2BD9]">
-                      <BarChart3 className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                      <span className="font-semibold">Linked Cost Center</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono font-bold text-[#6C2BD9]">{selectedDepartment.costCenterCode || `CC-${selectedDepartment.code}`}</span>
-                      <ChevronRight className="w-3.5 h-3.5 text-slate-400 group-hover:text-[#6C2BD9]" />
-                    </div>
-                  </div>
 
                   <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-purple-200 hover:bg-purple-50/50 transition-colors cursor-pointer group">
                     <div className="flex items-center gap-2 text-slate-700 group-hover:text-[#6C2BD9]">
@@ -911,39 +963,6 @@ export function DepartmentsTab({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Location</label>
-                  <select
-                    value={deptFormState.location}
-                    onChange={(e) => setDeptFormState({ ...deptFormState, location: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="">- Select Location -</option>
-                    {locationsList.map((loc) => (
-                      <option key={loc.id || loc.name} value={loc.name || loc.code}>
-                        {loc.name || loc.code}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Primary Cost Center</label>
-                  <select
-                    value={deptFormState.costCenterId || ''}
-                    onChange={(e) => setDeptFormState({ ...deptFormState, costCenterId: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="">- Select Linked Cost Center -</option>
-                    {costCenters.map((cc) => (
-                      <option key={cc.id} value={cc.id}>
-                        {cc.code} ({cc.name})
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
                   <label className="block font-semibold text-slate-700 mb-1">Company</label>
                   <select
                     value={deptFormState.company}
@@ -958,7 +977,38 @@ export function DepartmentsTab({
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Location</label>
+                  <select
+                    value={deptFormState.location}
+                    onChange={(e) => setDeptFormState({ ...deptFormState, location: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="">- Select Location -</option>
+                    {locationsList.map((loc) => (
+                      <option key={loc.id || loc.name} value={loc.name || loc.code}>
+                        {loc.name || loc.code}
+                      </option>
+                    ))}
+                  </select>
+                </div>
               </div>
+
+              {editingDepartment && editingDepartment.costCenters && editingDepartment.costCenters.length > 0 && (
+                <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-100 text-xs">
+                  <div className="font-bold text-[#6C2BD9] mb-1 flex items-center justify-between">
+                    <span>Assigned Cost Centers ({editingDepartment.costCenters.length})</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Managed via Cost Centers master</span>
+                  </div>
+                  <div className="flex flex-wrap gap-1.5 mt-1.5">
+                    {editingDepartment.costCenters.map(cc => (
+                      <span key={cc.id} className="inline-flex items-center gap-1 px-2 py-0.5 bg-white border border-purple-200 rounded-md font-mono text-[11px] font-semibold text-slate-700">
+                        <span className="text-[#6C2BD9] font-bold">{cc.code}</span> - {cc.name}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-3">
                 <div>

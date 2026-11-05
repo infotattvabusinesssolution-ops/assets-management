@@ -53,10 +53,11 @@ model Department {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  employees Employee[]
-  assets    Asset[]
-  users     User[]
+  company     Company      @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  costCenters CostCenter[]
+  employees   Employee[]
+  assets      Asset[]
+  users       User[]
 
   @@unique([companyId, code])
   @@map("departments")
@@ -66,16 +67,18 @@ model CostCenter {
   id            String   @id @default(uuid())
   legacyMongoId String?
   companyId     String
+  departmentId  String?
   code          String
   name          String
   active        Boolean  @default(true)
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company   Company    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  employees Employee[]
-  assets    Asset[]
-  users     User[]
+  company    Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  employees  Employee[]
+  assets     Asset[]
+  users      User[]
 
   @@unique([companyId, code])
   @@map("cost_centers")

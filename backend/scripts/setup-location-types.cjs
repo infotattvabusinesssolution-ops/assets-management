@@ -56,3 +56,4 @@ main().catch(err => {
   console.error('Error running setup-location-types:', err);
   process.exit(1);
 });
+

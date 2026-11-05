@@ -2505,7 +2505,19 @@ export async function createModel(req, res, next) {
 export async function getDepartments(req, res, next) {
   try {
     const where = req.query.includeInactive === 'true' ? {} : { active: true };
-    const departments = await prisma.department.findMany({ where, orderBy: { name: 'asc' } });
+    if (req.query.companyId) {
+      where.companyId = req.query.companyId;
+    }
+    const departments = await prisma.department.findMany({
+      where,
+      include: {
+        company: true,
+        costCenters: {
+          select: { id: true, code: true, name: true, active: true }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
     res.json({ success: true, departments });
   } catch (err) { next(err); }
 }
@@ -2621,9 +2633,15 @@ export async function deleteDepartment(req, res, next) {
 export async function getCostCenters(req, res, next) {
   try {
     const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    if (req.query.departmentId) {
+      where.departmentId = req.query.departmentId;
+    }
+    if (req.query.companyId) {
+      where.companyId = req.query.companyId;
+    }
     const costCenters = await prisma.costCenter.findMany({
       where,
-      include: { company: true },
+      include: { company: true, department: true },
       orderBy: { name: 'asc' }
     });
     res.json({ success: true, costCenters });
@@ -2632,7 +2650,7 @@ export async function getCostCenters(req, res, next) {
 
 export async function createCostCenter(req, res, next) {
   try {
-    const { code, name, active, status } = req.body;
+    const { code, name, active, status, companyId, departmentId } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Cost Center Name is required.' });
     }
@@ -2657,7 +2675,13 @@ export async function createCostCenter(req, res, next) {
       }
     }
 
-    let targetCompanyId = req.body.companyId;
+    let targetCompanyId = companyId;
+    if (!targetCompanyId && departmentId) {
+      try {
+        const d = await prisma.department.findUnique({ where: { id: departmentId } });
+        if (d) targetCompanyId = d.companyId;
+      } catch (_) {}
+    }
     if (!targetCompanyId) {
       const firstComp = await prisma.company.findFirst();
       targetCompanyId = firstComp ? firstComp.id : null;
@@ -2668,8 +2692,10 @@ export async function createCostCenter(req, res, next) {
         code: cleanCode,
         name: cleanName,
         companyId: targetCompanyId,
+        departmentId: departmentId || null,
         active: isAct
-      }
+      },
+      include: { company: true, department: true }
     });
     res.status(201).json({ success: true, costCenter });
   } catch (err) { next(err); }
@@ -2678,7 +2704,7 @@ export async function createCostCenter(req, res, next) {
 export async function updateCostCenter(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, active, status, companyId } = req.body;
+    const { code, name, active, status, companyId, departmentId } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
 
@@ -2705,10 +2731,15 @@ export async function updateCostCenter(req, res, next) {
     if (cleanCode) updateData.code = cleanCode;
     if (cleanName) updateData.name = cleanName;
     if (companyId) updateData.companyId = companyId;
+    if (departmentId !== undefined) updateData.departmentId = departmentId || null;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
 
-    const costCenter = await prisma.costCenter.update({ where: { id }, data: updateData });
+    const costCenter = await prisma.costCenter.update({
+      where: { id },
+      data: updateData,
+      include: { company: true, department: true }
+    });
     res.json({ success: true, costCenter });
   } catch (err) { next(err); }
 }

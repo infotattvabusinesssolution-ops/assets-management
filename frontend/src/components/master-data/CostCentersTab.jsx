@@ -36,6 +36,7 @@ export function CostCentersTab({
 }) {
   const [costCentersList, setCostCentersList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
+  const [departmentsList, setDepartmentsList] = useState([]);
   const [selectedCostCenter, setSelectedCostCenter] = useState(null);
   const [selectedCCIds, setSelectedCCIds] = useState([]);
   const [isBulkDeleting, setIsBulkDeleting] = useState(false);
@@ -45,17 +46,22 @@ export function CostCentersTab({
   const loadCostCenters = async () => {
     setIsLoading(true);
     try {
-      const [res, compRes] = await Promise.all([
+      const [res, compRes, deptRes] = await Promise.all([
         api.get('/master-data/cost-centers?includeInactive=true'),
-        api.get('/master-data/companies?includeInactive=true').catch(() => null)
+        api.get('/master-data/companies?includeInactive=true').catch(() => null),
+        api.get('/master-data/departments?includeInactive=true').catch(() => null)
       ]);
       if (compRes?.companies) setCompaniesList(compRes.companies);
+      if (deptRes?.departments) setDepartmentsList(deptRes.departments);
       if (res?.costCenters && res.costCenters.length > 0) {
         const mapped = res.costCenters.map((cc) => ({
           id: cc.id,
           code: cc.code,
           name: cc.name,
           company: cc.company?.name || cc.company || '-',
+          companyId: cc.companyId || cc.company?.id || '',
+          department: cc.department?.name || cc.department || '-',
+          departmentId: cc.departmentId || cc.department?.id || '',
           type: cc.type || '-',
           manager: cc.manager || cc.head || '-',
           description: cc.description || '',
@@ -66,7 +72,7 @@ export function CostCentersTab({
           lastModifiedBy: cc.lastModifiedBy || 'System',
           lastModifiedOn: cc.updatedAt ? new Date(cc.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           relatedInfo: {
-            departments: cc.departmentsCount || 0,
+            departments: cc.departmentsCount || (cc.departmentId ? 1 : 0),
             locations: cc.locationsCount || 0,
             assets: cc.assetsCount || 0,
             maintenancePlans: 0,
@@ -96,6 +102,7 @@ export function CostCentersTab({
   // Filter state
   const [ccSearchQuery, setCcSearchQuery] = useState('');
   const [ccCompanyFilter, setCcCompanyFilter] = useState('All Companies');
+  const [ccDepartmentFilter, setCcDepartmentFilter] = useState('All Departments');
   const [ccStatusFilter, setCcStatusFilter] = useState('All');
   const [ccTypeFilter, setCcTypeFilter] = useState('All');
 
@@ -107,6 +114,7 @@ export function CostCentersTab({
     code: '',
     name: '',
     company: '',
+    departmentId: '',
     type: 'Operational',
     manager: '',
     description: '',
@@ -119,11 +127,15 @@ export function CostCentersTab({
         !ccSearchQuery ||
         cc.code.toLowerCase().includes(ccSearchQuery.toLowerCase()) ||
         cc.name.toLowerCase().includes(ccSearchQuery.toLowerCase()) ||
+        (cc.department && cc.department.toLowerCase().includes(ccSearchQuery.toLowerCase())) ||
         (cc.description && cc.description.toLowerCase().includes(ccSearchQuery.toLowerCase())) ||
         (cc.manager && cc.manager.toLowerCase().includes(ccSearchQuery.toLowerCase()));
 
       const matchesCompany =
         ccCompanyFilter === 'All Companies' || ccCompanyFilter === 'All' || cc.company === ccCompanyFilter;
+
+      const matchesDepartment =
+        ccDepartmentFilter === 'All Departments' || ccDepartmentFilter === 'All' || cc.department === ccDepartmentFilter || cc.departmentId === ccDepartmentFilter;
 
       const matchesStatus =
         ccStatusFilter === 'All' || cc.status.toLowerCase() === ccStatusFilter.toLowerCase();
@@ -131,13 +143,14 @@ export function CostCentersTab({
       const matchesType =
         ccTypeFilter === 'All' || ccTypeFilter === 'All Types' || cc.type === ccTypeFilter;
 
-      return matchesSearch && matchesCompany && matchesStatus && matchesType;
+      return matchesSearch && matchesCompany && matchesDepartment && matchesStatus && matchesType;
     });
   }, [costCentersList, ccSearchQuery, ccCompanyFilter, ccStatusFilter, ccTypeFilter]);
 
   const handleResetCCFilters = () => {
     setCcSearchQuery('');
     setCcCompanyFilter('All Companies');
+    setCcDepartmentFilter('All Departments');
     setCcStatusFilter('All');
     setCcTypeFilter('All');
   };
@@ -151,6 +164,7 @@ export function CostCentersTab({
         code: ccToEdit.code,
         name: ccToEdit.name,
         company: ccToEdit.company || '',
+        departmentId: ccToEdit.departmentId || '',
         type: ccToEdit.type || 'Operational',
         manager: ccToEdit.manager || '',
         description: ccToEdit.description || '',
@@ -162,6 +176,7 @@ export function CostCentersTab({
         code: '',
         name: '',
         company: '',
+        departmentId: '',
         type: 'Operational',
         manager: '',
         description: '',
@@ -205,7 +220,11 @@ export function CostCentersTab({
     }
 
     const matchedComp = companiesList.find(c => c.name === ccFormState.company || c.code === ccFormState.company || c.id === ccFormState.company);
-    const companyId = matchedComp?.id || null;
+    let companyId = matchedComp?.id || null;
+    if (!companyId && ccFormState.departmentId) {
+      const matchedDept = departmentsList.find(d => d.id === ccFormState.departmentId);
+      if (matchedDept?.companyId) companyId = matchedDept.companyId;
+    }
 
     if (editingCostCenter) {
       try {
@@ -213,6 +232,7 @@ export function CostCentersTab({
           code: cleanCode,
           name: cleanName,
           companyId,
+          departmentId: ccFormState.departmentId || null,
           active: ccFormState.status === 'Active',
           status: ccFormState.status
         });
@@ -231,6 +251,7 @@ export function CostCentersTab({
           code: cleanCode,
           name: cleanName,
           companyId,
+          departmentId: ccFormState.departmentId || null,
           active: ccFormState.status === 'Active',
           status: ccFormState.status
         });
@@ -382,6 +403,22 @@ export function CostCentersTab({
             </select>
           </div>
 
+          <div className="w-full md:w-40 relative">
+            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Department</span>
+            <select
+              value={ccDepartmentFilter}
+              onChange={(e) => setCcDepartmentFilter(e.target.value)}
+              className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+            >
+              <option value="All Departments">All Departments</option>
+              {departmentsList.map((d) => (
+                <option key={d.id} value={d.name}>
+                  {d.name}
+                </option>
+              ))}
+            </select>
+          </div>
+
           <div className="w-full md:w-28 relative">
             <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Status</span>
             <select
@@ -500,6 +537,7 @@ export function CostCentersTab({
                   <th className="py-3 px-3">Cost Center Code ↕</th>
                   <th className="py-3 px-3">Cost Center Name ↕</th>
                   <th className="py-3 px-3">Company</th>
+                  <th className="py-3 px-3">Department</th>
                   <th className="py-3 px-3">Type</th>
                   <th className="py-3 px-3">Manager</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
@@ -510,7 +548,7 @@ export function CostCentersTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredCostCenters.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={11} className="py-12 text-center text-slate-400 text-xs font-medium">
                       No cost centers found. Click "+ Add Cost Center" to create one.
                     </td>
                   </tr>
@@ -541,6 +579,7 @@ export function CostCentersTab({
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{cc.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{cc.name}</td>
                       <td className="py-2.5 px-3 text-slate-700">{cc.company}</td>
+                      <td className="py-2.5 px-3 text-slate-700 font-semibold">{cc.department}</td>
                       <td className="py-2.5 px-3 text-slate-700">{cc.type}</td>
                       <td className="py-2.5 px-3 text-slate-800">{cc.manager}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
@@ -673,6 +712,11 @@ export function CostCentersTab({
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Company</span>
                 <span className="col-span-2 text-slate-700">{selectedCostCenter.company}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                <span className="text-slate-500 font-medium">Department</span>
+                <span className="col-span-2 font-semibold text-[#6C2BD9]">{selectedCostCenter.department || 'Not Assigned'}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -841,7 +885,20 @@ export function CostCentersTab({
                   <label className="block font-semibold text-slate-700 mb-1">Company</label>
                   <select
                     value={ccFormState.company}
-                    onChange={(e) => setCcFormState({ ...ccFormState, company: e.target.value })}
+                    onChange={(e) => {
+                      const newComp = e.target.value;
+                      setCcFormState(prev => {
+                        const matchedComp = companiesList.find(c => c.name === newComp || c.id === newComp);
+                        let nextDeptId = prev.departmentId;
+                        if (matchedComp && nextDeptId) {
+                          const curDept = departmentsList.find(d => d.id === nextDeptId);
+                          if (curDept && curDept.companyId && curDept.companyId !== matchedComp.id) {
+                            nextDeptId = '';
+                          }
+                        }
+                        return { ...prev, company: newComp, departmentId: nextDeptId };
+                      });
+                    }}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
                     <option value="">- Select Company -</option>
@@ -852,6 +909,40 @@ export function CostCentersTab({
                     ))}
                   </select>
                 </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Department</label>
+                  <select
+                    value={ccFormState.departmentId}
+                    onChange={(e) => {
+                      const selectedDeptId = e.target.value;
+                      const dept = departmentsList.find(d => d.id === selectedDeptId);
+                      let autoComp = ccFormState.company;
+                      if (dept?.company?.name) autoComp = dept.company.name;
+                      else if (dept?.companyId) {
+                        const c = companiesList.find(cmp => cmp.id === dept.companyId);
+                        if (c) autoComp = c.name;
+                      }
+                      setCcFormState({ ...ccFormState, departmentId: selectedDeptId, company: autoComp });
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="">- Select Department -</option>
+                    {departmentsList
+                      .filter(d => {
+                        if (!ccFormState.company) return true;
+                        const comp = companiesList.find(c => c.name === ccFormState.company || c.id === ccFormState.company);
+                        return !comp || !d.companyId || d.companyId === comp.id;
+                      })
+                      .map((d) => (
+                        <option key={d.id} value={d.id}>
+                          {d.name} {d.company?.name ? `(${d.company.name})` : ''}
+                        </option>
+                      ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Type</label>
                   <select
@@ -864,17 +955,16 @@ export function CostCentersTab({
                     <option value="Capital">Capital</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Manager</label>
-                <input
-                  type="text"
-                  value={ccFormState.manager}
-                  onChange={(e) => setCcFormState({ ...ccFormState, manager: e.target.value })}
-                  placeholder="Manager Name"
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
-                />
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Manager</label>
+                  <input
+                    type="text"
+                    value={ccFormState.manager}
+                    onChange={(e) => setCcFormState({ ...ccFormState, manager: e.target.value })}
+                    placeholder="Manager Name"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
+                  />
+                </div>
               </div>
 
               <div>

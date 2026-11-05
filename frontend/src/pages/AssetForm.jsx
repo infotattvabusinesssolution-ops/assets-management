@@ -478,14 +478,19 @@ export function AssetForm() {
     const cleanName = name.trim();
     const code = window.prompt('Enter Cost Center code (e.g. CC-3000):' )?.trim() || `CC-${Math.floor(1000 + Math.random() * 9000)}`;
     try {
-      const res = await api.post('/master-data/cost-centers', { name: cleanName, code, companyId: formData.companyId || undefined });
-      const newCC = res?.costCenter || { id: `cc-${Date.now()}`, name: cleanName, code, companyId: formData.companyId };
+      const res = await api.post('/master-data/cost-centers', {
+        name: cleanName,
+        code,
+        companyId: formData.companyId || undefined,
+        departmentId: formData.departmentId || undefined
+      });
+      const newCC = res?.costCenter || { id: `cc-${Date.now()}`, name: cleanName, code, companyId: formData.companyId, departmentId: formData.departmentId };
       setCostCenters(prev => [...prev, newCC]);
       setFormData(prev => ({ ...prev, costCenterId: newCC.id, costCenter: `${newCC.code} - ${newCC.name}` }));
       showToast('success', `Cost Center "${cleanName}" added successfully!`);
     } catch (err) {
       console.warn('Add cost center error:', err);
-      const newCC = { id: `cc-${Date.now()}`, name: cleanName, code, companyId: formData.companyId };
+      const newCC = { id: `cc-${Date.now()}`, name: cleanName, code, companyId: formData.companyId, departmentId: formData.departmentId };
       setCostCenters(prev => [...prev, newCC]);
       setFormData(prev => ({ ...prev, costCenterId: newCC.id, costCenter: `${newCC.code} - ${newCC.name}` }));
       showToast('success', `Cost Center "${cleanName}" added successfully!`);
@@ -2886,7 +2891,11 @@ export function AssetForm() {
     const availableFloors = floors.filter(floor => item.buildingId && floor.buildingId === item.buildingId);
     const availableRooms = rooms.filter(room => item.floorId && room.floorId === item.floorId);
     const availableDepartments = departments.filter(department => !effectiveCompanyId || !department.companyId || department.companyId === effectiveCompanyId || department.id === item.departmentId);
-    const availableCostCenters = costCenters.filter(center => !effectiveCompanyId || center.companyId === effectiveCompanyId);
+    const availableCostCenters = costCenters.filter(center => {
+      const matchesCompany = !effectiveCompanyId || !center.companyId || center.companyId === effectiveCompanyId;
+      const matchesDept = !item.departmentId || !center.departmentId || center.departmentId === item.departmentId || center.id === item.costCenterId;
+      return matchesCompany && matchesDept;
+    });
     const availableEmployees = employees.filter(employee => !effectiveCompanyId || employee.companyId === effectiveCompanyId);
     const select = (label, key, options, next = {}) => <label key={key} className="space-y-1 text-xs font-bold text-slate-700">{label}
       <select value={item[key] || ''} onChange={event => updateAssetItem({ [key]: event.target.value, ...next })} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2">
@@ -2903,7 +2912,7 @@ export function AssetForm() {
         {select('Building', 'buildingId', availableBuildings, { floorId: '', roomId: '' })}
         {select('Floor', 'floorId', availableFloors, { roomId: '' })}
         {select('Room', 'roomId', availableRooms)}
-        {select('Department', 'departmentId', availableDepartments)}
+        {select('Department', 'departmentId', availableDepartments, { costCenterId: '' })}
         {select('Cost center', 'costCenterId', availableCostCenters)}
         {select('Custodian', 'custodianId', availableEmployees)}
       </div>
@@ -3059,10 +3068,14 @@ export function AssetForm() {
               } else {
                 const selectedId = e.target.value;
                 const found = departments.find(d => d.id === selectedId);
+                const currentCC = costCenters.find(cc => cc.id === formData.costCenterId);
+                const keepsCC = !selectedId || !currentCC || !currentCC.departmentId || currentCC.departmentId === selectedId;
                 setFormData(prev => ({
                   ...prev,
                   departmentId: selectedId,
-                  department: found ? (found.name || found.code) : ''
+                  department: found ? (found.name || found.code) : '',
+                  costCenterId: keepsCC ? prev.costCenterId : '',
+                  costCenter: keepsCC ? prev.costCenter : ''
                 }));
               }
             }}
@@ -3109,7 +3122,11 @@ export function AssetForm() {
           >
             <option value="">Select Cost Center (Optional)</option>
             {costCenters
-              .filter(cc => !formData.companyId || !cc.companyId || cc.companyId === formData.companyId || cc.id === formData.costCenterId || cc.name === formData.costCenter)
+              .filter(cc => {
+                const matchesCompany = !formData.companyId || !cc.companyId || cc.companyId === formData.companyId;
+                const matchesDept = !formData.departmentId || !cc.departmentId || cc.departmentId === formData.departmentId || cc.id === formData.costCenterId || cc.name === formData.costCenter;
+                return matchesCompany && matchesDept;
+              })
               .map(cc => (
                 <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
               ))}
@@ -4587,10 +4604,14 @@ export function AssetForm() {
                         } else {
                           const selectedId = e.target.value;
                           const found = departments.find(d => d.id === selectedId);
+                          const currentCC = costCenters.find(cc => cc.id === formData.costCenterId);
+                          const keepsCC = !selectedId || !currentCC || !currentCC.departmentId || currentCC.departmentId === selectedId;
                           setFormData(prev => ({
                             ...prev,
                             departmentId: selectedId,
-                            department: found ? (found.name || found.code) : ''
+                            department: found ? (found.name || found.code) : '',
+                            costCenterId: keepsCC ? prev.costCenterId : '',
+                            costCenter: keepsCC ? prev.costCenter : ''
                           }));
                         }
                       }}
@@ -4635,7 +4656,11 @@ export function AssetForm() {
                     >
                       <option value="">Select Cost Center (Optional)</option>
                       {costCenters
-                        .filter(cc => !formData.companyId || !cc.companyId || cc.companyId === formData.companyId || cc.id === formData.costCenterId || cc.name === formData.costCenter)
+                        .filter(cc => {
+                          const matchesCompany = !formData.companyId || !cc.companyId || cc.companyId === formData.companyId;
+                          const matchesDept = !formData.departmentId || !cc.departmentId || cc.departmentId === formData.departmentId || cc.id === formData.costCenterId || cc.name === formData.costCenter;
+                          return matchesCompany && matchesDept;
+                        })
                         .map(cc => (
                           <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
                         ))}
