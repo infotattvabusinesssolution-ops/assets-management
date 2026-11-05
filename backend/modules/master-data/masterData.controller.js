@@ -2524,7 +2524,20 @@ export async function getDepartments(req, res, next) {
 
 export async function createDepartment(req, res, next) {
   try {
-    const { code, name, active, status } = req.body;
+    const {
+      code,
+      name,
+      active,
+      status,
+      type,
+      parentDepartment,
+      location,
+      manager,
+      email,
+      phone,
+      description,
+      companyId
+    } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Department Name is required.' });
     }
@@ -2549,7 +2562,7 @@ export async function createDepartment(req, res, next) {
       }
     }
 
-    let targetCompanyId = req.body.companyId;
+    let targetCompanyId = companyId || req.body.companyId;
     if (!targetCompanyId) {
       const firstComp = await prisma.company.findFirst();
       targetCompanyId = firstComp ? firstComp.id : null;
@@ -2560,7 +2573,20 @@ export async function createDepartment(req, res, next) {
         code: cleanCode,
         name: cleanName,
         companyId: targetCompanyId,
-        active: isAct
+        active: isAct,
+        type: type || null,
+        parentDepartment: parentDepartment || null,
+        location: location || null,
+        manager: manager || null,
+        email: email || null,
+        phone: phone || null,
+        description: description || null
+      },
+      include: {
+        company: true,
+        costCenters: {
+          select: { id: true, code: true, name: true, active: true }
+        }
       }
     });
     res.status(201).json({ success: true, department });
@@ -2570,7 +2596,20 @@ export async function createDepartment(req, res, next) {
 export async function updateDepartment(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, active, status, companyId } = req.body;
+    const {
+      code,
+      name,
+      active,
+      status,
+      companyId,
+      type,
+      parentDepartment,
+      location,
+      manager,
+      email,
+      phone,
+      description
+    } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
 
@@ -2599,8 +2638,24 @@ export async function updateDepartment(req, res, next) {
     if (companyId) updateData.companyId = companyId;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
+    if (type !== undefined) updateData.type = type || null;
+    if (parentDepartment !== undefined) updateData.parentDepartment = parentDepartment || null;
+    if (location !== undefined) updateData.location = location || null;
+    if (manager !== undefined) updateData.manager = manager || null;
+    if (email !== undefined) updateData.email = email || null;
+    if (phone !== undefined) updateData.phone = phone || null;
+    if (description !== undefined) updateData.description = description || null;
 
-    const department = await prisma.department.update({ where: { id }, data: updateData });
+    const department = await prisma.department.update({
+      where: { id },
+      data: updateData,
+      include: {
+        company: true,
+        costCenters: {
+          select: { id: true, code: true, name: true, active: true }
+        }
+      }
+    });
     res.json({ success: true, department });
   } catch (err) { next(err); }
 }

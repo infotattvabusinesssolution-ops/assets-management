@@ -68,16 +68,16 @@ export function DepartmentsTab({
             name: dept.name,
             costCenters: linkedCCs,
             costCenterCount: linkedCCs.length,
-            costCenterCode: linkedCCs.length > 0 ? linkedCCs[0].code : '-',
-            costCenterName: linkedCCs.length > 0 ? linkedCCs[0].name : '-',
+            costCenterCode: linkedCCs.length > 0 ? linkedCCs[0].code : '',
+            costCenterName: linkedCCs.length > 0 ? linkedCCs[0].name : '',
             costCenterId: linkedCCs.length > 0 ? linkedCCs[0].id : '',
-            type: dept.type || '-',
-            parentDepartment: dept.parentDepartment || '-',
-            location: dept.location || dept.site?.name || '-',
-            company: dept.company?.name || dept.company || '-',
-            manager: dept.manager || dept.head || '-',
-            email: dept.email || '-',
-            phone: dept.phone || '-',
+            type: dept.type || '',
+            parentDepartment: dept.parentDepartment || '',
+            location: dept.location || dept.site?.name || '',
+            company: dept.company?.name || dept.company || '',
+            manager: dept.manager || dept.head || '',
+            email: dept.email || '',
+            phone: dept.phone || '',
             description: dept.description || '',
             employees: dept.employees ?? (dept._count?.employees || 0),
             status: dept.active === false ? 'Inactive' : 'Active',
@@ -177,17 +177,16 @@ export function DepartmentsTab({
     if (deptToEdit) {
       setEditingDepartment(deptToEdit);
       setDeptFormState({
-        code: deptToEdit.code,
-        name: deptToEdit.name,
+        code: deptToEdit.code || '',
+        name: deptToEdit.name || '',
         type: deptToEdit.type || 'Support',
         parentDepartment: deptToEdit.parentDepartment || '',
         location: deptToEdit.location || '',
-        company: deptToEdit.company || '',
+        company: deptToEdit.company || (companiesList[0]?.name || ''),
         manager: deptToEdit.manager || '',
         email: deptToEdit.email || '',
         phone: deptToEdit.phone || '',
         description: deptToEdit.description || '',
-        costCenterId: deptToEdit.costCenterId || '',
         status: deptToEdit.status || 'Active'
       });
     } else {
@@ -198,7 +197,7 @@ export function DepartmentsTab({
         type: 'Support',
         parentDepartment: '',
         location: '',
-        company: '',
+        company: companiesList[0]?.name || '',
         manager: '',
         email: '',
         phone: '',
@@ -245,15 +244,24 @@ export function DepartmentsTab({
     const matchedComp = companiesList.find(c => c.name === deptFormState.company || c.code === deptFormState.company || c.id === deptFormState.company);
     const companyId = matchedComp?.id || null;
 
+    const payload = {
+      code: cleanCode,
+      name: cleanName,
+      companyId,
+      type: deptFormState.type || null,
+      parentDepartment: deptFormState.parentDepartment || null,
+      location: deptFormState.location || null,
+      manager: deptFormState.manager ? deptFormState.manager.trim() : null,
+      email: deptFormState.email ? deptFormState.email.trim() : null,
+      phone: deptFormState.phone ? deptFormState.phone.trim() : null,
+      description: deptFormState.description ? deptFormState.description.trim() : null,
+      active: deptFormState.status === 'Active',
+      status: deptFormState.status
+    };
+
     if (editingDepartment) {
       try {
-        await api.put(`/master-data/departments/${editingDepartment.id}`, {
-          code: cleanCode,
-          name: cleanName,
-          companyId,
-          active: deptFormState.status === 'Active',
-          status: deptFormState.status
-        });
+        await api.put(`/master-data/departments/${editingDepartment.id}`, payload);
         await loadDepartments();
         triggerToast && triggerToast(`Department "${cleanName}" updated successfully.`);
       } catch (err) {
@@ -265,13 +273,7 @@ export function DepartmentsTab({
       }
     } else {
       try {
-        await api.post('/master-data/departments', {
-          code: cleanCode,
-          name: cleanName,
-          companyId,
-          active: deptFormState.status === 'Active',
-          status: deptFormState.status
-        });
+        await api.post('/master-data/departments', payload);
         await loadDepartments();
         triggerToast && triggerToast(`Department "${cleanName}" created successfully.`);
       } catch (err) {
@@ -554,7 +556,6 @@ export function DepartmentsTab({
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Dept Code</th>
                   <th className="py-3 px-3">Dept Name</th>
-                  <th className="py-3 px-3">Linked Cost Centers</th>
                   <th className="py-3 px-3">Type</th>
                   <th className="py-3 px-3">Manager</th>
                   <th className="py-3 px-3">Location</th>
@@ -566,7 +567,7 @@ export function DepartmentsTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredDepartments.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
                       No departments found. Click "+ Add Department" to create one.
                     </td>
                   </tr>
@@ -596,25 +597,9 @@ export function DepartmentsTab({
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{dept.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{dept.name}</td>
-                      <td className="py-2.5 px-3">
-                        {dept.costCenters && dept.costCenters.length > 0 ? (
-                          <div className="flex items-center gap-1.5 flex-wrap">
-                            <span className="font-mono font-bold text-xs text-[#6C2BD9]">
-                              {dept.costCenters[0].code}
-                            </span>
-                            {dept.costCenters.length > 1 && (
-                              <span className="px-1.5 py-0.5 rounded-full bg-purple-100 text-[#6C2BD9] text-[10px] font-bold">
-                                +{dept.costCenters.length - 1}
-                              </span>
-                            )}
-                          </div>
-                        ) : (
-                          <span className="text-slate-400 font-normal text-xs">-</span>
-                        )}
-                      </td>
-                      <td className="py-2.5 px-3 text-slate-700">{dept.type}</td>
-                      <td className="py-2.5 px-3 text-slate-800">{dept.manager}</td>
-                      <td className="py-2.5 px-3 text-slate-700">{dept.location}</td>
+                      <td className="py-2.5 px-3 text-slate-700">{dept.type || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-800 font-medium">{dept.manager || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-700">{dept.location || '-'}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{dept.employees}</td>
                       <td className="py-2.5 px-3 text-center">
                         <span

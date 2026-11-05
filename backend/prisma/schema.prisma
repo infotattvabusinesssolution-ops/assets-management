@@ -44,14 +44,21 @@ model Company {
 }
 
 model Department {
-  id            String   @id @default(uuid())
-  legacyMongoId String?
-  companyId     String
-  code          String
-  name          String
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
+  id               String   @id @default(uuid())
+  legacyMongoId    String?
+  companyId        String
+  code             String
+  name             String
+  type             String?
+  parentDepartment String?
+  location         String?
+  manager          String?
+  email            String?
+  phone            String?
+  description      String?
+  active           Boolean  @default(true)
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
 
   company     Company      @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   costCenters CostCenter[]
