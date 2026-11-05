@@ -1103,7 +1103,7 @@ export function GenericMasterTab({
                     <option value="">-- Select Manufacturer --</option>
                     {realManufacturers.map((m) => (
                       <option key={m.id || m.code || m.name} value={m.name}>
-                        {m.name} {m.country && m.country !== 'Global' ? `(${m.country})` : ''}
+                        {m.name}
                       </option>
                     ))}
                   </select>
