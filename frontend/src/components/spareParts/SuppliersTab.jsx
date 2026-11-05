@@ -1,4 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { api } from '../../services/api';
+import { DEFAULT_COUNTRIES } from '../master-data/LocationsTab';
 import {
   Search,
   Filter,
@@ -240,6 +242,24 @@ export function SuppliersTab({ onShowToast, triggerAdd, triggerExport, triggerIm
   const [typeFilter, setTypeFilter] = useState('All Types');
   const [statusFilter, setStatusFilter] = useState('All');
   const [countryFilter, setCountryFilter] = useState('All Countries');
+  const [countriesList, setCountriesList] = useState(DEFAULT_COUNTRIES);
+
+  useEffect(() => {
+    api.get('/master-data/countries').then(res => {
+      if (res?.countries && Array.isArray(res.countries) && res.countries.length > 0) {
+        setCountriesList(res.countries.map(c => c.name));
+      }
+    }).catch(() => {});
+  }, []);
+
+  const allCountries = useMemo(() => {
+    const base = countriesList && countriesList.length > 0 ? countriesList : DEFAULT_COUNTRIES;
+    const combined = [...base];
+    suppliersList.forEach(s => {
+      if (s.country && !combined.includes(s.country)) combined.push(s.country);
+    });
+    return Array.from(new Set(combined)).filter(Boolean);
+  }, [countriesList, suppliersList]);
 
   const [suppliersList, setSuppliersList] = useState(INITIAL_SUPPLIERS);
   const [selectedSupplier, setSelectedSupplier] = useState(INITIAL_SUPPLIERS[0]);
@@ -1128,12 +1148,16 @@ export function SuppliersTab({ onShowToast, triggerAdd, triggerExport, triggerIm
 
                 <div>
                   <label className="block text-[11px] font-bold text-slate-700 mb-1">Country</label>
-                  <input
-                    type="text"
+                  <select
                     value={supplierForm.country}
                     onChange={(e) => setSupplierForm({ ...supplierForm, country: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium text-slate-900 focus:outline-none focus:border-[#6C2BD9]"
-                  />
+                    className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-medium text-slate-900 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                  >
+                    <option value="">- Select Country -</option>
+                    {allCountries.map((c) => (
+                      <option key={c} value={c}>{c}</option>
+                    ))}
+                  </select>
                 </div>
 
                 <div>
