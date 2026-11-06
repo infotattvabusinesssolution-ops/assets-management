@@ -3706,7 +3706,7 @@ function readDisposalStatusesFromFile() {
     if (fs.existsSync(DISPOSAL_STATUSES_FILE)) {
       const data = fs.readFileSync(DISPOSAL_STATUSES_FILE, 'utf8');
       const parsed = JSON.parse(data);
-      return Array.isArray(parsed) && parsed.length > 0 ? parsed : DEFAULT_DISPOSAL_STATUSES;
+      return Array.isArray(parsed) ? parsed : DEFAULT_DISPOSAL_STATUSES;
     }
   } catch (e) {
     console.warn('Failed to read disposal_statuses.json, using defaults:', e.message);
@@ -4673,7 +4673,7 @@ export async function getDisposalStatuses(req, res, next) {
     if (isDbConnected()) {
       try {
         const rows = await prisma.$queryRawUnsafe(`SELECT * FROM disposal_statuses WHERE active = 1 ORDER BY name ASC`);
-        if (Array.isArray(rows) && rows.length > 0) {
+        if (Array.isArray(rows)) {
           const list = rows.map(r => ({
             id: r.id,
             code: r.code,
@@ -4749,21 +4749,24 @@ export async function createDisposalStatus(req, res, next) {
 export async function updateDisposalStatus(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, description } = req.body;
-    const idx = inMemoryDisposalStatuses.findIndex(s => s.id === id || s.code === id);
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Disposal status not found' });
-    const existing = inMemoryDisposalStatuses[idx];
-    const cleanCode = code ? code.trim().toUpperCase() : existing.code;
-    const cleanName = name ? name.trim() : existing.name;
+    const { code, name, description, active } = req.body;
+    let idx = inMemoryDisposalStatuses.findIndex(s => s.id === id || s.code === id);
+    const existing = idx !== -1 ? inMemoryDisposalStatuses[idx] : null;
 
-    if (inMemoryDisposalStatuses.some(s => s.id !== existing.id && s.code !== existing.code && (
+    const cleanCode = code ? code.trim().toUpperCase() : (existing?.code || '');
+    const cleanName = name ? name.trim() : (existing?.name || '');
+    const cleanDesc = description !== undefined ? description.trim() : (existing?.description || '');
+    const cleanActive = active !== undefined ? (active ? 1 : 0) : (existing?.active !== false ? 1 : 0);
+
+    if (inMemoryDisposalStatuses.some(s => s.id !== id && s.code !== id && (
       (cleanCode && s.code.toLowerCase() === cleanCode.toLowerCase()) ||
       (cleanName && s.name.toLowerCase() === cleanName.toLowerCase())
     ))) {
       return res.status(409).json({ success: false, message: `Another Disposal status with code "${cleanCode}" or name "${cleanName}" already exists.` });
     }
 
-    if (isDbConnected() && (cleanCode || cleanName)) {
+    await ensureDisposalStatusesTable();
+    if (isDbConnected()) {
       try {
         const whereParts = [];
         if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
@@ -4775,10 +4778,41 @@ export async function updateDisposalStatus(req, res, next) {
         if (Array.isArray(dbEx) && dbEx.length > 0) {
           return res.status(409).json({ success: false, message: `Another Disposal status with this code or name already exists.` });
         }
-      } catch (err) {}
+
+        await prisma.$executeRawUnsafe(`
+          UPDATE disposal_statuses
+          SET code = '${cleanCode.replace(/'/g, "''")}',
+              name = '${cleanName.replace(/'/g, "''")}',
+              description = '${cleanDesc.replace(/'/g, "''")}',
+              active = ${cleanActive},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${safeId}' OR code = '${safeId}'
+        `);
+      } catch (err) {
+        console.warn('DB update disposal_statuses skipped:', err.message);
+      }
     }
 
-    inMemoryDisposalStatuses[idx] = { ...inMemoryDisposalStatuses[idx], ...req.body, code: cleanCode, name: cleanName, updatedAt: new Date().toISOString() };
+    if (idx !== -1) {
+      inMemoryDisposalStatuses[idx] = {
+        ...inMemoryDisposalStatuses[idx],
+        code: cleanCode,
+        name: cleanName,
+        description: cleanDesc,
+        active: Boolean(cleanActive),
+        updatedAt: new Date().toISOString()
+      };
+    } else {
+      inMemoryDisposalStatuses.push({
+        id,
+        code: cleanCode,
+        name: cleanName,
+        description: cleanDesc,
+        active: Boolean(cleanActive),
+        updatedAt: new Date().toISOString()
+      });
+      idx = inMemoryDisposalStatuses.length - 1;
+    }
     writeDisposalStatusesToFile(inMemoryDisposalStatuses);
     res.json({ success: true, disposalStatus: inMemoryDisposalStatuses[idx] });
   } catch (err) { next(err); }
@@ -4787,6 +4821,17 @@ export async function updateDisposalStatus(req, res, next) {
 export async function deleteDisposalStatus(req, res, next) {
   try {
     const { id } = req.params;
+    await ensureDisposalStatusesTable();
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          DELETE FROM disposal_statuses
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB delete disposal_statuses skipped:', dbErr.message);
+      }
+    }
     inMemoryDisposalStatuses = inMemoryDisposalStatuses.filter(s => s.id !== id && s.code !== id);
     writeDisposalStatusesToFile(inMemoryDisposalStatuses);
     res.json({ success: true, message: 'Disposal status deleted successfully' });
