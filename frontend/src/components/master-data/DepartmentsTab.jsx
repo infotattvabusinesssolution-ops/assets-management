@@ -44,22 +44,40 @@ export function DepartmentsTab({
   const loadDepartments = async () => {
     setIsLoading(true);
     try {
-      const [res, ccRes, compRes, siteRes] = await Promise.all([
+      const [res, ccRes, compRes, siteRes, empRes] = await Promise.all([
         api.get('/master-data/departments'),
         api.get('/master-data/cost-centers').catch(() => ({ costCenters: [] })),
         api.get('/master-data/companies?includeInactive=true').catch(() => null),
-        api.get('/master-data/sites').catch(() => null)
+        api.get('/master-data/sites').catch(() => null),
+        api.get('/master-data/employees?includeInactive=true').catch(() => null)
       ]);
       const loadedCCs = ccRes?.costCenters || [];
       setCostCenters(loadedCCs);
       if (compRes?.companies) setCompaniesList(compRes.companies);
       if (siteRes?.sites) setLocationsList(siteRes.sites);
 
+      const allLoadedEmployees = [
+        ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : []))
+      ];
+      let customCustodians = [];
+      try {
+        customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      } catch (_) {}
+      const combinedEmployees = [...allLoadedEmployees, ...customCustodians];
+
       if (res?.departments && res.departments.length > 0) {
         const mapped = res.departments.map((dept) => {
           const linkedCCs = (dept.costCenters && dept.costCenters.length > 0)
             ? dept.costCenters
             : loadedCCs.filter((c) => c.departmentId === dept.id || c.department?.id === dept.id);
+
+          const matchedEmps = combinedEmployees.filter(c => 
+            (c.departmentId && (c.departmentId === dept.id || c.departmentId === dept.code)) ||
+            (typeof c.department === 'string' && (c.department.toLowerCase() === (dept.name || '').toLowerCase() || c.department.toLowerCase() === (dept.code || '').toLowerCase())) ||
+            (c.department?.name && (c.department.name.toLowerCase() === (dept.name || '').toLowerCase() || c.department.name.toLowerCase() === (dept.code || '').toLowerCase()))
+          );
+          const empCount = matchedEmps.length > 0 ? matchedEmps.length : (dept.employees ?? (dept._count?.employees || 0));
+
           return {
             id: dept.id,
             code: dept.code,
@@ -77,15 +95,7 @@ export function DepartmentsTab({
             email: dept.email || '',
             phone: dept.phone || '',
             description: dept.description || '',
-            employees: (() => {
-              const apiCount = dept.employees ?? dept._count?.employees;
-              let customCount = 0;
-              try {
-                const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-                customCount = custom.filter(c => c.departmentId === dept.id || c.department?.id === dept.id || c.department === dept.name).length;
-              } catch (_) {}
-              return (apiCount ?? 0) + customCount;
-            })(),
+            employees: empCount,
             status: dept.active === false ? 'Inactive' : 'Active',
             createdBy: dept.createdBy || 'System',
             createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
