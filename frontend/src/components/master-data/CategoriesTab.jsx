@@ -672,18 +672,7 @@ export function CategoriesTab({
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <RefreshCw className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>Activate / Deactivate</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                setShowAuditHistoryModal && setShowAuditHistoryModal(true);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <Clock className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>View Audit Log</span>
+                              <span>{cat.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
                             </button>
 
                             <div className="my-1 border-t border-slate-100" />

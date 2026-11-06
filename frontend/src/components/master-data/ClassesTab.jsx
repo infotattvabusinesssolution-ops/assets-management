@@ -614,29 +614,7 @@ export function ClassesTab({
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>Edit</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                triggerToast && triggerToast(`Viewing Categories under ${cls.code}`);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <Tag className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>View Categories</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                triggerToast && triggerToast(`Filtering Assets linked to ${cls.code}`);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <Box className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>View Assets</span>
+                              <span>Edit Sub Group</span>
                             </button>
 
                             <button
@@ -658,18 +636,7 @@ export function ClassesTab({
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <RefreshCw className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>Activate / Deactivate</span>
-                            </button>
-
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                setShowAuditHistoryModal && setShowAuditHistoryModal(true);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <Clock className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>View Audit History</span>
+                              <span>{cls.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
                             </button>
 
                             <div className="my-1 border-t border-slate-100" />
