@@ -1702,6 +1702,19 @@ export async function deleteAssetSubGroup(req, res, next) {
       }
     }
 
+    // 2. Assets directly linked (if any)
+    let assetsCount = 0;
+    if (isDbConnected()) {
+      try {
+        const assetRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM assets
+          WHERE assetClassId = '${id.replace(/'/g, "''")}'
+             OR assetClassId = '${subGroupCode.replace(/'/g, "''")}'
+        `);
+        assetsCount = Number(assetRows?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+
     // Asset Sub Group only blocks on its immediate direct children (Categories)
     const totalLinked = categoriesCount + assetsCount;
 
