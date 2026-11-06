@@ -23,6 +23,7 @@ import { api } from '../../services/api';
 import { DEFAULT_ASSET_TYPES } from './GenericMasterTab';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_ASSET_GROUPS = [];
 
@@ -162,6 +163,15 @@ export function AssetGroupsTab({
       return matchesSearch && matchesStatus && matchesType;
     });
   }, [assetGroups, grpSearchQuery, grpStatusFilter, grpAssetTypeFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedGroups,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredGroups, 10);
 
   const handleResetGrpFilters = () => {
     setGrpSearchQuery('');
@@ -567,7 +577,7 @@ export function AssetGroupsTab({
                     </td>
                   </tr>
                 ) : (
-                  filteredGroups.map((grp, index) => {
+                  pagedGroups.map((grp, index) => {
                     const isSelected = selectedGroup?.id === grp.id;
                     return (
                       <tr
@@ -578,7 +588,7 @@ export function AssetGroupsTab({
                           isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                         )}
                       >
-                        <td className="py-3.5 px-3.5 text-center text-slate-400">{index + 1}</td>
+                        <td className="py-3.5 px-3.5 text-center text-slate-400">{startIndex + index + 1}</td>
                         <td className="py-3.5 px-3.5 font-bold font-mono text-[#6C2BD9]">{grp.code}</td>
                         <td className="py-3.5 px-3.5 font-semibold text-slate-900">{grp.name}</td>
                         <td className="py-3.5 px-4 text-slate-600 max-w-[220px] truncate" title={grp.description}>
@@ -664,14 +674,13 @@ export function AssetGroupsTab({
             </table>
           </div>
 
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs bg-slate-50/40">
-            <span className="text-slate-600 font-medium">
-              Showing {filteredGroups.length} records
-            </span>
-            <span className="text-slate-400">
-              Scroll down to view all records
-            </span>
-          </div>
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredGroups.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Selected Group Detail Drawer */}

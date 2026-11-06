@@ -25,6 +25,7 @@ import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
 import { INITIAL_CLASSES } from './ClassesTab';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_SUB_CATEGORIES = [];
 
@@ -213,6 +214,15 @@ export function SubCategoriesTab({
       return matchesSearch && matchesCat && matchesClass && matchesGroup && matchesStatus;
     });
   }, [subCategoriesList, subCatSearchQuery, subCatCategoryFilter, subCatClassFilter, subCatGroupFilter, subCatStatusFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedSubCategories,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredSubCategories, 10);
 
   // Keep selectedSubCategory synchronized when filteredSubCategories changes
   useEffect(() => {
@@ -589,7 +599,7 @@ export function SubCategoriesTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredSubCategories.map((sc, index) => {
+                {pagedSubCategories.map((sc, index) => {
                   const isSelected = selectedSubCategory?.id === sc.id;
                   const isMenuOpen = activeRowMenuId === `subcat-${sc.id}`;
                   const isNearBottom = filteredSubCategories.length > 2 && index >= filteredSubCategories.length - 2;
@@ -603,7 +613,7 @@ export function SubCategoriesTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-3.5 px-2 text-center text-slate-400">{index + 1}</td>
+                      <td className="py-3.5 px-2 text-center text-slate-400">{startIndex + index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{sc.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{sc.name}</td>
                       <td className="py-3.5 px-3 text-slate-700">{sc.categoryName}</td>
@@ -711,14 +721,13 @@ export function SubCategoriesTab({
             </table>
           </div>
 
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs bg-slate-50/40">
-            <span className="text-slate-600 font-medium">
-              Showing {filteredSubCategories.length} records
-            </span>
-            <span className="text-slate-400">
-              Scroll down to view all records
-            </span>
-          </div>
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredSubCategories.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Right Column: Sub Category Details Panel */}

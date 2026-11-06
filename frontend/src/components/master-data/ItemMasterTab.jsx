@@ -28,6 +28,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 // Dynamic Master Data State (strictly driven from database / master data screens)
 
@@ -294,6 +295,15 @@ export function ItemMasterTab({
       return matchesSearch && matchesStatus && matchesGroup && matchesCategory;
     });
   }, [items, searchQuery, statusFilter, groupFilter, categoryFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedItems,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredItems, 10);
 
   // Auto-generate next item code preview (guarantee uniqueness above baseline defaults)
   const nextItemCodePreview = useMemo(() => {
@@ -636,7 +646,7 @@ export function ItemMasterTab({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredItems.map((item, index) => {
+                  {pagedItems.map((item, index) => {
                     const isSelected = selectedItem?.id === item.id;
                     return (
                       <tr
@@ -647,7 +657,7 @@ export function ItemMasterTab({
                           isSelected && 'bg-purple-50/70 font-semibold'
                         )}
                       >
-                        <td className="py-3 px-2 text-center text-slate-400 text-[11px] font-medium">{index + 1}</td>
+                        <td className="py-3 px-2 text-center text-slate-400 text-[11px] font-medium">{startIndex + index + 1}</td>
                         <td className="py-3 px-4">
                           <span className="font-mono text-[11px] font-bold text-[#6C2BD9] bg-purple-100/70 px-2 py-0.5 rounded-md">
                             {item.itemCode}
@@ -772,6 +782,14 @@ export function ItemMasterTab({
               </table>
             </div>
           )}
+
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Right Column: Inspection Details Drawer (1 col) */}

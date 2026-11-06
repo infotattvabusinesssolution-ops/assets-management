@@ -22,6 +22,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_DISPOSAL_STATUSES = [];
 
@@ -244,6 +245,15 @@ export function DisposalStatusesTab({
     });
   }, [statuses, searchQuery, statusFilter]);
 
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedStatuses,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredStatuses, 10);
+
   const handleExportCSV = () => {
     const headers = ['Code', 'Name', 'Description', 'Status'];
     const rows = filteredStatuses.map(s => [
@@ -336,9 +346,9 @@ export function DisposalStatusesTab({
                   </td>
                 </tr>
               ) : (
-                filteredStatuses.map((item, index) => (
+                pagedStatuses.map((item, index) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
-                    <td className="py-3.5 px-2 text-center text-slate-400 text-[11px] font-medium">{index + 1}</td>
+                    <td className="py-3.5 px-2 text-center text-slate-400 text-[11px] font-medium">{startIndex + index + 1}</td>
                     <td className="py-3.5 px-5 font-mono font-bold text-purple-700">
                       {item.code}
                     </td>
@@ -425,6 +435,14 @@ export function DisposalStatusesTab({
             </tbody>
           </table>
         </div>
+
+        <MasterDataPagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          totalItems={filteredStatuses.length}
+          pageSize={pageSize}
+          onPageChange={setCurrentPage}
+        />
       </div>
 
       {/* Add / Edit Modal */}

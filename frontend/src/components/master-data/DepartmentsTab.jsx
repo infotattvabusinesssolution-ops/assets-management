@@ -22,6 +22,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_DEPARTMENTS = [];
 
@@ -197,6 +198,15 @@ export function DepartmentsTab({
       return matchesSearch && matchesType && matchesStatus && matchesLoc && matchesCompany;
     });
   }, [departmentsList, deptSearchQuery, deptTypeFilter, deptStatusFilter, deptLocationFilter, deptCompanyFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedDepartments,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredDepartments, 10);
 
   const handleResetDeptFilters = () => {
     setDeptSearchQuery('');
@@ -522,7 +532,7 @@ export function DepartmentsTab({
                     </td>
                   </tr>
                 ) : (
-                  filteredDepartments.map((dept, index) => {
+                  pagedDepartments.map((dept, index) => {
                   const isSelected = selectedDepartment?.id === dept.id;
                   const isMenuOpen = activeRowMenuId === `dept-${dept.id}`;
                   const isNearBottom = filteredDepartments.length > 2 && index >= filteredDepartments.length - 2;
@@ -536,7 +546,7 @@ export function DepartmentsTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
+                      <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{startIndex + index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{dept.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{dept.name}</td>
                       <td className="py-2.5 px-3 text-slate-700">{dept.type || '-'}</td>
@@ -619,14 +629,13 @@ export function DepartmentsTab({
             </table>
           </div>
 
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs bg-slate-50/40">
-            <span className="text-slate-600 font-medium">
-              Showing {filteredDepartments.length} records
-            </span>
-            <span className="text-slate-400">
-              Scroll down to view all records
-            </span>
-          </div>
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredDepartments.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Right Column: Department Details Panel */}

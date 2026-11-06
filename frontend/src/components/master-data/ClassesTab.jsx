@@ -25,6 +25,7 @@ import { api } from '../../services/api';
 import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_CLASSES = [];
 
@@ -191,6 +192,15 @@ export function ClassesTab({
       return matchesSearch && matchesGroup && matchesStatus && matchesType;
     });
   }, [classesList, clsSearchQuery, clsGroupFilter, clsStatusFilter, clsAssetTypeFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedClasses,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredClasses, 10);
 
   // Keep selectedClass synchronized with filteredClasses when group filter changes
   useEffect(() => {
@@ -539,7 +549,7 @@ export function ClassesTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredClasses.map((cls, index) => {
+                {pagedClasses.map((cls, index) => {
                   const isSelected = selectedClass?.id === cls.id;
                   const isMenuOpen = activeRowMenuId === cls.id;
                   const isNearBottom = filteredClasses.length > 2 && index >= filteredClasses.length - 2;
@@ -553,7 +563,7 @@ export function ClassesTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-3.5 px-2 text-center text-slate-400">{index + 1}</td>
+                      <td className="py-3.5 px-2 text-center text-slate-400">{startIndex + index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{cls.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{cls.name}</td>
                       <td className="py-3.5 px-3.5 text-slate-700">{cls.groupName}</td>
@@ -684,14 +694,13 @@ export function ClassesTab({
             </table>
           </div>
 
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs bg-slate-50/40">
-            <span className="text-slate-600 font-medium">
-              Showing {filteredClasses.length} records
-            </span>
-            <span className="text-slate-400">
-              Scroll down to view all records
-            </span>
-          </div>
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredClasses.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Selected Class Detail Drawer */}

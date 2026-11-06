@@ -26,6 +26,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const DEFAULT_MANUFACTURERS = [];
 
@@ -762,6 +763,15 @@ export function GenericMasterTab({
     });
   }, [items, searchQuery, statusFilter]);
 
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedItems,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredItems, 10);
+
   const IconComponent = tabConfig.icon;
 
   return (
@@ -860,7 +870,7 @@ export function GenericMasterTab({
                     </td>
                   </tr>
                 ) : (
-                  filteredItems.map((item, index) => {
+                  pagedItems.map((item, index) => {
                     const isSelected = selectedItem?.id === item.id;
                     return (
                       <tr
@@ -871,7 +881,7 @@ export function GenericMasterTab({
                           isSelected && 'bg-purple-50/70 font-semibold'
                         )}
                       >
-                        <td className="py-2.5 px-2 text-center text-slate-400 text-[11px] font-medium">{index + 1}</td>
+                        <td className="py-2.5 px-2 text-center text-slate-400 text-[11px] font-medium">{startIndex + index + 1}</td>
                         <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{item.code || '-'}</td>
                         <td className="py-2.5 px-3 font-bold text-slate-900">{item.name}</td>
                         {activeTab === 'manufacturers' && (
@@ -1026,6 +1036,14 @@ export function GenericMasterTab({
               </tbody>
             </table>
           </div>
+
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredItems.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Detail Card Right Column */}

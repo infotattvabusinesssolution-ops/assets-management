@@ -23,6 +23,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_LOCATIONS = [];
 
@@ -264,6 +265,15 @@ export function LocationsTab({
       return matchesSearch && matchesType && matchesStatus && matchesCountry && matchesParent;
     });
   }, [locationsList, locSearchQuery, locTypeFilter, locStatusFilter, locCountryFilter, locParentFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedLocations,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredLocations, 10);
 
   const handleResetLocFilters = () => {
     setLocSearchQuery('');
@@ -638,7 +648,7 @@ export function LocationsTab({
                     </td>
                   </tr>
                 ) : (
-                  filteredLocations.map((loc, index) => {
+                  pagedLocations.map((loc, index) => {
                   const isSelected = selectedLocation?.id === loc.id;
                   const isMenuOpen = activeRowMenuId === `loc-${loc.id}`;
                   const isNearBottom = filteredLocations.length > 2 && index >= filteredLocations.length - 2;
@@ -652,7 +662,7 @@ export function LocationsTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
+                      <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{startIndex + index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{loc.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{loc.name}</td>
                       <td className="py-2.5 px-3">
@@ -758,14 +768,13 @@ export function LocationsTab({
             </table>
           </div>
 
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs bg-slate-50/40">
-            <span className="text-slate-600 font-medium">
-              Showing {filteredLocations.length} records
-            </span>
-            <span className="text-slate-400">
-              Scroll down to view all records
-            </span>
-          </div>
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredLocations.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Right Column: Location Details Panel */}

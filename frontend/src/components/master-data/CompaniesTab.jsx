@@ -23,6 +23,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export function CompaniesTab({
   triggerToast,
@@ -108,6 +109,15 @@ export function CompaniesTab({
       return matchesSearch && matchesStatus;
     });
   }, [companies, searchQuery, statusFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedCompanies,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredCompanies, 10);
 
   const handleOpenAddModal = (compToEdit = null) => {
     setModalError('');
@@ -373,7 +383,7 @@ export function CompaniesTab({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredCompanies.map((c, index) => {
+                  {pagedCompanies.map((c, index) => {
                     const isSelected = selectedCompany?.id === c.id;
                     return (
                       <tr
@@ -384,7 +394,7 @@ export function CompaniesTab({
                           isSelected && 'bg-purple-50/70 font-semibold'
                         )}
                       >
-                        <td className="py-3 px-2 text-center text-slate-400 text-[11px] font-medium">{index + 1}</td>
+                        <td className="py-3 px-2 text-center text-slate-400 text-[11px] font-medium">{startIndex + index + 1}</td>
                         <td className="py-3 px-4">
                           <span className="font-mono text-[11px] font-bold text-[#6C2BD9] bg-purple-100/70 px-2 py-0.5 rounded-md">
                             {c.code}
@@ -489,6 +499,14 @@ export function CompaniesTab({
               </table>
             </div>
           )}
+
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredCompanies.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Right Column: Inspection Details Drawer (1 col) */}

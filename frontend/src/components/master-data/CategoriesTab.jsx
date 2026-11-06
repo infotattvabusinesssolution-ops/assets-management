@@ -26,6 +26,7 @@ import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
 import { INITIAL_CLASSES } from './ClassesTab';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_CATEGORIES = [];
 
@@ -197,6 +198,15 @@ export function CategoriesTab({
       return matchesSearch && matchesClass && matchesGroup && matchesStatus;
     });
   }, [categoriesList, catSearchQuery, catClassFilter, catGroupFilter, catStatusFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedCategories,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredCategories, 10);
 
   // Keep selectedCategory synchronized when filteredCategories changes
   useEffect(() => {
@@ -576,7 +586,7 @@ export function CategoriesTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {filteredCategories.map((cat, index) => {
+                {pagedCategories.map((cat, index) => {
                   const isSelected = selectedCategory?.id === cat.id;
                   const isMenuOpen = activeRowMenuId === `cat-${cat.id}`;
                   const isNearBottom = filteredCategories.length > 2 && index >= filteredCategories.length - 2;
@@ -590,7 +600,7 @@ export function CategoriesTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-3.5 px-2 text-center text-slate-400">{index + 1}</td>
+                      <td className="py-3.5 px-2 text-center text-slate-400">{startIndex + index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{cat.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{cat.name}</td>
                       <td className="py-3.5 px-3 text-slate-700">{cat.className}</td>
@@ -698,14 +708,13 @@ export function CategoriesTab({
             </table>
           </div>
 
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs bg-slate-50/40">
-            <span className="text-slate-600 font-medium">
-              Showing {filteredCategories.length} records
-            </span>
-            <span className="text-slate-400">
-              Scroll down to view all records
-            </span>
-          </div>
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredCategories.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Right Column: Category Details Panel */}

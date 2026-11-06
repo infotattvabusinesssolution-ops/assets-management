@@ -26,6 +26,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { DEFAULT_COUNTRIES } from './LocationsTab';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_SUPPLIERS = [];
 
@@ -169,6 +170,15 @@ export function SuppliersTab({
       return matchesSearch && matchesType && matchesStatus && matchesCountry && matchesCompany;
     });
   }, [suppliersList, supSearchQuery, supTypeFilter, supStatusFilter, supCountryFilter, supCompanyFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedSuppliers,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredSuppliers, 10);
 
   const handleResetSupFilters = () => {
     setSupSearchQuery('');
@@ -507,7 +517,7 @@ export function SuppliersTab({
                     </td>
                   </tr>
                 ) : (
-                  filteredSuppliers.map((sup, index) => {
+                  pagedSuppliers.map((sup, index) => {
                   const isSelected = selectedSupplier?.id === sup.id;
                   const isMenuOpen = activeRowMenuId === `sup-${sup.id}`;
                   const isNearBottom = filteredSuppliers.length > 2 && index >= filteredSuppliers.length - 2;
@@ -521,7 +531,7 @@ export function SuppliersTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
+                      <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{startIndex + index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">
                         {sup.code}
                       </td>
@@ -606,11 +616,13 @@ export function SuppliersTab({
             </table>
           </div>
 
-          {/* Table Summary Footer */}
-          <div className="p-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500 bg-slate-50/20">
-            <span className="font-medium text-slate-600">Showing {filteredSuppliers.length} records</span>
-            <span className="text-slate-400">Scroll down to view all records</span>
-          </div>
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredSuppliers.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Selected Supplier Details Drawer matching exact reference screenshot */}

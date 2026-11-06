@@ -23,6 +23,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
+import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -144,6 +145,15 @@ export function CostCentersTab({
       return matchesSearch && matchesCompany && matchesDepartment && matchesStatus && matchesType;
     });
   }, [costCentersList, ccSearchQuery, ccCompanyFilter, ccStatusFilter, ccTypeFilter]);
+
+  const {
+    currentPage,
+    totalPages,
+    paginatedItems: pagedCostCenters,
+    startIndex,
+    setCurrentPage,
+    pageSize
+  } = usePagination(filteredCostCenters, 10);
 
   const handleResetCCFilters = () => {
     setCcSearchQuery('');
@@ -464,7 +474,7 @@ export function CostCentersTab({
                     </td>
                   </tr>
                 ) : (
-                  filteredCostCenters.map((cc, index) => {
+                  pagedCostCenters.map((cc, index) => {
                   const isSelected = selectedCostCenter?.id === cc.id;
                   const isMenuOpen = activeRowMenuId === `cc-${cc.id}`;
                   const isNearBottom = filteredCostCenters.length > 2 && index >= filteredCostCenters.length - 2;
@@ -478,7 +488,7 @@ export function CostCentersTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
+                      <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{startIndex + index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{cc.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{cc.name}</td>
                       <td className="py-2.5 px-3 text-slate-700">{cc.company}</td>
@@ -564,14 +574,13 @@ export function CostCentersTab({
             </table>
           </div>
 
-          <div className="p-3.5 border-t border-slate-100 flex items-center justify-between text-xs bg-slate-50/40">
-            <span className="text-slate-600 font-medium">
-              Showing {filteredCostCenters.length} records
-            </span>
-            <span className="text-slate-400">
-              Scroll down to view all records
-            </span>
-          </div>
+          <MasterDataPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            totalItems={filteredCostCenters.length}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+          />
         </div>
 
         {/* Right Column: Cost Center Details Panel */}
