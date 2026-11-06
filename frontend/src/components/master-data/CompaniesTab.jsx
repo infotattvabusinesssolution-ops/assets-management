@@ -27,9 +27,12 @@ export function CompaniesTab({
   triggerToast,
   externalShowAddModal,
   setExternalShowAddModal,
-  activeRowMenuId,
-  setActiveRowMenuId
+  activeRowMenuId: propActiveRowMenuId,
+  setActiveRowMenuId: propSetActiveRowMenuId
 }) {
+  const [localActiveRowMenuId, setLocalActiveRowMenuId] = useState(null);
+  const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
+  const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
   const [companies, setCompanies] = useState([]);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -128,6 +131,21 @@ export function CompaniesTab({
         status: 'Active'
       });
     }
+    setShowAddModal(true);
+  };
+
+  const handleDuplicateCompany = (c) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
+    setEditingCompany(null);
+    setFormState({
+      code: `${c.code || 'COMP'}-COPY`,
+      name: `${c.name || ''} (Copy)`,
+      currency: c.currency || 'AED',
+      taxId: c.taxId || '',
+      address: c.address || '',
+      status: 'Active'
+    });
     setShowAddModal(true);
   };
 
@@ -350,7 +368,7 @@ export function CompaniesTab({
                     <th className="py-3 px-3">Currency</th>
                     <th className="py-3 px-3">Tax ID / TRN</th>
                     <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -403,25 +421,79 @@ export function CompaniesTab({
                             {c.active !== false ? 'Active' : 'Inactive'}
                           </button>
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAddModal(c)}
-                              title="Edit Company"
-                              className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleInitiateDeleteCompany(c)}
-                              title="Delete Company"
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <td className="py-3 px-4 text-center relative" onClick={(e) => e.stopPropagation()}>
+                          {(() => {
+                            const isMenuOpen = activeRowMenuId === `comp-${c.id}`;
+                            return (
+                              <>
+                                <div className="flex items-center justify-center gap-1 text-slate-400">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAddModal(c)}
+                                    title="Edit Company"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `comp-${c.id}`)}
+                                    title="More Actions"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                {isMenuOpen && (
+                                  <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleOpenAddModal(c);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                      <span>Edit Company</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDuplicateCompany(c)}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Duplicate</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleToggleStatus(c, e);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                      <span>{c.active !== false ? 'Deactivate' : 'Activate'}</span>
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleInitiateDeleteCompany(c);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
