@@ -77,7 +77,15 @@ export function DepartmentsTab({
             email: dept.email || '',
             phone: dept.phone || '',
             description: dept.description || '',
-            employees: dept.employees ?? (dept._count?.employees || 0),
+            employees: (() => {
+              const apiCount = dept.employees ?? dept._count?.employees;
+              let customCount = 0;
+              try {
+                const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+                customCount = custom.filter(c => c.departmentId === dept.id || c.department?.id === dept.id || c.department === dept.name).length;
+              } catch (_) {}
+              return (apiCount ?? 0) + customCount;
+            })(),
             status: dept.active === false ? 'Inactive' : 'Active',
             createdBy: dept.createdBy || 'System',
             createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',

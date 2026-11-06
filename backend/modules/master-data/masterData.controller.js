@@ -2529,6 +2529,9 @@ export async function getDepartments(req, res, next) {
           company: true,
           costCenters: {
             select: { id: true, code: true, name: true, active: true }
+          },
+          _count: {
+            select: { employees: true }
           }
         },
         orderBy: { name: 'asc' }
@@ -2536,7 +2539,12 @@ export async function getDepartments(req, res, next) {
     } catch (relErr) {
       departments = await prisma.department.findMany({
         where,
-        include: { company: true },
+        include: {
+          company: true,
+          _count: {
+            select: { employees: true }
+          }
+        },
         orderBy: { name: 'asc' }
       });
     }
