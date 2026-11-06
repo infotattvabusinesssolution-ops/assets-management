@@ -725,6 +725,7 @@ export function MasterDataSetup() {
       {(['manufacturers', 'brands', 'uom', 'status-codes', 'asset-types'].includes(activeTab) ||
         (MORE_TABS.some((mt) => mt.id === activeTab) && activeTab !== 'depreciation')) && (
         <GenericMasterTab
+          key={activeTab}
           activeTab={activeTab}
           tabName={currentTabObject?.name}
           triggerToast={triggerToast}

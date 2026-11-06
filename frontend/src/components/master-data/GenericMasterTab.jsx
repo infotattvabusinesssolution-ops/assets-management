@@ -196,14 +196,23 @@ export function GenericMasterTab({
             totalAssets: b.totalAssets || 0
           }));
         }
-        const serverKeys = new Set(serverBrands.map(x => (x.code || x.name || '').toUpperCase().trim()));
-        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
+        const serverCodes = new Set(serverBrands.map(x => (x.code || '').toUpperCase().trim()).filter(Boolean));
+        const serverNames = new Set(serverBrands.map(x => (x.name || '').toLowerCase().trim()).filter(Boolean));
+        const missingCustom = custom.filter(c => {
+          const code = (c.code || '').toUpperCase().trim();
+          const name = (c.name || '').toLowerCase().trim();
+          return (!code || !serverCodes.has(code)) && (!name || !serverNames.has(name));
+        });
         const rawCombined = [...serverBrands, ...missingCustom];
-        const seen = new Set();
+        const seenCodes = new Set();
+        const seenNames = new Set();
         const combined = rawCombined.filter(it => {
-          const key = (it.code || it.name || '').toUpperCase().trim();
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
+          const code = (it.code || '').toUpperCase().trim();
+          const name = (it.name || '').toLowerCase().trim();
+          if (code && seenCodes.has(code)) return false;
+          if (name && seenNames.has(name)) return false;
+          if (code) seenCodes.add(code);
+          if (name) seenNames.add(name);
           return true;
         });
         setItems(combined);
@@ -286,20 +295,25 @@ export function GenericMasterTab({
               totalAssets: m.totalAssets || 0
             }));
         }
-        const serverKeys = new Set(mapped.map(x => (x.code || x.name || '').toUpperCase().trim()));
+        const serverCodes = new Set(mapped.map(x => (x.code || '').toUpperCase().trim()).filter(Boolean));
+        const serverNames = new Set(mapped.map(x => (x.name || '').toLowerCase().trim()).filter(Boolean));
         const missingCustom = custom.filter(c => {
           const id = String(c.id || '').toLowerCase().trim();
-          const code = String(c.code || '').toLowerCase().trim();
-          const name = String(c.name || '').toLowerCase().trim();
+          const code = (c.code || '').toUpperCase().trim();
+          const name = (c.name || '').toLowerCase().trim();
           if (deletedMfrs.has(id) || deletedMfrs.has(code) || deletedMfrs.has(name)) return false;
-          return !serverKeys.has((c.code || c.name || '').toUpperCase().trim());
+          return (!code || !serverCodes.has(code)) && (!name || !serverNames.has(name));
         });
         const rawCombined = [...mapped, ...missingCustom];
-        const seen = new Set();
+        const seenCodes = new Set();
+        const seenNames = new Set();
         const combined = rawCombined.filter(it => {
-          const key = (it.code || it.name || '').toUpperCase().trim();
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
+          const code = (it.code || '').toUpperCase().trim();
+          const name = (it.name || '').toLowerCase().trim();
+          if (code && seenCodes.has(code)) return false;
+          if (name && seenNames.has(name)) return false;
+          if (code) seenCodes.add(code);
+          if (name) seenNames.add(name);
           return true;
         });
         setItems(combined);
@@ -489,10 +503,17 @@ export function GenericMasterTab({
             description: newItem.description || '',
             active: newItem.status === 'Active'
           });
-          if (res?.brand?.id) newItem.id = res.brand.id;
+          if (res?.brand?.id) {
+            newItem.id = res.brand.id;
+            if (res.brand.code) newItem.code = res.brand.code;
+          }
           try {
             const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
-            localStorage.setItem('fams_custom_brands', JSON.stringify([newItem, ...custom]));
+            const filteredCustom = custom.filter(c =>
+              (c.name || '').trim().toLowerCase() !== (newItem.name || '').trim().toLowerCase() &&
+              (c.code || '').trim().toUpperCase() !== (newItem.code || '').trim().toUpperCase()
+            );
+            localStorage.setItem('fams_custom_brands', JSON.stringify([newItem, ...filteredCustom]));
           } catch (_) {}
         }
         if (activeTab === 'manufacturers') {
@@ -505,6 +526,7 @@ export function GenericMasterTab({
           });
           if (res?.manufacturer?.id) {
             newItem.id = res.manufacturer.id;
+            if (res.manufacturer.code) newItem.code = res.manufacturer.code;
           }
           try {
             const deletedMfrs = JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]');
@@ -516,7 +538,11 @@ export function GenericMasterTab({
             });
             localStorage.setItem('fams_deleted_manufacturers', JSON.stringify(cleanedDeleted));
             const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
-            localStorage.setItem('fams_custom_manufacturers', JSON.stringify([newItem, ...custom]));
+            const filteredCustom = custom.filter(c =>
+              (c.name || '').trim().toLowerCase() !== (newItem.name || '').trim().toLowerCase() &&
+              (c.code || '').trim().toUpperCase() !== (newItem.code || '').trim().toUpperCase()
+            );
+            localStorage.setItem('fams_custom_manufacturers', JSON.stringify([newItem, ...filteredCustom]));
           } catch (_) {}
           fetchRealManufacturers();
         }
