@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { RowActionsMenu } from './RowActionsMenu';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -439,7 +440,7 @@ export function CostCentersTab({
             </div>
           </div>
 
-          <div className="overflow-auto min-h-[320px] max-h-[540px]">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -497,7 +498,7 @@ export function CostCentersTab({
                           {cc.status}
                         </span>
                       </td>
-                      <td className={clsx("py-2.5 px-3 text-center relative", isMenuOpen && "z-30")} onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenAddCCModal(cc)}
@@ -506,50 +507,55 @@ export function CostCentersTab({
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `cc-${cc.id}`)}
-                            title="More Actions"
+                          <RowActionsMenu
+                            isOpen={isMenuOpen}
+                            onToggle={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `cc-${cc.id}`)}
+                            onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
                             className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors cursor-pointer"
                           >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {isMenuOpen && (
-                          <div className={clsx(
-                            "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
-                            isNearBottom ? "bottom-8" : "top-8"
-                          )}>
                             <button
-                              onClick={() => handleOpenAddCCModal(cc)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleOpenAddCCModal(cc);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5" />
                               <span>Edit Cost Center</span>
                             </button>
                             <button
-                              onClick={() => handleDuplicateCostCenter(cc)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleDuplicateCostCenter(cc);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Copy className="w-3.5 h-3.5" />
                               <span>Duplicate</span>
                             </button>
                             <button
-                              onClick={() => handleToggleCCStatus(cc)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleToggleCCStatus(cc);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />
                               <span>{cc.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
                             </button>
+                            <div className="h-px bg-slate-100 my-1" />
                             <button
-                              onClick={() => handleDeleteCostCenter(cc)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleDeleteCostCenter(cc);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Delete</span>
                             </button>
-                          </div>
-                        )}
+                          </RowActionsMenu>
+                        </div>
                       </td>
                     </tr>
                   );

@@ -24,6 +24,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
 import { SmartDeleteModal } from './SmartDeleteModal';
+import { RowActionsMenu } from './RowActionsMenu';
 
 export const INITIAL_CLASSES = [];
 
@@ -522,7 +523,7 @@ export function ClassesTab({
             </div>
           </div>
 
-          <div className="overflow-auto min-h-[320px] max-h-[540px]">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -576,7 +577,7 @@ export function ClassesTab({
                         </span>
                       </td>
 
-                      <td className={clsx("py-3.5 px-3 text-center relative", isMenuOpen && "z-30")} onClick={(e) => e.stopPropagation()}>
+                      <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1 text-slate-400">
                           <button
                             onClick={() => handleOpenAddClsModal(cls)}
@@ -586,25 +587,20 @@ export function ClassesTab({
                             <Edit className="w-3.5 h-3.5" />
                           </button>
 
-                          <button
-                            onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : cls.id)}
+                          <RowActionsMenu
+                            isOpen={isMenuOpen}
+                            onToggle={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : cls.id)}
+                            onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
                             className={clsx(
                               'p-1 rounded transition-colors',
                               isMenuOpen ? 'bg-purple-100 text-[#6C2BD9]' : 'hover:bg-slate-100 text-slate-500 hover:text-[#6C2BD9]'
                             )}
-                            title="More Actions"
                           >
-                            <MoreHorizontal className="w-3.5 h-3.5" />
-                          </button>
-                        </div>
-
-                        {isMenuOpen && (
-                          <div className={clsx(
-                            "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 z-50 text-left space-y-0.5 animate-in fade-in zoom-in-95 duration-150",
-                            isNearBottom ? "bottom-10" : "top-10"
-                          )}>
                             <button
-                              onClick={() => handleOpenAddClsModal(cls)}
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleOpenAddClsModal(cls);
+                              }}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" />
@@ -634,7 +630,10 @@ export function ClassesTab({
                             </button>
 
                             <button
-                              onClick={() => handleDuplicateClass(cls)}
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleDuplicateClass(cls);
+                              }}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <Copy className="w-3.5 h-3.5 text-[#6C2BD9]" />
@@ -642,7 +641,10 @@ export function ClassesTab({
                             </button>
 
                             <button
-                              onClick={() => handleToggleClassStatus(cls)}
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleToggleClassStatus(cls);
+                              }}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <RefreshCw className="w-3.5 h-3.5 text-[#6C2BD9]" />
@@ -663,14 +665,17 @@ export function ClassesTab({
                             <div className="my-1 border-t border-slate-100" />
 
                             <button
-                              onClick={() => handleInitiateDeleteClass(cls)}
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleInitiateDeleteClass(cls);
+                              }}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2.5 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5 text-rose-600" />
                               <span>Delete</span>
                             </button>
-                          </div>
-                        )}
+                          </RowActionsMenu>
+                        </div>
                       </td>
                     </tr>
                   );

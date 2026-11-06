@@ -22,6 +22,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { SmartDeleteModal } from './SmartDeleteModal';
+import { RowActionsMenu } from './RowActionsMenu';
 
 export function CompaniesTab({
   triggerToast,
@@ -358,7 +359,7 @@ export function CompaniesTab({
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto min-h-[320px] flex-1">
+            <div className="overflow-x-auto flex-1">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -421,83 +422,65 @@ export function CompaniesTab({
                             {c.active !== false ? 'Active' : 'Inactive'}
                           </button>
                         </td>
-                        <td className={clsx("py-3 px-4 text-center relative", activeRowMenuId === `comp-${c.id}` && "z-30")} onClick={(e) => e.stopPropagation()}>
-                          {(() => {
-                            const isMenuOpen = activeRowMenuId === `comp-${c.id}`;
-                            const isNearBottom = filteredCompanies.length > 2 && index >= filteredCompanies.length - 2;
-                            return (
-                              <>
-                                <div className="flex items-center justify-center gap-1 text-slate-400">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenAddModal(c)}
-                                    title="Edit Company"
-                                    className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors"
-                                  >
-                                    <Edit className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `comp-${c.id}`)}
-                                    title="More Actions"
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </button>
-                                </div>
-
-                                {isMenuOpen && (
-                                  <div className={clsx(
-                                    "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
-                                    isNearBottom ? "bottom-8" : "top-8"
-                                  )}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        handleOpenAddModal(c);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Edit className="w-3.5 h-3.5" />
-                                      <span>Edit Company</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDuplicateCompany(c)}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Copy className="w-3.5 h-3.5" />
-                                      <span>Duplicate</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        handleToggleStatus(c, e);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <RefreshCw className="w-3.5 h-3.5" />
-                                      <span>{c.active !== false ? 'Deactivate' : 'Activate'}</span>
-                                    </button>
-                                    <div className="h-px bg-slate-100 my-1" />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        handleInitiateDeleteCompany(c);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      <span>Delete</span>
-                                    </button>
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
+                        <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1 text-slate-400">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAddModal(c)}
+                              title="Edit Company"
+                              className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <RowActionsMenu
+                              isOpen={activeRowMenuId === `comp-${c.id}`}
+                              onToggle={() => setActiveRowMenuId && setActiveRowMenuId(activeRowMenuId === `comp-${c.id}` ? null : `comp-${c.id}`)}
+                              onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleOpenAddModal(c);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Edit Company</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicateCompany(c)}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Duplicate</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleToggleStatus(c, e);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>{c.active !== false ? 'Deactivate' : 'Activate'}</span>
+                              </button>
+                              <div className="h-px bg-slate-100 my-1" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleInitiateDeleteCompany(c);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete</span>
+                              </button>
+                            </RowActionsMenu>
+                          </div>
                         </td>
                       </tr>
                     );

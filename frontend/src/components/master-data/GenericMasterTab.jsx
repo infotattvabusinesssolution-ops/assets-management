@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { RowActionsMenu } from './RowActionsMenu';
 
 export const DEFAULT_MANUFACTURERS = [];
 
@@ -832,7 +833,7 @@ export function GenericMasterTab({
             </div>
           </div>
 
-          <div className="overflow-auto min-h-[320px] max-h-[540px]">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -950,88 +951,73 @@ export function GenericMasterTab({
                             {item.status || 'Active'}
                           </span>
                         </td>
-                        <td className={clsx("py-2.5 px-3 text-center relative", activeRowMenuId === `gen-${item.id}` && "z-30")} onClick={(e) => e.stopPropagation()}>
+                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                           {item.isSystem ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200" title="Protected System Enumeration (Cannot be modified or deleted via UI)">
                               <Lock className="w-2.5 h-2.5" /> System Enum
                             </span>
-                          ) : (() => {
-                            const isMenuOpen = activeRowMenuId === `gen-${item.id}`;
-                            const isNearBottom = filteredItems.length > 2 && index >= filteredItems.length - 2;
-                            return (
-                              <>
-                                <div className="flex items-center justify-center gap-1 text-slate-400">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenAddModal(item)}
-                                    title="Edit Record"
-                                    className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
-                                  >
-                                    <Edit className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `gen-${item.id}`)}
-                                    title="More Actions"
-                                    className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </button>
-                                </div>
-
-                                {isMenuOpen && (
-                                  <div className={clsx(
-                                    "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
-                                    isNearBottom ? "bottom-8" : "top-8"
-                                  )}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        handleOpenAddModal(item);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Edit className="w-3.5 h-3.5" />
-                                      <span>Edit {tabConfig.singular}</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDuplicateItem(item)}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Copy className="w-3.5 h-3.5" />
-                                      <span>Duplicate</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        handleToggleStatus(item, e);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <RefreshCw className="w-3.5 h-3.5" />
-                                      <span>{item.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
-                                    </button>
-                                    <div className="h-px bg-slate-100 my-1" />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        setItemToDelete(item);
-                                        setShowDeleteModal(true);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      <span>Delete</span>
-                                    </button>
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
+                          ) : (
+                            <div className="flex items-center justify-center gap-1 text-slate-400">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAddModal(item)}
+                                title="Edit Record"
+                                className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <RowActionsMenu
+                                isOpen={activeRowMenuId === `gen-${item.id}`}
+                                onToggle={() => setActiveRowMenuId && setActiveRowMenuId(activeRowMenuId === `gen-${item.id}` ? null : `gen-${item.id}`)}
+                                onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
+                                className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                              >
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleOpenAddModal(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                  <span>Edit {tabConfig.singular}</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDuplicateItem(item)}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Duplicate</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleToggleStatus(item, e);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
+                                  <span>{item.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                </button>
+                                <div className="h-px bg-slate-100 my-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    setItemToDelete(item);
+                                    setShowDeleteModal(true);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              </RowActionsMenu>
+                            </div>
+                          )}
                         </td>
                       </tr>
                     );

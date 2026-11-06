@@ -25,6 +25,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { DEFAULT_COUNTRIES } from './LocationsTab';
+import { RowActionsMenu } from './RowActionsMenu';
 
 export const INITIAL_SUPPLIERS = [];
 
@@ -483,7 +484,7 @@ export function SuppliersTab({
             </div>
           </div>
 
-          <div className="overflow-auto min-h-[320px] max-h-[540px]">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -539,7 +540,7 @@ export function SuppliersTab({
                           {sup.status}
                         </span>
                       </td>
-                      <td className={clsx("py-2.5 px-3 text-center relative", isMenuOpen && "z-30")} onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenAddSupModalInternal(sup)}
@@ -548,50 +549,55 @@ export function SuppliersTab({
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `sup-${sup.id}`)}
-                            title="More Actions"
+                          <RowActionsMenu
+                            isOpen={isMenuOpen}
+                            onToggle={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `sup-${sup.id}`)}
+                            onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
                             className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors cursor-pointer"
                           >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {isMenuOpen && (
-                          <div className={clsx(
-                            "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
-                            isNearBottom ? "bottom-8" : "top-8"
-                          )}>
                             <button
-                              onClick={() => handleOpenAddSupModalInternal(sup)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleOpenAddSupModalInternal(sup);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5" />
                               <span>Edit Supplier</span>
                             </button>
                             <button
-                              onClick={() => handleDuplicateSupplier(sup)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleDuplicateSupplier(sup);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Copy className="w-3.5 h-3.5" />
                               <span>Duplicate</span>
                             </button>
                             <button
-                              onClick={() => handleToggleSupStatus(sup)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleToggleSupStatus(sup);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />
                               <span>{sup.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
                             </button>
+                            <div className="h-px bg-slate-100 my-1" />
                             <button
-                              onClick={() => handleDeleteSupplier(sup)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleDeleteSupplier(sup);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Delete</span>
                             </button>
-                          </div>
-                        )}
+                          </RowActionsMenu>
+                        </div>
                       </td>
                     </tr>
                   );

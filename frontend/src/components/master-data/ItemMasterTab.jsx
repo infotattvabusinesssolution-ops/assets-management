@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { RowActionsMenu } from './RowActionsMenu';
 
 // Dynamic Master Data State (strictly driven from database / master data screens)
 
@@ -620,7 +621,7 @@ export function ItemMasterTab({
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto min-h-[320px] flex-1">
+            <div className="overflow-x-auto flex-1">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -703,84 +704,66 @@ export function ItemMasterTab({
                             {item.active !== false ? 'Active' : 'Inactive'}
                           </button>
                         </td>
-                        <td className={clsx("py-3 px-4 text-center relative", activeRowMenuId === `item-${item.id}` && "z-30")} onClick={(e) => e.stopPropagation()}>
-                          {(() => {
-                            const isMenuOpen = activeRowMenuId === `item-${item.id}`;
-                            const isNearBottom = filteredItems.length > 2 && index >= filteredItems.length - 2;
-                            return (
-                              <>
-                                <div className="flex items-center justify-center gap-1 text-slate-400">
-                                  <button
-                                    type="button"
-                                    onClick={() => handleOpenAddModal(item)}
-                                    title="Edit Item Master"
-                                    className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors cursor-pointer"
-                                  >
-                                    <Edit className="w-3.5 h-3.5" />
-                                  </button>
-                                  <button
-                                    type="button"
-                                    onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `item-${item.id}`)}
-                                    title="More Actions"
-                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
-                                  >
-                                    <MoreHorizontal className="w-4 h-4" />
-                                  </button>
-                                </div>
-
-                                {isMenuOpen && (
-                                  <div className={clsx(
-                                    "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
-                                    isNearBottom ? "bottom-8" : "top-8"
-                                  )}>
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        handleOpenAddModal(item);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Edit className="w-3.5 h-3.5" />
-                                      <span>Edit Item Master</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={() => handleDuplicateItem(item)}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Copy className="w-3.5 h-3.5" />
-                                      <span>Duplicate</span>
-                                    </button>
-                                    <button
-                                      type="button"
-                                      onClick={(e) => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        handleToggleStatus(item, e);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <RefreshCw className="w-3.5 h-3.5" />
-                                      <span>{item.active !== false ? 'Deactivate' : 'Activate'}</span>
-                                    </button>
-                                    <div className="h-px bg-slate-100 my-1" />
-                                    <button
-                                      type="button"
-                                      onClick={() => {
-                                        setActiveRowMenuId && setActiveRowMenuId(null);
-                                        setItemToDelete(item);
-                                        setShowDeleteConfirmModal(true);
-                                      }}
-                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
-                                    >
-                                      <Trash2 className="w-3.5 h-3.5" />
-                                      <span>Delete</span>
-                                    </button>
-                                  </div>
-                                )}
-                              </>
-                            );
-                          })()}
+                        <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
+                          <div className="flex items-center justify-center gap-1 text-slate-400">
+                            <button
+                              type="button"
+                              onClick={() => handleOpenAddModal(item)}
+                              title="Edit Item Master"
+                              className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors cursor-pointer"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                            <RowActionsMenu
+                              isOpen={activeRowMenuId === `item-${item.id}`}
+                              onToggle={() => setActiveRowMenuId && setActiveRowMenuId(activeRowMenuId === `item-${item.id}` ? null : `item-${item.id}`)}
+                              onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
+                            >
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleOpenAddModal(item);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Edit Item Master</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => handleDuplicateItem(item)}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Duplicate</span>
+                              </button>
+                              <button
+                                type="button"
+                                onClick={(e) => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleToggleStatus(item, e);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>{item.active !== false ? 'Deactivate' : 'Activate'}</span>
+                              </button>
+                              <div className="h-px bg-slate-100 my-1" />
+                              <button
+                                type="button"
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  setItemToDelete(item);
+                                  setShowDeleteConfirmModal(true);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Trash2 className="w-3.5 h-3.5" />
+                                <span>Delete</span>
+                              </button>
+                            </RowActionsMenu>
+                          </div>
                         </td>
                       </tr>
                     );

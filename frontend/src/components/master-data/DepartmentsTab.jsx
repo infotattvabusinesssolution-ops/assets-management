@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { RowActionsMenu } from './RowActionsMenu';
 
 export const INITIAL_DEPARTMENTS = [];
 
@@ -56,7 +57,7 @@ export function DepartmentsTab({
       if (siteRes?.sites) setLocationsList(siteRes.sites);
 
       const allLoadedEmployees = [
-        ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : []))
+        ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : (Array.isArray(empRes) ? empRes : [])))
       ];
       let customCustodians = [];
       try {
@@ -70,12 +71,31 @@ export function DepartmentsTab({
             ? dept.costCenters
             : loadedCCs.filter((c) => c.departmentId === dept.id || c.department?.id === dept.id);
 
-          const matchedEmps = combinedEmployees.filter(c => 
-            (c.departmentId && (c.departmentId === dept.id || c.departmentId === dept.code)) ||
-            (typeof c.department === 'string' && (c.department.toLowerCase() === (dept.name || '').toLowerCase() || c.department.toLowerCase() === (dept.code || '').toLowerCase())) ||
-            (c.department?.name && (c.department.name.toLowerCase() === (dept.name || '').toLowerCase() || c.department.name.toLowerCase() === (dept.code || '').toLowerCase()))
-          );
-          const empCount = matchedEmps.length > 0 ? matchedEmps.length : (dept.employees ?? (dept._count?.employees || 0));
+          const matchedEmps = combinedEmployees.filter(c => {
+            if (!c) return false;
+            const targetId = String(dept.id || '').trim().toLowerCase();
+            const targetCode = String(dept.code || '').trim().toLowerCase();
+            const targetName = String(dept.name || '').trim().toLowerCase();
+
+            const cDeptId = c.departmentId != null ? String(c.departmentId).trim().toLowerCase() : '';
+            if (cDeptId && (cDeptId === targetId || cDeptId === targetCode || cDeptId === targetName)) return true;
+
+            const cDeptStr = typeof c.department === 'string'
+              ? c.department.trim().toLowerCase()
+              : (c.department?.name ? String(c.department.name).trim().toLowerCase() : '');
+            if (cDeptStr && (cDeptStr === targetName || cDeptStr === targetCode || cDeptStr === targetId)) return true;
+
+            const cDeptObjId = c.department?.id != null ? String(c.department.id).trim().toLowerCase() : '';
+            if (cDeptObjId && (cDeptObjId === targetId || cDeptObjId === targetCode)) return true;
+
+            const cDeptObjCode = c.department?.code != null ? String(c.department.code).trim().toLowerCase() : '';
+            if (cDeptObjCode && (cDeptObjCode === targetCode || cDeptObjCode === targetId)) return true;
+
+            return false;
+          });
+          const empCount = matchedEmps.length > 0
+            ? matchedEmps.length
+            : (dept._count?.employees || dept.employees || 0);
 
           return {
             id: dept.id,
@@ -479,7 +499,7 @@ export function DepartmentsTab({
             </div>
           </div>
 
-          <div className="overflow-auto min-h-[320px] max-h-[540px]">
+          <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -533,7 +553,7 @@ export function DepartmentsTab({
                           {dept.status}
                         </span>
                       </td>
-                      <td className={clsx("py-2.5 px-3 text-center relative", isMenuOpen && "z-30")} onClick={(e) => e.stopPropagation()}>
+                      <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenAddDeptModal(dept)}
@@ -542,50 +562,55 @@ export function DepartmentsTab({
                           >
                             <Edit className="w-3.5 h-3.5" />
                           </button>
-                          <button
-                            onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `dept-${dept.id}`)}
-                            title="More Actions"
+                          <RowActionsMenu
+                            isOpen={isMenuOpen}
+                            onToggle={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `dept-${dept.id}`)}
+                            onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
                             className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors cursor-pointer"
                           >
-                            <MoreHorizontal className="w-4 h-4" />
-                          </button>
-                        </div>
-
-                        {isMenuOpen && (
-                          <div className={clsx(
-                            "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
-                            isNearBottom ? "bottom-8" : "top-8"
-                          )}>
                             <button
-                              onClick={() => handleOpenAddDeptModal(dept)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleOpenAddDeptModal(dept);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5" />
                               <span>Edit Department</span>
                             </button>
                             <button
-                              onClick={() => handleDuplicateDepartment(dept)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleDuplicateDepartment(dept);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Copy className="w-3.5 h-3.5" />
                               <span>Duplicate</span>
                             </button>
                             <button
-                              onClick={() => handleToggleDepartmentStatus(dept)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleToggleDepartmentStatus(dept);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <RefreshCw className="w-3.5 h-3.5" />
                               <span>{dept.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
                             </button>
+                            <div className="h-px bg-slate-100 my-1" />
                             <button
-                              onClick={() => handleDeleteDepartment(dept)}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2"
+                              onClick={() => {
+                                setActiveRowMenuId && setActiveRowMenuId(null);
+                                handleDeleteDepartment(dept);
+                              }}
+                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                               <span>Delete</span>
                             </button>
-                          </div>
-                        )}
+                          </RowActionsMenu>
+                        </div>
                       </td>
                     </tr>
                   );
