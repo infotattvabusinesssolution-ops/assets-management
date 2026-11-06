@@ -6,6 +6,8 @@ import {
   RefreshCw,
   Edit,
   Trash2,
+  Copy,
+  MoreHorizontal,
   X,
   Factory,
   Scale,
@@ -41,8 +43,14 @@ export function GenericMasterTab({
   addModalTrigger,
   externalShowAddModal,
   setExternalShowAddModal,
-  onResetToDefault
+  onResetToDefault,
+  activeRowMenuId: propActiveRowMenuId,
+  setActiveRowMenuId: propSetActiveRowMenuId
 }) {
+  const [localActiveRowMenuId, setLocalActiveRowMenuId] = useState(null);
+  const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
+  const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
+
   const [items, setItems] = useState([]);
   const [realManufacturers, setRealManufacturers] = useState([]);
 
@@ -374,6 +382,57 @@ export function GenericMasterTab({
       });
     }
     setShowAddModal(true);
+  };
+
+  const handleDuplicateItem = (item) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
+    fetchRealManufacturers();
+    setEditingItem(null);
+    setFormState({
+      code: `${item.code || 'CODE'}-COPY`,
+      name: `${item.name || ''} (Copy)`,
+      manufacturerName: item.manufacturerName || '',
+      website: item.website || '',
+      supportContact: item.supportContact || '',
+      country: item.country || 'United States',
+      symbol: item.symbol || '',
+      category: item.category || (activeTab === 'uom' ? 'Discrete Count' : ''),
+      stage: item.stage || (activeTab === 'status-codes' ? 'Operational' : ''),
+      color: item.color || 'emerald',
+      description: item.description || '',
+      status: 'Active'
+    });
+    setShowAddModal(true);
+  };
+
+  const handleToggleStatus = async (item, e) => {
+    e?.stopPropagation();
+    if (item.isSystem) {
+      triggerToast && triggerToast('System enumeration status cannot be changed.');
+      return;
+    }
+    const nextStatus = item.status === 'Active' ? 'Inactive' : 'Active';
+    const nextActive = nextStatus === 'Active';
+    try {
+      if (activeTab === 'uom') {
+        await api.put(`/master-data/uoms/${item.id}`, { active: nextActive }).catch(() => null);
+      } else if (activeTab === 'asset-types') {
+        await api.put(`/master-data/asset-types/${item.id}`, { active: nextActive }).catch(() => null);
+      } else if (activeTab === 'brands') {
+        await api.put(`/master-data/brands/${item.id}`, { active: nextActive }).catch(() => null);
+      } else if (activeTab === 'manufacturers') {
+        await api.put(`/master-data/manufacturers/${item.id}`, { active: nextActive }).catch(() => null);
+      }
+      const updated = items.map(it => it.id === item.id ? { ...it, status: nextStatus, active: nextActive } : it);
+      setItems(updated);
+      if (selectedItem?.id === item.id) {
+        setSelectedItem({ ...selectedItem, status: nextStatus, active: nextActive });
+      }
+      triggerToast && triggerToast(`${tabConfig.singular} "${item.name}" marked as ${nextStatus}.`);
+    } catch {
+      triggerToast && triggerToast('Failed to update status.');
+    }
   };
 
   useEffect(() => {
@@ -891,32 +950,84 @@ export function GenericMasterTab({
                             {item.status || 'Active'}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
+                        <td className="py-2.5 px-3 text-center relative" onClick={(e) => e.stopPropagation()}>
                           {item.isSystem ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200" title="Protected System Enumeration (Cannot be modified or deleted via UI)">
                               <Lock className="w-2.5 h-2.5" /> System Enum
                             </span>
-                          ) : (
-                            <div className="flex items-center justify-center gap-1">
-                              <button
-                                onClick={() => handleOpenAddModal(item)}
-                                title="Edit Record"
-                                className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                              </button>
-                              <button
-                                onClick={() => {
-                                  setItemToDelete(item);
-                                  setShowDeleteModal(true);
-                                }}
-                                title="Delete Record"
-                                className="p-1 hover:bg-rose-100 rounded text-slate-400 hover:text-rose-600 transition-colors cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                              </button>
-                            </div>
-                          )}
+                          ) : (() => {
+                            const isMenuOpen = activeRowMenuId === `gen-${item.id}`;
+                            return (
+                              <>
+                                <div className="flex items-center justify-center gap-1 text-slate-400">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAddModal(item)}
+                                    title="Edit Record"
+                                    className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `gen-${item.id}`)}
+                                    title="More Actions"
+                                    className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-600 transition-colors cursor-pointer"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                {isMenuOpen && (
+                                  <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleOpenAddModal(item);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                      <span>Edit {tabConfig.singular}</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDuplicateItem(item)}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Duplicate</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleToggleStatus(item, e);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                      <span>{item.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        setItemToDelete(item);
+                                        setShowDeleteModal(true);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );

@@ -6,6 +6,7 @@ import {
   Trash2,
   Plus,
   RefreshCw,
+  Copy,
   MoreHorizontal,
   ChevronRight,
   ChevronLeft,
@@ -31,9 +32,13 @@ export function CustodiansTab({
   triggerToast,
   externalShowAddModal,
   setExternalShowAddModal,
-  activeRowMenuId,
-  setActiveRowMenuId
+  activeRowMenuId: propActiveRowMenuId,
+  setActiveRowMenuId: propSetActiveRowMenuId
 }) {
+  const [localActiveRowMenuId, setLocalActiveRowMenuId] = useState(null);
+  const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
+  const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
+
   const [custodians, setCustodians] = useState([]);
   const [selectedCustodian, setSelectedCustodian] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -172,6 +177,27 @@ export function CustodiansTab({
         status: 'Active'
       });
     }
+    setShowAddModal(true);
+  };
+
+  const handleDuplicateCustodian = (c) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
+    setEditingCustodian(null);
+    const isExternal = (c.custodianType === 'External') || (c.employeeCode?.startsWith('EXT'));
+    setFormState({
+      custodianType: isExternal ? 'External' : 'Internal',
+      employeeCode: `${c.employeeCode || c.code || 'EMP'}-COPY`,
+      fullName: `${c.fullName || ''} (Copy)`,
+      email: c.email ? `copy.${c.email}` : '',
+      phone: c.phone || '',
+      companyId: c.companyId || (companies[0]?.id || ''),
+      departmentId: c.departmentId || '',
+      section: c.section || '',
+      location: c.location || '',
+      organization: c.organization || '',
+      status: 'Active'
+    });
     setShowAddModal(true);
   };
 
@@ -449,7 +475,7 @@ export function CustodiansTab({
                     <th className="py-3 px-3">Type</th>
                     <th className="py-3 px-3">Department / Org</th>
                     <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -514,25 +540,79 @@ export function CustodiansTab({
                             {c.active !== false ? 'Active' : 'Inactive'}
                           </button>
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAddModal(c)}
-                              title="Edit Custodian"
-                              className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => handleInitiateDeleteCustodian(c)}
-                              title="Delete Custodian"
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <td className="py-3 px-4 text-center relative" onClick={(e) => e.stopPropagation()}>
+                          {(() => {
+                            const isMenuOpen = activeRowMenuId === `cust-${c.id}`;
+                            return (
+                              <>
+                                <div className="flex items-center justify-center gap-1 text-slate-400">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAddModal(c)}
+                                    title="Edit Custodian"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `cust-${c.id}`)}
+                                    title="More Actions"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                {isMenuOpen && (
+                                  <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleOpenAddModal(c);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                      <span>Edit Custodian</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDuplicateCustodian(c)}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Duplicate</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleToggleStatus(c, e);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                      <span>{c.active !== false ? 'Deactivate' : 'Activate'}</span>
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleInitiateDeleteCustodian(c);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );

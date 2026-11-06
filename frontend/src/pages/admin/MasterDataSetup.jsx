@@ -603,6 +603,8 @@ export function MasterDataSetup() {
       {activeTab === 'item-master' && (
         <ItemMasterTab
           triggerToast={triggerToast}
+          activeRowMenuId={activeRowMenuId}
+          setActiveRowMenuId={setActiveRowMenuId}
           externalShowAddModal={activeAddModalTab === 'item-master'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
           onNavigateTab={handleTabChange}
@@ -612,6 +614,8 @@ export function MasterDataSetup() {
       {activeTab === 'asset-groups' && (
         <AssetGroupsTab
           triggerToast={triggerToast}
+          activeRowMenuId={activeRowMenuId}
+          setActiveRowMenuId={setActiveRowMenuId}
           externalShowAddModal={showAddGroupModal}
           setExternalShowAddModal={setShowAddGroupModal}
           reloadTrigger={groupReloadTrigger}
@@ -657,6 +661,8 @@ export function MasterDataSetup() {
       {activeTab === 'companies' && (
         <CompaniesTab
           triggerToast={triggerToast}
+          activeRowMenuId={activeRowMenuId}
+          setActiveRowMenuId={setActiveRowMenuId}
           externalShowAddModal={activeAddModalTab === 'companies'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
@@ -665,6 +671,8 @@ export function MasterDataSetup() {
       {activeTab === 'custodians' && (
         <CustodiansTab
           triggerToast={triggerToast}
+          activeRowMenuId={activeRowMenuId}
+          setActiveRowMenuId={setActiveRowMenuId}
           externalShowAddModal={activeAddModalTab === 'custodians'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
@@ -716,6 +724,8 @@ export function MasterDataSetup() {
       {activeTab === 'disposal-statuses' && (
         <DisposalStatusesTab
           triggerToast={triggerToast}
+          activeRowMenuId={activeRowMenuId}
+          setActiveRowMenuId={setActiveRowMenuId}
           externalShowAddModal={activeAddModalTab === 'disposal-statuses'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
@@ -729,6 +739,8 @@ export function MasterDataSetup() {
           activeTab={activeTab}
           tabName={currentTabObject?.name}
           triggerToast={triggerToast}
+          activeRowMenuId={activeRowMenuId}
+          setActiveRowMenuId={setActiveRowMenuId}
           externalShowAddModal={activeAddModalTab === activeTab}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
           onResetToDefault={() => handleTabChange('asset-groups')}

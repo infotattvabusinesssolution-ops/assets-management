@@ -5,6 +5,8 @@ import {
   RefreshCw,
   Edit,
   Trash2,
+  Copy,
+  MoreHorizontal,
   AlertTriangle,
   X,
   Check,
@@ -22,7 +24,17 @@ import { api } from '../../services/api';
 
 export const INITIAL_DISPOSAL_STATUSES = [];
 
-export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExternalShowAddModal }) {
+export function DisposalStatusesTab({
+  triggerToast,
+  externalShowAddModal,
+  setExternalShowAddModal,
+  activeRowMenuId: propActiveRowMenuId,
+  setActiveRowMenuId: propSetActiveRowMenuId
+}) {
+  const [localActiveRowMenuId, setLocalActiveRowMenuId] = useState(null);
+  const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
+  const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
+
   const [statuses, setStatuses] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -97,6 +109,35 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
       active: item.active !== false
     });
     setShowAddModal(true);
+  };
+
+  const handleDuplicateStatus = (item) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
+    setEditingStatus(null);
+    setFormData({
+      code: `${item.code || 'DISP'}-COPY`,
+      name: `${item.name || ''} (Copy)`,
+      description: item.description || '',
+      active: true
+    });
+    setShowAddModal(true);
+  };
+
+  const handleToggleStatus = async (item, e) => {
+    e?.stopPropagation();
+    const nextActive = item.active === false ? true : false;
+    try {
+      await api.put(`/master-data/disposal-statuses/${item.id}`, { active: nextActive }).catch(() => null);
+      setStatuses(prev => {
+        const updated = prev.map(s => s.id === item.id ? { ...s, active: nextActive } : s);
+        try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
+        return updated;
+      });
+      triggerToast?.(`Disposal status marked as ${nextActive ? 'Active' : 'Inactive'}`, 'success');
+    } catch {
+      triggerToast?.('Failed to update status', 'error');
+    }
   };
 
   const handleSave = async (e) => {
@@ -281,7 +322,7 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
                 <th className="py-3 px-5">Disposal Status Name</th>
                 <th className="py-3 px-5">Description & Scope</th>
                 <th className="py-3 px-5 text-center">Status</th>
-                <th className="py-3 px-5 text-right">Actions</th>
+                <th className="py-3 px-5 text-center">Actions</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
@@ -316,23 +357,79 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
                         {item.active !== false ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-5 text-right">
-                      <div className="flex items-center justify-end gap-1.5">
-                        <button
-                          onClick={() => handleOpenEdit(item)}
-                          className="p-1.5 text-slate-500 hover:text-[#6C2BD9] hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
-                          title="Edit Status"
-                        >
-                          <Edit className="w-3.5 h-3.5" />
-                        </button>
-                        <button
-                          onClick={() => setStatusToDelete(item)}
-                          className="p-1.5 text-slate-500 hover:text-rose-600 hover:bg-rose-50 rounded-lg transition-colors cursor-pointer"
-                          title="Delete Status"
-                        >
-                          <Trash2 className="w-3.5 h-3.5" />
-                        </button>
-                      </div>
+                    <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                      {(() => {
+                        const isMenuOpen = activeRowMenuId === `disp-${item.id}`;
+                        return (
+                          <>
+                            <div className="flex items-center justify-center gap-1 text-slate-400">
+                              <button
+                                type="button"
+                                onClick={() => handleOpenEdit(item)}
+                                title="Edit Status"
+                                className="p-1.5 text-slate-500 hover:text-[#6C2BD9] hover:bg-purple-50 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `disp-${item.id}`)}
+                                title="More Actions"
+                                className="p-1.5 text-slate-500 hover:text-slate-700 hover:bg-slate-100 rounded-lg transition-colors cursor-pointer"
+                              >
+                                <MoreHorizontal className="w-4 h-4" />
+                              </button>
+                            </div>
+
+                            {isMenuOpen && (
+                              <div className="absolute right-4 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleOpenEdit(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                  <span>Edit Status</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => handleDuplicateStatus(item)}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Duplicate</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleToggleStatus(item, e);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
+                                  <span>{item.active !== false ? 'Deactivate' : 'Activate'}</span>
+                                </button>
+                                <div className="h-px bg-slate-100 my-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    setStatusToDelete(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              </div>
+                            )}
+                          </>
+                        );
+                      })()}
                     </td>
                   </tr>
                 ))

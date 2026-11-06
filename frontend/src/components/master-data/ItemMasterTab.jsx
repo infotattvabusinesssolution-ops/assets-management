@@ -34,8 +34,14 @@ export function ItemMasterTab({
   triggerToast,
   externalShowAddModal,
   setExternalShowAddModal,
-  onNavigateTab
+  onNavigateTab,
+  activeRowMenuId: propActiveRowMenuId,
+  setActiveRowMenuId: propSetActiveRowMenuId
 }) {
+  const [localActiveRowMenuId, setLocalActiveRowMenuId] = useState(null);
+  const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
+  const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
+
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -360,6 +366,35 @@ export function ItemMasterTab({
     setShowAddModal(true);
   };
 
+  const handleDuplicateItem = (item) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
+    setEditingItem(null);
+    setFormState({
+      itemCode: `${item.itemCode || 'ITM'}-COPY`,
+      itemName: `${item.itemName || ''} (Copy)`,
+      supplierBarcode: item.supplierBarcode || '',
+      description: item.description || '',
+      assetGroupId: item.assetGroupId || '',
+      assetGroupName: item.assetGroupName || '',
+      assetSubGroupId: item.assetSubGroupId || '',
+      assetSubGroupName: item.assetSubGroupName || '',
+      categoryId: item.categoryId || '',
+      categoryName: item.categoryName || '',
+      subCategoryId: item.subCategoryId || '',
+      subCategoryName: item.subCategoryName || '',
+      manufacturerId: item.manufacturerId || '',
+      manufacturerName: item.manufacturerName || '',
+      brandId: item.brandId || '',
+      brandName: item.brandName || '',
+      model: item.model || '',
+      uom: item.uom || 'Each',
+      specifications: item.specifications || '',
+      status: 'Active'
+    });
+    setShowAddModal(true);
+  };
+
   const handleSaveItem = async (e) => {
     e.preventDefault();
     const cleanName = (formState.itemName || '').trim();
@@ -596,7 +631,7 @@ export function ItemMasterTab({
                     <th className="py-3 px-3">Classification</th>
                     <th className="py-3 px-3">UOM</th>
                     <th className="py-3 px-3">Status</th>
-                    <th className="py-3 px-4 text-right">Actions</th>
+                    <th className="py-3 px-4 text-center">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
@@ -668,28 +703,80 @@ export function ItemMasterTab({
                             {item.active !== false ? 'Active' : 'Inactive'}
                           </button>
                         </td>
-                        <td className="py-3 px-4 text-right">
-                          <div className="flex items-center justify-end gap-1" onClick={(e) => e.stopPropagation()}>
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAddModal(item)}
-                              title="Edit Item Master"
-                              className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              type="button"
-                              onClick={() => {
-                                setItemToDelete(item);
-                                setShowDeleteConfirmModal(true);
-                              }}
-                              title="Delete Item"
-                              className="p-1 rounded-lg text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-colors"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <td className="py-3 px-4 text-center relative" onClick={(e) => e.stopPropagation()}>
+                          {(() => {
+                            const isMenuOpen = activeRowMenuId === `item-${item.id}`;
+                            return (
+                              <>
+                                <div className="flex items-center justify-center gap-1 text-slate-400">
+                                  <button
+                                    type="button"
+                                    onClick={() => handleOpenAddModal(item)}
+                                    title="Edit Item Master"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors cursor-pointer"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    type="button"
+                                    onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `item-${item.id}`)}
+                                    title="More Actions"
+                                    className="p-1 rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 transition-colors cursor-pointer"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                {isMenuOpen && (
+                                  <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleOpenAddModal(item);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                      <span>Edit Item Master</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={() => handleDuplicateItem(item)}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Duplicate</span>
+                                    </button>
+                                    <button
+                                      type="button"
+                                      onClick={(e) => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleToggleStatus(item, e);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                      <span>{item.active !== false ? 'Deactivate' : 'Activate'}</span>
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1" />
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        setItemToDelete(item);
+                                        setShowDeleteConfirmModal(true);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );

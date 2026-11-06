@@ -6,6 +6,7 @@ import {
   Trash2,
   Plus,
   RefreshCw,
+  Copy,
   MoreHorizontal,
   ChevronRight,
   ChevronLeft,

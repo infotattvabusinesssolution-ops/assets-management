@@ -6,6 +6,7 @@ import {
   Trash2,
   Plus,
   RefreshCw,
+  Copy,
   AlertTriangle,
   MoreHorizontal,
   ChevronRight,
@@ -29,8 +30,14 @@ export function AssetGroupsTab({
   externalShowAddModal,
   setExternalShowAddModal,
   reloadTrigger,
-  onNavigateTab
+  onNavigateTab,
+  activeRowMenuId: propActiveRowMenuId,
+  setActiveRowMenuId: propSetActiveRowMenuId
 }) {
+  const [localActiveRowMenuId, setLocalActiveRowMenuId] = useState(null);
+  const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
+  const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
+
   const [assetGroups, setAssetGroups] = useState([]);
   const [liveClasses, setLiveClasses] = useState([]);
   const [liveCategories, setLiveCategories] = useState([]);
@@ -251,6 +258,20 @@ export function AssetGroupsTab({
         status: 'Active'
       });
     }
+    setShowAddGrpModal(true);
+  };
+
+  const handleDuplicateGroup = (grp) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setModalError('');
+    setEditingGroup(null);
+    setGrpFormState({
+      code: `${grp.code || 'GRP'}-COPY`,
+      name: `${grp.name || ''} (Copy)`,
+      description: grp.description || '',
+      assetType: grp.assetType || 'Both',
+      status: 'Active'
+    });
     setShowAddGrpModal(true);
   };
 
@@ -579,23 +600,73 @@ export function AssetGroupsTab({
                             {grp.status}
                           </button>
                         </td>
-                        <td className="py-3.5 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
-                          <div className="flex items-center justify-center gap-1 text-slate-400">
-                            <button
-                              onClick={() => handleOpenAddGrpModal(grp)}
-                              title="Edit Group"
-                              className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-[#6C2BD9] cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
-                            <button
-                              onClick={() => handleInitiateDeleteGroup(grp)}
-                              title="Delete Group"
-                              className="p-1 hover:bg-rose-50 rounded text-slate-400 hover:text-rose-600 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                            </button>
-                          </div>
+                        <td className="py-3.5 px-3.5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                          {(() => {
+                            const isMenuOpen = activeRowMenuId === `grp-${grp.id}`;
+                            return (
+                              <>
+                                <div className="flex items-center justify-center gap-1 text-slate-400">
+                                  <button
+                                    onClick={() => handleOpenAddGrpModal(grp)}
+                                    title="Edit Group"
+                                    className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-[#6C2BD9] cursor-pointer"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                  </button>
+                                  <button
+                                    onClick={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `grp-${grp.id}`)}
+                                    title="More Actions"
+                                    className="p-1 hover:bg-slate-100 rounded text-slate-500 transition-colors cursor-pointer"
+                                  >
+                                    <MoreHorizontal className="w-4 h-4" />
+                                  </button>
+                                </div>
+
+                                {isMenuOpen && (
+                                  <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                                    <button
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleOpenAddGrpModal(grp);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                                    >
+                                      <Edit className="w-3.5 h-3.5" />
+                                      <span>Edit Group</span>
+                                    </button>
+                                    <button
+                                      onClick={() => handleDuplicateGroup(grp)}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                                    >
+                                      <Copy className="w-3.5 h-3.5" />
+                                      <span>Duplicate</span>
+                                    </button>
+                                    <button
+                                      onClick={(e) => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleToggleStatus(grp, e);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
+                                    >
+                                      <RefreshCw className="w-3.5 h-3.5" />
+                                      <span>{grp.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                    </button>
+                                    <div className="h-px bg-slate-100 my-1" />
+                                    <button
+                                      onClick={() => {
+                                        setActiveRowMenuId && setActiveRowMenuId(null);
+                                        handleInitiateDeleteGroup(grp);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </div>
+                                )}
+                              </>
+                            );
+                          })()}
                         </td>
                       </tr>
                     );
