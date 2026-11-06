@@ -38,8 +38,6 @@ export function CostCentersTab({
   const [companiesList, setCompaniesList] = useState([]);
   const [departmentsList, setDepartmentsList] = useState([]);
   const [selectedCostCenter, setSelectedCostCenter] = useState(null);
-  const [selectedCCIds, setSelectedCCIds] = useState([]);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load live cost centers from database
@@ -322,53 +320,6 @@ export function CostCentersTab({
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedCCIds.length === 0) return;
-    const count = selectedCCIds.length;
-    if (window.confirm(`Are you sure you want to delete ${count} selected cost center${count === 1 ? '' : 's'}?`)) {
-      setIsBulkDeleting(true);
-      try {
-        await Promise.allSettled(selectedCCIds.map(id => api.delete(`/master-data/cost-centers/${id}?force=true`)));
-        const remaining = costCentersList.filter(c => !selectedCCIds.includes(c.id));
-        setCostCentersList(remaining);
-        if (selectedCostCenter && selectedCCIds.includes(selectedCostCenter.id)) {
-          setSelectedCostCenter(remaining[0] || null);
-        }
-        setSelectedCCIds([]);
-        await loadCostCenters();
-        triggerToast && triggerToast(`Successfully removed ${count} cost center${count === 1 ? '' : 's'}.`);
-      } catch (err) {
-        console.warn('Bulk delete error:', err);
-        const remaining = costCentersList.filter(c => !selectedCCIds.includes(c.id));
-        setCostCentersList(remaining);
-        if (selectedCostCenter && selectedCCIds.includes(selectedCostCenter.id)) {
-          setSelectedCostCenter(remaining[0] || null);
-        }
-        setSelectedCCIds([]);
-        triggerToast && triggerToast(`Successfully removed ${count} cost center${count === 1 ? '' : 's'}.`);
-      } finally {
-        setIsBulkDeleting(false);
-      }
-    }
-  };
-
-  const handleToggleSelectAllCCs = () => {
-    if (selectedCCIds.length === filteredCostCenters.length) {
-      setSelectedCCIds([]);
-    } else {
-      setSelectedCCIds(filteredCostCenters.map((c) => c.id));
-    }
-  };
-
-  const handleToggleSelectCC = (id, e) => {
-    if (e) e.stopPropagation();
-    if (selectedCCIds.includes(id)) {
-      setSelectedCCIds(selectedCCIds.filter((item) => item !== id));
-    } else {
-      setSelectedCCIds([...selectedCCIds, id]);
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Filter Bar */}
@@ -489,48 +440,10 @@ export function CostCentersTab({
             </div>
           </div>
 
-          {/* Bulk Selection Actions Bar */}
-          {selectedCCIds.length > 0 && (
-            <div className="bg-purple-50/80 border-b border-purple-100 px-4 py-2.5 flex items-center justify-between animate-fadeIn">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-pulse"></span>
-                <span className="text-xs font-bold text-[#6C2BD9]">
-                  {selectedCCIds.length} cost center{selectedCCIds.length > 1 ? 's' : ''} selected
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  disabled={isBulkDeleting}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedCCIds.length})`}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCCIds([])}
-                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  Deselect All
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
-                  <th className="py-3 px-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedCCIds.length === filteredCostCenters.length && filteredCostCenters.length > 0}
-                      onChange={handleToggleSelectAllCCs}
-                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                    />
-                  </th>
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Cost Center Code ↕</th>
                   <th className="py-3 px-3">Cost Center Name ↕</th>
@@ -546,14 +459,13 @@ export function CostCentersTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredCostCenters.length === 0 ? (
                   <tr>
-                    <td colSpan={11} className="py-12 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
                       No cost centers found. Click "+ Add Cost Center" to create one.
                     </td>
                   </tr>
                 ) : (
                   filteredCostCenters.map((cc, index) => {
                   const isSelected = selectedCostCenter?.id === cc.id;
-                  const isChecked = selectedCCIds.includes(cc.id);
                   const isMenuOpen = activeRowMenuId === `cc-${cc.id}`;
 
                   return (
@@ -565,14 +477,6 @@ export function CostCentersTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => handleToggleSelectCC(cc.id, e)}
-                          className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                        />
-                      </td>
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{cc.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{cc.name}</td>

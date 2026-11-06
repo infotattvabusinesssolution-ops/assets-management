@@ -38,8 +38,6 @@ export function DepartmentsTab({
   const [companiesList, setCompaniesList] = useState([]);
   const [locationsList, setLocationsList] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
-  const [selectedDeptIds, setSelectedDeptIds] = useState([]);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   // Load live departments from database
@@ -343,53 +341,6 @@ export function DepartmentsTab({
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedDeptIds.length === 0) return;
-    const count = selectedDeptIds.length;
-    if (window.confirm(`Are you sure you want to delete ${count} selected department${count === 1 ? '' : 's'}?`)) {
-      setIsBulkDeleting(true);
-      try {
-        await Promise.allSettled(selectedDeptIds.map(id => api.delete(`/master-data/departments/${id}?force=true`)));
-        const remaining = departmentsList.filter(d => !selectedDeptIds.includes(d.id));
-        setDepartmentsList(remaining);
-        if (selectedDepartment && selectedDeptIds.includes(selectedDepartment.id)) {
-          setSelectedDepartment(remaining[0] || null);
-        }
-        setSelectedDeptIds([]);
-        await loadDepartments();
-        triggerToast && triggerToast(`Successfully removed ${count} department${count === 1 ? '' : 's'}.`);
-      } catch (err) {
-        console.warn('Bulk delete error:', err);
-        const remaining = departmentsList.filter(d => !selectedDeptIds.includes(d.id));
-        setDepartmentsList(remaining);
-        if (selectedDepartment && selectedDeptIds.includes(selectedDepartment.id)) {
-          setSelectedDepartment(remaining[0] || null);
-        }
-        setSelectedDeptIds([]);
-        triggerToast && triggerToast(`Successfully removed ${count} department${count === 1 ? '' : 's'}.`);
-      } finally {
-        setIsBulkDeleting(false);
-      }
-    }
-  };
-
-  const handleToggleSelectAllDepts = () => {
-    if (selectedDeptIds.length === filteredDepartments.length) {
-      setSelectedDeptIds([]);
-    } else {
-      setSelectedDeptIds(filteredDepartments.map((d) => d.id));
-    }
-  };
-
-  const handleToggleSelectDept = (id, e) => {
-    if (e) e.stopPropagation();
-    if (selectedDeptIds.includes(id)) {
-      setSelectedDeptIds(selectedDeptIds.filter((item) => item !== id));
-    } else {
-      setSelectedDeptIds([...selectedDeptIds, id]);
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Filter Bar */}
@@ -511,48 +462,10 @@ export function DepartmentsTab({
             </div>
           </div>
 
-          {/* Bulk Selection Actions Bar */}
-          {selectedDeptIds.length > 0 && (
-            <div className="bg-purple-50/80 border-b border-purple-100 px-4 py-2.5 flex items-center justify-between animate-fadeIn">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-pulse"></span>
-                <span className="text-xs font-bold text-[#6C2BD9]">
-                  {selectedDeptIds.length} department{selectedDeptIds.length > 1 ? 's' : ''} selected
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  disabled={isBulkDeleting}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedDeptIds.length})`}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedDeptIds([])}
-                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  Deselect All
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
-                  <th className="py-3 px-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedDeptIds.length === filteredDepartments.length && filteredDepartments.length > 0}
-                      onChange={handleToggleSelectAllDepts}
-                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                    />
-                  </th>
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Dept Code</th>
                   <th className="py-3 px-3">Dept Name</th>
@@ -567,14 +480,13 @@ export function DepartmentsTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredDepartments.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={9} className="py-12 text-center text-slate-400 text-xs font-medium">
                       No departments found. Click "+ Add Department" to create one.
                     </td>
                   </tr>
                 ) : (
                   filteredDepartments.map((dept, index) => {
                   const isSelected = selectedDepartment?.id === dept.id;
-                  const isChecked = selectedDeptIds.includes(dept.id);
                   const isMenuOpen = activeRowMenuId === `dept-${dept.id}`;
 
                   return (
@@ -586,14 +498,6 @@ export function DepartmentsTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => handleToggleSelectDept(dept.id, e)}
-                          className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                        />
-                      </td>
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{dept.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{dept.name}</td>

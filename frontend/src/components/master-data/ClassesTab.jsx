@@ -38,7 +38,6 @@ export function ClassesTab({
 }) {
   const [classesList, setClassesList] = useState([]);
   const [selectedClass, setSelectedClass] = useState(null);
-  const [selectedClassIds, setSelectedClassIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [liveCategories, setLiveCategories] = useState([]);
   const [liveSubCategories, setLiveSubCategories] = useState([]);
@@ -433,54 +432,6 @@ export function ClassesTab({
     }
   };
 
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-
-  const handleBulkDelete = async () => {
-    if (selectedClassIds.length === 0) return;
-    const count = selectedClassIds.length;
-    if (window.confirm(`Are you sure you want to delete ${count} selected asset sub group${count === 1 ? '' : 's'}?`)) {
-      setIsBulkDeleting(true);
-      try {
-        await Promise.allSettled(selectedClassIds.map(id => api.delete(`/master-data/asset-sub-groups/${id}`)));
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-          const idSet = new Set(selectedClassIds);
-          localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => !idSet.has(c.id))));
-        } catch (_) { }
-
-        const remaining = classesList.filter(c => !selectedClassIds.includes(c.id));
-        setClassesList(remaining);
-        if (selectedClass && selectedClassIds.includes(selectedClass.id)) {
-          setSelectedClass(remaining[0] || null);
-        }
-        setSelectedClassIds([]);
-        await loadClasses();
-        triggerToast && triggerToast(`Successfully removed ${count} classes.`);
-      } catch (err) {
-        console.warn('Bulk delete classes error:', err);
-        triggerToast && triggerToast('Failed to delete some classes.');
-      } finally {
-        setIsBulkDeleting(false);
-      }
-    }
-  };
-
-  const handleToggleSelectAllClasses = () => {
-    if (selectedClassIds.length === filteredClasses.length) {
-      setSelectedClassIds([]);
-    } else {
-      setSelectedClassIds(filteredClasses.map((c) => c.id));
-    }
-  };
-
-  const handleToggleSelectClass = (id) => {
-    if (selectedClassIds.includes(id)) {
-      setSelectedClassIds(selectedClassIds.filter((item) => item !== id));
-    } else {
-      setSelectedClassIds([...selectedClassIds, id]);
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Search & Filter Bar */}
@@ -572,46 +523,10 @@ export function ClassesTab({
             </div>
           </div>
 
-          {/* Floating / Integrated Bulk Actions Toolbar */}
-          {selectedClassIds.length > 0 && (
-            <div className="px-4 py-2.5 bg-purple-50 border-b border-purple-200 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-150">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#6C2BD9]">
-                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-ping"></span>
-                <span>{selectedClassIds.length} class{selectedClassIds.length === 1 ? '' : 'es'} selected</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  disabled={isBulkDeleting}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedClassIds.length})`}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedClassIds([])}
-                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  Deselect All
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
-                  <th className="py-3 px-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedClassIds.length === filteredClasses.length && filteredClasses.length > 0}
-                      onChange={handleToggleSelectAllClasses}
-                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                    />
-                  </th>
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Sub Group Code</th>
                   <th className="py-3 px-3">Sub Group Name</th>
@@ -626,7 +541,6 @@ export function ClassesTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredClasses.map((cls, index) => {
                   const isSelected = selectedClass?.id === cls.id;
-                  const isChecked = selectedClassIds.includes(cls.id);
                   const isMenuOpen = activeRowMenuId === cls.id;
 
                   return (
@@ -638,14 +552,6 @@ export function ClassesTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleSelectClass(cls.id)}
-                          className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                        />
-                      </td>
                       <td className="py-3.5 px-2 text-center text-slate-400">{index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{cls.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{cls.name}</td>

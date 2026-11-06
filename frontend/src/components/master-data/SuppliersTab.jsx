@@ -42,8 +42,6 @@ export function SuppliersTab({
   const [companiesList, setCompaniesList] = useState([]);
   const [countriesList, setCountriesList] = useState(DEFAULT_COUNTRIES);
   const [selectedSupplier, setSelectedSupplier] = useState(null);
-  const [selectedSupIds, setSelectedSupIds] = useState([]);
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [modalError, setModalError] = useState('');
 
@@ -366,53 +364,6 @@ export function SuppliersTab({
     }
   };
 
-  const handleBulkDelete = async () => {
-    if (selectedSupIds.length === 0) return;
-    const count = selectedSupIds.length;
-    if (window.confirm(`Are you sure you want to delete ${count} selected supplier${count === 1 ? '' : 's'}?`)) {
-      setIsBulkDeleting(true);
-      try {
-        await Promise.allSettled(selectedSupIds.map(id => api.delete(`/maintenance/service-providers/${id}?force=true`)));
-        const remaining = suppliersList.filter(s => !selectedSupIds.includes(s.id));
-        setSuppliersList(remaining);
-        if (selectedSupplier && selectedSupIds.includes(selectedSupplier.id)) {
-          setSelectedSupplier(remaining[0] || null);
-        }
-        setSelectedSupIds([]);
-        await loadSuppliers();
-        triggerToast && triggerToast(`Successfully removed ${count} supplier${count === 1 ? '' : 's'}.`);
-      } catch (err) {
-        console.warn('Bulk delete error:', err);
-        const remaining = suppliersList.filter(s => !selectedSupIds.includes(s.id));
-        setSuppliersList(remaining);
-        if (selectedSupplier && selectedSupIds.includes(selectedSupplier.id)) {
-          setSelectedSupplier(remaining[0] || null);
-        }
-        setSelectedSupIds([]);
-        triggerToast && triggerToast(`Successfully removed ${count} supplier${count === 1 ? '' : 's'}.`);
-      } finally {
-        setIsBulkDeleting(false);
-      }
-    }
-  };
-
-  const handleToggleSelectAllSups = () => {
-    if (selectedSupIds.length === filteredSuppliers.length) {
-      setSelectedSupIds([]);
-    } else {
-      setSelectedSupIds(filteredSuppliers.map((s) => s.id));
-    }
-  };
-
-  const handleToggleSelectSup = (id, e) => {
-    if (e) e.stopPropagation();
-    if (selectedSupIds.includes(id)) {
-      setSelectedSupIds(selectedSupIds.filter((item) => item !== id));
-    } else {
-      setSelectedSupIds([...selectedSupIds, id]);
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Filters Bar matching exact reference screenshot */}
@@ -533,48 +484,10 @@ export function SuppliersTab({
             </div>
           </div>
 
-          {/* Bulk Selection Actions Bar */}
-          {selectedSupIds.length > 0 && (
-            <div className="bg-purple-50/80 border-b border-purple-100 px-4 py-2.5 flex items-center justify-between animate-fadeIn">
-              <div className="flex items-center gap-2">
-                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-pulse"></span>
-                <span className="text-xs font-bold text-[#6C2BD9]">
-                  {selectedSupIds.length} supplier{selectedSupIds.length > 1 ? 's' : ''} selected
-                </span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  disabled={isBulkDeleting}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedSupIds.length})`}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedSupIds([])}
-                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  Deselect All
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
-                  <th className="py-3 px-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedSupIds.length === filteredSuppliers.length && filteredSuppliers.length > 0}
-                      onChange={handleToggleSelectAllSups}
-                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                    />
-                  </th>
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Supplier Code ↕</th>
                   <th className="py-3 px-3">Supplier Name ↕</th>
@@ -589,14 +502,13 @@ export function SuppliersTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredSuppliers.length === 0 ? (
                   <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
+                    <td colSpan={9} className="py-12 text-center text-slate-400 text-xs font-medium">
                       No suppliers found. Click "+ Add Supplier" to create one.
                     </td>
                   </tr>
                 ) : (
                   filteredSuppliers.map((sup, index) => {
                   const isSelected = selectedSupplier?.id === sup.id;
-                  const isChecked = selectedSupIds.includes(sup.id);
                   const isMenuOpen = activeRowMenuId === `sup-${sup.id}`;
 
                   return (
@@ -608,14 +520,6 @@ export function SuppliersTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={(e) => handleToggleSelectSup(sup.id, e)}
-                          className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                        />
-                      </td>
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">
                         {sup.code}

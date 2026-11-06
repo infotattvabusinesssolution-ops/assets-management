@@ -39,7 +39,6 @@ export function CategoriesTab({
 }) {
   const [categoriesList, setCategoriesList] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
-  const [selectedCatIds, setSelectedCatIds] = useState([]);
   const [isLoading, setIsLoading] = useState(false);
   const [liveSubCategories, setLiveSubCategories] = useState([]);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
@@ -451,58 +450,6 @@ export function CategoriesTab({
     }
   };
 
-  const [isBulkDeleting, setIsBulkDeleting] = useState(false);
-
-  const handleBulkDelete = async () => {
-    if (selectedCatIds.length === 0) return;
-    const count = selectedCatIds.length;
-    if (window.confirm(`Are you sure you want to delete ${count} selected categor${count === 1 ? 'y' : 'ies'}?`)) {
-      setIsBulkDeleting(true);
-      try {
-        const res = await api.post('/master-data/categories/bulk-delete', { ids: selectedCatIds, force: true }).catch(async () => {
-          await Promise.allSettled(selectedCatIds.map(id => api.delete(`/master-data/categories/${id}?force=true`)));
-          return { success: true, message: `Processed ${count} categories.` };
-        });
-
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-          const idSet = new Set(selectedCatIds);
-          localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => !idSet.has(c.id))));
-        } catch (_) { }
-
-        const remaining = categoriesList.filter(c => !selectedCatIds.includes(c.id));
-        setCategoriesList(remaining);
-        if (selectedCategory && selectedCatIds.includes(selectedCategory.id)) {
-          setSelectedCategory(remaining[0] || null);
-        }
-        setSelectedCatIds([]);
-        await loadCategories();
-        triggerToast && triggerToast(res?.message || `Successfully removed ${count} categories.`);
-      } catch (err) {
-        console.warn('Bulk delete error:', err);
-        triggerToast && triggerToast('Failed to delete some categories.');
-      } finally {
-        setIsBulkDeleting(false);
-      }
-    }
-  };
-
-  const handleToggleSelectAllCats = () => {
-    if (selectedCatIds.length === filteredCategories.length) {
-      setSelectedCatIds([]);
-    } else {
-      setSelectedCatIds(filteredCategories.map((c) => c.id));
-    }
-  };
-
-  const handleToggleSelectCat = (id) => {
-    if (selectedCatIds.includes(id)) {
-      setSelectedCatIds(selectedCatIds.filter((item) => item !== id));
-    } else {
-      setSelectedCatIds([...selectedCatIds, id]);
-    }
-  };
-
   return (
     <div className="space-y-4">
       {/* Search & Filter Bar */}
@@ -614,46 +561,10 @@ export function CategoriesTab({
             </div>
           </div>
 
-          {/* Floating / Integrated Bulk Actions Toolbar */}
-          {selectedCatIds.length > 0 && (
-            <div className="px-4 py-2.5 bg-purple-50 border-b border-purple-200 flex items-center justify-between animate-in fade-in slide-in-from-top-1 duration-150">
-              <div className="flex items-center gap-2 text-xs font-semibold text-[#6C2BD9]">
-                <span className="w-2 h-2 rounded-full bg-[#6C2BD9] animate-ping"></span>
-                <span>{selectedCatIds.length} categor{selectedCatIds.length === 1 ? 'y' : 'ies'} selected</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  onClick={handleBulkDelete}
-                  disabled={isBulkDeleting}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold flex items-center gap-1.5 shadow-xs transition-colors cursor-pointer disabled:opacity-50"
-                >
-                  <Trash2 className="w-3.5 h-3.5" />
-                  <span>{isBulkDeleting ? 'Deleting...' : `Delete Selected (${selectedCatIds.length})`}</span>
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setSelectedCatIds([])}
-                  className="px-2.5 py-1.5 rounded-xl border border-purple-200 bg-white hover:bg-purple-100/60 text-purple-700 text-xs font-semibold transition-colors cursor-pointer"
-                >
-                  Deselect All
-                </button>
-              </div>
-            </div>
-          )}
-
           <div className="overflow-auto max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
-                  <th className="py-3 px-3 text-center">
-                    <input
-                      type="checkbox"
-                      checked={selectedCatIds.length === filteredCategories.length && filteredCategories.length > 0}
-                      onChange={handleToggleSelectAllCats}
-                      className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                    />
-                  </th>
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Category Code</th>
                   <th className="py-3 px-3">Category Name</th>
@@ -667,7 +578,6 @@ export function CategoriesTab({
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredCategories.map((cat, index) => {
                   const isSelected = selectedCategory?.id === cat.id;
-                  const isChecked = selectedCatIds.includes(cat.id);
                   const isMenuOpen = activeRowMenuId === `cat-${cat.id}`;
 
                   return (
@@ -679,14 +589,6 @@ export function CategoriesTab({
                         isSelected ? 'bg-purple-50/60 font-semibold' : 'hover:bg-slate-50/70'
                       )}
                     >
-                      <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
-                        <input
-                          type="checkbox"
-                          checked={isChecked}
-                          onChange={() => handleToggleSelectCat(cat.id)}
-                          className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
-                        />
-                      </td>
                       <td className="py-3.5 px-2 text-center text-slate-400">{index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{cat.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{cat.name}</td>
