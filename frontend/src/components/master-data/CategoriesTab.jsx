@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
-  Eye,
   Edit,
   MoreHorizontal,
   ChevronRight,
@@ -615,13 +614,6 @@ export function CategoriesTab({
                       <td className="py-3.5 px-3 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1 text-slate-400">
                           <button
-                            onClick={() => setSelectedCategory(cat)}
-                            className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9]"
-                            title="View Details"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <button
                             onClick={() => handleOpenAddCatModal(cat)}
                             className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9]"
                             title="Edit Category"
@@ -643,17 +635,6 @@ export function CategoriesTab({
 
                         {isMenuOpen && (
                           <div className="absolute right-2 top-10 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 z-50 text-left space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
-                            <button
-                              onClick={() => {
-                                setSelectedCategory(cat);
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>View Details</span>
-                            </button>
-
                             <button
                               onClick={() => handleOpenAddCatModal(cat)}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"

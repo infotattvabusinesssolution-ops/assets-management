@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
-  Eye,
   Edit,
   MoreHorizontal,
   ChevronRight,
@@ -500,13 +499,6 @@ export function CostCentersTab({
                       <td className="py-2.5 px-3 text-center relative" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <button
-                            onClick={() => setSelectedCostCenter(cc)}
-                            title="View Details"
-                            className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
-                          >
-                            <Eye className="w-3.5 h-3.5" />
-                          </button>
-                          <button
                             onClick={() => handleOpenAddCCModal(cc)}
                             title="Edit Cost Center"
                             className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
@@ -524,16 +516,6 @@ export function CostCentersTab({
 
                         {isMenuOpen && (
                           <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
-                            <button
-                              onClick={() => {
-                                setSelectedCostCenter(cc);
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                              <span>View Details</span>
-                            </button>
                             <button
                               onClick={() => handleOpenAddCCModal(cc)}
                               className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"

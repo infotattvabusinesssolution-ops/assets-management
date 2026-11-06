@@ -2,7 +2,6 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
-  Eye,
   Edit,
   Trash2,
   Plus,
@@ -582,13 +581,6 @@ export function AssetGroupsTab({
                         </td>
                         <td className="py-3.5 px-3.5 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1 text-slate-400">
-                            <button
-                              onClick={() => setSelectedGroup(grp)}
-                              title="View Details"
-                              className="p-1 hover:bg-slate-100 rounded text-slate-500 hover:text-slate-800 cursor-pointer"
-                            >
-                              <Eye className="w-3.5 h-3.5" />
-                            </button>
                             <button
                               onClick={() => handleOpenAddGrpModal(grp)}
                               title="Edit Group"
