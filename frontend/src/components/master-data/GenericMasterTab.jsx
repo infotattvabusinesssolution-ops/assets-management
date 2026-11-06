@@ -832,7 +832,7 @@ export function GenericMasterTab({
             </div>
           </div>
 
-          <div className="overflow-auto max-h-[540px]">
+          <div className="overflow-auto min-h-[320px] max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -950,13 +950,14 @@ export function GenericMasterTab({
                             {item.status || 'Active'}
                           </span>
                         </td>
-                        <td className="py-2.5 px-3 text-center relative" onClick={(e) => e.stopPropagation()}>
+                        <td className={clsx("py-2.5 px-3 text-center relative", activeRowMenuId === `gen-${item.id}` && "z-30")} onClick={(e) => e.stopPropagation()}>
                           {item.isSystem ? (
                             <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-purple-700 border border-purple-200" title="Protected System Enumeration (Cannot be modified or deleted via UI)">
                               <Lock className="w-2.5 h-2.5" /> System Enum
                             </span>
                           ) : (() => {
                             const isMenuOpen = activeRowMenuId === `gen-${item.id}`;
+                            const isNearBottom = filteredItems.length > 2 && index >= filteredItems.length - 2;
                             return (
                               <>
                                 <div className="flex items-center justify-center gap-1 text-slate-400">
@@ -979,7 +980,10 @@ export function GenericMasterTab({
                                 </div>
 
                                 {isMenuOpen && (
-                                  <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                                  <div className={clsx(
+                                    "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
+                                    isNearBottom ? "bottom-8" : "top-8"
+                                  )}>
                                     <button
                                       type="button"
                                       onClick={() => {

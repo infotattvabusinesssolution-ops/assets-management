@@ -465,7 +465,7 @@ export function CustodiansTab({
               </button>
             </div>
           ) : (
-            <div className="overflow-x-auto flex-1">
+            <div className="overflow-x-auto min-h-[320px] flex-1">
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -540,9 +540,10 @@ export function CustodiansTab({
                             {c.active !== false ? 'Active' : 'Inactive'}
                           </button>
                         </td>
-                        <td className="py-3 px-4 text-center relative" onClick={(e) => e.stopPropagation()}>
+                        <td className={clsx("py-3 px-4 text-center relative", activeRowMenuId === `cust-${c.id}` && "z-30")} onClick={(e) => e.stopPropagation()}>
                           {(() => {
                             const isMenuOpen = activeRowMenuId === `cust-${c.id}`;
+                            const isNearBottom = filteredCustodians.length > 2 && index >= filteredCustodians.length - 2;
                             return (
                               <>
                                 <div className="flex items-center justify-center gap-1 text-slate-400">
@@ -565,7 +566,10 @@ export function CustodiansTab({
                                 </div>
 
                                 {isMenuOpen && (
-                                  <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                                  <div className={clsx(
+                                    "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
+                                    isNearBottom ? "bottom-8" : "top-8"
+                                  )}>
                                     <button
                                       type="button"
                                       onClick={() => {

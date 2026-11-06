@@ -560,7 +560,7 @@ export function CategoriesTab({
             </div>
           </div>
 
-          <div className="overflow-auto max-h-[540px]">
+          <div className="overflow-auto min-h-[320px] max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -578,6 +578,7 @@ export function CategoriesTab({
                 {filteredCategories.map((cat, index) => {
                   const isSelected = selectedCategory?.id === cat.id;
                   const isMenuOpen = activeRowMenuId === `cat-${cat.id}`;
+                  const isNearBottom = filteredCategories.length > 2 && index >= filteredCategories.length - 2;
 
                   return (
                     <tr
@@ -611,7 +612,7 @@ export function CategoriesTab({
                         </span>
                       </td>
 
-                      <td className="py-3.5 px-3 text-center relative" onClick={(e) => e.stopPropagation()}>
+                      <td className={clsx("py-3.5 px-3 text-center relative", isMenuOpen && "z-30")} onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1 text-slate-400">
                           <button
                             onClick={() => handleOpenAddCatModal(cat)}
@@ -634,7 +635,10 @@ export function CategoriesTab({
                         </div>
 
                         {isMenuOpen && (
-                          <div className="absolute right-2 top-10 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 z-50 text-left space-y-0.5 animate-in fade-in zoom-in-95 duration-150">
+                          <div className={clsx(
+                            "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-2xl p-1.5 z-50 text-left space-y-0.5 animate-in fade-in zoom-in-95 duration-150",
+                            isNearBottom ? "bottom-10" : "top-10"
+                          )}>
                             <button
                               onClick={() => handleOpenAddCatModal(cat)}
                               className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"

@@ -612,7 +612,7 @@ export function LocationsTab({
             </div>
           </div>
 
-          <div className="overflow-auto max-h-[540px]">
+          <div className="overflow-auto min-h-[320px] max-h-[540px]">
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
@@ -640,6 +640,7 @@ export function LocationsTab({
                   filteredLocations.map((loc, index) => {
                   const isSelected = selectedLocation?.id === loc.id;
                   const isMenuOpen = activeRowMenuId === `loc-${loc.id}`;
+                  const isNearBottom = filteredLocations.length > 2 && index >= filteredLocations.length - 2;
 
                   return (
                     <tr
@@ -690,7 +691,7 @@ export function LocationsTab({
                           {loc.status}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-center relative" onClick={(e) => e.stopPropagation()}>
+                      <td className={clsx("py-2.5 px-3 text-center relative", isMenuOpen && "z-30")} onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenAddLocModal(loc)}
@@ -709,7 +710,10 @@ export function LocationsTab({
                         </div>
 
                         {isMenuOpen && (
-                          <div className="absolute right-2 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                          <div className={clsx(
+                            "absolute right-2 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
+                            isNearBottom ? "bottom-8" : "top-8"
+                          )}>
                             <button
                               onClick={() => handleOpenAddLocModal(loc)}
                               className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2"

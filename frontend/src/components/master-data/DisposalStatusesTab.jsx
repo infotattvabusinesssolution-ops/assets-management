@@ -313,7 +313,7 @@ export function DisposalStatusesTab({
 
       {/* Main Table */}
       <div className="bg-white rounded-2xl border border-slate-200/80 shadow-xs overflow-hidden">
-        <div className="overflow-x-auto">
+        <div className="overflow-x-auto min-h-[320px]">
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
@@ -357,9 +357,10 @@ export function DisposalStatusesTab({
                         {item.active !== false ? 'Active' : 'Inactive'}
                       </span>
                     </td>
-                    <td className="py-3.5 px-5 text-center relative" onClick={(e) => e.stopPropagation()}>
+                    <td className={clsx("py-3.5 px-5 text-center relative", activeRowMenuId === `disp-${item.id}` && "z-30")} onClick={(e) => e.stopPropagation()}>
                       {(() => {
                         const isMenuOpen = activeRowMenuId === `disp-${item.id}`;
+                        const isNearBottom = filteredStatuses.length > 2 && index >= filteredStatuses.length - 2;
                         return (
                           <>
                             <div className="flex items-center justify-center gap-1 text-slate-400">
@@ -382,7 +383,10 @@ export function DisposalStatusesTab({
                             </div>
 
                             {isMenuOpen && (
-                              <div className="absolute right-4 top-8 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5">
+                              <div className={clsx(
+                                "absolute right-4 w-48 bg-white border border-slate-200 rounded-xl shadow-xl p-1 z-30 text-left space-y-0.5",
+                                isNearBottom ? "bottom-8" : "top-8"
+                              )}>
                                 <button
                                   type="button"
                                   onClick={() => {
