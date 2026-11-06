@@ -344,6 +344,7 @@ export function CompaniesTab({
               <table className="w-full text-left border-collapse text-xs">
                 <thead>
                   <tr className="bg-slate-50/70 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                    <th className="py-3 px-2 text-center">#</th>
                     <th className="py-3 px-4">Code</th>
                     <th className="py-3 px-4">Company Name</th>
                     <th className="py-3 px-3">Currency</th>
@@ -353,7 +354,7 @@ export function CompaniesTab({
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-slate-100">
-                  {filteredCompanies.map((c) => {
+                  {filteredCompanies.map((c, index) => {
                     const isSelected = selectedCompany?.id === c.id;
                     return (
                       <tr
@@ -364,6 +365,7 @@ export function CompaniesTab({
                           isSelected && 'bg-purple-50/70 font-semibold'
                         )}
                       >
+                        <td className="py-3 px-2 text-center text-slate-400 text-[11px] font-medium">{index + 1}</td>
                         <td className="py-3 px-4">
                           <span className="font-mono text-[11px] font-bold text-[#6C2BD9] bg-purple-100/70 px-2 py-0.5 rounded-md">
                             {c.code}

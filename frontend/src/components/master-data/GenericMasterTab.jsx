@@ -777,6 +777,7 @@ export function GenericMasterTab({
             <table className="w-full text-left text-xs">
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
+                  <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Code</th>
                   <th className="py-3 px-3">Name</th>
                   {activeTab === 'manufacturers' && <th className="py-3 px-3">Support Contact</th>}
@@ -794,12 +795,12 @@ export function GenericMasterTab({
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredItems.length === 0 ? (
                   <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
+                    <td colSpan={8} className="py-12 text-center text-slate-400">
                       No matching {tabConfig.title.toLowerCase()} found. Click "Add {tabConfig.singular}" to create one.
                     </td>
                   </tr>
                 ) : (
-                  filteredItems.map((item) => {
+                  filteredItems.map((item, index) => {
                     const isSelected = selectedItem?.id === item.id;
                     return (
                       <tr
@@ -810,6 +811,7 @@ export function GenericMasterTab({
                           isSelected && 'bg-purple-50/70 font-semibold'
                         )}
                       >
+                        <td className="py-2.5 px-2 text-center text-slate-400 text-[11px] font-medium">{index + 1}</td>
                         <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{item.code || '-'}</td>
                         <td className="py-2.5 px-3 font-bold text-slate-900">{item.name}</td>
                         {activeTab === 'manufacturers' && (

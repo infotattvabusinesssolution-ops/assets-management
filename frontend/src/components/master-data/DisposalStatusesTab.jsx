@@ -276,6 +276,7 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
           <table className="w-full text-left border-collapse">
             <thead>
               <tr className="bg-slate-50/75 border-b border-slate-200/80 text-[11px] font-bold text-slate-500 uppercase tracking-wider">
+                <th className="py-3 px-2 text-center">#</th>
                 <th className="py-3 px-5">Code</th>
                 <th className="py-3 px-5">Disposal Status Name</th>
                 <th className="py-3 px-5">Description & Scope</th>
@@ -286,15 +287,16 @@ export function DisposalStatusesTab({ triggerToast, externalShowAddModal, setExt
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredStatuses.length === 0 ? (
                 <tr>
-                  <td colSpan="5" className="py-12 text-center text-slate-400">
+                  <td colSpan="6" className="py-12 text-center text-slate-400">
                     <Trash className="w-10 h-10 mx-auto text-slate-300 mb-2" />
                     <p className="font-medium text-slate-600">No disposal statuses found</p>
                     <p className="text-[11px] text-slate-400 mt-1">Try adjusting your search criteria or add a new disposal status.</p>
                   </td>
                 </tr>
               ) : (
-                filteredStatuses.map((item) => (
+                filteredStatuses.map((item, index) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="py-3.5 px-2 text-center text-slate-400 text-[11px] font-medium">{index + 1}</td>
                     <td className="py-3.5 px-5 font-mono font-bold text-purple-700">
                       {item.code}
                     </td>
