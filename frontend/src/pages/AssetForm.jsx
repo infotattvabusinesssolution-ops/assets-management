@@ -2181,7 +2181,7 @@ export function AssetForm() {
             <input
               readOnly
               value={formData.supplierBarcode || (selectedItemMasterId ? 'None on master' : '')}
-              placeholder="Locked from Item Master"
+              placeholder="Supplier Barcode"
               className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2.5 text-xs font-mono font-bold text-slate-700"
             />
           </div>
@@ -2215,12 +2215,7 @@ export function AssetForm() {
         </div>
 
         <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="font-bold text-slate-700 block">Asset Classification / Asset Type</label>
-            <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-full">
-              System Enumeration
-            </span>
-          </div>
+          <label className="font-bold text-slate-700 block">Asset Classification / Asset Type</label>
           <select
             value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
             onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
@@ -2243,12 +2238,9 @@ export function AssetForm() {
 
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">
-              Asset Name <span className="text-rose-500">*</span>
-            </label>
-            {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">
+            Asset Name <span className="text-rose-500">*</span>
+          </label>
           <input
             type="text"
             value={formData.assetName}
@@ -2275,10 +2267,7 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">Asset Group</label>
-            <span className="text-[10px] text-purple-600 font-semibold">Cascaded</span>
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">Asset Group</label>
           <select
             value={formData.assetGroup || ''}
             onChange={(e) => handleAssetGroupChange(e.target.value)}
@@ -2298,10 +2287,7 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">Asset Sub Group</label>
-            {selectedItemMasterId ? <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span> : <span className="text-[10px] text-purple-600 font-semibold">Cascaded</span>}
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">Asset Sub Group</label>
           <select
             value={formData.assetClass || ''}
             onChange={(e) => handleAssetClassChange(e.target.value)}
@@ -2321,12 +2307,9 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">
-              Category <span className="text-rose-500">*</span>
-            </label>
-            {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">
+            Category <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.category}
             disabled={Boolean(selectedItemMasterId)}
@@ -2358,12 +2341,9 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">
-              Sub Category {availableAssetClasses.length > 0 ? <span className="text-rose-500">*</span> : null}
-            </label>
-            {selectedItemMasterId && <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span>}
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">
+            Sub Category {availableAssetClasses.length > 0 ? <span className="text-rose-500">*</span> : null}
+          </label>
           <select
             value={formData.subcategory || formData.assetClassId || ''}
             onChange={(e) => {
@@ -2400,10 +2380,7 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">Manufacturer</label>
-            {selectedItemMasterId ? <span className="text-[10px] font-bold text-[#6C2BD9]">From Master</span> : <span className="text-[10px] text-purple-600 font-semibold">From Master Data</span>}
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">Manufacturer</label>
           <select
             value={formData.manufacturer || ''}
             onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
@@ -2429,15 +2406,12 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">Model</label>
-            <span className="text-[10px] font-bold text-[#6C2BD9]">From Item Master</span>
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">Model</label>
           <input
             type="text"
             readOnly
             value={formData.model || (selectedItemMasterId ? 'None specified on master' : '')}
-            placeholder="Auto-populated from Item Master"
+            placeholder="Model"
             className="w-full border border-slate-200 rounded-xl p-2 font-semibold bg-slate-100 cursor-not-allowed text-slate-700 outline-none"
           />
         </div>
@@ -4301,12 +4275,7 @@ export function AssetForm() {
 
                 {/* System-defined enumeration: Asset vs Non-asset */}
                 <div className="space-y-1 text-xs">
-                  <div className="flex items-center justify-between">
-                    <label className="font-bold text-slate-700 block">Asset Classification (Asset Type)</label>
-                    <span className="text-[10px] text-purple-700 font-bold bg-purple-100 px-2 py-0.5 rounded-full">
-                      System Enumeration
-                    </span>
-                  </div>
+                  <label className="font-bold text-slate-700 block">Asset Classification (Asset Type)</label>
                   <select
                     value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
                     onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
@@ -4474,7 +4443,7 @@ export function AssetForm() {
                       type="text"
                       readOnly
                       value={formData.model || (selectedItemMasterId ? 'None specified on master' : '')}
-                      placeholder="From Item Master"
+                      placeholder="Model"
                       className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-700 font-semibold cursor-not-allowed outline-none"
                     />
                   </div>
