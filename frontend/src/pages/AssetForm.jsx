@@ -964,7 +964,10 @@ export function AssetForm() {
   // --- Item Master Selection & Auto-Fill ---
   const handleSelectItemMaster = (itemId) => {
     setSelectedItemMasterId(itemId);
-    if (!itemId) return;
+    if (!itemId) {
+      handleClearItemMaster();
+      return;
+    }
     const item = itemMasters.find(i => i.id === itemId);
     if (!item) return;
 
@@ -2186,24 +2189,6 @@ export function AssetForm() {
             />
           </div>
         </div>
-
-        {selectedItemMasterId && (
-          <div className="p-2.5 bg-emerald-50 border border-emerald-200 rounded-xl flex items-center justify-between text-xs text-emerald-900 animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
-              <span>
-                <strong>Master Linked:</strong> {formData.assetName} &bull; Group: <strong>{formData.assetGroup}</strong> &bull; Subgroup: <strong>{formData.assetClass}</strong> &bull; Category: <strong>{formData.category}</strong>
-              </span>
-            </div>
-            <button
-              type="button"
-              onClick={handleClearItemMaster}
-              className="text-[11px] font-bold text-emerald-800 hover:text-emerald-950 underline cursor-pointer shrink-0"
-            >
-              Clear Selection
-            </button>
-          </div>
-        )}
       </div>
 
       {/* --- ASSET ID & SYSTEM DERIVED CLASSIFICATION --- */}
@@ -2443,18 +2428,6 @@ export function AssetForm() {
             </p>
           )}
         </div>
-
-        {formData.category && (
-          <div className="col-span-full p-2.5 rounded-xl bg-purple-50/70 border border-purple-200 flex items-center justify-between text-xs animate-in fade-in">
-            <div className="flex items-center gap-2">
-              <CheckCircle2 className="w-4 h-4 text-[#6C2BD9]" />
-              <span className="font-semibold text-purple-950">
-                Verified Hierarchy: <span className="font-bold">{formData.assetGroup || 'Information Technology'}</span> &rsaquo; <span className="font-bold">{formData.assetClass || 'Hardware'}</span> &rsaquo; <span className="font-bold">{formData.category}</span>
-              </span>
-            </div>
-            <span className="text-[10px] font-bold uppercase tracking-wider bg-purple-200/60 text-[#5B21B6] px-2 py-0.5 rounded-full">Auto-Linked</span>
-          </div>
-        )}
       </div>
       {quantityCount > 1 && <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-3 text-xs space-y-2">
         <label className="block font-bold text-slate-700">Select item to edit its details</label>
