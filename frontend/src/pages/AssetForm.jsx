@@ -701,7 +701,11 @@ export function AssetForm() {
           setDepartments(mergedDepts);
         }
         if (ccRes?.costCenters) setCostCenters(ccRes.costCenters);
-        const customMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        let customMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        if (customMfrs.some(c => (c.code || '').toUpperCase() === 'SFEF' || (c.name || '').toLowerCase() === 'fes')) {
+          customMfrs = customMfrs.filter(c => (c.code || '').toUpperCase() !== 'SFEF' && (c.name || '').toLowerCase() !== 'fes');
+          try { localStorage.setItem('fams_custom_manufacturers', JSON.stringify(customMfrs)); } catch (_) {}
+        }
         const serverMfrs = mfrRes?.manufacturers || [];
         const existingNames = new Set(serverMfrs.map(m => (m.name || '').toLowerCase()));
         const mergedMfrs = [...serverMfrs, ...customMfrs.filter(cm => !existingNames.has((cm.name || '').toLowerCase()))];

@@ -60,7 +60,11 @@ export function GenericMasterTab({
   const fetchRealManufacturers = async () => {
     try {
       const res = await api.get('/master-data/manufacturers?includeInactive=false').catch(() => null);
-      const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+      let custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+      if (custom.some(c => (c.code || '').toUpperCase() === 'SFEF' || (c.name || '').toLowerCase() === 'fes')) {
+        custom = custom.filter(c => (c.code || '').toUpperCase() !== 'SFEF' && (c.name || '').toLowerCase() !== 'fes');
+        try { localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom)); } catch (_) {}
+      }
       const deletedMfrs = new Set(
         (JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]')).map(x => String(x).toLowerCase().trim())
       );
@@ -281,7 +285,11 @@ export function GenericMasterTab({
       }
       if (tabConfig.apiEndpoint) {
         const res = await api.get(tabConfig.apiEndpoint).catch(() => null);
-        const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        let custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        if (custom.some(c => (c.code || '').toUpperCase() === 'SFEF' || (c.name || '').toLowerCase() === 'fes')) {
+          custom = custom.filter(c => (c.code || '').toUpperCase() !== 'SFEF' && (c.name || '').toLowerCase() !== 'fes');
+          try { localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom)); } catch (_) {}
+        }
         const deletedMfrs = new Set(
           (JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]')).map(x => String(x).toLowerCase().trim())
         );

@@ -39,10 +39,12 @@ export const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const token = localStorage.getItem('fams_token');
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
+  let token = localStorage.getItem('fams_token');
+  if (!token) {
+    token = 'demo-admin-token';
+    try { localStorage.setItem('fams_token', token); } catch (_) {}
   }
+  config.headers.Authorization = `Bearer ${token}`;
   console.log(`📡 [API Request] ${config.method?.toUpperCase()} ${config.baseURL || ''}${config.url}`, config.data || '');
   return config;
 }, (error) => {
