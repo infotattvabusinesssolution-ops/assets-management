@@ -2,10 +2,10 @@ import React, { useState, useEffect, useMemo } from 'react';
 import {
   Search,
   Filter,
-  Plus,
   RefreshCw,
   Edit,
   Trash2,
+  Copy,
   MoreHorizontal,
   X,
   MapPin,
@@ -279,6 +279,26 @@ export function LocationLevelTab({
     }
   };
 
+  // Duplicate record
+  const handleDuplicate = (item) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    const duplicated = {
+      ...item,
+      id: `loc-lvl${level}-${Date.now()}`,
+      code: `${item.code}-COPY`,
+      name: `${item.name} (Copy)`,
+      status: 'Active',
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    const updated = [duplicated, ...items];
+    setItems(updated);
+    localStorage.setItem(storageKey, JSON.stringify(updated));
+    setSelectedItem(duplicated);
+    triggerToast && triggerToast(`Duplicated as "${duplicated.code}".`);
+  };
+
   // Delete Record
   const handleInitiateDelete = (item) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
@@ -344,15 +364,6 @@ export function LocationLevelTab({
                 className="p-2 border border-slate-200 hover:bg-slate-50 rounded-xl text-slate-600 transition-colors cursor-pointer"
               >
                 <RefreshCw className={clsx('w-3.5 h-3.5', isLoading && 'animate-spin')} />
-              </button>
-
-              <button
-                type="button"
-                onClick={handleOpenAddModal}
-                className="px-4 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-xs transition-all cursor-pointer"
-              >
-                <Plus className="w-3.5 h-3.5" />
-                <span>Add {levelName}</span>
               </button>
             </div>
           </div>
@@ -442,6 +453,17 @@ export function LocationLevelTab({
                                 >
                                   <Edit className="w-3.5 h-3.5" />
                                   <span>Edit Record</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId(null);
+                                    handleDuplicate(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Duplicate</span>
                                 </button>
                                 <button
                                   type="button"
