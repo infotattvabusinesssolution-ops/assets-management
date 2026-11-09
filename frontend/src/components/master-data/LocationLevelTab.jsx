@@ -128,13 +128,13 @@ export function LocationLevelTab({
   const {
     currentPage,
     setCurrentPage,
-    paginatedData,
+    paginatedItems: paginatedData = [],
     totalPages,
-    startIndex,
-    endIndex,
-    totalItems,
-    pageSize
+    startIndex = 0,
+    totalItems = 0,
+    pageSize = 10
   } = usePagination(filteredItems, 10);
+  const endIndex = Math.min(startIndex + pageSize, totalItems);
 
   // Open Add Modal
   const handleOpenAddModal = () => {
@@ -435,7 +435,7 @@ export function LocationLevelTab({
                         <span>Loading {levelName} records...</span>
                       </td>
                     </tr>
-                  ) : paginatedData.length === 0 ? (
+                  ) : (!paginatedData || paginatedData.length === 0) ? (
                     <tr>
                       <td colSpan={6} className="py-12 text-center text-slate-400">
                         <MapPin className="w-8 h-8 mx-auto mb-2 text-slate-300" />
