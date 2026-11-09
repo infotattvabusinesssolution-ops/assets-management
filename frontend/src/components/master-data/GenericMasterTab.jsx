@@ -59,22 +59,17 @@ export function GenericMasterTab({
   // Fetch real manufacturers dynamically from backend and custom storage
   const fetchRealManufacturers = async () => {
     try {
-      const res = await api.get('/master-data/manufacturers?includeInactive=false').catch(() => null);
+      const res = await api.get('/master-data/manufacturers?includeInactive=true').catch(() => null);
       let custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
       if (custom.some(c => (c.code || '').toUpperCase() === 'SFEF' || (c.name || '').toLowerCase() === 'fes')) {
         custom = custom.filter(c => (c.code || '').toUpperCase() !== 'SFEF' && (c.name || '').toLowerCase() !== 'fes');
         try { localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom)); } catch (_) {}
       }
-      const deletedMfrs = new Set(
-        (JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]')).map(x => String(x).toLowerCase().trim())
-      );
+      try { localStorage.removeItem('fams_deleted_manufacturers'); } catch (_) {}
       const serverMfrs = (res?.manufacturers && Array.isArray(res.manufacturers)) ? res.manufacturers : [];
       const seen = new Set();
       const combined = [...serverMfrs, ...custom].filter(m => {
-        const id = String(m.id || '').toLowerCase().trim();
-        const code = String(m.code || '').toLowerCase().trim();
         const name = (m.name || m.code || '').trim();
-        if (deletedMfrs.has(id) || deletedMfrs.has(code) || deletedMfrs.has(name.toLowerCase())) return false;
         if (!name || seen.has(name.toLowerCase())) return false;
         seen.add(name.toLowerCase());
         return true;
@@ -120,7 +115,7 @@ export function GenericMasterTab({
           singular: 'Manufacturer',
           icon: Factory,
           defaultItems: DEFAULT_MANUFACTURERS,
-          apiEndpoint: '/master-data/manufacturers'
+          apiEndpoint: '/master-data/manufacturers?includeInactive=true'
         };
       case 'brands':
         return {
@@ -128,7 +123,7 @@ export function GenericMasterTab({
           singular: 'Brand',
           icon: Tag,
           defaultItems: DEFAULT_BRANDS,
-          apiEndpoint: '/master-data/brands',
+          apiEndpoint: '/master-data/brands?includeInactive=true',
           storageKey: 'fams_custom_brands'
         };
       case 'uom':
@@ -137,7 +132,7 @@ export function GenericMasterTab({
           singular: 'Unit of Measure',
           icon: Scale,
           defaultItems: DEFAULT_UOM,
-          apiEndpoint: '/master-data/uoms',
+          apiEndpoint: '/master-data/uoms?includeInactive=true',
           storageKey: 'fams_custom_uoms'
         };
       case 'status-codes':
@@ -154,7 +149,7 @@ export function GenericMasterTab({
           singular: 'Asset Type',
           icon: Box,
           defaultItems: DEFAULT_ASSET_TYPES,
-          apiEndpoint: '/master-data/asset-types',
+          apiEndpoint: '/master-data/asset-types?includeInactive=true',
           storageKey: 'fams_custom_asset_types'
         };
       default:
@@ -290,38 +285,33 @@ export function GenericMasterTab({
           custom = custom.filter(c => (c.code || '').toUpperCase() !== 'SFEF' && (c.name || '').toLowerCase() !== 'fes');
           try { localStorage.setItem('fams_custom_manufacturers', JSON.stringify(custom)); } catch (_) {}
         }
-        const deletedMfrs = new Set(
-          (JSON.parse(localStorage.getItem('fams_deleted_manufacturers') || '[]')).map(x => String(x).toLowerCase().trim())
-        );
+        try { localStorage.removeItem('fams_deleted_manufacturers'); } catch (_) {}
+
         let mapped = [];
         if (res?.manufacturers && Array.isArray(res.manufacturers)) {
-          mapped = res.manufacturers
-            .filter(m => {
-              const id = String(m.id || '').toLowerCase().trim();
-              const code = String(m.code || '').toLowerCase().trim();
-              const name = String(m.name || '').toLowerCase().trim();
-              return !deletedMfrs.has(id) && !deletedMfrs.has(code) && !deletedMfrs.has(name);
-            })
-            .map((m) => ({
-              id: m.id,
-              code: m.code || `MFG-${(m.name || '').substring(0, 4).toUpperCase()}`,
-              name: m.name,
-              website: m.website || '',
-              supportContact: m.supportContact || '',
-              country: m.country || 'Global',
-              status: m.active === false ? 'Inactive' : 'Active',
-              totalAssets: m.totalAssets || 0
-            }));
+          mapped = res.manufacturers.map((m) => ({
+            id: m.id,
+            code: m.code || `MFG-${(m.name || '').substring(0, 4).toUpperCase()}`,
+            name: m.name,
+            website: m.website || '',
+            supportContact: m.supportContact || '',
+            country: m.country || 'Global',
+            status: m.active === false ? 'Inactive' : 'Active',
+            active: m.active !== false,
+            totalAssets: m.totalAssets || 0
+          }));
         }
         const serverCodes = new Set(mapped.map(x => (x.code || '').toUpperCase().trim()).filter(Boolean));
         const serverNames = new Set(mapped.map(x => (x.name || '').toLowerCase().trim()).filter(Boolean));
         const missingCustom = custom.filter(c => {
-          const id = String(c.id || '').toLowerCase().trim();
           const code = (c.code || '').toUpperCase().trim();
           const name = (c.name || '').toLowerCase().trim();
-          if (deletedMfrs.has(id) || deletedMfrs.has(code) || deletedMfrs.has(name)) return false;
           return (!code || !serverCodes.has(code)) && (!name || !serverNames.has(name));
-        });
+        }).map(c => ({
+          ...c,
+          status: c.status || (c.active === false ? 'Inactive' : 'Active'),
+          active: c.active !== false
+        }));
         const rawCombined = [...mapped, ...missingCustom];
         const seenCodes = new Set();
         const seenNames = new Set();
@@ -432,7 +422,12 @@ export function GenericMasterTab({
       } else if (activeTab === 'brands') {
         await api.put(`/master-data/brands/${item.id}`, { active: nextActive }).catch(() => null);
       } else if (activeTab === 'manufacturers') {
-        await api.put(`/master-data/manufacturers/${item.id}`, { active: nextActive }).catch(() => null);
+        await api.put(`/master-data/manufacturers/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+          const updatedCustom = custom.map(c => c.id === item.id ? { ...c, active: nextActive, status: nextStatus } : c);
+          localStorage.setItem('fams_custom_manufacturers', JSON.stringify(updatedCustom));
+        } catch (_) {}
       }
       const updated = items.map(it => it.id === item.id ? { ...it, status: nextStatus, active: nextActive } : it);
       setItems(updated);

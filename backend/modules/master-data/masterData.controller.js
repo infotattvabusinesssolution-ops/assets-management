@@ -2236,9 +2236,10 @@ export async function updateDepreciationPolicy(req, res, next) {
 
 export async function getManufacturers(req, res, next) {
   try {
+    const includeInactive = req.query.includeInactive !== 'false';
     if (isDbConnected()) {
       try {
-        const where = req.query.includeInactive === 'true' ? {} : { active: true };
+        const where = includeInactive ? {} : { active: true };
         const manufacturers = await prisma.manufacturer.findMany({ where, orderBy: { name: 'asc' } });
         if (Array.isArray(manufacturers)) {
           const list = manufacturers.map(m => ({
@@ -2258,7 +2259,7 @@ export async function getManufacturers(req, res, next) {
         console.warn('DB getManufacturers query skipped:', dbErr.message);
       }
     }
-    const list = req.query.includeInactive === 'true'
+    const list = includeInactive
       ? inMemoryManufacturers
       : inMemoryManufacturers.filter(m => m.active !== false);
     res.json({ success: true, manufacturers: list });
@@ -2328,7 +2329,25 @@ export async function createManufacturer(req, res, next) {
 export async function updateManufacturer(req, res, next) {
   try {
     const { id } = req.params;
-    const idx = inMemoryManufacturers.findIndex(m => m.id === id || m.code === id);
+    let idx = inMemoryManufacturers.findIndex(m => m.id === id || m.code === id);
+    if (idx === -1 && isDbConnected()) {
+      try {
+        const dbMfr = await prisma.manufacturer.findFirst({ where: { OR: [{ id }, { code: id }] } });
+        if (dbMfr) {
+          const loaded = {
+            id: dbMfr.id,
+            code: dbMfr.code || `MFG-${(dbMfr.name || '').substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`,
+            name: dbMfr.name,
+            website: dbMfr.website || '',
+            supportContact: dbMfr.supportContact || '',
+            country: dbMfr.country || '',
+            active: dbMfr.active !== false
+          };
+          inMemoryManufacturers.push(loaded);
+          idx = inMemoryManufacturers.length - 1;
+        }
+      } catch (_) {}
+    }
     if (idx === -1) return res.status(404).json({ success: false, message: 'Manufacturer not found' });
 
     const existing = inMemoryManufacturers[idx];
