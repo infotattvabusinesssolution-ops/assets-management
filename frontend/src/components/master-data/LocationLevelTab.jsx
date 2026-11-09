@@ -139,7 +139,7 @@ export function LocationLevelTab({
   const handleOpenAddModal = () => {
     setEditingItem(null);
     setFormState({
-      code: `LOC-L${level}-${String(items.length + 1).padStart(3, '0')}`,
+      code: '',
       name: '',
       description: '',
       status: 'Active'
@@ -644,7 +644,7 @@ export function LocationLevelTab({
                   placeholder={`e.g. LOC-L${level}-001`}
                   value={formState.code}
                   onChange={(e) => setFormState({ ...formState, code: e.target.value.toUpperCase() })}
-                  className="w-full font-mono uppercase bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold focus:border-[#6C2BD9] focus:outline-none"
+                  className="w-full font-mono uppercase bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold focus:border-[#6C2BD9] focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
                 />
                 <p className="text-[10px] text-slate-400 mt-1">Unique uppercase identifier for this location tier.</p>
               </div>
