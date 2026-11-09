@@ -108,7 +108,8 @@ export function LocationsTab({
   setActiveRowMenuId,
   setShowAuditHistoryModal,
   externalShowAddModal,
-  setExternalShowAddModal
+  setExternalShowAddModal,
+  onNavigateTab
 }) {
   const [locationsList, setLocationsList] = useState([]);
   const [countriesList, setCountriesList] = useState(DEFAULT_COUNTRIES);
@@ -501,6 +502,39 @@ export function LocationsTab({
 
   return (
     <div className="space-y-4">
+      {/* 4 Location Level Quick-Switch Buttons Bar */}
+      <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-3">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center font-bold">
+            <MapPin className="w-4 h-4" />
+          </div>
+          <div>
+            <h3 className="text-xs font-bold text-slate-800">Location Masters Hierarchy</h3>
+            <p className="text-[11px] text-slate-400">Quickly toggle between Location Master and all 4 location level masters</p>
+          </div>
+        </div>
+
+        <div className="flex items-center flex-wrap gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
+          <button
+            type="button"
+            className="px-3 py-1.5 rounded-lg text-xs font-bold bg-[#6C2BD9] text-white shadow-xs cursor-default flex items-center gap-1.5"
+          >
+            <span>All Locations</span>
+            <span className="w-1.5 h-1.5 rounded-full bg-white"></span>
+          </button>
+          {[1, 2, 3, 4].map((lvl) => (
+            <button
+              key={lvl}
+              type="button"
+              onClick={() => onNavigateTab && onNavigateTab(`location-level-${lvl}`)}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold transition-all text-slate-600 hover:text-slate-900 hover:bg-white cursor-pointer"
+            >
+              Location Level {lvl}
+            </button>
+          ))}
+        </div>
+      </div>
+
       {/* Search & Filter Bar */}
       <div className="bg-white rounded-2xl border border-slate-200/90 p-3.5 shadow-2xs">
         <div className="flex flex-wrap items-center gap-3">

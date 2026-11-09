@@ -27,7 +27,8 @@ import {
   getUoms, createUom, updateUom, deleteUom,
   getDisposalStatuses, createDisposalStatus, updateDisposalStatus, deleteDisposalStatus,
   getCountries, createCountry,
-  getLocationTypes, createLocationType
+  getLocationTypes, createLocationType,
+  getLocationLevels, createLocationLevel, updateLocationLevel, deleteLocationLevel
 } from './masterData.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
@@ -166,5 +167,11 @@ router.post('/countries', createCountry);
 // Location Types (Dynamic Master Data Lookup / Enum)
 router.get('/location-types', getLocationTypes);
 router.post('/location-types', createLocationType);
+
+// Location Levels 1, 2, 3, 4 (Dedicated Master Data)
+router.get('/location-levels/:level', getLocationLevels);
+router.post('/location-levels/:level', createLocationLevel);
+router.put('/location-levels/:level/:id', updateLocationLevel);
+router.delete('/location-levels/:level/:id', deleteLocationLevel);
 
 export default router;

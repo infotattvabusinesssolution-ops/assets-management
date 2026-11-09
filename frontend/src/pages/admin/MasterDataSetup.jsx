@@ -54,6 +54,7 @@ import { ClassesTab, INITIAL_CLASSES } from '../../components/master-data/Classe
 import { CategoriesTab, INITIAL_CATEGORIES } from '../../components/master-data/CategoriesTab';
 import { SubCategoriesTab, INITIAL_SUB_CATEGORIES } from '../../components/master-data/SubCategoriesTab';
 import { LocationsTab, INITIAL_LOCATIONS } from '../../components/master-data/LocationsTab';
+import { LocationLevelTab } from '../../components/master-data/LocationLevelTab';
 import { DepartmentsTab, INITIAL_DEPARTMENTS } from '../../components/master-data/DepartmentsTab';
 import { CostCentersTab, INITIAL_COST_CENTERS } from '../../components/master-data/CostCentersTab';
 import { SuppliersTab, INITIAL_SUPPLIERS } from '../../components/master-data/SuppliersTab';
@@ -70,6 +71,7 @@ import { DisposalStatusesTab } from '../../components/master-data/DisposalStatus
 import { api } from '../../services/api';
 
 const getSingularName = (name = '') => {
+  if (name.startsWith('Location Level')) return name;
   if (name === 'Asset Sub Groups' || name === 'Sub Groups') return 'Asset Sub Group';
   if (name.endsWith('Classes')) return name.slice(0, -2);
   if (name.endsWith('Statuses')) return name.slice(0, -2);
@@ -377,6 +379,10 @@ export function MasterDataSetup() {
     { id: 'custodians', name: 'Custodians', icon: UserCheck, desc: 'Manage internal employees and external custodians responsible for asset care, custody, and physical tracking.' },
     { id: 'locations', name: 'Locations', icon: MapPin, desc: 'Define and manage physical sites, campuses, buildings, and rooms where assets are deployed.' },
     { id: 'departments', name: 'Departments', icon: Users, desc: 'Define and manage organizational departments for asset ownership and financial accountability.' },
+    { id: 'location-level-1', name: 'Location Level 1', icon: MapPin, desc: 'Define and manage Level 1 locations (e.g. Regions, States, Campuses).' },
+    { id: 'location-level-2', name: 'Location Level 2', icon: MapPin, desc: 'Define and manage Level 2 locations (e.g. Sites, Facilities, Complexes).' },
+    { id: 'location-level-3', name: 'Location Level 3', icon: MapPin, desc: 'Define and manage Level 3 locations (e.g. Buildings, Blocks, Wings).' },
+    { id: 'location-level-4', name: 'Location Level 4', icon: MapPin, desc: 'Define and manage Level 4 locations (e.g. Floors, Rooms, Zones, Aisles).' },
     { id: 'cost-centers', name: 'Cost Centers', icon: BarChart3, desc: 'Define and manage cost centers for budget allocation, depreciation charging, and financial reporting.' },
     { id: 'suppliers', name: 'Suppliers', icon: Truck, desc: 'Manage approved vendors and suppliers for asset procurement, warranties, and maintenance services.' },
     { id: 'manufacturers', name: 'Manufacturers', icon: Factory, desc: 'Manage approved equipment manufacturers, OEM specs, vendor portals, and technical support.' },
@@ -686,6 +692,7 @@ export function MasterDataSetup() {
           setShowAuditHistoryModal={setShowAuditHistoryModal}
           externalShowAddModal={activeAddModalTab === 'locations'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
+          onNavigateTab={handleTabChange}
         />
       )}
 
@@ -697,6 +704,19 @@ export function MasterDataSetup() {
           setShowAuditHistoryModal={setShowAuditHistoryModal}
           externalShowAddModal={activeAddModalTab === 'departments'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
+        />
+      )}
+
+      {['location-level-1', 'location-level-2', 'location-level-3', 'location-level-4'].includes(activeTab) && (
+        <LocationLevelTab
+          level={parseInt(activeTab.replace('location-level-', ''), 10)}
+          levelName={currentTabObject?.name || 'Location Level'}
+          triggerToast={triggerToast}
+          activeRowMenuId={activeRowMenuId}
+          setActiveRowMenuId={setActiveRowMenuId}
+          externalShowAddModal={activeAddModalTab === activeTab}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
+          onNavigateTab={handleTabChange}
         />
       )}
 

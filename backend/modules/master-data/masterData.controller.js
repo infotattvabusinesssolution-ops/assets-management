@@ -5302,3 +5302,140 @@ export async function createLocationType(req, res, next) {
     res.status(201).json({ success: true, locationType: newType });
   } catch (err) { next(err); }
 }
+
+// ============================================================================
+// Location Levels 1, 2, 3, 4 (Dedicated Master Data)
+// ============================================================================
+function getLocationLevelFilePath(level) {
+  return resolveDataFile(`location_level_${level}.json`);
+}
+
+function readLocationLevelsFromFile(level) {
+  try {
+    const file = getLocationLevelFilePath(level);
+    if (fs.existsSync(file)) {
+      const data = fs.readFileSync(file, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) ? parsed : [];
+    }
+  } catch (e) {
+    console.warn(`Failed to read location_level_${level}.json:`, e.message);
+  }
+  return [];
+}
+
+function writeLocationLevelsToFile(level, list) {
+  try {
+    const file = getLocationLevelFilePath(level);
+    const dir = path.dirname(file);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(file, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn(`Failed to write location_level_${level}.json:`, e.message);
+  }
+}
+
+export async function getLocationLevels(req, res, next) {
+  try {
+    const level = parseInt(req.params.level, 10) || 1;
+    let list = readLocationLevelsFromFile(level);
+    if (req.query.includeInactive === 'false') {
+      list = list.filter(item => item.active !== false && item.status !== 'Inactive');
+    }
+    res.json({ success: true, locationLevels: list, level });
+  } catch (err) { next(err); }
+}
+
+export async function createLocationLevel(req, res, next) {
+  try {
+    const level = parseInt(req.params.level, 10) || 1;
+    const { code, name, description, status, active } = req.body;
+    if (!code || !name) {
+      return res.status(400).json({ success: false, message: 'Location Code and Location Name are required.' });
+    }
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
+    const list = readLocationLevelsFromFile(level);
+
+    if (list.some(item => (item.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}.` });
+    }
+
+    const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
+    const newRecord = {
+      id: `loc-lvl${level}-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      description: description || '',
+      status: isAct ? 'Active' : 'Inactive',
+      active: isAct,
+      level,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    list.unshift(newRecord);
+    writeLocationLevelsToFile(level, list);
+    res.status(201).json({ success: true, locationLevel: newRecord });
+  } catch (err) { next(err); }
+}
+
+export async function updateLocationLevel(req, res, next) {
+  try {
+    const level = parseInt(req.params.level, 10) || 1;
+    const { id } = req.params;
+    const list = readLocationLevelsFromFile(level);
+    const idx = list.findIndex(item => item.id === id || item.code === id);
+    if (idx === -1) {
+      return res.status(404).json({ success: false, message: `Location Level ${level} record not found.` });
+    }
+
+    const { code, name, description, status, active } = req.body;
+    const cleanCode = code ? code.trim().toUpperCase() : list[idx].code;
+    const cleanName = name ? name.trim() : list[idx].name;
+
+    if (cleanCode && list.some((item, i) => i !== idx && (item.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}.` });
+    }
+
+    const isAct = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : list[idx].active);
+    const updated = {
+      ...list[idx],
+      code: cleanCode,
+      name: cleanName,
+      description: description !== undefined ? description : list[idx].description,
+      active: isAct,
+      status: isAct ? 'Active' : 'Inactive',
+      updatedAt: new Date().toISOString()
+    };
+
+    list[idx] = updated;
+    writeLocationLevelsToFile(level, list);
+    res.json({ success: true, locationLevel: updated });
+  } catch (err) { next(err); }
+}
+
+export async function deleteLocationLevel(req, res, next) {
+  try {
+    const level = parseInt(req.params.level, 10) || 1;
+    const { id } = req.params;
+    const { force, deactivateOnly } = req.body || {};
+    let list = readLocationLevelsFromFile(level);
+    const idx = list.findIndex(item => item.id === id || item.code === id);
+    if (idx === -1) {
+      return res.status(404).json({ success: false, message: `Location Level ${level} record not found.` });
+    }
+
+    if (deactivateOnly) {
+      list[idx].active = false;
+      list[idx].status = 'Inactive';
+      list[idx].updatedAt = new Date().toISOString();
+      writeLocationLevelsToFile(level, list);
+      return res.json({ success: true, locationLevel: list[idx], message: `Location Level ${level} record deactivated.` });
+    }
+
+    list = list.filter(item => item.id !== id && item.code !== id);
+    writeLocationLevelsToFile(level, list);
+    res.json({ success: true, hardDeleted: true, message: `Location Level ${level} record deleted.` });
+  } catch (err) { next(err); }
+}
