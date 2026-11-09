@@ -6,7 +6,6 @@ import {
   RefreshCw,
   Edit,
   Trash2,
-  Copy,
   MoreHorizontal,
   X,
   MapPin,
@@ -280,26 +279,6 @@ export function LocationLevelTab({
     }
   };
 
-  // Duplicate record
-  const handleDuplicate = (item) => {
-    setActiveRowMenuId && setActiveRowMenuId(null);
-    const duplicated = {
-      ...item,
-      id: `loc-lvl${level}-${Date.now()}`,
-      code: `${item.code}-COPY`,
-      name: `${item.name} (Copy)`,
-      status: 'Active',
-      active: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString()
-    };
-    const updated = [duplicated, ...items];
-    setItems(updated);
-    localStorage.setItem(storageKey, JSON.stringify(updated));
-    setSelectedItem(duplicated);
-    triggerToast && triggerToast(`Duplicated as "${duplicated.code}".`);
-  };
-
   // Delete Record
   const handleInitiateDelete = (item) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
@@ -447,24 +426,47 @@ export function LocationLevelTab({
                           </td>
                           <td className="py-3 px-3 text-right" onClick={(e) => e.stopPropagation()}>
                             <div className="relative inline-block text-left">
-                              <button
-                                type="button"
-                                onClick={() => setActiveRowMenuId(activeRowMenuId === item.id ? null : item.id)}
-                                className="p-1 rounded-lg hover:bg-slate-100 text-slate-500 cursor-pointer"
+                              <RowActionsMenu
+                                isOpen={activeRowMenuId === item.id}
+                                onToggle={() => setActiveRowMenuId(activeRowMenuId === item.id ? null : item.id)}
+                                onClose={() => setActiveRowMenuId(null)}
+                                className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors cursor-pointer"
                               >
-                                <MoreHorizontal className="w-4 h-4" />
-                              </button>
-
-                              {activeRowMenuId === item.id && (
-                                <RowActionsMenu
-                                  item={item}
-                                  onClose={() => setActiveRowMenuId(null)}
-                                  onEdit={() => handleOpenEditModal(item)}
-                                  onDuplicate={() => handleDuplicate(item)}
-                                  onToggleStatus={() => handleToggleStatus(item)}
-                                  onDelete={() => handleInitiateDelete(item)}
-                                />
-                              )}
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId(null);
+                                    handleOpenEditModal(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                  <span>Edit Record</span>
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId(null);
+                                    handleToggleStatus(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
+                                  <span>{item.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                </button>
+                                <div className="h-px bg-slate-100 my-1" />
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId(null);
+                                    handleInitiateDelete(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              </RowActionsMenu>
                             </div>
                           </td>
                         </tr>
