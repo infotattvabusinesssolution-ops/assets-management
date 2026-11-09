@@ -328,41 +328,6 @@ export function LocationLevelTab({
 
   return (
     <div className="space-y-4">
-      {/* 4 Location Level Master Buttons */}
-      <div className="bg-white p-3 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-wrap items-center justify-between gap-3">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center font-bold">
-            <MapPin className="w-4 h-4" />
-          </div>
-          <div>
-            <h3 className="text-xs font-bold text-slate-800">{levelName} Master</h3>
-            <p className="text-[11px] text-slate-400">Independent location master (Database table: location_level_{level})</p>
-          </div>
-        </div>
-
-        <div className="flex items-center flex-wrap gap-1.5 bg-slate-50 p-1.5 rounded-xl border border-slate-200">
-          {[1, 2, 3, 4].map((lvl) => {
-            const isCurrent = level === lvl;
-            return (
-              <button
-                key={lvl}
-                type="button"
-                onClick={() => onNavigateTab && onNavigateTab(`location-level-${lvl}`)}
-                className={clsx(
-                  'px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 cursor-pointer',
-                  isCurrent
-                    ? 'bg-[#6C2BD9] text-white shadow-xs'
-                    : 'text-slate-600 hover:text-slate-900 hover:bg-white'
-                )}
-              >
-                <span>Location Level {lvl}</span>
-                {isCurrent && <span className="w-1.5 h-1.5 rounded-full bg-white"></span>}
-              </button>
-            );
-          })}
-        </div>
-      </div>
-
       {/* Main Grid: Table (Left) + Detail Drawer (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column: Records Table */}
