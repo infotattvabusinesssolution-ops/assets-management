@@ -1008,11 +1008,6 @@ export function AssetForm() {
     }));
   };
 
-  // Capitalization Threshold Evaluation (Default 1000 units of currency)
-  const CAPITALIZATION_THRESHOLD = 1000;
-  const unitCostNum = parseFloat(formData.acquisitionCost) || 0;
-  const derivedClassification = unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset';
-
   // Top-Down Step 1: Change Asset Type
   const handleAssetTypeChange = (newType) => {
     const nextGroups = (assetGroups || []).filter(g => matchesGroupToType(g, newType));
@@ -2199,7 +2194,7 @@ export function AssetForm() {
         <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
           <label className="font-bold text-slate-700 block">Asset Classification / Asset Type</label>
           <select
-            value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
+            value={formData.assetType || 'Asset'}
             onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
             className="w-full bg-white border border-slate-300 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none shadow-2xs cursor-pointer"
           >
@@ -2209,12 +2204,6 @@ export function AssetForm() {
               </option>
             ))}
           </select>
-          <div className="flex items-center justify-between text-[11px] text-slate-500">
-            <span>Threshold: ${CAPITALIZATION_THRESHOLD.toLocaleString()}</span>
-            <span className={unitCostNum >= CAPITALIZATION_THRESHOLD ? 'text-emerald-700 font-bold' : 'text-slate-600 font-medium'}>
-              Current Unit Cost: ${unitCostNum.toLocaleString()}
-            </span>
-          </div>
         </div>
       </div>
 
@@ -2535,20 +2524,6 @@ export function AssetForm() {
         </h3>
         <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-full border border-purple-200">
           Step 2
-        </span>
-      </div>
-
-      {/* Live Capitalization Evaluation Banner */}
-      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${derivedClassification === 'Asset'
-          ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
-          : 'bg-amber-50 text-amber-800 border-amber-200'
-        }`}>
-        <div className="flex items-center gap-2">
-          <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
-          <span>Capitalization Evaluation: <strong>{derivedClassification === 'Asset' ? 'Asset (Capitalized & Depreciated)' : 'Non-asset (Expensed on Purchase)'}</strong></span>
-        </div>
-        <span className="text-[11px] font-mono">
-          Unit Cost: ${unitCostNum.toLocaleString()} | Threshold: $1,000.00
         </span>
       </div>
 
@@ -4225,7 +4200,7 @@ export function AssetForm() {
                 <div className="space-y-1 text-xs">
                   <label className="font-bold text-slate-700 block">Asset Classification (Asset Type)</label>
                   <select
-                    value={formData.assetType || (unitCostNum >= CAPITALIZATION_THRESHOLD ? 'Asset' : 'Non-asset')}
+                    value={formData.assetType || 'Asset'}
                     onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
