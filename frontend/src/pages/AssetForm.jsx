@@ -287,7 +287,7 @@ const matchesAssetType = (category, assetType) => {
   const isMachinery = name.includes('machine') || name.includes('cnc') || name.includes('plant') || name.includes('pump') || name.includes('compressor') || name.includes('boiler') || name.includes('chiller') || name.includes('generator') || code.includes('gen') || code.includes('chiller') || code.includes('mach');
   const isFacility = name.includes('building') || name.includes('facility') || name.includes('civil') || (name.includes('structure') && !name.includes('infra')) || name.includes('hvac') || name.includes('electrical') || name.includes('plumbing') || code.includes('bld') || code.includes('hvac') || code.includes('mep');
   const isOffice = name.includes('printer') || name.includes('scanner') || name.includes('copier') || name.includes('office') || name.includes('projector') || name.includes('shredder') || name.includes('telephony') || code.includes('prn') || code.includes('prt');
-  
+
   const isIT = code.startsWith('it-') || code.startsWith('cat-it') || code.startsWith('cat-lap') || code.startsWith('cat-dsk') || code.startsWith('cat-srv') || code.startsWith('cat-disp') || code.startsWith('cat-prn') || code.startsWith('cat-acc') || code.startsWith('cat-mob') || code.startsWith('cat-tab') ||
     name.includes('laptop') || name.includes('desktop') || name.includes('server') || name.includes('infrastructure') || name.includes('compute') || name.includes('monitor') || name.includes('display') || name.includes('mobile') || name.includes('tablet') || name.includes('accessory') || name.includes('network') || name.includes('switch') || name.includes('router') || name.includes('firewall') || name.includes('hardware');
 
@@ -329,7 +329,7 @@ export function AssetForm() {
     const name = window.prompt('Enter new Company name (e.g. Acme Corp, Apex Group):');
     if (!name || !name.trim()) return;
     const cleanName = name.trim();
-    const code = window.prompt(`Enter Company code (or press OK to auto-generate CMP-${cleanName.slice(0, 4).toUpperCase()}):` )?.trim() || `CMP-${cleanName.slice(0, 4).toUpperCase()}`;
+    const code = window.prompt(`Enter Company code (or press OK to auto-generate CMP-${cleanName.slice(0, 4).toUpperCase()}):`)?.trim() || `CMP-${cleanName.slice(0, 4).toUpperCase()}`;
     try {
       const res = await api.post('/master-data/companies', { name: cleanName, code });
       const newCmp = res?.company || { id: `cmp-${Date.now()}`, name: cleanName, code };
@@ -338,7 +338,7 @@ export function AssetForm() {
       try {
         const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
         localStorage.setItem('fams_companies', JSON.stringify([...stored, newCmp]));
-      } catch (_) {}
+      } catch (_) { }
       showToast('success', `Company "${cleanName}" added successfully!`);
     } catch (err) {
       console.warn('Add company error:', err);
@@ -348,7 +348,7 @@ export function AssetForm() {
       try {
         const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
         localStorage.setItem('fams_companies', JSON.stringify([...stored, newCmp]));
-      } catch (_) {}
+      } catch (_) { }
       showToast('success', `Company "${cleanName}" added successfully!`);
     }
   };
@@ -362,7 +362,7 @@ export function AssetForm() {
     const name = window.prompt('Enter Building name (e.g. Building A, Main Tower, Annex):');
     if (!name || !name.trim()) return;
     const cleanName = name.trim();
-    const code = window.prompt(`Enter Building code (or press OK to auto-generate BLD-${cleanName.slice(0, 4).toUpperCase()}):` )?.trim() || `BLD-${cleanName.slice(0, 4).toUpperCase()}`;
+    const code = window.prompt(`Enter Building code (or press OK to auto-generate BLD-${cleanName.slice(0, 4).toUpperCase()}):`)?.trim() || `BLD-${cleanName.slice(0, 4).toUpperCase()}`;
     try {
       const res = await api.post('/master-data/buildings', { name: cleanName, code, siteId: currentSiteId });
       const newBld = res?.building || { id: `bld-${Date.now()}`, name: cleanName, code, siteId: currentSiteId };
@@ -371,7 +371,7 @@ export function AssetForm() {
       try {
         const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
         localStorage.setItem('fams_buildings', JSON.stringify([...stored, newBld]));
-      } catch (_) {}
+      } catch (_) { }
       showToast('success', `Building "${cleanName}" added successfully!`);
     } catch (err) {
       console.warn('Add building error:', err);
@@ -381,7 +381,7 @@ export function AssetForm() {
       try {
         const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
         localStorage.setItem('fams_buildings', JSON.stringify([...stored, newBld]));
-      } catch (_) {}
+      } catch (_) { }
       showToast('success', `Building "${cleanName}" added successfully!`);
     }
   };
@@ -390,7 +390,7 @@ export function AssetForm() {
     const name = window.prompt('Enter Department name (e.g. Operations, Quality Assurance, Logistics):');
     if (!name || !name.trim()) return;
     const cleanName = name.trim();
-    const code = window.prompt('Enter Department code (e.g. OPS, QA, LOG):' )?.trim() || cleanName.slice(0, 3).toUpperCase();
+    const code = window.prompt('Enter Department code (e.g. OPS, QA, LOG):')?.trim() || cleanName.slice(0, 3).toUpperCase();
     try {
       const res = await api.post('/master-data/departments', {
         name: cleanName,
@@ -427,7 +427,7 @@ export function AssetForm() {
       try {
         const stored = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
         localStorage.setItem('fams_custom_departments', JSON.stringify([...stored, newDept]));
-      } catch (_) {}
+      } catch (_) { }
 
       // Refresh live departments list from backend in background
       api.get('/master-data/departments')
@@ -467,7 +467,7 @@ export function AssetForm() {
       try {
         const stored = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
         localStorage.setItem('fams_custom_departments', JSON.stringify([...stored, newDept]));
-      } catch (_) {}
+      } catch (_) { }
       showToast('success', `Department "${cleanName}" added and selected successfully!`);
     }
   };
@@ -476,7 +476,7 @@ export function AssetForm() {
     const name = window.prompt('Enter Cost Center name (e.g. Fleet Operations, Corporate Admin):');
     if (!name || !name.trim()) return;
     const cleanName = name.trim();
-    const code = window.prompt('Enter Cost Center code (e.g. CC-3000):' )?.trim() || `CC-${Math.floor(1000 + Math.random() * 9000)}`;
+    const code = window.prompt('Enter Cost Center code (e.g. CC-3000):')?.trim() || `CC-${Math.floor(1000 + Math.random() * 9000)}`;
     try {
       const res = await api.post('/master-data/cost-centers', {
         name: cleanName,
@@ -699,7 +699,7 @@ export function AssetForm() {
           setDepartments(mergedDepts);
         }
         if (ccRes?.costCenters) setCostCenters(ccRes.costCenters);
-                const customMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
+        const customMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
         const serverMfrs = mfrRes?.manufacturers || [];
         const existingNames = new Set(serverMfrs.map(m => (m.name || '').toLowerCase()));
         const mergedMfrs = [...serverMfrs, ...customMfrs.filter(cm => !existingNames.has((cm.name || '').toLowerCase()))];
@@ -960,7 +960,7 @@ export function AssetForm() {
 
   // --- Handlers for Seamless Top-Down & Bottom-Up Cascades ---
 
-  
+
   // --- Item Master Selection & Auto-Fill ---
   const handleSelectItemMaster = (itemId) => {
     setSelectedItemMasterId(itemId);
@@ -1551,7 +1551,7 @@ export function AssetForm() {
         if (!firstWarning) firstWarning = 'Warning: Quantity must be a valid number between 1 and 50.';
       }
 
-      
+
     }
 
     if (stepNumber === 2) {
@@ -1743,9 +1743,9 @@ export function AssetForm() {
       }
       const pmTasks = formData.pmChecklistText.split('\n').map(task => task.trim()).filter(Boolean);
       if (formData.enablePm && (!formData.pmTitle.trim() || !formData.pmNextDueDate ||
-          !Number.isInteger(Number(formData.pmFrequencyMonths)) || Number(formData.pmFrequencyMonths) < 1 || Number(formData.pmFrequencyMonths) > 120 ||
-          !Number.isInteger(Number(formData.pmAdvanceDays)) || Number(formData.pmAdvanceDays) < 0 || Number(formData.pmAdvanceDays) > 90 ||
-          formData.pmDescription.length > 500 || pmTasks.length > 30 || pmTasks.some(task => task.length > 200))) {
+        !Number.isInteger(Number(formData.pmFrequencyMonths)) || Number(formData.pmFrequencyMonths) < 1 || Number(formData.pmFrequencyMonths) > 120 ||
+        !Number.isInteger(Number(formData.pmAdvanceDays)) || Number(formData.pmAdvanceDays) < 0 || Number(formData.pmAdvanceDays) > 90 ||
+        formData.pmDescription.length > 500 || pmTasks.length > 30 || pmTasks.some(task => task.length > 200))) {
         showToast('error', 'Complete the preventive schedule: title, due date, 1–120 month interval, 0–90 advance days, and up to 30 checklist tasks.');
         return;
       }
@@ -1962,85 +1962,82 @@ export function AssetForm() {
             className="w-full rounded-lg border p-2 bg-white text-slate-900 font-medium focus:border-[#6C2BD9] outline-none"
           />
         </label>
-      <label className="space-y-1 font-semibold">
-        <span>Schedule Title <span className="text-rose-500">*</span></span>
-        <input
-          value={formData.pmTitle}
-          maxLength={200}
-          onChange={e => {
-            setFormData(prev => ({ ...prev, pmTitle: e.target.value }));
-            if (e.target.value.trim()) clearFieldError('pmTitle');
-          }}
-          className={`w-full rounded-lg border p-2 outline-none transition-colors ${
-            fieldErrors.pmTitle ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
-          }`}
-          placeholder="e.g. Laptop quarterly inspection"
-        />
-        {fieldErrors.pmTitle && (
-          <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmTitle}
-          </p>
-        )}
-      </label>
-      <label className="space-y-1 font-semibold">Schedule Type
-        <select value={formData.pmWorkType} onChange={e => setFormData(prev => ({ ...prev, pmWorkType: e.target.value }))} className="w-full rounded-lg border border-slate-200 p-2"><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option></select>
-      </label>
-      <label className="space-y-1 font-semibold">
-        <span>Repeat Every (Months) <span className="text-rose-500">*</span></span>
-        <input
-          type="number"
-          min="1"
-          max="120"
-          value={formData.pmFrequencyMonths}
-          onChange={e => {
-            setFormData(prev => ({ ...prev, pmFrequencyMonths: e.target.value }));
-            const val = Number(e.target.value);
-            if (Number.isInteger(val) && val >= 1 && val <= 120) clearFieldError('pmFrequencyMonths');
-          }}
-          className={`w-full rounded-lg border p-2 outline-none transition-colors ${
-            fieldErrors.pmFrequencyMonths ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
-          }`}
-        />
-        {fieldErrors.pmFrequencyMonths && (
-          <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmFrequencyMonths}
-          </p>
-        )}
-      </label>
-      <label className="space-y-1 font-semibold">
-        <span>Next Due Date <span className="text-rose-500">*</span></span>
-        <input
-          type="date"
-          value={formData.pmNextDueDate}
-          onChange={e => {
-            setFormData(prev => ({ ...prev, pmNextDueDate: e.target.value }));
-            if (e.target.value) clearFieldError('pmNextDueDate');
-          }}
-          className={`w-full rounded-lg border p-2 outline-none transition-colors ${
-            fieldErrors.pmNextDueDate ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
-          }`}
-        />
-        {fieldErrors.pmNextDueDate && (
-          <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
-            <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmNextDueDate}
-          </p>
-        )}
-      </label>
-      <label className={`space-y-1 font-semibold ${compact ? '' : 'sm:col-span-2'}`}>Description
-        <textarea rows={2} maxLength={500} value={formData.pmDescription} onChange={e => setFormData(prev => ({ ...prev, pmDescription: e.target.value }))} className="w-full rounded-lg border p-2" />
-      </label>
-      <label className={`space-y-1 font-semibold ${compact ? '' : 'sm:col-span-2'}`}>Checklist (one task per line)
-        <textarea rows={3} value={formData.pmChecklistText} onChange={e => setFormData(prev => ({ ...prev, pmChecklistText: e.target.value }))} className="w-full rounded-lg border p-2" placeholder="Inspect condition&#10;Check battery" />
-      </label>
-      <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.pmActive} onChange={e => setFormData(prev => ({ ...prev, pmActive: e.target.checked }))} /> Schedule active</label>
-      <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.pmAutoGenerateWorkOrders} onChange={e => setFormData(prev => ({ ...prev, pmAutoGenerateWorkOrders: e.target.checked }))} /> Automatically generate work order when due</label>
-      <label className="space-y-1 font-semibold">Generate this many days before due date
-        <input type="number" min="0" max="90" value={formData.pmAdvanceDays} onChange={e => setFormData(prev => ({ ...prev, pmAdvanceDays: e.target.value }))} className="w-full rounded-lg border p-2" />
-      </label>
-      <p className="self-end text-slate-500">The schedule will appear under Preventive Maintenance after this asset is saved.</p>
-    </div>
-  );
-};
+        <label className="space-y-1 font-semibold">
+          <span>Schedule Title <span className="text-rose-500">*</span></span>
+          <input
+            value={formData.pmTitle}
+            maxLength={200}
+            onChange={e => {
+              setFormData(prev => ({ ...prev, pmTitle: e.target.value }));
+              if (e.target.value.trim()) clearFieldError('pmTitle');
+            }}
+            className={`w-full rounded-lg border p-2 outline-none transition-colors ${fieldErrors.pmTitle ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+              }`}
+            placeholder="e.g. Laptop quarterly inspection"
+          />
+          {fieldErrors.pmTitle && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmTitle}
+            </p>
+          )}
+        </label>
+        <label className="space-y-1 font-semibold">Schedule Type
+          <select value={formData.pmWorkType} onChange={e => setFormData(prev => ({ ...prev, pmWorkType: e.target.value }))} className="w-full rounded-lg border border-slate-200 p-2"><option value="PREVENTIVE">Preventive</option><option value="INSPECTION">Inspection</option></select>
+        </label>
+        <label className="space-y-1 font-semibold">
+          <span>Repeat Every (Months) <span className="text-rose-500">*</span></span>
+          <input
+            type="number"
+            min="1"
+            max="120"
+            value={formData.pmFrequencyMonths}
+            onChange={e => {
+              setFormData(prev => ({ ...prev, pmFrequencyMonths: e.target.value }));
+              const val = Number(e.target.value);
+              if (Number.isInteger(val) && val >= 1 && val <= 120) clearFieldError('pmFrequencyMonths');
+            }}
+            className={`w-full rounded-lg border p-2 outline-none transition-colors ${fieldErrors.pmFrequencyMonths ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+              }`}
+          />
+          {fieldErrors.pmFrequencyMonths && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmFrequencyMonths}
+            </p>
+          )}
+        </label>
+        <label className="space-y-1 font-semibold">
+          <span>Next Due Date <span className="text-rose-500">*</span></span>
+          <input
+            type="date"
+            value={formData.pmNextDueDate}
+            onChange={e => {
+              setFormData(prev => ({ ...prev, pmNextDueDate: e.target.value }));
+              if (e.target.value) clearFieldError('pmNextDueDate');
+            }}
+            className={`w-full rounded-lg border p-2 outline-none transition-colors ${fieldErrors.pmNextDueDate ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+              }`}
+          />
+          {fieldErrors.pmNextDueDate && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-0.5 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" /> {fieldErrors.pmNextDueDate}
+            </p>
+          )}
+        </label>
+        <label className={`space-y-1 font-semibold ${compact ? '' : 'sm:col-span-2'}`}>Description
+          <textarea rows={2} maxLength={500} value={formData.pmDescription} onChange={e => setFormData(prev => ({ ...prev, pmDescription: e.target.value }))} className="w-full rounded-lg border p-2" />
+        </label>
+        <label className={`space-y-1 font-semibold ${compact ? '' : 'sm:col-span-2'}`}>Checklist (one task per line)
+          <textarea rows={3} value={formData.pmChecklistText} onChange={e => setFormData(prev => ({ ...prev, pmChecklistText: e.target.value }))} className="w-full rounded-lg border p-2" placeholder="Inspect condition&#10;Check battery" />
+        </label>
+        <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.pmActive} onChange={e => setFormData(prev => ({ ...prev, pmActive: e.target.checked }))} /> Schedule active</label>
+        <label className="flex items-center gap-2 font-semibold"><input type="checkbox" checked={formData.pmAutoGenerateWorkOrders} onChange={e => setFormData(prev => ({ ...prev, pmAutoGenerateWorkOrders: e.target.checked }))} /> Automatically generate work order when due</label>
+        <label className="space-y-1 font-semibold">Generate this many days before due date
+          <input type="number" min="0" max="90" value={formData.pmAdvanceDays} onChange={e => setFormData(prev => ({ ...prev, pmAdvanceDays: e.target.value }))} className="w-full rounded-lg border p-2" />
+        </label>
+        <p className="self-end text-slate-500">The schedule will appear under Preventive Maintenance after this asset is saved.</p>
+      </div>
+    );
+  };
 
   const renderBatchDiscovery = () => {
     const item = discoveryItems[selectedItemIndex] || {};
@@ -2234,13 +2231,11 @@ export function AssetForm() {
               setFormData({ ...formData, assetName: e.target.value });
               if (e.target.value.trim()) clearFieldError('assetName');
             }}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
-              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-700' : 'bg-slate-50'
-            } ${
-              fieldErrors.assetName
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-700' : 'bg-slate-50'
+              } ${fieldErrors.assetName
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
-            }`}
+              }`}
             placeholder="e.g. Lenovo ThinkPad T14"
           />
           {fieldErrors.assetName && (
@@ -2302,13 +2297,11 @@ export function AssetForm() {
               handleCategoryChange(e.target.value);
               if (e.target.value) clearFieldError('category');
             }}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${
-              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
-            } ${
-              fieldErrors.category
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+              } ${fieldErrors.category
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
-            }`}
+              }`}
           >
             <option value="">Select Category</option>
             {availableCategories.map(c => (
@@ -2336,13 +2329,11 @@ export function AssetForm() {
               if (e.target.value) clearFieldError('subcategory');
             }}
             disabled={Boolean(selectedItemMasterId) || !formData.category}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-400 transition-colors ${
-              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
-            } ${
-              fieldErrors.subcategory
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-400 transition-colors ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+              } ${fieldErrors.subcategory
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
-            }`}
+              }`}
           >
             <option value="">{formData.category ? (availableAssetClasses.length > 0 ? 'Select Sub Category *' : 'No sub categories (optional)') : 'Select a Category first'}</option>
             {availableAssetClasses.map(assetClass => {
@@ -2370,9 +2361,8 @@ export function AssetForm() {
             value={formData.manufacturer || ''}
             onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
             disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${
-              selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
-            }`}
+            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+              }`}
           >
             <option value="">-- Select Manufacturer --</option>
             {availableManufacturers && availableManufacturers.length > 0 ? (
@@ -2415,11 +2405,10 @@ export function AssetForm() {
               const val = Number(e.target.value);
               if (Number.isInteger(val) && val >= 1 && val <= 50) clearFieldError('quantity');
             }}
-            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-bold outline-none transition-colors ${
-              fieldErrors.quantity
+            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-bold outline-none transition-colors ${fieldErrors.quantity
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
-            }`}
+              }`}
           />
           {fieldErrors.quantity && (
             <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
@@ -2550,11 +2539,10 @@ export function AssetForm() {
       </div>
 
       {/* Live Capitalization Evaluation Banner */}
-      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${
-        derivedClassification === 'Asset'
+      <div className={`p-3 rounded-xl border flex items-center justify-between text-xs font-bold ${derivedClassification === 'Asset'
           ? 'bg-emerald-50 text-emerald-800 border-emerald-200'
           : 'bg-amber-50 text-amber-800 border-amber-200'
-      }`}>
+        }`}>
         <div className="flex items-center gap-2">
           <ShieldCheck className="w-4 h-4 text-emerald-600 shrink-0" />
           <span>Capitalization Evaluation: <strong>{derivedClassification === 'Asset' ? 'Asset (Capitalized & Depreciated)' : 'Non-asset (Expensed on Purchase)'}</strong></span>
@@ -2980,7 +2968,7 @@ export function AssetForm() {
               .map(b => (
                 <option key={b.id} value={b.id}>{b.name || b.code}</option>
               ))}
-            
+
           </select>
         </div>
 
@@ -3238,11 +3226,10 @@ export function AssetForm() {
                         <button
                           type="button"
                           onClick={() => setSelectedItemIndex(idx)}
-                          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${
-                            isSelected
+                          className={`px-2.5 py-1 text-xs font-bold rounded-lg transition-colors cursor-pointer ${isSelected
                               ? 'bg-[#6C2BD9] text-white shadow-xs'
                               : 'bg-white border border-slate-200 text-slate-700 hover:bg-slate-100'
-                          }`}
+                            }`}
                         >
                           {isSelected ? 'Viewing' : 'Preview'}
                         </button>
@@ -3296,11 +3283,10 @@ export function AssetForm() {
               type="button"
               onClick={() => handleSelectTagTab(tab)}
               aria-pressed={formData.tagType === tab}
-              className={`rounded-lg px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${
-                formData.tagType === tab
+              className={`rounded-lg px-2 py-2 text-xs font-bold transition-colors cursor-pointer ${formData.tagType === tab
                   ? 'bg-white text-[#6C2BD9] shadow-sm'
                   : 'text-slate-500 hover:text-slate-800'
-              }`}
+                }`}
             >
               {tab}
             </button>
@@ -3316,9 +3302,8 @@ export function AssetForm() {
               value={formData.assetTagBarcode}
               onChange={(e) => handleTagInputChange(e.target.value)}
               placeholder={isRfid ? '24-character hexadecimal EPC' : isQr ? 'QR-AST-...' : 'BC-AST-...'}
-              className={`min-w-0 flex-1 bg-slate-50 border rounded-lg px-3 py-2 text-slate-900 font-mono font-semibold outline-none text-xs transition-colors ${
-                fieldErrors.tag ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
-              }`}
+              className={`min-w-0 flex-1 bg-slate-50 border rounded-lg px-3 py-2 text-slate-900 font-mono font-semibold outline-none text-xs transition-colors ${fieldErrors.tag ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+                }`}
             />
             <button
               type="button"
@@ -3339,18 +3324,17 @@ export function AssetForm() {
           )}
           <div className="flex items-center justify-between gap-2 min-w-0" aria-live="polite">
             <span className="text-[11px] text-slate-500 truncate">{isRfid ? 'EPC Gen2 · 96-bit hex' : isQr ? 'Scannable QR code' : 'Scannable Code 128'}</span>
-            <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${
-              tagValidationStatus === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700' :
-              tagValidationStatus === 'CONFLICT' ? 'bg-rose-50 text-rose-700' :
-              tagValidationStatus === 'VALIDATING' ? 'bg-purple-50 text-[#6C2BD9]' :
-              'bg-slate-100 text-slate-600'
-            }`} title={tagValidationMessage}>
+            <span className={`shrink-0 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-bold ${tagValidationStatus === 'AVAILABLE' ? 'bg-emerald-50 text-emerald-700' :
+                tagValidationStatus === 'CONFLICT' ? 'bg-rose-50 text-rose-700' :
+                  tagValidationStatus === 'VALIDATING' ? 'bg-purple-50 text-[#6C2BD9]' :
+                    'bg-slate-100 text-slate-600'
+              }`} title={tagValidationMessage}>
               {tagValidationStatus === 'AVAILABLE' ? <CheckCircle2 className="w-3 h-3" /> :
                 tagValidationStatus === 'CONFLICT' ? <AlertTriangle className="w-3 h-3" /> :
-                tagValidationStatus === 'VALIDATING' ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
+                  tagValidationStatus === 'VALIDATING' ? <RefreshCw className="w-3 h-3 animate-spin" /> : null}
               {tagValidationStatus === 'AVAILABLE' ? 'Available' :
                 tagValidationStatus === 'CONFLICT' ? 'In use' :
-                tagValidationStatus === 'VALIDATING' ? 'Checking' : 'Ready'}
+                  tagValidationStatus === 'VALIDATING' ? 'Checking' : 'Ready'}
             </span>
           </div>
         </div>
@@ -3374,9 +3358,8 @@ export function AssetForm() {
                 if (val.trim()) clearFieldError('serialNumber');
               }}
               placeholder="e.g. SN-LN-992810 (scanned or click Generate)"
-              className={`min-w-0 flex-1 bg-slate-50 border rounded-lg px-3 py-2 text-slate-900 font-mono font-bold outline-none text-xs transition-colors ${
-                fieldErrors.serialNumber ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
-              }`}
+              className={`min-w-0 flex-1 bg-slate-50 border rounded-lg px-3 py-2 text-slate-900 font-mono font-bold outline-none text-xs transition-colors ${fieldErrors.serialNumber ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/20' : 'border-slate-200 focus:border-[#6C2BD9]'
+                }`}
             />
             <button
               type="button"
@@ -3740,13 +3723,12 @@ export function AssetForm() {
 
       {/* Toast Notification */}
       {toast && (
-        <div className={`fixed bottom-6 right-6 z-[9999] px-4 py-3 rounded-xl border shadow-2xl flex items-center gap-3 backdrop-blur-md transition-all animate-in slide-in-from-bottom-3 duration-200 ${
-          toast.type === 'success'
+        <div className={`fixed bottom-6 right-6 z-[9999] px-4 py-3 rounded-xl border shadow-2xl flex items-center gap-3 backdrop-blur-md transition-all animate-in slide-in-from-bottom-3 duration-200 ${toast.type === 'success'
             ? 'bg-emerald-50/95 border-emerald-300 text-emerald-900 shadow-emerald-500/10'
             : toast.type === 'warning'
-            ? 'bg-amber-50/95 border-amber-300 text-amber-900 shadow-amber-500/10 ring-2 ring-amber-200/60'
-            : 'bg-rose-50/95 border-rose-300 text-rose-900 shadow-rose-500/10 ring-2 ring-rose-200/60'
-        }`}>
+              ? 'bg-amber-50/95 border-amber-300 text-amber-900 shadow-amber-500/10 ring-2 ring-amber-200/60'
+              : 'bg-rose-50/95 border-rose-300 text-rose-900 shadow-rose-500/10 ring-2 ring-rose-200/60'
+          }`}>
           {toast.type === 'success' ? (
             <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
           ) : toast.type === 'warning' ? (
@@ -3797,9 +3779,6 @@ export function AssetForm() {
                   </span>
                 </div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">New Asset Registration</h1>
-                <p className="text-xs text-slate-500 font-medium">
-                  Screen Features, Functionality and Data Requirements • <span className="text-slate-400">Easily register new assets with complete details, tagging and approval workflow.</span>
-                </p>
               </div>
 
               {/* Action Buttons - Responsive Header Placement */}
@@ -3865,32 +3844,29 @@ export function AssetForm() {
                       <button
                         type="button"
                         onClick={() => handleStepClick(step.id)}
-                        className={`flex items-center gap-2.5 shrink-0 p-1.5 rounded-xl transition-all cursor-pointer text-left ${
-                          isCurrent
+                        className={`flex items-center gap-2.5 shrink-0 p-1.5 rounded-xl transition-all cursor-pointer text-left ${isCurrent
                             ? 'bg-purple-50/80 ring-2 ring-[#6C2BD9]/30'
                             : 'hover:bg-slate-50 opacity-80 hover:opacity-100'
-                        }`}
+                          }`}
                       >
                         <div
-                          className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-xs shrink-0 transition-all ${
-                            isCurrent
+                          className={`w-7 h-7 rounded-full flex items-center justify-center font-bold text-xs shadow-xs shrink-0 transition-all ${isCurrent
                               ? 'bg-[#6C2BD9] text-white ring-2 ring-purple-300'
                               : isCompleted
-                              ? 'bg-emerald-600 text-white'
-                              : 'border border-slate-300 text-slate-500 bg-white'
-                          }`}
+                                ? 'bg-emerald-600 text-white'
+                                : 'border border-slate-300 text-slate-500 bg-white'
+                            }`}
                         >
                           {isCompleted ? <Check className="w-3.5 h-3.5 stroke-[2.5]" /> : <Icon className="w-3.5 h-3.5" />}
                         </div>
                         <div>
                           <span
-                            className={`block text-xs whitespace-nowrap transition-colors ${
-                              isCurrent
+                            className={`block text-xs whitespace-nowrap transition-colors ${isCurrent
                                 ? 'font-black text-[#6C2BD9]'
                                 : isCompleted
-                                ? 'font-bold text-slate-900'
-                                : 'font-semibold text-slate-600'
-                            }`}
+                                  ? 'font-bold text-slate-900'
+                                  : 'font-semibold text-slate-600'
+                              }`}
                           >
                             Step {step.id}: {step.name}
                           </span>
@@ -3902,9 +3878,8 @@ export function AssetForm() {
 
                       {idx < FORM_STEPS.length - 1 && (
                         <div
-                          className={`h-0.5 flex-1 mx-2 min-w-[16px] hidden sm:block rounded-full transition-colors ${
-                            currentStep > step.id ? 'bg-emerald-500' : 'bg-slate-200'
-                          }`}
+                          className={`h-0.5 flex-1 mx-2 min-w-[16px] hidden sm:block rounded-full transition-colors ${currentStep > step.id ? 'bg-emerald-500' : 'bg-slate-200'
+                            }`}
                         />
                       )}
                     </React.Fragment>
@@ -4671,7 +4646,7 @@ export function AssetForm() {
                         .map(b => (
                           <option key={b.id} value={b.id}>{b.name || b.code}</option>
                         ))}
-                      
+
                     </select>
                   </div>
                 </div>
@@ -4859,13 +4834,13 @@ export function AssetForm() {
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
-                    <div>
-                      <label className="font-bold text-slate-700 block mb-1">Depreciation Method</label>
-                      <p className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold text-[11px]">Straight Line (Category Policy)</p>
-                    </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Depreciation Method</label>
+                    <p className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold text-[11px]">Straight Line (Category Policy)</p>
+                  </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Useful Life (Years)</label>
-                      <p className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold text-[11px]">{(categoryUsefulLifeMonths / 12).toFixed(1)}</p>
+                    <p className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold text-[11px]">{(categoryUsefulLifeMonths / 12).toFixed(1)}</p>
                   </div>
                 </div>
 
@@ -4892,9 +4867,8 @@ export function AssetForm() {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, underWarranty: !formData.underWarranty })}
-                    className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                      formData.underWarranty ? 'bg-[#6C2BD9] justify-end' : 'bg-slate-300 justify-start'
-                    }`}
+                    className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${formData.underWarranty ? 'bg-[#6C2BD9] justify-end' : 'bg-slate-300 justify-start'
+                      }`}
                   >
                     <div className="w-3.5 h-3.5 rounded-full bg-white shadow-md" />
                   </button>
@@ -4995,9 +4969,8 @@ export function AssetForm() {
                   <button
                     type="button"
                     onClick={() => setFormData({ ...formData, enablePm: !formData.enablePm })}
-                    className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                      formData.enablePm ? 'bg-[#6C2BD9] justify-end' : 'bg-slate-300 justify-start'
-                    }`}
+                    className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${formData.enablePm ? 'bg-[#6C2BD9] justify-end' : 'bg-slate-300 justify-start'
+                      }`}
                   >
                     <div className="w-3.5 h-3.5 rounded-full bg-white shadow-md" />
                   </button>
@@ -5022,9 +4995,8 @@ export function AssetForm() {
                   <button
                     type="button"
                     onClick={() => setFormData(prev => ({ ...prev, linkToDiscovered: !prev.linkToDiscovered, discoveryId: !prev.linkToDiscovered ? prev.discoveryId : '', matchedDiscovery: false }))}
-                    className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${
-                      formData.linkToDiscovered ? 'bg-[#6C2BD9] justify-end' : 'bg-slate-300 justify-start'
-                    }`}
+                    className={`w-10 h-5 flex items-center rounded-full p-1 cursor-pointer transition-colors ${formData.linkToDiscovered ? 'bg-[#6C2BD9] justify-end' : 'bg-slate-300 justify-start'
+                      }`}
                   >
                     <div className="w-3.5 h-3.5 rounded-full bg-white shadow-md" />
                   </button>
