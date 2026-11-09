@@ -2518,21 +2518,6 @@ export function AssetForm() {
           )}
         </div>
       </div>
-      {quantityCount > 1 && <div className="rounded-xl border border-purple-200 bg-purple-50/40 p-3 text-xs space-y-2">
-        <label className="block font-bold text-slate-700">Select item to edit its details</label>
-        <select value={selectedItemIndex} onChange={event => { const index = Number(event.target.value); setSelectedItemIndex(index); setFormData(previous => ({ ...previous, serialNumber: serialNumbers[index] || '' })); }} className="w-full rounded-lg border border-slate-300 bg-white p-2 font-semibold">
-          {serialNumbers.map((serial, index) => <option key={index} value={index}>{index + 1} / {serialNumbers.length}{serial ? ` — ${serial}` : ' — serial needed'}</option>)}
-        </select>
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-          <label className="space-y-1 font-bold text-slate-700">Asset name for this item
-            <input value={assetItems[selectedItemIndex]?.assetName ?? formData.assetName} onChange={event => updateAssetItem({ assetName: event.target.value, description: event.target.value })} className="w-full rounded-lg border border-slate-300 bg-white p-2" />
-          </label>
-          <label className="space-y-1 font-bold text-slate-700">Description for this item
-            <input value={assetItems[selectedItemIndex]?.description ?? formData.description} onChange={event => updateAssetItem({ description: event.target.value })} className="w-full rounded-lg border border-slate-300 bg-white p-2" />
-          </label>
-        </div>
-        <p className="text-slate-500">Type, category and model start as shared details. Serial number, name, description and later steps can differ for this item.</p>
-      </div>}
     </div>
   );
 
