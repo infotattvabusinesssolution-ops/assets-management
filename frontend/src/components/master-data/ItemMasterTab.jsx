@@ -262,17 +262,39 @@ export function ItemMasterTab({
   }, [categories, formState.assetSubGroupName, formState.assetGroupName]);
 
   const availableModalSubCategories = useMemo(() => {
-    if (!formState.categoryId && !formState.categoryName) return subCategories;
     const targetCatId = formState.categoryId;
     const targetCatName = (formState.categoryName || '').toLowerCase().trim();
+    const targetSubGroup = (formState.assetSubGroupName || '').toLowerCase().trim();
+    const targetGroup = (formState.assetGroupName || '').toLowerCase().trim();
+
+    // If nothing selected at all, return all subcategories
+    if (!targetCatId && !targetCatName && !targetSubGroup && !targetGroup) {
+      return subCategories;
+    }
 
     return subCategories.filter(sc => {
-      if (targetCatId && (sc.categoryId === targetCatId || sc.category?.id === targetCatId)) return true;
-      const scCatName = (sc.category?.name || sc.categoryName || '').toLowerCase().trim();
-      if (targetCatName && scCatName === targetCatName) return true;
+      // 1. If Category is specified, subcategory MUST match that category
+      if (targetCatId || targetCatName) {
+        if (targetCatId && (sc.categoryId === targetCatId || sc.category?.id === targetCatId)) return true;
+        const scCatName = (sc.category?.name || sc.categoryName || '').toLowerCase().trim();
+        return Boolean(targetCatName && scCatName === targetCatName);
+      }
+
+      // 2. If Category is not specified, but Sub Group is specified, subcategory must match the Sub Group
+      if (targetSubGroup) {
+        const scSubGrp = (sc.assetSubGroupName || sc.className || (sc.description || '').match(/\[class:([^\]]+)\]/)?.[1] || '').toLowerCase().trim();
+        return scSubGrp === targetSubGroup || (sc.description || '').toLowerCase().includes(`[class:${targetSubGroup}]`);
+      }
+
+      // 3. If only Group is specified, match the group
+      if (targetGroup) {
+        const scGrp = (sc.assetGroupName || sc.groupName || (sc.description || '').match(/\[group:([^\]]+)\]/)?.[1] || '').toLowerCase().trim();
+        return scGrp === targetGroup || (sc.description || '').toLowerCase().includes(`[group:${targetGroup}]`);
+      }
+
       return false;
     });
-  }, [subCategories, formState.categoryId, formState.categoryName]);
+  }, [subCategories, formState.categoryId, formState.categoryName, formState.assetSubGroupName, formState.assetGroupName]);
 
   // Derived Brands matching selected Manufacturer (or all brands if no manufacturer selected)
   const availableModalBrands = useMemo(() => {
@@ -1104,7 +1126,11 @@ export function ItemMasterTab({
                       }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
                     >
-                      <option value="">-- Select Sub Category --</option>
+                      <option value="">
+                        {availableModalSubCategories.length === 0 && (formState.categoryName || formState.assetSubGroupName || formState.assetGroupName)
+                          ? '-- No Sub Categories Found --'
+                          : '-- Select Sub Category --'}
+                      </option>
                       {availableModalSubCategories.map(sc => (
                         <option key={sc.id || sc.name} value={sc.name}>{sc.name}</option>
                       ))}

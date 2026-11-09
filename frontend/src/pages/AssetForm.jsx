@@ -951,34 +951,52 @@ export function AssetForm() {
     return cats;
   }, [categories, formData.assetClass, formData.assetGroup, formData.category, formData.categoryId]);
 
-  // 4. Cascading Sub Categories strictly based on selected Category
+  // 4. Cascading Sub Categories strictly based on selected Category / Sub Group
   const availableAssetClasses = useMemo(() => {
     let list = (subCategories && subCategories.length > 0) ? subCategories : BASELINE_SUBCATEGORIES;
     const selectedCatName = (formData.category || '').trim().toLowerCase();
+    const selectedCatId = formData.categoryId;
+    const targetSubGroup = (formData.assetClass || '').trim().toLowerCase();
+    const targetGroup = (formData.assetGroup || '').trim().toLowerCase();
+
+    // If nothing selected at all, return full list
+    if (!selectedCatName && !selectedCatId && !targetSubGroup && !targetGroup) {
+      return list;
+    }
+
     let matched = [];
-    if (formData.categoryId || selectedCatName) {
+    if (selectedCatId || selectedCatName) {
       matched = list.filter(sc => {
-        if (formData.categoryId && sc.categoryId === formData.categoryId) return true;
+        if (selectedCatId && (sc.categoryId === selectedCatId || sc.category?.id === selectedCatId)) return true;
         if (selectedCatName) {
           const scCatName = (sc.category?.name || sc.categoryName || '').trim().toLowerCase();
           if (scCatName === selectedCatName) return true;
-          const selectedBase = selectedCatName.split(' ')[0];
-          if (selectedBase && selectedBase.length >= 3 && scCatName.includes(selectedBase)) return true;
         }
         return false;
       });
+    } else if (targetSubGroup) {
+      matched = list.filter(sc => {
+        const scSubGrp = (sc.assetSubGroupName || sc.className || (sc.description || '').match(/\[class:([^\]]+)\]/)?.[1] || '').trim().toLowerCase();
+        return scSubGrp === targetSubGroup || (sc.description || '').toLowerCase().includes(`[class:${targetSubGroup}]`);
+      });
+    } else if (targetGroup) {
+      matched = list.filter(sc => {
+        const scGrp = (sc.assetGroupName || sc.groupName || (sc.description || '').match(/\[group:([^\]]+)\]/)?.[1] || '').trim().toLowerCase();
+        return scGrp === targetGroup || (sc.description || '').toLowerCase().includes(`[group:${targetGroup}]`);
+      });
     }
-    let result = matched.length > 0 ? matched : list;
+
+    let result = matched;
     const targetSubName = formData.subcategory;
     const targetSubId = formData.assetClassId;
     if (targetSubName || targetSubId) {
       const exists = result.some(sc => (targetSubId && sc.id === targetSubId) || (targetSubName && (sc.name || sc.title || sc.id)?.toLowerCase() === targetSubName.toLowerCase()));
-      if (!exists && targetSubName) {
-        result = [{ id: targetSubId || targetSubName, name: targetSubName, code: targetSubName }, ...result];
+      if (exists) {
+        // Keep selected if valid
       }
     }
     return result;
-  }, [formData.category, formData.categoryId, formData.subcategory, formData.assetClassId, subCategories]);
+  }, [formData.category, formData.categoryId, formData.assetClass, formData.assetGroup, formData.subcategory, formData.assetClassId, subCategories]);
 
   // 5. Cascading / Prioritized Manufacturers based on Type & Category
   const availableManufacturers = useMemo(() => {
