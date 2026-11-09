@@ -61,7 +61,14 @@ export function SubCategoriesTab({
         setAvailableAssetGroups(grpRes.assetGroups);
       }
       if (clsRes?.assetClasses && Array.isArray(clsRes.assetClasses)) {
-        setAvailableAssetClasses(clsRes.assetClasses);
+        const enrichedClasses = clsRes.assetClasses.map(ac => {
+          const descGroup = (ac.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+          return {
+            ...ac,
+            groupName: descGroup || ac.groupName || ac.assetGroupName || '-'
+          };
+        });
+        setAvailableAssetClasses(enrichedClasses);
       }
 
       const customClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');

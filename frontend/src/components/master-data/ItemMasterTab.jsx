@@ -144,7 +144,15 @@ export function ItemMasterTab({
       const localClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
       const serverClasses = clsRes?.assetClasses || [];
       const seenClassNames = new Set();
-      const mergedClasses = [...serverClasses, ...localClasses].filter(c => {
+      const mergedClasses = [...serverClasses, ...localClasses].map(c => {
+        const descGroup = (c.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+        const resolvedGroup = descGroup || c.groupName || c.assetGroupName || '';
+        return {
+          ...c,
+          groupName: resolvedGroup,
+          assetGroupName: resolvedGroup
+        };
+      }).filter(c => {
         const name = (c.name || c.code || '').trim().toLowerCase();
         if (!name || seenClassNames.has(name)) return false;
         seenClassNames.add(name);
@@ -1017,14 +1025,21 @@ export function ItemMasterTab({
                       value={formState.assetSubGroupName}
                       onChange={(e) => {
                         const sg = assetSubGroups.find(s => s.name === e.target.value);
-                        const parentGrpName = sg?.groupName || (sg?.description?.match(/\[group:([^\]]+)\]/)?.[1]) || formState.assetGroupName;
+                        const descGroup = (sg?.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+                        const parentGrpName = descGroup || sg?.groupName || sg?.assetGroupName || formState.assetGroupName;
                         const parentGrp = assetGroups.find(g => g.name.toLowerCase() === (parentGrpName || '').toLowerCase());
+                        
+                        const isCurrentGroupMatching = formState.assetGroupName && (
+                          formState.assetGroupName.toLowerCase() === (parentGrpName || '').toLowerCase() ||
+                          (parentGrp && parentGrp.name.toLowerCase() === formState.assetGroupName.toLowerCase())
+                        );
+
                         setFormState({
                           ...formState,
                           assetSubGroupName: e.target.value,
                           assetSubGroupId: sg?.id || '',
-                          assetGroupName: parentGrp ? parentGrp.name : formState.assetGroupName,
-                          assetGroupId: parentGrp ? parentGrp.id : formState.assetGroupId
+                          assetGroupName: isCurrentGroupMatching ? formState.assetGroupName : (parentGrp ? parentGrp.name : (parentGrpName || formState.assetGroupName)),
+                          assetGroupId: isCurrentGroupMatching ? formState.assetGroupId : (parentGrp ? parentGrp.id : formState.assetGroupId)
                         });
                       }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"

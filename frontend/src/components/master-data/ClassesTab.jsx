@@ -296,6 +296,8 @@ export function ClassesTab({
         await api.put(`/master-data/asset-sub-groups/${editingClass.id}`, {
           code: cleanCode,
           name: cleanName,
+          groupName: clsFormState.groupName,
+          assetGroupName: clsFormState.groupName,
           description: `${cleanDesc} [kind:class] [group:${clsFormState.groupName}]`.trim(),
           status: clsFormState.status
         });
@@ -305,8 +307,9 @@ export function ClassesTab({
         await api.post('/master-data/asset-sub-groups', {
           code: cleanCode,
           name: cleanName,
-          description: clsFormState.description,
           groupName: clsFormState.groupName,
+          assetGroupName: clsFormState.groupName,
+          description: `${clsFormState.description || ''} [kind:class] [group:${clsFormState.groupName}]`.trim(),
           kind: 'CLASS',
           status: clsFormState.status
         });

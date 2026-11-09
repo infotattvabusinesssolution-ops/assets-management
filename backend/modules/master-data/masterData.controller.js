@@ -1483,29 +1483,42 @@ export async function getAssetSubGroups(req, res, next) {
         }
         const query = `SELECT * FROM asset_sub_groups WHERE ${whereClause} ORDER BY name ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
-        const list = (rows || []).map(r => ({
-          id: r.id,
-          code: r.code,
-          name: r.name,
-          assetGroupId: r.assetGroupId || null,
-          assetGroupName: r.assetGroupName || '-',
-          groupName: r.assetGroupName || '-',
-          assetType: r.assetType || 'Both',
-          description: r.description || '',
-          totalAssets: r.totalAssets || 0,
-          active: Boolean(r.active),
-          status: r.active ? 'Active' : 'Inactive',
-          createdAt: r.createdAt,
-          updatedAt: r.updatedAt
-        }));
+        const list = (rows || []).map(r => {
+          const groupFromDesc = (r.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+          const resolvedGroup = groupFromDesc || r.assetGroupName || '-';
+          return {
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            assetGroupId: r.assetGroupId || null,
+            assetGroupName: resolvedGroup,
+            groupName: resolvedGroup,
+            assetType: r.assetType || 'Both',
+            description: r.description || '',
+            totalAssets: r.totalAssets || 0,
+            active: Boolean(r.active),
+            status: r.active ? 'Active' : 'Inactive',
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
+          };
+        });
         writeAssetSubGroupsToFile(list);
         return res.json({ success: true, assetSubGroups: list, assetClasses: list });
       } catch (dbErr) {
         console.warn('DB getAssetSubGroups skipped:', dbErr.message);
       }
     }
-    const memList = readAssetSubGroupsFromFile();
-    const list = req.query.includeInactive === 'true' ? memList : memList.filter(s => s.active !== false);
+    const memList = readAssetSubGroupsFromFile().map(s => {
+      const groupFromDesc = (s.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+      const resolvedGroup = groupFromDesc || s.assetGroupName || s.groupName || '-';
+      return {
+        ...s,
+        assetGroupName: resolvedGroup,
+        groupName: resolvedGroup
+      };
+    });
+    const includeInactive = req.query.includeInactive !== 'false';
+    const list = includeInactive ? memList : memList.filter(s => s.active !== false);
     res.json({ success: true, assetSubGroups: list, assetClasses: list });
   } catch (err) { next(err); }
 }
@@ -1586,7 +1599,8 @@ export async function updateAssetSubGroup(req, res, next) {
     const { code, name, assetGroupId, assetGroupName, groupName, assetType, description, active, status } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
-    const cleanGroup = groupName || assetGroupName;
+    const groupFromDesc = (description || '').match(/\[group:([^\]]+)\]/)?.[1];
+    const cleanGroup = groupName || assetGroupName || groupFromDesc;
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : undefined);
 
     const current = readAssetSubGroupsFromFile();

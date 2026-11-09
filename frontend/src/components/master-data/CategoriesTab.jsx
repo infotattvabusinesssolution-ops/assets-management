@@ -59,7 +59,14 @@ export function CategoriesTab({
         setAvailableAssetGroups(grpRes.assetGroups);
       }
       if (clsRes?.assetClasses && Array.isArray(clsRes.assetClasses)) {
-        setAvailableAssetClasses(clsRes.assetClasses);
+        const enrichedClasses = clsRes.assetClasses.map(ac => {
+          const descGroup = (ac.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+          return {
+            ...ac,
+            groupName: descGroup || ac.groupName || ac.assetGroupName || '-'
+          };
+        });
+        setAvailableAssetClasses(enrichedClasses);
       }
       const allLiveSubCats = [...(subcatRes?.assetClasses || subcatRes?.subCategories || []), ...subcatCustom];
       setLiveSubCategories(allLiveSubCats);
@@ -885,7 +892,8 @@ export function CategoriesTab({
                       return;
                     }
                     const selectedClass = availableAssetClasses.find(cls => (cls.name || cls.code) === selectedVal);
-                    const derivedGroup = selectedClass?.groupName || '';
+                    const descGroup = (selectedClass?.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+                    const derivedGroup = descGroup || selectedClass?.groupName || selectedClass?.assetGroupName || '';
                     setCatFormState({
                       ...catFormState,
                       className: selectedVal,
