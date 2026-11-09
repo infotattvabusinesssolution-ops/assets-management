@@ -2631,7 +2631,7 @@ export function AssetForm() {
     <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-4 relative">
       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
         <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
-          <DollarSign className="w-4 h-4 text-[#6C2BD9]" /> Receiving & Financial Information
+          <DollarSign className="w-4 h-4 text-[#6C2BD9]" /> Receiving & Purchasing
         </h3>
         <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-full border border-purple-200">
           Step 2
@@ -2660,7 +2660,7 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Unit Cost ({formData.currency || 'USD'}) *</label>
+          <label className="font-bold text-slate-700 block mb-1">Unit Price ({formData.currency || 'USD'}) *</label>
           <input
             type="text"
             required
