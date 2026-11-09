@@ -709,6 +709,7 @@ export function MasterDataSetup() {
 
       {['location-level-1', 'location-level-2', 'location-level-3', 'location-level-4'].includes(activeTab) && (
         <LocationLevelTab
+          key={activeTab}
           level={parseInt(activeTab.replace('location-level-', ''), 10)}
           levelName={currentTabObject?.name || 'Location Level'}
           triggerToast={triggerToast}

@@ -95,6 +95,23 @@ export function LocationLevelTab({
         active: c.active !== false && c.status !== 'Inactive'
       }));
 
+      // Automatically sync any local records that were saved while backend was offline
+      if (missingCustom.length > 0) {
+        for (const it of missingCustom) {
+          try {
+            await api.post(`/master-data/location-levels/${level}`, {
+              code: it.code,
+              name: it.name,
+              description: it.description || '',
+              status: it.status,
+              active: it.active
+            });
+          } catch (syncErr) {
+            console.warn(`Syncing custom item ${it.code} to DB skipped:`, syncErr.message);
+          }
+        }
+      }
+
       const combined = [...serverRecords, ...missingCustom];
       setItems(combined);
       setSelectedItem((prev) => (prev ? combined.find(i => i.id === prev.id) || combined[0] || null : combined[0] || null));
@@ -193,7 +210,7 @@ export function LocationLevelTab({
           description: formState.description.trim(),
           status: formState.status,
           active: formState.status === 'Active'
-        }).catch(() => null);
+        });
 
         const updatedItems = items.map((item) =>
           item.id === editingItem.id
@@ -229,7 +246,7 @@ export function LocationLevelTab({
           description: formState.description.trim(),
           status: formState.status,
           active: formState.status === 'Active'
-        }).catch(() => null);
+        });
 
         const newItem = {
           id: res?.locationLevel?.id || `loc-lvl${level}-${Date.now()}`,
