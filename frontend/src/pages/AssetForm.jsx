@@ -562,6 +562,7 @@ export function AssetForm() {
   const [departments, setDepartments] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
   const [manufacturers, setManufacturers] = useState([]);
+  const [brands, setBrands] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
@@ -600,7 +601,7 @@ export function AssetForm() {
   useEffect(() => {
     async function loadMasterData() {
       try {
-        const [catRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes] = await Promise.all([
+        const [catRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes] = await Promise.all([
           api.get('/master-data/categories').catch(() => null),
           api.get('/master-data/asset-classes').catch(() => null),
           api.get('/master-data/sites').catch(() => null),
@@ -614,7 +615,8 @@ export function AssetForm() {
           api.get('/master-data/rooms').catch(() => null),
           api.get('/master-data/asset-groups').catch(() => null),
           api.get('/master-data/asset-types').catch(() => null),
-          api.get('/master-data/items?includeInactive=false').catch(() => null)
+          api.get('/master-data/items?includeInactive=false').catch(() => null),
+          api.get('/master-data/brands').catch(() => null)
         ]);
         if (itemRes?.items && Array.isArray(itemRes.items)) {
           const realItems = itemRes.items.filter(i => !['itm-001', 'itm-002', 'itm-003'].includes(i.id));
@@ -704,6 +706,12 @@ export function AssetForm() {
         const existingNames = new Set(serverMfrs.map(m => (m.name || '').toLowerCase()));
         const mergedMfrs = [...serverMfrs, ...customMfrs.filter(cm => !existingNames.has((cm.name || '').toLowerCase()))];
         setManufacturers(mergedMfrs);
+
+        const customBrands = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
+        const serverBrands = brandRes?.brands || [];
+        const existingBrandNames = new Set(serverBrands.map(b => (b.name || '').toLowerCase()));
+        const mergedBrands = [...serverBrands, ...customBrands.filter(cb => !existingBrandNames.has((cb.name || '').toLowerCase()))];
+        setBrands(mergedBrands);
         if (empRes?.employees) setEmployees(empRes.employees);
       } catch (err) {
         console.warn('Master data load skipped:', err);
@@ -958,6 +966,20 @@ export function AssetForm() {
     return mfrs;
   }, [manufacturers, formData.manufacturer]);
 
+  // 6. Cascading / Linked Brands based on Manufacturer
+  const availableBrands = useMemo(() => {
+    let brds = (brands && brands.length > 0) ? brands : [];
+    if (formData.manufacturer) {
+      const mName = formData.manufacturer.toLowerCase().trim();
+      const filtered = brds.filter(b => (b.manufacturerName || b.manufacturer || '').toLowerCase().trim() === mName);
+      if (filtered.length > 0) brds = filtered;
+    }
+    if (formData.brand && !brds.some(b => (b.name || b.title || b).toLowerCase() === formData.brand.toLowerCase())) {
+      brds = [{ id: 'sel-brand', name: formData.brand }, ...brds];
+    }
+    return brds;
+  }, [brands, formData.manufacturer, formData.brand]);
+
   // --- Handlers for Seamless Top-Down & Bottom-Up Cascades ---
 
 
@@ -975,7 +997,8 @@ export function AssetForm() {
     const subGroupName = item.assetSubGroupName || item.assetClass || item.subGroup || '';
     const categoryName = item.categoryName || item.category || '';
     const subCategoryName = item.subCategoryName || item.subcategory || item.subCategory || '';
-    const manufacturerName = item.manufacturerName || item.manufacturer || item.brand || '';
+    const manufacturerName = item.manufacturerName || item.manufacturer || '';
+    const brandName = item.brandName || item.brand || '';
 
     setFormData(prev => ({
       ...prev,
@@ -990,7 +1013,7 @@ export function AssetForm() {
       assetClassId: item.subCategoryId || item.assetClassId || subCategoryName || prev.assetClassId,
       supplierBarcode: item.supplierBarcode || '',
       manufacturer: manufacturerName || prev.manufacturer,
-      brand: manufacturerName || prev.brand,
+      brand: brandName || prev.brand,
       model: item.model || prev.model,
       modelNumber: item.model || prev.modelNumber
     }));
@@ -2348,7 +2371,20 @@ export function AssetForm() {
           <label className="font-bold text-slate-700 block mb-1">Manufacturer</label>
           <select
             value={formData.manufacturer || ''}
-            onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
+            onChange={(e) => {
+              const newMfr = e.target.value;
+              setFormData(prev => {
+                const updated = { ...prev, manufacturer: newMfr };
+                if (prev.brand) {
+                  const bObj = brands.find(b => (b.name || b.title || b).toLowerCase() === prev.brand.toLowerCase());
+                  const mName = bObj?.manufacturerName || bObj?.manufacturer;
+                  if (mName && newMfr && mName.toLowerCase() !== newMfr.toLowerCase()) {
+                    updated.brand = '';
+                  }
+                }
+                return updated;
+              });
+            }}
             disabled={Boolean(selectedItemMasterId)}
             className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
               }`}
@@ -2365,6 +2401,40 @@ export function AssetForm() {
               })
             ) : (
               <option value="" disabled>No manufacturers registered</option>
+            )}
+          </select>
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Brand</label>
+          <select
+            value={formData.brand || ''}
+            onChange={(e) => {
+              const bName = e.target.value;
+              const bObj = availableBrands.find(b => (b.name || b.title || b) === bName);
+              const autoMfr = bObj?.manufacturerName || bObj?.manufacturer;
+              setFormData(prev => ({
+                ...prev,
+                brand: bName,
+                manufacturer: autoMfr || prev.manufacturer
+              }));
+            }}
+            disabled={Boolean(selectedItemMasterId)}
+            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+              }`}
+          >
+            <option value="">-- Select Brand --</option>
+            {availableBrands && availableBrands.length > 0 ? (
+              availableBrands.map((b) => {
+                const name = b.name || b.title || b;
+                return (
+                  <option key={b.id || b._id || name} value={name}>
+                    {name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}
+                  </option>
+                );
+              })
+            ) : (
+              <option value="" disabled>No brands registered</option>
             )}
           </select>
         </div>
@@ -4326,12 +4396,26 @@ export function AssetForm() {
                   <label className="font-bold text-slate-700 block">Manufacturer *</label>
                   <select
                     value={formData.manufacturer}
-                    onChange={(e) => setFormData({ ...formData, manufacturer: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                    onChange={(e) => {
+                      const newMfr = e.target.value;
+                      setFormData(prev => {
+                        const updated = { ...prev, manufacturer: newMfr };
+                        if (prev.brand) {
+                          const bObj = brands.find(b => (b.name || b.title || b).toLowerCase() === prev.brand.toLowerCase());
+                          const mName = bObj?.manufacturerName || bObj?.manufacturer;
+                          if (mName && newMfr && mName.toLowerCase() !== newMfr.toLowerCase()) {
+                            updated.brand = '';
+                          }
+                        }
+                        return updated;
+                      });
+                    }}
+                    disabled={Boolean(selectedItemMasterId)}
+                    className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
                   >
                     <option value="">-- Select Manufacturer --</option>
-                    {manufacturers && manufacturers.length > 0 ? (
-                      manufacturers.map((m) => {
+                    {availableManufacturers && availableManufacturers.length > 0 ? (
+                      availableManufacturers.map((m) => {
                         const name = m.name || m.title || m;
                         return (
                           <option key={m.id || m._id || name} value={name}>
@@ -4340,11 +4424,7 @@ export function AssetForm() {
                         );
                       })
                     ) : (
-                      <>
-                        <option value="Dell Technologies">Dell Technologies</option>
-                        <option value="Apple">Apple</option>
-                        <option value="HP Inc.">HP Inc.</option>
-                      </>
+                      <option value="" disabled>No manufacturers registered</option>
                     )}
                   </select>
                 </div>
@@ -4353,11 +4433,33 @@ export function AssetForm() {
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Brand</label>
                     <select
-                      value={formData.brand}
-                      onChange={(e) => setFormData({ ...formData, brand: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                      value={formData.brand || ''}
+                      onChange={(e) => {
+                        const bName = e.target.value;
+                        const bObj = availableBrands.find(b => (b.name || b.title || b) === bName);
+                        const autoMfr = bObj?.manufacturerName || bObj?.manufacturer;
+                        setFormData(prev => ({
+                          ...prev,
+                          brand: bName,
+                          manufacturer: autoMfr || prev.manufacturer
+                        }));
+                      }}
+                      disabled={Boolean(selectedItemMasterId)}
+                      className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
                     >
-                      <option value="Dell">Dell</option>
+                      <option value="">-- Select Brand --</option>
+                      {availableBrands && availableBrands.length > 0 ? (
+                        availableBrands.map((b) => {
+                          const name = b.name || b.title || b;
+                          return (
+                            <option key={b.id || b._id || name} value={name}>
+                              {name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}
+                            </option>
+                          );
+                        })
+                      ) : (
+                        <option value="" disabled>No brands registered</option>
+                      )}
                     </select>
                   </div>
                   <div>
