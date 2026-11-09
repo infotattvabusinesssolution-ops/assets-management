@@ -5338,7 +5338,37 @@ function writeLocationLevelsToFile(level, list) {
 export async function getLocationLevels(req, res, next) {
   try {
     const level = parseInt(req.params.level, 10) || 1;
-    let list = readLocationLevelsFromFile(level);
+    const tableName = `location_level_${level}`;
+    let list = [];
+    if (isDbConnected()) {
+      try {
+        const whereClause = req.query.includeInactive === 'false' ? 'WHERE active = 1' : '';
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT id, code, name, description, status, active, createdAt, updatedAt
+          FROM ${tableName}
+          ${whereClause}
+          ORDER BY name ASC
+        `);
+        if (Array.isArray(rows)) {
+          list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            description: r.description || '',
+            status: r.status || (r.active ? 'Active' : 'Inactive'),
+            active: Boolean(r.active),
+            level,
+            createdAt: r.createdAt,
+            updatedAt: r.updatedAt
+          }));
+          writeLocationLevelsToFile(level, list);
+          return res.json({ success: true, locationLevels: list, level });
+        }
+      } catch (dbErr) {
+        console.warn(`DB query on ${tableName} fallback:`, dbErr.message);
+      }
+    }
+    list = readLocationLevelsFromFile(level);
     if (req.query.includeInactive === 'false') {
       list = list.filter(item => item.active !== false && item.status !== 'Inactive');
     }
@@ -5349,16 +5379,24 @@ export async function getLocationLevels(req, res, next) {
 export async function createLocationLevel(req, res, next) {
   try {
     const level = parseInt(req.params.level, 10) || 1;
+    const tableName = `location_level_${level}`;
     const { code, name, description, status, active } = req.body;
     if (!code || !name) {
       return res.status(400).json({ success: false, message: 'Location Code and Location Name are required.' });
     }
     const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
-    const list = readLocationLevelsFromFile(level);
 
-    if (list.some(item => (item.code || '').toUpperCase() === cleanCode)) {
-      return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}.` });
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(`
+          SELECT id FROM ${tableName}
+          WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}.` });
+        }
+      } catch (err) {}
     }
 
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
@@ -5374,6 +5412,27 @@ export async function createLocationLevel(req, res, next) {
       updatedAt: new Date().toISOString()
     };
 
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO ${tableName} (id, code, name, description, status, active, createdAt, updatedAt)
+          VALUES (
+            '${newRecord.id}',
+            '${newRecord.code}',
+            '${newRecord.name.replace(/'/g, "''")}',
+            '${(newRecord.description || '').replace(/'/g, "''")}',
+            '${newRecord.status}',
+            ${isAct ? 1 : 0},
+            CURRENT_TIMESTAMP,
+            CURRENT_TIMESTAMP
+          )
+        `);
+      } catch (dbErr) {
+        console.warn(`DB insert into ${tableName} skipped:`, dbErr.message);
+      }
+    }
+
+    const list = readLocationLevelsFromFile(level);
     list.unshift(newRecord);
     writeLocationLevelsToFile(level, list);
     res.status(201).json({ success: true, locationLevel: newRecord });
@@ -5383,33 +5442,61 @@ export async function createLocationLevel(req, res, next) {
 export async function updateLocationLevel(req, res, next) {
   try {
     const level = parseInt(req.params.level, 10) || 1;
+    const tableName = `location_level_${level}`;
     const { id } = req.params;
     const list = readLocationLevelsFromFile(level);
     const idx = list.findIndex(item => item.id === id || item.code === id);
-    if (idx === -1) {
-      return res.status(404).json({ success: false, message: `Location Level ${level} record not found.` });
-    }
 
     const { code, name, description, status, active } = req.body;
-    const cleanCode = code ? code.trim().toUpperCase() : list[idx].code;
-    const cleanName = name ? name.trim() : list[idx].name;
+    const cleanCode = code ? code.trim().toUpperCase() : (list[idx]?.code || '');
+    const cleanName = name ? name.trim() : (list[idx]?.name || '');
 
-    if (cleanCode && list.some((item, i) => i !== idx && (item.code || '').toUpperCase() === cleanCode)) {
-      return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}.` });
+    if (isDbConnected() && cleanCode) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(`
+          SELECT id FROM ${tableName}
+          WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' AND id != '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}.` });
+        }
+      } catch (err) {}
     }
 
-    const isAct = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : list[idx].active);
+    const isAct = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : (list[idx]?.active ?? true));
     const updated = {
-      ...list[idx],
+      id,
       code: cleanCode,
       name: cleanName,
-      description: description !== undefined ? description : list[idx].description,
+      description: description !== undefined ? description : (list[idx]?.description || ''),
       active: isAct,
       status: isAct ? 'Active' : 'Inactive',
+      level,
       updatedAt: new Date().toISOString()
     };
 
-    list[idx] = updated;
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE ${tableName}
+          SET code = '${updated.code}',
+              name = '${updated.name.replace(/'/g, "''")}',
+              description = '${(updated.description || '').replace(/'/g, "''")}',
+              status = '${updated.status}',
+              active = ${isAct ? 1 : 0},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${cleanCode.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn(`DB update ${tableName} skipped:`, dbErr.message);
+      }
+    }
+
+    if (idx !== -1) {
+      list[idx] = { ...list[idx], ...updated };
+    } else {
+      list.unshift(updated);
+    }
     writeLocationLevelsToFile(level, list);
     res.json({ success: true, locationLevel: updated });
   } catch (err) { next(err); }
@@ -5418,20 +5505,39 @@ export async function updateLocationLevel(req, res, next) {
 export async function deleteLocationLevel(req, res, next) {
   try {
     const level = parseInt(req.params.level, 10) || 1;
+    const tableName = `location_level_${level}`;
     const { id } = req.params;
-    const { force, deactivateOnly } = req.body || {};
+    const { deactivateOnly } = req.body || {};
     let list = readLocationLevelsFromFile(level);
     const idx = list.findIndex(item => item.id === id || item.code === id);
-    if (idx === -1) {
-      return res.status(404).json({ success: false, message: `Location Level ${level} record not found.` });
-    }
 
     if (deactivateOnly) {
-      list[idx].active = false;
-      list[idx].status = 'Inactive';
-      list[idx].updatedAt = new Date().toISOString();
-      writeLocationLevelsToFile(level, list);
-      return res.json({ success: true, locationLevel: list[idx], message: `Location Level ${level} record deactivated.` });
+      if (isDbConnected()) {
+        try {
+          await prisma.$executeRawUnsafe(`
+            UPDATE ${tableName}
+            SET active = 0, status = 'Inactive', updatedAt = CURRENT_TIMESTAMP
+            WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+          `);
+        } catch (_) {}
+      }
+      if (idx !== -1) {
+        list[idx].active = false;
+        list[idx].status = 'Inactive';
+        list[idx].updatedAt = new Date().toISOString();
+        writeLocationLevelsToFile(level, list);
+        return res.json({ success: true, locationLevel: list[idx], message: `Location Level ${level} record deactivated.` });
+      }
+      return res.json({ success: true, message: `Location Level ${level} record deactivated.` });
+    }
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          DELETE FROM ${tableName}
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+      } catch (_) {}
     }
 
     list = list.filter(item => item.id !== id && item.code !== id);
