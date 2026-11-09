@@ -176,13 +176,16 @@ export function LocationsTab({
           code: site.code,
           name: site.name,
           type: site.type === 'External' ? 'External' : 'Internal',
+          locationLevel1: site.locationLevel1 || '',
+          locationLevel2: site.locationLevel2 || '',
+          locationLevel3: site.locationLevel3 || '',
+          locationLevel4: site.locationLevel4 || '',
           level: site.level || 'Level 1',
           parentLocation: site.parentLocation || '-',
-          fullPath: site.fullPath || computeFullPath(site, res.sites),
+          fullPath: site.fullPath || site.name,
           country: site.country || '',
           city: site.city || '',
-          address: site.address || (site.city || site.country ? `${site.name}, ${site.city || ''} ${site.country || ''}`.trim() : site.name),
-          postalCode: site.postalCode || '',
+          address: site.address || site.name,
           totalAssets: site.totalAssets || 0,
           status: site.active === false || site.status === 'Inactive' ? 'Inactive' : 'Active',
           createdBy: site.createdBy || 'Admin User',
@@ -212,8 +215,41 @@ export function LocationsTab({
     }
   };
 
+  const [level1List, setLevel1List] = useState([]);
+  const [level2List, setLevel2List] = useState([]);
+  const [level3List, setLevel3List] = useState([]);
+  const [level4List, setLevel4List] = useState([]);
+
+  const loadLevelOptions = async () => {
+    const fetchLevel = async (lvl) => {
+      try {
+        const res = await api.get(`/master-data/location-levels/${lvl}`).catch(() => null);
+        let items = res?.locationLevels && Array.isArray(res.locationLevels) ? res.locationLevels : [];
+        const local = JSON.parse(localStorage.getItem(`fams_custom_location_level_${lvl}`) || '[]');
+        const codes = new Set(items.map(x => (x.code || '').toUpperCase().trim()));
+        const missingLocal = local.filter(l => !codes.has((l.code || '').toUpperCase().trim()));
+        return [...items, ...missingLocal].filter(it => it.active !== false && it.status !== 'Inactive');
+      } catch (err) {
+        const local = JSON.parse(localStorage.getItem(`fams_custom_location_level_${lvl}`) || '[]');
+        return local.filter(it => it.active !== false && it.status !== 'Inactive');
+      }
+    };
+
+    const [l1, l2, l3, l4] = await Promise.all([
+      fetchLevel(1),
+      fetchLevel(2),
+      fetchLevel(3),
+      fetchLevel(4)
+    ]);
+    setLevel1List(l1);
+    setLevel2List(l2);
+    setLevel3List(l3);
+    setLevel4List(l4);
+  };
+
   useEffect(() => {
     loadLocations();
+    loadLevelOptions();
     loadCountries();
     loadLocationTypes();
   }, []);
@@ -222,8 +258,6 @@ export function LocationsTab({
   const [locSearchQuery, setLocSearchQuery] = useState('');
   const [locTypeFilter, setLocTypeFilter] = useState('All Types');
   const [locStatusFilter, setLocStatusFilter] = useState('All');
-  const [locCountryFilter, setLocCountryFilter] = useState('All');
-  const [locParentFilter, setLocParentFilter] = useState('All');
 
   // Modal state
   const [showAddLocModal, setShowAddLocModal] = useState(false);
@@ -233,12 +267,11 @@ export function LocationsTab({
     code: '',
     name: '',
     type: 'Internal',
-    level: 'Level 1',
-    parentLocation: '-',
-    country: '',
-    city: '',
+    locationLevel1: '',
+    locationLevel2: '',
+    locationLevel3: '',
+    locationLevel4: '',
     address: '',
-    postalCode: '',
     status: 'Active'
   });
 
@@ -246,26 +279,23 @@ export function LocationsTab({
     return locationsList.filter((loc) => {
       const matchesSearch =
         !locSearchQuery ||
-        loc.code.toLowerCase().includes(locSearchQuery.toLowerCase()) ||
-        loc.name.toLowerCase().includes(locSearchQuery.toLowerCase()) ||
-        loc.address.toLowerCase().includes(locSearchQuery.toLowerCase()) ||
-        loc.city.toLowerCase().includes(locSearchQuery.toLowerCase());
+        (loc.code || '').toLowerCase().includes(locSearchQuery.toLowerCase()) ||
+        (loc.name || '').toLowerCase().includes(locSearchQuery.toLowerCase()) ||
+        (loc.address || '').toLowerCase().includes(locSearchQuery.toLowerCase()) ||
+        (loc.locationLevel1 || '').toLowerCase().includes(locSearchQuery.toLowerCase()) ||
+        (loc.locationLevel2 || '').toLowerCase().includes(locSearchQuery.toLowerCase()) ||
+        (loc.locationLevel3 || '').toLowerCase().includes(locSearchQuery.toLowerCase()) ||
+        (loc.locationLevel4 || '').toLowerCase().includes(locSearchQuery.toLowerCase());
 
       const matchesType =
         locTypeFilter === 'All Types' || locTypeFilter === 'All' || loc.type === locTypeFilter;
 
       const matchesStatus =
-        locStatusFilter === 'All' || loc.status.toLowerCase() === locStatusFilter.toLowerCase();
+        locStatusFilter === 'All' || (loc.status || '').toLowerCase() === locStatusFilter.toLowerCase();
 
-      const matchesCountry =
-        locCountryFilter === 'All' || loc.country === locCountryFilter;
-
-      const matchesParent =
-        locParentFilter === 'All' || loc.parentLocation === locParentFilter;
-
-      return matchesSearch && matchesType && matchesStatus && matchesCountry && matchesParent;
+      return matchesSearch && matchesType && matchesStatus;
     });
-  }, [locationsList, locSearchQuery, locTypeFilter, locStatusFilter, locCountryFilter, locParentFilter]);
+  }, [locationsList, locSearchQuery, locTypeFilter, locStatusFilter]);
 
   const {
     currentPage,
@@ -280,26 +310,24 @@ export function LocationsTab({
     setLocSearchQuery('');
     setLocTypeFilter('All Types');
     setLocStatusFilter('All');
-    setLocCountryFilter('All');
-    setLocParentFilter('All');
   };
 
   const handleOpenAddLocModal = (locToEdit = null) => {
+    loadLevelOptions();
     setActiveRowMenuId && setActiveRowMenuId(null);
     setModalError('');
     if (locToEdit) {
       setEditingLocation(locToEdit);
       setLocFormState({
-        code: locToEdit.code,
-        name: locToEdit.name,
+        code: locToEdit.code || '',
+        name: locToEdit.name || '',
         type: locToEdit.type || 'Internal',
-        level: locToEdit.level || 'Level 1',
-        parentLocation: locToEdit.parentLocation || '-',
-        country: locToEdit.country,
-        city: locToEdit.city,
-        address: locToEdit.address,
-        postalCode: locToEdit.postalCode,
-        status: locToEdit.status
+        locationLevel1: locToEdit.locationLevel1 || '',
+        locationLevel2: locToEdit.locationLevel2 || '',
+        locationLevel3: locToEdit.locationLevel3 || '',
+        locationLevel4: locToEdit.locationLevel4 || '',
+        address: locToEdit.address || '',
+        status: locToEdit.status || 'Active'
       });
     } else {
       setEditingLocation(null);
@@ -307,12 +335,11 @@ export function LocationsTab({
         code: '',
         name: '',
         type: allLocationTypes[0] || 'Internal',
-        level: 'Level 1',
-        parentLocation: '-',
-        country: allCountries[0] || 'United Arab Emirates',
-        city: 'Dubai',
+        locationLevel1: '',
+        locationLevel2: '',
+        locationLevel3: '',
+        locationLevel4: '',
         address: '',
-        postalCode: '',
         status: 'Active'
       });
     }
@@ -355,12 +382,11 @@ export function LocationsTab({
       code: cleanCode,
       name: cleanName,
       type: locFormState.type || (allLocationTypes[0] || 'Internal'),
-      level: locFormState.level || 'Level 1',
-      parentLocation: (locFormState.level === 'Level 1' || !locFormState.parentLocation) ? '-' : locFormState.parentLocation,
-      country: locFormState.country || 'United Arab Emirates',
-      city: locFormState.city || 'Dubai',
+      locationLevel1: locFormState.locationLevel1 || '',
+      locationLevel2: locFormState.locationLevel2 || '',
+      locationLevel3: locFormState.locationLevel3 || '',
+      locationLevel4: locFormState.locationLevel4 || '',
       address: locFormState.address || '',
-      postalCode: locFormState.postalCode || '',
       active: locFormState.status === 'Active',
       status: locFormState.status
     };
@@ -404,6 +430,10 @@ export function LocationsTab({
       id: Date.now(),
       code: `${loc.code}-COPY`,
       name: `${loc.name} (Copy)`,
+      locationLevel1: loc.locationLevel1 || '',
+      locationLevel2: loc.locationLevel2 || '',
+      locationLevel3: loc.locationLevel3 || '',
+      locationLevel4: loc.locationLevel4 || '',
       totalAssets: 0,
       createdOn: new Date().toLocaleDateString('en-GB', {
         day: '2-digit',
@@ -510,7 +540,7 @@ export function LocationsTab({
             <Search className="w-3.5 h-3.5 text-slate-400 absolute left-3.5 bottom-2.5" />
             <input
               type="text"
-              placeholder="Search by location code, name, city..."
+              placeholder="Search by location code, name, levels, address..."
               value={locSearchQuery}
               onChange={(e) => setLocSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 pt-4 pb-1.5 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] focus:bg-white transition-all font-medium"
@@ -543,41 +573,6 @@ export function LocationsTab({
               <option value="All">All</option>
               <option value="Active">Active</option>
               <option value="Inactive">Inactive</option>
-            </select>
-          </div>
-
-          <div className="w-full md:w-36 relative">
-            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Country</span>
-            <select
-              value={locCountryFilter}
-              onChange={(e) => setLocCountryFilter(e.target.value)}
-              className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-            >
-              <option value="All">All</option>
-              {allCountries.map((c) => (
-                <option key={c} value={c}>
-                  {c}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="w-full md:w-36 relative">
-            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Parent Location</span>
-            <select
-              value={locParentFilter}
-              onChange={(e) => setLocParentFilter(e.target.value)}
-              className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-            >
-              <option value="All">All</option>
-              <option value="-">- (Root)</option>
-              {Array.from(new Set(locationsList.map((l) => l.code)))
-                .filter((code) => code && code !== '-')
-                .map((code) => (
-                  <option key={code} value={code}>
-                    {code}
-                  </option>
-                ))}
             </select>
           </div>
 
@@ -631,11 +626,11 @@ export function LocationsTab({
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Location Code</th>
                   <th className="py-3 px-3">Location Name</th>
-                  <th className="py-3 px-3">Level</th>
-                  <th className="py-3 px-3">Hierarchical Path</th>
+                  <th className="py-3 px-3">Level 1</th>
+                  <th className="py-3 px-3">Level 2</th>
+                  <th className="py-3 px-3">Level 3</th>
+                  <th className="py-3 px-3">Level 4</th>
                   <th className="py-3 px-3 text-center">Type</th>
-                  <th className="py-3 px-3">Country</th>
-                  <th className="py-3 px-3">City</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
                   <th className="py-3 px-3 text-center">Actions</th>
@@ -666,14 +661,10 @@ export function LocationsTab({
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{startIndex + index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{loc.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{loc.name}</td>
-                      <td className="py-2.5 px-3">
-                        <span className="inline-flex items-center px-2 py-0.5 rounded text-[10px] font-bold bg-purple-50 text-[#6C2BD9] border border-purple-200 whitespace-nowrap">
-                          {loc.level || 'Level 1'}
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-3 font-medium text-slate-600 max-w-[220px] truncate" title={loc.fullPath || loc.name}>
-                        {loc.fullPath || loc.name}
-                      </td>
+                      <td className="py-2.5 px-3 text-slate-700 text-xs">{loc.locationLevel1 || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-700 text-xs">{loc.locationLevel2 || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-700 text-xs">{loc.locationLevel3 || '-'}</td>
+                      <td className="py-2.5 px-3 text-slate-700 text-xs">{loc.locationLevel4 || '-'}</td>
                       <td className="py-2.5 px-3 text-center">
                         <span
                           className={clsx(
@@ -688,8 +679,6 @@ export function LocationsTab({
                           {loc.type || 'Internal'}
                         </span>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-700">{loc.country}</td>
-                      <td className="py-2.5 px-3 text-slate-700">{loc.city}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                         {(loc.totalAssets ?? 0).toLocaleString()}
                       </td>
@@ -813,18 +802,28 @@ export function LocationsTab({
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Parent Location</span>
-                <span className="col-span-2 text-slate-700 font-mono">{selectedLocation.parentLocation}</span>
+                <span className="text-slate-500 font-medium">Location Level 1</span>
+                <span className="col-span-2 text-slate-700 font-medium">{selectedLocation.locationLevel1 || '-'}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Country / City</span>
-                <span className="col-span-2 text-slate-700">{selectedLocation.city}, {selectedLocation.country}</span>
+                <span className="text-slate-500 font-medium">Location Level 2</span>
+                <span className="col-span-2 text-slate-700 font-medium">{selectedLocation.locationLevel2 || '-'}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                <span className="text-slate-500 font-medium">Location Level 3</span>
+                <span className="col-span-2 text-slate-700 font-medium">{selectedLocation.locationLevel3 || '-'}</span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                <span className="text-slate-500 font-medium">Location Level 4</span>
+                <span className="col-span-2 text-slate-700 font-medium">{selectedLocation.locationLevel4 || '-'}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Address</span>
-                <span className="col-span-2 text-slate-700 leading-relaxed">{selectedLocation.address}</span>
+                <span className="col-span-2 text-slate-700 leading-relaxed">{selectedLocation.address || '-'}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -970,89 +969,67 @@ export function LocationsTab({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Hierarchy Level *</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Location Level 1</label>
                   <select
-                    value={locFormState.level || 'Level 1'}
-                    onChange={(e) => setLocFormState({ ...locFormState, level: e.target.value })}
+                    value={locFormState.locationLevel1 || ''}
+                    onChange={(e) => setLocFormState({ ...locFormState, locationLevel1: e.target.value })}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
-                    {LOCATION_LEVELS.map((lvl) => (
-                      <option key={lvl.id} value={lvl.id}>{lvl.label}</option>
-                    ))}
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Parent Location {locFormState.level === 'Level 1' && <span className="text-[10px] text-slate-400 font-normal">(Root / Level 1 has no parent)</span>}
-                  </label>
-                  <select
-                    disabled={locFormState.level === 'Level 1'}
-                    value={locFormState.level === 'Level 1' ? '-' : locFormState.parentLocation}
-                    onChange={(e) => setLocFormState({ ...locFormState, parentLocation: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer disabled:bg-slate-100 disabled:text-slate-400 disabled:cursor-not-allowed"
-                  >
-                    <option value="-">- (Root / None)</option>
-                    {locationsList
-                      .filter((loc) => {
-                        if (editingLocation && loc.id === editingLocation.id) return false;
-                        if (locFormState.level === 'Level 2') return loc.level === 'Level 1';
-                        if (locFormState.level === 'Level 3') return loc.level === 'Level 2';
-                        if (locFormState.level === 'Level 4') return loc.level === 'Level 3';
-                        return true;
-                      })
-                      .map((loc) => (
-                        <option key={loc.id} value={loc.code}>
-                          {loc.code} ({loc.fullPath || loc.name})
-                        </option>
-                      ))}
-                  </select>
-                </div>
-              </div>
-
-              {/* Live Full Path Preview */}
-              <div className="bg-purple-50/70 border border-purple-200/80 rounded-xl p-2.5">
-                <span className="text-[10px] font-bold text-purple-700 uppercase tracking-wider block mb-0.5">
-                  Hierarchical Full Path Preview (Used in Audits, Repairs & Transfers)
-                </span>
-                <span className="text-xs font-bold text-slate-900 font-mono">
-                  {(() => {
-                    if (!locFormState.name) return '—';
-                    if (locFormState.level === 'Level 1' || !locFormState.parentLocation || locFormState.parentLocation === '-') {
-                      return locFormState.name;
-                    }
-                    const parent = locationsList.find(l => l.code === locFormState.parentLocation || l.id === locFormState.parentLocation);
-                    return parent ? `${parent.fullPath || parent.name} > ${locFormState.name}` : locFormState.name;
-                  })()}
-                </span>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Country *
-                  </label>
-                  <select
-                    value={locFormState.country || (allCountries[0] || 'United Arab Emirates')}
-                    onChange={(e) => setLocFormState({ ...locFormState, country: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="">Select Country</option>
-                    {allCountries.map((c) => (
-                      <option key={c} value={c}>
-                        {c}
+                    <option value="">Select Location Level 1</option>
+                    {level1List.map((lvl) => (
+                      <option key={lvl.id || lvl.code} value={lvl.code}>
+                        {lvl.code} - {lvl.name}
                       </option>
                     ))}
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">City</label>
-                  <input
-                    type="text"
-                    value={locFormState.city}
-                    onChange={(e) => setLocFormState({ ...locFormState, city: e.target.value })}
-                    placeholder="e.g. Dubai"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
-                  />
+                  <label className="block font-semibold text-slate-700 mb-1">Location Level 2</label>
+                  <select
+                    value={locFormState.locationLevel2 || ''}
+                    onChange={(e) => setLocFormState({ ...locFormState, locationLevel2: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="">Select Location Level 2</option>
+                    {level2List.map((lvl) => (
+                      <option key={lvl.id || lvl.code} value={lvl.code}>
+                        {lvl.code} - {lvl.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Location Level 3</label>
+                  <select
+                    value={locFormState.locationLevel3 || ''}
+                    onChange={(e) => setLocFormState({ ...locFormState, locationLevel3: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="">Select Location Level 3</option>
+                    {level3List.map((lvl) => (
+                      <option key={lvl.id || lvl.code} value={lvl.code}>
+                        {lvl.code} - {lvl.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Location Level 4</label>
+                  <select
+                    value={locFormState.locationLevel4 || ''}
+                    onChange={(e) => setLocFormState({ ...locFormState, locationLevel4: e.target.value })}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="">Select Location Level 4</option>
+                    {level4List.map((lvl) => (
+                      <option key={lvl.id || lvl.code} value={lvl.code}>
+                        {lvl.code} - {lvl.name}
+                      </option>
+                    ))}
+                  </select>
                 </div>
               </div>
 
@@ -1067,28 +1044,16 @@ export function LocationsTab({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Postal Code</label>
-                  <input
-                    type="text"
-                    value={locFormState.postalCode}
-                    onChange={(e) => setLocFormState({ ...locFormState, postalCode: e.target.value })}
-                    placeholder="e.g. 12345"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Status</label>
-                  <select
-                    value={locFormState.status}
-                    onChange={(e) => setLocFormState({ ...locFormState, status: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
-                </div>
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Status</label>
+                <select
+                  value={locFormState.status}
+                  onChange={(e) => setLocFormState({ ...locFormState, status: e.target.value })}
+                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                >
+                  <option value="Active">Active</option>
+                  <option value="Inactive">Inactive</option>
+                </select>
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

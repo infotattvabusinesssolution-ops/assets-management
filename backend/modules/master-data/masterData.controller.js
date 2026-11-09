@@ -702,6 +702,21 @@ async function ensureSitesTable() {
 
       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'fullPath')
       ALTER TABLE sites ADD fullPath NVARCHAR(500) NULL;
+
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'locationLevel1')
+      ALTER TABLE sites ADD locationLevel1 NVARCHAR(255) NULL;
+
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'locationLevel2')
+      ALTER TABLE sites ADD locationLevel2 NVARCHAR(255) NULL;
+
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'locationLevel3')
+      ALTER TABLE sites ADD locationLevel3 NVARCHAR(255) NULL;
+
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'locationLevel4')
+      ALTER TABLE sites ADD locationLevel4 NVARCHAR(255) NULL;
+
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('sites') AND name = 'address')
+      ALTER TABLE sites ADD address NVARCHAR(500) NULL;
     `);
 
     sitesTableEnsured = true;
@@ -717,8 +732,8 @@ export async function getSites(req, res, next) {
       try {
         const includeInactive = req.query.includeInactive !== 'false';
         const query = includeInactive
-          ? `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt FROM sites ORDER BY level ASC, name ASC`
-          : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt FROM sites WHERE active = 1 ORDER BY level ASC, name ASC`;
+          ? `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites ORDER BY name ASC`
+          : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites WHERE active = 1 ORDER BY name ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
         if (Array.isArray(rows) && rows.length > 0) {
           const raw = rows.map(r => ({
@@ -732,6 +747,11 @@ export async function getSites(req, res, next) {
             level: ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(r.level) ? r.level : 'Level 1',
             parentLocation: r.parentLocation || '-',
             fullPath: r.fullPath || '',
+            locationLevel1: r.locationLevel1 || '',
+            locationLevel2: r.locationLevel2 || '',
+            locationLevel3: r.locationLevel3 || '',
+            locationLevel4: r.locationLevel4 || '',
+            address: r.address || '',
             active: Boolean(r.active),
             status: Boolean(r.active) ? 'Active' : 'Inactive',
             createdAt: r.createdAt,
@@ -762,7 +782,7 @@ export async function getSites(req, res, next) {
 
 export async function createSite(req, res, next) {
   try {
-    const { code, name, type, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
+    const { code, name, type, locationLevel1, locationLevel2, locationLevel3, locationLevel4, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
     if (!code || !name) {
       return res.status(400).json({ success: false, message: 'Location Code and Name are required.' });
     }
@@ -774,6 +794,11 @@ export async function createSite(req, res, next) {
     const cleanLevel = ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(level) ? level : 'Level 1';
     const cleanParent = (cleanLevel === 'Level 1' || !parentLocation) ? '-' : parentLocation.trim();
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
+    const cleanLvl1 = locationLevel1 ? locationLevel1.trim() : '';
+    const cleanLvl2 = locationLevel2 ? locationLevel2.trim() : '';
+    const cleanLvl3 = locationLevel3 ? locationLevel3.trim() : '';
+    const cleanLvl4 = locationLevel4 ? locationLevel4.trim() : '';
+    const cleanAddress = address ? address.trim() : cleanName;
 
     // Strict duplicate check on code and name
     const exists = inMemoryLocations.some(l => 
@@ -815,9 +840,13 @@ export async function createSite(req, res, next) {
       level: cleanLevel,
       parentLocation: cleanParent,
       fullPath: computedPath,
+      locationLevel1: cleanLvl1,
+      locationLevel2: cleanLvl2,
+      locationLevel3: cleanLvl3,
+      locationLevel4: cleanLvl4,
       city: city || '',
       country: country || '',
-      address: address || cleanName,
+      address: cleanAddress,
       postalCode: postalCode || '',
       active: isAct,
       status: isAct ? 'Active' : 'Inactive',
@@ -837,8 +866,8 @@ export async function createSite(req, res, next) {
         } catch (_) {}
 
         await prisma.$executeRawUnsafe(`
-          INSERT INTO sites (id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt)
-          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(city || '').replace(/'/g, "''")}', '${(country || '').replace(/'/g, "''")}', ${firstCompanyId ? `'${firstCompanyId}'` : 'NULL'}, '${cleanType}', '${cleanLevel}', '${cleanParent.replace(/'/g, "''")}', '${computedPath.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          INSERT INTO sites (id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(city || '').replace(/'/g, "''")}', '${(country || '').replace(/'/g, "''")}', ${firstCompanyId ? `'${firstCompanyId}'` : 'NULL'}, '${cleanType}', '${cleanLevel}', '${cleanParent.replace(/'/g, "''")}', '${computedPath.replace(/'/g, "''")}', '${cleanLvl1.replace(/'/g, "''")}', '${cleanLvl2.replace(/'/g, "''")}', '${cleanLvl3.replace(/'/g, "''")}', '${cleanLvl4.replace(/'/g, "''")}', '${cleanAddress.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
       } catch (dbErr) {
         console.warn('DB insert sites skipped:', dbErr.message);
@@ -854,7 +883,7 @@ export async function createSite(req, res, next) {
 export async function updateSite(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, type, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
+    const { code, name, type, locationLevel1, locationLevel2, locationLevel3, locationLevel4, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
 
     const idx = inMemoryLocations.findIndex(l => l.id === id || l.code === id);
     if (idx === -1) return res.status(404).json({ success: false, message: 'Location not found' });
@@ -865,6 +894,11 @@ export async function updateSite(req, res, next) {
     const cleanLevel = level !== undefined && ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(level) ? level : inMemoryLocations[idx].level;
     const cleanParent = (cleanLevel === 'Level 1' || parentLocation === '-') ? '-' : (parentLocation ? parentLocation.trim() : inMemoryLocations[idx].parentLocation);
     const isAct = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : inMemoryLocations[idx].active);
+    const cleanLvl1 = locationLevel1 !== undefined ? locationLevel1.trim() : (inMemoryLocations[idx].locationLevel1 || '');
+    const cleanLvl2 = locationLevel2 !== undefined ? locationLevel2.trim() : (inMemoryLocations[idx].locationLevel2 || '');
+    const cleanLvl3 = locationLevel3 !== undefined ? locationLevel3.trim() : (inMemoryLocations[idx].locationLevel3 || '');
+    const cleanLvl4 = locationLevel4 !== undefined ? locationLevel4.trim() : (inMemoryLocations[idx].locationLevel4 || '');
+    const cleanAddress = address !== undefined ? address.trim() : (inMemoryLocations[idx].address || '');
 
     const dup = inMemoryLocations.find(l => (l.id !== id && l.code !== id) && (
       (cleanCode && l.code && l.code.toUpperCase() === cleanCode) || 
@@ -897,9 +931,13 @@ export async function updateSite(req, res, next) {
       level: cleanLevel,
       parentLocation: cleanParent,
       fullPath: computedPath,
+      locationLevel1: cleanLvl1,
+      locationLevel2: cleanLvl2,
+      locationLevel3: cleanLvl3,
+      locationLevel4: cleanLvl4,
       city: city !== undefined ? city : inMemoryLocations[idx].city,
       country: country !== undefined ? country : inMemoryLocations[idx].country,
-      address: address !== undefined ? address : inMemoryLocations[idx].address,
+      address: cleanAddress,
       postalCode: postalCode !== undefined ? postalCode : inMemoryLocations[idx].postalCode,
       active: isAct,
       status: isAct ? 'Active' : 'Inactive',
@@ -919,8 +957,11 @@ export async function updateSite(req, res, next) {
               level = '${cleanLevel}',
               parentLocation = '${cleanParent.replace(/'/g, "''")}',
               fullPath = '${computedPath.replace(/'/g, "''")}',
-              city = '${(city || '').replace(/'/g, "''")}',
-              country = '${(country || '').replace(/'/g, "''")}',
+              locationLevel1 = '${cleanLvl1.replace(/'/g, "''")}',
+              locationLevel2 = '${cleanLvl2.replace(/'/g, "''")}',
+              locationLevel3 = '${cleanLvl3.replace(/'/g, "''")}',
+              locationLevel4 = '${cleanLvl4.replace(/'/g, "''")}',
+              address = '${cleanAddress.replace(/'/g, "''")}',
               active = ${isAct ? 1 : 0},
               updatedAt = CURRENT_TIMESTAMP
           WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
