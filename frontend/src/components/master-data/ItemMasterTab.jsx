@@ -227,45 +227,51 @@ export function ItemMasterTab({
     }
   }, [externalShowAddModal]);
 
-  // Derived Cascading Options for Add/Edit Modal (with graceful non-empty fallbacks)
+  // Derived Cascading Options for Add/Edit Modal
   const availableModalSubGroups = useMemo(() => {
     if (!formState.assetGroupName) return assetSubGroups;
-    const targetGroup = formState.assetGroupName.toLowerCase();
+    const targetGroup = formState.assetGroupName.toLowerCase().trim();
     const filtered = assetSubGroups.filter(sg => {
-      const grp = (sg.groupName || '').toLowerCase();
+      const grp = (sg.groupName || sg.assetGroupName || '').toLowerCase().trim();
       const desc = (sg.description || '').toLowerCase();
       return grp === targetGroup || desc.includes(`[group:${targetGroup}]`) || grp.includes(targetGroup);
     });
-    // Return filtered matches; if none match this specific group, show all sub groups rather than empty list
-    return filtered.length > 0 ? filtered : assetSubGroups;
+    return filtered;
   }, [assetSubGroups, formState.assetGroupName]);
 
   const availableModalCategories = useMemo(() => {
     if (!formState.assetSubGroupName && !formState.assetGroupName) return categories;
-    const targetSubGroup = (formState.assetSubGroupName || '').toLowerCase();
-    const targetGroup = (formState.assetGroupName || '').toLowerCase();
+    const targetSubGroup = (formState.assetSubGroupName || '').toLowerCase().trim();
+    const targetGroup = (formState.assetGroupName || '').toLowerCase().trim();
 
-    const filtered = categories.filter(c => {
-      const cls = (c.className || '').toLowerCase();
+    return categories.filter(c => {
+      const cls = (c.className || (c.description || '').match(/\[class:([^\]]+)\]/)?.[1] || '').toLowerCase().trim();
       const desc = (c.description || '').toLowerCase();
-      const grp = (c.groupName || '').toLowerCase();
-      if (targetSubGroup && (cls === targetSubGroup || desc.includes(`[class:${targetSubGroup}]`))) return true;
-      if (targetGroup && (grp === targetGroup || desc.includes(`[group:${targetGroup}]`))) return true;
+      const grp = (c.groupName || (c.description || '').match(/\[group:([^\]]+)\]/)?.[1] || '').toLowerCase().trim();
+
+      // If a subgroup is selected, category must strictly match this subgroup
+      if (targetSubGroup) {
+        return cls === targetSubGroup || desc.includes(`[class:${targetSubGroup}]`);
+      }
+      // If only group is selected, category must match this group
+      if (targetGroup) {
+        return grp === targetGroup || desc.includes(`[group:${targetGroup}]`);
+      }
       return false;
     });
-    // Return filtered categories; fallback to all categories if none match
-    return filtered.length > 0 ? filtered : categories;
   }, [categories, formState.assetSubGroupName, formState.assetGroupName]);
 
   const availableModalSubCategories = useMemo(() => {
     if (!formState.categoryId && !formState.categoryName) return subCategories;
-    const filtered = subCategories.filter(sc => {
-      if (formState.categoryId && sc.categoryId === formState.categoryId) return true;
-      if (formState.categoryName && (sc.category?.name === formState.categoryName || sc.categoryName === formState.categoryName)) return true;
+    const targetCatId = formState.categoryId;
+    const targetCatName = (formState.categoryName || '').toLowerCase().trim();
+
+    return subCategories.filter(sc => {
+      if (targetCatId && (sc.categoryId === targetCatId || sc.category?.id === targetCatId)) return true;
+      const scCatName = (sc.category?.name || sc.categoryName || '').toLowerCase().trim();
+      if (targetCatName && scCatName === targetCatName) return true;
       return false;
     });
-    // Return filtered subcategories; fallback to all subcategories if none match
-    return filtered.length > 0 ? filtered : subCategories;
   }, [subCategories, formState.categoryId, formState.categoryName]);
 
   // Derived Brands matching selected Manufacturer (or all brands if no manufacturer selected)
@@ -1039,7 +1045,11 @@ export function ItemMasterTab({
                           assetSubGroupName: e.target.value,
                           assetSubGroupId: sg?.id || '',
                           assetGroupName: isCurrentGroupMatching ? formState.assetGroupName : (parentGrp ? parentGrp.name : (parentGrpName || formState.assetGroupName)),
-                          assetGroupId: isCurrentGroupMatching ? formState.assetGroupId : (parentGrp ? parentGrp.id : formState.assetGroupId)
+                          assetGroupId: isCurrentGroupMatching ? formState.assetGroupId : (parentGrp ? parentGrp.id : formState.assetGroupId),
+                          categoryName: '',
+                          categoryId: '',
+                          subCategoryName: '',
+                          subCategoryId: ''
                         });
                       }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
@@ -1069,7 +1079,7 @@ export function ItemMasterTab({
                       }}
                       className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
                     >
-                      <option value="">-- Select Category --</option>
+                      <option value="">{availableModalCategories.length === 0 && (formState.assetSubGroupName || formState.assetGroupName) ? '-- No Categories for Selected Sub Group --' : '-- Select Category --'}</option>
                       {availableModalCategories.map(c => (
                         <option key={c.id || c.name} value={c.name}>{c.name}</option>
                       ))}

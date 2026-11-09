@@ -926,11 +926,30 @@ export function AssetForm() {
   // 3. Cascading Categories based on Asset Class / Group / Type
   const availableCategories = useMemo(() => {
     let cats = (categories && categories.length > 0) ? categories.filter(c => c.active !== false) : BASELINE_CATEGORIES;
+    const targetSubGroup = (formData.assetClass || '').toLowerCase().trim();
+    const targetGroup = (formData.assetGroup || '').toLowerCase().trim();
+
+    if (targetSubGroup || targetGroup) {
+      cats = cats.filter(c => {
+        const cls = (c.className || (c.description || '').match(/\[class:([^\]]+)\]/)?.[1] || '').toLowerCase().trim();
+        const desc = (c.description || '').toLowerCase();
+        const grp = (c.groupName || (c.description || '').match(/\[group:([^\]]+)\]/)?.[1] || '').toLowerCase().trim();
+
+        if (targetSubGroup) {
+          return cls === targetSubGroup || desc.includes(`[class:${targetSubGroup}]`);
+        }
+        if (targetGroup) {
+          return grp === targetGroup || desc.includes(`[group:${targetGroup}]`);
+        }
+        return true;
+      });
+    }
+
     if (formData.category && !cats.some(c => (c.name || c.code) === formData.category || c.id === formData.category || c.id === formData.categoryId)) {
       cats = [{ id: formData.categoryId || 'sel-cat', name: formData.category, code: formData.category }, ...cats];
     }
     return cats;
-  }, [categories, formData.category, formData.categoryId]);
+  }, [categories, formData.assetClass, formData.assetGroup, formData.category, formData.categoryId]);
 
   // 4. Cascading Sub Categories strictly based on selected Category
   const availableAssetClasses = useMemo(() => {

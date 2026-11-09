@@ -141,7 +141,7 @@ export async function getAssetGroups(req, res, next) {
     let rows = [];
     if (isDbConnected()) {
       try {
-        const whereClause = req.query.includeInactive === 'true' ? '' : 'WHERE active = 1';
+        const whereClause = req.query.includeInactive !== 'false' ? '' : 'WHERE active = 1';
         rows = await prisma.$queryRawUnsafe(`
           SELECT id, code, name, description, assetType, active, createdAt, updatedAt
           FROM asset_groups
@@ -1094,7 +1094,7 @@ export async function createRoom(req, res, next) {
 
 export async function getCategories(req, res, next) {
   try {
-    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const where = req.query.includeInactive !== 'false' ? {} : { active: true };
     const categories = await prisma.category.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, categories });
   } catch (err) { next(err); }
@@ -1477,7 +1477,7 @@ export async function getAssetSubGroups(req, res, next) {
     await ensureAssetSubGroupsTable();
     if (isDbConnected()) {
       try {
-        let whereClause = req.query.includeInactive === 'true' ? '1=1' : 'active = 1';
+        let whereClause = req.query.includeInactive !== 'false' ? '1=1' : 'active = 1';
         if (req.query.assetGroupId) {
           whereClause += ` AND assetGroupId = '${String(req.query.assetGroupId).replace(/'/g, "''")}'`;
         }
@@ -1797,7 +1797,7 @@ export async function getSubCategories(req, res, next) {
     await ensureSubCategoriesTable();
     if (isDbConnected()) {
       try {
-        let whereClause = req.query.includeInactive === 'true' ? '1=1' : 'sc.active = 1';
+        let whereClause = req.query.includeInactive !== 'false' ? '1=1' : 'sc.active = 1';
         if (req.query.categoryId) {
           whereClause += ` AND sc.categoryId = '${String(req.query.categoryId).replace(/'/g, "''")}'`;
         }
@@ -1846,7 +1846,7 @@ export async function getSubCategories(req, res, next) {
       }
     }
     const memList = readSubCategoriesFromFile();
-    const list = req.query.includeInactive === 'true' ? memList : memList.filter(s => s.active !== false);
+    const list = req.query.includeInactive !== 'false' ? memList : memList.filter(s => s.active !== false);
     res.json({ success: true, subCategories: list, assetClasses: list });
   } catch (err) { next(err); }
 }
@@ -2507,7 +2507,7 @@ export async function deleteManufacturer(req, res, next) {
 
 export async function getModels(req, res, next) {
   try {
-    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const where = req.query.includeInactive !== 'false' ? {} : { active: true };
     if (req.query.categoryId) where.categoryId = req.query.categoryId;
     if (req.query.manufacturerId) where.manufacturerId = req.query.manufacturerId;
 
@@ -3184,7 +3184,7 @@ export async function deleteEmployee(req, res, next) {
 
 export async function getCustomFields(req, res, next) {
   try {
-    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const where = req.query.includeInactive !== 'false' ? {} : { active: true };
     const fields = await prisma.customFieldDefinition.findMany({ where, orderBy: { label: 'asc' } });
     res.json({ success: true, fields });
   } catch (err) { next(err); }
