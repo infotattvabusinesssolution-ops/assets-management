@@ -60,7 +60,7 @@ export function DisposalStatusesTab({
   const fetchStatuses = async () => {
     setIsLoading(true);
     try {
-      const res = await api.get('/master-data/disposal-statuses').catch(() => null);
+      const res = await api.get('/master-data/disposal-statuses?includeInactive=true').catch(() => null);
       if (res && res.disposalStatuses && Array.isArray(res.disposalStatuses)) {
         setStatuses(res.disposalStatuses);
       } else {

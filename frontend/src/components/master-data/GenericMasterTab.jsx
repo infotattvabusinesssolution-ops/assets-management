@@ -168,7 +168,7 @@ export function GenericMasterTab({
     setIsLoading(true);
     try {
       if (activeTab === 'uom') {
-        const res = await api.get('/master-data/uoms').catch(() => null);
+        const res = await api.get('/master-data/uoms?includeInactive=true').catch(() => null);
         let custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
         let serverUoms = [];
         if (res?.uoms && res.uoms.length > 0) {
@@ -179,11 +179,16 @@ export function GenericMasterTab({
             symbol: u.symbol || '',
             category: u.category || 'Discrete Count',
             description: u.description || '',
-            status: u.active === false ? 'Inactive' : 'Active'
+            status: u.active === false ? 'Inactive' : 'Active',
+            active: u.active !== false
           }));
         }
         const serverKeys = new Set(serverUoms.map(x => (x.code || x.name || '').toUpperCase().trim()));
-        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
+        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim())).map(c => ({
+          ...c,
+          status: c.status || (c.active === false ? 'Inactive' : 'Active'),
+          active: c.active !== false
+        }));
         const combined = [...serverUoms, ...missingCustom];
         console.log('📋 [Dynamic UOM Records Loaded from Database]:', combined);
         setItems(combined);
@@ -191,7 +196,7 @@ export function GenericMasterTab({
         return;
       }
       if (activeTab === 'brands') {
-        const res = await api.get('/master-data/brands').catch(() => null);
+        const res = await api.get('/master-data/brands?includeInactive=true').catch(() => null);
         let custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
         let serverBrands = [];
         if (res?.brands && res.brands.length > 0) {
@@ -202,6 +207,7 @@ export function GenericMasterTab({
             manufacturerName: b.manufacturerName || '',
             description: b.description || '',
             status: b.active === false ? 'Inactive' : 'Active',
+            active: b.active !== false,
             totalAssets: b.totalAssets || 0
           }));
         }
@@ -211,7 +217,11 @@ export function GenericMasterTab({
           const code = (c.code || '').toUpperCase().trim();
           const name = (c.name || '').toLowerCase().trim();
           return (!code || !serverCodes.has(code)) && (!name || !serverNames.has(name));
-        });
+        }).map(c => ({
+          ...c,
+          status: c.status || (c.active === false ? 'Inactive' : 'Active'),
+          active: c.active !== false
+        }));
         const rawCombined = [...serverBrands, ...missingCustom];
         const seenCodes = new Set();
         const seenNames = new Set();
@@ -231,14 +241,15 @@ export function GenericMasterTab({
 
       if (activeTab === 'status-codes') {
         const custom = JSON.parse(localStorage.getItem('fams_custom_status_codes') || '[]');
-        setItems(custom);
-        setSelectedItem(custom[0] || null);
+        const list = custom.length > 0 ? custom : DEFAULT_STATUS_CODES;
+        setItems(list);
+        setSelectedItem(list[0] || null);
         return;
       }
 
     if (activeTab === 'asset-types') {
 
-        const res = await api.get('/master-data/asset-types').catch(() => null);
+        const res = await api.get('/master-data/asset-types?includeInactive=true').catch(() => null);
         let custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
         // Clean out test record from localStorage
         if (custom.some(c => c.code === '123' || (c.name || '').toLowerCase() === 'abhay')) {
@@ -257,12 +268,17 @@ export function GenericMasterTab({
             description: t.description || '',
             isSystem: Boolean(t.isSystem),
             status: t.active === false ? 'Inactive' : 'Active',
+            active: t.active !== false,
             totalAssets: t.totalAssets || 0
           }));
         }
 
         const serverKeys = new Set(serverTypes.map(x => (x.code || x.name || '').toUpperCase().trim()));
-        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim()));
+        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim())).map(c => ({
+          ...c,
+          status: c.status || (c.active === false ? 'Inactive' : 'Active'),
+          active: c.active !== false
+        }));
         const rawCombined = [...serverTypes, ...missingCustom];
 
         // Deduplicate strictly by code and name
@@ -416,11 +432,32 @@ export function GenericMasterTab({
     const nextActive = nextStatus === 'Active';
     try {
       if (activeTab === 'uom') {
-        await api.put(`/master-data/uoms/${item.id}`, { active: nextActive }).catch(() => null);
+        await api.put(`/master-data/uoms/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
+          const updatedCustom = custom.map(c => c.id === item.id ? { ...c, active: nextActive, status: nextStatus } : c);
+          localStorage.setItem('fams_custom_uoms', JSON.stringify(updatedCustom));
+        } catch (_) {}
       } else if (activeTab === 'asset-types') {
-        await api.put(`/master-data/asset-types/${item.id}`, { active: nextActive }).catch(() => null);
+        await api.put(`/master-data/asset-types/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
+          const updatedCustom = custom.map(c => c.id === item.id ? { ...c, active: nextActive, status: nextStatus } : c);
+          localStorage.setItem('fams_custom_asset_types', JSON.stringify(updatedCustom));
+        } catch (_) {}
       } else if (activeTab === 'brands') {
-        await api.put(`/master-data/brands/${item.id}`, { active: nextActive }).catch(() => null);
+        await api.put(`/master-data/brands/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
+          const updatedCustom = custom.map(c => c.id === item.id ? { ...c, active: nextActive, status: nextStatus } : c);
+          localStorage.setItem('fams_custom_brands', JSON.stringify(updatedCustom));
+        } catch (_) {}
+      } else if (activeTab === 'status-codes') {
+        try {
+          const custom = JSON.parse(localStorage.getItem('fams_custom_status_codes') || JSON.stringify(DEFAULT_STATUS_CODES));
+          const updatedCustom = custom.map(c => c.id === item.id ? { ...c, active: nextActive, status: nextStatus } : c);
+          localStorage.setItem('fams_custom_status_codes', JSON.stringify(updatedCustom));
+        } catch (_) {}
       } else if (activeTab === 'manufacturers') {
         await api.put(`/master-data/manufacturers/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
         try {

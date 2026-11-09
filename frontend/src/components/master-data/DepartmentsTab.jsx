@@ -46,10 +46,10 @@ export function DepartmentsTab({
     setIsLoading(true);
     try {
       const [res, ccRes, compRes, siteRes, empRes] = await Promise.all([
-        api.get('/master-data/departments'),
-        api.get('/master-data/cost-centers').catch(() => ({ costCenters: [] })),
+        api.get('/master-data/departments?includeInactive=true'),
+        api.get('/master-data/cost-centers?includeInactive=true').catch(() => ({ costCenters: [] })),
         api.get('/master-data/companies?includeInactive=true').catch(() => null),
-        api.get('/master-data/sites').catch(() => null),
+        api.get('/master-data/sites?includeInactive=true').catch(() => null),
         api.get('/master-data/employees?includeInactive=true').catch(() => null)
       ]);
       const loadedCCs = ccRes?.costCenters || [];

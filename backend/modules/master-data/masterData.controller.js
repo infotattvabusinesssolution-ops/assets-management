@@ -484,7 +484,8 @@ export async function deleteAssetGroup(req, res, next) {
 
 export async function getCompanies(req, res, next) {
   try {
-    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const includeInactive = req.query.includeInactive !== 'false';
+    const where = includeInactive ? {} : { active: true };
     const companies = await prisma.company.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, companies });
   } catch (err) { next(err); }
@@ -714,7 +715,7 @@ export async function getSites(req, res, next) {
     await ensureSitesTable();
     if (isDbConnected()) {
       try {
-        const includeInactive = req.query.includeInactive === 'true';
+        const includeInactive = req.query.includeInactive !== 'false';
         const query = includeInactive
           ? `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt FROM sites ORDER BY level ASC, name ASC`
           : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, active, createdAt, updatedAt FROM sites WHERE active = 1 ORDER BY level ASC, name ASC`;
@@ -2536,7 +2537,8 @@ export async function createModel(req, res, next) {
 
 export async function getDepartments(req, res, next) {
   try {
-    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const includeInactive = req.query.includeInactive !== 'false';
+    const where = includeInactive ? {} : { active: true };
     if (req.query.companyId) {
       where.companyId = req.query.companyId;
     }
@@ -2736,7 +2738,8 @@ export async function deleteDepartment(req, res, next) {
 
 export async function getCostCenters(req, res, next) {
   try {
-    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const includeInactive = req.query.includeInactive !== 'false';
+    const where = includeInactive ? {} : { active: true };
     if (req.query.departmentId) {
       where.departmentId = req.query.departmentId;
     }
@@ -2881,7 +2884,8 @@ const DEFAULT_ENTERPRISE_EMPLOYEES = [];
 
 export async function getEmployees(req, res, next) {
   try {
-    const where = req.query.includeInactive === 'true' ? {} : { active: true };
+    const includeInactive = req.query.includeInactive !== 'false';
+    const where = includeInactive ? {} : { active: true };
     if (isDbConnected()) {
       try {
         const employees = await prisma.employee.findMany({
@@ -3367,9 +3371,9 @@ async function ensureAssetTypesTable() {
 export async function getAssetTypes(req, res, next) {
   try {
     await ensureAssetTypesTable();
+    const includeInactive = req.query.includeInactive !== 'false';
     if (isDbConnected()) {
       try {
-        const includeInactive = req.query.includeInactive === 'true';
         const query = includeInactive
           ? `SELECT id, code, name, description, category, stage, isSystem, active FROM asset_types ORDER BY isSystem DESC, name ASC`
           : `SELECT id, code, name, description, category, stage, isSystem, active FROM asset_types WHERE active = 1 ORDER BY isSystem DESC, name ASC`;
@@ -3393,7 +3397,7 @@ export async function getAssetTypes(req, res, next) {
         console.warn('DB getAssetTypes query skipped, using persistent store:', dbErr.message);
       }
     }
-    const list = req.query.includeInactive === 'true' ? inMemoryAssetTypes : inMemoryAssetTypes.filter(t => t.active !== false);
+    const list = includeInactive ? inMemoryAssetTypes : inMemoryAssetTypes.filter(t => t.active !== false);
     res.json({ success: true, assetTypes: list });
   } catch (err) { next(err); }
 }
@@ -3503,7 +3507,27 @@ export async function updateAssetType(req, res, next) {
       }
     }
 
-    const idx = inMemoryAssetTypes.findIndex(t => t.id === id);
+    let idx = inMemoryAssetTypes.findIndex(t => t.id === id || t.code === id);
+    if (idx === -1 && isDbConnected()) {
+      try {
+        const safeId = (id || '').replace(/'/g, "''");
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM asset_types WHERE id = '${safeId}' OR code = '${safeId}'`);
+        if (Array.isArray(rows) && rows[0]) {
+          const loaded = {
+            id: rows[0].id,
+            code: rows[0].code,
+            name: rows[0].name,
+            description: rows[0].description || '',
+            category: rows[0].category || 'Discrete Count',
+            stage: rows[0].stage || (rows[0].isSystem ? 'SYSTEM' : 'Operational'),
+            isSystem: Boolean(rows[0].isSystem),
+            active: Boolean(rows[0].active)
+          };
+          inMemoryAssetTypes.push(loaded);
+          idx = inMemoryAssetTypes.length - 1;
+        }
+      } catch (_) {}
+    }
     if (idx === -1) return res.status(404).json({ success: false, message: 'Asset Type not found' });
 
     if (inMemoryAssetTypes[idx]?.isSystem) {
@@ -4013,7 +4037,7 @@ export async function getItemMasters(req, res, next) {
     await ensureItemMastersTable();
     if (isDbConnected()) {
       try {
-        const includeInactive = req.query.includeInactive === 'true';
+        const includeInactive = req.query.includeInactive !== 'false';
         const query = includeInactive
           ? `SELECT * FROM item_masters ORDER BY itemCode ASC`
           : `SELECT * FROM item_masters WHERE active = 1 ORDER BY itemCode ASC`;
@@ -4096,7 +4120,7 @@ export async function getItemMasters(req, res, next) {
     if (inMemoryItemMasters.length === 0) {
       inMemoryItemMasters = readItemMastersFromFile();
     }
-    const list = req.query.includeInactive === 'true'
+    const list = includeInactive
       ? inMemoryItemMasters
       : inMemoryItemMasters.filter(i => i.active !== false);
     res.json({ success: true, items: list });
@@ -4697,9 +4721,11 @@ export async function deleteUom(req, res, next) {
 export async function getDisposalStatuses(req, res, next) {
   try {
     await ensureDisposalStatusesTable();
+    const includeInactive = req.query.includeInactive !== 'false';
     if (isDbConnected()) {
       try {
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM disposal_statuses WHERE active = 1 ORDER BY name ASC`);
+        const whereClause = includeInactive ? '' : 'WHERE active = 1';
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM disposal_statuses ${whereClause} ORDER BY name ASC`);
         if (Array.isArray(rows)) {
           const list = rows.map(r => ({
             id: r.id,
@@ -4716,7 +4742,10 @@ export async function getDisposalStatuses(req, res, next) {
         console.warn('DB getDisposalStatuses skipped, using persistent store:', dbErr.message);
       }
     }
-    res.json({ success: true, disposalStatuses: inMemoryDisposalStatuses.filter(s => s.active !== false) });
+    const list = includeInactive
+      ? inMemoryDisposalStatuses
+      : inMemoryDisposalStatuses.filter(s => s.active !== false);
+    res.json({ success: true, disposalStatuses: list });
   } catch (err) { next(err); }
 }
 
@@ -4778,6 +4807,23 @@ export async function updateDisposalStatus(req, res, next) {
     const { id } = req.params;
     const { code, name, description, active } = req.body;
     let idx = inMemoryDisposalStatuses.findIndex(s => s.id === id || s.code === id);
+    if (idx === -1 && isDbConnected()) {
+      try {
+        const safeId = (id || '').replace(/'/g, "''");
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM disposal_statuses WHERE id = '${safeId}' OR code = '${safeId}'`);
+        if (Array.isArray(rows) && rows[0]) {
+          const loaded = {
+            id: rows[0].id,
+            code: rows[0].code,
+            name: rows[0].name,
+            description: rows[0].description || '',
+            active: Boolean(rows[0].active)
+          };
+          inMemoryDisposalStatuses.push(loaded);
+          idx = inMemoryDisposalStatuses.length - 1;
+        }
+      } catch (_) {}
+    }
     const existing = idx !== -1 ? inMemoryDisposalStatuses[idx] : null;
 
     const cleanCode = code ? code.trim().toUpperCase() : (existing?.code || '');
@@ -4871,9 +4917,11 @@ export async function deleteDisposalStatus(req, res, next) {
 export async function getBrands(req, res, next) {
   try {
     await ensureBrandsTable();
+    const includeInactive = req.query.includeInactive !== 'false';
     if (isDbConnected()) {
       try {
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM brands WHERE active = 1 ORDER BY name ASC`);
+        const whereClause = includeInactive ? '' : 'WHERE active = 1';
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM brands ${whereClause} ORDER BY name ASC`);
         if (Array.isArray(rows) && rows.length > 0) {
           const list = rows.map(r => ({
             id: r.id,
@@ -4892,7 +4940,7 @@ export async function getBrands(req, res, next) {
         console.warn('DB getBrands query skipped:', dbErr.message);
       }
     }
-    const list = req.query.includeInactive === 'true'
+    const list = includeInactive
       ? inMemoryBrands
       : inMemoryBrands.filter(b => b.active !== false);
     res.json({ success: true, brands: list });
@@ -4963,7 +5011,26 @@ export async function createBrand(req, res, next) {
 export async function updateBrand(req, res, next) {
   try {
     const { id } = req.params;
-    const idx = inMemoryBrands.findIndex(b => b.id === id || b.code === id);
+    let idx = inMemoryBrands.findIndex(b => b.id === id || b.code === id);
+    if (idx === -1 && isDbConnected()) {
+      try {
+        const safeId = (id || '').replace(/'/g, "''");
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM brands WHERE id = '${safeId}' OR code = '${safeId}'`);
+        if (Array.isArray(rows) && rows[0]) {
+          const loaded = {
+            id: rows[0].id,
+            code: rows[0].code,
+            name: rows[0].name,
+            manufacturerId: rows[0].manufacturerId || '',
+            manufacturerName: rows[0].manufacturerName || '',
+            description: rows[0].description || '',
+            active: Boolean(rows[0].active)
+          };
+          inMemoryBrands.push(loaded);
+          idx = inMemoryBrands.length - 1;
+        }
+      } catch (_) {}
+    }
     if (idx === -1) return res.status(404).json({ success: false, message: 'Brand not found' });
 
     const existing = inMemoryBrands[idx];
