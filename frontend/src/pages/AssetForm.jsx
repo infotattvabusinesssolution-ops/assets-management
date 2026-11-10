@@ -3479,60 +3479,46 @@ export function AssetForm() {
             </select>
           </div>
 
-          {/* Location Hierarchy Container (Visible only after location is selected) */}
+          {/* Location Levels Container (Visible only after location is selected) */}
           {Boolean(formData.siteId || formData.locationId || formData.site || selectedLocation) && (
             <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-3.5 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
               <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
                 <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
-                  <Layers className="w-3.5 h-3.5 text-[#6C2BD9]" /> Location Hierarchy
+                  <Layers className="w-3.5 h-3.5 text-[#6C2BD9]" /> Location Levels
                 </span>
                 <span className="text-[10px] font-semibold text-[#6C2BD9] bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
                   4-Level Structure
                 </span>
               </div>
 
-              {/* Hierarchy Path Flow: Code on top, Name just down the code */}
-              <div className="flex items-center flex-wrap gap-2 sm:gap-3 bg-white border border-slate-200 rounded-lg p-2.5 text-xs shadow-2xs">
-                {/* Level 1 */}
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-md px-3 py-2 flex-1 min-w-[130px]">
-                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded shrink-0 self-start mt-0.5">L1</span>
-                  <div className="flex flex-col">
-                    <span className="font-extrabold text-slate-900 leading-tight">{l1Code || '—'}</span>
-                    {l1Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">{l1Name}</span>}
-                  </div>
+              {/* 4 Location Level Blocks in a grid (no > signs) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 bg-white border border-slate-200 rounded-lg p-3 text-xs shadow-2xs">
+                {/* Location 1 */}
+                <div className="flex flex-col bg-slate-50 border border-slate-100 rounded-lg p-2.5">
+                  <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wide mb-1">Location 1</span>
+                  <span className="font-extrabold text-slate-900 text-xs leading-tight">{l1Code || '—'}</span>
+                  {l1Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-1">{l1Name}</span>}
                 </div>
 
-                <ChevronRight className="w-3.5 h-3.5 text-purple-400 shrink-0 hidden sm:block" />
-
-                {/* Level 2 */}
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-md px-3 py-2 flex-1 min-w-[130px]">
-                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded shrink-0 self-start mt-0.5">L2</span>
-                  <div className="flex flex-col">
-                    <span className="font-extrabold text-slate-900 leading-tight">{l2Code || '—'}</span>
-                    {l2Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">{l2Name}</span>}
-                  </div>
+                {/* Location 2 */}
+                <div className="flex flex-col bg-slate-50 border border-slate-100 rounded-lg p-2.5">
+                  <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wide mb-1">Location 2</span>
+                  <span className="font-extrabold text-slate-900 text-xs leading-tight">{l2Code || '—'}</span>
+                  {l2Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-1">{l2Name}</span>}
                 </div>
 
-                <ChevronRight className="w-3.5 h-3.5 text-purple-400 shrink-0 hidden sm:block" />
-
-                {/* Level 3 */}
-                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-md px-3 py-2 flex-1 min-w-[130px]">
-                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded shrink-0 self-start mt-0.5">L3</span>
-                  <div className="flex flex-col">
-                    <span className="font-extrabold text-slate-900 leading-tight">{l3Code || '—'}</span>
-                    {l3Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">{l3Name}</span>}
-                  </div>
+                {/* Location 3 */}
+                <div className="flex flex-col bg-slate-50 border border-slate-100 rounded-lg p-2.5">
+                  <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wide mb-1">Location 3</span>
+                  <span className="font-extrabold text-slate-900 text-xs leading-tight">{l3Code || '—'}</span>
+                  {l3Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-1">{l3Name}</span>}
                 </div>
 
-                <ChevronRight className="w-3.5 h-3.5 text-purple-400 shrink-0 hidden sm:block" />
-
-                {/* Level 4 */}
-                <div className="flex items-center gap-2 bg-purple-50/50 border border-purple-100 rounded-md px-3 py-2 flex-1 min-w-[130px]">
-                  <span className="text-[10px] font-bold uppercase text-[#6C2BD9] bg-purple-100 px-1.5 py-0.5 rounded shrink-0 self-start mt-0.5">L4</span>
-                  <div className="flex flex-col">
-                    <span className="font-extrabold text-[#6C2BD9] leading-tight">{l4Code || '—'}</span>
-                    {l4Name && <span className="text-[11px] text-slate-600 font-semibold leading-tight mt-0.5">{l4Name}</span>}
-                  </div>
+                {/* Location 4 */}
+                <div className="flex flex-col bg-slate-50 border border-slate-100 rounded-lg p-2.5">
+                  <span className="text-[11px] font-bold text-purple-700 uppercase tracking-wide mb-1">Location 4</span>
+                  <span className="font-extrabold text-slate-900 text-xs leading-tight">{l4Code || '—'}</span>
+                  {l4Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-1">{l4Name}</span>}
                 </div>
               </div>
             </div>
