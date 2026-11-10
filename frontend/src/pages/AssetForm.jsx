@@ -2674,9 +2674,9 @@ export function AssetForm() {
         </div>
       </div>
 
-      {/* ROW 3: Model (Editable) & Description */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs items-start">
-        <div className="md:col-span-1">
+      {/* ROW 3: Model, Description & Remarks */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs items-start">
+        <div>
           <label className="font-bold text-slate-700 block mb-1">
             Model <span className="text-rose-500">*</span>
           </label>
@@ -2699,7 +2699,7 @@ export function AssetForm() {
           )}
         </div>
 
-        <div className="md:col-span-3">
+        <div>
           <label className="font-bold text-slate-700 block mb-1">
             Description <span className="text-rose-500">*</span>
           </label>
@@ -2720,6 +2720,17 @@ export function AssetForm() {
               {fieldErrors.description}
             </p>
           )}
+        </div>
+
+        <div>
+          <label className="font-bold text-slate-700 block mb-1">Remarks</label>
+          <textarea
+            rows={2}
+            value={formData.remarks || ''}
+            onChange={(e) => setFormData({ ...formData, remarks: e.target.value })}
+            placeholder="Enter remarks or additional notes..."
+            className="w-full border border-slate-200 bg-slate-50 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors resize-y leading-relaxed"
+          />
         </div>
       </div>
     </div>
@@ -3956,7 +3967,8 @@ export function AssetForm() {
         ['Subcategory', formData.subcategory],
         ['Manufacturer', formData.manufacturer],
         ['Model', formData.model],
-        ['Quantity', formData.quantity]
+        ['Description', formData.description],
+        ...(formData.remarks ? [['Remarks', formData.remarks]] : []),
       ], <div className="space-y-2">
         {quantityCount > 1 && <div className="space-y-2">
           <p className="text-xs font-bold text-slate-700">Name and description by item</p>
