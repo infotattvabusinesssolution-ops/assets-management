@@ -28,7 +28,8 @@ import {
   getDisposalStatuses, createDisposalStatus, updateDisposalStatus, deleteDisposalStatus,
   getCountries, createCountry,
   getLocationTypes, createLocationType,
-  getLocationLevels, createLocationLevel, updateLocationLevel, deleteLocationLevel
+  getLocationLevels, createLocationLevel, updateLocationLevel, deleteLocationLevel,
+  getAssetConditions
 } from './masterData.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
@@ -173,5 +174,8 @@ router.get('/location-levels/:level', getLocationLevels);
 router.post('/location-levels/:level', createLocationLevel);
 router.put('/location-levels/:level/:id', updateLocationLevel);
 router.delete('/location-levels/:level/:id', deleteLocationLevel);
+
+// Asset Conditions (Database Enum Master Data)
+router.get('/asset-conditions', getAssetConditions);
 
 export default router;

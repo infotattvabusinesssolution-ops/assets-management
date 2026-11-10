@@ -3917,6 +3917,72 @@ const BRANDS_FILE = resolveDataFile('brands.json');
 const MANUFACTURERS_FILE = resolveDataFile('manufacturers.json');
 const COUNTRIES_FILE = resolveDataFile('countries.json');
 const LOCATION_TYPES_FILE = resolveDataFile('location_types.json');
+const ASSET_CONDITIONS_FILE = resolveDataFile('asset_conditions.json');
+
+const DEFAULT_ASSET_CONDITIONS = [
+  { id: 'cond-new', code: 'NEW', name: 'New', description: 'Brand new, unused condition', active: true },
+  { id: 'cond-good', code: 'GOOD', name: 'Good', description: 'Normal working condition, minor wear', active: true },
+  { id: 'cond-fair', code: 'FAIR', name: 'Fair', description: 'Functional with noticeable wear or minor defects', active: true },
+  { id: 'cond-damaged', code: 'DAMAGED', name: 'Damaged', description: 'Requires repair or maintenance', active: true },
+  { id: 'cond-refurbished', code: 'REFURBISHED', name: 'Refurbished', description: 'Restored to working order', active: true }
+];
+
+let inMemoryAssetConditions = readAssetConditionsFromFile();
+
+function readAssetConditionsFromFile() {
+  try {
+    if (fs.existsSync(ASSET_CONDITIONS_FILE)) {
+      const data = fs.readFileSync(ASSET_CONDITIONS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to read asset_conditions.json:', e.message);
+  }
+  return DEFAULT_ASSET_CONDITIONS;
+}
+
+function writeAssetConditionsToFile(list) {
+  try {
+    const dir = path.dirname(ASSET_CONDITIONS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(ASSET_CONDITIONS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write asset_conditions.json:', e.message);
+  }
+}
+
+let assetConditionsTableEnsured = false;
+
+async function ensureAssetConditionsTable() {
+  if (assetConditionsTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='asset_conditions' and xtype='U')
+      BEGIN
+        CREATE TABLE asset_conditions (
+          id NVARCHAR(100) PRIMARY KEY,
+          code NVARCHAR(50) NOT NULL UNIQUE,
+          name NVARCHAR(100) NOT NULL,
+          description NVARCHAR(500) NULL,
+          active BIT DEFAULT 1,
+          createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+          updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        );
+
+        INSERT INTO asset_conditions (id, code, name, description, active) VALUES
+        ('cond-new', 'NEW', 'New', 'Brand new, unused condition', 1),
+        ('cond-good', 'GOOD', 'Good', 'Normal working condition, minor wear', 1),
+        ('cond-fair', 'FAIR', 'Fair', 'Functional with noticeable wear or minor defects', 1),
+        ('cond-damaged', 'DAMAGED', 'Damaged', 'Requires repair or maintenance', 1),
+        ('cond-refurbished', 'REFURBISHED', 'Refurbished', 'Restored to working order', 1);
+      END
+    `);
+    assetConditionsTableEnsured = true;
+  } catch (err) {
+    console.warn('asset_conditions table check skipped:', err.message);
+  }
+}
 
 const DEFAULT_BRANDS = [];
 
@@ -5823,5 +5889,36 @@ export async function deleteLocationLevel(req, res, next) {
     list = list.filter(item => item.id !== id && item.code !== id);
     writeLocationLevelsToFile(level, list);
     res.json({ success: true, hardDeleted: true, message: `Location Level ${level} record deleted.` });
+  } catch (err) { next(err); }
+}
+
+export async function getAssetConditions(req, res, next) {
+  try {
+    await ensureAssetConditionsTable();
+    const includeInactive = req.query.includeInactive !== 'false';
+    if (isDbConnected()) {
+      try {
+        const whereClause = includeInactive ? '' : 'WHERE active = 1';
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM asset_conditions ${whereClause} ORDER BY createdAt ASC, name ASC`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            description: r.description || '',
+            active: Boolean(r.active)
+          }));
+          inMemoryAssetConditions = list;
+          writeAssetConditionsToFile(list);
+          return res.json({ success: true, assetConditions: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getAssetConditions skipped, using persistent store:', dbErr.message);
+      }
+    }
+    const list = includeInactive
+      ? inMemoryAssetConditions
+      : inMemoryAssetConditions.filter(s => s.active !== false);
+    res.json({ success: true, assetConditions: list });
   } catch (err) { next(err); }
 }

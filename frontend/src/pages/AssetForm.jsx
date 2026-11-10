@@ -578,6 +578,13 @@ export function AssetForm() {
   const [manufacturers, setManufacturers] = useState([]);
   const [brands, setBrands] = useState([]);
   const [employees, setEmployees] = useState([]);
+  const [assetConditions, setAssetConditions] = useState([
+    { id: 'cond-new', code: 'NEW', name: 'New' },
+    { id: 'cond-good', code: 'GOOD', name: 'Good' },
+    { id: 'cond-fair', code: 'FAIR', name: 'Fair' },
+    { id: 'cond-damaged', code: 'DAMAGED', name: 'Damaged' },
+    { id: 'cond-refurbished', code: 'REFURBISHED', name: 'Refurbished' }
+  ]);
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
 
@@ -615,7 +622,7 @@ export function AssetForm() {
   useEffect(() => {
     async function loadMasterData() {
       try {
-        const [catRes, subCatRes, asgRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes, lvl1Res, lvl2Res, lvl3Res, lvl4Res] = await Promise.all([
+        const [catRes, subCatRes, asgRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes, lvl1Res, lvl2Res, lvl3Res, lvl4Res, condRes] = await Promise.all([
           api.get('/master-data/categories').catch(() => null),
           api.get('/master-data/sub-categories').catch(() => null),
           api.get('/master-data/asset-sub-groups').catch(() => null),
@@ -636,7 +643,8 @@ export function AssetForm() {
           api.get('/master-data/location-levels/1').catch(() => null),
           api.get('/master-data/location-levels/2').catch(() => null),
           api.get('/master-data/location-levels/3').catch(() => null),
-          api.get('/master-data/location-levels/4').catch(() => null)
+          api.get('/master-data/location-levels/4').catch(() => null),
+          api.get('/master-data/asset-conditions').catch(() => null)
         ]);
         if (itemRes?.items && Array.isArray(itemRes.items)) {
           const realItems = itemRes.items.filter(i => !['itm-001', 'itm-002', 'itm-003'].includes(i.id));
@@ -748,6 +756,9 @@ export function AssetForm() {
         setLevel2List(parseLevelItems(lvl2Res, 2));
         setLevel3List(parseLevelItems(lvl3Res, 3));
         setLevel4List(parseLevelItems(lvl4Res, 4));
+        if (condRes?.assetConditions && Array.isArray(condRes.assetConditions) && condRes.assetConditions.length > 0) {
+          setAssetConditions(condRes.assetConditions);
+        }
       } catch (err) {
         console.warn('Master data load skipped:', err);
       }
@@ -3089,10 +3100,7 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">Invoice Date</label>
-            <span className="text-[10px] text-purple-600 font-semibold">Syncs Deprec.</span>
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">Invoice Date</label>
           <input
             type="date"
             value={formData.invoiceDate || ''}
@@ -3111,10 +3119,7 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700 block">Depreciation Start Date</label>
-            <span className="text-[10px] text-emerald-600 font-semibold">From Invoice</span>
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">Depreciation Start Date</label>
           <input
             type="date"
             value={formData.depreciationStartDate || formData.invoiceDate || ''}
@@ -3130,11 +3135,11 @@ export function AssetForm() {
             onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
-            <option value="New">New</option>
-            <option value="Good">Good</option>
-            <option value="Fair">Fair</option>
-            <option value="Damaged">Damaged</option>
-            <option value="Refurbished">Refurbished</option>
+            {assetConditions.map(cond => (
+              <option key={cond.id || cond.code} value={cond.name || cond.code}>
+                {cond.name || cond.code}
+              </option>
+            ))}
           </select>
         </div>
 
@@ -4783,8 +4788,11 @@ export function AssetForm() {
                     onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                   >
-                    <option value="New">New</option>
-                    <option value="Good">Good</option>
+                    {assetConditions.map(cond => (
+                      <option key={cond.id || cond.code} value={cond.name || cond.code}>
+                        {cond.name || cond.code}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>
