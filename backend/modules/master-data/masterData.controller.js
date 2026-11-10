@@ -3918,6 +3918,42 @@ const MANUFACTURERS_FILE = resolveDataFile('manufacturers.json');
 const COUNTRIES_FILE = resolveDataFile('countries.json');
 const LOCATION_TYPES_FILE = resolveDataFile('location_types.json');
 const ASSET_CONDITIONS_FILE = resolveDataFile('asset_conditions.json');
+const SUPPLIERS_FILE = resolveDataFile('suppliers.json');
+
+const DEFAULT_SUPPLIERS = [
+  { id: 'SUP-001', code: 'SUP-DELL', name: 'Dell Technologies Middle East', contact: 'Ahmed Mansoor', email: 'sales.me@dell.com', phone: '+971 4 391 9000', status: 'ACTIVE', active: true },
+  { id: 'SUP-002', code: 'SUP-CISCO', name: 'Cisco Systems Gulf', contact: 'Kareem Fahmy', email: 'orders@cisco.ae', phone: '+971 4 438 1000', status: 'ACTIVE', active: true },
+  { id: 'SUP-003', code: 'SUP-CARRIER', name: 'Carrier Middle East Air Conditioning', contact: 'George Khalil', email: 'service@carrier.ae', phone: '+971 4 282 3000', status: 'ACTIVE', active: true },
+  { id: 'SUP-004', code: 'SUP-ZEBRA', name: 'Zebra Enterprise Solutions', contact: 'Fatima Al Rais', email: 'middleeast@zebra.com', phone: '+971 4 365 2000', status: 'ACTIVE', active: true },
+  { id: 'SUP-005', code: 'SUP-APPLE', name: 'Apple Inc.', contact: 'Enterprise Orders', email: 'enterprise@apple.com', phone: '+1 800 692 7753', status: 'ACTIVE', active: true },
+  { id: 'SUP-006', code: 'SUP-HPE', name: 'HP Enterprise', contact: 'Commercial Sales', email: 'orders@hpe.com', phone: '+971 4 390 1111', status: 'ACTIVE', active: true },
+  { id: 'SUP-007', code: 'SUP-LENOVO', name: 'Lenovo Global', contact: 'B2B Sales', email: 'commercial@lenovo.com', phone: '+971 4 429 8888', status: 'ACTIVE', active: true }
+];
+
+let inMemorySuppliers = readSuppliersFromFile();
+
+function readSuppliersFromFile() {
+  try {
+    if (fs.existsSync(SUPPLIERS_FILE)) {
+      const data = fs.readFileSync(SUPPLIERS_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {
+    console.warn('Failed to read suppliers.json:', e.message);
+  }
+  return DEFAULT_SUPPLIERS;
+}
+
+function writeSuppliersToFile(list) {
+  try {
+    const dir = path.dirname(SUPPLIERS_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(SUPPLIERS_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write suppliers.json:', e.message);
+  }
+}
 
 const DEFAULT_ASSET_CONDITIONS = [
   { id: 'cond-new', code: 'NEW', name: 'New', description: 'Brand new, unused condition', active: true },
@@ -5920,5 +5956,95 @@ export async function getAssetConditions(req, res, next) {
       ? inMemoryAssetConditions
       : inMemoryAssetConditions.filter(s => s.active !== false);
     res.json({ success: true, assetConditions: list });
+  } catch (err) { next(err); }
+}
+
+export async function getSuppliers(req, res, next) {
+  try {
+    const includeInactive = req.query.includeInactive !== 'false';
+    let dbSuppliers = [];
+    if (isDbConnected()) {
+      try {
+        const whereClause = includeInactive ? '' : "WHERE status = 'ACTIVE'";
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT id, providerCode as code, providerName as name, primaryContact as contact, email, phone, status
+          FROM service_providers
+          ${whereClause}
+          ORDER BY providerName ASC
+        `);
+        if (Array.isArray(rows) && rows.length > 0) {
+          dbSuppliers = rows.map(r => ({
+            id: r.id,
+            code: r.code || r.id,
+            name: r.name,
+            providerName: r.name,
+            contact: r.contact || '',
+            email: r.email || '',
+            phone: r.phone || '',
+            status: r.status || 'ACTIVE',
+            active: r.status === 'ACTIVE'
+          }));
+        }
+      } catch (dbErr) {
+        console.warn('DB getSuppliers skipped, using persistent store:', dbErr.message);
+      }
+    }
+
+    // Merge DB suppliers with inMemory / default suppliers
+    const seen = new Set(dbSuppliers.map(s => (s.name || '').toLowerCase()));
+    const fallbackList = includeInactive
+      ? inMemorySuppliers
+      : inMemorySuppliers.filter(s => s.active !== false && s.status !== 'INACTIVE');
+
+    const merged = [
+      ...dbSuppliers,
+      ...fallbackList.filter(s => !seen.has((s.name || '').toLowerCase()))
+    ];
+
+    if (dbSuppliers.length > 0) {
+      inMemorySuppliers = merged;
+      writeSuppliersToFile(merged);
+    }
+
+    res.json({ success: true, suppliers: merged, vendors: merged });
+  } catch (err) { next(err); }
+}
+
+export async function createSupplier(req, res, next) {
+  try {
+    const { code, name, providerName, contact, email, phone, website, currency, status } = req.body;
+    const cleanName = (providerName || name || '').trim();
+    if (!cleanName) return res.status(400).json({ success: false, message: 'Supplier/Vendor Name is required.' });
+
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : `SUP-${cleanName.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}-${Date.now().toString().slice(-4)}`;
+    const newRecord = {
+      id: crypto.randomUUID(),
+      code: cleanCode,
+      name: cleanName,
+      providerName: cleanName,
+      contact: contact ? contact.trim() : '',
+      email: email ? email.trim() : '',
+      phone: phone ? phone.trim() : '',
+      website: website ? website.trim() : '',
+      currency: currency || 'AED',
+      status: status || 'ACTIVE',
+      active: status !== 'INACTIVE',
+      createdAt: new Date().toISOString()
+    };
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO service_providers (id, providerCode, providerName, primaryContact, email, phone, website, currency, status, createdAt, updatedAt)
+          VALUES ('${newRecord.id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${newRecord.contact.replace(/'/g, "''")}', '${newRecord.email.replace(/'/g, "''")}', '${newRecord.phone.replace(/'/g, "''")}', '${newRecord.website.replace(/'/g, "''")}', '${newRecord.currency}', '${newRecord.status}', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB createSupplier failed, saving to local store:', dbErr.message);
+      }
+    }
+
+    inMemorySuppliers = [newRecord, ...inMemorySuppliers.filter(s => s.id !== newRecord.id)];
+    writeSuppliersToFile(inMemorySuppliers);
+    res.status(201).json({ success: true, supplier: newRecord, vendor: newRecord });
   } catch (err) { next(err); }
 }

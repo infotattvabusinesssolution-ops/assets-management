@@ -579,6 +579,7 @@ export function AssetForm() {
   const [brands, setBrands] = useState([]);
   const [employees, setEmployees] = useState([]);
   const [assetConditions, setAssetConditions] = useState([]);
+  const [suppliers, setSuppliers] = useState([]);
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
 
@@ -616,7 +617,7 @@ export function AssetForm() {
   useEffect(() => {
     async function loadMasterData() {
       try {
-        const [catRes, subCatRes, asgRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes, lvl1Res, lvl2Res, lvl3Res, lvl4Res, condRes] = await Promise.all([
+        const [catRes, subCatRes, asgRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes, lvl1Res, lvl2Res, lvl3Res, lvl4Res, condRes, supRes] = await Promise.all([
           api.get('/master-data/categories').catch(() => null),
           api.get('/master-data/sub-categories').catch(() => null),
           api.get('/master-data/asset-sub-groups').catch(() => null),
@@ -638,7 +639,8 @@ export function AssetForm() {
           api.get('/master-data/location-levels/2').catch(() => null),
           api.get('/master-data/location-levels/3').catch(() => null),
           api.get('/master-data/location-levels/4').catch(() => null),
-          api.get('/master-data/asset-conditions').catch(() => null)
+          api.get('/master-data/asset-conditions').catch(() => null),
+          api.get('/master-data/suppliers').catch(() => null)
         ]);
         if (itemRes?.items && Array.isArray(itemRes.items)) {
           const realItems = itemRes.items.filter(i => !['itm-001', 'itm-002', 'itm-003'].includes(i.id));
@@ -752,6 +754,13 @@ export function AssetForm() {
         setLevel4List(parseLevelItems(lvl4Res, 4));
         if (condRes?.assetConditions && Array.isArray(condRes.assetConditions) && condRes.assetConditions.length > 0) {
           setAssetConditions(condRes.assetConditions);
+        }
+        const customSups = JSON.parse(localStorage.getItem('fams_custom_suppliers') || localStorage.getItem('fams_custom_vendors') || '[]');
+        const serverSups = supRes?.suppliers || supRes?.vendors || [];
+        const seenSupNames = new Set(serverSups.map(s => (s.name || s.providerName || '').toLowerCase()));
+        const mergedSups = [...serverSups, ...customSups.filter(cs => !seenSupNames.has((cs.name || cs.providerName || '').toLowerCase()))];
+        if (mergedSups.length > 0) {
+          setSuppliers(mergedSups);
         }
       } catch (err) {
         console.warn('Master data load skipped:', err);
@@ -3029,13 +3038,23 @@ export function AssetForm() {
 
         <div>
           <label className="font-bold text-slate-700 block mb-1">Supplier / Vendor</label>
-          <input
-            type="text"
-            value={formData.supplier}
+          <select
+            value={formData.supplier || formData.vendorSupplier || ''}
             onChange={(e) => setFormData({ ...formData, supplier: e.target.value, vendorSupplier: e.target.value })}
-            placeholder="e.g. Dell Direct, Al Futtaim"
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          />
+          >
+            <option value="">Select Supplier / Vendor</option>
+            {suppliers.map(sup => {
+              const val = sup.name || sup.providerName || sup.code;
+              const label = sup.name || sup.providerName || sup.code;
+              const codeDisplay = sup.code ? ` (${sup.code})` : '';
+              return (
+                <option key={sup.id || sup.code || val} value={val}>
+                  {label}{codeDisplay}
+                </option>
+              );
+            })}
+          </select>
         </div>
 
         {/* Row 2: PO Details & Delivery Note Details */}
@@ -5288,12 +5307,23 @@ export function AssetForm() {
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Vendor / Supplier</label>
-                    <input
-                      type="text"
-                      value={formData.vendorSupplier}
-                      onChange={(e) => setFormData({ ...formData, vendorSupplier: e.target.value })}
+                    <select
+                      value={formData.supplier || formData.vendorSupplier || ''}
+                      onChange={(e) => setFormData({ ...formData, supplier: e.target.value, vendorSupplier: e.target.value })}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none text-[11px]"
-                    />
+                    >
+                      <option value="">Select Supplier / Vendor</option>
+                      {suppliers.map(sup => {
+                        const val = sup.name || sup.providerName || sup.code;
+                        const label = sup.name || sup.providerName || sup.code;
+                        const codeDisplay = sup.code ? ` (${sup.code})` : '';
+                        return (
+                          <option key={sup.id || sup.code || val} value={val}>
+                            {label}{codeDisplay}
+                          </option>
+                        );
+                      })}
+                    </select>
                   </div>
                 </div>
 
