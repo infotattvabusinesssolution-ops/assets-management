@@ -19,6 +19,7 @@ import {
   Barcode,
   Radio,
   Building,
+  MapPin,
   User,
   DollarSign,
   Cpu,
@@ -807,6 +808,12 @@ export function AssetForm() {
     department: '',
     costCenter: '',
     site: '',
+    location: '',
+    locationId: '',
+    locationLevel1: '',
+    locationLevel2: '',
+    locationLevel3: '',
+    locationLevel4: '',
     building: '',
     floor: '',
     room: '',
@@ -1992,8 +1999,14 @@ export function AssetForm() {
         rfidEpc: quantity === 1 ? formData.rfidEpc?.trim() || undefined : undefined,
         company: formData.company || undefined,
         companyId: formData.companyId || undefined,
-        site: formData.site || undefined,
-        siteId: formData.siteId || undefined,
+        site: formData.site || formData.location || undefined,
+        siteId: formData.siteId || formData.locationId || undefined,
+        location: formData.location || formData.site || undefined,
+        locationId: formData.locationId || formData.siteId || undefined,
+        locationLevel1: formData.locationLevel1 || undefined,
+        locationLevel2: formData.locationLevel2 || undefined,
+        locationLevel3: formData.locationLevel3 || undefined,
+        locationLevel4: formData.locationLevel4 || undefined,
         building: formData.building || undefined,
         buildingId: formData.buildingId || undefined,
         floor: formData.floor || undefined,
@@ -3213,251 +3226,265 @@ export function AssetForm() {
       <p className="text-xs text-slate-500">Each item can have a separate company, site, room, department and custodian. Empty company, site, department and cost center use registration defaults; an empty custodian leaves the item unassigned.</p>
     </section>;
   };
-  const renderLocationOwnership = () => (
-    <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
-      <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-        <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
-          <Building className="w-4 h-4 text-[#6C2BD9]" /> Location &amp; Ownership
-        </h3>
-        <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-full border border-purple-200">
-          Step 3
-        </span>
-      </div>
+  const renderLocationOwnership = () => {
+    const selectedLocation = sites.find(s => s.id === formData.siteId || (formData.site && (s.name === formData.site || s.code === formData.site)));
+    const pathParts = (selectedLocation?.fullPath || selectedLocation?.name || '').split(' > ').map(p => p.trim());
+    const locLevel1 = formData.locationLevel1 || selectedLocation?.locationLevel1 || (pathParts[0] || (selectedLocation?.level === 'Level 1' ? selectedLocation.name : '')) || '';
+    const locLevel2 = formData.locationLevel2 || selectedLocation?.locationLevel2 || (pathParts[1] || (selectedLocation?.level === 'Level 2' ? selectedLocation.name : '')) || '';
+    const locLevel3 = formData.locationLevel3 || selectedLocation?.locationLevel3 || (pathParts[2] || (selectedLocation?.level === 'Level 3' ? selectedLocation.name : '')) || '';
+    const locLevel4 = formData.locationLevel4 || selectedLocation?.locationLevel4 || (pathParts[3] || (selectedLocation?.level === 'Level 4' ? selectedLocation.name : '')) || '';
 
-      {Object.keys(fieldErrors).some(k => ['company', 'department', 'costCenter'].includes(k)) && (
-        <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in">
-          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
-          <div>
-            <span className="font-bold">Required Fields Missing:</span> Please fill in all required fields marked with <span className="text-rose-600 font-bold">*</span> before continuing to the next step.
+    return (
+      <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-4 relative">
+        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+          <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+            <Building className="w-4 h-4 text-[#6C2BD9]" /> Location &amp; Ownership
+          </h3>
+          <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-full border border-purple-200">
+            Step 3
+          </span>
+        </div>
+
+        {Object.keys(fieldErrors).some(k => ['company', 'department', 'costCenter'].includes(k)) && (
+          <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+            <div>
+              <span className="font-bold">Required Fields Missing:</span> Please fill in all required fields marked with <span className="text-rose-600 font-bold">*</span> before continuing to the next step.
+            </div>
           </div>
-        </div>
-      )}
+        )}
 
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">
-            Company <span className="text-rose-500">*</span>
-          </label>
-          <select
-            value={formData.companyId || (companies.find(c => c.name === formData.company || c.code === formData.company)?.id || '')}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = companies.find(c => c.id === selectedId);
-              setFormData(prev => ({
-                ...prev,
-                companyId: selectedId,
-                company: found ? (found.name || found.code) : '',
-                siteId: '',
-                site: '',
-                buildingId: '',
-                building: ''
-              }));
-              if (selectedId) clearFieldError('company');
-            }}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.company ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
-          >
-            <option value="">Select Company *</option>
-            {companies.map(c => (
-              <option key={c.id} value={c.id}>{c.name || c.code}</option>
-            ))}
-          </select>
-          {fieldErrors.company && (
-            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {fieldErrors.company}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Site</label>
-          <select
-            value={formData.siteId || (sites.find(s => s.name === formData.site || s.code === formData.site)?.id || '')}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = sites.find(s => s.id === selectedId);
-              setFormData(prev => ({
-                ...prev,
-                siteId: selectedId,
-                site: found ? (found.name || found.code) : '',
-                buildingId: '',
-                building: ''
-              }));
-            }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          >
-            <option value="">Select Site (Optional)</option>
-            {sites
-              .filter(s => !formData.companyId || s.companyId === formData.companyId)
-              .map(s => (
-                <option key={s.id} value={s.id}>{s.fullPath || s.name || s.code}</option>
-              ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Building</label>
-          <select
-            value={formData.buildingId || (buildings.find(b => b.name === formData.building || b.code === formData.building)?.id || '')}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = buildings.find(b => b.id === selectedId);
-              setFormData(prev => ({
-                ...prev,
-                buildingId: selectedId,
-                building: found ? (found.name || found.code) : ''
-              }));
-            }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          >
-            <option value="">Select Building (Optional)</option>
-            {buildings
-              .filter(b => !formData.siteId || b.siteId === formData.siteId)
-              .map(b => (
-                <option key={b.id} value={b.id}>{b.name || b.code}</option>
-              ))}
-          </select>
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Floor / Room</label>
-          <input
-            type="text"
-            value={formData.floor}
-            placeholder="e.g. Floor 2, Room 204 (optional)"
-            onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">
-            Department <span className="text-rose-500">*</span>
-          </label>
-          <select
-            value={formData.departmentId || (departments.find(d => d.name === formData.department || d.code === formData.department)?.id || '')}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = departments.find(d => d.id === selectedId);
-              const currentCC = costCenters.find(cc => cc.id === formData.costCenterId);
-              const keepsCC = !selectedId || !currentCC || !currentCC.departmentId || currentCC.departmentId === selectedId;
-              setFormData(prev => ({
-                ...prev,
-                departmentId: selectedId,
-                department: found ? (found.name || found.code) : '',
-                costCenterId: keepsCC ? prev.costCenterId : '',
-                costCenter: keepsCC ? prev.costCenter : ''
-              }));
-              if (selectedId) clearFieldError('department');
-            }}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.department ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
-          >
-            <option value="">Select Department *</option>
-            {departments
-              .filter(d => !formData.companyId || !d.companyId || d.companyId === formData.companyId || d.id === formData.departmentId || d.name === formData.department)
-              .map(d => (
-                <option key={d.id} value={d.id}>{d.name || d.code}</option>
-              ))}
-          </select>
-          {fieldErrors.department && (
-            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {fieldErrors.department}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">
-            Cost Center <span className="text-rose-500">*</span>
-          </label>
-          <select
-            value={formData.costCenterId || (costCenters.find(cc => cc.name === formData.costCenter || cc.code === formData.costCenter)?.id || '')}
-            onChange={(e) => {
-              const selectedId = e.target.value;
-              const found = costCenters.find(cc => cc.id === selectedId);
-              setFormData(prev => ({
-                ...prev,
-                costCenterId: selectedId,
-                costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
-              }));
-              if (selectedId) clearFieldError('costCenter');
-            }}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.costCenter ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
-          >
-            <option value="">Select Cost Center *</option>
-            {costCenters
-              .filter(cc => {
-                const matchesCompany = !formData.companyId || !cc.companyId || cc.companyId === formData.companyId;
-                const matchesDept = !formData.departmentId || !cc.departmentId || cc.departmentId === formData.departmentId || cc.id === formData.costCenterId || cc.name === formData.costCenter;
-                return matchesCompany && matchesDept;
-              })
-              .map(cc => (
-                <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
-              ))}
-          </select>
-          {fieldErrors.costCenter && (
-            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {fieldErrors.costCenter}
-            </p>
-          )}
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Custodian</label>
-          <div className="relative">
-            <input
-              list="stepper-custodian-list"
-              type="text"
-              value={formData.custodian}
-              placeholder="e.g. EMP-1002 or select employee..."
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">
+              Company <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={formData.companyId || (companies.find(c => c.name === formData.company || c.code === formData.company)?.id || '')}
               onChange={(e) => {
-                const val = e.target.value;
-                const emp = employees.find(emp => emp.fullName === val || emp.name === val || emp.employeeCode === val || emp.id === val);
+                const selectedId = e.target.value;
+                const found = companies.find(c => c.id === selectedId);
                 setFormData(prev => ({
                   ...prev,
-                  custodian: val,
-                  custodianId: emp ? emp.id : prev.custodianId
+                  companyId: selectedId,
+                  company: found ? (found.name || found.code) : '',
+                  siteId: '',
+                  site: '',
+                  locationId: '',
+                  location: '',
+                  locationLevel1: '',
+                  locationLevel2: '',
+                  locationLevel3: '',
+                  locationLevel4: '',
+                  buildingId: '',
+                  building: ''
+                }));
+                if (selectedId) clearFieldError('company');
+              }}
+              className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.company ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
+            >
+              <option value="">Select Company *</option>
+              {companies.map(c => (
+                <option key={c.id} value={c.id}>{c.name || c.code}</option>
+              ))}
+            </select>
+            {fieldErrors.company && (
+              <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {fieldErrors.company}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">
+              Department <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={formData.departmentId || (departments.find(d => d.name === formData.department || d.code === formData.department)?.id || '')}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                const found = departments.find(d => d.id === selectedId);
+                const currentCC = costCenters.find(cc => cc.id === formData.costCenterId);
+                const keepsCC = !selectedId || !currentCC || !currentCC.departmentId || currentCC.departmentId === selectedId;
+                setFormData(prev => ({
+                  ...prev,
+                  departmentId: selectedId,
+                  department: found ? (found.name || found.code) : '',
+                  costCenterId: keepsCC ? prev.costCenterId : '',
+                  costCenter: keepsCC ? prev.costCenter : ''
+                }));
+                if (selectedId) clearFieldError('department');
+              }}
+              className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.department ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
+            >
+              <option value="">Select Department *</option>
+              {departments
+                .filter(d => !formData.companyId || !d.companyId || d.companyId === formData.companyId || d.id === formData.departmentId || d.name === formData.department)
+                .map(d => (
+                  <option key={d.id} value={d.id}>{d.name || d.code}</option>
+                ))}
+            </select>
+            {fieldErrors.department && (
+              <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {fieldErrors.department}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">
+              Cost Center <span className="text-rose-500">*</span>
+            </label>
+            <select
+              value={formData.costCenterId || (costCenters.find(cc => cc.name === formData.costCenter || cc.code === formData.costCenter)?.id || '')}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                const found = costCenters.find(cc => cc.id === selectedId);
+                setFormData(prev => ({
+                  ...prev,
+                  costCenterId: selectedId,
+                  costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
+                }));
+                if (selectedId) clearFieldError('costCenter');
+              }}
+              className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.costCenter ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
+            >
+              <option value="">Select Cost Center *</option>
+              {costCenters
+                .filter(cc => {
+                  const matchesCompany = !formData.companyId || !cc.companyId || cc.companyId === formData.companyId;
+                  const matchesDept = !formData.departmentId || !cc.departmentId || cc.departmentId === formData.departmentId || cc.id === formData.costCenterId || cc.name === formData.costCenter;
+                  return matchesCompany && matchesDept;
+                })
+                .map(cc => (
+                  <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
+                ))}
+            </select>
+            {fieldErrors.costCenter && (
+              <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {fieldErrors.costCenter}
+              </p>
+            )}
+          </div>
+
+          <div>
+            <label className="font-bold text-slate-700 block mb-1">Custodian</label>
+            <select
+              value={formData.custodianId || (employees.find(emp => (emp.fullName || emp.name) === formData.custodian || emp.employeeCode === formData.custodian)?.id || '')}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                const emp = employees.find(emp => emp.id === selectedId);
+                setFormData(prev => ({
+                  ...prev,
+                  custodianId: selectedId,
+                  custodian: emp ? (emp.fullName || emp.name || emp.employeeCode || '') : ''
                 }));
               }}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-            />
-            <datalist id="stepper-custodian-list">
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            >
+              <option value="">Select Custodian (Optional)</option>
               {employees.map(emp => (
-                <option key={emp.id} value={emp.fullName || emp.name || emp.employeeCode}>
-                  {emp.employeeCode ? `${emp.employeeCode} - ` : ''}{emp.department?.name || ''}
+                <option key={emp.id} value={emp.id}>
+                  {emp.employeeCode ? `${emp.employeeCode} - ` : ''}{emp.fullName || emp.name || 'Unnamed'}{emp.department?.name ? ` (${emp.department.name})` : ''}
                 </option>
               ))}
-            </datalist>
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
+            </select>
           </div>
         </div>
 
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Expected User</label>
-          <div className="relative">
-            <input
-              list="stepper-expected-user-list"
-              type="text"
-              value={formData.expectedUser}
-              placeholder="e.g. EMP-1002 or select employee..."
-              onChange={(e) => setFormData(prev => ({ ...prev, expectedUser: e.target.value }))}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl pr-7 pl-2 py-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-            />
-            <datalist id="stepper-expected-user-list">
-              {employees.map(emp => (
-                <option key={emp.id} value={emp.fullName || emp.name || emp.employeeCode}>
-                  {emp.employeeCode ? `${emp.employeeCode} - ` : ''}{emp.department?.name || ''}
-                </option>
-              ))}
-            </datalist>
-            <Search className="w-3.5 h-3.5 text-slate-400 absolute right-2 top-2.5 pointer-events-none" />
+        {/* Location Selector & Levels Hierarchy Breakdown */}
+        <div className="pt-2 border-t border-slate-100 space-y-3 text-xs">
+          <div>
+            <label className="font-bold text-slate-700 block mb-1 flex items-center gap-1.5">
+              <MapPin className="w-3.5 h-3.5 text-[#6C2BD9]" /> Location
+            </label>
+            <select
+              value={formData.siteId || (sites.find(s => s.name === formData.site || s.code === formData.site)?.id || '')}
+              onChange={(e) => {
+                const selectedId = e.target.value;
+                const found = sites.find(s => s.id === selectedId);
+                const pathParts = (found?.fullPath || found?.name || '').split(' > ').map(p => p.trim());
+                const lvl1 = found?.locationLevel1 || (pathParts.length > 0 && pathParts[0] ? pathParts[0] : (found?.level === 'Level 1' ? found.name : '')) || '';
+                const lvl2 = found?.locationLevel2 || (pathParts.length > 1 && pathParts[1] ? pathParts[1] : (found?.level === 'Level 2' ? found.name : '')) || '';
+                const lvl3 = found?.locationLevel3 || (pathParts.length > 2 && pathParts[2] ? pathParts[2] : (found?.level === 'Level 3' ? found.name : '')) || '';
+                const lvl4 = found?.locationLevel4 || (pathParts.length > 3 && pathParts[3] ? pathParts[3] : (found?.level === 'Level 4' ? found.name : '')) || '';
+
+                setFormData(prev => ({
+                  ...prev,
+                  siteId: selectedId,
+                  site: found ? (found.name || found.code) : '',
+                  locationId: selectedId,
+                  location: found ? (found.fullPath || found.name || found.code) : '',
+                  locationLevel1: lvl1,
+                  locationLevel2: lvl2,
+                  locationLevel3: lvl3,
+                  locationLevel4: lvl4,
+                  buildingId: '',
+                  building: lvl2 || '',
+                  floor: lvl3 || '',
+                  room: lvl4 || ''
+                }));
+              }}
+              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            >
+              <option value="">Select Location (Optional)</option>
+              {sites
+                .filter(s => !formData.companyId || !s.companyId || s.companyId === formData.companyId)
+                .map(s => (
+                  <option key={s.id} value={s.id}>{s.fullPath || s.name || s.code}</option>
+                ))}
+            </select>
+          </div>
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
+            <div>
+              <label className="font-bold text-slate-600 block mb-1">Location Level 1</label>
+              <input
+                type="text"
+                readOnly
+                value={locLevel1}
+                placeholder="Level 1 (e.g. Campus / Site)"
+                className="w-full bg-slate-100/80 border border-slate-200 rounded-xl p-2 text-slate-800 font-semibold cursor-not-allowed outline-none select-none"
+              />
+            </div>
+            <div>
+              <label className="font-bold text-slate-600 block mb-1">Location Level 2</label>
+              <input
+                type="text"
+                readOnly
+                value={locLevel2}
+                placeholder="Level 2 (e.g. Building / Facility)"
+                className="w-full bg-slate-100/80 border border-slate-200 rounded-xl p-2 text-slate-800 font-semibold cursor-not-allowed outline-none select-none"
+              />
+            </div>
+            <div>
+              <label className="font-bold text-slate-600 block mb-1">Location Level 3</label>
+              <input
+                type="text"
+                readOnly
+                value={locLevel3}
+                placeholder="Level 3 (e.g. Floor / Wing)"
+                className="w-full bg-slate-100/80 border border-slate-200 rounded-xl p-2 text-slate-800 font-semibold cursor-not-allowed outline-none select-none"
+              />
+            </div>
+            <div>
+              <label className="font-bold text-slate-600 block mb-1">Location Level 4</label>
+              <input
+                type="text"
+                readOnly
+                value={locLevel4}
+                placeholder="Level 4 (e.g. Room / Area / Zone)"
+                className="w-full bg-slate-100/80 border border-slate-200 rounded-xl p-2 text-slate-800 font-semibold cursor-not-allowed outline-none select-none"
+              />
+            </div>
           </div>
         </div>
       </div>
-    </div>
-  );
+    );
+  };
 
   // Step 3: Tagging Information
   const renderTagging = () => {
@@ -4062,13 +4089,14 @@ export function AssetForm() {
       {/* Step 3 Review: Location, Ownership and Tagging */}
       {reviewSection('Location, ownership and tagging', 3, [
         ['Company', formData.company],
-        ['Site', formData.site],
-        ['Building', formData.building],
-        ['Floor / Room', formData.floor],
         ['Department', formData.department],
         ['Cost center', formData.costCenter],
         ['Custodian', formData.custodian],
-        ['Expected user', formData.expectedUser],
+        ['Location', formData.location || formData.site],
+        ...(formData.locationLevel1 ? [['Location Level 1', formData.locationLevel1]] : []),
+        ...(formData.locationLevel2 ? [['Location Level 2', formData.locationLevel2]] : []),
+        ...(formData.locationLevel3 ? [['Location Level 3', formData.locationLevel3]] : []),
+        ...(formData.locationLevel4 ? [['Location Level 4', formData.locationLevel4]] : []),
         ['Tag type', quantityCount === 1 ? formData.tagType : 'Individual barcodes assigned on save'],
         ['Barcode / tag', quantityCount === 1 ? (formData.assetTagBarcode || 'Generated on save') : 'Generated per asset on save'],
         ...(formData.tagType === 'RFID' || formData.rfidEpc ? [['RFID EPC', formData.rfidEpc || 'Generated on save']] : [])
