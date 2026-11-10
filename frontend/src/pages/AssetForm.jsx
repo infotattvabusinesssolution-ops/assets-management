@@ -618,8 +618,10 @@ export function AssetForm() {
   useEffect(() => {
     async function loadMasterData() {
       try {
-        const [catRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes] = await Promise.all([
+        const [catRes, subCatRes, asgRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes] = await Promise.all([
           api.get('/master-data/categories').catch(() => null),
+          api.get('/master-data/sub-categories').catch(() => null),
+          api.get('/master-data/asset-sub-groups').catch(() => null),
           api.get('/master-data/asset-classes').catch(() => null),
           api.get('/master-data/sites').catch(() => null),
           api.get('/master-data/departments').catch(() => null),
@@ -648,41 +650,38 @@ export function AssetForm() {
           const merged = [...custom, ...server.filter(sg => !custom.some(cg => (cg.code && sg.code && cg.code.toUpperCase() === sg.code.toUpperCase()) || cg.id === sg.id))];
           setAssetGroups(merged);
         }
-        if (classRes?.assetClasses && Array.isArray(classRes.assetClasses) && classRes.assetClasses.length > 0) {
-          const customSub = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-          const customCls = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-          const customSubCodes = new Set(customSub.map(s => (s.code || '').toUpperCase()));
 
-          // Separate SubCategories vs true Asset Classes
-          // Server classes: identify by [kind:class] or !includes('[kind:subcat]')
-          const serverClasses = classRes.assetClasses
-            .filter(ac => !customSubCodes.has((ac.code || '').toUpperCase()) && !(ac.description || '').includes('[kind:subcat]'))
-            .map(ac => {
-              const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/);
-              return {
-                ...ac,
-                groupName: groupMatch ? groupMatch[1] : (ac.groupName || 'General')
-              };
-            });
+        // Sub Categories from server & local storage
+        const customSub = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+        const rawServerSubs = subCatRes?.subCategories || classRes?.assetClasses?.filter(ac => (ac.description || '').includes('[kind:subcat]')) || [];
+        const serverSubCats = rawServerSubs.map(sc => ({
+          ...sc,
+          categoryName: sc.categoryName || sc.category?.name || 'General'
+        }));
+        const mergedSubs = [
+          ...customSub,
+          ...serverSubCats.filter(sc => !customSub.some(cs => cs.id === sc.id || (cs.code && sc.code && cs.code.toUpperCase() === sc.code.toUpperCase())))
+        ];
+        if (mergedSubs.length > 0) {
+          setSubCategories(mergedSubs);
+        }
 
-          const serverSubCats = classRes.assetClasses
-            .filter(ac => (ac.description || '').includes('[kind:subcat]') || customSubCodes.has((ac.code || '').toUpperCase()))
-            .map(ac => ({
-              ...ac,
-              categoryName: ac.category?.name || 'General'
-            }));
-
-          const mergedCls = [
-            ...customCls,
-            ...serverClasses.filter(sc => !customCls.some(cc => (cc.code && sc.code && cc.code.toUpperCase() === sc.code.toUpperCase()) || cc.id === sc.id))
-          ];
+        // Asset Sub Groups (Classes) from server & local storage
+        const customCls = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+        const rawServerCls = asgRes?.assetSubGroups || classRes?.assetClasses || [];
+        const serverClasses = rawServerCls.map(ac => {
+          const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/);
+          return {
+            ...ac,
+            groupName: groupMatch ? groupMatch[1] : (ac.groupName || ac.assetGroupName || 'General')
+          };
+        });
+        const mergedCls = [
+          ...customCls,
+          ...serverClasses.filter(sc => !customCls.some(cc => (cc.code && sc.code && cc.code.toUpperCase() === sc.code.toUpperCase()) || cc.id === sc.id))
+        ];
+        if (mergedCls.length > 0) {
           setAssetClasses(mergedCls);
-
-          const allSub = [
-            ...customSub,
-            ...serverSubCats.filter(sc => !customSub.some(cs => cs.id === sc.id || (cs.code && sc.code && cs.code.toUpperCase() === sc.code.toUpperCase())))
-          ];
-          setSubCategories(allSub);
         }
         if (catRes?.categories) {
           const enrichedCategories = catRes.categories.map(c => {
@@ -1011,8 +1010,8 @@ export function AssetForm() {
     const targetSubId = formData.assetClassId;
     if (targetSubName || targetSubId) {
       const exists = result.some(sc => (targetSubId && sc.id === targetSubId) || (targetSubName && (sc.name || sc.title || sc.id)?.toLowerCase() === targetSubName.toLowerCase()));
-      if (exists) {
-        // Keep selected if valid
+      if (!exists && targetSubName) {
+        result = [{ id: targetSubId || 'sel-sub', name: targetSubName }, ...result];
       }
     }
     return result;
@@ -1078,8 +1077,13 @@ export function AssetForm() {
       modelNumber: item.model || prev.modelNumber
     }));
     clearFieldError('assetName');
+    if (groupName) clearFieldError('assetGroup');
+    if (subGroupName) clearFieldError('assetClass');
     if (categoryName) clearFieldError('category');
     if (subCategoryName) clearFieldError('subcategory');
+    if (manufacturerName) clearFieldError('manufacturer');
+    if (brandName) clearFieldError('brand');
+    if (item.model) clearFieldError('model');
   };
 
   const handleClearItemMaster = () => {
@@ -1661,13 +1665,21 @@ export function AssetForm() {
         showToast('warning', 'Asset image is currently uploading. Please wait for upload to finish.');
         return false;
       }
+      if (!formData.assetType) {
+        errors.assetType = 'Asset Type is required.';
+        if (!firstWarning) firstWarning = 'Warning: Asset Type is required. Please select an Asset Type.';
+      }
       if (!formData.assetName?.trim()) {
         errors.assetName = 'Asset Name is required.';
         if (!firstWarning) firstWarning = 'Warning: Asset Name is required. Please fill in the Asset Name before proceeding.';
       }
-      if (!formData.assetType) {
-        errors.assetType = 'Asset Type is required.';
-        if (!firstWarning) firstWarning = 'Warning: Asset Type is required. Please select an Asset Type.';
+      if (!formData.assetGroup?.trim()) {
+        errors.assetGroup = 'Asset Group is required.';
+        if (!firstWarning) firstWarning = 'Warning: Asset Group is required. Please select an Asset Group.';
+      }
+      if (!formData.assetClass?.trim()) {
+        errors.assetClass = 'Asset Sub Group is required.';
+        if (!firstWarning) firstWarning = 'Warning: Asset Sub Group is required. Please select an Asset Sub Group.';
       }
       if (!formData.category?.trim()) {
         errors.category = 'Category is required.';
@@ -1681,18 +1693,32 @@ export function AssetForm() {
         }
       }
 
-      if (availableAssetClasses.length > 0 && !formData.subcategory && !formData.assetClassId) {
+      if (!formData.subcategory?.trim() && !formData.assetClassId) {
         errors.subcategory = 'Sub Category is required.';
-        if (!firstWarning) firstWarning = 'Warning: Sub Category is required for this Category. Please select a Sub Category.';
+        if (!firstWarning) firstWarning = 'Warning: Sub Category is required. Please select a Sub Category.';
       }
 
+      if (!formData.manufacturer?.trim()) {
+        errors.manufacturer = 'Manufacturer is required.';
+        if (!firstWarning) firstWarning = 'Warning: Manufacturer is required. Please select a Manufacturer.';
+      }
+      if (!formData.brand?.trim()) {
+        errors.brand = 'Brand is required.';
+        if (!firstWarning) firstWarning = 'Warning: Brand is required. Please select a Brand.';
+      }
+      if (!formData.model?.trim()) {
+        errors.model = 'Model is required.';
+        if (!firstWarning) firstWarning = 'Warning: Model is required. Please enter a Model.';
+      }
       const qty = Number(formData.quantity);
       if (!formData.quantity || isNaN(qty) || !Number.isInteger(qty) || qty < 1 || qty > 50) {
         errors.quantity = 'Quantity must be between 1 and 50.';
         if (!firstWarning) firstWarning = 'Warning: Quantity must be a valid number between 1 and 50.';
       }
-
-
+      if (!formData.description?.trim()) {
+        errors.description = 'Description is required.';
+        if (!firstWarning) firstWarning = 'Warning: Description is required. Please enter a Description.';
+      }
     }
 
     if (stepNumber === 2) {
@@ -1775,9 +1801,15 @@ export function AssetForm() {
       if (stepNumber === 1) {
         delete next.assetName;
         delete next.assetType;
+        delete next.assetGroup;
+        delete next.assetClass;
         delete next.category;
         delete next.subcategory;
+        delete next.manufacturer;
+        delete next.brand;
+        delete next.model;
         delete next.quantity;
+        delete next.description;
         delete next.serialNumber;
       } else if (stepNumber === 2) {
         delete next.pmTitle;
@@ -2268,7 +2300,7 @@ export function AssetForm() {
         </span>
       </div>
 
-      {Object.keys(fieldErrors).some(k => ['assetName', 'assetType', 'category', 'subcategory', 'quantity'].includes(k)) && (
+      {Object.keys(fieldErrors).some(k => ['assetName', 'assetType', 'assetGroup', 'assetClass', 'category', 'subcategory', 'manufacturer', 'brand', 'model', 'quantity', 'description'].includes(k)) && (
         <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
           <div>
@@ -2341,10 +2373,15 @@ export function AssetForm() {
         </div>
 
         <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
-          <label className="font-bold text-slate-700 block">Asset Classification / Asset Type</label>
+          <label className="font-bold text-slate-700 block">
+            Asset Classification / Asset Type <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.assetType || 'Asset'}
-            onChange={(e) => setFormData({ ...formData, assetType: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, assetType: e.target.value });
+              if (e.target.value) clearFieldError('assetType');
+            }}
             className="w-full bg-white border border-slate-300 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none shadow-2xs cursor-pointer"
           >
             {classificationOptions.map((enumItem) => (
@@ -2353,6 +2390,12 @@ export function AssetForm() {
               </option>
             ))}
           </select>
+          {fieldErrors.assetType && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.assetType}
+            </p>
+          )}
         </div>
       </div>
 
@@ -2386,14 +2429,21 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Asset Group</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Asset Group <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.assetGroup || ''}
-            onChange={(e) => handleAssetGroupChange(e.target.value)}
+            onChange={(e) => {
+              handleAssetGroupChange(e.target.value);
+              if (e.target.value) clearFieldError('assetGroup');
+            }}
             disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'}`}
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'} ${
+              fieldErrors.assetGroup ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
+            }`}
           >
-            <option value="">{availableAssetGroups.length > 0 ? '-- Select Asset Group --' : 'No asset groups linked to this asset type'}</option>
+            <option value="">{availableAssetGroups.length > 0 ? '-- Select Asset Group * --' : 'No asset groups linked to this asset type'}</option>
             {availableAssetGroups.map((g) => {
               const gName = g.name || g.code;
               return (
@@ -2403,17 +2453,30 @@ export function AssetForm() {
               );
             })}
           </select>
+          {fieldErrors.assetGroup && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.assetGroup}
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Asset Sub Group</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Asset Sub Group <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.assetClass || ''}
-            onChange={(e) => handleAssetClassChange(e.target.value)}
+            onChange={(e) => {
+              handleAssetClassChange(e.target.value);
+              if (e.target.value) clearFieldError('assetClass');
+            }}
             disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'}`}
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'} ${
+              fieldErrors.assetClass ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
+            }`}
           >
-            <option value="">{availableAssetClassesDropdown.length > 0 ? '-- Select Asset Sub Group --' : (formData.assetGroup ? 'No asset sub groups linked to this group' : '-- Select Asset Group first --')}</option>
+            <option value="">{availableAssetClassesDropdown.length > 0 ? '-- Select Asset Sub Group * --' : (formData.assetGroup ? 'No asset sub groups linked to this group' : '-- Select Asset Group first --')}</option>
             {availableAssetClassesDropdown.map((cls) => {
               const cName = cls.name || cls.code;
               return (
@@ -2423,6 +2486,12 @@ export function AssetForm() {
               );
             })}
           </select>
+          {fieldErrors.assetClass && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.assetClass}
+            </p>
+          )}
         </div>
 
         <div>
@@ -2442,7 +2511,7 @@ export function AssetForm() {
                 : 'border-slate-200 focus:border-[#6C2BD9]'
               }`}
           >
-            <option value="">Select Category</option>
+            <option value="">Select Category *</option>
             {availableCategories.map(c => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
@@ -2462,7 +2531,7 @@ export function AssetForm() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
         <div>
           <label className="font-bold text-slate-700 block mb-1">
-            Sub Category {availableAssetClasses.length > 0 ? <span className="text-rose-500">*</span> : null}
+            Sub Category <span className="text-rose-500">*</span>
           </label>
           <select
             value={formData.subcategory || formData.assetClassId || ''}
@@ -2470,14 +2539,14 @@ export function AssetForm() {
               handleSubCategoryChange(e.target.value);
               if (e.target.value) clearFieldError('subcategory');
             }}
-            disabled={Boolean(selectedItemMasterId) || !formData.category}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-400 transition-colors ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
+            disabled={Boolean(selectedItemMasterId && (formData.subcategory || formData.assetClassId)) || !formData.category}
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-400 transition-colors ${selectedItemMasterId && (formData.subcategory || formData.assetClassId) ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
               } ${fieldErrors.subcategory
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
               }`}
           >
-            <option value="">{formData.category ? (availableAssetClasses.length > 0 ? 'Select Sub Category *' : 'No sub categories (optional)') : 'Select a Category first'}</option>
+            <option value="">{formData.category ? (availableAssetClasses.length > 0 ? 'Select Sub Category *' : 'No sub categories registered') : 'Select a Category first'}</option>
             {availableAssetClasses.map(assetClass => {
               const val = assetClass.name || assetClass.id;
               return (
@@ -2498,7 +2567,9 @@ export function AssetForm() {
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Manufacturer</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Manufacturer <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.manufacturer || ''}
             onChange={(e) => {
@@ -2514,12 +2585,14 @@ export function AssetForm() {
                 }
                 return updated;
               });
+              if (newMfr) clearFieldError('manufacturer');
             }}
             disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
-              }`}
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'} ${
+              fieldErrors.manufacturer ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
+            }`}
           >
-            <option value="">-- Select Manufacturer --</option>
+            <option value="">-- Select Manufacturer * --</option>
             {availableManufacturers && availableManufacturers.length > 0 ? (
               availableManufacturers.map((m) => {
                 const name = m.name || m.title || m;
@@ -2533,10 +2606,18 @@ export function AssetForm() {
               <option value="" disabled>No manufacturers registered</option>
             )}
           </select>
+          {fieldErrors.manufacturer && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.manufacturer}
+            </p>
+          )}
         </div>
 
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Brand</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Brand <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.brand || ''}
             onChange={(e) => {
@@ -2548,12 +2629,14 @@ export function AssetForm() {
                 brand: bName,
                 manufacturer: autoMfr || prev.manufacturer
               }));
+              if (bName) clearFieldError('brand');
             }}
             disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
-              }`}
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'} ${
+              fieldErrors.brand ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
+            }`}
           >
-            <option value="">-- Select Brand --</option>
+            <option value="">-- Select Brand * --</option>
             {availableBrands && availableBrands.length > 0 ? (
               availableBrands.map((b) => {
                 const name = b.name || b.title || b;
@@ -2567,20 +2650,39 @@ export function AssetForm() {
               <option value="" disabled>No brands registered</option>
             )}
           </select>
+          {fieldErrors.brand && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.brand}
+            </p>
+          )}
         </div>
       </div>
 
       {/* ROW 3: Model (Editable), Quantity, Description */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs items-start">
         <div>
-          <label className="font-bold text-slate-700 block mb-1">Model</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Model <span className="text-rose-500">*</span>
+          </label>
           <input
             type="text"
             value={formData.model || ''}
-            onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, model: e.target.value });
+              if (e.target.value.trim()) clearFieldError('model');
+            }}
             placeholder="e.g. ThinkPad T14 / 21HD0006US"
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors"
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${
+              fieldErrors.model ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'
+            }`}
           />
+          {fieldErrors.model && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.model}
+            </p>
+          )}
         </div>
 
         <div>
@@ -2611,14 +2713,27 @@ export function AssetForm() {
         </div>
 
         <div className="md:col-span-2">
-          <label className="font-bold text-slate-700 block mb-1">Description</label>
+          <label className="font-bold text-slate-700 block mb-1">
+            Description <span className="text-rose-500">*</span>
+          </label>
           <textarea
             rows={2}
             value={formData.description || ''}
-            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            onChange={(e) => {
+              setFormData({ ...formData, description: e.target.value });
+              if (e.target.value.trim()) clearFieldError('description');
+            }}
             placeholder="Enter asset description or specifications..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors resize-y leading-relaxed"
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors resize-y leading-relaxed ${
+              fieldErrors.description ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'
+            }`}
           />
+          {fieldErrors.description && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.description}
+            </p>
+          )}
         </div>
       </div>
     </div>
