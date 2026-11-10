@@ -3920,15 +3920,7 @@ const LOCATION_TYPES_FILE = resolveDataFile('location_types.json');
 const ASSET_CONDITIONS_FILE = resolveDataFile('asset_conditions.json');
 const SUPPLIERS_FILE = resolveDataFile('suppliers.json');
 
-const DEFAULT_SUPPLIERS = [
-  { id: 'SUP-001', code: 'SUP-DELL', name: 'Dell Technologies Middle East', contact: 'Ahmed Mansoor', email: 'sales.me@dell.com', phone: '+971 4 391 9000', status: 'ACTIVE', active: true },
-  { id: 'SUP-002', code: 'SUP-CISCO', name: 'Cisco Systems Gulf', contact: 'Kareem Fahmy', email: 'orders@cisco.ae', phone: '+971 4 438 1000', status: 'ACTIVE', active: true },
-  { id: 'SUP-003', code: 'SUP-CARRIER', name: 'Carrier Middle East Air Conditioning', contact: 'George Khalil', email: 'service@carrier.ae', phone: '+971 4 282 3000', status: 'ACTIVE', active: true },
-  { id: 'SUP-004', code: 'SUP-ZEBRA', name: 'Zebra Enterprise Solutions', contact: 'Fatima Al Rais', email: 'middleeast@zebra.com', phone: '+971 4 365 2000', status: 'ACTIVE', active: true },
-  { id: 'SUP-005', code: 'SUP-APPLE', name: 'Apple Inc.', contact: 'Enterprise Orders', email: 'enterprise@apple.com', phone: '+1 800 692 7753', status: 'ACTIVE', active: true },
-  { id: 'SUP-006', code: 'SUP-HPE', name: 'HP Enterprise', contact: 'Commercial Sales', email: 'orders@hpe.com', phone: '+971 4 390 1111', status: 'ACTIVE', active: true },
-  { id: 'SUP-007', code: 'SUP-LENOVO', name: 'Lenovo Global', contact: 'B2B Sales', email: 'commercial@lenovo.com', phone: '+971 4 429 8888', status: 'ACTIVE', active: true }
-];
+const DEFAULT_SUPPLIERS = [];
 
 let inMemorySuppliers = readSuppliersFromFile();
 
@@ -5962,7 +5954,6 @@ export async function getAssetConditions(req, res, next) {
 export async function getSuppliers(req, res, next) {
   try {
     const includeInactive = req.query.includeInactive !== 'false';
-    let dbSuppliers = [];
     if (isDbConnected()) {
       try {
         const whereClause = includeInactive ? '' : "WHERE status = 'ACTIVE'";
@@ -5972,8 +5963,8 @@ export async function getSuppliers(req, res, next) {
           ${whereClause}
           ORDER BY providerName ASC
         `);
-        if (Array.isArray(rows) && rows.length > 0) {
-          dbSuppliers = rows.map(r => ({
+        if (Array.isArray(rows)) {
+          const list = rows.map(r => ({
             id: r.id,
             code: r.code || r.id,
             name: r.name,
@@ -5984,29 +5975,20 @@ export async function getSuppliers(req, res, next) {
             status: r.status || 'ACTIVE',
             active: r.status === 'ACTIVE'
           }));
+          inMemorySuppliers = list;
+          writeSuppliersToFile(list);
+          return res.json({ success: true, suppliers: list, vendors: list });
         }
       } catch (dbErr) {
         console.warn('DB getSuppliers skipped, using persistent store:', dbErr.message);
       }
     }
 
-    // Merge DB suppliers with inMemory / default suppliers
-    const seen = new Set(dbSuppliers.map(s => (s.name || '').toLowerCase()));
-    const fallbackList = includeInactive
+    const list = includeInactive
       ? inMemorySuppliers
       : inMemorySuppliers.filter(s => s.active !== false && s.status !== 'INACTIVE');
 
-    const merged = [
-      ...dbSuppliers,
-      ...fallbackList.filter(s => !seen.has((s.name || '').toLowerCase()))
-    ];
-
-    if (dbSuppliers.length > 0) {
-      inMemorySuppliers = merged;
-      writeSuppliersToFile(merged);
-    }
-
-    res.json({ success: true, suppliers: merged, vendors: merged });
+    res.json({ success: true, suppliers: list, vendors: list });
   } catch (err) { next(err); }
 }
 

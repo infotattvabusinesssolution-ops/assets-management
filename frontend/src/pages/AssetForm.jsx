@@ -755,12 +755,10 @@ export function AssetForm() {
         if (condRes?.assetConditions && Array.isArray(condRes.assetConditions) && condRes.assetConditions.length > 0) {
           setAssetConditions(condRes.assetConditions);
         }
-        const customSups = JSON.parse(localStorage.getItem('fams_custom_suppliers') || localStorage.getItem('fams_custom_vendors') || '[]');
-        const serverSups = supRes?.suppliers || supRes?.vendors || [];
-        const seenSupNames = new Set(serverSups.map(s => (s.name || s.providerName || '').toLowerCase()));
-        const mergedSups = [...serverSups, ...customSups.filter(cs => !seenSupNames.has((cs.name || cs.providerName || '').toLowerCase()))];
-        if (mergedSups.length > 0) {
-          setSuppliers(mergedSups);
+        if (supRes?.suppliers && Array.isArray(supRes.suppliers)) {
+          setSuppliers(supRes.suppliers);
+        } else if (supRes?.vendors && Array.isArray(supRes.vendors)) {
+          setSuppliers(supRes.vendors);
         }
       } catch (err) {
         console.warn('Master data load skipped:', err);
