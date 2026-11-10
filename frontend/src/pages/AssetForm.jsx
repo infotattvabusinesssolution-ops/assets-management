@@ -2357,6 +2357,7 @@ export function AssetForm() {
         </div>
       </div>
 
+      {/* ROW 1: Asset Name, Asset Group, Asset Sub Group, Category */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
           <label className="font-bold text-slate-700 block mb-1">
@@ -2456,7 +2457,10 @@ export function AssetForm() {
             <p className="text-[11px] text-amber-600 mt-1">No categories found.</p>
           ) : null}
         </div>
+      </div>
 
+      {/* ROW 2: Sub Category, Manufacturer, Brand */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 text-xs">
         <div>
           <label className="font-bold text-slate-700 block mb-1">
             Sub Category {availableAssetClasses.length > 0 ? <span className="text-rose-500">*</span> : null}
@@ -2565,15 +2569,18 @@ export function AssetForm() {
             )}
           </select>
         </div>
+      </div>
 
+      {/* ROW 3: Model (Editable), Quantity, Description */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
           <label className="font-bold text-slate-700 block mb-1">Model</label>
           <input
             type="text"
-            readOnly
-            value={formData.model || (selectedItemMasterId ? 'None specified on master' : '')}
-            placeholder="Model"
-            className="w-full border border-slate-200 rounded-xl p-2 font-semibold bg-slate-100 cursor-not-allowed text-slate-700 outline-none"
+            value={formData.model || ''}
+            onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+            placeholder="e.g. ThinkPad T14 / 21HD0006US"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors"
           />
         </div>
 
@@ -2602,6 +2609,17 @@ export function AssetForm() {
               {fieldErrors.quantity}
             </p>
           )}
+        </div>
+
+        <div className="md:col-span-2">
+          <label className="font-bold text-slate-700 block mb-1">Description</label>
+          <input
+            type="text"
+            value={formData.description || ''}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            placeholder="Enter asset description or specifications..."
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors"
+          />
         </div>
       </div>
     </div>
@@ -4664,10 +4682,10 @@ export function AssetForm() {
                     <label className="font-bold text-slate-700 block mb-1">Model</label>
                     <input
                       type="text"
-                      readOnly
-                      value={formData.model || (selectedItemMasterId ? 'None specified on master' : '')}
-                      placeholder="Model"
-                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-700 font-semibold cursor-not-allowed outline-none"
+                      value={formData.model || ''}
+                      onChange={(e) => setFormData({ ...formData, model: e.target.value })}
+                      placeholder="e.g. ThinkPad T14"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     />
                   </div>
                 </div>
