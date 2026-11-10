@@ -1291,8 +1291,21 @@ export function AssetForm() {
   const updateWarranty = (changes, perItem = false) => {
     const previous = perItem ? { ...formData, ...assetItems[selectedItemIndex] } : formData;
     const next = { ...previous, ...changes };
-    next.warrantyEndDate = warrantyEndFor(next.warrantyStartDate, next.warrantyYears);
-    if (perItem) updateAssetItem({ ...changes, warrantyEndDate: next.warrantyEndDate });
+    if ('warrantyYears' in changes) {
+      next.warrantyEndDate = warrantyEndFor(next.warrantyStartDate, next.warrantyYears);
+    } else if ('warrantyEndDate' in changes && next.warrantyStartDate && next.warrantyEndDate) {
+      const start = new Date(`${next.warrantyStartDate}T00:00:00Z`);
+      const end = new Date(`${next.warrantyEndDate}T00:00:00Z`);
+      if (!Number.isNaN(start.getTime()) && !Number.isNaN(end.getTime()) && end > start) {
+        const diffYears = Math.round((end - start) / (365.25 * 24 * 60 * 60 * 1000));
+        if (diffYears >= 1 && diffYears <= 50) {
+          next.warrantyYears = String(diffYears);
+        }
+      }
+    } else if ('warrantyStartDate' in changes && next.warrantyYears) {
+      next.warrantyEndDate = warrantyEndFor(next.warrantyStartDate, next.warrantyYears);
+    }
+    if (perItem) updateAssetItem({ ...changes, warrantyEndDate: next.warrantyEndDate, warrantyYears: next.warrantyYears });
     else setFormData(next);
   };
   const renderItemSelector = label => <label className="block space-y-1 text-xs font-bold text-slate-700">{label}
@@ -3080,6 +3093,16 @@ export function AssetForm() {
         </div>
 
         <div>
+          <label className="font-bold text-slate-700 block mb-1">Warranty End Date</label>
+          <input
+            type="date"
+            value={formData.warrantyEndDate}
+            onChange={(e) => updateWarranty({ warrantyEndDate: e.target.value })}
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+          />
+        </div>
+
+        <div>
           <label className="font-bold text-slate-700 block mb-1">Warranty (years)</label>
           <input
             type="number"
@@ -3089,16 +3112,6 @@ export function AssetForm() {
             value={formData.warrantyYears}
             onChange={(e) => updateWarranty({ warrantyYears: e.target.value })}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          />
-        </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Warranty End Date</label>
-          <input
-            type="date"
-            value={formData.warrantyEndDate}
-            readOnly
-            className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold cursor-not-allowed"
           />
         </div>
 
@@ -3132,8 +3145,8 @@ export function AssetForm() {
         <label className="space-y-1 text-xs font-bold text-slate-700">Currency<select value={value('currency')} onChange={event => updateAssetItem({ currency: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2">{['AED', 'USD', 'EUR', 'GBP', 'INR'].map(code => <option key={code} value={code}>{code}</option>)}</select></label>
         {input('Purchase order / invoice', 'poInvoiceNo')}{input('Supplier', 'supplier')}
         <label className="space-y-1 text-xs font-bold text-slate-700">Warranty start date<input type="date" value={value('warrantyStartDate')} onChange={event => updateWarranty({ warrantyStartDate: event.target.value }, true)} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2" /></label>
+        <label className="space-y-1 text-xs font-bold text-slate-700">Warranty end date<input type="date" value={item.warrantyEndDate ?? formData.warrantyEndDate} onChange={event => updateWarranty({ warrantyEndDate: event.target.value }, true)} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2" /></label>
         <label className="space-y-1 text-xs font-bold text-slate-700">Warranty in years<input type="number" min="1" max="50" step="1" value={value('warrantyYears')} onChange={event => updateWarranty({ warrantyYears: event.target.value }, true)} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2" /></label>
-        <label className="space-y-1 text-xs font-bold text-slate-700">Warranty end date<input type="date" readOnly value={item.warrantyEndDate ?? formData.warrantyEndDate} className="w-full rounded-xl border border-slate-200 bg-slate-100 p-2" /></label>
         {input('Warranty provider', 'provider')}{input('Warranty type', 'warrantyType')}
         {input('Coverage', 'coverage')}{input('Contract reference', 'contractReference')}
         <label className="space-y-1 text-xs font-bold text-slate-700">Condition<select value={value('condition')} onChange={event => updateAssetItem({ condition: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2">{['New', 'Good', 'Fair', 'Damaged', 'Refurbished'].map(condition => <option key={condition} value={condition}>{condition}</option>)}</select></label>
@@ -4024,8 +4037,8 @@ export function AssetForm() {
         ['Purchase order / invoice', formData.poInvoiceNo],
         ['Supplier', formData.supplier],
         ['Warranty start', formData.warrantyStartDate],
-        ['Warranty (years)', formData.warrantyYears],
         ['Warranty end', formData.warrantyEndDate],
+        ['Warranty (years)', formData.warrantyYears],
         ['Condition', formData.condition],
         ['Description / remarks', formData.description],
         ...(formData.provider ? [['Warranty provider', formData.provider]] : []),
@@ -5318,17 +5331,17 @@ export function AssetForm() {
                     />
                   </div>
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Warranty (years)</label>
-                    <input type="number" min="1" max="50" step="1" value={formData.warrantyYears} onChange={(e) => updateWarranty({ warrantyYears: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold" />
-                  </div>
-                  <div>
                     <label className="font-bold text-slate-700 block mb-1">End Date</label>
                     <input
                       type="date"
                       value={formData.warrantyEndDate}
-                      readOnly
-                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold text-[11px]"
+                      onChange={(e) => updateWarranty({ warrantyEndDate: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none text-[11px]"
                     />
+                  </div>
+                  <div>
+                    <label className="font-bold text-slate-700 block mb-1">Warranty (years)</label>
+                    <input type="number" min="1" max="50" step="1" value={formData.warrantyYears} onChange={(e) => updateWarranty({ warrantyYears: e.target.value })} className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold text-[11px]" />
                   </div>
                 </div>
 
