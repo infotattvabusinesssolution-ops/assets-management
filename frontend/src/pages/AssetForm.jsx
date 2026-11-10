@@ -335,20 +335,12 @@ export function AssetForm() {
       const newCmp = res?.company || { id: `cmp-${Date.now()}`, name: cleanName, code };
       setCompanies(prev => [...prev, newCmp]);
       setFormData(prev => ({ ...prev, companyId: newCmp.id, company: newCmp.name }));
-      try {
-        const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
-        localStorage.setItem('fams_companies', JSON.stringify([...stored, newCmp]));
-      } catch (_) { }
       showToast('success', `Company "${cleanName}" added successfully!`);
     } catch (err) {
       console.warn('Add company error:', err);
       const newCmp = { id: `cmp-${Date.now()}`, name: cleanName, code };
       setCompanies(prev => [...prev, newCmp]);
       setFormData(prev => ({ ...prev, companyId: newCmp.id, company: newCmp.name }));
-      try {
-        const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
-        localStorage.setItem('fams_companies', JSON.stringify([...stored, newCmp]));
-      } catch (_) { }
       showToast('success', `Company "${cleanName}" added successfully!`);
     }
   };
@@ -697,10 +689,8 @@ export function AssetForm() {
         }
         if (siteRes?.sites) setSites(siteRes.sites);
         if (companyRes?.companies) {
-          const stored = JSON.parse(localStorage.getItem('fams_companies') || '[]');
-          const server = companyRes.companies;
-          const merged = [...stored, ...server.filter(s => !stored.some(st => st.id === s.id || (st.code && s.code && st.code.toUpperCase() === s.code.toUpperCase())))];
-          setCompanies(merged);
+          try { localStorage.removeItem('fams_companies'); } catch (_) { }
+          setCompanies(companyRes.companies);
         }
         if (buildingRes?.buildings) {
           const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
