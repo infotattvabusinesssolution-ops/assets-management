@@ -1726,11 +1726,6 @@ export function AssetForm() {
         errors.model = 'Model is required.';
         if (!firstWarning) firstWarning = 'Warning: Model is required. Please enter a Model.';
       }
-      const qty = Number(formData.quantity);
-      if (!formData.quantity || isNaN(qty) || !Number.isInteger(qty) || qty < 1 || qty > 50) {
-        errors.quantity = 'Quantity must be between 1 and 50.';
-        if (!firstWarning) firstWarning = 'Warning: Quantity must be a valid number between 1 and 50.';
-      }
       if (!formData.description?.trim()) {
         errors.description = 'Description is required.';
         if (!firstWarning) firstWarning = 'Warning: Description is required. Please enter a Description.';
@@ -1738,6 +1733,11 @@ export function AssetForm() {
     }
 
     if (stepNumber === 2) {
+      const qty = Number(formData.quantity);
+      if (!formData.quantity || isNaN(qty) || !Number.isInteger(qty) || qty < 1 || qty > 50) {
+        errors.quantity = 'Quantity Received must be between 1 and 50.';
+        if (!firstWarning) firstWarning = 'Warning: Quantity Received must be a valid number between 1 and 50.';
+      }
       if (formData.enablePm) {
         if (!formData.pmTitle?.trim()) {
           errors.pmTitle = 'Schedule Title is required.';
@@ -2319,7 +2319,7 @@ export function AssetForm() {
         </span>
       </div>
 
-      {Object.keys(fieldErrors).some(k => ['assetName', 'assetType', 'assetGroup', 'assetClass', 'category', 'subcategory', 'manufacturer', 'brand', 'model', 'quantity', 'description'].includes(k)) && (
+      {Object.keys(fieldErrors).some(k => ['assetName', 'assetType', 'assetGroup', 'assetClass', 'category', 'subcategory', 'manufacturer', 'brand', 'model', 'description'].includes(k)) && (
         <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in">
           <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
           <div>
@@ -2674,9 +2674,9 @@ export function AssetForm() {
         </div>
       </div>
 
-      {/* ROW 3: Model (Editable), Quantity, Description */}
+      {/* ROW 3: Model (Editable) & Description */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs items-start">
-        <div>
+        <div className="md:col-span-1">
           <label className="font-bold text-slate-700 block mb-1">
             Model <span className="text-rose-500">*</span>
           </label>
@@ -2699,34 +2699,7 @@ export function AssetForm() {
           )}
         </div>
 
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">
-            Quantity <span className="text-rose-500">*</span>
-          </label>
-          <input
-            type="number"
-            min="1"
-            max="50"
-            value={formData.quantity}
-            onChange={(e) => {
-              updateQuantity(e.target.value);
-              const val = Number(e.target.value);
-              if (Number.isInteger(val) && val >= 1 && val <= 50) clearFieldError('quantity');
-            }}
-            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-bold outline-none transition-colors ${fieldErrors.quantity
-              ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
-              : 'border-slate-200 focus:border-[#6C2BD9]'
-              }`}
-          />
-          {fieldErrors.quantity && (
-            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
-              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
-              {fieldErrors.quantity}
-            </p>
-          )}
-        </div>
-
-        <div className="md:col-span-2">
+        <div className="md:col-span-3">
           <label className="font-bold text-slate-700 block mb-1">
             Description <span className="text-rose-500">*</span>
           </label>
@@ -2925,8 +2898,17 @@ export function AssetForm() {
               const val = Number(e.target.value);
               if (Number.isInteger(val) && val >= 1 && val <= 50) clearFieldError('quantity');
             }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-bold focus:border-[#6C2BD9] outline-none"
+            className={`w-full bg-slate-50 border rounded-xl p-2 text-slate-900 font-bold outline-none transition-colors ${fieldErrors.quantity
+              ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+              : 'border-slate-200 focus:border-[#6C2BD9]'
+            }`}
           />
+          {fieldErrors.quantity && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.quantity}
+            </p>
+          )}
           <p className="text-[10px] text-slate-400 mt-0.5">Generates {quantityCount} distinct Tag ID{quantityCount > 1 ? 's' : ''} on save.</p>
         </div>
 
