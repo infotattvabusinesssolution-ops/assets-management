@@ -4323,7 +4323,7 @@ export function AssetForm() {
               {/* Step 2: Additional Details (Financials + Remarks) */}
               {currentStep === 2 && (
                 <div className="space-y-4">
-                  {quantityCount > 1 ? renderBatchFinancial() : renderFinancialInfo()}
+                  {renderFinancialInfo()}
                   {renderDescription()}
                   {renderMaintenanceDiscovery()}
                 </div>
@@ -4358,7 +4358,7 @@ export function AssetForm() {
               <div className="lg:col-span-2 space-y-4">
                 {renderBasicInfo()}
                 {renderLocationOwnership()}
-                {quantityCount > 1 ? renderBatchFinancial() : renderFinancialInfo()}
+                {renderFinancialInfo()}
                 {renderDescription()}
               </div>
               <div className="space-y-4">
