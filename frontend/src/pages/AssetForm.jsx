@@ -1777,6 +1777,18 @@ export function AssetForm() {
     }
 
     if (stepNumber === 3) {
+      if (!formData.companyId && !formData.company) {
+        errors.company = 'Company is required.';
+        if (!firstWarning) firstWarning = 'Warning: Company is required. Please select a Company.';
+      }
+      if (!formData.departmentId && !formData.department) {
+        errors.department = 'Department is required.';
+        if (!firstWarning) firstWarning = 'Warning: Department is required. Please select a Department.';
+      }
+      if (!formData.costCenterId && !formData.costCenter) {
+        errors.costCenter = 'Cost Center is required.';
+        if (!firstWarning) firstWarning = 'Warning: Cost Center is required. Please select a Cost Center.';
+      }
       if (quantityCount > 1 && selectedDepreciationCategory?.isSerialized) {
         const itemSerialNumbers = serialNumbers.map(s => (s || '').trim());
         if (itemSerialNumbers.some(s => !s)) {
@@ -1824,16 +1836,20 @@ export function AssetForm() {
         delete next.manufacturer;
         delete next.brand;
         delete next.model;
-        delete next.quantity;
         delete next.description;
         delete next.serialNumber;
       } else if (stepNumber === 2) {
+        delete next.quantity;
         delete next.pmTitle;
         delete next.pmNextDueDate;
         delete next.pmFrequencyMonths;
         delete next.discoveryId;
         delete next.warranty;
       } else if (stepNumber === 3) {
+        delete next.company;
+        delete next.department;
+        delete next.costCenter;
+        delete next.serialNumber;
         delete next.tag;
       }
       return next;
@@ -1890,6 +1906,18 @@ export function AssetForm() {
       }
       if (availableAssetClasses.length > 0 && !formData.subcategory && !formData.assetClassId) {
         showToast('error', 'Select a Sub Category before saving.');
+        return;
+      }
+      if (!formData.companyId && !formData.company) {
+        showToast('error', 'Select a Company before saving.');
+        return;
+      }
+      if (!formData.departmentId && !formData.department) {
+        showToast('error', 'Select a Department before saving.');
+        return;
+      }
+      if (!formData.costCenterId && !formData.costCenter) {
+        showToast('error', 'Select a Cost Center before saving.');
         return;
       }
       const itemSerialNumbers = serialNumbers.map((serial, idx) => {
@@ -3195,7 +3223,7 @@ export function AssetForm() {
       <p className="text-xs text-slate-500">Each item can have a separate company, site, room, department and custodian. Empty company, site, department and cost center use registration defaults; an empty custodian leaves the item unassigned.</p>
     </section>;
   };
-  const renderLocationOwnership = () => quantityCount > 1 ? renderBatchLocation() : (
+  const renderLocationOwnership = () => (
     <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
       <div className="flex items-center justify-between border-b border-slate-100 pb-2">
         <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
@@ -3206,46 +3234,49 @@ export function AssetForm() {
         </span>
       </div>
 
+      {Object.keys(fieldErrors).some(k => ['company', 'department', 'costCenter'].includes(k)) && (
+        <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in">
+          <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+          <div>
+            <span className="font-bold">Required Fields Missing:</span> Please fill in all required fields marked with <span className="text-rose-600 font-bold">*</span> before continuing to the next step.
+          </div>
+        </div>
+      )}
+
       <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700">Company</label>
-            <button
-              type="button"
-              onClick={handleQuickAddCompany}
-              className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
-              title="Add a new Company"
-            >
-              <Plus className="w-3 h-3 stroke-[3]" /> Add
-            </button>
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">
+            Company <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.companyId || (companies.find(c => c.name === formData.company || c.code === formData.company)?.id || '')}
             onChange={(e) => {
-              if (e.target.value === '__NEW__') {
-                handleQuickAddCompany();
-              } else {
-                const selectedId = e.target.value;
-                const found = companies.find(c => c.id === selectedId);
-                setFormData(prev => ({
-                  ...prev,
-                  companyId: selectedId,
-                  company: found ? (found.name || found.code) : '',
-                  siteId: '',
-                  site: '',
-                  buildingId: '',
-                  building: ''
-                }));
-              }
+              const selectedId = e.target.value;
+              const found = companies.find(c => c.id === selectedId);
+              setFormData(prev => ({
+                ...prev,
+                companyId: selectedId,
+                company: found ? (found.name || found.code) : '',
+                siteId: '',
+                site: '',
+                buildingId: '',
+                building: ''
+              }));
+              if (selectedId) clearFieldError('company');
             }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.company ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
           >
-            <option value="">Select Company (Optional)</option>
+            <option value="">Select Company *</option>
             {companies.map(c => (
               <option key={c.id} value={c.id}>{c.name || c.code}</option>
             ))}
-            <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Company...</option>
           </select>
+          {fieldErrors.company && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.company}
+            </p>
+          )}
         </div>
 
         <div>
@@ -3275,31 +3306,17 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700">Building</label>
-            <button
-              type="button"
-              onClick={handleQuickAddBuilding}
-              className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
-              title="Add a new Building"
-            >
-              <Plus className="w-3 h-3 stroke-[3]" /> Add
-            </button>
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">Building</label>
           <select
             value={formData.buildingId || (buildings.find(b => b.name === formData.building || b.code === formData.building)?.id || '')}
             onChange={(e) => {
-              if (e.target.value === '__NEW__') {
-                handleQuickAddBuilding();
-              } else {
-                const selectedId = e.target.value;
-                const found = buildings.find(b => b.id === selectedId);
-                setFormData(prev => ({
-                  ...prev,
-                  buildingId: selectedId,
-                  building: found ? (found.name || found.code) : ''
-                }));
-              }
+              const selectedId = e.target.value;
+              const found = buildings.find(b => b.id === selectedId);
+              setFormData(prev => ({
+                ...prev,
+                buildingId: selectedId,
+                building: found ? (found.name || found.code) : ''
+              }));
             }}
             className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
           >
@@ -3309,7 +3326,6 @@ export function AssetForm() {
               .map(b => (
                 <option key={b.id} value={b.id}>{b.name || b.code}</option>
               ))}
-
           </select>
         </div>
 
@@ -3325,78 +3341,61 @@ export function AssetForm() {
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700">Department</label>
-            <button
-              type="button"
-              onClick={handleQuickAddDepartment}
-              className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
-              title="Add a new Department"
-            >
-              <Plus className="w-3 h-3 stroke-[3]" /> Add
-            </button>
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">
+            Department <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.departmentId || (departments.find(d => d.name === formData.department || d.code === formData.department)?.id || '')}
             onChange={(e) => {
-              if (e.target.value === '__NEW__') {
-                handleQuickAddDepartment();
-              } else {
-                const selectedId = e.target.value;
-                const found = departments.find(d => d.id === selectedId);
-                const currentCC = costCenters.find(cc => cc.id === formData.costCenterId);
-                const keepsCC = !selectedId || !currentCC || !currentCC.departmentId || currentCC.departmentId === selectedId;
-                setFormData(prev => ({
-                  ...prev,
-                  departmentId: selectedId,
-                  department: found ? (found.name || found.code) : '',
-                  costCenterId: keepsCC ? prev.costCenterId : '',
-                  costCenter: keepsCC ? prev.costCenter : ''
-                }));
-              }
+              const selectedId = e.target.value;
+              const found = departments.find(d => d.id === selectedId);
+              const currentCC = costCenters.find(cc => cc.id === formData.costCenterId);
+              const keepsCC = !selectedId || !currentCC || !currentCC.departmentId || currentCC.departmentId === selectedId;
+              setFormData(prev => ({
+                ...prev,
+                departmentId: selectedId,
+                department: found ? (found.name || found.code) : '',
+                costCenterId: keepsCC ? prev.costCenterId : '',
+                costCenter: keepsCC ? prev.costCenter : ''
+              }));
+              if (selectedId) clearFieldError('department');
             }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.department ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
           >
-            <option value="">Select Department (Optional)</option>
+            <option value="">Select Department *</option>
             {departments
               .filter(d => !formData.companyId || !d.companyId || d.companyId === formData.companyId || d.id === formData.departmentId || d.name === formData.department)
               .map(d => (
                 <option key={d.id} value={d.id}>{d.name || d.code}</option>
               ))}
-            <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Department...</option>
           </select>
+          {fieldErrors.department && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.department}
+            </p>
+          )}
         </div>
 
         <div>
-          <div className="flex items-center justify-between mb-1">
-            <label className="font-bold text-slate-700">Cost Center</label>
-            <button
-              type="button"
-              onClick={handleQuickAddCostCenter}
-              className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
-              title="Add a new Cost Center"
-            >
-              <Plus className="w-3 h-3 stroke-[3]" /> Add
-            </button>
-          </div>
+          <label className="font-bold text-slate-700 block mb-1">
+            Cost Center <span className="text-rose-500">*</span>
+          </label>
           <select
             value={formData.costCenterId || (costCenters.find(cc => cc.name === formData.costCenter || cc.code === formData.costCenter)?.id || '')}
             onChange={(e) => {
-              if (e.target.value === '__NEW__') {
-                handleQuickAddCostCenter();
-              } else {
-                const selectedId = e.target.value;
-                const found = costCenters.find(cc => cc.id === selectedId);
-                setFormData(prev => ({
-                  ...prev,
-                  costCenterId: selectedId,
-                  costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
-                }));
-              }
+              const selectedId = e.target.value;
+              const found = costCenters.find(cc => cc.id === selectedId);
+              setFormData(prev => ({
+                ...prev,
+                costCenterId: selectedId,
+                costCenter: found ? (found.code ? `${found.code} - ${found.name}` : found.name) : ''
+              }));
+              if (selectedId) clearFieldError('costCenter');
             }}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.costCenter ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
           >
-            <option value="">Select Cost Center (Optional)</option>
+            <option value="">Select Cost Center *</option>
             {costCenters
               .filter(cc => {
                 const matchesCompany = !formData.companyId || !cc.companyId || cc.companyId === formData.companyId;
@@ -3406,8 +3405,13 @@ export function AssetForm() {
               .map(cc => (
                 <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
               ))}
-            <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Cost Center...</option>
           </select>
+          {fieldErrors.costCenter && (
+            <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+              <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+              {fieldErrors.costCenter}
+            </p>
+          )}
         </div>
 
         <div>
