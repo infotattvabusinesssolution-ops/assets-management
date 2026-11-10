@@ -565,6 +565,10 @@ export function AssetForm() {
     }
   });
   const [sites, setSites] = useState([]);
+  const [level1List, setLevel1List] = useState([]);
+  const [level2List, setLevel2List] = useState([]);
+  const [level3List, setLevel3List] = useState([]);
+  const [level4List, setLevel4List] = useState([]);
   const [companies, setCompanies] = useState([]);
   const [buildings, setBuildings] = useState([]);
   const [floors, setFloors] = useState([]);
@@ -611,7 +615,7 @@ export function AssetForm() {
   useEffect(() => {
     async function loadMasterData() {
       try {
-        const [catRes, subCatRes, asgRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes] = await Promise.all([
+        const [catRes, subCatRes, asgRes, classRes, siteRes, deptRes, ccRes, mfrRes, empRes, companyRes, buildingRes, floorRes, roomRes, groupRes, typeRes, itemRes, brandRes, lvl1Res, lvl2Res, lvl3Res, lvl4Res] = await Promise.all([
           api.get('/master-data/categories').catch(() => null),
           api.get('/master-data/sub-categories').catch(() => null),
           api.get('/master-data/asset-sub-groups').catch(() => null),
@@ -628,7 +632,11 @@ export function AssetForm() {
           api.get('/master-data/asset-groups').catch(() => null),
           api.get('/master-data/asset-types').catch(() => null),
           api.get('/master-data/items?includeInactive=false').catch(() => null),
-          api.get('/master-data/brands').catch(() => null)
+          api.get('/master-data/brands').catch(() => null),
+          api.get('/master-data/location-levels/1').catch(() => null),
+          api.get('/master-data/location-levels/2').catch(() => null),
+          api.get('/master-data/location-levels/3').catch(() => null),
+          api.get('/master-data/location-levels/4').catch(() => null)
         ]);
         if (itemRes?.items && Array.isArray(itemRes.items)) {
           const realItems = itemRes.items.filter(i => !['itm-001', 'itm-002', 'itm-003'].includes(i.id));
@@ -724,6 +732,22 @@ export function AssetForm() {
         const mergedBrands = [...serverBrands, ...customBrands.filter(cb => !existingBrandNames.has((cb.name || '').toLowerCase()))];
         setBrands(mergedBrands);
         if (empRes?.employees) setEmployees(empRes.employees);
+
+        const parseLevelItems = (res, lvl) => {
+          let items = res?.locationLevels && Array.isArray(res.locationLevels) ? res.locationLevels : [];
+          try {
+            const local = JSON.parse(localStorage.getItem(`fams_custom_location_level_${lvl}`) || '[]');
+            const codes = new Set(items.map(x => (x.code || '').toUpperCase().trim()));
+            const missingLocal = local.filter(l => !codes.has((l.code || '').toUpperCase().trim()));
+            return [...items, ...missingLocal].filter(it => it.active !== false && it.status !== 'Inactive');
+          } catch (_) {
+            return items;
+          }
+        };
+        setLevel1List(parseLevelItems(lvl1Res, 1));
+        setLevel2List(parseLevelItems(lvl2Res, 2));
+        setLevel3List(parseLevelItems(lvl3Res, 3));
+        setLevel4List(parseLevelItems(lvl4Res, 4));
       } catch (err) {
         console.warn('Master data load skipped:', err);
       }
@@ -3234,6 +3258,22 @@ export function AssetForm() {
     const locLevel3 = formData.locationLevel3 || selectedLocation?.locationLevel3 || (pathParts[2] || (selectedLocation?.level === 'Level 3' ? selectedLocation.name : '')) || '';
     const locLevel4 = formData.locationLevel4 || selectedLocation?.locationLevel4 || (pathParts[3] || (selectedLocation?.level === 'Level 4' ? selectedLocation.name : '')) || '';
 
+    const l1Match = level1List.find(x => (x.code && locLevel1 && x.code.toUpperCase() === locLevel1.toUpperCase()) || (x.name && locLevel1 && x.name.toLowerCase() === locLevel1.toLowerCase()) || x.id === locLevel1);
+    const l1Code = l1Match?.code || locLevel1;
+    const l1Name = l1Match?.name || (l1Code !== locLevel1 ? locLevel1 : '');
+
+    const l2Match = level2List.find(x => (x.code && locLevel2 && x.code.toUpperCase() === locLevel2.toUpperCase()) || (x.name && locLevel2 && x.name.toLowerCase() === locLevel2.toLowerCase()) || x.id === locLevel2);
+    const l2Code = l2Match?.code || locLevel2;
+    const l2Name = l2Match?.name || (l2Code !== locLevel2 ? locLevel2 : '');
+
+    const l3Match = level3List.find(x => (x.code && locLevel3 && x.code.toUpperCase() === locLevel3.toUpperCase()) || (x.name && locLevel3 && x.name.toLowerCase() === locLevel3.toLowerCase()) || x.id === locLevel3);
+    const l3Code = l3Match?.code || locLevel3;
+    const l3Name = l3Match?.name || (l3Code !== locLevel3 ? locLevel3 : '');
+
+    const l4Match = level4List.find(x => (x.code && locLevel4 && x.code.toUpperCase() === locLevel4.toUpperCase()) || (x.name && locLevel4 && x.name.toLowerCase() === locLevel4.toLowerCase()) || x.id === locLevel4);
+    const l4Code = l4Match?.code || locLevel4;
+    const l4Name = l4Match?.name || (l4Code !== locLevel4 ? locLevel4 : '');
+
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-4 relative">
         <div className="flex items-center justify-between border-b border-slate-100 pb-2">
@@ -3451,69 +3491,48 @@ export function AssetForm() {
                 </span>
               </div>
 
-              {/* Hierarchy Path Flow */}
-              <div className="flex items-center flex-wrap gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs shadow-2xs">
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">L1</span>
-                  <span className="font-bold text-slate-800">{locLevel1 || '—'}</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">L2</span>
-                  <span className="font-bold text-slate-800">{locLevel2 || '—'}</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">L3</span>
-                  <span className="font-bold text-slate-800">{locLevel3 || '—'}</span>
-                </div>
-                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
-                <div className="flex items-center gap-1.5">
-                  <span className="text-[10px] font-bold uppercase text-[#6C2BD9] bg-purple-100 px-1.5 py-0.5 rounded">L4</span>
-                  <span className="font-bold text-[#6C2BD9]">{locLevel4 || '—'}</span>
-                </div>
-              </div>
-
-              {/* Hierarchy Level Cards */}
-              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-0.5">
-                <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-extrabold uppercase text-purple-700">Location Level 1</span>
-                    <span className="text-[10px] text-slate-400 font-medium">Campus / Site</span>
+              {/* Hierarchy Path Flow: Code on top, Name just down the code */}
+              <div className="flex items-center flex-wrap gap-2 sm:gap-3 bg-white border border-slate-200 rounded-lg p-2.5 text-xs shadow-2xs">
+                {/* Level 1 */}
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-md px-3 py-2 flex-1 min-w-[130px]">
+                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded shrink-0 self-start mt-0.5">L1</span>
+                  <div className="flex flex-col">
+                    <span className="font-extrabold text-slate-900 leading-tight">{l1Code || '—'}</span>
+                    {l1Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">{l1Name}</span>}
                   </div>
-                  <p className="font-bold text-slate-900 text-xs truncate" title={locLevel1 || 'Not specified'}>
-                    {locLevel1 || <span className="text-slate-400 font-normal italic">Not specified</span>}
-                  </p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-extrabold uppercase text-purple-700">Location Level 2</span>
-                    <span className="text-[10px] text-slate-400 font-medium">Building / Facility</span>
+                <ChevronRight className="w-3.5 h-3.5 text-purple-400 shrink-0 hidden sm:block" />
+
+                {/* Level 2 */}
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-md px-3 py-2 flex-1 min-w-[130px]">
+                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded shrink-0 self-start mt-0.5">L2</span>
+                  <div className="flex flex-col">
+                    <span className="font-extrabold text-slate-900 leading-tight">{l2Code || '—'}</span>
+                    {l2Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">{l2Name}</span>}
                   </div>
-                  <p className="font-bold text-slate-900 text-xs truncate" title={locLevel2 || 'Not specified'}>
-                    {locLevel2 || <span className="text-slate-400 font-normal italic">Not specified</span>}
-                  </p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-extrabold uppercase text-purple-700">Location Level 3</span>
-                    <span className="text-[10px] text-slate-400 font-medium">Floor / Wing</span>
+                <ChevronRight className="w-3.5 h-3.5 text-purple-400 shrink-0 hidden sm:block" />
+
+                {/* Level 3 */}
+                <div className="flex items-center gap-2 bg-slate-50 border border-slate-100 rounded-md px-3 py-2 flex-1 min-w-[130px]">
+                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-100/80 px-1.5 py-0.5 rounded shrink-0 self-start mt-0.5">L3</span>
+                  <div className="flex flex-col">
+                    <span className="font-extrabold text-slate-900 leading-tight">{l3Code || '—'}</span>
+                    {l3Name && <span className="text-[11px] text-slate-500 font-medium leading-tight mt-0.5">{l3Name}</span>}
                   </div>
-                  <p className="font-bold text-slate-900 text-xs truncate" title={locLevel3 || 'Not specified'}>
-                    {locLevel3 || <span className="text-slate-400 font-normal italic">Not specified</span>}
-                  </p>
                 </div>
 
-                <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
-                  <div className="flex items-center justify-between mb-1">
-                    <span className="text-[10px] font-extrabold uppercase text-[#6C2BD9]">Location Level 4</span>
-                    <span className="text-[10px] text-slate-400 font-medium">Room / Zone</span>
+                <ChevronRight className="w-3.5 h-3.5 text-purple-400 shrink-0 hidden sm:block" />
+
+                {/* Level 4 */}
+                <div className="flex items-center gap-2 bg-purple-50/50 border border-purple-100 rounded-md px-3 py-2 flex-1 min-w-[130px]">
+                  <span className="text-[10px] font-bold uppercase text-[#6C2BD9] bg-purple-100 px-1.5 py-0.5 rounded shrink-0 self-start mt-0.5">L4</span>
+                  <div className="flex flex-col">
+                    <span className="font-extrabold text-[#6C2BD9] leading-tight">{l4Code || '—'}</span>
+                    {l4Name && <span className="text-[11px] text-slate-600 font-semibold leading-tight mt-0.5">{l4Name}</span>}
                   </div>
-                  <p className="font-bold text-slate-900 text-xs truncate" title={locLevel4 || 'Not specified'}>
-                    {locLevel4 || <span className="text-slate-400 font-normal italic">Not specified</span>}
-                  </p>
                 </div>
               </div>
             </div>
