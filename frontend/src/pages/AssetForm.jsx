@@ -2571,7 +2571,7 @@ export function AssetForm() {
       </div>
 
       {/* ROW 3: Model (Editable), Quantity, Description */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-3 text-xs items-start">
         <div>
           <label className="font-bold text-slate-700 block mb-1">Model</label>
           <input
@@ -2612,12 +2612,12 @@ export function AssetForm() {
 
         <div className="md:col-span-2">
           <label className="font-bold text-slate-700 block mb-1">Description</label>
-          <input
-            type="text"
+          <textarea
+            rows={2}
             value={formData.description || ''}
             onChange={(e) => setFormData({ ...formData, description: e.target.value })}
             placeholder="Enter asset description or specifications..."
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors"
+            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors resize-y leading-relaxed"
           />
         </div>
       </div>
