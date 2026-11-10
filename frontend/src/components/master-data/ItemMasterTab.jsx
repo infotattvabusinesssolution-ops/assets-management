@@ -71,6 +71,16 @@ export function ItemMasterTab({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
   const [modalError, setModalError] = useState('');
+  const [modalFieldErrors, setModalFieldErrors] = useState({});
+
+  const clearModalFieldError = (field) => {
+    setModalFieldErrors(prev => {
+      if (!prev[field]) return prev;
+      const next = { ...prev };
+      delete next[field];
+      return next;
+    });
+  };
 
   // Form State
   const [formState, setFormState] = useState({
@@ -100,11 +110,11 @@ export function ItemMasterTab({
   const loadItemMasters = async () => {
     setIsLoading(true);
     try {
-      const [itemRes, grpRes, clsRes, subCatRes, catRes, mfrRes, uomRes, brandRes] = await Promise.all([
+      const [itemRes, grpRes, asgRes, subCatRes, catRes, mfrRes, uomRes, brandRes] = await Promise.all([
         api.get('/master-data/items?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
-        api.get('/master-data/asset-classes?kind=CLASS').catch(() => null),
-        api.get('/master-data/asset-classes?kind=SUBCATEGORY').catch(() => null),
+        api.get('/master-data/asset-sub-groups').catch(() => null),
+        api.get('/master-data/sub-categories').catch(() => null),
         api.get('/master-data/categories').catch(() => null),
         api.get('/master-data/manufacturers').catch(() => null),
         api.get('/master-data/uoms').catch(() => null),
@@ -142,9 +152,7 @@ export function ItemMasterTab({
 
       // Merge Asset Subgroups (Classes): Server + Local Custom
       const localClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-      const serverClasses = clsRes?.assetClasses || [];
-      const seenClassNames = new Set();
-      const mergedClasses = [...serverClasses, ...localClasses].map(c => {
+      const serverClasses = (asgRes?.assetSubGroups || []).map(c => {
         const descGroup = (c.description || '').match(/\[group:([^\]]+)\]/)?.[1];
         const resolvedGroup = descGroup || c.groupName || c.assetGroupName || '';
         return {
@@ -152,7 +160,9 @@ export function ItemMasterTab({
           groupName: resolvedGroup,
           assetGroupName: resolvedGroup
         };
-      }).filter(c => {
+      });
+      const seenClassNames = new Set();
+      const mergedClasses = [...serverClasses, ...localClasses].filter(c => {
         const name = (c.name || c.code || '').trim().toLowerCase();
         if (!name || seenClassNames.has(name)) return false;
         seenClassNames.add(name);
@@ -174,7 +184,7 @@ export function ItemMasterTab({
 
       // Merge Sub Categories: Server + Local Custom
       const localSubCats = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-      const serverSubCats = subCatRes?.assetClasses || [];
+      const serverSubCats = subCatRes?.subCategories || [];
       const seenSubCatNames = new Set();
       const mergedSubCats = [...serverSubCats, ...localSubCats].filter(s => {
         const name = (s.name || s.code || '').trim().toLowerCase();
@@ -361,6 +371,7 @@ export function ItemMasterTab({
 
   const handleOpenAddModal = (itemToEdit = null) => {
     setModalError('');
+    setModalFieldErrors({});
     if (itemToEdit) {
       setEditingItem(itemToEdit);
       setFormState({
@@ -416,6 +427,7 @@ export function ItemMasterTab({
   const handleDuplicateItem = (item) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     setModalError('');
+    setModalFieldErrors({});
     setEditingItem(null);
     setFormState({
       itemCode: `${item.itemCode || 'ITM'}-COPY`,
@@ -448,31 +460,50 @@ export function ItemMasterTab({
     const cleanCode = (formState.itemCode || '').trim().toUpperCase();
     const cleanBarcode = (formState.supplierBarcode || '').trim();
 
-    if (!cleanName) {
-      setModalError('Item Name is required.');
+    const errors = {};
+    if (!cleanBarcode) errors.supplierBarcode = 'Supplier Barcode is required.';
+    if (!cleanName) errors.itemName = 'Item Name is required.';
+    if (!formState.assetGroupName?.trim()) errors.assetGroupName = 'Asset Group is required.';
+    if (!formState.assetSubGroupName?.trim()) errors.assetSubGroupName = 'Asset Sub Group is required.';
+    if (!formState.categoryName?.trim()) errors.categoryName = 'Category is required.';
+    if (!formState.subCategoryName?.trim()) errors.subCategoryName = 'Sub Category is required.';
+    if (!formState.uom?.trim()) errors.uom = 'Unit of Measure (UOM) is required.';
+    if (!formState.manufacturerName?.trim()) errors.manufacturerName = 'Manufacturer is required.';
+    if (!formState.brandName?.trim()) errors.brandName = 'Brand is required.';
+    if (!formState.description?.trim()) errors.description = 'Description is required.';
+    if (!formState.specifications?.trim()) errors.specifications = 'Technical Specifications are required.';
+    if (!formState.status?.trim()) errors.status = 'Status is required.';
+
+    if (Object.keys(errors).length > 0) {
+      setModalFieldErrors(errors);
+      setModalError('All fields marked with * are mandatory. Please fill in all required fields.');
       return;
     }
 
     // STRICT DUPLICATE VALIDATION: Item Code uniqueness
     if (cleanCode && items.some(i => i.id !== editingItem?.id && (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
       setModalError(`An item with Item Code "${cleanCode}" already exists. Duplicate item codes are not allowed.`);
+      setModalFieldErrors(prev => ({ ...prev, itemCode: 'Duplicate code' }));
       return;
     }
 
     // STRICT DUPLICATE VALIDATION: Item Name uniqueness
     if (items.some(i => i.id !== editingItem?.id && (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
       setModalError(`An item with Item Name "${cleanName}" already exists. Duplicate item names are not allowed.`);
+      setModalFieldErrors(prev => ({ ...prev, itemName: 'Duplicate name' }));
       return;
     }
 
-    // STRICT DUPLICATE VALIDATION: Supplier Barcode uniqueness (if provided)
+    // STRICT DUPLICATE VALIDATION: Supplier Barcode uniqueness
     if (cleanBarcode && items.some(i => i.id !== editingItem?.id && i.supplierBarcode && i.supplierBarcode.trim().toLowerCase() === cleanBarcode.toLowerCase())) {
       setModalError(`An item with Supplier Barcode "${cleanBarcode}" already exists. Supplier barcodes must be unique.`);
+      setModalFieldErrors(prev => ({ ...prev, supplierBarcode: 'Duplicate barcode' }));
       return;
     }
 
     setIsSaving(true);
     setModalError('');
+    setModalFieldErrors({});
 
     try {
       const payload = {
@@ -987,15 +1018,28 @@ export function ItemMasterTab({
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">
-                    Supplier Barcode <span className="text-slate-400 text-[10px]">(UPC / EAN)</span>
+                    Supplier Barcode <span className="text-rose-500">*</span> <span className="text-slate-400 text-[10px]">(UPC / EAN)</span>
                   </label>
                   <input
                     type="text"
                     placeholder="e.g. 019534827101"
                     value={formState.supplierBarcode}
-                    onChange={(e) => setFormState({ ...formState, supplierBarcode: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
+                    onChange={(e) => {
+                      setFormState({ ...formState, supplierBarcode: e.target.value });
+                      if (e.target.value.trim()) clearModalFieldError('supplierBarcode');
+                    }}
+                    className={`w-full border rounded-xl px-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none transition-colors ${
+                      modalFieldErrors.supplierBarcode
+                        ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                        : 'bg-slate-50 border-slate-200 focus:border-[#6C2BD9]'
+                    }`}
                   />
+                  {modalFieldErrors.supplierBarcode && (
+                    <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                      <AlertCircle className="w-3 h-3 shrink-0" />
+                      {modalFieldErrors.supplierBarcode}
+                    </p>
+                  )}
                 </div>
               </div>
 
@@ -1007,10 +1051,22 @@ export function ItemMasterTab({
                   type="text"
                   placeholder="e.g. Lenovo ThinkPad T14 Gen 4"
                   value={formState.itemName}
-                  onChange={(e) => setFormState({ ...formState, itemName: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
-                  required
+                  onChange={(e) => {
+                    setFormState({ ...formState, itemName: e.target.value });
+                    if (e.target.value.trim()) clearModalFieldError('itemName');
+                  }}
+                  className={`w-full border rounded-xl px-3 py-2 text-xs font-bold text-slate-800 placeholder-slate-400 focus:outline-none transition-colors ${
+                    modalFieldErrors.itemName
+                      ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                      : 'bg-slate-50 border-slate-200 focus:border-[#6C2BD9]'
+                  }`}
                 />
+                {modalFieldErrors.itemName && (
+                  <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    {modalFieldErrors.itemName}
+                  </p>
+                )}
               </div>
 
               {/* Classification Hierarchical Dropdowns */}
@@ -1022,7 +1078,9 @@ export function ItemMasterTab({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Asset Group *</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Asset Group <span className="text-rose-500">*</span>
+                    </label>
                     <select
                       value={formState.assetGroupName}
                       onChange={(e) => {
@@ -1036,19 +1094,31 @@ export function ItemMasterTab({
                           categoryName: '',
                           categoryId: ''
                         });
+                        if (e.target.value) clearModalFieldError('assetGroupName');
                       }}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-                      required
+                      className={`w-full bg-white border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors cursor-pointer ${
+                        modalFieldErrors.assetGroupName
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                          : 'border-slate-200 focus:border-[#6C2BD9]'
+                      }`}
                     >
-                      <option value="">-- Select Group --</option>
+                      <option value="">-- Select Group * --</option>
                       {assetGroups.map(g => (
                         <option key={g.id || g.name} value={g.name}>{g.name}</option>
                       ))}
                     </select>
+                    {modalFieldErrors.assetGroupName && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {modalFieldErrors.assetGroupName}
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Asset Sub Group</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Asset Sub Group <span className="text-rose-500">*</span>
+                    </label>
                     <select
                       value={formState.assetSubGroupName}
                       onChange={(e) => {
@@ -1073,20 +1143,33 @@ export function ItemMasterTab({
                           subCategoryName: '',
                           subCategoryId: ''
                         });
+                        if (e.target.value) clearModalFieldError('assetSubGroupName');
                       }}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                      className={`w-full bg-white border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors cursor-pointer ${
+                        modalFieldErrors.assetSubGroupName
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                          : 'border-slate-200 focus:border-[#6C2BD9]'
+                      }`}
                     >
-                      <option value="">-- Select Sub Group --</option>
+                      <option value="">-- Select Sub Group * --</option>
                       {availableModalSubGroups.map(sg => (
                         <option key={sg.id || sg.name} value={sg.name}>{sg.name}</option>
                       ))}
                     </select>
+                    {modalFieldErrors.assetSubGroupName && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {modalFieldErrors.assetSubGroupName}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Category</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Category <span className="text-rose-500">*</span>
+                    </label>
                     <select
                       value={formState.categoryName}
                       onChange={(e) => {
@@ -1098,18 +1181,31 @@ export function ItemMasterTab({
                           subCategoryName: '',
                           subCategoryId: ''
                         });
+                        if (e.target.value) clearModalFieldError('categoryName');
                       }}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                      className={`w-full bg-white border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors cursor-pointer ${
+                        modalFieldErrors.categoryName
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                          : 'border-slate-200 focus:border-[#6C2BD9]'
+                      }`}
                     >
-                      <option value="">{availableModalCategories.length === 0 && (formState.assetSubGroupName || formState.assetGroupName) ? '-- No Categories for Selected Sub Group --' : '-- Select Category --'}</option>
+                      <option value="">{availableModalCategories.length === 0 && (formState.assetSubGroupName || formState.assetGroupName) ? '-- No Categories for Selected Sub Group --' : '-- Select Category * --'}</option>
                       {availableModalCategories.map(c => (
                         <option key={c.id || c.name} value={c.name}>{c.name}</option>
                       ))}
                     </select>
+                    {modalFieldErrors.categoryName && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {modalFieldErrors.categoryName}
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Sub Category</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Sub Category <span className="text-rose-500">*</span>
+                    </label>
                     <select
                       value={formState.subCategoryName}
                       onChange={(e) => {
@@ -1123,30 +1219,50 @@ export function ItemMasterTab({
                           categoryName: parentCat || formState.categoryName,
                           categoryId: parentCatObj?.id || formState.categoryId
                         });
+                        if (e.target.value) clearModalFieldError('subCategoryName');
                       }}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                      className={`w-full bg-white border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors cursor-pointer ${
+                        modalFieldErrors.subCategoryName
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                          : 'border-slate-200 focus:border-[#6C2BD9]'
+                      }`}
                     >
                       <option value="">
                         {availableModalSubCategories.length === 0 && (formState.categoryName || formState.assetSubGroupName || formState.assetGroupName)
                           ? '-- No Sub Categories Found --'
-                          : '-- Select Sub Category --'}
+                          : '-- Select Sub Category * --'}
                       </option>
                       {availableModalSubCategories.map(sc => (
                         <option key={sc.id || sc.name} value={sc.name}>{sc.name}</option>
                       ))}
                     </select>
+                    {modalFieldErrors.subCategoryName && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {modalFieldErrors.subCategoryName}
+                      </p>
+                    )}
                   </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Unit of Measure (UOM)</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Unit of Measure (UOM) <span className="text-rose-500">*</span>
+                    </label>
                     <select
                       value={formState.uom}
-                      onChange={(e) => setFormState({ ...formState, uom: e.target.value })}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                      onChange={(e) => {
+                        setFormState({ ...formState, uom: e.target.value });
+                        if (e.target.value) clearModalFieldError('uom');
+                      }}
+                      className={`w-full bg-white border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors cursor-pointer ${
+                        modalFieldErrors.uom
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                          : 'border-slate-200 focus:border-[#6C2BD9]'
+                      }`}
                     >
-                      <option value="">-- Select UOM --</option>
+                      <option value="">-- Select UOM * --</option>
                       {uoms.length > 0 ? (
                         uoms.map(u => (
                           <option key={u.id || u.code} value={u.name || u.code}>{u.name} ({u.code})</option>
@@ -1155,6 +1271,12 @@ export function ItemMasterTab({
                         <option value="" disabled>No UOMs configured</option>
                       )}
                     </select>
+                    {modalFieldErrors.uom && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {modalFieldErrors.uom}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
@@ -1168,7 +1290,9 @@ export function ItemMasterTab({
 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Manufacturer</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Manufacturer <span className="text-rose-500">*</span>
+                    </label>
                     <select
                       value={formState.manufacturerName}
                       onChange={(e) => {
@@ -1178,18 +1302,31 @@ export function ItemMasterTab({
                           manufacturerName: e.target.value,
                           manufacturerId: mfr?.id || ''
                         });
+                        if (e.target.value) clearModalFieldError('manufacturerName');
                       }}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                      className={`w-full bg-white border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors cursor-pointer ${
+                        modalFieldErrors.manufacturerName
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                          : 'border-slate-200 focus:border-[#6C2BD9]'
+                      }`}
                     >
-                      <option value="">-- Select Manufacturer --</option>
+                      <option value="">-- Select Manufacturer * --</option>
                       {manufacturers.map(m => (
                         <option key={m.id || m.name} value={m.name}>{m.name}</option>
                       ))}
                     </select>
+                    {modalFieldErrors.manufacturerName && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {modalFieldErrors.manufacturerName}
+                      </p>
+                    )}
                   </div>
 
                   <div>
-                    <label className="block font-semibold text-slate-700 mb-1">Brand</label>
+                    <label className="block font-semibold text-slate-700 mb-1">
+                      Brand <span className="text-rose-500">*</span>
+                    </label>
                     <select
                       value={formState.brandName}
                       onChange={(e) => {
@@ -1203,58 +1340,114 @@ export function ItemMasterTab({
                           manufacturerName: autoMfr,
                           manufacturerId: mfrObj?.id || formState.manufacturerId
                         });
+                        if (e.target.value) clearModalFieldError('brandName');
                       }}
-                      className="w-full bg-white border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                      className={`w-full bg-white border rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none transition-colors cursor-pointer ${
+                        modalFieldErrors.brandName
+                          ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                          : 'border-slate-200 focus:border-[#6C2BD9]'
+                      }`}
                     >
-                      <option value="">-- Select Brand --</option>
+                      <option value="">-- Select Brand * --</option>
                       {availableModalBrands.map(b => (
                         <option key={b.id || b.name} value={b.name}>
                           {b.name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}
                         </option>
                       ))}
                     </select>
+                    {modalFieldErrors.brandName && (
+                      <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                        <AlertCircle className="w-3 h-3 shrink-0" />
+                        {modalFieldErrors.brandName}
+                      </p>
+                    )}
                   </div>
                 </div>
               </div>
 
               {/* Description & Technical Specs */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Description</label>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Description <span className="text-rose-500">*</span>
+                </label>
                 <textarea
                   rows={2}
                   placeholder="Standard description of the product or item..."
                   value={formState.description}
-                  onChange={(e) => setFormState({ ...formState, description: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
+                  onChange={(e) => {
+                    setFormState({ ...formState, description: e.target.value });
+                    if (e.target.value.trim()) clearModalFieldError('description');
+                  }}
+                  className={`w-full border rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none transition-colors ${
+                    modalFieldErrors.description
+                      ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                      : 'bg-slate-50 border-slate-200 focus:border-[#6C2BD9]'
+                  }`}
                 />
+                {modalFieldErrors.description && (
+                  <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    {modalFieldErrors.description}
+                  </p>
+                )}
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Technical Specifications</label>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Technical Specifications <span className="text-rose-500">*</span>
+                </label>
                 <textarea
                   rows={2}
                   placeholder="e.g. CPU: i7-1365U | RAM: 32GB | SSD: 512GB"
                   value={formState.specifications}
-                  onChange={(e) => setFormState({ ...formState, specifications: e.target.value })}
-                  className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
+                  onChange={(e) => {
+                    setFormState({ ...formState, specifications: e.target.value });
+                    if (e.target.value.trim()) clearModalFieldError('specifications');
+                  }}
+                  className={`w-full border rounded-xl px-3 py-2 text-xs font-mono text-slate-800 placeholder-slate-400 focus:outline-none transition-colors ${
+                    modalFieldErrors.specifications
+                      ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                      : 'bg-slate-50 border-slate-200 focus:border-[#6C2BD9]'
+                  }`}
                 />
+                {modalFieldErrors.specifications && (
+                  <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    {modalFieldErrors.specifications}
+                  </p>
+                )}
               </div>
 
               {/* Status */}
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Status</label>
+                <label className="block font-semibold text-slate-700 mb-1">
+                  Status <span className="text-rose-500">*</span>
+                </label>
                 <select
                   value={formState.status || (formState.active !== false ? 'Active' : 'Inactive')}
-                  onChange={(e) => setFormState({
-                    ...formState,
-                    status: e.target.value,
-                    active: e.target.value === 'Active'
-                  })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-semibold text-slate-800"
+                  onChange={(e) => {
+                    setFormState({
+                      ...formState,
+                      status: e.target.value,
+                      active: e.target.value === 'Active'
+                    });
+                    if (e.target.value) clearModalFieldError('status');
+                  }}
+                  className={`w-full border rounded-xl px-3 py-2 text-xs focus:outline-none bg-white cursor-pointer font-semibold text-slate-800 transition-colors ${
+                    modalFieldErrors.status
+                      ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
+                      : 'border-slate-200 focus:border-[#6C2BD9]'
+                  }`}
                 >
                   <option value="Active">Active</option>
                   <option value="Inactive">Inactive</option>
                 </select>
+                {modalFieldErrors.status && (
+                  <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                    <AlertCircle className="w-3 h-3 shrink-0" />
+                    {modalFieldErrors.status}
+                  </p>
+                )}
               </div>
 
               {/* Action Buttons */}
