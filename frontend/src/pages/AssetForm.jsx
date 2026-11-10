@@ -3094,17 +3094,6 @@ export function AssetForm() {
             className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-700 font-semibold outline-none cursor-not-allowed"
           />
         </div>
-
-        <div>
-          <label className="font-bold text-slate-700 block mb-1">Warranty Provider</label>
-          <input
-            type="text"
-            value={formData.provider}
-            onChange={(e) => setFormData({ ...formData, provider: e.target.value })}
-            placeholder={formData.manufacturer || 'OEM Provider'}
-            className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-          />
-        </div>
       </div>
       {renderCategoryDepreciation()}
     </div>
@@ -4302,11 +4291,10 @@ export function AssetForm() {
                 </div>
               )}
 
-              {/* Step 2: Additional Details (Financials + Remarks) */}
+              {/* Step 2: Additional Details (Financials) */}
               {currentStep === 2 && (
                 <div className="space-y-4">
                   {renderFinancialInfo()}
-                  {renderDescription()}
                   {renderMaintenanceDiscovery()}
                 </div>
               )}
@@ -4341,7 +4329,6 @@ export function AssetForm() {
                 {renderBasicInfo()}
                 {renderLocationOwnership()}
                 {renderFinancialInfo()}
-                {renderDescription()}
               </div>
               <div className="space-y-4">
                 {renderTagging()}
