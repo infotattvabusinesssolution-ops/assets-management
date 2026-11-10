@@ -1,6 +1,11 @@
 import { Router } from 'express';
 import multer from 'multer';
-import { uploadSingleFile, uploadMultipleFiles } from './upload.controller.js';
+import {
+  uploadSingleFile,
+  uploadMultipleFiles,
+  getUploadPolicyHandler,
+  updateUploadPolicyHandler
+} from './upload.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
@@ -9,17 +14,23 @@ const router = Router();
 const upload = multer({
   storage: multer.memoryStorage(),
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB max file size
+    fileSize: 100 * 1024 * 1024 // 100MB multer safety limit; DB policies enforce exact dynamic limits
   }
 });
 
 router.use(authenticateToken);
 
+// Upload policies (Dynamic DB-controlled size & format restrictions)
+router.get('/policy/:policyKey', getUploadPolicyHandler);
+router.get('/policy', getUploadPolicyHandler);
+router.put('/policy/:policyKey', updateUploadPolicyHandler);
+router.put('/policy', updateUploadPolicyHandler);
+
 // Single file upload (document or image)
 router.post('/file', upload.single('file'), uploadSingleFile);
 
-// Multiple documents upload
-router.post('/files', upload.array('files', 10), uploadMultipleFiles);
+// Multiple documents/images upload
+router.post('/files', upload.array('files', 20), uploadMultipleFiles);
 
 // Document specific alias
 router.post('/document', upload.single('file'), uploadSingleFile);

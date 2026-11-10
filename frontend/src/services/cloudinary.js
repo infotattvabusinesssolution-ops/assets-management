@@ -127,3 +127,128 @@ export async function uploadToCloudinary(file, options = {}) {
     }
   }
 }
+
+// In-memory cache for upload policies (key -> { policy, expiresAt })
+const policyCache = new Map();
+
+/**
+ * Fetch dynamic upload policy from backend database
+ * @param {string} policyKey - e.g. 'asset_photos' or 'asset_documents'
+ * @returns {Promise<{ policyKey, maxFiles, maxSizeMB, maxSizeBytes, allowedFormats, allowedExtensions, mimeTypes }>}
+ */
+export async function fetchUploadPolicy(policyKey = 'asset_photos') {
+  const cached = policyCache.get(policyKey);
+  const now = Date.now();
+  if (cached && cached.expiresAt > now) {
+    return cached.policy;
+  }
+
+  const fallbackPolicies = {
+    asset_photos: {
+      policyKey: 'asset_photos',
+      maxFiles: 5,
+      maxSizeMB: 10,
+      maxSizeBytes: 10 * 1024 * 1024,
+      allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+      allowedExtensions: ['.jpg', '.jpeg', '.png', '.webp'],
+      acceptString: '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp'
+    },
+    asset_documents: {
+      policyKey: 'asset_documents',
+      maxFiles: 10,
+      maxSizeMB: 25,
+      maxSizeBytes: 25 * 1024 * 1024,
+      allowedFormats: ['pdf', 'doc', 'docx', 'xls', 'xlsx', 'txt', 'csv', 'jpg', 'png'],
+      allowedExtensions: ['.pdf', '.doc', '.docx', '.xls', '.xlsx', '.txt', '.csv', '.jpg', '.png'],
+      acceptString: '.pdf,.doc,.docx,.xls,.xlsx,.txt,.csv,.jpg,.png'
+    }
+  };
+
+  try {
+    const res = await api.get(`/uploads/policy/${policyKey}`);
+    if (res?.success && res.policy) {
+      const p = res.policy;
+      const formats = Array.isArray(p.allowedFormats) ? p.allowedFormats : ['jpg', 'jpeg', 'png', 'webp'];
+      const extensions = formats.map(fmt => `.${fmt.toLowerCase()}`);
+      const acceptString = extensions.join(',');
+
+      const policyObj = {
+        policyKey: p.policyKey || policyKey,
+        maxFiles: Number(p.maxFiles) || 5,
+        maxSizeMB: Number(p.maxSizeMB) || 10,
+        maxSizeBytes: (Number(p.maxSizeMB) || 10) * 1024 * 1024,
+        allowedFormats: formats,
+        allowedExtensions: extensions,
+        acceptString
+      };
+
+      policyCache.set(policyKey, { policy: policyObj, expiresAt: now + 60 * 1000 }); // cache 60s
+      return policyObj;
+    }
+  } catch (err) {
+    console.warn(`Failed to fetch dynamic policy for ${policyKey}, using defaults:`, err);
+  }
+
+  const fallback = fallbackPolicies[policyKey] || fallbackPolicies.asset_photos;
+  policyCache.set(policyKey, { policy: fallback, expiresAt: now + 30 * 1000 });
+  return fallback;
+}
+
+/**
+ * Validate a file against a dynamic upload policy
+ * @param {File} file
+ * @param {Object} policy
+ * @returns {{ valid: boolean, error?: string }}
+ */
+export function validateFileWithPolicy(file, policy) {
+  if (!file) return { valid: false, error: 'No file selected.' };
+  if (!policy) return { valid: true };
+
+  const fileName = file.name || '';
+  const ext = fileName.split('.').pop()?.toLowerCase();
+
+  // Extension check
+  if (Array.isArray(policy.allowedFormats) && policy.allowedFormats.length > 0) {
+    const isAllowed = policy.allowedFormats.some(f => f.toLowerCase() === ext);
+    if (!isAllowed) {
+      return {
+        valid: false,
+        error: `File format ".${ext}" is not allowed. Permitted formats: ${policy.allowedFormats.map(f => f.toUpperCase()).join(', ')}.`
+      };
+    }
+  }
+
+  // Size check
+  const maxBytes = policy.maxSizeBytes || (policy.maxSizeMB ? policy.maxSizeMB * 1024 * 1024 : 10 * 1024 * 1024);
+  if (file.size > maxBytes) {
+    return {
+      valid: false,
+      error: `File "${fileName}" (${formatBytes(file.size)}) exceeds the maximum allowed limit of ${policy.maxSizeMB || Math.round(maxBytes / (1024 * 1024))}MB.`
+    };
+  }
+
+  return { valid: true };
+}
+
+/**
+ * Upload multiple files to Cloudinary / backend with individual error tracking
+ * @param {File[]} files
+ * @param {Object} options
+ * @returns {Promise<{ uploaded: Array, failed: Array }>}
+ */
+export async function uploadMultipleToCloudinary(files = [], options = {}) {
+  const uploaded = [];
+  const failed = [];
+
+  for (const file of files) {
+    try {
+      const result = await uploadToCloudinary(file, options);
+      uploaded.push(result);
+    } catch (err) {
+      failed.push({ file, error: err.message || 'Upload failed' });
+    }
+  }
+
+  return { uploaded, failed };
+}
+

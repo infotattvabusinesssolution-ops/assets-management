@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
-import { uploadToCloudinary } from '../services/cloudinary';
+import { uploadToCloudinary, uploadMultipleToCloudinary, fetchUploadPolicy, validateFileWithPolicy } from '../services/cloudinary';
 import {
   Package,
   CheckCircle2,
@@ -154,6 +154,9 @@ function assetToForm({ asset, bookValues = [], warranty, schedules = [], discove
     ...EMPTY_EDIT_ASSET,
     id: asset.assetId,
     image: asset.imageUrl || asset.assetImage || '',
+    images: (Array.isArray(asset.assetImages) && asset.assetImages.length > 0)
+      ? asset.assetImages
+      : (asset.imageUrl ? [{ url: asset.imageUrl, name: 'Primary Photo' }] : []),
     documents: (documents && documents.length > 0) ? documents : INITIAL_EDIT_ASSET.documents,
     dbId: asset.id,
     assetId: asset.assetId,
@@ -267,6 +270,20 @@ export function AssetEdit() {
   const docInputRef = useRef(null);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [uploadingDoc, setUploadingDoc] = useState(false);
+  const [photoPolicy, setPhotoPolicy] = useState({
+    maxFiles: 5,
+    maxSizeMB: 10,
+    allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+    acceptString: '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp'
+  });
+
+  useEffect(() => {
+    let active = true;
+    fetchUploadPolicy('asset_photos').then(p => {
+      if (active && p) setPhotoPolicy(p);
+    });
+    return () => { active = false; };
+  }, []);
 
   const searchMatches = searchQuery.trim()
     ? assetOptions.filter(asset => [asset.id, asset.name, asset.category, asset.serial, asset.tag, asset.location]
@@ -441,22 +458,77 @@ export function AssetEdit() {
   };
 
   const handleImageUpload = async (e) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const rawFiles = Array.from(e.target?.files || []);
+    if (!rawFiles.length) return;
+
+    const currentList = Array.isArray(formData.images) && formData.images.length > 0
+      ? formData.images
+      : (formData.image ? [{ url: formData.image, name: 'Current Photo' }] : []);
+    const maxFiles = photoPolicy?.maxFiles || 5;
+
+    if (currentList.length + rawFiles.length > maxFiles) {
+      showToast('error', `Maximum ${maxFiles} photos allowed. You currently have ${currentList.length}.`);
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    for (const file of rawFiles) {
+      const check = validateFileWithPolicy(file, photoPolicy);
+      if (!check.valid) {
+        showToast('error', check.error);
+        if (e.target) e.target.value = '';
+        return;
+      }
+    }
+
     try {
       setUploadingImage(true);
-      const uploaded = await uploadToCloudinary(file, { folder: 'asset_photos' });
-      if (uploaded?.url) {
-        setFormData(prev => ({ ...prev, image: uploaded.url }));
-        showToast('success', 'Asset photo updated.');
+      const { uploaded, failed } = await uploadMultipleToCloudinary(rawFiles, { folder: 'asset_photos' });
+      if (failed.length > 0) {
+        showToast('error', `Failed to upload ${failed.length} photo(s): ${failed[0]?.error}`);
+      }
+      if (uploaded.length > 0) {
+        setFormData(prev => {
+          const prevList = Array.isArray(prev.images) && prev.images.length > 0
+            ? prev.images
+            : (prev.image ? [{ url: prev.image, name: 'Photo' }] : []);
+          const updatedList = [...prevList, ...uploaded];
+          const primaryUrl = updatedList[0]?.secure_url || updatedList[0]?.url || '';
+          return {
+            ...prev,
+            images: updatedList,
+            image: primaryUrl
+          };
+        });
+        showToast('success', `${uploaded.length} photo(s) added successfully.`);
       }
     } catch (err) {
-      const localUrl = URL.createObjectURL(file);
-      setFormData(prev => ({ ...prev, image: localUrl }));
-      showToast('info', 'Local preview image loaded.');
+      console.error('Photo upload error:', err);
+      showToast('error', err.message || 'Failed to upload photo(s)');
     } finally {
       setUploadingImage(false);
+      if (e.target) e.target.value = '';
     }
+  };
+
+  const handleRemoveImage = (indexToRemove = 0) => {
+    setFormData(prev => {
+      const list = Array.isArray(prev.images) && prev.images.length > 0
+        ? [...prev.images]
+        : (prev.image ? [{ url: prev.image }] : []);
+      if (list.length > 0 && indexToRemove >= 0 && indexToRemove < list.length) {
+        list.splice(indexToRemove, 1);
+      } else {
+        list.shift();
+      }
+      const primaryUrl = list[0]?.secure_url || list[0]?.url || '';
+      return {
+        ...prev,
+        images: list,
+        image: primaryUrl
+      };
+    });
+    showToast('info', 'Asset photo removed.');
   };
 
   const handleDocUpload = async (e) => {
@@ -524,6 +596,9 @@ export function AssetEdit() {
     changed('manufacturer', 'manufacturer');
     changed('model', 'model');
     changed('image', 'imageUrl');
+    if (Array.isArray(formData.images) && formData.images.length > 0) {
+      payload.images = formData.images;
+    }
 
     // Location & Organizational Details
     changed('department', 'department');
@@ -659,7 +734,8 @@ export function AssetEdit() {
         type="file"
         ref={fileInputRef}
         onChange={handleImageUpload}
-        accept="image/*"
+        multiple
+        accept={photoPolicy?.acceptString || '.jpg,.jpeg,.png,.webp,image/*'}
         className="hidden"
       />
       <input
@@ -923,37 +999,73 @@ export function AssetEdit() {
           {openSections[1] && (
             <div className="p-5 space-y-4 text-xs animate-in fade-in duration-100">
               {/* Photo Box & Image Upload */}
-              <div className="flex flex-col sm:flex-row items-center gap-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
-                <div className="flex h-24 w-28 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2 relative shadow-2xs">
-                  {formData.image ? (
-                    <img src={formData.image} alt={formData.assetName} className="max-h-full max-w-full object-contain" />
-                  ) : (
-                    <Package className="h-9 w-9 text-slate-300" />
-                  )}
+              <div className="rounded-xl border border-slate-200 bg-slate-50 p-4 space-y-3">
+                <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-200/60 pb-2">
+                  <div className="flex items-center gap-2">
+                    <p className="font-extrabold text-slate-900 text-xs flex items-center gap-1.5">
+                      <Camera className="w-4 h-4 text-[#6C2BD9]" /> Asset Photographs
+                    </p>
+                    <span className="px-2 py-0.5 bg-slate-200/70 text-slate-700 text-[10px] font-bold rounded-full">
+                      {(formData.images || []).length} / {photoPolicy?.maxFiles || 5}
+                    </span>
+                  </div>
+                  <span className="text-[10px] text-emerald-700 font-semibold bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-200">
+                    Max {photoPolicy?.maxSizeMB}MB • {(photoPolicy?.allowedFormats || ['jpg', 'png']).map(f => f.toUpperCase()).join(', ')}
+                  </span>
                 </div>
-                <div className="flex-1 space-y-1">
-                  <p className="font-extrabold text-slate-900">Asset Primary Photograph</p>
-                  <p className="text-[11px] text-slate-500">Supports PNG, JPG, WebP up to 10MB. Stored on secure Cloudinary CDN.</p>
-                  <div className="pt-1 flex items-center gap-2">
+
+                <div className="flex flex-wrap items-center gap-3">
+                  {(Array.isArray(formData.images) && formData.images.length > 0
+                    ? formData.images
+                    : (formData.image ? [{ url: formData.image, name: 'Primary Photo' }] : [])
+                  ).map((img, idx) => (
+                    <div
+                      key={idx}
+                      className="flex h-24 w-28 shrink-0 items-center justify-center rounded-xl border border-slate-200 bg-white p-2 relative shadow-2xs group"
+                    >
+                      <img
+                        src={img?.secure_url || img?.url || (typeof img === 'string' ? img : '')}
+                        alt="Asset"
+                        className="max-h-full max-w-full object-contain"
+                      />
+                      {idx === 0 && (
+                        <span className="absolute bottom-1 left-1 bg-[#6C2BD9] text-white text-[8px] font-extrabold px-1.5 py-0.5 rounded">
+                          Primary
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-1 right-1 bg-white/95 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded p-1 text-[9px] shadow font-bold cursor-pointer transition-colors"
+                        title="Remove photo"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Add photo trigger if within limit */}
+                  {((formData.images || []).length < (photoPolicy?.maxFiles || 5)) && (
                     <button
                       type="button"
                       disabled={uploadingImage}
                       onClick={() => fileInputRef.current?.click()}
-                      className="px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-all shadow-xs"
+                      className="h-24 w-28 shrink-0 rounded-xl border-2 border-dashed border-purple-200 hover:border-[#6C2BD9] bg-white hover:bg-purple-50/20 p-2 flex flex-col items-center justify-center text-center cursor-pointer transition-all gap-1"
                     >
-                      {uploadingImage ? <RefreshCw className="w-3.5 h-3.5 animate-spin" /> : <Upload className="w-3.5 h-3.5" />}
-                      Upload / Change Photo
+                      {uploadingImage ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 text-[#6C2BD9] animate-spin" />
+                          <span className="text-[10px] font-bold text-[#6C2BD9]">Uploading...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Upload className="w-4 h-4 text-[#6C2BD9]" />
+                          <span className="text-[10px] font-bold text-slate-700">Add Photo</span>
+                          <span className="text-[8px] text-slate-400">Up to {photoPolicy?.maxSizeMB}MB</span>
+                        </>
+                      )}
                     </button>
-                    {formData.image && (
-                      <button
-                        type="button"
-                        onClick={() => setFormData({ ...formData, image: '' })}
-                        className="px-2.5 py-1.5 border border-slate-200 bg-white hover:bg-rose-50 text-rose-600 rounded-lg text-xs font-semibold"
-                      >
-                        Remove
-                      </button>
-                    )}
-                  </div>
+                  )}
                 </div>
               </div>
 

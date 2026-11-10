@@ -9,7 +9,7 @@ import { INITIAL_CLASSES } from '../components/master-data/ClassesTab';
 import { INITIAL_SUB_CATEGORIES } from '../components/master-data/SubCategoriesTab';
 
 import { DEFAULT_ASSET_TYPES } from '../components/master-data/GenericMasterTab';
-import { uploadToCloudinary } from '../services/cloudinary';
+import { uploadToCloudinary, uploadMultipleToCloudinary, fetchUploadPolicy, validateFileWithPolicy, formatBytes } from '../services/cloudinary';
 import {
   Sparkles,
   Box,
@@ -503,6 +503,23 @@ export function AssetForm() {
   const imageInputRef = useRef(null);
   const [uploadingDoc, setUploadingDoc] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+  const [photoPolicy, setPhotoPolicy] = useState({
+    policyKey: 'asset_photos',
+    maxFiles: 5,
+    maxSizeMB: 10,
+    allowedFormats: ['jpg', 'jpeg', 'png', 'webp'],
+    acceptString: '.jpg,.jpeg,.png,.webp,image/jpeg,image/png,image/webp'
+  });
+
+  useEffect(() => {
+    let active = true;
+    fetchUploadPolicy('asset_photos').then(policy => {
+      if (active && policy) {
+        setPhotoPolicy(policy);
+      }
+    });
+    return () => { active = false; };
+  }, []);
 
   // Master Data Options loaded dynamically from backend & localStorage
   const [assetTypes, setAssetTypes] = useState([
@@ -777,6 +794,9 @@ export function AssetForm() {
     quantity: '1',
     description: '',
     image: '',
+    assetImage: '',
+    imageUrl: '',
+    assetImages: [],
 
     // 2. Classification (Grid View)
     assetGroup: '',
@@ -1374,36 +1394,99 @@ export function AssetForm() {
   };
 
   const handleUploadImage = async (e) => {
-    const file = e.target?.files?.[0];
-    if (!file) return;
+    const rawFiles = Array.from(e.target?.files || []);
+    if (!rawFiles.length) return;
+
+    const currentList = Array.isArray(formData.assetImages) && formData.assetImages.length > 0
+      ? formData.assetImages
+      : (formData.assetImage ? [{ url: formData.assetImage, name: 'Current Photo' }] : []);
+    const maxFiles = photoPolicy?.maxFiles || 5;
+
+    if (currentList.length + rawFiles.length > maxFiles) {
+      showToast('error', `Maximum ${maxFiles} photos allowed. You already have ${currentList.length} and selected ${rawFiles.length}.`);
+      if (e.target) e.target.value = '';
+      return;
+    }
+
+    // Dynamic Policy validation (formats & size from database)
+    for (const file of rawFiles) {
+      const check = validateFileWithPolicy(file, photoPolicy);
+      if (!check.valid) {
+        showToast('error', check.error);
+        if (e.target) e.target.value = '';
+        return;
+      }
+    }
 
     setUploadingImage(true);
-    showToast('info', 'Uploading asset photo...');
+    showToast('info', `Uploading ${rawFiles.length} photo(s)...`);
 
     try {
-      const result = await uploadToCloudinary(file, { folder: 'fams_assets' });
-      setFormData(prev => ({
-        ...prev,
-        assetImage: result.secure_url || result.url,
-        imageUrl: result.secure_url || result.url
-      }));
-      showToast('success', 'Asset photo uploaded successfully!');
+      const { uploaded, failed } = await uploadMultipleToCloudinary(rawFiles, { folder: 'fams_assets' });
+      if (failed.length > 0) {
+        showToast('error', `Failed to upload ${failed.length} photo(s): ${failed[0]?.error}`);
+      }
+      if (uploaded.length > 0) {
+        setFormData(prev => {
+          const prevList = Array.isArray(prev.assetImages) && prev.assetImages.length > 0
+            ? prev.assetImages
+            : (prev.assetImage ? [{ url: prev.assetImage, name: 'Photo' }] : []);
+          const updatedList = [...prevList, ...uploaded];
+          const primaryUrl = updatedList[0]?.secure_url || updatedList[0]?.url || '';
+          return {
+            ...prev,
+            assetImages: updatedList,
+            assetImage: primaryUrl,
+            imageUrl: primaryUrl
+          };
+        });
+        showToast('success', `${uploaded.length} photo(s) uploaded successfully!`);
+      }
     } catch (err) {
       console.error('Image upload error:', err);
-      showToast('error', err.message || 'Failed to upload photo');
+      showToast('error', err.message || 'Failed to upload photo(s)');
     } finally {
       setUploadingImage(false);
       if (e.target) e.target.value = '';
     }
   };
 
-  const handleRemoveImage = () => {
-    setFormData(prev => ({
-      ...prev,
-      assetImage: '',
-      imageUrl: ''
-    }));
+  const handleRemoveImage = (indexToRemove = 0) => {
+    setFormData(prev => {
+      const currentList = Array.isArray(prev.assetImages) && prev.assetImages.length > 0
+        ? [...prev.assetImages]
+        : (prev.assetImage ? [{ url: prev.assetImage }] : []);
+      if (currentList.length > 0 && indexToRemove >= 0 && indexToRemove < currentList.length) {
+        currentList.splice(indexToRemove, 1);
+      } else {
+        currentList.shift();
+      }
+      const primaryUrl = currentList[0]?.secure_url || currentList[0]?.url || '';
+      return {
+        ...prev,
+        assetImages: currentList,
+        assetImage: primaryUrl,
+        imageUrl: primaryUrl
+      };
+    });
     showToast('info', 'Asset photo removed.');
+  };
+
+  const handleSetPrimaryImage = (index) => {
+    setFormData(prev => {
+      const currentList = Array.isArray(prev.assetImages) ? [...prev.assetImages] : [];
+      if (index <= 0 || index >= currentList.length) return prev;
+      const [selected] = currentList.splice(index, 1);
+      currentList.unshift(selected);
+      const primaryUrl = currentList[0]?.secure_url || currentList[0]?.url || '';
+      return {
+        ...prev,
+        assetImages: currentList,
+        assetImage: primaryUrl,
+        imageUrl: primaryUrl
+      };
+    });
+    showToast('success', 'Set as primary photo.');
   };
 
   const handleAddDoc = () => {
@@ -1874,6 +1957,9 @@ export function AssetForm() {
         notes: formData.notes?.trim() || formData.remarks?.trim() || undefined,
         documents: formData.documents && formData.documents.length > 0 ? formData.documents : undefined,
         imageUrl: formData.assetImage || formData.imageUrl || undefined,
+        images: (Array.isArray(formData.assetImages) && formData.assetImages.length > 0)
+          ? formData.assetImages
+          : (formData.assetImage ? [{ url: formData.assetImage }] : undefined),
         hostname: quantity === 1 ? formData.hostname?.trim() || undefined : undefined,
         ipAddress: quantity === 1 ? formData.ipAddress?.trim() || undefined : undefined,
         macAddress: quantity === 1 ? formData.macAddress?.trim() || undefined : undefined,
@@ -2521,91 +2607,147 @@ export function AssetForm() {
     </div>
   );
 
-  // Step 1: Asset Image with Cloudinary
+  // Step 1: Asset Image with Cloudinary & Dynamic Multi-Photo Policy
   const renderAssetImage = () => {
-    const hasImage = Boolean(formData.assetImage || formData.imageUrl);
+    const imagesList = Array.isArray(formData.assetImages) && formData.assetImages.length > 0
+      ? formData.assetImages
+      : (formData.assetImage ? [{ url: formData.assetImage, name: 'Primary Photo' }] : []);
+    const hasImages = imagesList.length > 0;
+    const maxFiles = photoPolicy?.maxFiles || 5;
+    const canUploadMore = imagesList.length < maxFiles;
+    const allowedFmtLabel = (photoPolicy.allowedFormats || ['jpg', 'jpeg', 'png', 'webp']).map(f => f.toUpperCase()).join(', ');
 
     return (
       <div className="bg-white border border-slate-200 rounded-xl p-4 shadow-2xs space-y-3 relative">
-        <div className="flex items-center justify-between border-b border-slate-100 pb-2">
-          <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
-            <Package className="w-4 h-4 text-[#6C2BD9]" /> Asset Image
-          </h3>
+        <div className="flex flex-wrap items-center justify-between gap-2 border-b border-slate-100 pb-2">
           <div className="flex items-center gap-2">
-            {hasImage && (
-              <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-bold rounded-full border border-emerald-200 flex items-center gap-1">
-                <Check className="w-3 h-3" /> Photo Attached
-              </span>
-            )}
+            <h3 className="font-extrabold text-slate-900 text-sm flex items-center gap-1.5">
+              <Package className="w-4 h-4 text-[#6C2BD9]" /> Asset Photos
+            </h3>
+            <span className="px-2 py-0.5 bg-slate-100 text-slate-700 text-[10px] font-bold rounded-full border border-slate-200">
+              {imagesList.length} / {maxFiles}
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
             <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-full border border-purple-200 flex items-center gap-1">
               <Cloud className="w-3 h-3" /> Cloudinary CDN
+            </span>
+            <span className="px-2 py-0.5 bg-emerald-50 text-emerald-700 text-[10px] font-semibold rounded-full border border-emerald-200">
+              Max {photoPolicy.maxSizeMB}MB • {allowedFmtLabel}
             </span>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-center">
-          <div className="h-44 bg-slate-50 border border-slate-200 rounded-xl p-3 flex flex-col items-center justify-center overflow-hidden relative group">
-            {hasImage ? (
-              <>
-                <img
-                  src={formData.assetImage || formData.imageUrl}
-                  alt="Asset Preview"
-                  className="h-full w-full object-contain"
-                />
+        {/* Gallery Grid */}
+        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-3">
+          {imagesList.map((img, idx) => {
+            const imgUrl = img?.secure_url || img?.url || (typeof img === 'string' ? img : '');
+            const isPrimary = idx === 0;
+
+            return (
+              <div
+                key={idx}
+                className="group relative bg-slate-50 border border-slate-200 hover:border-purple-300 rounded-xl overflow-hidden aspect-square flex flex-col justify-between shadow-2xs transition-all"
+              >
+                <div className="h-full w-full flex items-center justify-center p-1.5 bg-white">
+                  <img
+                    src={imgUrl}
+                    alt={img.name || `Asset Photo ${idx + 1}`}
+                    className="h-full w-full object-contain"
+                  />
+                </div>
+
+                {/* Primary Tag */}
+                {isPrimary ? (
+                  <span className="absolute top-1.5 left-1.5 bg-[#6C2BD9] text-white text-[9px] font-extrabold px-1.5 py-0.5 rounded shadow">
+                    Primary
+                  </span>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => handleSetPrimaryImage(idx)}
+                    className="absolute top-1.5 left-1.5 opacity-0 group-hover:opacity-100 bg-white/95 hover:bg-purple-600 hover:text-white text-slate-700 text-[9px] font-bold px-1.5 py-0.5 rounded shadow border border-slate-200 transition-all cursor-pointer"
+                    title="Set as primary photo"
+                  >
+                    Set Primary
+                  </button>
+                )}
+
+                {/* Remove Button */}
                 <button
                   type="button"
-                  onClick={handleRemoveImage}
-                  className="absolute top-2 right-2 bg-white/95 hover:bg-rose-50 text-slate-600 hover:text-rose-600 rounded-lg px-2 py-1 shadow-sm border border-slate-200 text-xs transition-colors cursor-pointer flex items-center gap-1 font-bold"
-                  title="Remove asset photo"
+                  onClick={() => handleRemoveImage(idx)}
+                  className="absolute top-1.5 right-1.5 bg-white/95 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded-md p-1 shadow-sm border border-slate-200 transition-colors cursor-pointer"
+                  title="Remove this photo"
                 >
                   <Trash2 className="w-3.5 h-3.5" />
-                  <span className="text-[10px]">Remove</span>
                 </button>
-              </>
-            ) : (
-              <div className="text-center p-3 text-slate-400 flex flex-col items-center">
-                <div className="w-12 h-12 rounded-xl bg-purple-50 text-[#6C2BD9] flex items-center justify-center mb-2 border border-purple-100">
-                  <Package className="w-6 h-6 stroke-[1.5]" />
-                </div>
-                <span className="text-xs font-bold text-slate-700">No Photo Uploaded</span>
-                <span className="text-[10px] text-slate-400 mt-0.5 max-w-[210px] leading-tight">
-                  Optional — add a photo to visually identify this asset in audits and field scans
-                </span>
+
+                {/* Bottom caption */}
+                {img.name && (
+                  <div className="absolute bottom-0 inset-x-0 bg-slate-900/60 backdrop-blur-xs text-white text-[9px] px-1.5 py-0.5 truncate text-center font-medium">
+                    {img.name}
+                  </div>
+                )}
               </div>
-            )}
-          </div>
+            );
+          })}
 
-          <input
-            type="file"
-            ref={imageInputRef}
-            onChange={handleUploadImage}
-            className="hidden"
-            accept="image/*"
-          />
+          {/* Add Photos Dropzone Box */}
+          {canUploadMore && (
+            <div
+              onClick={() => imageInputRef.current?.click()}
+              className={`border-2 border-dashed rounded-xl aspect-square p-2 flex flex-col items-center justify-center text-center cursor-pointer transition-all group ${
+                uploadingImage
+                  ? 'border-purple-300 bg-purple-50/40 pointer-events-none'
+                  : 'border-purple-200 hover:border-[#6C2BD9] hover:bg-purple-50/20 bg-slate-50'
+              }`}
+            >
+              {uploadingImage ? (
+                <>
+                  <RefreshCw className="w-5 h-5 text-[#6C2BD9] mb-1 animate-spin" />
+                  <span className="text-[11px] font-bold text-[#6C2BD9] leading-tight">Uploading...</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-8 h-8 rounded-full bg-purple-100 text-[#6C2BD9] flex items-center justify-center mb-1 group-hover:scale-105 transition-transform">
+                    <Plus className="w-4 h-4" />
+                  </div>
+                  <span className="text-[11px] font-bold text-slate-800 leading-tight">
+                    {hasImages ? 'Add More' : 'Upload Photos'}
+                  </span>
+                  <span className="text-[8px] text-slate-400 mt-0.5 leading-tight">
+                    {allowedFmtLabel}
+                  </span>
+                  <span className="text-[8px] text-slate-400">
+                    Up to {photoPolicy.maxSizeMB}MB
+                  </span>
+                </>
+              )}
+            </div>
+          )}
+        </div>
 
-          <div
-            onClick={() => imageInputRef.current?.click()}
-            className="h-44 bg-slate-50 border-2 border-dashed border-purple-200 hover:border-[#6C2BD9] hover:bg-purple-50/20 rounded-xl p-3 flex flex-col items-center justify-center text-center cursor-pointer transition-all group"
-          >
-            {uploadingImage ? (
-              <>
-                <RefreshCw className="w-6 h-6 text-[#6C2BD9] mb-2 animate-spin" />
-                <span className="text-xs font-bold text-[#6C2BD9] leading-tight">Uploading Photo...</span>
-                <span className="text-[10px] text-slate-400 mt-1">Storing securely in Cloudinary</span>
-              </>
-            ) : (
-              <>
-                <div className="w-10 h-10 rounded-full bg-purple-100 text-[#6C2BD9] flex items-center justify-center mb-2 group-hover:scale-105 transition-transform">
-                  <Upload className="w-5 h-5" />
-                </div>
-                <span className="text-xs font-bold text-slate-800 leading-tight">
-                  {hasImage ? 'Replace Asset Photo' : 'Upload Asset Photo'}
-                </span>
-                <span className="text-[10px] text-slate-500 mt-1">Click to browse file from device</span>
-                <span className="text-[9px] text-slate-400 mt-0.5">JPG, PNG, WebP up to 10MB</span>
-              </>
-            )}
-          </div>
+        {/* Hidden Multi-file input governed dynamically by DB policy */}
+        <input
+          type="file"
+          ref={imageInputRef}
+          onChange={handleUploadImage}
+          className="hidden"
+          multiple
+          accept={photoPolicy?.acceptString || '.jpg,.jpeg,.png,.webp,image/*'}
+        />
+
+        {/* Dynamic DB policy hint message */}
+        <div className="flex flex-wrap items-center justify-between text-[11px] text-slate-500 pt-1">
+          <span>
+            {hasImages
+              ? `First photo is primary. You can upload up to ${maxFiles} photos.`
+              : 'Add one or more photos to identify this asset during audits and inspections.'}
+          </span>
+          <span className="text-[10px] text-slate-400">
+            Policy enforced by DB: Max {photoPolicy.maxSizeMB}MB / file • {maxFiles} files max
+          </span>
         </div>
       </div>
     );
@@ -3707,9 +3849,35 @@ export function AssetForm() {
         <dl className="grid grid-cols-1 gap-2 sm:grid-cols-2 xl:grid-cols-4">
           {serialNumbers.map((serial, index) => reviewField(`${index + 1} / ${serialNumbers.length}`, serial))}
         </dl>
-        <div className="flex items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-2">
-          {formData.assetImage || formData.imageUrl ? <img src={formData.assetImage || formData.imageUrl} alt="Selected asset" className="h-16 w-20 rounded object-contain bg-white" /> : <Package className="h-8 w-8 text-slate-300" />}
-          <span className="text-xs font-semibold text-slate-700">Asset image: {formData.assetImage || formData.imageUrl ? 'Uploaded' : 'Not provided (Optional)'}</span>
+        <div className="flex flex-wrap items-center gap-3 rounded-lg border border-slate-100 bg-slate-50 p-2">
+          {((Array.isArray(formData.assetImages) && formData.assetImages.length > 0) || formData.assetImage || formData.imageUrl) ? (
+            <div className="flex flex-wrap items-center gap-2">
+              {(Array.isArray(formData.assetImages) && formData.assetImages.length > 0
+                ? formData.assetImages
+                : [{ url: formData.assetImage || formData.imageUrl }]
+              ).map((img, i) => (
+                <div key={i} className="relative h-14 w-14 rounded-lg overflow-hidden border border-slate-200 bg-white">
+                  <img
+                    src={img?.secure_url || img?.url || (typeof img === 'string' ? img : '')}
+                    alt={`Photo ${i + 1}`}
+                    className="h-full w-full object-contain"
+                  />
+                  {i === 0 && (
+                    <span className="absolute bottom-0 inset-x-0 bg-[#6C2BD9] text-white text-[8px] font-bold text-center leading-tight">
+                      Primary
+                    </span>
+                  )}
+                </div>
+              ))}
+            </div>
+          ) : (
+            <Package className="h-8 w-8 text-slate-300" />
+          )}
+          <span className="text-xs font-semibold text-slate-700">
+            Asset Photos: {(formData.assetImages || []).length > 0
+              ? `${formData.assetImages.length} photo(s) uploaded`
+              : (formData.assetImage ? '1 uploaded' : 'Not provided (Optional)')}
+          </span>
         </div>
       </div>)}
 
@@ -4235,50 +4403,54 @@ export function AssetForm() {
                 </div>
               </div>
 
-              {/* Asset Image Box */}
+              {/* Asset Photos Multi-Gallery */}
               <div className="space-y-1 text-xs pt-2">
                 <div className="flex items-center justify-between">
-                  <label className="font-bold text-slate-700 block">Asset Image</label>
-                  <span className="text-[9px] font-bold text-[#6C2BD9]">Cloudinary</span>
+                  <label className="font-bold text-slate-700 block">Asset Photos</label>
+                  <span className="text-[9px] font-bold text-[#6C2BD9]">
+                    {(formData.assetImages || []).length} / {photoPolicy?.maxFiles || 5}
+                  </span>
                 </div>
-                <div className="grid grid-cols-2 gap-2 items-center">
-                  <div className="h-20 bg-slate-50 border border-slate-200 rounded-xl p-1 flex items-center justify-center overflow-hidden relative group">
-                    {formData.assetImage || formData.imageUrl ? (
-                      <>
-                        <img src={formData.assetImage || formData.imageUrl} alt="Asset" className="h-full object-contain" />
-                        <button
-                          type="button"
-                          onClick={handleRemoveImage}
-                          className="absolute top-1 right-1 bg-white/90 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded p-1 text-[9px] shadow font-bold"
-                          title="Remove photo"
-                        >
-                          ✕
-                        </button>
-                      </>
-                    ) : (
-                      <div className="text-center text-slate-400">
-                        <Package className="w-5 h-5 mx-auto text-[#6C2BD9]/60 mb-0.5" />
-                        <span className="text-[9px] block font-medium">No photo</span>
-                      </div>
-                    )}
-                  </div>
-                  <div
-                    onClick={() => imageInputRef.current?.click()}
-                    className="h-20 bg-slate-50 border-2 border-dashed border-slate-200 hover:border-[#6C2BD9] rounded-xl p-1 flex flex-col items-center justify-center text-center cursor-pointer transition-colors"
-                  >
-                    {uploadingImage ? (
-                      <>
-                        <RefreshCw className="w-4 h-4 text-purple-600 mb-0.5 animate-spin" />
-                        <span className="text-[9px] font-bold text-[#6C2BD9]">Uploading...</span>
-                      </>
-                    ) : (
-                      <>
-                        <Upload className="w-4 h-4 text-purple-600 mb-0.5" />
-                        <span className="text-[9px] font-bold text-slate-700 leading-tight">Upload Image</span>
-                        <span className="text-[7px] text-slate-400">Cloudinary (JPG, PNG)</span>
-                      </>
-                    )}
-                  </div>
+                <div className="flex flex-wrap gap-2 items-center">
+                  {(Array.isArray(formData.assetImages) && formData.assetImages.length > 0
+                    ? formData.assetImages
+                    : (formData.assetImage ? [{ url: formData.assetImage, name: 'Photo' }] : [])
+                  ).map((img, idx) => (
+                    <div key={idx} className="h-16 w-16 bg-slate-50 border border-slate-200 rounded-xl p-1 flex items-center justify-center overflow-hidden relative group">
+                      <img src={img?.secure_url || img?.url || (typeof img === 'string' ? img : '')} alt="Asset" className="h-full w-full object-contain" />
+                      {idx === 0 && (
+                        <span className="absolute bottom-0 inset-x-0 bg-[#6C2BD9] text-white text-[7px] font-bold text-center leading-tight">
+                          Primary
+                        </span>
+                      )}
+                      <button
+                        type="button"
+                        onClick={() => handleRemoveImage(idx)}
+                        className="absolute top-0.5 right-0.5 bg-white/95 hover:bg-rose-50 text-slate-500 hover:text-rose-600 rounded p-0.5 text-[8px] shadow font-bold cursor-pointer"
+                        title="Remove photo"
+                      >
+                        ✕
+                      </button>
+                    </div>
+                  ))}
+
+                  {/* Add more button if limit not reached */}
+                  {((formData.assetImages || []).length < (photoPolicy?.maxFiles || 5)) && (
+                    <div
+                      onClick={() => imageInputRef.current?.click()}
+                      className="h-16 w-16 bg-slate-50 border-2 border-dashed border-purple-200 hover:border-[#6C2BD9] rounded-xl p-1 flex flex-col items-center justify-center text-center cursor-pointer transition-colors"
+                    >
+                      {uploadingImage ? (
+                        <RefreshCw className="w-3.5 h-3.5 text-purple-600 animate-spin" />
+                      ) : (
+                        <>
+                          <Plus className="w-3.5 h-3.5 text-purple-600 mb-0.5" />
+                          <span className="text-[8px] font-bold text-slate-700 leading-tight">Add</span>
+                          <span className="text-[7px] text-slate-400">{photoPolicy.maxSizeMB}MB</span>
+                        </>
+                      )}
+                    </div>
+                  )}
                 </div>
               </div>
             </div>

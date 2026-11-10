@@ -244,10 +244,22 @@ export async function getAsset360(req, res, next) {
       }, orderBy: { createdAt: 'desc' } })
     ]);
 
+    const assetImages = attachments.filter(file => file.fileType === 'ASSET_IMAGE');
+
     res.json({
       success: true,
       asset360: {
-        asset: { ...asset, imageUrl: attachments.find(file => file.fileType === 'ASSET_IMAGE')?.url || null },
+        asset: {
+          ...asset,
+          imageUrl: assetImages[0]?.url || null,
+          assetImages: assetImages.map(img => ({
+            id: img.id,
+            url: img.url,
+            name: img.fileName,
+            size: img.fileSize,
+            createdAt: img.createdAt
+          }))
+        },
         bookValues,
         transactions,
         workOrders,
@@ -922,10 +934,32 @@ export async function createAsset(req, res, next) {
         await tx.maintenanceSchedule.create({ data: { assetId: newAsset.id, ...scheduleInput } });
       }
 
-      if (req.body.imageUrl) {
+      // Save Asset Images (supports multiple images or single imageUrl)
+      const incomingImages = [];
+      if (Array.isArray(req.body.images) && req.body.images.length > 0) {
+        req.body.images.forEach((img, idx) => {
+          const url = typeof img === 'string' ? img : img?.url;
+          if (url) {
+            incomingImages.push({
+              url,
+              name: (typeof img === 'object' && img?.name) ? img.name : `${assetId}-image-${idx + 1}`,
+              size: (typeof img === 'object' && Number.isFinite(Number(img?.size))) ? Number(img.size) : null
+            });
+          }
+        });
+      } else if (req.body.imageUrl) {
+        incomingImages.push({
+          url: req.body.imageUrl,
+          name: `${assetId}-image`,
+          size: null
+        });
+      }
+
+      for (const img of incomingImages) {
         await tx.attachment.create({ data: {
-          entityType: 'Asset', entityId: newAsset.id, fileName: `${assetId}-image`,
-          fileType: 'ASSET_IMAGE', storageKey: req.body.imageUrl, url: req.body.imageUrl,
+          entityType: 'Asset', entityId: newAsset.id, fileName: img.name,
+          fileType: 'ASSET_IMAGE', storageKey: img.url, url: img.url,
+          fileSize: img.size,
           uploadedByUserId: finalUserId
         } });
       }
@@ -1206,6 +1240,7 @@ export async function updateAsset(req, res, next) {
       maintenanceDetails,
       bookDetails,
       manualDiscoveryDetails,
+      images,
       imageUrl,
       documents,
       notes,
@@ -1597,10 +1632,45 @@ export async function updateAsset(req, res, next) {
         await tx.asset.update({ where: { id: oldAsset.id }, data: { discoveryId: observation.id } });
       }
     }
-    if (imageUrl) await tx.attachment.create({ data: {
-      entityType: 'Asset', entityId: oldAsset.id, fileName: `${oldAsset.assetId}-image`,
-      fileType: 'ASSET_IMAGE', storageKey: imageUrl, url: imageUrl, uploadedByUserId: finalUserId
-    } });
+    const incomingImages = [];
+    if (Array.isArray(images) && images.length > 0) {
+      images.forEach((img, idx) => {
+        const url = typeof img === 'string' ? img : img?.url;
+        if (url) {
+          incomingImages.push({
+            url,
+            name: (typeof img === 'object' && img?.name) ? img.name : `${oldAsset.assetId}-image-${idx + 1}`,
+            size: (typeof img === 'object' && Number.isFinite(Number(img?.size))) ? Number(img.size) : null
+          });
+        }
+      });
+    } else if (imageUrl) {
+      incomingImages.push({
+        url: imageUrl,
+        name: `${oldAsset.assetId}-image`,
+        size: null
+      });
+    }
+
+    if (incomingImages.length > 0) {
+      // Clean up previous image attachments if updating with new set
+      await tx.attachment.deleteMany({
+        where: {
+          entityType: { in: ['Asset', 'ASSET'] },
+          entityId: { in: [oldAsset.id, oldAsset.assetId] },
+          fileType: 'ASSET_IMAGE'
+        }
+      });
+
+      for (const img of incomingImages) {
+        await tx.attachment.create({ data: {
+          entityType: 'Asset', entityId: oldAsset.id, fileName: img.name,
+          fileType: 'ASSET_IMAGE', storageKey: img.url, url: img.url,
+          fileSize: img.size,
+          uploadedByUserId: finalUserId
+        } });
+      }
+    }
     for (const doc of Array.isArray(documents) ? documents : []) {
       if (!doc?.url) continue;
       await tx.attachment.create({ data: {
