@@ -1810,6 +1810,10 @@ export function AssetForm() {
         errors.costCenter = 'Cost Center is required.';
         if (!firstWarning) firstWarning = 'Warning: Cost Center is required. Please select a Cost Center.';
       }
+      if (!formData.custodianId && !formData.custodian?.trim()) {
+        errors.custodian = 'Custodian is required.';
+        if (!firstWarning) firstWarning = 'Warning: Custodian is required. Please select a Custodian.';
+      }
       if (quantityCount > 1 && selectedDepreciationCategory?.isSerialized) {
         const itemSerialNumbers = serialNumbers.map(s => (s || '').trim());
         if (itemSerialNumbers.some(s => !s)) {
@@ -1870,6 +1874,7 @@ export function AssetForm() {
         delete next.company;
         delete next.department;
         delete next.costCenter;
+        delete next.custodian;
         delete next.serialNumber;
         delete next.tag;
       }
@@ -1939,6 +1944,10 @@ export function AssetForm() {
       }
       if (!formData.costCenterId && !formData.costCenter) {
         showToast('error', 'Select a Cost Center before saving.');
+        return;
+      }
+      if (!formData.custodianId && !formData.custodian?.trim()) {
+        showToast('error', 'Select a Custodian before saving.');
         return;
       }
       const itemSerialNumbers = serialNumbers.map((serial, idx) => {
@@ -3285,7 +3294,7 @@ export function AssetForm() {
           </span>
         </div>
 
-        {Object.keys(fieldErrors).some(k => ['company', 'department', 'costCenter'].includes(k)) && (
+        {Object.keys(fieldErrors).some(k => ['company', 'department', 'costCenter', 'custodian'].includes(k)) && (
           <div className="p-3 bg-amber-50/90 border border-amber-300 rounded-xl flex items-center gap-2.5 text-xs text-amber-900 animate-in fade-in">
             <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
             <div>
@@ -3411,7 +3420,9 @@ export function AssetForm() {
           </div>
 
           <div>
-            <label className="font-bold text-slate-700 block mb-1">Custodian</label>
+            <label className="font-bold text-slate-700 block mb-1">
+              Custodian <span className="text-rose-500">*</span>
+            </label>
             <select
               value={formData.custodianId || (employees.find(emp => (emp.fullName || emp.name) === formData.custodian || emp.employeeCode === formData.custodian)?.id || '')}
               onChange={(e) => {
@@ -3422,16 +3433,23 @@ export function AssetForm() {
                   custodianId: selectedId,
                   custodian: emp ? (emp.fullName || emp.name || emp.employeeCode || '') : ''
                 }));
+                if (selectedId) clearFieldError('custodian');
               }}
-              className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+              className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.custodian ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
             >
-              <option value="">Select Custodian (Optional)</option>
+              <option value="">Select Custodian *</option>
               {employees.map(emp => (
                 <option key={emp.id} value={emp.id}>
                   {emp.employeeCode ? `${emp.employeeCode} - ` : ''}{emp.fullName || emp.name || 'Unnamed'}{emp.department?.name ? ` (${emp.department.name})` : ''}
                 </option>
               ))}
             </select>
+            {fieldErrors.custodian && (
+              <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
+                <AlertCircle className="w-3.5 h-3.5 shrink-0" />
+                {fieldErrors.custodian}
+              </p>
+            )}
           </div>
         </div>
 
