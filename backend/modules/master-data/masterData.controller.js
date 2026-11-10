@@ -1136,22 +1136,101 @@ export async function createRoom(req, res, next) {
 export async function getCategories(req, res, next) {
   try {
     const where = req.query.includeInactive !== 'false' ? {} : { active: true };
-    const categories = await prisma.category.findMany({ where, orderBy: { name: 'asc' } });
-    res.json({ success: true, categories });
+    const categories = await prisma.category.findMany({ 
+      where, 
+      include: { 
+        assetSubGroup: {
+          include: { assetGroup: true }
+        }
+      },
+      orderBy: { name: 'asc' } 
+    });
+    const enriched = categories.map(c => {
+      const descClass = (c.description || '').match(/\[class:([^\]]+)\]/)?.[1];
+      const descGroup = (c.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+      const subGroupName = c.assetSubGroup?.name || descClass || '';
+      const groupName = c.assetSubGroup?.assetGroup?.name || descGroup || (c.assetSubGroup?.assetGroupName || '');
+      const isSubGroupActive = c.assetSubGroup ? (c.assetSubGroup.active !== false && c.assetSubGroup.active !== 0) : true;
+      const isGroupActive = c.assetSubGroup?.assetGroup ? (c.assetSubGroup.assetGroup.active !== false && c.assetSubGroup.assetGroup.active !== 0) : true;
+      return {
+        ...c,
+        assetSubGroupId: c.assetSubGroupId || c.assetSubGroup?.id || null,
+        subGroupName,
+        className: subGroupName,
+        groupName: groupName || '-',
+        subGroupActive: isSubGroupActive,
+        groupActive: isGroupActive
+      };
+    });
+    res.json({ success: true, categories: enriched });
   } catch (err) { next(err); }
 }
 
 export async function createCategory(req, res, next) {
   try {
-    const { code, name, description, active, status, depreciationMethod, annualDepreciationRatePercent } = req.body;
+    const { 
+      code, name, description, active, status, 
+      depreciationMethod, annualDepreciationRatePercent, 
+      assetSubGroupId, className, subGroupName 
+    } = req.body;
     if (!code || !name) {
       return res.status(400).json({ success: false, message: 'Category Code and Name are required.' });
     }
     const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
+    const classFromDesc = (description || '').match(/\[class:([^\]]+)\]/)?.[1];
+    const targetSubGroupName = (className || subGroupName || classFromDesc || '').trim();
+
+    let resolvedSubGroupId = assetSubGroupId || null;
 
     if (isDbConnected()) {
       try {
+        if (!resolvedSubGroupId && targetSubGroupName) {
+          const matchedSg = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 sg.id, sg.name, sg.active, sg.assetGroupId, ag.name as parentGroupName, ag.active as parentGroupActive
+            FROM asset_sub_groups sg
+            LEFT JOIN asset_groups ag ON sg.assetGroupId = ag.id
+            WHERE UPPER(sg.name) = '${targetSubGroupName.toUpperCase().replace(/'/g, "''")}'
+               OR UPPER(sg.code) = '${targetSubGroupName.toUpperCase().replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(matchedSg) && matchedSg.length > 0) {
+            resolvedSubGroupId = matchedSg[0].id;
+            if (matchedSg[0].active === false || matchedSg[0].active === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Category to inactive Asset Sub Group "${matchedSg[0].name}". Please choose an active Sub Group.`
+              });
+            }
+            if (matchedSg[0].parentGroupActive === false || matchedSg[0].parentGroupActive === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Category to Asset Sub Group "${matchedSg[0].name}" because its parent Asset Group "${matchedSg[0].parentGroupName || ''}" is inactive. Please choose an active Sub Group.`
+              });
+            }
+          }
+        } else if (resolvedSubGroupId) {
+          const matchedSg = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 sg.id, sg.name, sg.active, sg.assetGroupId, ag.name as parentGroupName, ag.active as parentGroupActive
+            FROM asset_sub_groups sg
+            LEFT JOIN asset_groups ag ON sg.assetGroupId = ag.id
+            WHERE sg.id = '${String(resolvedSubGroupId).replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(matchedSg) && matchedSg.length > 0) {
+            if (matchedSg[0].active === false || matchedSg[0].active === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Category to inactive Asset Sub Group "${matchedSg[0].name}". Please choose an active Sub Group.`
+              });
+            }
+            if (matchedSg[0].parentGroupActive === false || matchedSg[0].parentGroupActive === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Category to Asset Sub Group "${matchedSg[0].name}" because its parent Asset Group "${matchedSg[0].parentGroupName || ''}" is inactive. Please choose an active Sub Group.`
+              });
+            }
+          }
+        }
+
         const existing = await prisma.category.findFirst({
           where: {
             OR: [
@@ -1164,19 +1243,22 @@ export async function createCategory(req, res, next) {
           return res.status(409).json({ success: false, message: `Category with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
       } catch (dbErr) {
+        if (dbErr.statusCode || dbErr.status) throw dbErr;
         console.warn('DB check duplicate category skipped:', dbErr.message);
       }
     }
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const category = await prisma.category.create({
       data: {
-        code: code.trim().toUpperCase(),
-        name: name.trim(),
+        code: cleanCode,
+        name: cleanName,
         description: description || '',
+        assetSubGroupId: resolvedSubGroupId,
         active: isAct,
         depreciationMethod: depreciationMethod || 'STRAIGHT_LINE',
         annualDepreciationRatePercent: annualDepreciationRatePercent ? Number(annualDepreciationRatePercent) : 10
-      }
+      },
+      include: { assetSubGroup: true }
     });
     res.status(201).json({ success: true, category });
   } catch (err) { next(err); }
@@ -1185,25 +1267,82 @@ export async function createCategory(req, res, next) {
 export async function updateCategory(req, res, next) {
   try {
     const { id } = req.params;
-    const { code, name, description, active, status, depreciationMethod, annualDepreciationRatePercent } = req.body;
+    const { 
+      code, name, description, active, status, 
+      depreciationMethod, annualDepreciationRatePercent,
+      assetSubGroupId, className, subGroupName
+    } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
+    const classFromDesc = (description || '').match(/\[class:([^\]]+)\]/)?.[1];
+    const targetSubGroupName = (className || subGroupName || classFromDesc || '').trim();
 
-    if (isDbConnected() && (cleanCode || cleanName)) {
+    let resolvedSubGroupId = assetSubGroupId;
+
+    if (isDbConnected()) {
       try {
-        const existing = await prisma.category.findFirst({
-          where: {
-            id: { not: id },
-            OR: [
-              ...(cleanCode ? [{ code: cleanCode }] : []),
-              ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
-            ]
+        if (!resolvedSubGroupId && targetSubGroupName) {
+          const matchedSg = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 sg.id, sg.name, sg.active, sg.assetGroupId, ag.name as parentGroupName, ag.active as parentGroupActive
+            FROM asset_sub_groups sg
+            LEFT JOIN asset_groups ag ON sg.assetGroupId = ag.id
+            WHERE UPPER(sg.name) = '${targetSubGroupName.toUpperCase().replace(/'/g, "''")}'
+               OR UPPER(sg.code) = '${targetSubGroupName.toUpperCase().replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(matchedSg) && matchedSg.length > 0) {
+            resolvedSubGroupId = matchedSg[0].id;
+            if (matchedSg[0].active === false || matchedSg[0].active === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Category to inactive Asset Sub Group "${matchedSg[0].name}". Please choose an active Sub Group.`
+              });
+            }
+            if (matchedSg[0].parentGroupActive === false || matchedSg[0].parentGroupActive === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Category to Asset Sub Group "${matchedSg[0].name}" because its parent Asset Group "${matchedSg[0].parentGroupName || ''}" is inactive. Please choose an active Sub Group.`
+              });
+            }
           }
-        });
-        if (existing) {
-          return res.status(409).json({ success: false, message: `Another category with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        } else if (resolvedSubGroupId) {
+          const matchedSg = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 sg.id, sg.name, sg.active, sg.assetGroupId, ag.name as parentGroupName, ag.active as parentGroupActive
+            FROM asset_sub_groups sg
+            LEFT JOIN asset_groups ag ON sg.assetGroupId = ag.id
+            WHERE sg.id = '${String(resolvedSubGroupId).replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(matchedSg) && matchedSg.length > 0) {
+            if (matchedSg[0].active === false || matchedSg[0].active === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Category to inactive Asset Sub Group "${matchedSg[0].name}". Please choose an active Sub Group.`
+              });
+            }
+            if (matchedSg[0].parentGroupActive === false || matchedSg[0].parentGroupActive === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Category to Asset Sub Group "${matchedSg[0].name}" because its parent Asset Group "${matchedSg[0].parentGroupName || ''}" is inactive. Please choose an active Sub Group.`
+              });
+            }
+          }
+        }
+
+        if (cleanCode || cleanName) {
+          const existing = await prisma.category.findFirst({
+            where: {
+              id: { not: id },
+              OR: [
+                ...(cleanCode ? [{ code: cleanCode }] : []),
+                ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+              ]
+            }
+          });
+          if (existing) {
+            return res.status(409).json({ success: false, message: `Another category with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+          }
         }
       } catch (dbErr) {
+        if (dbErr.statusCode || dbErr.status) throw dbErr;
         console.warn('DB check duplicate category skipped:', dbErr.message);
       }
     }
@@ -1212,6 +1351,7 @@ export async function updateCategory(req, res, next) {
     if (cleanCode) updateData.code = cleanCode;
     if (cleanName) updateData.name = cleanName;
     if (description !== undefined) updateData.description = description;
+    if (resolvedSubGroupId !== undefined) updateData.assetSubGroupId = resolvedSubGroupId;
     if (depreciationMethod) updateData.depreciationMethod = depreciationMethod;
     if (annualDepreciationRatePercent !== undefined) updateData.annualDepreciationRatePercent = Number(annualDepreciationRatePercent);
     if (active !== undefined) updateData.active = Boolean(active);
@@ -1219,7 +1359,8 @@ export async function updateCategory(req, res, next) {
 
     const category = await prisma.category.update({
       where: { id },
-      data: updateData
+      data: updateData,
+      include: { assetSubGroup: true }
     });
     res.json({ success: true, category });
   } catch (err) { next(err); }
@@ -1465,14 +1606,15 @@ async function ensureAssetSubGroupsTable() {
         id NVARCHAR(100) PRIMARY KEY,
         code NVARCHAR(50) NOT NULL UNIQUE,
         name NVARCHAR(100) NOT NULL,
-        assetGroupId NVARCHAR(100) NULL,
+        assetGroupId NVARCHAR(36) NULL,
         assetGroupName NVARCHAR(200) NULL,
         assetType NVARCHAR(50) DEFAULT 'Both',
         description NVARCHAR(500) NULL,
         totalAssets INT DEFAULT 0,
         active BIT DEFAULT 1,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
-        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        CONSTRAINT FK_asset_sub_groups_asset_groups FOREIGN KEY (assetGroupId) REFERENCES asset_groups(id) ON DELETE SET NULL
       );
     `);
     subGroupsTableEnsured = true;
@@ -1518,15 +1660,22 @@ export async function getAssetSubGroups(req, res, next) {
     await ensureAssetSubGroupsTable();
     if (isDbConnected()) {
       try {
-        let whereClause = req.query.includeInactive !== 'false' ? '1=1' : 'active = 1';
+        let whereClause = req.query.includeInactive !== 'false' ? '1=1' : 'sg.active = 1';
         if (req.query.assetGroupId) {
-          whereClause += ` AND assetGroupId = '${String(req.query.assetGroupId).replace(/'/g, "''")}'`;
+          whereClause += ` AND sg.assetGroupId = '${String(req.query.assetGroupId).replace(/'/g, "''")}'`;
         }
-        const query = `SELECT * FROM asset_sub_groups WHERE ${whereClause} ORDER BY name ASC`;
+        const query = `
+          SELECT sg.*, ag.name as parentGroupName, ag.active as parentGroupActive, ag.code as parentGroupCode
+          FROM asset_sub_groups sg
+          LEFT JOIN asset_groups ag ON sg.assetGroupId = ag.id
+          WHERE ${whereClause}
+          ORDER BY sg.name ASC
+        `;
         const rows = await prisma.$queryRawUnsafe(query);
         const list = (rows || []).map(r => {
           const groupFromDesc = (r.description || '').match(/\[group:([^\]]+)\]/)?.[1];
-          const resolvedGroup = groupFromDesc || r.assetGroupName || '-';
+          const resolvedGroup = r.parentGroupName || groupFromDesc || r.assetGroupName || '-';
+          const isGroupActive = r.parentGroupActive !== undefined && r.parentGroupActive !== null ? Boolean(r.parentGroupActive) : true;
           return {
             id: r.id,
             code: r.code,
@@ -1534,6 +1683,7 @@ export async function getAssetSubGroups(req, res, next) {
             assetGroupId: r.assetGroupId || null,
             assetGroupName: resolvedGroup,
             groupName: resolvedGroup,
+            groupActive: isGroupActive,
             assetType: r.assetType || 'Both',
             description: r.description || '',
             totalAssets: r.totalAssets || 0,
@@ -1576,13 +1726,57 @@ export async function createAssetSubGroup(req, res, next) {
     const cleanGroup = (groupName || assetGroupName || '').trim();
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
 
+    let resolvedGroupId = assetGroupId || null;
+    let resolvedGroupName = cleanGroup;
+
+    if (isDbConnected()) {
+      try {
+        if (!resolvedGroupId && resolvedGroupName) {
+          const matchedGroup = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id, name FROM asset_groups 
+            WHERE UPPER(name) = '${resolvedGroupName.toUpperCase().replace(/'/g, "''")}' 
+               OR UPPER(code) = '${resolvedGroupName.toUpperCase().replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(matchedGroup) && matchedGroup.length > 0) {
+            resolvedGroupId = matchedGroup[0].id;
+            resolvedGroupName = matchedGroup[0].name;
+          }
+        } else if (resolvedGroupId && !resolvedGroupName) {
+          const matchedGroup = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id, name FROM asset_groups 
+            WHERE id = '${String(resolvedGroupId).replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(matchedGroup) && matchedGroup.length > 0) {
+            resolvedGroupName = matchedGroup[0].name;
+          }
+        }
+
+        if (resolvedGroupId) {
+          const checkGrp = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id, name, active FROM asset_groups WHERE id = '${String(resolvedGroupId).replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(checkGrp) && checkGrp.length > 0) {
+            if (checkGrp[0].active === false || checkGrp[0].active === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Asset Sub Group to inactive Asset Group "${checkGrp[0].name}". Please choose an active Asset Group.`
+              });
+            }
+          }
+        }
+      } catch (lookupErr) {
+        if (lookupErr.statusCode || lookupErr.status) throw lookupErr;
+        console.warn('Group lookup in createAssetSubGroup warning:', lookupErr.message);
+      }
+    }
+
     const newSubGroup = {
       id: `asg-${Date.now()}`,
       code: cleanCode,
       name: cleanName,
-      assetGroupId: assetGroupId || null,
-      assetGroupName: cleanGroup,
-      groupName: cleanGroup,
+      assetGroupId: resolvedGroupId,
+      assetGroupName: resolvedGroupName,
+      groupName: resolvedGroupName,
       assetType: assetType || 'Both',
       description: description || '',
       totalAssets: 0,
@@ -1612,8 +1806,8 @@ export async function createAssetSubGroup(req, res, next) {
             '${newSubGroup.id}',
             '${cleanCode.replace(/'/g, "''")}',
             '${cleanName.replace(/'/g, "''")}',
-            ${assetGroupId ? `'${String(assetGroupId).replace(/'/g, "''")}'` : 'NULL'},
-            '${cleanGroup.replace(/'/g, "''")}',
+            ${resolvedGroupId ? `'${String(resolvedGroupId).replace(/'/g, "''")}'` : 'NULL'},
+            '${resolvedGroupName.replace(/'/g, "''")}',
             '${(newSubGroup.assetType || 'Both').replace(/'/g, "''")}',
             '${(description || '').replace(/'/g, "''")}',
             0,
@@ -1670,13 +1864,57 @@ export async function updateAssetSubGroup(req, res, next) {
       }
     }
 
+    let resolvedGroupId = assetGroupId;
+    let resolvedGroupName = cleanGroup;
+
+    if (isDbConnected()) {
+      try {
+        if (!resolvedGroupId && resolvedGroupName) {
+          const matchedGroup = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id, name FROM asset_groups 
+            WHERE UPPER(name) = '${resolvedGroupName.toUpperCase().replace(/'/g, "''")}' 
+               OR UPPER(code) = '${resolvedGroupName.toUpperCase().replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(matchedGroup) && matchedGroup.length > 0) {
+            resolvedGroupId = matchedGroup[0].id;
+            resolvedGroupName = matchedGroup[0].name;
+          }
+        } else if (resolvedGroupId && !resolvedGroupName) {
+          const matchedGroup = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id, name FROM asset_groups 
+            WHERE id = '${String(resolvedGroupId).replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(matchedGroup) && matchedGroup.length > 0) {
+            resolvedGroupName = matchedGroup[0].name;
+          }
+        }
+
+        if (resolvedGroupId !== undefined && resolvedGroupId) {
+          const checkGrp = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id, name, active FROM asset_groups WHERE id = '${String(resolvedGroupId).replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(checkGrp) && checkGrp.length > 0) {
+            if (checkGrp[0].active === false || checkGrp[0].active === 0) {
+              return res.status(400).json({
+                success: false,
+                message: `Cannot assign Asset Sub Group to inactive Asset Group "${checkGrp[0].name}". Please choose an active Asset Group.`
+              });
+            }
+          }
+        }
+      } catch (lookupErr) {
+        if (lookupErr.statusCode || lookupErr.status) throw lookupErr;
+        console.warn('Group lookup in updateAssetSubGroup warning:', lookupErr.message);
+      }
+    }
+
     if (isDbConnected()) {
       try {
         const sets = [];
         if (cleanCode) sets.push(`code = '${cleanCode.replace(/'/g, "''")}'`);
         if (cleanName) sets.push(`name = '${cleanName.replace(/'/g, "''")}'`);
-        if (assetGroupId !== undefined) sets.push(`assetGroupId = ${assetGroupId ? `'${String(assetGroupId).replace(/'/g, "''")}'` : 'NULL'}`);
-        if (cleanGroup !== undefined) sets.push(`assetGroupName = '${cleanGroup.replace(/'/g, "''")}'`);
+        if (resolvedGroupId !== undefined) sets.push(`assetGroupId = ${resolvedGroupId ? `'${String(resolvedGroupId).replace(/'/g, "''")}'` : 'NULL'}`);
+        if (resolvedGroupName !== undefined) sets.push(`assetGroupName = '${resolvedGroupName.replace(/'/g, "''")}'`);
         if (assetType !== undefined) sets.push(`assetType = '${assetType.replace(/'/g, "''")}'`);
         if (description !== undefined) sets.push(`description = '${description.replace(/'/g, "''")}'`);
         if (isAct !== undefined) sets.push(`active = ${isAct ? 1 : 0}`);
@@ -1698,7 +1936,8 @@ export async function updateAssetSubGroup(req, res, next) {
         ...req.body,
         ...(cleanCode ? { code: cleanCode } : {}),
         ...(cleanName ? { name: cleanName } : {}),
-        ...(cleanGroup ? { assetGroupName: cleanGroup, groupName: cleanGroup } : {}),
+        ...(resolvedGroupId !== undefined ? { assetGroupId: resolvedGroupId } : {}),
+        ...(resolvedGroupName ? { assetGroupName: resolvedGroupName, groupName: resolvedGroupName } : {}),
         ...(isAct !== undefined ? { active: isAct, status: isAct ? 'Active' : 'Inactive' } : {}),
         updatedAt: new Date().toISOString()
       };

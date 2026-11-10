@@ -113,9 +113,9 @@ export function ItemMasterTab({
       const [itemRes, grpRes, asgRes, subCatRes, catRes, mfrRes, uomRes, brandRes] = await Promise.all([
         api.get('/master-data/items?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
-        api.get('/master-data/asset-sub-groups').catch(() => null),
-        api.get('/master-data/sub-categories').catch(() => null),
-        api.get('/master-data/categories').catch(() => null),
+        api.get('/master-data/asset-sub-groups?includeInactive=true').catch(() => null),
+        api.get('/master-data/sub-categories?includeInactive=true').catch(() => null),
+        api.get('/master-data/categories?includeInactive=true').catch(() => null),
         api.get('/master-data/manufacturers').catch(() => null),
         api.get('/master-data/uoms').catch(() => null),
         api.get('/master-data/brands').catch(() => null)
@@ -627,9 +627,14 @@ export function ItemMasterTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All">All Groups</option>
-              {assetGroups.map(g => (
-                <option key={g.id || g.name} value={g.name}>{g.name}</option>
-              ))}
+              {assetGroups.map(g => {
+                const isInactive = g.active === false || g.status === 'Inactive';
+                return (
+                  <option key={g.id || g.name} value={g.name}>
+                    {g.name}{isInactive ? ' (Inactive)' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -1103,9 +1108,14 @@ export function ItemMasterTab({
                       }`}
                     >
                       <option value="">-- Select Group * --</option>
-                      {assetGroups.map(g => (
-                        <option key={g.id || g.name} value={g.name}>{g.name}</option>
-                      ))}
+                      {assetGroups.map(g => {
+                        const isInactive = g.active === false || g.status === 'Inactive';
+                        return (
+                          <option key={g.id || g.name} value={g.name} disabled={isInactive}>
+                            {g.name}{isInactive ? ' (Inactive)' : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     {modalFieldErrors.assetGroupName && (
                       <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
@@ -1152,9 +1162,14 @@ export function ItemMasterTab({
                       }`}
                     >
                       <option value="">-- Select Sub Group * --</option>
-                      {availableModalSubGroups.map(sg => (
-                        <option key={sg.id || sg.name} value={sg.name}>{sg.name}</option>
-                      ))}
+                      {availableModalSubGroups.map(sg => {
+                        const isInactive = sg.active === false || sg.status === 'Inactive' || sg.groupActive === false;
+                        return (
+                          <option key={sg.id || sg.name} value={sg.name} disabled={isInactive}>
+                            {sg.name}{isInactive ? ' (Inactive)' : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     {modalFieldErrors.assetSubGroupName && (
                       <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
@@ -1190,9 +1205,14 @@ export function ItemMasterTab({
                       }`}
                     >
                       <option value="">{availableModalCategories.length === 0 && (formState.assetSubGroupName || formState.assetGroupName) ? '-- No Categories for Selected Sub Group --' : '-- Select Category * --'}</option>
-                      {availableModalCategories.map(c => (
-                        <option key={c.id || c.name} value={c.name}>{c.name}</option>
-                      ))}
+                      {availableModalCategories.map(c => {
+                        const isInactive = c.active === false || c.status === 'Inactive' || c.subGroupActive === false || c.groupActive === false;
+                        return (
+                          <option key={c.id || c.name} value={c.name} disabled={isInactive}>
+                            {c.name}{isInactive ? ' (Inactive)' : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     {modalFieldErrors.categoryName && (
                       <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
@@ -1232,9 +1252,14 @@ export function ItemMasterTab({
                           ? '-- No Sub Categories Found --'
                           : '-- Select Sub Category * --'}
                       </option>
-                      {availableModalSubCategories.map(sc => (
-                        <option key={sc.id || sc.name} value={sc.name}>{sc.name}</option>
-                      ))}
+                      {availableModalSubCategories.map(sc => {
+                        const isInactive = sc.active === false || sc.status === 'Inactive';
+                        return (
+                          <option key={sc.id || sc.name} value={sc.name} disabled={isInactive}>
+                            {sc.name}{isInactive ? ' (Inactive)' : ''}
+                          </option>
+                        );
+                      })}
                     </select>
                     {modalFieldErrors.subCategoryName && (
                       <p className="text-[10px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">

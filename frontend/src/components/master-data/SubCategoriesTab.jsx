@@ -187,6 +187,23 @@ export function SubCategoriesTab({
     }
   });
 
+  const isCategoryInactive = (c) => {
+    if (!c) return false;
+    if (c.active === false || c.status === 'Inactive') return true;
+    if (c.subGroupActive === false || c.groupActive === false) return true;
+    return false;
+  };
+
+  const sortedCategories = useMemo(() => {
+    return [...categories].sort((a, b) => {
+      const aInactive = isCategoryInactive(a);
+      const bInactive = isCategoryInactive(b);
+      if (!aInactive && bInactive) return -1;
+      if (aInactive && !bInactive) return 1;
+      return (a.name || a.code || '').localeCompare(b.name || b.code || '');
+    });
+  }, [categories]);
+
   const [subCatFormState, setSubCatFormState] = useState({
     code: '',
     name: '',
@@ -315,6 +332,14 @@ export function SubCategoriesTab({
     if (!targetCatId && categories.length > 0) {
       const found = categories.find(c => c.name === subCatFormState.categoryName) || categories[0];
       targetCatId = found?.id;
+    }
+
+    const matchedCat = categories.find(c => c.id === targetCatId);
+    if (matchedCat && isCategoryInactive(matchedCat)) {
+      const msg = `Cannot assign to inactive Category "${matchedCat.name || matchedCat.code}". Please select an active Category.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
     }
 
     const cleanDesc = (subCatFormState.description || '')
@@ -526,9 +551,10 @@ export function SubCategoriesTab({
               <option value="All Groups">All Groups</option>
               {availableAssetGroups.map((g) => {
                 const name = g.name || g.code;
+                const isInactive = g.active === false || g.status === 'Inactive';
                 return (
                   <option key={g.id || name} value={name}>
-                    {name}
+                    {name}{isInactive ? ' (Inactive)' : ''}
                   </option>
                 );
               })}
@@ -918,9 +944,19 @@ export function SubCategoriesTab({
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
                   <option value="">-- Select Parent Category --</option>
-                  {categories.map((c) => (
-                    <option key={c.id} value={c.id}>{c.name} ({c.code})</option>
-                  ))}
+                  {sortedCategories.map((c) => {
+                    const isInactive = isCategoryInactive(c);
+                    return (
+                      <option
+                        key={c.id}
+                        value={c.id}
+                        disabled={isInactive}
+                        className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                      >
+                        {c.name} ({c.code}){isInactive ? ' (Inactive)' : ''}
+                      </option>
+                    );
+                  })}
                 </select>
 
                 {subCatFormState.categoryId && (

@@ -176,9 +176,37 @@ export function CategoriesTab({
     }
   });
 
+  // Determines if an Asset Sub Group is inactive (either itself or via its parent group)
+  const isClassInactive = (cls) => {
+    if (!cls) return false;
+    if (cls.active === false || cls.active === 0 || cls.status === 'Inactive') return true;
+    if (cls.groupActive === false || cls.groupActive === 0) return true;
+    const parentGrp = availableAssetGroups.find(g =>
+      (cls.assetGroupId && g.id === cls.assetGroupId) ||
+      (cls.groupName && (g.name || g.code || '').trim().toLowerCase() === cls.groupName.trim().toLowerCase()) ||
+      (cls.assetGroupName && (g.name || g.code || '').trim().toLowerCase() === cls.assetGroupName.trim().toLowerCase())
+    );
+    if (parentGrp && (parentGrp.active === false || parentGrp.active === 0 || parentGrp.status === 'Inactive')) {
+      return true;
+    }
+    return false;
+  };
+
+  // Sort sub groups so active ones appear first, followed by inactive ones
+  const sortedAssetClasses = useMemo(() => {
+    return [...availableAssetClasses].sort((a, b) => {
+      const aInactive = isClassInactive(a);
+      const bInactive = isClassInactive(b);
+      if (!aInactive && bInactive) return -1;
+      if (aInactive && !bInactive) return 1;
+      return (a.name || a.code || '').localeCompare(b.name || b.code || '');
+    });
+  }, [availableAssetClasses, availableAssetGroups]);
+
   const [catFormState, setCatFormState] = useState({
     code: '',
     name: '',
+    assetSubGroupId: '',
     className: '',
     groupName: '',
     description: '',
@@ -236,9 +264,11 @@ export function CategoriesTab({
     setModalError('');
     if (catToEdit) {
       setEditingCategory(catToEdit);
+      const matchedClass = availableAssetClasses.find(c => (c.name || c.code) === catToEdit.className || c.id === catToEdit.assetSubGroupId);
       setCatFormState({
         code: catToEdit.code,
         name: catToEdit.name,
+        assetSubGroupId: catToEdit.assetSubGroupId || matchedClass?.id || '',
         className: catToEdit.className,
         groupName: catToEdit.groupName,
         description: catToEdit.description,
@@ -249,6 +279,7 @@ export function CategoriesTab({
       setCatFormState({
         code: '',
         name: '',
+        assetSubGroupId: '',
         className: '',
         groupName: '',
         description: '',
@@ -310,11 +341,36 @@ export function CategoriesTab({
     if (catFormState.className) parts.push(`[class:${catFormState.className}]`);
     const taggedDescription = parts.filter(Boolean).join(' ').trim();
 
+    const matchedClass = availableAssetClasses.find(c => (c.name || c.code) === catFormState.className || c.id === catFormState.assetSubGroupId);
+    const targetSubGroupId = catFormState.assetSubGroupId || matchedClass?.id || null;
+
+    if (!matchedClass) {
+      setModalError('Please select a valid Parent Asset Sub Group.');
+      return;
+    }
+
+    if (isClassInactive(matchedClass)) {
+      const parentGrp = availableAssetGroups.find(g =>
+        (matchedClass.assetGroupId && g.id === matchedClass.assetGroupId) ||
+        (matchedClass.groupName && (g.name || g.code || '').trim().toLowerCase() === matchedClass.groupName.trim().toLowerCase())
+      );
+      const isGrpInactive = matchedClass.groupActive === false || (parentGrp && (parentGrp.active === false || parentGrp.active === 0 || parentGrp.status === 'Inactive'));
+      const reason = isGrpInactive
+        ? `because its parent Asset Group "${parentGrp?.name || matchedClass.groupName}" is inactive`
+        : `because it is inactive`;
+      const msg = `Cannot assign Category to Asset Sub Group "${matchedClass.name || matchedClass.code}" ${reason}. Please select an active Asset Sub Group.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
     if (editingCategory) {
       try {
         await api.put(`/master-data/categories/${editingCategory.id}`, {
           code: cleanCode,
           name: cleanName,
+          assetSubGroupId: targetSubGroupId,
+          className: catFormState.className,
           description: taggedDescription,
           status: catFormState.status
         });
@@ -332,6 +388,8 @@ export function CategoriesTab({
         await api.post('/master-data/categories', {
           code: cleanCode,
           name: cleanName,
+          assetSubGroupId: targetSubGroupId,
+          className: catFormState.className,
           description: taggedDescription,
           status: catFormState.status
         });
@@ -492,11 +550,12 @@ export function CategoriesTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Classes">All Sub Groups</option>
-              {availableAssetClasses.map((c) => {
+              {sortedAssetClasses.map((c) => {
                 const name = c.name || c.code;
+                const isInactive = isClassInactive(c);
                 return (
                   <option key={c.id || name} value={name}>
-                    {name}
+                    {name}{isInactive ? ' (Inactive)' : ''}
                   </option>
                 );
               })}
@@ -513,9 +572,10 @@ export function CategoriesTab({
               <option value="All Groups">All Groups</option>
               {availableAssetGroups.map((g) => {
                 const name = g.name || g.code;
+                const isInactive = g.active === false || g.status === 'Inactive';
                 return (
                   <option key={g.id || name} value={name}>
-                    {name}
+                    {name}{isInactive ? ' (Inactive)' : ''}
                   </option>
                 );
               })}
@@ -610,7 +670,22 @@ export function CategoriesTab({
                       <td className="py-3.5 px-2 text-center text-slate-400">{startIndex + index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{cat.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{cat.name}</td>
-                      <td className="py-3.5 px-3 text-slate-700">{cat.className}</td>
+                      <td className="py-3.5 px-3 text-slate-700">
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span>{cat.className || '-'}</span>
+                          {(() => {
+                            const cls = availableAssetClasses.find(c => (c.name || c.code) === cat.className || (cat.assetSubGroupId && c.id === cat.assetSubGroupId));
+                            if (cls && isClassInactive(cls)) {
+                              return (
+                                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md inline-block">
+                                  (Inactive)
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={cat.description}>
                         {cat.description || '-'}
                       </td>
@@ -740,12 +815,38 @@ export function CategoriesTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Asset Sub Group</span>
-                <span className="col-span-2 font-semibold text-slate-800">{selectedCategory.className}</span>
+                <span className="col-span-2 font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                  <span>{selectedCategory.className || '-'}</span>
+                  {(() => {
+                    const cls = availableAssetClasses.find(c => (c.name || c.code) === selectedCategory.className || (selectedCategory.assetSubGroupId && c.id === selectedCategory.assetSubGroupId));
+                    if (cls && isClassInactive(cls)) {
+                      return (
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
+                          (Inactive)
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Asset Group</span>
-                <span className="col-span-2 font-semibold text-slate-800">{selectedCategory.groupName}</span>
+                <span className="col-span-2 font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                  <span>{selectedCategory.groupName || '-'}</span>
+                  {(() => {
+                    const grp = availableAssetGroups.find(g => (g.name || g.code) === selectedCategory.groupName);
+                    if (grp && (grp.active === false || grp.active === 0 || grp.status === 'Inactive')) {
+                      return (
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
+                          (Inactive)
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -886,16 +987,37 @@ export function CategoriesTab({
                     if (!selectedVal) {
                       setCatFormState({
                         ...catFormState,
+                        assetSubGroupId: '',
                         className: '',
                         groupName: ''
                       });
                       return;
                     }
                     const selectedClass = availableAssetClasses.find(cls => (cls.name || cls.code) === selectedVal);
+                    if (selectedClass && isClassInactive(selectedClass)) {
+                      const parentGrp = availableAssetGroups.find(g =>
+                        (selectedClass.assetGroupId && g.id === selectedClass.assetGroupId) ||
+                        (selectedClass.groupName && (g.name || g.code || '').trim().toLowerCase() === selectedClass.groupName.trim().toLowerCase())
+                      );
+                      const isGrpInactive = selectedClass.groupActive === false || (parentGrp && (parentGrp.active === false || parentGrp.active === 0 || parentGrp.status === 'Inactive'));
+                      const reason = isGrpInactive
+                        ? `because its parent Asset Group "${parentGrp?.name || selectedClass.groupName}" is inactive`
+                        : `because it is inactive`;
+                      setModalError(`Cannot assign Category to Asset Sub Group "${selectedClass.name || selectedClass.code}" ${reason}. Please choose an active Asset Sub Group.`);
+                      setCatFormState({
+                        ...catFormState,
+                        assetSubGroupId: '',
+                        className: '',
+                        groupName: ''
+                      });
+                      return;
+                    }
                     const descGroup = (selectedClass?.description || '').match(/\[group:([^\]]+)\]/)?.[1];
                     const derivedGroup = descGroup || selectedClass?.groupName || selectedClass?.assetGroupName || '';
+                    setModalError('');
                     setCatFormState({
                       ...catFormState,
+                      assetSubGroupId: selectedClass?.id || '',
                       className: selectedVal,
                       groupName: derivedGroup
                     });
@@ -903,19 +1025,38 @@ export function CategoriesTab({
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
                   <option value="">-- Select Parent Asset Sub Group --</option>
-                  {availableAssetClasses.map((cls) => {
+                  {sortedAssetClasses.map((cls) => {
                     const name = cls.name || cls.code;
+                    const isInactive = isClassInactive(cls);
+                    const parentGrp = availableAssetGroups.find(g =>
+                      (cls.assetGroupId && g.id === cls.assetGroupId) ||
+                      (cls.groupName && (g.name || g.code || '').trim().toLowerCase() === cls.groupName.trim().toLowerCase()) ||
+                      (cls.assetGroupName && (g.name || g.code || '').trim().toLowerCase() === cls.assetGroupName.trim().toLowerCase())
+                    );
+                    const isGrpInactive = cls.groupActive === false || (parentGrp && (parentGrp.active === false || parentGrp.active === 0 || parentGrp.status === 'Inactive'));
+                    const groupLabel = cls.groupName || parentGrp?.name || cls.assetGroupName || '';
+
                     return (
-                      <option key={cls.id || name} value={name}>
-                        {name} {cls.groupName ? `(Group: ${cls.groupName})` : ''}
+                      <option
+                        key={cls.id || name}
+                        value={name}
+                        disabled={isInactive}
+                        className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                      >
+                        {name}{groupLabel ? ` (Group: ${groupLabel}${isGrpInactive ? ' - Inactive' : ''})` : ''}{isInactive ? ' (Inactive)' : ''}
                       </option>
                     );
                   })}
                 </select>
                 {catFormState.className && (
-                  <div className="mt-2 p-2.5 bg-purple-50/70 border border-purple-100 rounded-xl text-[11px] space-y-1">
+                  <div className={clsx(
+                    "mt-2 p-2.5 rounded-xl text-[11px] space-y-1 border",
+                    isClassInactive(availableAssetClasses.find(c => (c.name || c.code) === catFormState.className))
+                      ? "bg-rose-50 border-rose-200 text-rose-700"
+                      : "bg-purple-50/70 border-purple-100 text-slate-800"
+                  )}>
                     <div className="text-slate-500 font-semibold uppercase tracking-wider text-[10px]">Auto-Inherited Classification:</div>
-                    <div className="flex items-center gap-1.5 font-bold text-slate-800">
+                    <div className="flex items-center gap-1.5 font-bold flex-wrap">
                       <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
                         Group: {catFormState.groupName || '-'}
                       </span>
@@ -923,6 +1064,11 @@ export function CategoriesTab({
                       <span className="px-2 py-0.5 bg-white border border-purple-200 rounded-md text-[#6C2BD9]">
                         Sub Group: {catFormState.className}
                       </span>
+                      {isClassInactive(availableAssetClasses.find(c => (c.name || c.code) === catFormState.className)) && (
+                        <span className="px-2 py-0.5 bg-rose-100 text-rose-700 border border-rose-300 rounded-md font-bold">
+                          Inactive - Not Allowed
+                        </span>
+                      )}
                     </div>
                   </div>
                 )}

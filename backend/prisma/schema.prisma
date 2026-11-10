@@ -229,14 +229,15 @@ model Employee {
 // ------------------------------------------------------
 
 model AssetGroup {
-  id          String   @id @default(uuid())
-  code        String   @unique
-  name        String
-  description String?
-  assetType   String   @default("Both")
-  active      Boolean  @default(true)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  id             String          @id @default(uuid())
+  code           String          @unique
+  name           String
+  description    String?
+  assetType      String          @default("Both")
+  active         Boolean         @default(true)
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  assetSubGroups AssetSubGroup[]
 
   @@map("asset_groups")
 }
@@ -294,20 +295,22 @@ model LocationType {
 }
 
 model Category {
-  id                          String             @id @default(uuid())
-  legacyMongoId               String?
-  code                        String             @unique
-  name                        String
-  description                 String?
-  depreciationMethod          String             @default("STRAIGHT_LINE")
+  id                            String             @id @default(uuid())
+  legacyMongoId                 String?
+  code                          String             @unique
+  name                          String
+  description                   String?
+  assetSubGroupId               String?            @db.NVarChar(100)
+  depreciationMethod            String             @default("STRAIGHT_LINE")
   annualDepreciationRatePercent Decimal?           @db.Decimal(5, 2)
-  defaultUsefulLifeMonths     Int                @default(60)
-  defaultResidualValuePercent Decimal            @default(0) @db.Decimal(5, 2)
-  isSerialized                Boolean            @default(true)
-  active                      Boolean            @default(true)
-  createdAt                   DateTime           @default(now())
-  updatedAt                   DateTime           @updatedAt
+  defaultUsefulLifeMonths       Int                @default(60)
+  defaultResidualValuePercent   Decimal            @default(0) @db.Decimal(5, 2)
+  isSerialized                  Boolean            @default(true)
+  active                        Boolean            @default(true)
+  createdAt                     DateTime           @default(now())
+  updatedAt                     DateTime           @updatedAt
 
+  assetSubGroup    AssetSubGroup?          @relation(fields: [assetSubGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   models           AssetModel[]
   assets           Asset[]
   customFields     CustomFieldDefinition[]
@@ -317,17 +320,19 @@ model Category {
 }
 
 model AssetSubGroup {
-  id             String    @id @default(uuid())
-  code           String    @unique
+  id             String      @id @default(uuid())
+  code           String      @unique
   name           String
   assetGroupId   String?
   assetGroupName String?
-  assetType      String?   @default("Both")
+  assetType      String?     @default("Both")
   description    String?
-  totalAssets    Int?      @default(0)
-  active         Boolean?  @default(true)
-  createdAt      DateTime? @default(now())
-  updatedAt      DateTime? @updatedAt
+  totalAssets    Int?        @default(0)
+  active         Boolean?    @default(true)
+  createdAt      DateTime?   @default(now())
+  updatedAt      DateTime?   @updatedAt
+  assetGroup     AssetGroup? @relation(fields: [assetGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  categories     Category[]
 
   @@map("asset_sub_groups")
 }

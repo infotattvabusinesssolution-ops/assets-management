@@ -172,6 +172,17 @@ export function ClassesTab({
     status: 'Active'
   });
 
+  // Sort groups: active groups first, then inactive groups
+  const sortedAssetGroups = useMemo(() => {
+    return [...availableAssetGroups].sort((a, b) => {
+      const aActive = a.active !== false && a.status !== 'Inactive';
+      const bActive = b.active !== false && b.status !== 'Inactive';
+      if (aActive && !bActive) return -1;
+      if (!aActive && bActive) return 1;
+      return (a.name || a.code || '').localeCompare(b.name || b.code || '');
+    });
+  }, [availableAssetGroups]);
+
   const filteredClasses = useMemo(() => {
     return classesList.filter((cls) => {
       const matchesSearch =
@@ -232,9 +243,11 @@ export function ClassesTab({
     setModalError('');
     if (clsToEdit) {
       setEditingClass(clsToEdit);
+      const matchedGrp = availableAssetGroups.find(g => (g.name || g.code) === clsToEdit.groupName || g.id === clsToEdit.assetGroupId);
       setClsFormState({
         code: clsToEdit.code,
         name: clsToEdit.name,
+        assetGroupId: clsToEdit.assetGroupId || matchedGrp?.id || '',
         groupName: clsToEdit.groupName,
         description: clsToEdit.description,
         assetType: clsToEdit.assetType,
@@ -242,10 +255,15 @@ export function ClassesTab({
       });
     } else {
       setEditingClass(null);
+      const activeGroups = availableAssetGroups.filter(g => g.active !== false && g.status !== 'Inactive');
+      const defaultGrp = activeGroups.find(g => (g.name || g.code) === 'Information Technology')
+        || activeGroups[0]
+        || availableAssetGroups[0];
       setClsFormState({
         code: '',
         name: '',
-        groupName: 'Information Technology',
+        assetGroupId: defaultGrp?.id || '',
+        groupName: defaultGrp ? (defaultGrp.name || defaultGrp.code) : '',
         description: '',
         assetType: 'Physical',
         status: 'Active'
@@ -271,6 +289,19 @@ export function ClassesTab({
       return;
     }
 
+    if (!clsFormState.groupName) {
+      setModalError('Parent Asset Group is required.');
+      return;
+    }
+
+    const chosenGrp = availableAssetGroups.find(g => (g.name || g.code) === clsFormState.groupName || g.id === clsFormState.assetGroupId);
+    if (chosenGrp && (chosenGrp.active === false || chosenGrp.status === 'Inactive')) {
+      const msg = `Cannot assign to inactive Asset Group "${chosenGrp.name || chosenGrp.code}". Please select an active Asset Group.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
     const dupCode = classesList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingClass || c.id !== editingClass.id));
     if (dupCode) {
       const msg = `Asset Sub Group code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
@@ -288,6 +319,9 @@ export function ClassesTab({
     }
 
     try {
+      const matchedGrp = availableAssetGroups.find(g => (g.name || g.code) === clsFormState.groupName || g.id === clsFormState.assetGroupId);
+      const targetGroupId = clsFormState.assetGroupId || matchedGrp?.id || null;
+
       if (editingClass) {
         const cleanDesc = (clsFormState.description || '')
           .replace(/\[kind:[^\]]+\]/g, '')
@@ -296,6 +330,7 @@ export function ClassesTab({
         await api.put(`/master-data/asset-sub-groups/${editingClass.id}`, {
           code: cleanCode,
           name: cleanName,
+          assetGroupId: targetGroupId,
           groupName: clsFormState.groupName,
           assetGroupName: clsFormState.groupName,
           description: `${cleanDesc} [kind:class] [group:${clsFormState.groupName}]`.trim(),
@@ -307,6 +342,7 @@ export function ClassesTab({
         await api.post('/master-data/asset-sub-groups', {
           code: cleanCode,
           name: cleanName,
+          assetGroupId: targetGroupId,
           groupName: clsFormState.groupName,
           assetGroupName: clsFormState.groupName,
           description: `${clsFormState.description || ''} [kind:class] [group:${clsFormState.groupName}]`.trim(),
@@ -470,11 +506,15 @@ export function ClassesTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Groups">All Groups</option>
-              {availableGroups.map((grpName) => (
-                <option key={grpName} value={grpName}>
-                  {grpName}
-                </option>
-              ))}
+              {availableGroups.map((grpName) => {
+                const grp = availableAssetGroups.find(g => (g.name || g.code) === grpName);
+                const isInactive = grp && (grp.active === false || grp.status === 'Inactive');
+                return (
+                  <option key={grpName} value={grpName}>
+                    {grpName}{isInactive ? ' (Inactive)' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -569,7 +609,22 @@ export function ClassesTab({
                       <td className="py-3.5 px-2 text-center text-slate-400">{startIndex + index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{cls.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{cls.name}</td>
-                      <td className="py-3.5 px-3.5 text-slate-700">{cls.groupName}</td>
+                      <td className="py-3.5 px-3.5 text-slate-700">
+                        <div className="flex items-center gap-1.5 flex-wrap">
+                          <span>{cls.groupName || '-'}</span>
+                          {(() => {
+                            const grp = availableAssetGroups.find(g => (g.name || g.code) === cls.groupName || (cls.assetGroupId && g.id === cls.assetGroupId));
+                            if (grp && (grp.active === false || grp.status === 'Inactive')) {
+                              return (
+                                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md inline-block">
+                                  (Inactive)
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={cls.description}>
                         {cls.description}
                       </td>
@@ -700,7 +755,20 @@ export function ClassesTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Asset Group</span>
-                <span className="col-span-2 font-semibold text-slate-800">{selectedClass.groupName}</span>
+                <span className="col-span-2 font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                  <span>{selectedClass.groupName || '-'}</span>
+                  {(() => {
+                    const grp = availableAssetGroups.find(g => (g.name || g.code) === selectedClass.groupName || (selectedClass.assetGroupId && g.id === selectedClass.assetGroupId));
+                    if (grp && (grp.active === false || grp.status === 'Inactive')) {
+                      return (
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
+                          (Inactive)
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -858,13 +926,31 @@ export function ClassesTab({
                 <label className="block font-semibold text-slate-700 mb-1">Parent Asset Group *</label>
                 <select
                   value={clsFormState.groupName}
-                  onChange={(e) => setClsFormState({ ...clsFormState, groupName: e.target.value })}
+                  onChange={(e) => {
+                    const chosen = e.target.value;
+                    const matched = availableAssetGroups.find(g => (g.name || g.code) === chosen);
+                    setClsFormState({
+                      ...clsFormState,
+                      groupName: chosen,
+                      assetGroupId: matched?.id || ''
+                    });
+                  }}
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                 >
                   <option value="">-- Select Parent Asset Group --</option>
-                  {availableAssetGroups.map((g) => {
+                  {sortedAssetGroups.map((g) => {
                     const name = g.name || g.code;
-                    return <option key={g.id || name} value={name}>{name}</option>;
+                    const isInactive = g.active === false || g.status === 'Inactive';
+                    return (
+                      <option
+                        key={g.id || name}
+                        value={name}
+                        disabled={isInactive}
+                        className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                      >
+                        {name}{isInactive ? ' (Inactive)' : ''}
+                      </option>
+                    );
                   })}
                 </select>
               </div>
