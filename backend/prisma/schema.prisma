@@ -294,6 +294,18 @@ model LocationType {
   @@map("location_types")
 }
 
+model AssetCondition {
+  id          String   @id @default(uuid())
+  code        String   @unique
+  name        String
+  description String?
+  active      Boolean  @default(true)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("asset_conditions")
+}
+
 model Category {
   id                            String             @id @default(uuid())
   legacyMongoId                 String?
