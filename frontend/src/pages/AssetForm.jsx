@@ -1065,7 +1065,6 @@ export function AssetForm() {
       ...prev,
       itemMasterId: item.id,
       assetName: item.itemName,
-      description: item.description || item.itemName,
       assetGroup: groupName || prev.assetGroup,
       assetClass: subGroupName || prev.assetClass,
       category: categoryName || prev.category,
