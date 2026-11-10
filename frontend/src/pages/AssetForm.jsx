@@ -3439,48 +3439,85 @@ export function AssetForm() {
             </select>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3">
-            <div>
-              <label className="font-bold text-slate-600 block mb-1">Location Level 1</label>
-              <input
-                type="text"
-                readOnly
-                value={locLevel1}
-                placeholder="Level 1 (e.g. Campus / Site)"
-                className="w-full bg-slate-100/80 border border-slate-200 rounded-xl p-2 text-slate-800 font-semibold cursor-not-allowed outline-none select-none"
-              />
+          {/* Location Hierarchy Container (Visible only after location is selected) */}
+          {Boolean(formData.siteId || formData.locationId || formData.site || selectedLocation) && (
+            <div className="bg-slate-50/90 border border-slate-200 rounded-xl p-3.5 space-y-2.5 animate-in fade-in slide-in-from-top-1 duration-200">
+              <div className="flex items-center justify-between border-b border-slate-200/70 pb-2">
+                <span className="font-bold text-slate-800 text-xs flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-[#6C2BD9]" /> Location Hierarchy
+                </span>
+                <span className="text-[10px] font-semibold text-[#6C2BD9] bg-purple-50 border border-purple-200 px-2 py-0.5 rounded-full">
+                  4-Level Structure
+                </span>
+              </div>
+
+              {/* Hierarchy Path Flow */}
+              <div className="flex items-center flex-wrap gap-2 bg-white border border-slate-200 rounded-lg px-3 py-2 text-xs shadow-2xs">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">L1</span>
+                  <span className="font-bold text-slate-800">{locLevel1 || '—'}</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">L2</span>
+                  <span className="font-bold text-slate-800">{locLevel2 || '—'}</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase text-purple-700 bg-purple-50 px-1.5 py-0.5 rounded">L3</span>
+                  <span className="font-bold text-slate-800">{locLevel3 || '—'}</span>
+                </div>
+                <ChevronRight className="w-3.5 h-3.5 text-slate-400 shrink-0" />
+                <div className="flex items-center gap-1.5">
+                  <span className="text-[10px] font-bold uppercase text-[#6C2BD9] bg-purple-100 px-1.5 py-0.5 rounded">L4</span>
+                  <span className="font-bold text-[#6C2BD9]">{locLevel4 || '—'}</span>
+                </div>
+              </div>
+
+              {/* Hierarchy Level Cards */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-2.5 pt-0.5">
+                <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-extrabold uppercase text-purple-700">Location Level 1</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Campus / Site</span>
+                  </div>
+                  <p className="font-bold text-slate-900 text-xs truncate" title={locLevel1 || 'Not specified'}>
+                    {locLevel1 || <span className="text-slate-400 font-normal italic">Not specified</span>}
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-extrabold uppercase text-purple-700">Location Level 2</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Building / Facility</span>
+                  </div>
+                  <p className="font-bold text-slate-900 text-xs truncate" title={locLevel2 || 'Not specified'}>
+                    {locLevel2 || <span className="text-slate-400 font-normal italic">Not specified</span>}
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-extrabold uppercase text-purple-700">Location Level 3</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Floor / Wing</span>
+                  </div>
+                  <p className="font-bold text-slate-900 text-xs truncate" title={locLevel3 || 'Not specified'}>
+                    {locLevel3 || <span className="text-slate-400 font-normal italic">Not specified</span>}
+                  </p>
+                </div>
+
+                <div className="bg-white border border-slate-200 rounded-lg p-2.5 flex flex-col justify-between shadow-2xs">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-[10px] font-extrabold uppercase text-[#6C2BD9]">Location Level 4</span>
+                    <span className="text-[10px] text-slate-400 font-medium">Room / Zone</span>
+                  </div>
+                  <p className="font-bold text-slate-900 text-xs truncate" title={locLevel4 || 'Not specified'}>
+                    {locLevel4 || <span className="text-slate-400 font-normal italic">Not specified</span>}
+                  </p>
+                </div>
+              </div>
             </div>
-            <div>
-              <label className="font-bold text-slate-600 block mb-1">Location Level 2</label>
-              <input
-                type="text"
-                readOnly
-                value={locLevel2}
-                placeholder="Level 2 (e.g. Building / Facility)"
-                className="w-full bg-slate-100/80 border border-slate-200 rounded-xl p-2 text-slate-800 font-semibold cursor-not-allowed outline-none select-none"
-              />
-            </div>
-            <div>
-              <label className="font-bold text-slate-600 block mb-1">Location Level 3</label>
-              <input
-                type="text"
-                readOnly
-                value={locLevel3}
-                placeholder="Level 3 (e.g. Floor / Wing)"
-                className="w-full bg-slate-100/80 border border-slate-200 rounded-xl p-2 text-slate-800 font-semibold cursor-not-allowed outline-none select-none"
-              />
-            </div>
-            <div>
-              <label className="font-bold text-slate-600 block mb-1">Location Level 4</label>
-              <input
-                type="text"
-                readOnly
-                value={locLevel4}
-                placeholder="Level 4 (e.g. Room / Area / Zone)"
-                className="w-full bg-slate-100/80 border border-slate-200 rounded-xl p-2 text-slate-800 font-semibold cursor-not-allowed outline-none select-none"
-              />
-            </div>
-          </div>
+          )}
         </div>
       </div>
     );
