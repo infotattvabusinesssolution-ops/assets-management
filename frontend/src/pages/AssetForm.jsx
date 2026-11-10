@@ -2947,28 +2947,21 @@ export function AssetForm() {
 
         <div>
           <label className="font-bold text-slate-700 block mb-1">Amount</label>
-          <div className="flex items-center gap-1.5">
-            <input
-              type="text"
-              readOnly
-              value={formData.currency || 'AED'}
-              title="Currency (Read-only)"
-              className="w-16 bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-700 font-bold text-center outline-none cursor-not-allowed shrink-0"
-            />
-            <input
-              type="text"
-              readOnly
-              value={(() => {
-                const unit = parseFloat(String(formData.acquisitionCost || '0').replace(/[^0-9.-]/g, '')) || 0;
-                const qty = parseInt(formData.quantity, 10) || 1;
-                return (unit * qty > 0)
-                  ? (unit * qty).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                  : '';
-              })()}
-              placeholder="0.00"
-              className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold outline-none cursor-not-allowed"
-            />
-          </div>
+          <input
+            type="text"
+            readOnly
+            value={(() => {
+              const unit = parseFloat(String(formData.acquisitionCost || '').replace(/[^0-9.-]/g, ''));
+              const qty = parseFloat(formData.quantity) || 0;
+              if (isNaN(unit) || unit <= 0 || qty <= 0) return '';
+              const total = unit * qty;
+              return Number.isInteger(total)
+                ? total.toString()
+                : total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+            })()}
+            placeholder="e.g. 20"
+            className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold outline-none cursor-not-allowed"
+          />
           <p className="text-[10px] text-slate-400 mt-0.5">Total amount (Qty &times; Unit Price).</p>
         </div>
 
