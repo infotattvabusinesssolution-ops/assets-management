@@ -578,13 +578,7 @@ export function AssetForm() {
   const [manufacturers, setManufacturers] = useState([]);
   const [brands, setBrands] = useState([]);
   const [employees, setEmployees] = useState([]);
-  const [assetConditions, setAssetConditions] = useState([
-    { id: 'cond-new', code: 'NEW', name: 'New' },
-    { id: 'cond-good', code: 'GOOD', name: 'Good' },
-    { id: 'cond-fair', code: 'FAIR', name: 'Fair' },
-    { id: 'cond-damaged', code: 'DAMAGED', name: 'Damaged' },
-    { id: 'cond-refurbished', code: 'REFURBISHED', name: 'Refurbished' }
-  ]);
+  const [assetConditions, setAssetConditions] = useState([]);
   const [discoveredDevices, setDiscoveredDevices] = useState([]);
   const [loadingDevices, setLoadingDevices] = useState(false);
 
