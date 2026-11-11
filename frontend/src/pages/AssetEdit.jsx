@@ -1414,7 +1414,7 @@ export function AssetEdit() {
                 </div>
                 <div>
                   <label className="font-bold text-slate-700 block mb-1 flex items-center justify-between">
-                    <span>Cost Center</span>
+                    <span>Section</span>
                     <span className="text-[10px] font-bold text-[#6C2BD9] bg-purple-50 px-2 py-0.5 rounded-md border border-purple-200">
                       Editable
                     </span>
@@ -1423,7 +1423,7 @@ export function AssetEdit() {
                     type="text"
                     value={formData.costCenter}
                     onChange={(e) => setFormData({ ...formData, costCenter: e.target.value })}
-                    placeholder="Enter cost center code..."
+                    placeholder="Enter section code..."
                     className="w-full bg-white border border-slate-300 rounded-xl p-2.5 text-slate-900 font-mono font-semibold focus:border-[#6C2BD9] focus:ring-1 focus:ring-[#6C2BD9] outline-none shadow-2xs transition-all"
                   />
                 </div>

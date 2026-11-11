@@ -599,7 +599,7 @@ export function ReportsCatalogue() {
     company: 'All Companies',
     location: 'All Locations',
     department: 'All Departments',
-    costCenter: 'All Cost Centers',
+    costCenter: 'All Sections',
     assetClass: 'All Classes',
     supplier: 'All Suppliers',
     assetGroup: 'All Asset Groups',

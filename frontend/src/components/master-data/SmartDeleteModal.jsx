@@ -79,7 +79,7 @@ export function SmartDeleteModal({
                 {Boolean(details.costCentersCount) && (
                   <div className="flex items-center gap-1.5">
                     <span className="w-1.5 h-1.5 rounded-full bg-amber-500" />
-                    <span>{details.costCentersCount} {details.costCentersCount === 1 ? 'Cost Center' : 'Cost Centers'}</span>
+                    <span>{details.costCentersCount} {details.costCentersCount === 1 ? 'Section' : 'Sections'}</span>
                   </div>
                 )}
                 {Boolean(details.usersCount) && (

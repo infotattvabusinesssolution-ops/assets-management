@@ -333,9 +333,9 @@ export function MasterDataSetup() {
       rows = INITIAL_SUPPLIERS.map((s) => [s.code, s.name, s.type, s.country, `"${s.contactPerson}"`, s.phone, s.status]);
       filename = 'Asset_Suppliers';
     } else if (isCostCenters) {
-      headers = ['Cost Center Code', 'Cost Center Name', 'Company', 'Type', 'Manager', 'Description', 'Total Assets', 'Status'];
+      headers = ['Section Code', 'Section Name', 'Company', 'Type', 'Manager', 'Description', 'Total Assets', 'Status'];
       rows = INITIAL_COST_CENTERS.map((c) => [c.code, c.name, c.company, c.type, `"${c.manager}"`, `"${c.description}"`, c.totalAssets, c.status]);
-      filename = 'Asset_CostCenters';
+      filename = 'Asset_Sections';
     } else if (isDepts) {
       headers = ['Department Code', 'Department Name', 'Department Type', 'Parent Department', 'Location', 'Company', 'Manager', 'Email', 'Phone', 'Employees', 'Status'];
       rows = INITIAL_DEPARTMENTS.map((d) => [d.code, d.name, d.type, d.parentDepartment, d.location, d.company, `"${d.manager}"`, d.email, d.phone, d.employees, d.status]);
@@ -400,7 +400,7 @@ export function MasterDataSetup() {
     { id: 'location-level-3', name: 'Location Level 3', icon: MapPin, desc: 'Define and manage Location Level 3 records.' },
     { id: 'location-level-4', name: 'Location Level 4', icon: MapPin, desc: 'Define and manage Location Level 4 records.' },
     { id: 'departments', name: 'Departments', icon: Users, desc: 'Define and manage organizational departments for asset ownership and financial accountability.' },
-    { id: 'cost-centers', name: 'Cost Centers', icon: BarChart3, desc: 'Define and manage cost centers for budget allocation, depreciation charging, and financial reporting.' },
+    { id: 'cost-centers', name: 'Sections', icon: BarChart3, desc: 'Define and manage sections for budget allocation, depreciation charging, and financial reporting.' },
     { id: 'suppliers', name: 'Suppliers', icon: Truck, desc: 'Manage approved vendors and suppliers for asset procurement, warranties, and maintenance services.' },
     { id: 'manufacturers', name: 'Manufacturers', icon: Factory, desc: 'Manage approved equipment manufacturers, OEM specs, vendor portals, and technical support.' },
     { id: 'brands', name: 'Brands', icon: Tag, desc: 'Manage equipment and product brands linked to items and asset catalog.' },

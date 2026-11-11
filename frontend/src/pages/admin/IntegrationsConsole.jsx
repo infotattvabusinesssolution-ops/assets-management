@@ -68,7 +68,7 @@ export const PRESEEDED_INTEGRATIONS = [
     clientId: 'asset360_sap_prod',
     maskedSecret: '••••••••••••••••••••••••••••••••',
     company: 'All Companies',
-    description: 'Real-time bidirectional synchronization of capital asset masters, cost centers, asset capitalization, and depreciation ledger entries.',
+    description: 'Real-time bidirectional synchronization of capital asset masters, sections, asset capitalization, and depreciation ledger entries.',
     mappings: [
       { sourceField: 'ANLN1', targetField: 'assetNumber', transformation: 'Direct Mapping', required: true, sampleValue: '10004820' },
       { sourceField: 'TXT50', targetField: 'assetName', transformation: 'Direct Mapping', required: true, sampleValue: 'Chiller Unit Plant B' },

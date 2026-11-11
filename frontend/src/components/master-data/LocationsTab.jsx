@@ -931,7 +931,7 @@ export function LocationsTab({
                   <div className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 hover:border-purple-200 hover:bg-purple-50/50 transition-colors cursor-pointer group">
                     <div className="flex items-center gap-2 text-slate-700 group-hover:text-[#6C2BD9]">
                       <BarChart3 className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                      <span className="font-semibold">Cost Centers</span>
+                      <span className="font-semibold">Sections</span>
                     </div>
                     <div className="flex items-center gap-2">
                       <span className="font-mono font-bold text-slate-900">{selectedLocation.relatedInfo?.costCenters ?? 0}</span>

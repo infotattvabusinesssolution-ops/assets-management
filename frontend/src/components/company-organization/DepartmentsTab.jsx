@@ -407,16 +407,16 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
 
         {/* Row 2 Filters matching Screenshot */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs mt-3 items-end">
-          {/* Cost Center */}
+          {/* Section */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1">Cost Center</label>
+            <label className="block text-slate-700 font-bold mb-1">Section</label>
             <div className="relative">
               <select
                 value={costCenterFilter}
                 onChange={(e) => setCostCenterFilter(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
-                <option value="All Cost Centers">All Cost Centers</option>
+                <option value="All Cost Centers">All Sections</option>
                 <option value="CC-1001">CC-1001</option>
                 <option value="CC-1002">CC-1002</option>
                 <option value="CC-1003">CC-1003</option>
@@ -574,7 +574,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                 </th>
                 <th className="p-3 font-bold text-slate-900">
                   <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
-                    <span>Cost Center</span>
+                    <span>Section</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
@@ -720,7 +720,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                               className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
                               <Coins className="w-4 h-4 text-[#6C2BD9]" />
-                              Assign Cost Center
+                              Assign Section
                             </button>
 
                             <div className="border-t border-slate-100 my-1"></div>
@@ -805,7 +805,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                   <span className="font-mono font-bold text-[#6C2BD9]">{selectedDept.location}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block text-[11px]">Cost Center</span>
+                  <span className="text-slate-400 font-medium block text-[11px]">Section</span>
                   <span className="font-mono font-bold text-[#6C2BD9]">{selectedDept.costCenter}</span>
                 </div>
                 <div>
@@ -916,7 +916,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Cost Center</label>
+                  <label className="block font-bold text-slate-700 mb-1">Section</label>
                   <select
                     value={deptForm.costCenter}
                     onChange={(e) => setDeptForm({ ...deptForm, costCenter: e.target.value })}
@@ -927,7 +927,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                         <option key={c.id} value={c.code}>{c.code} - {c.name}</option>
                       ))
                     ) : (
-                      <option value="">General Cost Center</option>
+                      <option value="">General Section</option>
                     )}
                   </select>
                 </div>

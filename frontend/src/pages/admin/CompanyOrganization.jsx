@@ -66,7 +66,7 @@ export function CompanyOrganization() {
     { id: 'businessUnits', label: 'Business Units', icon: GitBranch },
     { id: 'departments', label: 'Departments', icon: Network },
     { id: 'locations', label: 'Locations', icon: MapPin },
-    { id: 'costCenters', label: 'Cost Centers', icon: Coins }
+    { id: 'costCenters', label: 'Sections', icon: Coins }
   ];
 
   return (
@@ -117,7 +117,7 @@ export function CompanyOrganization() {
             >
               <Plus className="w-4 h-4" />
               <span>
-                Add {activeTab === 'companies' ? 'Company' : activeTab === 'businessUnits' ? 'Business Unit' : activeTab === 'departments' ? 'Department' : activeTab === 'locations' ? 'Location' : 'Cost Center'}
+                Add {activeTab === 'companies' ? 'Company' : activeTab === 'businessUnits' ? 'Business Unit' : activeTab === 'departments' ? 'Department' : activeTab === 'locations' ? 'Location' : 'Section'}
               </span>
             </button>
           </div>

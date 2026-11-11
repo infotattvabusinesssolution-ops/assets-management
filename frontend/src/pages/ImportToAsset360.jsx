@@ -652,7 +652,7 @@ export function ImportToAsset360() {
                     </div>
 
                     <div>
-                      <label className="block font-semibold text-slate-700 mb-1">Cost Center *</label>
+                      <label className="block font-semibold text-slate-700 mb-1">Section *</label>
                       <input
                         type="text"
                         value={defaultBusinessValues.costCenter}

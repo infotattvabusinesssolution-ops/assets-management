@@ -1316,7 +1316,7 @@ export function UserManagement() {
                   <div><span className="text-slate-400">Company:</span> <span className="font-medium text-slate-800 block">{selectedUser.company}</span></div>
                   <div><span className="text-slate-400">Business Unit:</span> <span className="font-medium text-slate-800 block">{selectedUser.businessUnit}</span></div>
                   <div><span className="text-slate-400">Department:</span> <span className="font-medium text-slate-800 block">{selectedUser.department}</span></div>
-                  <div><span className="text-slate-400">Cost Center:</span> <span className="font-medium text-slate-800 block">{selectedUser.costCenter}</span></div>
+                  <div><span className="text-slate-400">Section:</span> <span className="font-medium text-slate-800 block">{selectedUser.costCenter}</span></div>
                   <div className="col-span-2"><span className="text-slate-400">Primary Location:</span> <span className="font-medium text-slate-800 block">{selectedUser.location}</span></div>
                 </div>
               </div>

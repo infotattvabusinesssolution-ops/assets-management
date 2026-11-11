@@ -1679,7 +1679,7 @@ export function AssetList() {
                       <span className="font-bold text-slate-900 text-left">{selectedAsset.departmentName || 'Operations'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">
-                      <span className="text-slate-500 font-medium">Cost Center</span>
+                      <span className="text-slate-500 font-medium">Section</span>
                       <span className="font-bold text-slate-900 text-left">{selectedAsset.costCenterCode || 'CC-001'}</span>
                     </div>
                     <div className="grid grid-cols-[140px_1fr] gap-x-2 py-1.5 items-center">

@@ -8,7 +8,7 @@ export const bulkAssetFields = [
   ['criticality','Criticality'], ['assetStatus','Status'], ['condition','Condition'],
   ['brand','Brand'], ['modelNumber','Model Number'], ['assetTagBarcode','Asset Tag / Barcode'],
   ['rfidEpc','RFID EPC'], ['tid','RFID TID'], ['company','Company'],
-  ['businessUnit','Business Unit'], ['department','Department'], ['costCenter','Cost Center'],
+  ['businessUnit','Business Unit'], ['department','Department'], ['costCenter','Section'],
   ['site','Site'], ['building','Building'], ['floor','Floor'], ['room','Room'],
   ['zoneArea','Zone / Area'], ['storageArea','Storage Area'], ['custodian','Custodian'],
   ['alternateCustodian','Alternate Custodian'], ['expectedUser','Expected User'],

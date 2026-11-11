@@ -588,7 +588,7 @@ export function Asset360Detail() {
                 <span className="font-bold text-slate-900">{departmentName || '—'}</span>
               </div>
               <div className="flex justify-between py-1 items-center">
-                <span className="text-slate-500">Financial Cost Center:</span>
+                <span className="text-slate-500">Financial Section:</span>
                 <span className="font-mono font-bold text-slate-800 bg-slate-50 px-2 py-0.5 rounded border border-slate-200">
                   {costCenterCode || '—'}
                 </span>

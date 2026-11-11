@@ -273,7 +273,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
             : cc
         )
       );
-      triggerToast && triggerToast(`Cost center "${ccForm.code} - ${ccForm.name}" updated.`);
+      triggerToast && triggerToast(`Section "${ccForm.code} - ${ccForm.name}" updated.`);
     } else {
       let createdId = Date.now();
       try {
@@ -305,7 +305,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
         description: ccForm.description
       };
       setCostCenters([newCc, ...costCenters]);
-      triggerToast && triggerToast(`Cost center "${ccForm.code} - ${ccForm.name}" created.`);
+      triggerToast && triggerToast(`Section "${ccForm.code} - ${ccForm.name}" created.`);
     }
     setShowAddCcModal(false);
   };
@@ -321,19 +321,19 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
       console.error(err);
     }
     setCostCenters(costCenters.map((c) => (c.id === cc.id ? { ...c, status: nextStatus } : c)));
-    triggerToast && triggerToast(`Cost center "${cc.code}" status set to ${nextStatus}.`);
+    triggerToast && triggerToast(`Section "${cc.code}" status set to ${nextStatus}.`);
   };
 
   const handleDeleteCc = async (cc) => {
     setActiveDropdownId(null);
-    if (!window.confirm(`Are you sure you want to delete cost center "${cc.code} - ${cc.name}"?`)) return;
+    if (!window.confirm(`Are you sure you want to delete section "${cc.code} - ${cc.name}"?`)) return;
     try {
       await api.delete(`/admin/organization/cost-centers/${cc.id}`).catch(() => null);
     } catch (err) {
       console.error(err);
     }
     setCostCenters(costCenters.filter((c) => c.id !== cc.id));
-    triggerToast && triggerToast(`Cost center "${cc.code}" deleted.`);
+    triggerToast && triggerToast(`Section "${cc.code}" deleted.`);
   };
 
   return (
@@ -443,9 +443,9 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
             </div>
           </div>
 
-          {/* Cost Center Type */}
+          {/* Section Type */}
           <div>
-            <label className="block text-slate-700 font-bold mb-1">Cost Center Type</label>
+            <label className="block text-slate-700 font-bold mb-1">Section Type</label>
             <div className="relative">
               <select
                 value={typeFilter}
@@ -558,7 +558,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                   type="text"
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Search by cost center name, code, or description..."
+                  placeholder="Search by section name, code, or description..."
                   className="w-full pl-9 pr-3 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                 />
               </div>
@@ -574,7 +574,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
             Reset
           </button>
           <button
-            onClick={() => triggerToast && triggerToast('Cost Center filters applied.')}
+            onClick={() => triggerToast && triggerToast('Section filters applied.')}
             className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
           >
             <Filter className="w-3.5 h-3.5" />
@@ -583,20 +583,20 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
         </div>
       </div>
 
-      {/* Cost Centers Table Card matching Screenshot */}
+      {/* Sections Table Card */}
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 flex items-center justify-between">
-          <h2 className="text-sm font-black text-slate-900">Cost Centers ({filteredCostCenters.length})</h2>
+          <h2 className="text-sm font-black text-slate-900">Sections ({filteredCostCenters.length})</h2>
           <div className="flex items-center gap-2">
             <button
               onClick={() => handleOpenAddModal()}
               className="px-3.5 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs flex items-center gap-1.5 cursor-pointer"
             >
               <Plus className="w-3.5 h-3.5" />
-              <span>Add Cost Center</span>
+              <span>Add Section</span>
             </button>
             <button
-              onClick={() => triggerToast && triggerToast('Exporting Cost Centers data...')}
+              onClick={() => triggerToast && triggerToast('Exporting Sections data...')}
               className="px-3.5 py-1.5 border border-slate-200 rounded-xl text-xs font-bold text-slate-700 hover:bg-slate-50 flex items-center gap-1.5 cursor-pointer shadow-2xs"
             >
               <Upload className="w-3.5 h-3.5 text-slate-500" />
@@ -621,13 +621,13 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                 <th className="p-3 w-10 text-slate-400">#</th>
                 <th className="p-3 font-bold text-slate-900">
                   <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
-                    <span>Cost Center Code</span>
+                    <span>Section Code</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
                 <th className="p-3 font-bold text-slate-900">
                   <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
-                    <span>Cost Center Name</span>
+                    <span>Section Name</span>
                     <ChevronDown className="w-3.5 h-3.5 text-slate-400" />
                   </div>
                 </th>
@@ -674,7 +674,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
               {paginatedCostCenters.length === 0 ? (
                 <tr>
                   <td colSpan="11" className="p-8 text-center text-slate-500 font-semibold">
-                    No cost centers match current filter criteria.
+                    No sections match current filter criteria.
                   </td>
                 </tr>
               ) : (
@@ -757,11 +757,11 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                               className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
                               <Edit2 className="w-4 h-4 text-[#6C2BD9]" />
-                              Edit Cost Center
+                              Edit Section
                             </button>
                             <button
                               onClick={() => {
-                                triggerToast && triggerToast(`Manage budget for Cost Center ${cc.code}`);
+                                triggerToast && triggerToast(`Manage budget for Section ${cc.code}`);
                                 setActiveDropdownId(null);
                               }}
                               className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
@@ -876,7 +876,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                   <span className="font-bold text-slate-800">{selectedCc.location}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block text-[11px]">Cost Center Type</span>
+                  <span className="text-slate-400 font-medium block text-[11px]">Section Type</span>
                   <span className="font-bold text-[#6C2BD9]">{selectedCc.type}</span>
                 </div>
                 <div>
@@ -914,7 +914,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
           <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md shadow-2xl p-6 space-y-4 animate-fadeIn text-xs">
             <div className="flex items-center justify-between pb-3 border-b border-slate-100">
               <h3 className="text-base font-black text-slate-900">
-                {editingCc ? 'Edit Cost Center' : 'Add New Cost Center'}
+                {editingCc ? 'Edit Section' : 'Add New Section'}
               </h3>
               <button onClick={() => setShowAddCcModal(false)} className="text-slate-400 hover:text-slate-600">
                 <X className="w-5 h-5" />
@@ -924,7 +924,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
             <form onSubmit={handleSaveCc} className="space-y-4">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Cost Center Code *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Section Code *</label>
                   <input
                     type="text"
                     required
@@ -935,7 +935,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                   />
                 </div>
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Cost Center Name *</label>
+                  <label className="block font-bold text-slate-700 mb-1">Section Name *</label>
                   <input
                     type="text"
                     required
@@ -1062,7 +1062,7 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                   rows="2"
                   value={ccForm.description}
                   onChange={(e) => setCcForm({ ...ccForm, description: e.target.value })}
-                  placeholder="Cost center scope and accounting details..."
+                  placeholder="Section scope and accounting details..."
                   className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] font-medium"
                 />
               </div>

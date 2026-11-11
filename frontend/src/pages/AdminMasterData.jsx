@@ -48,7 +48,7 @@ const MASTER_DATA_CARDS = [
   {
     id: 'org',
     title: 'Organization Management',
-    desc: 'Manage companies, legal entities, business units, departments and cost centers.',
+    desc: 'Manage companies, legal entities, business units, departments and sections.',
     icon: Building2,
     modal: 'company'
   },

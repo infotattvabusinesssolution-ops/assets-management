@@ -49,7 +49,7 @@ export default function CreateAudit() {
   // ---------------------------------------------------------------------------
   // 2. Audit Scope State (Dual List & Filters)
   // ---------------------------------------------------------------------------
-  const [scopeTab, setScopeTab] = useState('By Location'); // 'By Location' | 'By Asset Category' | 'By Custodian' | 'By Cost Center' | 'Custom Selection'
+  const [scopeTab, setScopeTab] = useState('By Location'); // 'By Location' | 'By Asset Category' | 'By Custodian' | 'By Section' | 'Custom Selection'
   const [locationSearch, setLocationSearch] = useState('');
 
   // Collapsible tree nodes
@@ -513,7 +513,7 @@ export default function CreateAudit() {
 
               {/* Scope Tabs */}
               <div className="flex items-center gap-4 border-b border-gray-200 text-xs font-medium">
-                {['By Location', 'By Asset Category', 'By Custodian', 'By Cost Center', 'Custom Selection'].map((tab) => (
+                {['By Location', 'By Asset Category', 'By Custodian', 'By Section', 'Custom Selection'].map((tab) => (
                   <button
                     key={tab}
                     type="button"

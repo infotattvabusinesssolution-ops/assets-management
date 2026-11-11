@@ -217,14 +217,14 @@ export function CostCentersTab({
     const cleanName = (ccFormState.name || '').trim();
 
     if (!cleanName) {
-      setModalError('Cost Center Name is required.');
+      setModalError('Section Name is required.');
       return;
     }
 
     if (cleanCode) {
       const dupCode = costCentersList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCostCenter || c.id !== editingCostCenter.id));
       if (dupCode) {
-        const msg = `Cost Center code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        const msg = `Section code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
         setModalError(msg);
         triggerToast && triggerToast(msg);
         return;
@@ -233,7 +233,7 @@ export function CostCentersTab({
 
     const dupName = costCentersList.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCostCenter || c.id !== editingCostCenter.id));
     if (dupName) {
-      const msg = `Cost Center name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      const msg = `Section name "${cleanName}" already exists. Duplicate names are not allowed.`;
       setModalError(msg);
       triggerToast && triggerToast(msg);
       return;
@@ -262,10 +262,10 @@ export function CostCentersTab({
       try {
         await api.put(`/master-data/cost-centers/${editingCostCenter.id}`, payload);
         await loadCostCenters();
-        triggerToast && triggerToast(`Cost Center "${cleanName}" updated successfully.`);
+        triggerToast && triggerToast(`Section "${cleanName}" updated successfully.`);
       } catch (err) {
         console.error('Save cost center error:', err);
-        const msg = err.response?.data?.message || err.message || 'Failed to update cost center.';
+        const msg = err.response?.data?.message || err.message || 'Failed to update section.';
         setModalError(msg);
         triggerToast && triggerToast(msg);
         return;
@@ -274,10 +274,10 @@ export function CostCentersTab({
       try {
         await api.post('/master-data/cost-centers', payload);
         await loadCostCenters();
-        triggerToast && triggerToast(`Cost Center "${cleanName}" created successfully.`);
+        triggerToast && triggerToast(`Section "${cleanName}" created successfully.`);
       } catch (err) {
         console.error('Add cost center error:', err);
-        const msg = err.response?.data?.message || err.message || 'Failed to create cost center.';
+        const msg = err.response?.data?.message || err.message || 'Failed to create section.';
         setModalError(msg);
         triggerToast && triggerToast(msg);
         return;
@@ -302,7 +302,7 @@ export function CostCentersTab({
     };
     setCostCentersList([duplicated, ...costCentersList]);
     setSelectedCostCenter(duplicated);
-    triggerToast && triggerToast(`Cost Center "${cc.name}" duplicated as "${duplicated.code}".`);
+    triggerToast && triggerToast(`Section "${cc.name}" duplicated as "${duplicated.code}".`);
   };
 
   const handleToggleCCStatus = async (cc) => {
@@ -311,7 +311,7 @@ export function CostCentersTab({
     if (newStatus === 'Active') {
       const comp = companiesList.find(c => c.name === cc.company || c.code === cc.company || c.id === cc.companyId);
       if ((comp && (comp.active === false || comp.status === 'Inactive')) || cc.companyActive === false) {
-        const msg = `Cannot activate Cost Center "${cc.code}" because parent Company "${cc.company || 'assigned company'}" is inactive.`;
+        const msg = `Cannot activate Section "${cc.code}" because parent Company "${cc.company || 'assigned company'}" is inactive.`;
         triggerToast && triggerToast(msg);
         return;
       }
@@ -319,10 +319,10 @@ export function CostCentersTab({
     try {
       await api.patch(`/master-data/entities/cost_center/${cc.id}/status`);
       await loadCostCenters();
-      triggerToast && triggerToast(`Cost Center "${cc.code}" status changed to ${newStatus}.`);
+      triggerToast && triggerToast(`Section "${cc.code}" status changed to ${newStatus}.`);
     } catch (err) {
       console.warn('Status toggle error:', err);
-      const msg = err.response?.data?.message || err.message || 'Failed to update cost center status.';
+      const msg = err.response?.data?.message || err.message || 'Failed to update section status.';
       triggerToast && triggerToast(msg);
       await loadCostCenters();
     }
@@ -330,17 +330,17 @@ export function CostCentersTab({
 
   const handleDeleteCostCenter = async (cc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Cost Center "${cc.name}" (${cc.code})?`)) {
+    if (window.confirm(`Are you sure you want to delete Section "${cc.name}" (${cc.code})?`)) {
       try {
         await api.delete(`/master-data/cost-centers/${cc.id}`);
         await loadCostCenters();
-        triggerToast && triggerToast(`Cost Center "${cc.code}" deleted successfully.`);
+        triggerToast && triggerToast(`Section "${cc.code}" deleted successfully.`);
       } catch (err) {
         console.warn('Delete cost center error:', err);
         const remaining = costCentersList.filter((c) => c.id !== cc.id);
         setCostCentersList(remaining);
         if (remaining.length > 0) setSelectedCostCenter(remaining[0]);
-        triggerToast && triggerToast(`Cost Center "${cc.code}" deleted successfully.`);
+        triggerToast && triggerToast(`Section "${cc.code}" deleted successfully.`);
       }
     }
   };
@@ -354,7 +354,7 @@ export function CostCentersTab({
             <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2" />
             <input
               type="text"
-              placeholder="Search by cost center code, name, manager..."
+              placeholder="Search by section code, name, manager..."
               value={ccSearchQuery}
               onChange={(e) => setCcSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-slate-50/70 border border-slate-200 rounded-xl text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9] focus:bg-white transition-all"
@@ -458,12 +458,12 @@ export function CostCentersTab({
         <div className={`${filteredCostCenters.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-200`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
-              <h2 className="text-sm font-bold text-slate-900">Cost Centers List</h2>
-              <p className="text-xs text-slate-500">Showing all cost centers.</p>
+              <h2 className="text-sm font-bold text-slate-900">Sections List</h2>
+              <p className="text-xs text-slate-500">Showing all sections.</p>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2.5 py-1 rounded-full border border-purple-100">
-                {filteredCostCenters.length} Cost Centers
+                {filteredCostCenters.length} Sections
               </span>
             </div>
           </div>
@@ -473,8 +473,8 @@ export function CostCentersTab({
               <thead className="bg-slate-50 border-b border-slate-200 text-[11px] font-bold text-slate-500 uppercase tracking-wider sticky top-0 z-10 shadow-2xs">
                 <tr>
                   <th className="py-3 px-2 text-center">#</th>
-                  <th className="py-3 px-3">Cost Center Code ↕</th>
-                  <th className="py-3 px-3">Cost Center Name ↕</th>
+                  <th className="py-3 px-3">Section Code ↕</th>
+                  <th className="py-3 px-3">Section Name ↕</th>
                   <th className="py-3 px-3">Company</th>
                   <th className="py-3 px-3">Department</th>
                   <th className="py-3 px-3">Type</th>
@@ -488,9 +488,9 @@ export function CostCentersTab({
                 {filteredCostCenters.length === 0 ? (
                   <MasterEmptyState
                     icon={BarChart3}
-                    title="No Cost Centers found"
-                    subtitle={ccSearchQuery ? "No cost centers match your search criteria." : "Get started by defining your first cost center."}
-                    actionLabel="Add Cost Center"
+                    title="No Sections found"
+                    subtitle={ccSearchQuery ? "No sections match your search criteria." : "Get started by defining your first section."}
+                    actionLabel="Add Section"
                     onAction={() => handleOpenAddCCModal(null)}
                     colSpan={10}
                   />
@@ -533,7 +533,7 @@ export function CostCentersTab({
                         <div className="flex items-center justify-center gap-1">
                           <button
                             onClick={() => handleOpenAddCCModal(cc)}
-                            title="Edit Cost Center"
+                            title="Edit Section"
                             className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
                           >
                             <Edit className="w-3.5 h-3.5" />
@@ -552,7 +552,7 @@ export function CostCentersTab({
                               className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
                             >
                               <Edit className="w-3.5 h-3.5" />
-                              <span>Edit Cost Center</span>
+                              <span>Edit Section</span>
                             </button>
                             <button
                               onClick={() => {
@@ -604,11 +604,11 @@ export function CostCentersTab({
           />
         </div>
 
-        {/* Right Column: Cost Center Details Panel */}
+        {/* Right Column: Section Details Panel */}
         {filteredCostCenters.length > 0 && selectedCostCenter && (
           <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
-            <h3 className="text-sm font-bold text-slate-900">Cost Center Details</h3>
+            <h3 className="text-sm font-bold text-slate-900">Section Details</h3>
             <button
               onClick={() => handleOpenAddCCModal(selectedCostCenter)}
               className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
@@ -620,17 +620,17 @@ export function CostCentersTab({
 
           {!selectedCostCenter ? (
             <div className="py-16 text-center text-slate-400 text-xs font-medium">
-              Select a cost center from the table to view details.
+              Select a section from the table to view details.
             </div>
           ) : (
             <div className="space-y-3.5 text-xs">
               <div className="grid grid-cols-3 gap-1 py-1">
-                <span className="text-slate-500 font-medium">Cost Center Code</span>
+                <span className="text-slate-500 font-medium">Section Code</span>
                 <span className="col-span-2 font-bold font-mono text-slate-900">{selectedCostCenter.code}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Cost Center Name</span>
+                <span className="text-slate-500 font-medium">Section Name</span>
                 <span className="col-span-2 font-semibold text-slate-900">{selectedCostCenter.name}</span>
               </div>
 
@@ -759,14 +759,14 @@ export function CostCentersTab({
         )}
       </div>
 
-      {/* Modal: Add / Edit Cost Center */}
+      {/* Modal: Add / Edit Section */}
       {showAddCCModal && (
         <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
           <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-xl w-full p-6 space-y-4 animate-in fade-in zoom-in-95 duration-150">
             <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
                 <BarChart3 className="w-4 h-4 text-[#6C2BD9]" />
-                <span>{editingCostCenter ? 'Edit Cost Center' : 'Add New Cost Center'}</span>
+                <span>{editingCostCenter ? 'Edit Section' : 'Add New Section'}</span>
               </h3>
               <button onClick={() => setShowAddCCModal(false)} className="text-slate-400 hover:text-slate-600 p-1 rounded-lg">
                 <X className="w-4 h-4" />
@@ -784,7 +784,7 @@ export function CostCentersTab({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Cost Center Code
+                    Section Code
                   </label>
                   <MasterCodeInput
                     entityKey="cost_center"
@@ -794,7 +794,7 @@ export function CostCentersTab({
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Cost Center Name *</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Section Name *</label>
                   <input
                     type="text"
                     required
@@ -907,7 +907,7 @@ export function CostCentersTab({
                   rows={2}
                   value={ccFormState.description}
                   onChange={(e) => setCcFormState({ ...ccFormState, description: e.target.value })}
-                  placeholder="Enter detailed cost center description..."
+                  placeholder="Enter detailed section description..."
                   className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
                 />
               </div>

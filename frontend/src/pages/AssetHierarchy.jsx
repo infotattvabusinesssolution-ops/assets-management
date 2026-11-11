@@ -755,7 +755,7 @@ export function AssetHierarchy() {
                       <span className="font-bold text-slate-800 text-xs block">{selectedAsset.department || '-'}</span>
                     </div>
                     <div>
-                      <span className="text-[11px] text-slate-400 font-bold block mb-0.5">Cost Center</span>
+                      <span className="text-[11px] text-slate-400 font-bold block mb-0.5">Section</span>
                       <span className="font-bold text-slate-800 text-xs block">{selectedAsset.costCenter || '-'}</span>
                     </div>
                   </div>
@@ -1326,13 +1326,13 @@ export function AssetHierarchy() {
                           </div>
 
                           <div>
-                            <label className="block text-slate-700 font-bold mb-1">Cost Center</label>
+                            <label className="block text-slate-700 font-bold mb-1">Section</label>
                             <select
                               value={newChildData.costCenterId}
                               onChange={(e) => setNewChildData({ ...newChildData, costCenterId: e.target.value })}
                               className="w-full p-2 bg-white border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:border-[#6C2BD9]"
                             >
-                              <option value="">Select Cost Center</option>
+                              <option value="">Select Section</option>
                               {costCenters.map(cc => (
                                 <option key={cc.id} value={cc.id}>{cc.name} {cc.code ? `(${cc.code})` : ''}</option>
                               ))}

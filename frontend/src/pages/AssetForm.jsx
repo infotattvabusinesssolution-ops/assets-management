@@ -466,10 +466,10 @@ export function AssetForm() {
   };
 
   const handleQuickAddCostCenter = async () => {
-    const name = window.prompt('Enter Cost Center name (e.g. Fleet Operations, Corporate Admin):');
+    const name = window.prompt('Enter Section name (e.g. Fleet Operations, Corporate Admin):');
     if (!name || !name.trim()) return;
     const cleanName = name.trim();
-    const code = window.prompt('Enter Cost Center code (e.g. CC-3000):')?.trim() || `CC-${Math.floor(1000 + Math.random() * 9000)}`;
+    const code = window.prompt('Enter Section code (e.g. CC-3000):')?.trim() || `CC-${Math.floor(1000 + Math.random() * 9000)}`;
     try {
       const res = await api.post('/master-data/cost-centers', {
         name: cleanName,
@@ -480,13 +480,13 @@ export function AssetForm() {
       const newCC = res?.costCenter || { id: `cc-${Date.now()}`, name: cleanName, code, companyId: formData.companyId, departmentId: formData.departmentId };
       setCostCenters(prev => [...prev, newCC]);
       setFormData(prev => ({ ...prev, costCenterId: newCC.id, costCenter: `${newCC.code} - ${newCC.name}` }));
-      showToast('success', `Cost Center "${cleanName}" added successfully!`);
+      showToast('success', `Section "${cleanName}" added successfully!`);
     } catch (err) {
       console.warn('Add cost center error:', err);
       const newCC = { id: `cc-${Date.now()}`, name: cleanName, code, companyId: formData.companyId, departmentId: formData.departmentId };
       setCostCenters(prev => [...prev, newCC]);
       setFormData(prev => ({ ...prev, costCenterId: newCC.id, costCenter: `${newCC.code} - ${newCC.name}` }));
-      showToast('success', `Cost Center "${cleanName}" added successfully!`);
+      showToast('success', `Section "${cleanName}" added successfully!`);
     }
   };
   const [createdAssets, setCreatedAssets] = useState([]);
@@ -1819,8 +1819,8 @@ export function AssetForm() {
         if (!firstWarning) firstWarning = 'Warning: Department is required. Please select a Department.';
       }
       if (!formData.costCenterId && !formData.costCenter) {
-        errors.costCenter = 'Cost Center is required.';
-        if (!firstWarning) firstWarning = 'Warning: Cost Center is required. Please select a Cost Center.';
+        errors.costCenter = 'Section is required.';
+        if (!firstWarning) firstWarning = 'Warning: Section is required. Please select a Section.';
       }
       if (!formData.custodianId && !formData.custodian?.trim()) {
         errors.custodian = 'Custodian is required.';
@@ -1955,7 +1955,7 @@ export function AssetForm() {
         return;
       }
       if (!formData.costCenterId && !formData.costCenter) {
-        showToast('error', 'Select a Cost Center before saving.');
+        showToast('error', 'Select a Section before saving.');
         return;
       }
       if (!formData.custodianId && !formData.custodian?.trim()) {
@@ -3271,10 +3271,10 @@ export function AssetForm() {
         {select('Floor', 'floorId', availableFloors, { roomId: '' })}
         {select('Room', 'roomId', availableRooms)}
         {select('Department', 'departmentId', availableDepartments, { costCenterId: '' })}
-        {select('Cost center', 'costCenterId', availableCostCenters)}
+        {select('Section', 'costCenterId', availableCostCenters)}
         {select('Custodian', 'custodianId', availableEmployees)}
       </div>
-      <p className="text-xs text-slate-500">Each item can have a separate company, site, room, department and custodian. Empty company, site, department and cost center use registration defaults; an empty custodian leaves the item unassigned.</p>
+      <p className="text-xs text-slate-500">Each item can have a separate company, site, room, department and custodian. Empty company, site, department and section use registration defaults; an empty custodian leaves the item unassigned.</p>
     </section>;
   };
   const renderLocationOwnership = () => {
@@ -3402,7 +3402,7 @@ export function AssetForm() {
 
           <div>
             <label className="font-bold text-slate-700 block mb-1">
-              Cost Center <span className="text-rose-500">*</span>
+              Section <span className="text-rose-500">*</span>
             </label>
             <select
               value={formData.costCenterId || (costCenters.find(cc => cc.name === formData.costCenter || cc.code === formData.costCenter)?.id || '')}
@@ -3418,7 +3418,7 @@ export function AssetForm() {
               }}
               className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none transition-colors ${fieldErrors.costCenter ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200 bg-slate-50'}`}
             >
-              <option value="">Select Cost Center *</option>
+              <option value="">Select Section *</option>
               {costCenters
                 .filter(cc => {
                   const matchesCompany = !formData.companyId || !cc.companyId || cc.companyId === formData.companyId;
@@ -4043,7 +4043,7 @@ export function AssetForm() {
       const labelFor = (list, id) => list.find(entry => entry.id === id)?.fullName || list.find(entry => entry.id === id)?.name || '';
       const detail = kind === 'financial'
         ? [`Acquired: ${data.acquisitionDate || 'Not provided'}`, `Cost: ${data.acquisitionCost ? `${data.currency} ${data.acquisitionCost}` : 'Not provided'}`, `PO / invoice: ${data.poInvoiceNo || 'Not provided'}`, `Supplier: ${data.supplier || 'Not provided'}`, `Condition: ${data.condition || 'Not provided'}`, `Warranty: ${data.warrantyStartDate || 'Not provided'} to ${data.warrantyEndDate || 'Not provided'}`].join(' · ')
-        : [`Company: ${labelFor(companies, item.companyId) || data.company || 'Default'}`, `Site: ${labelFor(sites, item.siteId) || data.site || 'Default'}`, `Building: ${labelFor(buildings, item.buildingId) || 'Not provided'}`, `Floor: ${labelFor(floors, item.floorId) || 'Not provided'}`, `Room: ${labelFor(rooms, item.roomId) || 'Not provided'}`, `Department: ${labelFor(departments, item.departmentId) || data.department || 'Not provided'}`, `Cost center: ${labelFor(costCenters, item.costCenterId) || data.costCenter || 'Not provided'}`, `Custodian: ${labelFor(employees, item.custodianId) || 'Unassigned'}`, `Tag: ${item.tagNumber || 'Generated on save'}`, `RFID: ${item.rfidEpc || 'Not provided'}`].join(' · ');
+        : [`Company: ${labelFor(companies, item.companyId) || data.company || 'Default'}`, `Site: ${labelFor(sites, item.siteId) || data.site || 'Default'}`, `Building: ${labelFor(buildings, item.buildingId) || 'Not provided'}`, `Floor: ${labelFor(floors, item.floorId) || 'Not provided'}`, `Room: ${labelFor(rooms, item.roomId) || 'Not provided'}`, `Department: ${labelFor(departments, item.departmentId) || data.department || 'Not provided'}`, `Section: ${labelFor(costCenters, item.costCenterId) || data.costCenter || 'Not provided'}`, `Custodian: ${labelFor(employees, item.custodianId) || 'Unassigned'}`, `Tag: ${item.tagNumber || 'Generated on save'}`, `RFID: ${item.rfidEpc || 'Not provided'}`].join(' · ');
       return <div key={index} className="rounded-lg border border-slate-100 bg-slate-50 p-3 text-xs">
         <p className="font-bold text-slate-900">{index + 1} / {assetItems.length} — {serialNumbers[index] || 'No serial number'}</p>
         <p className="mt-1 break-words text-slate-600">{detail}</p>
@@ -4168,7 +4168,7 @@ export function AssetForm() {
       {reviewSection('Location, ownership and tagging', 3, [
         ['Company', formData.company],
         ['Department', formData.department],
-        ['Cost center', formData.costCenter],
+        ['Section', formData.costCenter],
         ['Custodian', formData.custodian],
         ['Location', formData.location || formData.site],
         ...(formData.locationLevel1 ? [['Location Level 1', formData.locationLevel1]] : []),
@@ -5052,7 +5052,7 @@ export function AssetForm() {
                   </div>
                   <div>
                     <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-slate-700">Cost Center</label>
+                      <label className="font-bold text-slate-700">Section</label>
                       <button
                         type="button"
                         onClick={handleQuickAddCostCenter}
@@ -5078,7 +5078,7 @@ export function AssetForm() {
                       }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
                     >
-                      <option value="">Select Cost Center (Optional)</option>
+                      <option value="">Select Section (Optional)</option>
                       {costCenters
                         .filter(cc => {
                           const matchesCompany = !formData.companyId || !cc.companyId || cc.companyId === formData.companyId;
@@ -5088,7 +5088,7 @@ export function AssetForm() {
                         .map(cc => (
                           <option key={cc.id} value={cc.id}>{cc.code ? `${cc.code} - ${cc.name}` : cc.name}</option>
                         ))}
-                      <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Cost Center...</option>
+                      <option value="__NEW__" className="text-[#6C2BD9] font-bold">+ Add New Section...</option>
                     </select>
                   </div>
                 </div>

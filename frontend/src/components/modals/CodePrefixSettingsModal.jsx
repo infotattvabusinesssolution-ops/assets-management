@@ -24,7 +24,7 @@ const ENTITY_GROUPS = [
     icon: Building2,
     entities: [
       { key: 'department', label: 'Department', defaultPrefix: 'DEP-', description: 'Divisions and operational departments' },
-      { key: 'cost_center', label: 'Cost Center', defaultPrefix: 'CC-', description: 'Financial cost centers and accounting codes' },
+      { key: 'cost_center', label: 'Section', defaultPrefix: 'CC-', description: 'Financial sections and accounting codes' },
       { key: 'company', label: 'Company Entity', defaultPrefix: 'CMP-', description: 'Legal business entities and operating companies' },
       { key: 'site', label: 'Site / Location', defaultPrefix: 'LOC-', description: 'Physical sites, facilities and campuses' },
       { key: 'business_unit', label: 'Business Unit', defaultPrefix: 'BU-', description: 'Corporate business units and branches' }
@@ -246,7 +246,7 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
             <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
             <input
               type="text"
-              placeholder="Search master entity (e.g. Department, Cost Center, Vendor)..."
+              placeholder="Search master entity (e.g. Department, Section, Vendor)..."
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               className="w-full pl-9 pr-4 py-2 bg-white border border-slate-200 rounded-xl text-xs focus:outline-none focus:ring-2 focus:ring-purple-500"

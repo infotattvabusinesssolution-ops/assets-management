@@ -833,7 +833,7 @@ export function DepartmentsTab({
                 <div className="flex items-center justify-between">
                   <h4 className="text-xs font-bold text-slate-900 flex items-center gap-1.5">
                     <BarChart3 className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                    <span>Linked Cost Centers</span>
+                    <span>Linked Sections</span>
                   </h4>
                   <span className="px-2 py-0.5 rounded-full bg-purple-100 text-[#6C2BD9] text-[10px] font-bold">
                     {(selectedDepartment.costCenters || []).length} assigned
@@ -864,9 +864,9 @@ export function DepartmentsTab({
                   </div>
                 ) : (
                   <div className="p-3 rounded-xl border border-dashed border-slate-200 text-center text-slate-400">
-                    <p className="text-[11px] font-medium text-slate-500">No cost centers assigned</p>
+                    <p className="text-[11px] font-medium text-slate-500">No sections assigned</p>
                     <p className="text-[10px] text-slate-400 mt-0.5">
-                      Cost centers can be linked to this department from the Cost Centers master.
+                      Sections can be linked to this department from the Sections master.
                     </p>
                   </div>
                 )}
@@ -1033,8 +1033,8 @@ export function DepartmentsTab({
               {editingDepartment && editingDepartment.costCenters && editingDepartment.costCenters.length > 0 && (
                 <div className="p-3 bg-purple-50/70 rounded-xl border border-purple-100 text-xs">
                   <div className="font-bold text-[#6C2BD9] mb-1 flex items-center justify-between">
-                    <span>Assigned Cost Centers ({editingDepartment.costCenters.length})</span>
-                    <span className="text-[10px] text-slate-500 font-normal">Managed via Cost Centers master</span>
+                    <span>Assigned Sections ({editingDepartment.costCenters.length})</span>
+                    <span className="text-[10px] text-slate-500 font-normal">Managed via Sections master</span>
                   </div>
                   <div className="flex flex-wrap gap-1.5 mt-1.5">
                     {editingDepartment.costCenters.map(cc => (

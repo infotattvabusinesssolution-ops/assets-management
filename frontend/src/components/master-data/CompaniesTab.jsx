@@ -593,7 +593,7 @@ export function CompaniesTab({
 
                 <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100 text-[11px] text-slate-600 flex items-center gap-2">
                   <CheckCircle2 className="w-4 h-4 text-[#6C2BD9] shrink-0" />
-                  <span>Companies form the top root of the organizational hierarchy. Departments and cost centers connect here.</span>
+                  <span>Companies form the top root of the organizational hierarchy. Departments and sections connect here.</span>
                 </div>
               </div>
             ) : (

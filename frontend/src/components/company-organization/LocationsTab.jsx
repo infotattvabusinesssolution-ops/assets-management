@@ -478,16 +478,16 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
               </div>
             </div>
 
-            {/* Cost Center */}
+            {/* Section */}
             <div>
-              <label className="block text-slate-700 font-bold mb-1">Cost Center</label>
+              <label className="block text-slate-700 font-bold mb-1">Section</label>
               <div className="relative">
                 <select
                   value={costCenterFilter}
                   onChange={(e) => setCostCenterFilter(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
                 >
-                  <option value="All Cost Centers">All Cost Centers</option>
+                  <option value="All Cost Centers">All Sections</option>
                   <option value="CC-1001">CC-1001</option>
                   <option value="CC-1002">CC-1002</option>
                   <option value="CC-2001">CC-2001</option>
@@ -771,7 +771,7 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
                               className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
                               <Coins className="w-4 h-4 text-[#6C2BD9]" />
-                              Assign Cost Center
+                              Assign Section
                             </button>
                             <button
                               onClick={() => {
@@ -870,7 +870,7 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
                   <span className="font-bold text-[#6C2BD9]">{selectedLoc.locationType}</span>
                 </div>
                 <div>
-                  <span className="text-slate-400 font-medium block text-[11px]">Cost Center</span>
+                  <span className="text-slate-400 font-medium block text-[11px]">Section</span>
                   <span className="font-mono font-bold text-[#6C2BD9]">{selectedLoc.costCenter}</span>
                 </div>
                 <div>
