@@ -968,6 +968,47 @@ export async function createSite(req, res, next) {
       });
     }
 
+    // Strict duplicate check on hierarchy levels (Level 1 to Level 4)
+    if (cleanLvl1 || cleanLvl2 || cleanLvl3 || cleanLvl4) {
+      const norm = (s) => (s || '').trim().toUpperCase();
+      const dupHierarchyMem = inMemoryLocations.find(l => 
+        norm(l.locationLevel1) === norm(cleanLvl1) &&
+        norm(l.locationLevel2) === norm(cleanLvl2) &&
+        norm(l.locationLevel3) === norm(cleanLvl3) &&
+        norm(l.locationLevel4) === norm(cleanLvl4)
+      );
+
+      if (dupHierarchyMem) {
+        const hierarchyStr = [cleanLvl1, cleanLvl2, cleanLvl3, cleanLvl4].filter(Boolean).join(' > ');
+        return res.status(409).json({
+          success: false,
+          message: `Duplicate Hierarchy Error: Location "${dupHierarchyMem.name}" (${dupHierarchyMem.code}) already has this exact hierarchy combination (${hierarchyStr}). Each location master must have a unique hierarchy.`
+        });
+      }
+
+      if (isDbConnected()) {
+        try {
+          const dbExistingHierarchy = await prisma.$queryRawUnsafe(
+            `SELECT TOP 1 id, code, name FROM sites WHERE 
+              UPPER(ISNULL(locationLevel1, '')) = '${cleanLvl1.toUpperCase().replace(/'/g, "''")}' AND
+              UPPER(ISNULL(locationLevel2, '')) = '${cleanLvl2.toUpperCase().replace(/'/g, "''")}' AND
+              UPPER(ISNULL(locationLevel3, '')) = '${cleanLvl3.toUpperCase().replace(/'/g, "''")}' AND
+              UPPER(ISNULL(locationLevel4, '')) = '${cleanLvl4.toUpperCase().replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dbExistingHierarchy) && dbExistingHierarchy.length > 0) {
+            const found = dbExistingHierarchy[0];
+            const hierarchyStr = [cleanLvl1, cleanLvl2, cleanLvl3, cleanLvl4].filter(Boolean).join(' > ');
+            return res.status(409).json({
+              success: false,
+              message: `Duplicate Hierarchy Error: Location "${found.name}" (${found.code}) already has this exact hierarchy combination (${hierarchyStr}). Each location master must have a unique hierarchy.`
+            });
+          }
+        } catch (dbErr) {
+          console.warn('DB check duplicate hierarchy skipped:', dbErr.message);
+        }
+      }
+    }
+
     if (isDbConnected()) {
       try {
         const dbExisting = await prisma.$queryRawUnsafe(
@@ -1018,7 +1059,11 @@ export async function createSite(req, res, next) {
         let firstCompanyId = null;
         try {
           const comp = await prisma.company.findFirst();
-          firstCompanyId = comp ? comp.id : null;
+          if (comp) firstCompanyId = comp.id;
+          else {
+            const compRows = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM companies`);
+            if (compRows && compRows.length > 0) firstCompanyId = compRows[0].id;
+          }
         } catch (_) {}
 
         await prisma.$executeRawUnsafe(`
@@ -1062,6 +1107,49 @@ export async function updateSite(req, res, next) {
     ));
     if (dup) {
       return res.status(409).json({ success: false, message: `Duplicate Error: Location with code "${cleanCode}" or name "${cleanName}" already exists.` });
+    }
+
+    // Strict duplicate check on hierarchy levels (Level 1 to Level 4)
+    if (cleanLvl1 || cleanLvl2 || cleanLvl3 || cleanLvl4) {
+      const norm = (s) => (s || '').trim().toUpperCase();
+      const dupHierarchyMem = inMemoryLocations.find(l => 
+        (l.id !== id && l.code !== id) &&
+        norm(l.locationLevel1) === norm(cleanLvl1) &&
+        norm(l.locationLevel2) === norm(cleanLvl2) &&
+        norm(l.locationLevel3) === norm(cleanLvl3) &&
+        norm(l.locationLevel4) === norm(cleanLvl4)
+      );
+
+      if (dupHierarchyMem) {
+        const hierarchyStr = [cleanLvl1, cleanLvl2, cleanLvl3, cleanLvl4].filter(Boolean).join(' > ');
+        return res.status(409).json({
+          success: false,
+          message: `Duplicate Hierarchy Error: Location "${dupHierarchyMem.name}" (${dupHierarchyMem.code}) already has this exact hierarchy combination (${hierarchyStr}). Each location master must have a unique hierarchy.`
+        });
+      }
+
+      if (isDbConnected()) {
+        try {
+          const dbExistingHierarchy = await prisma.$queryRawUnsafe(
+            `SELECT TOP 1 id, code, name FROM sites WHERE 
+              id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND
+              UPPER(ISNULL(locationLevel1, '')) = '${cleanLvl1.toUpperCase().replace(/'/g, "''")}' AND
+              UPPER(ISNULL(locationLevel2, '')) = '${cleanLvl2.toUpperCase().replace(/'/g, "''")}' AND
+              UPPER(ISNULL(locationLevel3, '')) = '${cleanLvl3.toUpperCase().replace(/'/g, "''")}' AND
+              UPPER(ISNULL(locationLevel4, '')) = '${cleanLvl4.toUpperCase().replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dbExistingHierarchy) && dbExistingHierarchy.length > 0) {
+            const found = dbExistingHierarchy[0];
+            const hierarchyStr = [cleanLvl1, cleanLvl2, cleanLvl3, cleanLvl4].filter(Boolean).join(' > ');
+            return res.status(409).json({
+              success: false,
+              message: `Duplicate Hierarchy Error: Location "${found.name}" (${found.code}) already has this exact hierarchy combination (${hierarchyStr}). Each location master must have a unique hierarchy.`
+            });
+          }
+        } catch (dbErr) {
+          console.warn('DB check duplicate hierarchy skipped:', dbErr.message);
+        }
+      }
     }
     if (isDbConnected() && (cleanCode || cleanName)) {
       try {

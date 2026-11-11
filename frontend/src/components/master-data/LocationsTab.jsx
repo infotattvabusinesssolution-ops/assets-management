@@ -277,6 +277,32 @@ export function LocationsTab({
     status: 'Active'
   });
 
+  const normLevel = (val) => (val || '').trim().toUpperCase();
+  const selectedHierarchyHasValues = Boolean(
+    locFormState.locationLevel1 ||
+    locFormState.locationLevel2 ||
+    locFormState.locationLevel3 ||
+    locFormState.locationLevel4
+  );
+
+  const duplicateHierarchyLoc = useMemo(() => {
+    if (!selectedHierarchyHasValues) return null;
+    const sL1 = normLevel(locFormState.locationLevel1);
+    const sL2 = normLevel(locFormState.locationLevel2);
+    const sL3 = normLevel(locFormState.locationLevel3);
+    const sL4 = normLevel(locFormState.locationLevel4);
+
+    return locationsList.find((it) => {
+      if (editingLocation && (it.id === editingLocation.id || it.code === editingLocation.code)) return false;
+      return (
+        normLevel(it.locationLevel1) === sL1 &&
+        normLevel(it.locationLevel2) === sL2 &&
+        normLevel(it.locationLevel3) === sL3 &&
+        normLevel(it.locationLevel4) === sL4
+      );
+    }) || null;
+  }, [locationsList, editingLocation, locFormState.locationLevel1, locFormState.locationLevel2, locFormState.locationLevel3, locFormState.locationLevel4, selectedHierarchyHasValues]);
+
   const filteredLocations = useMemo(() => {
     return locationsList.filter((loc) => {
       const matchesSearch =
@@ -380,6 +406,20 @@ export function LocationsTab({
       return;
     }
 
+    // STRICT DUPLICATE VALIDATION: Hierarchy levels combination must be unique
+    if (duplicateHierarchyLoc) {
+      const hierarchyStr = [
+        locFormState.locationLevel1,
+        locFormState.locationLevel2,
+        locFormState.locationLevel3,
+        locFormState.locationLevel4
+      ].filter(Boolean).join(' > ');
+      const msg = `Duplicate Hierarchy Error: Location "${duplicateHierarchyLoc.name}" (${duplicateHierarchyLoc.code}) already has this exact hierarchy (${hierarchyStr}). Each location master must have a unique hierarchy combination.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+
     const payload = {
       name: cleanName,
       type: locFormState.type || (allLocationTypes[0] || 'Internal'),
@@ -427,25 +467,21 @@ export function LocationsTab({
 
   const handleDuplicateLocation = (loc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    const duplicated = {
-      ...loc,
-      id: Date.now(),
-      code: `${loc.code}-COPY`,
+    setEditingLocation(null);
+    setLocFormState({
+      code: '',
       name: `${loc.name} (Copy)`,
-      locationLevel1: loc.locationLevel1 || '',
-      locationLevel2: loc.locationLevel2 || '',
-      locationLevel3: loc.locationLevel3 || '',
-      locationLevel4: loc.locationLevel4 || '',
-      totalAssets: 0,
-      createdOn: new Date().toLocaleDateString('en-GB', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
-      })
-    };
-    setLocationsList([duplicated, ...locationsList]);
-    setSelectedLocation(duplicated);
-    triggerToast && triggerToast(`Location "${loc.name}" duplicated as "${duplicated.code}".`);
+      type: loc.type || 'Internal',
+      locationLevel1: '',
+      locationLevel2: '',
+      locationLevel3: '',
+      locationLevel4: '',
+      address: loc.address || '',
+      status: 'Active'
+    });
+    setModalError('');
+    setShowAddLocModal(true);
+    triggerToast && triggerToast('Specify unique hierarchy levels for the duplicated location.');
   };
 
   const handleToggleLocStatus = async (loc) => {
@@ -1040,6 +1076,18 @@ export function LocationsTab({
                 </div>
               </div>
 
+              {duplicateHierarchyLoc && (
+                <div className="flex items-start gap-2 p-3 rounded-xl bg-amber-50 border border-amber-200 text-amber-800 text-xs font-medium animate-in fade-in duration-150">
+                  <AlertTriangle className="w-4 h-4 shrink-0 text-amber-600 mt-0.5" />
+                  <div>
+                    <span className="font-bold text-amber-900">Duplicate Hierarchy Detected:</span>
+                    <p className="mt-0.5 text-amber-700">
+                      This hierarchy combination is already assigned to location <strong>{duplicateHierarchyLoc.code} ({duplicateHierarchyLoc.name})</strong>. Each location master must have a unique hierarchy combination.
+                    </p>
+                  </div>
+                </div>
+              )}
+
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Address</label>
                 <textarea
@@ -1067,7 +1115,17 @@ export function LocationsTab({
                 <button type="button" onClick={() => setShowAddLocModal(false)} className="px-4 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold cursor-pointer">
                   Cancel
                 </button>
-                <button type="submit" className="px-5 py-2 rounded-xl bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold cursor-pointer shadow-sm">
+                <button
+                  type="submit"
+                  disabled={Boolean(duplicateHierarchyLoc)}
+                  className={clsx(
+                    'px-5 py-2 rounded-xl text-white font-bold shadow-sm transition-all',
+                    duplicateHierarchyLoc
+                      ? 'bg-slate-300 cursor-not-allowed opacity-70'
+                      : 'bg-[#6C2BD9] hover:bg-[#5B21B6] cursor-pointer'
+                  )}
+                  title={duplicateHierarchyLoc ? 'Cannot save with duplicate hierarchy levels' : undefined}
+                >
                   {editingLocation ? 'Save Changes' : 'Add'}
                 </button>
               </div>
