@@ -4337,6 +4337,7 @@ const DISPOSAL_STATUSES_FILE = resolveDataFile('disposal_statuses.json');
 const BRANDS_FILE = resolveDataFile('brands.json');
 const MANUFACTURERS_FILE = resolveDataFile('manufacturers.json');
 const COUNTRIES_FILE = resolveDataFile('countries.json');
+const CURRENCIES_FILE = resolveDataFile('currencies.json');
 const LOCATION_TYPES_FILE = resolveDataFile('location_types.json');
 const ASSET_CONDITIONS_FILE = resolveDataFile('asset_conditions.json');
 const SUPPLIERS_FILE = resolveDataFile('suppliers.json');
@@ -4486,6 +4487,69 @@ async function ensureCountriesTable() {
     countriesTableEnsured = true;
   } catch (err) {
     console.warn('countries table check skipped:', err.message);
+  }
+}
+
+function readCurrenciesFromFile() {
+  try {
+    if (fs.existsSync(CURRENCIES_FILE)) {
+      const data = fs.readFileSync(CURRENCIES_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      return Array.isArray(parsed) && parsed.length > 0 ? parsed : [];
+    }
+  } catch (e) {
+    console.warn('Failed to read currencies.json:', e.message);
+  }
+  return [];
+}
+
+function writeCurrenciesToFile(list) {
+  try {
+    const dir = path.dirname(CURRENCIES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(CURRENCIES_FILE, JSON.stringify(list, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write currencies.json:', e.message);
+  }
+}
+
+let inMemoryCurrencies = readCurrenciesFromFile();
+let currenciesTableEnsured = false;
+
+async function ensureCurrenciesTable() {
+  if (currenciesTableEnsured || !isDbConnected()) return;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='currencies' and xtype='U')
+      CREATE TABLE currencies (
+        id NVARCHAR(100) PRIMARY KEY,
+        code NVARCHAR(20) NOT NULL UNIQUE,
+        name NVARCHAR(100) NOT NULL UNIQUE,
+        symbol NVARCHAR(20),
+        active BIT DEFAULT 1,
+        createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
+        updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+    currenciesTableEnsured = true;
+
+    // Seed default currencies if table is empty
+    try {
+      const countResult = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as count FROM currencies`);
+      const count = countResult?.[0]?.count ?? countResult?.[0]?.[''] ?? 0;
+      if (Number(count) === 0 && inMemoryCurrencies.length > 0) {
+        for (const cur of inMemoryCurrencies) {
+          try {
+            await prisma.$executeRawUnsafe(`
+              INSERT INTO currencies (id, code, name, symbol, active, createdAt, updatedAt)
+              VALUES ('${cur.id}', '${cur.code}', '${(cur.name || '').replace(/'/g, "''")}', '${(cur.symbol || '').replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `);
+          } catch (insertErr) {}
+        }
+      }
+    } catch (countErr) {}
+  } catch (err) {
+    console.warn('currencies table check skipped:', err.message);
   }
 }
 
@@ -6156,6 +6220,86 @@ export async function createCountry(req, res, next) {
     inMemoryCountries.push(newCountry);
     writeCountriesToFile(inMemoryCountries);
     res.status(201).json({ success: true, country: newCountry });
+  } catch (err) { next(err); }
+}
+
+// Currency Handlers (Master Data - Dynamic Lookup / Enum)
+export async function getCurrencies(req, res, next) {
+  try {
+    await ensureCurrenciesTable();
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM currencies WHERE active = 1 ORDER BY code ASC`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const list = rows.map(r => ({
+            id: r.id,
+            code: r.code,
+            name: r.name,
+            symbol: r.symbol || r.code,
+            active: Boolean(r.active)
+          }));
+          inMemoryCurrencies = list;
+          writeCurrenciesToFile(list);
+          return res.json({ success: true, currencies: list });
+        }
+      } catch (dbErr) {
+        console.warn('DB getCurrencies skipped, using persistent store:', dbErr.message);
+      }
+    }
+    res.json({ success: true, currencies: inMemoryCurrencies.filter(c => c.active !== false) });
+  } catch (err) { next(err); }
+}
+
+export async function createCurrency(req, res, next) {
+  try {
+    await ensureCurrenciesTable();
+    const { code, name, symbol } = req.body;
+    if (!code || !code.trim()) return res.status(400).json({ success: false, message: 'Currency code is required' });
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Currency name is required' });
+
+    const cleanCode = code.trim().toUpperCase();
+    const cleanName = name.trim();
+    const cleanSymbol = (symbol && symbol.trim()) || cleanCode;
+
+    if (inMemoryCurrencies.some(c => c.code.toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Currency with code "${cleanCode}" already exists.` });
+    }
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM currencies WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Currency with code "${cleanCode}" already exists.` });
+        }
+      } catch (err) {}
+    }
+
+    const newCurrency = {
+      id: `cur-${Date.now()}`,
+      code: cleanCode,
+      name: cleanName,
+      symbol: cleanSymbol,
+      active: true,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO currencies (id, code, name, symbol, active, createdAt, updatedAt)
+          VALUES ('${newCurrency.id}', '${newCurrency.code}', '${newCurrency.name.replace(/'/g, "''")}', '${newCurrency.symbol.replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB insert currency skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryCurrencies.push(newCurrency);
+    writeCurrenciesToFile(inMemoryCurrencies);
+    res.status(201).json({ success: true, currency: newCurrency });
   } catch (err) { next(err); }
 }
 

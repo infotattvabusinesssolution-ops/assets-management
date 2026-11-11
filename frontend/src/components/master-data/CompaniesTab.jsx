@@ -27,6 +27,25 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 
+export const DEFAULT_CURRENCIES = [
+  { code: 'AED', name: 'UAE Dirham', symbol: 'AED' },
+  { code: 'USD', name: 'US Dollar', symbol: '$' },
+  { code: 'EUR', name: 'Euro', symbol: '€' },
+  { code: 'GBP', name: 'British Pound', symbol: '£' },
+  { code: 'INR', name: 'Indian Rupee', symbol: '₹' },
+  { code: 'SAR', name: 'Saudi Riyal', symbol: 'SAR' },
+  { code: 'QAR', name: 'Qatari Riyal', symbol: 'QAR' },
+  { code: 'KWD', name: 'Kuwaiti Dinar', symbol: 'KWD' },
+  { code: 'BHD', name: 'Bahraini Dinar', symbol: 'BHD' },
+  { code: 'OMR', name: 'Omani Rial', symbol: 'OMR' },
+  { code: 'CAD', name: 'Canadian Dollar', symbol: 'CA$' },
+  { code: 'AUD', name: 'Australian Dollar', symbol: 'A$' },
+  { code: 'SGD', name: 'Singapore Dollar', symbol: 'S$' },
+  { code: 'JPY', name: 'Japanese Yen', symbol: '¥' },
+  { code: 'CHF', name: 'Swiss Franc', symbol: 'CHF' },
+  { code: 'CNY', name: 'Chinese Yuan', symbol: 'CN¥' }
+];
+
 export function CompaniesTab({
   triggerToast,
   externalShowAddModal,
@@ -65,6 +84,19 @@ export function CompaniesTab({
     status: 'Active'
   });
 
+  const [currenciesList, setCurrenciesList] = useState(DEFAULT_CURRENCIES);
+
+  const loadCurrencies = async () => {
+    try {
+      const res = await api.get('/master-data/currencies');
+      if (res?.currencies && Array.isArray(res.currencies) && res.currencies.length > 0) {
+        setCurrenciesList(res.currencies);
+      }
+    } catch (err) {
+      console.warn('Failed to load currencies from database, using defaults:', err);
+    }
+  };
+
   const loadCompanies = async () => {
     setIsLoading(true);
     try {
@@ -87,6 +119,7 @@ export function CompaniesTab({
 
   useEffect(() => {
     loadCompanies();
+    loadCurrencies();
   }, []);
 
   useEffect(() => {
@@ -626,12 +659,11 @@ export function CompaniesTab({
                     onChange={(e) => setFormState({ ...formState, currency: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-bold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
                   >
-                    <option value="AED">AED (UAE Dirham)</option>
-                    <option value="USD">USD (US Dollar)</option>
-                    <option value="EUR">EUR (Euro)</option>
-                    <option value="GBP">GBP (British Pound)</option>
-                    <option value="INR">INR (Indian Rupee)</option>
-                    <option value="SAR">SAR (Saudi Riyal)</option>
+                    {currenciesList.map((cur) => (
+                      <option key={cur.code} value={cur.code}>
+                        {cur.code} ({cur.name})
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

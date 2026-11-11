@@ -27,6 +27,7 @@ import {
   getUoms, createUom, updateUom, deleteUom,
   getDisposalStatuses, createDisposalStatus, updateDisposalStatus, deleteDisposalStatus,
   getCountries, createCountry,
+  getCurrencies, createCurrency,
   getLocationTypes, createLocationType,
   getLocationLevels, createLocationLevel, updateLocationLevel, deleteLocationLevel,
   getAssetConditions, createAssetCondition,
@@ -166,6 +167,10 @@ router.delete('/disposal-statuses/:id', deleteDisposalStatus);
 // Countries (Dynamic Master Data Lookup / Enum)
 router.get('/countries', getCountries);
 router.post('/countries', createCountry);
+
+// Currencies (Dynamic Master Data Lookup / Enum)
+router.get('/currencies', getCurrencies);
+router.post('/currencies', createCurrency);
 
 // Location Types (Dynamic Master Data Lookup / Enum)
 router.get('/location-types', getLocationTypes);
