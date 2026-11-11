@@ -1066,6 +1066,20 @@ export async function createSite(req, res, next) {
           }
         } catch (_) {}
 
+        if (!firstCompanyId) {
+          try {
+            const defId = 'comp-default';
+            await prisma.$executeRawUnsafe(`
+              IF NOT EXISTS (SELECT 1 FROM companies WHERE id = '${defId}')
+              INSERT INTO companies (id, code, name, currency, active, createdAt, updatedAt)
+              VALUES ('${defId}', 'COMP-001', 'Default Enterprise', 'USD', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+            `);
+            firstCompanyId = defId;
+          } catch (e) {
+            console.warn('Default company ensure failed:', e.message);
+          }
+        }
+
         await prisma.$executeRawUnsafe(`
           INSERT INTO sites (id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt)
           VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(city || '').replace(/'/g, "''")}', '${(country || '').replace(/'/g, "''")}', ${firstCompanyId ? `'${firstCompanyId}'` : 'NULL'}, '${cleanType}', '${cleanLevel}', '${cleanParent.replace(/'/g, "''")}', '${computedPath.replace(/'/g, "''")}', '${cleanLvl1.replace(/'/g, "''")}', '${cleanLvl2.replace(/'/g, "''")}', '${cleanLvl3.replace(/'/g, "''")}', '${cleanLvl4.replace(/'/g, "''")}', '${cleanAddress.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
