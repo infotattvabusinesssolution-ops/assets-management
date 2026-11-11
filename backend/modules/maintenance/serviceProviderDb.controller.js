@@ -4,7 +4,7 @@ import prisma from '../../config/prisma.js';
 const scope = req => req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {};
 const actor = req => req.user?.fullName || req.user?.username || 'System User';
 const trim = value => String(value ?? '').trim();
-const include = { company: true, categories: true, contacts: true, addresses: true, services: true, certifications: true, documents: true, notes: { orderBy: { createdAt: 'desc' } } };
+const include = { categories: true, contacts: true, addresses: true, services: true, certifications: true, documents: true, notes: { orderBy: { createdAt: 'desc' } } };
 const models = { categories: 'providerCategory', contacts: 'providerContact', addresses: 'providerAddress', services: 'providerService', certifications: 'providerCertification', documents: 'providerDocument', notes: 'providerNote' };
 const fail = (res, message, status = 400) => res.status(status).json({ success: false, message });
 const find = req => prisma.serviceProvider.findFirst({ where: { OR: [{ id: req.params.id }, { providerCode: req.params.id }], ...scope(req) }, include });
@@ -78,23 +78,26 @@ export async function getServiceProviders(req, res, next) {
       where.status = String(req.query.status);
     } else if (req.query.includeInactive !== 'true') {
       where.status = { not: 'INACTIVE' };
-      where.company = { active: true };
     }
     const providers = await prisma.serviceProvider.findMany({
       where,
-      include: { company: true },
       orderBy: { providerName: 'asc' }
     });
 
+    const companyIds = [...new Set(providers.map(p => p.companyId).filter(Boolean))];
+    const companies = companyIds.length > 0 ? await prisma.company.findMany({ where: { id: { in: companyIds } } }).catch(() => []) : [];
+    const companyMap = new Map(companies.map(c => [c.id, c]));
+
     const mappedProviders = providers.map(p => {
-      const isCompActive = p.company ? (p.company.active !== false && p.company.status !== 'Inactive') : true;
+      const comp = p.companyId ? companyMap.get(p.companyId) : null;
+      const isCompActive = comp ? (comp.active !== false && comp.status !== 'Inactive') : true;
       const effectiveStatus = (p.status === 'INACTIVE' || !isCompActive) ? 'INACTIVE' : p.status;
       return {
         ...p,
         status: effectiveStatus,
         active: effectiveStatus === 'ACTIVE',
-        company: p.company ? { id: p.company.id, name: p.company.name, active: p.company.active } : null,
-        companyName: p.company ? p.company.name : null,
+        company: comp ? { id: comp.id, name: comp.name, active: comp.active } : null,
+        companyName: comp ? comp.name : null,
         companyActive: isCompActive
       };
     });

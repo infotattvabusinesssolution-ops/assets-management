@@ -74,7 +74,7 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
 
       const res = await api.get(endpoint);
       if (res && res.success) {
-        const rawItems = res.companies || res.sites || res.categories || res.models || res.employees || res.manufacturers || res.departments || res.costCenters || res.fields || [];
+        const rawItems = res.companies || res.sites || res.categories || res.models || res.employees || res.manufacturers || res.departments || res.costCenters || res.fields || res.vendors || res.suppliers || [];
         setItems(rawItems);
       } else {
         setItems([]);
