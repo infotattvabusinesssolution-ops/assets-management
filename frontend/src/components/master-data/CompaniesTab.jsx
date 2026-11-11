@@ -155,6 +155,7 @@ export function CompaniesTab({
   } = usePagination(filteredCompanies, 10);
 
   const handleOpenAddModal = (compToEdit = null) => {
+    loadCurrencies();
     setModalError('');
     if (compToEdit) {
       setEditingCompany(compToEdit);
