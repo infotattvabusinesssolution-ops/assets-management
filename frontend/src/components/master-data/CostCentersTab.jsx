@@ -25,6 +25,7 @@ import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -454,7 +455,7 @@ export function CostCentersTab({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Table Container */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className={`${filteredCostCenters.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-200`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Cost Centers List</h2>
@@ -485,11 +486,14 @@ export function CostCentersTab({
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredCostCenters.length === 0 ? (
-                  <tr>
-                    <td colSpan={10} className="py-12 text-center text-slate-400 text-xs font-medium">
-                      No cost centers found. Click "+ Add Cost Center" to create one.
-                    </td>
-                  </tr>
+                  <MasterEmptyState
+                    icon={BarChart3}
+                    title="No Cost Centers found"
+                    subtitle={ccSearchQuery ? "No cost centers match your search criteria." : "Get started by defining your first cost center."}
+                    actionLabel="Add Cost Center"
+                    onAction={() => handleOpenAddCCModal(null)}
+                    colSpan={10}
+                  />
                 ) : (
                   pagedCostCenters.map((cc, index) => {
                   const isSelected = selectedCostCenter?.id === cc.id;
@@ -601,7 +605,8 @@ export function CostCentersTab({
         </div>
 
         {/* Right Column: Cost Center Details Panel */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
+        {filteredCostCenters.length > 0 && selectedCostCenter && (
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Cost Center Details</h3>
             <button
@@ -751,6 +756,7 @@ export function CostCentersTab({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Modal: Add / Edit Cost Center */}

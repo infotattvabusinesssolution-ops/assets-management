@@ -28,6 +28,7 @@ import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export const DEFAULT_MANUFACTURERS = [];
 
@@ -932,7 +933,7 @@ export function GenericMasterTab({
       {/* Main Grid: Records List + Detail Preview */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Table Container */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className={`${filteredItems.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-200`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
               <h2 className="text-sm font-bold text-slate-900 flex items-center gap-2">
@@ -969,11 +970,14 @@ export function GenericMasterTab({
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium text-slate-700">
                 {filteredItems.length === 0 ? (
-                  <tr>
-                    <td colSpan={8} className="py-12 text-center text-slate-400">
-                      No matching {tabConfig.title.toLowerCase()} found. Click "Add {tabConfig.singular}" to create one.
-                    </td>
-                  </tr>
+                  <MasterEmptyState
+                    icon={tabConfig.icon}
+                    title={`No ${tabConfig.title} found`}
+                    subtitle={searchQuery ? `No ${tabConfig.title.toLowerCase()} match your search criteria.` : `Get started by defining your first ${tabConfig.singular.toLowerCase()}.`}
+                    actionLabel={`Add ${tabConfig.singular}`}
+                    onAction={() => handleOpenAddModal(null)}
+                    colSpan={10}
+                  />
                 ) : (
                   pagedItems.map((item, index) => {
                     const isSelected = selectedItem?.id === item.id;
@@ -1161,7 +1165,8 @@ export function GenericMasterTab({
         </div>
 
         {/* Detail Card Right Column */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
+        {filteredItems.length > 0 && selectedItem && (
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4">
           {selectedItem ? (
             <div className="space-y-4">
               <div className="flex items-center justify-between border-b border-slate-100 pb-3">
@@ -1269,6 +1274,7 @@ export function GenericMasterTab({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* MODAL: Add / Edit Record */}

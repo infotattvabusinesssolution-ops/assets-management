@@ -28,6 +28,7 @@ import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export const INITIAL_CATEGORIES = [];
 
@@ -629,7 +630,7 @@ export function CategoriesTab({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Table Container */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className={`${filteredCategories.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-200`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Categories List</h2>
@@ -657,7 +658,17 @@ export function CategoriesTab({
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
-                {pagedCategories.map((cat, index) => {
+                {filteredCategories.length === 0 ? (
+                  <MasterEmptyState
+                    icon={Tag}
+                    title="No Categories found"
+                    subtitle={catSearchQuery ? "No categories match your search criteria." : "Get started by defining your first asset category."}
+                    actionLabel="Add Category"
+                    onAction={() => handleOpenAddCatModal(null)}
+                    colSpan={8}
+                  />
+                ) : (
+                  pagedCategories.map((cat, index) => {
                   const isSelected = selectedCategory?.id === cat.id;
                   const isMenuOpen = activeRowMenuId === `cat-${cat.id}`;
                   const isNearBottom = filteredCategories.length > 2 && index >= filteredCategories.length - 2;
@@ -778,7 +789,7 @@ export function CategoriesTab({
                       </td>
                     </tr>
                   );
-                })}
+                }))}
               </tbody>
             </table>
           </div>
@@ -793,7 +804,8 @@ export function CategoriesTab({
         </div>
 
         {/* Right Column: Category Details Panel */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
+        {filteredCategories.length > 0 && selectedCategory && (
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Category Details</h3>
             <button
@@ -933,6 +945,7 @@ export function CategoriesTab({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Modal: Add / Edit Category */}

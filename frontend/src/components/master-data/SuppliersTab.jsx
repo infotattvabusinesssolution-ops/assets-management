@@ -28,6 +28,7 @@ import { DEFAULT_COUNTRIES } from './LocationsTab';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export const INITIAL_SUPPLIERS = [];
 
@@ -521,7 +522,7 @@ export function SuppliersTab({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Table Container */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className={`${filteredSuppliers.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-200`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Suppliers List</h2>
@@ -551,11 +552,14 @@ export function SuppliersTab({
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredSuppliers.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400 text-xs font-medium">
-                      No suppliers found. Click "+ Add Supplier" to create one.
-                    </td>
-                  </tr>
+                  <MasterEmptyState
+                    icon={Truck}
+                    title="No Suppliers found"
+                    subtitle={supSearchQuery ? "No suppliers match your search criteria." : "Get started by defining your first supplier vendor."}
+                    actionLabel="Add Supplier"
+                    onAction={() => handleOpenAddSupModalInternal(null)}
+                    colSpan={9}
+                  />
                 ) : (
                   pagedSuppliers.map((sup, index) => {
                   const isSelected = selectedSupplier?.id === sup.id;
@@ -678,7 +682,8 @@ export function SuppliersTab({
         </div>
 
         {/* Selected Supplier Details Drawer matching exact reference screenshot */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
+        {filteredSuppliers.length > 0 && selectedSupplier && (
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-xs font-bold text-slate-900 uppercase tracking-wider flex items-center gap-2">
               <Truck className="w-4 h-4 text-[#6C2BD9]" />
@@ -852,6 +857,7 @@ export function SuppliersTab({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* MODAL: Add / Edit Supplier */}

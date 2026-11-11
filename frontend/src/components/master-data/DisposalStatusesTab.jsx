@@ -23,6 +23,7 @@ import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export const INITIAL_DISPOSAL_STATUSES = [];
 
@@ -338,13 +339,14 @@ export function DisposalStatusesTab({
             </thead>
             <tbody className="divide-y divide-slate-100 text-xs">
               {filteredStatuses.length === 0 ? (
-                <tr>
-                  <td colSpan="6" className="py-12 text-center text-slate-400">
-                    <Trash className="w-10 h-10 mx-auto text-slate-300 mb-2" />
-                    <p className="font-medium text-slate-600">No disposal statuses found</p>
-                    <p className="text-[11px] text-slate-400 mt-1">Try adjusting your search criteria or add a new disposal status.</p>
-                  </td>
-                </tr>
+                <MasterEmptyState
+                  icon={Trash2}
+                  title="No Disposal Statuses found"
+                  subtitle={searchQuery ? "No disposal statuses match your search criteria." : "Get started by defining your first disposal status."}
+                  actionLabel="Add Disposal Status"
+                  onAction={handleOpenAdd}
+                  colSpan={6}
+                />
               ) : (
                 pagedStatuses.map((item, index) => (
                   <tr key={item.id} className="hover:bg-slate-50/50 transition-colors">

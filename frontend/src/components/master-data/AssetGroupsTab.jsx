@@ -25,6 +25,7 @@ import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export const INITIAL_ASSET_GROUPS = [];
 
@@ -533,7 +534,7 @@ export function AssetGroupsTab({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Table Container */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className={`${filteredGroups.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-200`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Asset Groups List</h2>
@@ -576,11 +577,14 @@ export function AssetGroupsTab({
                     </td>
                   </tr>
                 ) : filteredGroups.length === 0 ? (
-                  <tr>
-                    <td colSpan={7} className="py-12 text-center text-slate-400">
-                      No asset groups found matching your filters.
-                    </td>
-                  </tr>
+                  <MasterEmptyState
+                    icon={Box}
+                    title="No Asset Groups found"
+                    subtitle={grpSearchQuery ? "No asset groups match your search criteria." : "Get started by defining your first asset group."}
+                    actionLabel="Add Asset Group"
+                    onAction={() => handleOpenAddGrpModal(null)}
+                    colSpan={7}
+                  />
                 ) : (
                   pagedGroups.map((grp, index) => {
                     const isSelected = selectedGroup?.id === grp.id;
@@ -689,8 +693,9 @@ export function AssetGroupsTab({
         </div>
 
         {/* Selected Group Detail Drawer */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
-          <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        {filteredGroups.length > 0 && (
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Asset Group Details</h3>
             {selectedGroup && (
               <div className="flex items-center gap-1.5">
@@ -884,6 +889,7 @@ export function AssetGroupsTab({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Modal: Add / Edit Asset Group */}

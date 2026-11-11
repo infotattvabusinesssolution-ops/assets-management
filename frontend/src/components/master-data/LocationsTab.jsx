@@ -25,6 +25,7 @@ import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export const INITIAL_LOCATIONS = [];
 
@@ -607,7 +608,7 @@ export function LocationsTab({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Table Container */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className={`${filteredLocations.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-200`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Locations List</h2>
@@ -639,11 +640,14 @@ export function LocationsTab({
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredLocations.length === 0 ? (
-                  <tr>
-                    <td colSpan={11} className="py-12 text-center text-slate-400 text-xs font-medium">
-                      No locations found. Click "+ Add Location" to create one.
-                    </td>
-                  </tr>
+                  <MasterEmptyState
+                    icon={MapPin}
+                    title="No Locations found"
+                    subtitle={locSearchQuery ? "No locations match your search criteria." : "Get started by defining your first operational location."}
+                    actionLabel="Add Location"
+                    onAction={() => handleOpenAddLocModal(null)}
+                    colSpan={11}
+                  />
                 ) : (
                   pagedLocations.map((loc, index) => {
                   const isSelected = selectedLocation?.id === loc.id;
@@ -769,7 +773,8 @@ export function LocationsTab({
         </div>
 
         {/* Right Column: Location Details Panel */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
+        {filteredLocations.length > 0 && selectedLocation && (
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Location Details</h3>
             <button
@@ -902,6 +907,7 @@ export function LocationsTab({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Modal: Add / Edit Location */}

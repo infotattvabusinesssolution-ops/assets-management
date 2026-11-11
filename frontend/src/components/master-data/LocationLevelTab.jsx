@@ -20,6 +20,7 @@ import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export function LocationLevelTab({
   level = 1,
@@ -351,7 +352,7 @@ export function LocationLevelTab({
       {/* Main Grid: Table (Left) + Detail Drawer (Right) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column: Records Table */}
-        <div className="lg:col-span-2 space-y-3">
+        <div className={`${filteredItems.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'} space-y-3 transition-all duration-200`}>
           {/* Controls: Search, Status Filter, Refresh, Add Button */}
           <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-2xs flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2 flex-1 min-w-[240px]">
@@ -411,14 +412,15 @@ export function LocationLevelTab({
                         <span>Loading {levelName} records...</span>
                       </td>
                     </tr>
-                  ) : (!paginatedData || paginatedData.length === 0) ? (
-                    <tr>
-                      <td colSpan={6} className="py-12 text-center text-slate-400">
-                        <MapPin className="w-8 h-8 mx-auto mb-2 text-slate-300" />
-                        <p className="font-semibold text-slate-600">No {levelName} records found</p>
-                        <p className="text-[11px] text-slate-400 mt-0.5">Click "Add {levelName}" above to register your first record.</p>
-                      </td>
-                    </tr>
+                  ) : (!paginatedData || filteredItems.length === 0) ? (
+                    <MasterEmptyState
+                      icon={MapPin}
+                      title={`No ${levelName} records found`}
+                      subtitle={searchQuery ? `No ${levelName.toLowerCase()} records match your search criteria.` : `Get started by defining your first ${levelName.toLowerCase()}.`}
+                      actionLabel={`Add ${levelName}`}
+                      onAction={handleOpenAddModal}
+                      colSpan={6}
+                    />
                   ) : (
                     paginatedData.map((item, index) => {
                       const isSelected = selectedItem?.id === item.id;
@@ -535,9 +537,10 @@ export function LocationLevelTab({
         </div>
 
         {/* Right Column: Detail Card / Drawer */}
-        <div className="space-y-4">
-          <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs p-5 space-y-4 sticky top-4">
-            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+        {filteredItems.length > 0 && (
+          <div className="space-y-4">
+            <div className="bg-white border border-slate-200 rounded-2xl shadow-2xs p-5 space-y-4 sticky top-4">
+              <div className="flex items-center justify-between border-b border-slate-100 pb-3">
               <div className="flex items-center gap-2">
                 <div className="w-8 h-8 rounded-xl bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-bold">
                   <MapPin className="w-4 h-4" />
@@ -623,6 +626,7 @@ export function LocationLevelTab({
             )}
           </div>
         </div>
+        )}
       </div>
 
       {/* Add / Edit Modal */}

@@ -30,6 +30,7 @@ import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export function CustodiansTab({
   triggerToast,
@@ -444,7 +445,7 @@ export function CustodiansTab({
       {/* Main Grid: Custodians Table & Inspection Drawer */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column: Custodians Table (2 cols) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col">
+        <div className={`${filteredCustodians.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col transition-all duration-200`}>
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-purple-100/60 text-[#6C2BD9] flex items-center justify-center">
@@ -466,16 +467,14 @@ export function CustodiansTab({
               <p className="text-xs font-semibold">Loading custodians...</p>
             </div>
           ) : filteredCustodians.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 space-y-3">
-              <UserCheck className="w-10 h-10 mx-auto text-slate-300 stroke-1" />
-              <p className="text-xs font-bold text-slate-700">No custodians found</p>
-              <button
-                onClick={() => handleOpenAddModal(null)}
-                className="text-xs text-[#6C2BD9] font-bold hover:underline"
-              >
-                + Register a new custodian
-              </button>
-            </div>
+            <MasterEmptyState
+              isTable={false}
+              icon={UserCheck}
+              title="No Custodians found"
+              subtitle={searchQuery ? "No custodians match your search criteria." : "Get started by defining your first asset custodian."}
+              actionLabel="Add Custodian"
+              onAction={() => handleOpenAddModal(null)}
+            />
           ) : (
             <div className="overflow-x-auto flex-1">
               <table className="w-full text-left border-collapse text-xs">
@@ -630,7 +629,8 @@ export function CustodiansTab({
         </div>
 
         {/* Right Column: Inspection Details Drawer (1 col) */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
+        {filteredCustodians.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
           {selectedCustodian ? (
             <div className="space-y-4">
               <div className="flex items-start justify-between border-b border-slate-100 pb-3">
@@ -712,6 +712,7 @@ export function CustodiansTab({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* MODAL: Add / Edit Custodian */}

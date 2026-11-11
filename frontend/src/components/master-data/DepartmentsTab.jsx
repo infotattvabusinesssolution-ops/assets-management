@@ -24,6 +24,7 @@ import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export const INITIAL_DEPARTMENTS = [];
 
@@ -538,7 +539,7 @@ export function DepartmentsTab({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-start">
         {/* Table Container */}
-        <div className="lg:col-span-8 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden">
+        <div className={`${filteredDepartments.length > 0 ? 'lg:col-span-8' : 'lg:col-span-12'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden transition-all duration-200`}>
           <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/30">
             <div>
               <h2 className="text-sm font-bold text-slate-900">Departments List</h2>
@@ -568,11 +569,14 @@ export function DepartmentsTab({
               </thead>
               <tbody className="divide-y divide-slate-100 font-medium">
                 {filteredDepartments.length === 0 ? (
-                  <tr>
-                    <td colSpan={9} className="py-12 text-center text-slate-400 text-xs font-medium">
-                      No departments found. Click "+ Add Department" to create one.
-                    </td>
-                  </tr>
+                  <MasterEmptyState
+                    icon={Users}
+                    title="No Departments found"
+                    subtitle={deptSearchQuery ? "No departments match your search criteria." : "Get started by defining your first department."}
+                    actionLabel="Add Department"
+                    onAction={() => handleOpenAddDeptModal(null)}
+                    colSpan={9}
+                  />
                 ) : (
                   pagedDepartments.map((dept, index) => {
                   const isSelected = selectedDepartment?.id === dept.id;
@@ -702,7 +706,8 @@ export function DepartmentsTab({
         </div>
 
         {/* Right Column: Department Details Panel */}
-        <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
+        {filteredDepartments.length > 0 && selectedDepartment && (
+          <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Department Details</h3>
             <button
@@ -883,6 +888,7 @@ export function DepartmentsTab({
             </div>
           )}
         </div>
+        )}
       </div>
 
       {/* Modal: Add / Edit Department */}

@@ -25,6 +25,7 @@ import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
+import MasterEmptyState from './MasterEmptyState';
 
 export function CompaniesTab({
   triggerToast,
@@ -343,7 +344,7 @@ export function CompaniesTab({
       {/* Main Grid: Companies Table & Inspection Drawer */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
         {/* Left Column: Companies Table (2 cols) */}
-        <div className="lg:col-span-2 bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col">
+        <div className={`${filteredCompanies.length > 0 ? 'lg:col-span-2' : 'lg:col-span-3'} bg-white rounded-2xl border border-slate-200/90 shadow-2xs overflow-hidden flex flex-col transition-all duration-200`}>
           <div className="px-5 py-4 border-b border-slate-100 flex items-center justify-between">
             <div className="flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-xl bg-purple-100/60 text-[#6C2BD9] flex items-center justify-center">
@@ -365,16 +366,14 @@ export function CompaniesTab({
               <p className="text-xs font-semibold">Loading companies...</p>
             </div>
           ) : filteredCompanies.length === 0 ? (
-            <div className="p-12 text-center text-slate-400 space-y-3">
-              <Building2 className="w-10 h-10 mx-auto text-slate-300 stroke-1" />
-              <p className="text-xs font-bold text-slate-700">No companies found</p>
-              <button
-                onClick={() => handleOpenAddModal(null)}
-                className="text-xs text-[#6C2BD9] font-bold hover:underline"
-              >
-                + Register a new company
-              </button>
-            </div>
+            <MasterEmptyState
+              isTable={false}
+              icon={Building2}
+              title="No Companies found"
+              subtitle={searchQuery ? "No companies match your search criteria." : "Get started by defining your first operating company."}
+              actionLabel="Add Company"
+              onAction={() => handleOpenAddModal(null)}
+            />
           ) : (
             <div className="overflow-x-auto flex-1">
               <table className="w-full text-left border-collapse text-xs">
@@ -517,58 +516,60 @@ export function CompaniesTab({
         </div>
 
         {/* Right Column: Inspection Details Drawer (1 col) */}
-        <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
-          {selectedCompany ? (
-            <div className="space-y-4">
-              <div className="flex items-start justify-between border-b border-slate-100 pb-3">
-                <div className="space-y-1">
-                  <span className="font-mono text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2 py-0.5 rounded border border-purple-200/60">
-                    {selectedCompany.code}
-                  </span>
-                  <h3 className="text-sm font-bold text-slate-900 leading-snug">{selectedCompany.name}</h3>
+        {filteredCompanies.length > 0 && (
+          <div className="bg-white rounded-2xl border border-slate-200/90 p-5 shadow-2xs space-y-4 flex flex-col justify-between">
+            {selectedCompany ? (
+              <div className="space-y-4">
+                <div className="flex items-start justify-between border-b border-slate-100 pb-3">
+                  <div className="space-y-1">
+                    <span className="font-mono text-xs font-bold text-[#6C2BD9] bg-purple-50 px-2 py-0.5 rounded border border-purple-200/60">
+                      {selectedCompany.code}
+                    </span>
+                    <h3 className="text-sm font-bold text-slate-900 leading-snug">{selectedCompany.name}</h3>
+                  </div>
+                  <button
+                    onClick={() => handleOpenAddModal(selectedCompany)}
+                    className="px-2.5 py-1 text-xs font-semibold text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Edit className="w-3 h-3" />
+                    <span>Edit</span>
+                  </button>
                 </div>
-                <button
-                  onClick={() => handleOpenAddModal(selectedCompany)}
-                  className="px-2.5 py-1 text-xs font-semibold text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1"
-                >
-                  <Edit className="w-3 h-3" />
-                  <span>Edit</span>
-                </button>
-              </div>
 
-              {/* Company Attributes */}
-              <div className="space-y-2 text-xs">
-                <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
-                  Company Details
+                {/* Company Attributes */}
+                <div className="space-y-2 text-xs">
+                  <div className="text-[11px] font-bold text-slate-400 uppercase tracking-wider">
+                    Company Details
+                  </div>
+                  <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-100 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-slate-500 font-medium">Base Currency:</span>
+                      <span className="font-mono font-bold text-slate-800">{selectedCompany.currency || 'USD'}</span>
+                    </div>
+                    <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
+                      <span className="text-slate-500 font-medium">Tax Registration / TRN:</span>
+                      <span className="font-mono font-bold text-slate-800">{selectedCompany.taxId || 'Not registered'}</span>
+                    </div>
+                    <div className="border-t border-slate-200/60 pt-1.5 space-y-1">
+                      <span className="text-slate-500 font-medium block">Corporate Address:</span>
+                      <p className="text-slate-700 leading-relaxed">{selectedCompany.address || 'No address specified'}</p>
+                    </div>
+                  </div>
                 </div>
-                <div className="p-3 rounded-xl bg-slate-50/80 border border-slate-100 space-y-2">
-                  <div className="flex items-center justify-between">
-                    <span className="text-slate-500 font-medium">Base Currency:</span>
-                    <span className="font-mono font-bold text-slate-800">{selectedCompany.currency || 'USD'}</span>
-                  </div>
-                  <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
-                    <span className="text-slate-500 font-medium">Tax Registration / TRN:</span>
-                    <span className="font-mono font-bold text-slate-800">{selectedCompany.taxId || 'Not registered'}</span>
-                  </div>
-                  <div className="border-t border-slate-200/60 pt-1.5 space-y-1">
-                    <span className="text-slate-500 font-medium block">Corporate Address:</span>
-                    <p className="text-slate-700 leading-relaxed">{selectedCompany.address || 'No address specified'}</p>
-                  </div>
-                </div>
-              </div>
 
-              <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100 text-[11px] text-slate-600 flex items-center gap-2">
-                <CheckCircle2 className="w-4 h-4 text-[#6C2BD9] shrink-0" />
-                <span>Companies form the top root of the organizational hierarchy. Departments and cost centers connect here.</span>
+                <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100 text-[11px] text-slate-600 flex items-center gap-2">
+                  <CheckCircle2 className="w-4 h-4 text-[#6C2BD9] shrink-0" />
+                  <span>Companies form the top root of the organizational hierarchy. Departments and cost centers connect here.</span>
+                </div>
               </div>
-            </div>
-          ) : (
-            <div className="p-8 text-center text-slate-400 space-y-2">
-              <Building2 className="w-8 h-8 mx-auto text-slate-300 stroke-1" />
-              <p className="text-xs font-semibold">Select a company to inspect details</p>
-            </div>
-          )}
-        </div>
+            ) : (
+              <div className="p-8 text-center text-slate-400 space-y-2">
+                <Building2 className="w-8 h-8 mx-auto text-slate-300 stroke-1" />
+                <p className="text-xs font-semibold">Select a company to inspect details</p>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* MODAL: Add / Edit Company */}
