@@ -169,8 +169,6 @@ export function DepartmentsTab({
   const [deptFormState, setDeptFormState] = useState({
     code: '',
     name: '',
-    type: 'Support',
-    parentDepartment: '',
     location: '',
     company: '',
     manager: '',
@@ -246,8 +244,6 @@ export function DepartmentsTab({
       setDeptFormState({
         code: deptToEdit.code || '',
         name: deptToEdit.name || '',
-        type: deptToEdit.type || 'Support',
-        parentDepartment: deptToEdit.parentDepartment || '',
         location: deptToEdit.location || '',
         company: deptToEdit.company || '',
         manager: deptToEdit.manager || '',
@@ -262,8 +258,6 @@ export function DepartmentsTab({
       setDeptFormState({
         code: '',
         name: '',
-        type: 'Support',
-        parentDepartment: '',
         location: '',
         company: activeCompanies[0]?.name || '',
         manager: '',
@@ -329,8 +323,8 @@ export function DepartmentsTab({
     const payload = {
       name: cleanName,
       companyId,
-      type: deptFormState.type || null,
-      parentDepartment: deptFormState.parentDepartment || null,
+      ...(editingDepartment?.type ? { type: editingDepartment.type } : {}),
+      ...(editingDepartment?.parentDepartment ? { parentDepartment: editingDepartment.parentDepartment } : {}),
       location: deptFormState.location || null,
       manager: deptFormState.manager ? deptFormState.manager.trim() : null,
       email: deptFormState.email ? deptFormState.email.trim() : null,
@@ -935,54 +929,6 @@ export function DepartmentsTab({
                     placeholder="e.g. Information Technology"
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
                   />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Department Type</label>
-                  <select
-                    value={deptFormState.type}
-                    onChange={(e) => setDeptFormState({ ...deptFormState, type: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="Support">Support</option>
-                    <option value="Operational">Operational</option>
-                    <option value="Management">Management</option>
-                    <option value="Executive">Executive</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Parent Department</label>
-                  <select
-                    value={deptFormState.parentDepartment}
-                    onChange={(e) => setDeptFormState({ ...deptFormState, parentDepartment: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="-">- (None / Top Level)</option>
-                    {[...departmentsList]
-                      .filter((d) => !editingDepartment || d.id !== editingDepartment.id)
-                      .sort((a, b) => {
-                        const aInactive = a.status === 'Inactive' || a.active === false;
-                        const bInactive = b.status === 'Inactive' || b.active === false;
-                        if (aInactive && !bInactive) return 1;
-                        if (!aInactive && bInactive) return -1;
-                        return (a.name || '').localeCompare(b.name || '');
-                      })
-                      .map((d) => {
-                        const isInactive = d.status === 'Inactive' || d.active === false;
-                        return (
-                          <option
-                            key={d.id}
-                            value={d.code}
-                            disabled={isInactive}
-                            className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
-                          >
-                            {d.code} ({d.name}){isInactive ? ' (Inactive)' : ''}
-                          </option>
-                        );
-                      })}
-                  </select>
                 </div>
               </div>
 
