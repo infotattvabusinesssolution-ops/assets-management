@@ -283,6 +283,18 @@ model Country {
   @@map("countries")
 }
 
+model Currency {
+  id        String   @id @default(uuid())
+  code      String   @unique
+  name      String   @unique
+  symbol    String?
+  active    Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@map("currencies")
+}
+
 model LocationType {
   id          String   @id @default(uuid())
   code        String   @unique
