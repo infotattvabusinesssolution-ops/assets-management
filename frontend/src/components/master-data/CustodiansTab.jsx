@@ -125,14 +125,28 @@ export function CustodiansTab({
     }
   }, [externalShowAddModal]);
 
+  const getDepartmentName = (c) => {
+    if (!c) return '-';
+    if (typeof c.department === 'string' && c.department.trim()) return c.department.trim();
+    if (c.department?.name && typeof c.department.name === 'string' && c.department.name.trim()) return c.department.name.trim();
+    if (c.departmentName && typeof c.departmentName === 'string') return c.departmentName.trim();
+    if (c.departmentId) {
+      const found = departments.find(d => d.id === c.departmentId || d.code === c.departmentId);
+      if (found?.name) return found.name;
+    }
+    return '-';
+  };
+
   const filteredCustodians = useMemo(() => {
     return custodians.filter(c => {
       const type = c.custodianType || (c.employeeCode?.startsWith('EXT') ? 'External' : 'Internal');
+      const deptName = getDepartmentName(c);
       const matchesSearch = !searchQuery ||
         (c.employeeCode || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.fullName || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
         (c.email || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (c.organization || '').toLowerCase().includes(searchQuery.toLowerCase());
+        (c.organization || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+        deptName.toLowerCase().includes(searchQuery.toLowerCase());
 
       const matchesType = typeFilter === 'All' || type.toLowerCase() === typeFilter.toLowerCase();
 
@@ -146,7 +160,7 @@ export function CustodiansTab({
 
       return matchesSearch && matchesType && matchesStatus && matchesCompany;
     });
-  }, [custodians, searchQuery, typeFilter, statusFilter, companyFilter]);
+  }, [custodians, searchQuery, typeFilter, statusFilter, companyFilter, departments]);
 
   const {
     currentPage,
@@ -183,7 +197,7 @@ export function CustodiansTab({
         email: '',
         phone: '',
         companyId: companies[0]?.id || '',
-        departmentId: departments[0]?.id || '',
+        departmentId: '',
         section: '',
         location: '',
         organization: '',
@@ -529,7 +543,7 @@ export function CustodiansTab({
                         </td>
                         <td className="py-3 px-3">
                           <div className="text-[11px] font-medium text-slate-700">
-                            {isExternal ? (c.organization || 'Third Party') : (c.department?.name || 'General')}
+                            {isExternal ? (c.organization || '-') : getDepartmentName(c)}
                           </div>
                           {c.section && (
                             <div className="text-[10px] text-slate-400">
@@ -683,7 +697,7 @@ export function CustodiansTab({
                   )}
                   <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
                     <span className="text-slate-500 font-medium">Department:</span>
-                    <span className="font-bold text-slate-800">{selectedCustodian.department?.name || 'General'}</span>
+                    <span className="font-bold text-slate-800">{getDepartmentName(selectedCustodian)}</span>
                   </div>
                   {selectedCustodian.section && (
                     <div className="flex items-center justify-between border-t border-slate-200/60 pt-1.5">
