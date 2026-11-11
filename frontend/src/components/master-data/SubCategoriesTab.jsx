@@ -307,17 +307,19 @@ export function SubCategoriesTab({
     const cleanCode = (subCatFormState.code || '').trim().toUpperCase();
     const cleanName = (subCatFormState.name || '').trim();
 
-    if (!cleanCode || !cleanName) {
-      setModalError('Sub Category Code and Name are required.');
+    if (!cleanName) {
+      setModalError('Sub Category Name is required.');
       return;
     }
 
-    const dupCode = subCategoriesList.find(s => (s.code || '').trim().toUpperCase() === cleanCode && (!editingSubCategory || s.id !== editingSubCategory.id));
-    if (dupCode) {
-      const msg = `Sub Category with code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
-      setModalError(msg);
-      triggerToast && triggerToast(msg);
-      return;
+    if (cleanCode) {
+      const dupCode = subCategoriesList.find(s => (s.code || '').trim().toUpperCase() === cleanCode && (!editingSubCategory || s.id !== editingSubCategory.id));
+      if (dupCode) {
+        const msg = `Sub Category with code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
     }
 
     const dupName = subCategoriesList.find(s => (s.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingSubCategory || s.id !== editingSubCategory.id));
@@ -353,7 +355,6 @@ export function SubCategoriesTab({
     const taggedDesc = parts.join(' ').trim();
 
     const payload = {
-      code: cleanCode,
       name: cleanName,
       categoryId: targetCatId,
       categoryName: subCatFormState.categoryName || (categories.find(c => c.id === targetCatId)?.name || ''),
@@ -364,6 +365,7 @@ export function SubCategoriesTab({
       description: taggedDesc,
       status: subCatFormState.status
     };
+    if (cleanCode) payload.code = cleanCode;
 
     try {
       if (editingSubCategory) {
@@ -886,15 +888,24 @@ export function SubCategoriesTab({
 
             <form onSubmit={handleSaveSubCategory} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Sub Category Code *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-slate-700">
+                    Sub Category Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                    Auto-generated if blank
+                  </span>
+                </div>
                 <input
                   type="text"
-                  required
                   value={subCatFormState.code}
                   onChange={(e) => setSubCatFormState({ ...subCatFormState, code: e.target.value })}
-                  placeholder="e.g. IT-HW-LAP-01"
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                  placeholder="Auto-generated using prefix setting (e.g. SUB-001)"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Leave blank to automatically generate code using prefix SUB- (or custom setting).
+                </p>
               </div>
 
               <div>

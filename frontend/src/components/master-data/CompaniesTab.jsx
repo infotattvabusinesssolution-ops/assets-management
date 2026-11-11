@@ -162,20 +162,22 @@ export function CompaniesTab({
 
   const handleSaveCompany = async (e) => {
     e.preventDefault();
-    if (!formState.name.trim() || !formState.code.trim()) {
-      setModalError('Company Code and Name are required.');
+    if (!formState.name.trim()) {
+      setModalError('Company Name is required.');
       return;
     }
 
     const cleanCode = formState.code.trim().toUpperCase();
     const cleanName = formState.name.trim();
 
-    const dupCode = companies.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCompany || c.id !== editingCompany.id));
-    if (dupCode) {
-      const msg = `Company code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
-      setModalError(msg);
-      triggerToast && triggerToast(msg);
-      return;
+    if (cleanCode) {
+      const dupCode = companies.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCompany || c.id !== editingCompany.id));
+      if (dupCode) {
+        const msg = `Company code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
     }
 
     const dupName = companies.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCompany || c.id !== editingCompany.id));
@@ -191,13 +193,13 @@ export function CompaniesTab({
 
     try {
       const payload = {
-        code: cleanCode,
         name: cleanName,
         currency: formState.currency,
         taxId: formState.taxId.trim(),
         address: formState.address.trim(),
         active: formState.status === 'Active'
       };
+      if (cleanCode) payload.code = cleanCode;
 
       if (editingCompany) {
         const res = await api.put(`/master-data/companies/${editingCompany.id}`, payload);
@@ -605,15 +607,24 @@ export function CompaniesTab({
             <form onSubmit={handleSaveCompany} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Company Code *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      Company Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                      Auto-generated if blank
+                    </span>
+                  </div>
                   <input
                     type="text"
-                    placeholder="e.g. ACME-CORP"
+                    placeholder="Auto-generated using prefix (e.g. CMP-001)"
                     value={formState.code}
                     onChange={(e) => setFormState({ ...formState, code: e.target.value.toUpperCase() })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
-                    required
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Leave blank to automatically generate code using prefix CMP- (or custom setting).
+                  </p>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Base Currency</label>

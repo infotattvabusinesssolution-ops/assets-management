@@ -214,17 +214,19 @@ export function CostCentersTab({
     const cleanCode = (ccFormState.code || '').trim().toUpperCase();
     const cleanName = (ccFormState.name || '').trim();
 
-    if (!cleanCode || !cleanName) {
-      setModalError('Cost Center Code and Name are required.');
+    if (!cleanName) {
+      setModalError('Cost Center Name is required.');
       return;
     }
 
-    const dupCode = costCentersList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCostCenter || c.id !== editingCostCenter.id));
-    if (dupCode) {
-      const msg = `Cost Center code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
-      setModalError(msg);
-      triggerToast && triggerToast(msg);
-      return;
+    if (cleanCode) {
+      const dupCode = costCentersList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCostCenter || c.id !== editingCostCenter.id));
+      if (dupCode) {
+        const msg = `Cost Center code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
     }
 
     const dupName = costCentersList.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCostCenter || c.id !== editingCostCenter.id));
@@ -243,7 +245,6 @@ export function CostCentersTab({
     }
 
     const payload = {
-      code: cleanCode,
       name: cleanName,
       companyId,
       departmentId: ccFormState.departmentId || null,
@@ -253,6 +254,7 @@ export function CostCentersTab({
       active: ccFormState.status === 'Active',
       status: ccFormState.status
     };
+    if (cleanCode) payload.code = cleanCode;
 
     if (editingCostCenter) {
       try {
@@ -774,15 +776,24 @@ export function CostCentersTab({
             <form onSubmit={handleSaveCC} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Cost Center Code *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-slate-700">
+                      Cost Center Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                      Auto-generated if blank
+                    </span>
+                  </div>
                   <input
                     type="text"
-                    required
                     value={ccFormState.code}
                     onChange={(e) => setCcFormState({ ...ccFormState, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. CC-1000"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                    placeholder="Auto-generated using prefix setting (e.g. CC-001)"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Leave blank to automatically generate code using prefix CC- (or custom setting).
+                  </p>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Cost Center Name *</label>

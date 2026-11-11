@@ -286,17 +286,19 @@ export function DepartmentsTab({
     const cleanCode = (deptFormState.code || '').trim().toUpperCase();
     const cleanName = (deptFormState.name || '').trim();
 
-    if (!cleanCode || !cleanName) {
-      setModalError('Department Code and Name are required.');
+    if (!cleanName) {
+      setModalError('Department Name is required.');
       return;
     }
 
-    const dupCode = departmentsList.find(d => (d.code || '').trim().toUpperCase() === cleanCode && (!editingDepartment || d.id !== editingDepartment.id));
-    if (dupCode) {
-      const msg = `Department code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
-      setModalError(msg);
-      triggerToast && triggerToast(msg);
-      return;
+    if (cleanCode) {
+      const dupCode = departmentsList.find(d => (d.code || '').trim().toUpperCase() === cleanCode && (!editingDepartment || d.id !== editingDepartment.id));
+      if (dupCode) {
+        const msg = `Department code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
     }
 
     const dupName = departmentsList.find(d => (d.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingDepartment || d.id !== editingDepartment.id));
@@ -323,7 +325,6 @@ export function DepartmentsTab({
     const companyId = matchedComp.id;
 
     const payload = {
-      code: cleanCode,
       name: cleanName,
       companyId,
       type: deptFormState.type || null,
@@ -336,6 +337,7 @@ export function DepartmentsTab({
       active: deptFormState.status === 'Active',
       status: deptFormState.status
     };
+    if (cleanCode) payload.code = cleanCode;
 
     if (editingDepartment) {
       try {
@@ -906,15 +908,24 @@ export function DepartmentsTab({
             <form onSubmit={handleSaveDept} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Department Code *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-slate-700">
+                      Department Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                      Auto-generated if blank
+                    </span>
+                  </div>
                   <input
                     type="text"
-                    required
                     value={deptFormState.code}
                     onChange={(e) => setDeptFormState({ ...deptFormState, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. IT, HR, FIN"
+                    placeholder="Auto-generated using prefix setting (e.g. DEP-001)"
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Leave blank to automatically generate code using prefix DEP- (or custom setting).
+                  </p>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Department Name *</label>

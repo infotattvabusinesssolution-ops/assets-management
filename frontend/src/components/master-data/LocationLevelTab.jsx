@@ -182,8 +182,8 @@ export function LocationLevelTab({
   // Save Add / Edit
   const handleSaveItem = async (e) => {
     e.preventDefault();
-    if (!formState.code.trim() || !formState.name.trim()) {
-      setModalError('Location Code and Location Name are required.');
+    if (!formState.name.trim()) {
+      setModalError('Location Name is required.');
       return;
     }
 
@@ -191,14 +191,16 @@ export function LocationLevelTab({
     const cleanName = formState.name.trim();
 
     // Check duplicate code
-    const isDuplicate = items.some(
-      (item) =>
-        (!editingItem || item.id !== editingItem.id) &&
-        (item.code || '').toUpperCase() === cleanCode
-    );
-    if (isDuplicate) {
-      setModalError(`Location Code "${cleanCode}" already exists in ${levelName}.`);
-      return;
+    if (cleanCode) {
+      const isDuplicate = items.some(
+        (item) =>
+          (!editingItem || item.id !== editingItem.id) &&
+          (item.code || '').toUpperCase() === cleanCode
+      );
+      if (isDuplicate) {
+        setModalError(`Location Code "${cleanCode}" already exists in ${levelName}.`);
+        return;
+      }
     }
 
     try {
@@ -240,17 +242,18 @@ export function LocationLevelTab({
         triggerToast && triggerToast(`${levelName} record "${cleanCode}" updated successfully.`);
       } else {
         // Create new record
-        const res = await api.post(`/master-data/location-levels/${level}`, {
-          code: cleanCode,
+        const payload = {
           name: cleanName,
           description: formState.description.trim(),
           status: formState.status,
           active: formState.status === 'Active'
-        });
+        };
+        if (cleanCode) payload.code = cleanCode;
+        const res = await api.post(`/master-data/location-levels/${level}`, payload);
 
         const newItem = {
           id: res?.locationLevel?.id || `loc-lvl${level}-${Date.now()}`,
-          code: cleanCode,
+          code: res?.locationLevel?.code || cleanCode,
           name: cleanName,
           description: formState.description.trim(),
           status: formState.status,
@@ -652,18 +655,22 @@ export function LocationLevelTab({
 
             <form onSubmit={handleSaveItem} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Location Code <span className="text-rose-500">*</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    Location Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                    Auto-generated if blank
+                  </span>
+                </div>
                 <input
                   type="text"
-                  required
-                  placeholder={`e.g. LOC-L${level}-001`}
+                  placeholder={`Auto-generated using prefix (e.g. LOC-L${level}-001)`}
                   value={formState.code}
                   onChange={(e) => setFormState({ ...formState, code: e.target.value.toUpperCase() })}
                   className="w-full font-mono uppercase bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold focus:border-[#6C2BD9] focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Unique uppercase identifier for this location tier.</p>
+                <p className="text-[10px] text-slate-400 mt-1">Leave blank to automatically generate code using prefix LOC-L{level}- (or custom setting).</p>
               </div>
 
               <div>

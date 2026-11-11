@@ -214,8 +214,8 @@ export function CustodiansTab({
 
   const handleSaveCustodian = async (e) => {
     e.preventDefault();
-    if (!formState.fullName.trim() || !formState.employeeCode.trim()) {
-      setModalError('Custodian Code and Full Name are required.');
+    if (!formState.fullName.trim()) {
+      setModalError('Custodian Full Name is required.');
       return;
     }
     if (!formState.email.trim()) {
@@ -255,7 +255,6 @@ export function CustodiansTab({
       const selectedDept = departments.find(d => d.id === formState.departmentId);
 
       const payload = {
-        employeeCode: cleanCode,
         fullName: cleanName,
         email: cleanEmail,
         phone: formState.phone.trim(),
@@ -269,6 +268,7 @@ export function CustodiansTab({
         organization: formState.custodianType === 'External' ? formState.organization.trim() : '',
         active: formState.status === 'Active'
       };
+      if (cleanCode) payload.employeeCode = cleanCode;
 
       if (editingCustodian) {
         const res = await api.put(`/master-data/employees/${editingCustodian.id}`, payload);
@@ -781,17 +781,24 @@ export function CustodiansTab({
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    {formState.custodianType === 'Internal' ? 'Employee Code *' : 'Custodian Code *'}
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      {formState.custodianType === 'Internal' ? 'Employee Code' : 'Custodian Code'} <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                      Auto-generated if blank
+                    </span>
+                  </div>
                   <input
                     type="text"
-                    placeholder="e.g. EMP-1044"
+                    placeholder="Auto-generated using prefix setting (e.g. EMP-001)"
                     value={formState.employeeCode}
                     onChange={(e) => setFormState({ ...formState, employeeCode: e.target.value.toUpperCase() })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
-                    required
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Leave blank to automatically generate code using prefix EMP- (or custom setting).
+                  </p>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Full Name *</label>

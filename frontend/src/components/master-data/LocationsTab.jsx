@@ -355,12 +355,12 @@ export function LocationsTab({
 
   const handleSaveLoc = async (e) => {
     e.preventDefault();
-    if (!locFormState.code || !locFormState.name) {
-      setModalError('Location Code and Name are required.');
+    if (!locFormState.name || !locFormState.name.trim()) {
+      setModalError('Location Name is required.');
       return;
     }
 
-    const cleanCode = locFormState.code.trim().toUpperCase();
+    const cleanCode = (locFormState.code || '').trim().toUpperCase();
     const cleanName = locFormState.name.trim();
 
     // STRICT DUPLICATE VALIDATION: Code & Name must be unique
@@ -368,7 +368,7 @@ export function LocationsTab({
       if (editingLocation && it.id === editingLocation.id) return false;
       const codeMatches = cleanCode && (it.code || '').trim().toUpperCase() === cleanCode;
       const nameMatches = cleanName && (it.name || '').trim().toLowerCase() === cleanName.toLowerCase();
-      return codeMatches || nameMatches;
+      return (cleanCode && codeMatches) || nameMatches;
     });
 
     if (isDuplicate) {
@@ -379,7 +379,6 @@ export function LocationsTab({
     }
 
     const payload = {
-      code: cleanCode,
       name: cleanName,
       type: locFormState.type || (allLocationTypes[0] || 'Internal'),
       locationLevel1: locFormState.locationLevel1 || '',
@@ -390,6 +389,7 @@ export function LocationsTab({
       active: locFormState.status === 'Active',
       status: locFormState.status
     };
+    if (cleanCode) payload.code = cleanCode;
 
     if (editingLocation) {
       console.log('✏️ [Updating Location in Frontend]:', { id: editingLocation.id, ...payload });
@@ -927,15 +927,24 @@ export function LocationsTab({
             <form onSubmit={handleSaveLoc} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Location Code *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-slate-700">
+                      Location Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                      Auto-generated if blank
+                    </span>
+                  </div>
                   <input
                     type="text"
-                    required
                     value={locFormState.code}
                     onChange={(e) => setLocFormState({ ...locFormState, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. UAE-HQ, KSA-OF1"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                    placeholder="Auto-generated using prefix setting (e.g. LOC-001)"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Leave blank to automatically generate code using prefix LOC- (or custom setting).
+                  </p>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">

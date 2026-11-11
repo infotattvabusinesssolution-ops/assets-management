@@ -264,18 +264,23 @@ export function SuppliersTab({
   const handleSaveSup = async (e) => {
     e.preventDefault();
     setModalError('');
-    if (!supFormState.code || !supFormState.name) return;
+    if (!supFormState.name || !supFormState.name.trim()) {
+      setModalError('Supplier Name is required.');
+      return;
+    }
 
-    const trimmedCode = supFormState.code.trim();
+    const trimmedCode = (supFormState.code || '').trim().toUpperCase();
     const trimmedName = supFormState.name.trim();
 
     // Check duplicate code
-    const dupCode = suppliersList.find(
-      (s) => s.code?.toUpperCase() === trimmedCode.toUpperCase() && (!editingSupplier || s.id !== editingSupplier.id)
-    );
-    if (dupCode) {
-      setModalError(`Supplier Code "${trimmedCode}" already exists.`);
-      return;
+    if (trimmedCode) {
+      const dupCode = suppliersList.find(
+        (s) => s.code?.toUpperCase() === trimmedCode.toUpperCase() && (!editingSupplier || s.id !== editingSupplier.id)
+      );
+      if (dupCode) {
+        setModalError(`Supplier Code "${trimmedCode}" already exists.`);
+        return;
+      }
     }
 
     // Check duplicate name
@@ -305,8 +310,8 @@ export function SuppliersTab({
       providerName: supFormState.name.trim(),
       providerType: supFormState.type.trim() || 'Hardware',
       companyId: targetCompany?.id || null,
-      providerCode: supFormState.code.trim().toUpperCase(),
-      autoGenerateCode: false,
+      providerCode: trimmedCode || undefined,
+      autoGenerateCode: !trimmedCode,
       paymentTermsDays: parsePaymentTerms(supFormState.paymentTerms),
       primaryContact: supFormState.contactPerson.trim(),
       email: supFormState.email.trim(),
@@ -872,15 +877,24 @@ export function SuppliersTab({
             <form onSubmit={handleSaveSup} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Supplier Code *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-slate-700">
+                      Supplier Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                      Auto-generated if blank
+                    </span>
+                  </div>
                   <input
                     type="text"
-                    required
                     value={supFormState.code}
                     onChange={(e) => setSupFormState({ ...supFormState, code: e.target.value.toUpperCase() })}
-                    placeholder="e.g. SUP-1000"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                    placeholder="Auto-generated using prefix setting (e.g. SUP-001)"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
                   />
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Leave blank to automatically generate code using prefix SUP- (or custom setting).
+                  </p>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Supplier Name *</label>

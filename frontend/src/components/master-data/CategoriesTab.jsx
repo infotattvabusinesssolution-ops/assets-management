@@ -301,17 +301,19 @@ export function CategoriesTab({
     const cleanCode = (catFormState.code || '').trim().toUpperCase();
     const cleanName = (catFormState.name || '').trim();
 
-    if (!cleanCode || !cleanName) {
-      setModalError('Category Code and Name are required.');
+    if (!cleanName) {
+      setModalError('Category Name is required.');
       return;
     }
 
-    const dupCode = categoriesList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCategory || c.id !== editingCategory.id));
-    if (dupCode) {
-      const msg = `Category with code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
-      setModalError(msg);
-      triggerToast && triggerToast(msg);
-      return;
+    if (cleanCode) {
+      const dupCode = categoriesList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCategory || c.id !== editingCategory.id));
+      if (dupCode) {
+        const msg = `Category with code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
     }
 
     const dupName = categoriesList.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCategory || c.id !== editingCategory.id));
@@ -385,14 +387,15 @@ export function CategoriesTab({
       }
     } else {
       try {
-        await api.post('/master-data/categories', {
-          code: cleanCode,
+        const payload = {
           name: cleanName,
           assetSubGroupId: targetSubGroupId,
           className: catFormState.className,
           description: taggedDescription,
           status: catFormState.status
-        });
+        };
+        if (cleanCode) payload.code = cleanCode;
+        await api.post('/master-data/categories', payload);
         await loadCategories();
         triggerToast && triggerToast(`Category "${cleanName}" created successfully.`);
       } catch (err) {
@@ -954,15 +957,24 @@ export function CategoriesTab({
 
             <form onSubmit={handleSaveCategory} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Category Code *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-slate-700">
+                    Category Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                    Auto-generated if blank
+                  </span>
+                </div>
                 <input
                   type="text"
-                  required
                   value={catFormState.code}
                   onChange={(e) => setCatFormState({ ...catFormState, code: e.target.value })}
-                  placeholder="e.g. IT-HW-LAP, BLD-MEP-HVAC"
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                  placeholder="Auto-generated using prefix setting (e.g. CAT-001)"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Leave blank to automatically generate code using prefix CAT- (or custom setting).
+                </p>
               </div>
 
               <div>

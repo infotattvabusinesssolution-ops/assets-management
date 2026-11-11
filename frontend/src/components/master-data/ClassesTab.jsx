@@ -284,8 +284,8 @@ export function ClassesTab({
     const cleanCode = (clsFormState.code || '').trim().toUpperCase();
     const cleanName = (clsFormState.name || '').trim();
 
-    if (!cleanCode || !cleanName) {
-      setModalError('Sub Group Code and Name are required.');
+    if (!cleanName) {
+      setModalError('Sub Group Name is required.');
       return;
     }
 
@@ -302,12 +302,14 @@ export function ClassesTab({
       return;
     }
 
-    const dupCode = classesList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingClass || c.id !== editingClass.id));
-    if (dupCode) {
-      const msg = `Asset Sub Group code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
-      setModalError(msg);
-      triggerToast && triggerToast(msg);
-      return;
+    if (cleanCode) {
+      const dupCode = classesList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingClass || c.id !== editingClass.id));
+      if (dupCode) {
+        const msg = `Asset Sub Group code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
     }
 
     const dupName = classesList.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingClass || c.id !== editingClass.id));
@@ -339,8 +341,7 @@ export function ClassesTab({
         await loadClasses();
         triggerToast && triggerToast(`Asset Sub Group "${cleanName}" updated successfully.`);
       } else {
-        await api.post('/master-data/asset-sub-groups', {
-          code: cleanCode,
+        const payload = {
           name: cleanName,
           assetGroupId: targetGroupId,
           groupName: clsFormState.groupName,
@@ -348,7 +349,9 @@ export function ClassesTab({
           description: `${clsFormState.description || ''} [kind:class] [group:${clsFormState.groupName}]`.trim(),
           kind: 'CLASS',
           status: clsFormState.status
-        });
+        };
+        if (cleanCode) payload.code = cleanCode;
+        await api.post('/master-data/asset-sub-groups', payload);
         await loadClasses();
         triggerToast && triggerToast(`Asset Sub Group "${cleanName}" created successfully.`);
       }
@@ -899,15 +902,24 @@ export function ClassesTab({
 
             <form onSubmit={handleSaveClass} className="space-y-3.5 text-xs">
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Sub Group Code *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-slate-700">
+                    Sub Group Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                    Auto-generated if blank
+                  </span>
+                </div>
                 <input
                   type="text"
-                  required
                   value={clsFormState.code}
                   onChange={(e) => setClsFormState({ ...clsFormState, code: e.target.value })}
-                  placeholder="e.g. IT-HW, BLD-STR, PLANT-PRD"
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                  placeholder="Auto-generated using prefix setting (e.g. SUB-001)"
+                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Leave blank to automatically generate code using prefix SUB- (or custom setting).
+                </p>
               </div>
 
               <div>

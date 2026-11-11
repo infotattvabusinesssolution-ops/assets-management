@@ -294,24 +294,26 @@ export function AssetGroupsTab({
     const cleanCode = grpFormState.code?.trim().toUpperCase();
     const cleanName = grpFormState.name?.trim();
 
-    if (!cleanCode || !cleanName) {
-      console.warn('⚠️ [AssetGroupsTab] Validation failed: Code and Name are required.', grpFormState);
-      const msg = 'Group Code and Name are required.';
+    if (!cleanName) {
+      console.warn('⚠️ [AssetGroupsTab] Validation failed: Name is required.', grpFormState);
+      const msg = 'Group Name is required.';
       setModalError(msg);
       triggerToast && triggerToast(msg);
       return;
     }
 
     // Client-side pre-validation: check for duplicate group code or name
-    const duplicateCode = assetGroups.find(
-      (g) => (g.code || '').trim().toUpperCase() === cleanCode && (!editingGroup || g.id !== editingGroup.id)
-    );
-    if (duplicateCode) {
-      const msg = `Asset Group code "${cleanCode}" already exists (used by "${duplicateCode.name}"). Please use a different code.`;
-      console.warn('⚠️ [AssetGroupsTab] Duplicate Code detected:', msg);
-      setModalError(msg);
-      triggerToast && triggerToast(msg);
-      return;
+    if (cleanCode) {
+      const duplicateCode = assetGroups.find(
+        (g) => (g.code || '').trim().toUpperCase() === cleanCode && (!editingGroup || g.id !== editingGroup.id)
+      );
+      if (duplicateCode) {
+        const msg = `Asset Group code "${cleanCode}" already exists (used by "${duplicateCode.name}"). Please use a different code.`;
+        console.warn('⚠️ [AssetGroupsTab] Duplicate Code detected:', msg);
+        setModalError(msg);
+        triggerToast && triggerToast(msg);
+        return;
+      }
     }
     const duplicateName = assetGroups.find(
       (g) => (g.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingGroup || g.id !== editingGroup.id)
@@ -338,11 +340,13 @@ export function AssetGroupsTab({
         triggerToast && triggerToast(`Asset Group "${cleanName}" updated successfully.`);
       } else {
         console.log('📡 [AssetGroupsTab] Creating new Asset Group via POST /master-data/asset-groups:', grpFormState);
-        await api.post('/master-data/asset-groups', {
+        const payload = {
           ...grpFormState,
-          code: cleanCode,
           name: cleanName
-        });
+        };
+        if (cleanCode) payload.code = cleanCode;
+        else delete payload.code;
+        await api.post('/master-data/asset-groups', payload);
         await loadAssetGroups();
         triggerToast && triggerToast(`Asset Group "${cleanName}" created successfully.`);
       }
@@ -904,18 +908,27 @@ export function AssetGroupsTab({
               )}
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Group Code *</label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-semibold text-slate-700">
+                    Group Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                    Auto-generated if blank
+                  </span>
+                </div>
                 <input
                   type="text"
-                  required
                   value={grpFormState.code}
                   onChange={(e) => {
                     setModalError('');
                     setGrpFormState({ ...grpFormState, code: e.target.value });
                   }}
-                  placeholder="e.g. IT, BLD, PLANT"
+                  placeholder="Auto-generated using prefix setting (e.g. GRP-001)"
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Leave blank to automatically generate code using prefix GRP- (or custom setting).
+                </p>
               </div>
 
               <div>
