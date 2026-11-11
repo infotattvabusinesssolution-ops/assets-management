@@ -6230,7 +6230,7 @@ export async function getCurrencies(req, res, next) {
     if (isDbConnected()) {
       try {
         const rows = await prisma.$queryRawUnsafe(`SELECT * FROM currencies WHERE active = 1 ORDER BY code ASC`);
-        if (Array.isArray(rows) && rows.length > 0) {
+        if (Array.isArray(rows)) {
           const list = rows.map(r => ({
             id: r.id,
             code: r.code,
