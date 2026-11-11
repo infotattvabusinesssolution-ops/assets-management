@@ -6469,14 +6469,26 @@ export async function createLocationLevel(req, res, next) {
       ? code.trim().toUpperCase()
       : await generateAutoCode(`location_level_${level}`, cleanName, readLocationLevelsFromFile(level), tableName);
 
+    const list = readLocationLevelsFromFile(level);
+    if (list.some(item => (item.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}. Duplicate codes are not allowed.` });
+    }
+    if (list.some(item => (item.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Location Name "${cleanName}" already exists in Location Level ${level}. Duplicate names are not allowed.` });
+    }
+
     if (isDbConnected()) {
       try {
         const existing = await prisma.$queryRawUnsafe(`
-          SELECT id FROM ${tableName}
-          WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'
+          SELECT id, code, name FROM ${tableName}
+          WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'
         `);
         if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}.` });
+          const matchCode = (existing[0].code || '').toUpperCase() === cleanCode;
+          const msg = matchCode
+            ? `Location Code "${cleanCode}" already exists in Location Level ${level}.`
+            : `Location Name "${cleanName}" already exists in Location Level ${level}. Duplicate names are not allowed.`;
+          return res.status(409).json({ success: false, message: msg });
         }
       } catch (err) {}
     }
@@ -6533,14 +6545,25 @@ export async function updateLocationLevel(req, res, next) {
     const cleanCode = code ? code.trim().toUpperCase() : (list[idx]?.code || '');
     const cleanName = name ? name.trim() : (list[idx]?.name || '');
 
-    if (isDbConnected() && cleanCode) {
+    if (list.some(item => item.id !== id && (item.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}. Duplicate codes are not allowed.` });
+    }
+    if (cleanName && list.some(item => item.id !== id && (item.name || '').toLowerCase() === cleanName.toLowerCase())) {
+      return res.status(409).json({ success: false, message: `Location Name "${cleanName}" already exists in Location Level ${level}. Duplicate names are not allowed.` });
+    }
+
+    if (isDbConnected()) {
       try {
         const existing = await prisma.$queryRawUnsafe(`
-          SELECT id FROM ${tableName}
-          WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' AND id != '${id.replace(/'/g, "''")}'
+          SELECT id, code, name FROM ${tableName}
+          WHERE (UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}') AND id != '${id.replace(/'/g, "''")}'
         `);
         if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}.` });
+          const matchCode = (existing[0].code || '').toUpperCase() === cleanCode;
+          const msg = matchCode
+            ? `Location Code "${cleanCode}" already exists in Location Level ${level}.`
+            : `Location Name "${cleanName}" already exists in Location Level ${level}. Duplicate names are not allowed.`;
+          return res.status(409).json({ success: false, message: msg });
         }
       } catch (err) {}
     }

@@ -194,15 +194,26 @@ export function LocationLevelTab({
 
     // Check duplicate code
     if (cleanCode) {
-      const isDuplicate = items.some(
+      const isDuplicateCode = items.some(
         (item) =>
           (!editingItem || item.id !== editingItem.id) &&
           (item.code || '').toUpperCase() === cleanCode
       );
-      if (isDuplicate) {
-        setModalError(`Location Code "${cleanCode}" already exists in ${levelName}.`);
+      if (isDuplicateCode) {
+        setModalError(`Location Code "${cleanCode}" already exists in ${levelName}. Duplicate codes are not allowed.`);
         return;
       }
+    }
+
+    // Check duplicate name
+    const isDuplicateName = items.some(
+      (item) =>
+        (!editingItem || item.id !== editingItem.id) &&
+        (item.name || '').trim().toLowerCase() === cleanName.toLowerCase()
+    );
+    if (isDuplicateName) {
+      setModalError(`Location Name "${cleanName}" already exists in ${levelName}. Duplicate names are not allowed.`);
+      return;
     }
 
     try {
