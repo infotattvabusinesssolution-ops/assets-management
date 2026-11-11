@@ -60,33 +60,40 @@ export function SuppliersTab({
         setCountriesList(countriesRes.countries.map(c => c.name));
       }
       if (res?.providers && res.providers.length > 0) {
-        const mapped = res.providers.map((p) => ({
-          id: p.id,
-          code: p.providerCode,
-          name: p.providerName,
-          type: p.providerType === 'AMC_PROVIDER' ? 'AMC Partner' : (p.providerType || '-'),
-          company: p.company?.name || p.companyName || '-',
-          country: p.country || '-',
-          contactPerson: p.primaryContact || '-',
-          email: p.email || '-',
-          phone: p.phone || '-',
-          address: p.addressLine1 || '-',
-          website: p.website || '-',
-          paymentTerms: p.paymentTermsDays === 0 ? 'Advance' : (p.paymentTermsDays ? `${p.paymentTermsDays} Days` : '30 Days'),
-          taxNo: p.taxRegistrationNo || '-',
-          description: p.remarks || '',
-          status: p.status === 'ACTIVE' || p.status === 'DRAFT' ? 'Active' : 'Inactive',
-          createdBy: p.createdBy || 'System',
-          createdOn: p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-          lastModifiedBy: p.lastModifiedBy || 'System',
-          lastModifiedOn: p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-          relatedInfo: {
-            purchaseOrders: p.purchaseOrdersCount || 0,
-            assets: p.assetsCount || 0,
-            contracts: p.contractsCount || 0,
-            documents: p.documentsCount || 0
-          }
-        }));
+        const mapped = res.providers.map((p) => {
+          const isCompActive = p.company ? (p.company.active !== false && p.company.status !== 'Inactive') : true;
+          const isSupActive = (p.status === 'ACTIVE' || p.status === 'DRAFT') && isCompActive;
+          return {
+            id: p.id,
+            code: p.providerCode,
+            name: p.providerName,
+            type: p.providerType === 'AMC_PROVIDER' ? 'AMC Partner' : (p.providerType || '-'),
+            company: p.company?.name || p.companyName || '-',
+            companyId: p.companyId || p.company?.id || '',
+            companyActive: isCompActive,
+            country: p.country || '-',
+            contactPerson: p.primaryContact || '-',
+            email: p.email || '-',
+            phone: p.phone || '-',
+            address: p.addressLine1 || '-',
+            website: p.website || '-',
+            paymentTerms: p.paymentTermsDays === 0 ? 'Advance' : (p.paymentTermsDays ? `${p.paymentTermsDays} Days` : '30 Days'),
+            taxNo: p.taxRegistrationNo || '-',
+            description: p.remarks || '',
+            active: isSupActive,
+            status: isSupActive ? 'Active' : 'Inactive',
+            createdBy: p.createdBy || 'System',
+            createdOn: p.createdAt ? new Date(p.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+            lastModifiedBy: p.lastModifiedBy || 'System',
+            lastModifiedOn: p.updatedAt ? new Date(p.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+            relatedInfo: {
+              purchaseOrders: p.purchaseOrdersCount || 0,
+              assets: p.assetsCount || 0,
+              contracts: p.contractsCount || 0,
+              documents: p.documentsCount || 0
+            }
+          };
+        });
         setSuppliersList(mapped);
         setSelectedSupplier((prev) => (prev ? mapped.find((s) => s.id === prev.id) || mapped[0] || null : mapped[0] || null));
       } else {
@@ -188,6 +195,21 @@ export function SuppliersTab({
     setSupCompanyFilter('All Companies');
   };
 
+  const isCompanyInactive = (c) => {
+    if (!c) return false;
+    return c.active === false || c.status === 'Inactive';
+  };
+
+  const sortedCompanies = useMemo(() => {
+    return [...companiesList].sort((a, b) => {
+      const aInactive = isCompanyInactive(a);
+      const bInactive = isCompanyInactive(b);
+      if (!aInactive && bInactive) return -1;
+      if (aInactive && !bInactive) return 1;
+      return (a.name || a.code || '').localeCompare(b.name || b.code || '');
+    });
+  }, [companiesList]);
+
   const handleOpenAddSupModal = (supToEdit = null) => {
     setModalError('');
     if (supToEdit) {
@@ -272,7 +294,13 @@ export function SuppliersTab({
       return isNaN(num) ? 30 : num;
     };
 
-    const targetCompany = companiesList.find(c => c.name === supFormState.company);
+    const targetCompany = companiesList.find(c => c.name === supFormState.company || c.code === supFormState.company || c.id === supFormState.company);
+    if (targetCompany && (targetCompany.active === false || targetCompany.status === 'Inactive')) {
+      const msg = `Cannot assign Supplier to inactive Company "${targetCompany.name}". Please select an active Company.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
     const payload = {
       providerName: supFormState.name.trim(),
       providerType: supFormState.type.trim() || 'Hardware',
@@ -340,20 +368,23 @@ export function SuppliersTab({
   const handleToggleSupStatus = async (sup) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = sup.status === 'Active' ? 'Inactive' : 'Active';
+    if (newStatus === 'Active' && sup.company && sup.company !== '-') {
+      const comp = companiesList.find(c => c.name === sup.company || c.code === sup.company || c.id === sup.companyId);
+      if ((comp && (comp.active === false || comp.status === 'Inactive')) || sup.companyActive === false) {
+        const msg = `Cannot activate Supplier "${sup.code}" because parent Company "${sup.company}" is inactive.`;
+        triggerToast && triggerToast(msg);
+        return;
+      }
+    }
     try {
       await api.patch(`/maintenance/service-providers/${sup.id}/status`);
       await loadSuppliers();
       triggerToast && triggerToast(`Supplier "${sup.code}" status changed to ${newStatus}.`);
     } catch (err) {
       console.warn('Status toggle error:', err);
-      const updated = suppliersList.map((s) =>
-        s.id === sup.id ? { ...s, status: newStatus } : s
-      );
-      setSuppliersList(updated);
-      if (selectedSupplier?.id === sup.id) {
-        setSelectedSupplier({ ...selectedSupplier, status: newStatus });
-      }
-      triggerToast && triggerToast(`Supplier "${sup.code}" status changed to ${newStatus}.`);
+      const msg = err.response?.data?.message || err.message || 'Failed to update supplier status.';
+      triggerToast && triggerToast(msg);
+      await loadSuppliers();
     }
   };
 
@@ -443,11 +474,14 @@ export function SuppliersTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Companies">All Companies</option>
-              {companiesList.map((c) => (
-                <option key={c.id || c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
+              {sortedCompanies.map((c) => {
+                const isInactive = isCompanyInactive(c);
+                return (
+                  <option key={c.id || c.name} value={c.name}>
+                    {c.name}{isInactive ? ' (Inactive)' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -535,7 +569,19 @@ export function SuppliersTab({
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">
                         {sup.code}
                       </td>
-                      <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{sup.name}</td>
+                      <td className="py-2.5 px-3">
+                        <div className="text-[#1E1B4B] font-bold">{sup.name}</div>
+                        {sup.company && sup.company !== '-' && (
+                          <div className="flex items-center gap-1 text-[10px] text-slate-400 font-medium mt-0.5">
+                            <span>{sup.company}</span>
+                            {sup.companyActive === false && (
+                              <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0.2 rounded">
+                                (Inactive)
+                              </span>
+                            )}
+                          </div>
+                        )}
+                      </td>
                       <td className="py-2.5 px-3 text-slate-700">{sup.type}</td>
                       <td className="py-2.5 px-3 text-slate-600">{sup.country}</td>
                       <td className="py-2.5 px-3 text-slate-800">{sup.contactPerson}</td>
@@ -664,7 +710,14 @@ export function SuppliersTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Company</span>
-                <span className="col-span-2 text-slate-800 font-semibold">{selectedSupplier.company}</span>
+                <span className="col-span-2 text-slate-800 font-semibold flex items-center gap-1.5 flex-wrap">
+                  <span>{selectedSupplier.company}</span>
+                  {selectedSupplier.companyActive === false && selectedSupplier.company !== '-' && (
+                    <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
+                      (Inactive)
+                    </span>
+                  )}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -857,15 +910,37 @@ export function SuppliersTab({
                   <label className="block font-semibold text-slate-700 mb-1">Company</label>
                   <select
                     value={supFormState.company}
-                    onChange={(e) => setSupFormState({ ...supFormState, company: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) {
+                        setSupFormState({ ...supFormState, company: '' });
+                        return;
+                      }
+                      const comp = companiesList.find(c => (c.name || c.code) === val || c.id === val);
+                      if (comp && isCompanyInactive(comp)) {
+                        setModalError(`Cannot assign Supplier to inactive Company "${comp.name}". Please select an active Company.`);
+                        setSupFormState({ ...supFormState, company: '' });
+                        return;
+                      }
+                      setModalError('');
+                      setSupFormState({ ...supFormState, company: val });
+                    }}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
                     <option value="">- Select Company -</option>
-                    {companiesList.map((c) => (
-                      <option key={c.id || c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {sortedCompanies.map((c) => {
+                      const isInactive = isCompanyInactive(c);
+                      return (
+                        <option
+                          key={c.id || c.name}
+                          value={c.name}
+                          disabled={isInactive}
+                          className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                        >
+                          {c.name}{isInactive ? ' (Inactive)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
@@ -979,14 +1054,33 @@ export function SuppliersTab({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Status</label>
-                <select
-                  value={supFormState.status}
-                  onChange={(e) => setSupFormState({ ...supFormState, status: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
+                {(() => {
+                  const selectedComp = companiesList.find(c => (c.name || c.code) === supFormState.company || c.id === supFormState.company);
+                  const isCompInactive = selectedComp ? (selectedComp.active === false || selectedComp.status === 'Inactive') : false;
+                  return (
+                    <>
+                      <select
+                        value={isCompInactive ? 'Inactive' : supFormState.status}
+                        disabled={isCompInactive}
+                        onChange={(e) => setSupFormState({ ...supFormState, status: e.target.value })}
+                        className={clsx(
+                          'w-full border rounded-xl px-3 py-2 text-xs focus:outline-none',
+                          isCompInactive
+                            ? 'border-rose-200 bg-rose-50/50 text-rose-600 cursor-not-allowed italic font-semibold'
+                            : 'border-slate-200 bg-white cursor-pointer focus:border-[#6C2BD9]'
+                        )}
+                      >
+                        <option value="Active" disabled={isCompInactive}>Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                      {isCompInactive && (
+                        <p className="text-[11px] text-rose-600 mt-1 font-medium">
+                          Supplier status is locked to Inactive because assigned Company is inactive.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

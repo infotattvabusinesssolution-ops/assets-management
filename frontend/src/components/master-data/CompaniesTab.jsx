@@ -232,7 +232,11 @@ export function CompaniesTab({
       const updated = companies.map(c => c.id === comp.id ? { ...c, active: nextStatus } : c);
       setCompanies(updated);
       if (selectedCompany?.id === comp.id) setSelectedCompany({ ...selectedCompany, active: nextStatus });
-      triggerToast && triggerToast(`Company "${comp.name}" marked as ${nextStatus ? 'Active' : 'Inactive'}.`);
+      if (nextStatus === false) {
+        triggerToast && triggerToast(`Company "${comp.name}" and its departments marked as Inactive.`);
+      } else {
+        triggerToast && triggerToast(`Company "${comp.name}" marked as Active.`);
+      }
     } catch {
       triggerToast && triggerToast('Failed to update company status.');
     }

@@ -98,6 +98,8 @@ export function DepartmentsTab({
             ? matchedEmps.length
             : (dept._count?.employees || dept.employees || 0);
 
+          const isCompActive = dept.company ? (dept.company.active !== false && dept.company.status !== 'Inactive') : true;
+          const isDeptActive = dept.active !== false && isCompActive;
           return {
             id: dept.id,
             code: dept.code,
@@ -111,23 +113,26 @@ export function DepartmentsTab({
             parentDepartment: dept.parentDepartment || '',
             location: dept.location || dept.site?.name || '',
             company: dept.company?.name || dept.company || '',
+            companyId: dept.company?.id || dept.companyId || '',
+            companyActive: isCompActive,
+            active: isDeptActive,
             manager: dept.manager || dept.head || '',
             email: dept.email || '',
             phone: dept.phone || '',
             description: dept.description || '',
             employees: empCount,
-            status: dept.active === false ? 'Inactive' : 'Active',
-            createdBy: dept.createdBy || 'System',
-            createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-            lastModifiedBy: dept.lastModifiedBy || 'System',
-            lastModifiedOn: dept.updatedAt ? new Date(dept.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
-            relatedInfo: {
-              subDepartments: dept.subDepartmentsCount || 0,
-              locations: dept.locationsCount || 0,
-              assets: dept.assetsCount || 0,
-              users: dept.usersCount || 0
-            }
-          };
+            status: isDeptActive ? 'Active' : 'Inactive',
+              createdBy: dept.createdBy || 'System',
+              createdOn: dept.createdAt ? new Date(dept.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+              lastModifiedBy: dept.lastModifiedBy || 'System',
+              lastModifiedOn: dept.updatedAt ? new Date(dept.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
+              relatedInfo: {
+                subDepartments: dept.subDepartmentsCount || 0,
+                locations: dept.locationsCount || 0,
+                assets: dept.assetsCount || 0,
+                users: dept.usersCount || 0
+              }
+            };
         });
         setDepartmentsList(mapped);
         setSelectedDepartment((prev) => (prev ? mapped.find((d) => d.id === prev.id) || mapped[0] || null : mapped[0] || null));
@@ -199,6 +204,21 @@ export function DepartmentsTab({
     });
   }, [departmentsList, deptSearchQuery, deptTypeFilter, deptStatusFilter, deptLocationFilter, deptCompanyFilter]);
 
+  const isCompanyInactive = (c) => {
+    if (!c) return false;
+    return c.active === false || c.status === 'Inactive';
+  };
+
+  const sortedCompanies = useMemo(() => {
+    return [...companiesList].sort((a, b) => {
+      const aInactive = isCompanyInactive(a);
+      const bInactive = isCompanyInactive(b);
+      if (!aInactive && bInactive) return -1;
+      if (aInactive && !bInactive) return 1;
+      return (a.name || a.code || '').localeCompare(b.name || b.code || '');
+    });
+  }, [companiesList]);
+
   const {
     currentPage,
     totalPages,
@@ -227,7 +247,7 @@ export function DepartmentsTab({
         type: deptToEdit.type || 'Support',
         parentDepartment: deptToEdit.parentDepartment || '',
         location: deptToEdit.location || '',
-        company: deptToEdit.company || (companiesList[0]?.name || ''),
+        company: deptToEdit.company || '',
         manager: deptToEdit.manager || '',
         email: deptToEdit.email || '',
         phone: deptToEdit.phone || '',
@@ -236,13 +256,14 @@ export function DepartmentsTab({
       });
     } else {
       setEditingDepartment(null);
+      const activeCompanies = companiesList.filter(c => c.active !== false && c.status !== 'Inactive');
       setDeptFormState({
         code: '',
         name: '',
         type: 'Support',
         parentDepartment: '',
         location: '',
-        company: companiesList[0]?.name || '',
+        company: activeCompanies[0]?.name || '',
         manager: '',
         email: '',
         phone: '',
@@ -287,7 +308,19 @@ export function DepartmentsTab({
     }
 
     const matchedComp = companiesList.find(c => c.name === deptFormState.company || c.code === deptFormState.company || c.id === deptFormState.company);
-    const companyId = matchedComp?.id || null;
+    if (!matchedComp) {
+      const msg = 'Please select a valid Company.';
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+    if (isCompanyInactive(matchedComp)) {
+      const msg = `Cannot assign Department to inactive Company "${matchedComp.name}". Please select an active Company.`;
+      setModalError(msg);
+      triggerToast && triggerToast(msg);
+      return;
+    }
+    const companyId = matchedComp.id;
 
     const payload = {
       code: cleanCode,
@@ -354,20 +387,23 @@ export function DepartmentsTab({
   const handleToggleDepartmentStatus = async (dept) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = dept.status === 'Active' ? 'Inactive' : 'Active';
+    if (newStatus === 'Active') {
+      const comp = companiesList.find(c => c.name === dept.company || c.code === dept.company || c.id === dept.companyId);
+      if ((comp && isCompanyInactive(comp)) || dept.companyActive === false) {
+        const msg = `Cannot activate Department "${dept.code}" because parent Company "${dept.company || 'assigned company'}" is inactive.`;
+        triggerToast && triggerToast(msg);
+        return;
+      }
+    }
     try {
       await api.patch(`/master-data/entities/department/${dept.id}/status`);
       await loadDepartments();
       triggerToast && triggerToast(`Department "${dept.code}" status changed to ${newStatus}.`);
     } catch (err) {
       console.warn('Toggle status error:', err);
-      const updated = departmentsList.map((d) =>
-        d.id === dept.id ? { ...d, status: newStatus } : d
-      );
-      setDepartmentsList(updated);
-      if (selectedDepartment?.id === dept.id) {
-        setSelectedDepartment({ ...selectedDepartment, status: newStatus });
-      }
-      triggerToast && triggerToast(`Department "${dept.code}" status changed to ${newStatus}.`);
+      const msg = err.response?.data?.message || err.message || 'Failed to update department status.';
+      triggerToast && triggerToast(msg);
+      await loadDepartments();
     }
   };
 
@@ -458,11 +494,14 @@ export function DepartmentsTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Companies">All Companies</option>
-              {companiesList.map((c) => (
-                <option key={c.id || c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
+              {sortedCompanies.map((c) => {
+                const isInactive = isCompanyInactive(c);
+                return (
+                  <option key={c.id || c.name} value={c.name}>
+                    {c.name}{isInactive ? ' (Inactive)' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -548,7 +587,28 @@ export function DepartmentsTab({
                     >
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{startIndex + index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{dept.code}</td>
-                      <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{dept.name}</td>
+                      <td className="py-2.5 px-3">
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span className="text-[#1E1B4B] font-bold">{dept.name}</span>
+                          {dept.company && (
+                            <div className="flex items-center gap-1">
+                              <span className="text-[10px] text-slate-400 font-medium">{dept.company}</span>
+                              {(() => {
+                                const comp = companiesList.find(c => (c.name || c.code) === dept.company || c.id === dept.companyId);
+                                const isInactive = (comp && isCompanyInactive(comp)) || dept.companyActive === false;
+                                if (isInactive) {
+                                  return (
+                                    <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0 rounded">
+                                      (Inactive)
+                                    </span>
+                                  );
+                                }
+                                return null;
+                              })()}
+                            </div>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-2.5 px-3 text-slate-700">{dept.type || '-'}</td>
                       <td className="py-2.5 px-3 text-slate-800 font-medium">{dept.manager || '-'}</td>
                       <td className="py-2.5 px-3 text-slate-700">{dept.location || '-'}</td>
@@ -689,7 +749,21 @@ export function DepartmentsTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Company</span>
-                <span className="col-span-2 text-slate-700">{selectedDepartment.company}</span>
+                <span className="col-span-2 text-slate-800 font-semibold flex items-center gap-1.5 flex-wrap">
+                  <span>{selectedDepartment.company || '-'}</span>
+                  {(() => {
+                    const comp = companiesList.find(c => (c.name || c.code) === selectedDepartment.company || c.id === selectedDepartment.companyId);
+                    const isInactive = (comp && isCompanyInactive(comp)) || selectedDepartment.companyActive === false;
+                    if (isInactive) {
+                      return (
+                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
+                          (Inactive)
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -877,31 +951,69 @@ export function DepartmentsTab({
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
                     <option value="-">- (None / Top Level)</option>
-                    {departmentsList
+                    {[...departmentsList]
                       .filter((d) => !editingDepartment || d.id !== editingDepartment.id)
-                      .map((d) => (
-                        <option key={d.id} value={d.code}>
-                          {d.code} ({d.name})
-                        </option>
-                      ))}
+                      .sort((a, b) => {
+                        const aInactive = a.status === 'Inactive' || a.active === false;
+                        const bInactive = b.status === 'Inactive' || b.active === false;
+                        if (aInactive && !bInactive) return 1;
+                        if (!aInactive && bInactive) return -1;
+                        return (a.name || '').localeCompare(b.name || '');
+                      })
+                      .map((d) => {
+                        const isInactive = d.status === 'Inactive' || d.active === false;
+                        return (
+                          <option
+                            key={d.id}
+                            value={d.code}
+                            disabled={isInactive}
+                            className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                          >
+                            {d.code} ({d.name}){isInactive ? ' (Inactive)' : ''}
+                          </option>
+                        );
+                      })}
                   </select>
                 </div>
               </div>
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Company</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Company *</label>
                   <select
+                    required
                     value={deptFormState.company}
-                    onChange={(e) => setDeptFormState({ ...deptFormState, company: e.target.value })}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      if (!val) {
+                        setDeptFormState({ ...deptFormState, company: '' });
+                        return;
+                      }
+                      const comp = companiesList.find(c => (c.name || c.code) === val || c.id === val);
+                      if (comp && isCompanyInactive(comp)) {
+                        setModalError(`Cannot assign Department to inactive Company "${comp.name}". Please select an active Company.`);
+                        setDeptFormState({ ...deptFormState, company: '' });
+                        return;
+                      }
+                      setModalError('');
+                      setDeptFormState({ ...deptFormState, company: val });
+                    }}
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
                     <option value="">- Select Company -</option>
-                    {companiesList.map((c) => (
-                      <option key={c.id || c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {sortedCompanies.map((c) => {
+                      const isInactive = isCompanyInactive(c);
+                      return (
+                        <option
+                          key={c.id || c.name}
+                          value={c.name}
+                          disabled={isInactive}
+                          className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                        >
+                          {c.name}{isInactive ? ' (Inactive)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
@@ -983,14 +1095,33 @@ export function DepartmentsTab({
 
               <div>
                 <label className="block font-semibold text-slate-700 mb-1">Status</label>
-                <select
-                  value={deptFormState.status}
-                  onChange={(e) => setDeptFormState({ ...deptFormState, status: e.target.value })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
+                {(() => {
+                  const selectedComp = companiesList.find(c => (c.name || c.code) === deptFormState.company || c.id === deptFormState.company);
+                  const isCompInactive = selectedComp ? isCompanyInactive(selectedComp) : false;
+                  return (
+                    <>
+                      <select
+                        value={isCompInactive ? 'Inactive' : deptFormState.status}
+                        disabled={isCompInactive}
+                        onChange={(e) => setDeptFormState({ ...deptFormState, status: e.target.value })}
+                        className={clsx(
+                          'w-full border rounded-xl px-3 py-2 text-xs focus:outline-none',
+                          isCompInactive
+                            ? 'border-rose-200 bg-rose-50/50 text-rose-600 cursor-not-allowed italic font-semibold'
+                            : 'border-slate-200 bg-white cursor-pointer focus:border-[#6C2BD9]'
+                        )}
+                      >
+                        <option value="Active" disabled={isCompInactive}>Active</option>
+                        <option value="Inactive">Inactive</option>
+                      </select>
+                      {isCompInactive && (
+                        <p className="text-[11px] text-rose-600 mt-1 font-medium">
+                          Department status is locked to Inactive because selected Company is inactive.
+                        </p>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
 
               <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2">

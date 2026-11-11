@@ -53,20 +53,27 @@ export function CostCentersTab({
       if (compRes?.companies) setCompaniesList(compRes.companies);
       if (deptRes?.departments) setDepartmentsList(deptRes.departments);
       if (res?.costCenters && res.costCenters.length > 0) {
-        const mapped = res.costCenters.map((cc) => ({
-          id: cc.id,
-          code: cc.code,
-          name: cc.name,
-          company: cc.company?.name || cc.company || '-',
-          companyId: cc.companyId || cc.company?.id || '',
-          department: cc.department?.name || cc.department || '-',
-          departmentId: cc.departmentId || cc.department?.id || '',
-          type: cc.type || '',
-          manager: cc.manager || cc.head || '',
-          description: cc.description || '',
-          totalAssets: cc.totalAssets ?? (cc._count?.assets || 0),
-          status: cc.active === false ? 'Inactive' : 'Active',
-          createdBy: cc.createdBy || 'System',
+        const mapped = res.costCenters.map((cc) => {
+          const isCompActive = cc.company ? (cc.company.active !== false && cc.company.status !== 'Inactive') : true;
+          const isDeptActive = cc.department ? (cc.department.active !== false && cc.department.status !== 'Inactive') : true;
+          const isCCActive = cc.active !== false && isCompActive && isDeptActive;
+          return {
+            id: cc.id,
+            code: cc.code,
+            name: cc.name,
+            company: cc.company?.name || cc.company || '-',
+            companyId: cc.companyId || cc.company?.id || '',
+            companyActive: isCompActive,
+            department: cc.department?.name || cc.department || '-',
+            departmentId: cc.departmentId || cc.department?.id || '',
+            departmentActive: isDeptActive,
+            type: cc.type || '',
+            manager: cc.manager || cc.head || '',
+            description: cc.description || '',
+            totalAssets: cc.totalAssets ?? (cc._count?.assets || 0),
+            active: isCCActive,
+            status: isCCActive ? 'Active' : 'Inactive',
+            createdBy: cc.createdBy || 'System',
           createdOn: cc.createdAt ? new Date(cc.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
           lastModifiedBy: cc.lastModifiedBy || 'System',
           lastModifiedOn: cc.updatedAt ? new Date(cc.updatedAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) : '-',
@@ -78,7 +85,8 @@ export function CostCentersTab({
             budgets: 0,
             documents: 0
           }
-        }));
+        };
+      });
         setCostCentersList(mapped);
         setSelectedCostCenter((prev) => (prev ? mapped.find((c) => c.id === prev.id) || mapped[0] || null : mapped[0] || null));
       } else {
@@ -296,20 +304,23 @@ export function CostCentersTab({
   const handleToggleCCStatus = async (cc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = cc.status === 'Active' ? 'Inactive' : 'Active';
+    if (newStatus === 'Active') {
+      const comp = companiesList.find(c => c.name === cc.company || c.code === cc.company || c.id === cc.companyId);
+      if ((comp && (comp.active === false || comp.status === 'Inactive')) || cc.companyActive === false) {
+        const msg = `Cannot activate Cost Center "${cc.code}" because parent Company "${cc.company || 'assigned company'}" is inactive.`;
+        triggerToast && triggerToast(msg);
+        return;
+      }
+    }
     try {
       await api.patch(`/master-data/entities/cost_center/${cc.id}/status`);
       await loadCostCenters();
       triggerToast && triggerToast(`Cost Center "${cc.code}" status changed to ${newStatus}.`);
     } catch (err) {
       console.warn('Status toggle error:', err);
-      const updated = costCentersList.map((c) =>
-        c.id === cc.id ? { ...c, status: newStatus } : c
-      );
-      setCostCentersList(updated);
-      if (selectedCostCenter?.id === cc.id) {
-        setSelectedCostCenter({ ...selectedCostCenter, status: newStatus });
-      }
-      triggerToast && triggerToast(`Cost Center "${cc.code}" status changed to ${newStatus}.`);
+      const msg = err.response?.data?.message || err.message || 'Failed to update cost center status.';
+      triggerToast && triggerToast(msg);
+      await loadCostCenters();
     }
   };
 
@@ -354,11 +365,14 @@ export function CostCentersTab({
               className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
             >
               <option value="All Companies">All Companies</option>
-              {companiesList.map((c) => (
-                <option key={c.id || c.name} value={c.name}>
-                  {c.name}
-                </option>
-              ))}
+              {companiesList.map((c) => {
+                const isInactive = c.active === false || c.status === 'Inactive';
+                return (
+                  <option key={c.id || c.name} value={c.name}>
+                    {c.name}{isInactive ? ' (Inactive)' : ''}
+                  </option>
+                );
+              })}
             </select>
           </div>
 
@@ -805,11 +819,19 @@ export function CostCentersTab({
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
                   >
                     <option value="">- Select Company -</option>
-                    {companiesList.map((c) => (
-                      <option key={c.id || c.name} value={c.name}>
-                        {c.name}
-                      </option>
-                    ))}
+                    {companiesList.map((c) => {
+                      const isInactive = c.active === false || c.status === 'Inactive';
+                      return (
+                        <option
+                          key={c.id || c.name}
+                          value={c.name}
+                          disabled={isInactive}
+                          className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                        >
+                          {c.name}{isInactive ? ' (Inactive)' : ''}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
                 <div>
