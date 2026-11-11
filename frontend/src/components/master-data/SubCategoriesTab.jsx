@@ -896,7 +896,7 @@ export function SubCategoriesTab({
                   entityKey="sub_category"
                   value={subCatFormState.code}
                   onChange={(code) => setSubCatFormState({ ...subCatFormState, code })}
-                  disabled={!!editingSubCat}
+                  disabled={!!editingSubCategory}
                 />
               </div>
 
