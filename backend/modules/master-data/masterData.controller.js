@@ -636,7 +636,7 @@ export async function createCompany(req, res, next) {
           where: {
             OR: [
               { code: cleanCode },
-              { name: { equals: cleanName, mode: 'insensitive' } }
+              { name: cleanName }
             ]
           }
         });
@@ -674,7 +674,7 @@ export async function updateCompany(req, res, next) {
             id: { not: id },
             OR: [
               ...(cleanCode ? [{ code: cleanCode }] : []),
-              ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+              ...(cleanName ? [{ name: cleanName }] : [])
             ]
           }
         });
@@ -1511,7 +1511,7 @@ export async function createCategory(req, res, next) {
           where: {
             OR: [
               { code: cleanCode },
-              { name: { equals: cleanName, mode: 'insensitive' } }
+              { name: cleanName }
             ]
           }
         });
@@ -1609,7 +1609,7 @@ export async function updateCategory(req, res, next) {
               id: { not: id },
               OR: [
                 ...(cleanCode ? [{ code: cleanCode }] : []),
-                ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+                ...(cleanName ? [{ name: cleanName }] : [])
               ]
             }
           });
@@ -2862,7 +2862,7 @@ export async function createManufacturer(req, res, next) {
     if (isDbConnected()) {
       try {
         const existingMfr = await prisma.manufacturer.findFirst({
-          where: { name: { equals: cleanName, mode: 'insensitive' } }
+          where: { name: cleanName }
         });
         if (existingMfr) {
           return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists.` });
@@ -2945,7 +2945,7 @@ export async function updateManufacturer(req, res, next) {
         const existingMfr = await prisma.manufacturer.findFirst({
           where: {
             id: { not: existing.id },
-            name: { equals: cleanName, mode: 'insensitive' }
+            name: cleanName
           }
         });
         if (existingMfr) {
@@ -3471,7 +3471,7 @@ export async function createCostCenter(req, res, next) {
           where: {
             OR: [
               { code: cleanCode },
-              { name: { equals: cleanName, mode: 'insensitive' } }
+              { name: cleanName }
             ]
           }
         });
@@ -3526,7 +3526,7 @@ export async function updateCostCenter(req, res, next) {
             id: { not: id },
             OR: [
               ...(cleanCode ? [{ code: cleanCode }] : []),
-              ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+              ...(cleanName ? [{ name: cleanName }] : [])
             ]
           }
         });
