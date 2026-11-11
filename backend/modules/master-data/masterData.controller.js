@@ -25,6 +25,136 @@ function resolveDataFile(filename) {
   return defaultPath;
 }
 
+const MASTER_CODE_PREFIXES_FILE = resolveDataFile('master_code_prefixes.json');
+
+export const DEFAULT_MASTER_CODE_PREFIXES = {
+  department: 'DEP-',
+  cost_center: 'CC-',
+  company: 'CMP-',
+  site: 'LOC-',
+  building: 'BLD-',
+  floor: 'FLR-',
+  room: 'RM-',
+  location_level_1: 'LOC-L1-',
+  location_level_2: 'LOC-L2-',
+  location_level_3: 'LOC-L3-',
+  location_level_4: 'LOC-L4-',
+  asset_group: 'GRP-',
+  category: 'CAT-',
+  sub_category: 'SUB-',
+  asset_class: 'CLS-',
+  asset_type: 'TYP-',
+  item_master: 'ITM-',
+  model: 'MOD-',
+  manufacturer: 'MFR-',
+  brand: 'BRD-',
+  employee: 'EMP-',
+  supplier: 'SUP-',
+  vendor: 'VEN-',
+  uom: 'UOM-',
+  asset_condition: 'COND-',
+  reason: 'RSN-',
+  custom_field: 'CF-',
+  disposal_status: 'DISP-',
+  country: 'CNT-',
+  location_type: 'LT-',
+  business_unit: 'BU-'
+};
+
+let inMemoryCodePrefixes = readCodePrefixesFromFile();
+
+function readCodePrefixesFromFile() {
+  try {
+    if (fs.existsSync(MASTER_CODE_PREFIXES_FILE)) {
+      const data = fs.readFileSync(MASTER_CODE_PREFIXES_FILE, 'utf8');
+      const parsed = JSON.parse(data);
+      if (parsed && typeof parsed === 'object') return { ...DEFAULT_MASTER_CODE_PREFIXES, ...parsed };
+    }
+  } catch (e) {
+    console.warn('Failed to read master_code_prefixes.json:', e.message);
+  }
+  return { ...DEFAULT_MASTER_CODE_PREFIXES };
+}
+
+function writeCodePrefixesToFile(prefixes) {
+  try {
+    const dir = path.dirname(MASTER_CODE_PREFIXES_FILE);
+    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+    fs.writeFileSync(MASTER_CODE_PREFIXES_FILE, JSON.stringify(prefixes, null, 2), 'utf8');
+  } catch (e) {
+    console.warn('Failed to write master_code_prefixes.json:', e.message);
+  }
+}
+
+export function getPrefixForEntity(entityKey) {
+  const normKey = String(entityKey || '').toLowerCase().replace(/[-\s]/g, '_');
+  const prefixes = inMemoryCodePrefixes || DEFAULT_MASTER_CODE_PREFIXES;
+  const p = prefixes[normKey] || DEFAULT_MASTER_CODE_PREFIXES[normKey];
+  if (p) return p.endsWith('-') ? p : `${p}-`;
+  return `${normKey.slice(0, 3).toUpperCase()}-`;
+}
+
+export async function generateAutoCode(entityKey, fallbackSeed = '', existingList = [], dbTable = null) {
+  const cleanPrefix = getPrefixForEntity(entityKey);
+  
+  let count = Array.isArray(existingList) ? existingList.length : 0;
+  if (dbTable && isDbConnected()) {
+    try {
+      const res = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM ${dbTable}`);
+      if (res && res[0] && res[0].cnt !== undefined) {
+        count = Math.max(count, Number(res[0].cnt));
+      }
+    } catch (_) {}
+  }
+  
+  let nextNum = count + 1;
+  let candidate = `${cleanPrefix}${String(nextNum).padStart(3, '0')}`;
+  
+  const isCodeTaken = (code) => {
+    return Array.isArray(existingList) && existingList.some(item => {
+      const c = item.code || item.itemCode || item.employeeCode || item.providerCode;
+      return c && c.toUpperCase() === code.toUpperCase();
+    });
+  };
+  
+  while (isCodeTaken(candidate) && nextNum < count + 1000) {
+    nextNum++;
+    candidate = `${cleanPrefix}${String(nextNum).padStart(3, '0')}`;
+  }
+  
+  if (isCodeTaken(candidate)) {
+    candidate = `${cleanPrefix}${Date.now().toString().slice(-4)}`;
+  }
+  
+  return candidate;
+}
+
+export async function getCodePrefixes(req, res, next) {
+  try {
+    const prefixes = inMemoryCodePrefixes || readCodePrefixesFromFile();
+    res.json({ success: true, prefixes });
+  } catch (err) { next(err); }
+}
+
+export async function updateCodePrefixes(req, res, next) {
+  try {
+    const { prefixes } = req.body;
+    if (!prefixes || typeof prefixes !== 'object') {
+      return res.status(400).json({ success: false, message: 'Valid prefixes object is required.' });
+    }
+    const cleanPrefixes = {};
+    for (const [k, v] of Object.entries(prefixes)) {
+      if (typeof v === 'string') {
+        const clean = v.trim().toUpperCase();
+        cleanPrefixes[k.toLowerCase()] = clean.endsWith('-') ? clean : (clean ? `${clean}-` : '');
+      }
+    }
+    inMemoryCodePrefixes = { ...DEFAULT_MASTER_CODE_PREFIXES, ...cleanPrefixes };
+    writeCodePrefixesToFile(inMemoryCodePrefixes);
+    res.json({ success: true, message: 'Master code prefixes updated successfully.', prefixes: inMemoryCodePrefixes });
+  } catch (err) { next(err); }
+}
+
 export async function getMasterDataStats(req, res, next) {
   try {
     let assetGroupsCount = memoryAssetGroups.length;
@@ -215,11 +345,11 @@ export async function getAssetGroups(req, res, next) {
 export async function createAssetGroup(req, res, next) {
   try {
     const { code, name, description, assetType, status } = req.body;
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: 'Code and Name are required.' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Asset Group Name is required.' });
     }
-    const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : await generateAutoCode('asset_group', cleanName, memoryAssetGroups, 'asset_groups');
 
     // Check duplicate in memory first
     if (memoryAssetGroups.some(g => (g.code || '').toUpperCase() === cleanCode)) {
@@ -494,11 +624,11 @@ export async function getCompanies(req, res, next) {
 export async function createCompany(req, res, next) {
   try {
     const { code, name } = req.body;
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: 'Company Code and Name are required.' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Company Name is required.' });
     }
-    const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : await generateAutoCode('company', cleanName, [], 'companies');
 
     if (isDbConnected()) {
       try {
@@ -809,12 +939,12 @@ export async function getSites(req, res, next) {
 export async function createSite(req, res, next) {
   try {
     const { code, name, type, locationLevel1, locationLevel2, locationLevel3, locationLevel4, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: 'Location Code and Name are required.' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Location Name is required.' });
     }
 
-    const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : await generateAutoCode('site', cleanName, inMemoryLocations, 'sites');
     // System enumeration: strictly 'Internal' or 'External'
     const cleanType = (type === 'External') ? 'External' : 'Internal';
     const cleanLevel = ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(level) ? level : 'Level 1';
@@ -1120,7 +1250,13 @@ export async function getBuildings(req, res, next) {
 
 export async function createBuilding(req, res, next) {
   try {
-    const building = await prisma.building.create({ data: req.body });
+    const payload = { ...req.body };
+    if (!payload.code || !payload.code.trim()) {
+      payload.code = await generateAutoCode('building', payload.name, [], 'buildings');
+    } else {
+      payload.code = payload.code.trim().toUpperCase();
+    }
+    const building = await prisma.building.create({ data: payload });
     res.status(201).json({ success: true, building });
   } catch (err) { next(err); }
 }
@@ -1137,7 +1273,13 @@ export async function getFloors(req, res, next) {
 
 export async function createFloor(req, res, next) {
   try {
-    const floor = await prisma.floor.create({ data: req.body });
+    const payload = { ...req.body };
+    if (!payload.code || !payload.code.trim()) {
+      payload.code = await generateAutoCode('floor', payload.name, [], 'floors');
+    } else {
+      payload.code = payload.code.trim().toUpperCase();
+    }
+    const floor = await prisma.floor.create({ data: payload });
     res.status(201).json({ success: true, floor });
   } catch (err) { next(err); }
 }
@@ -1154,7 +1296,13 @@ export async function getRooms(req, res, next) {
 
 export async function createRoom(req, res, next) {
   try {
-    const room = await prisma.room.create({ data: req.body });
+    const payload = { ...req.body };
+    if (!payload.code || !payload.code.trim()) {
+      payload.code = await generateAutoCode('room', payload.name, [], 'rooms');
+    } else {
+      payload.code = payload.code.trim().toUpperCase();
+    }
+    const room = await prisma.room.create({ data: payload });
     res.status(201).json({ success: true, room });
   } catch (err) { next(err); }
 }
@@ -1199,11 +1347,11 @@ export async function createCategory(req, res, next) {
       depreciationMethod, annualDepreciationRatePercent, 
       assetSubGroupId, className, subGroupName 
     } = req.body;
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: 'Category Code and Name are required.' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Category Name is required.' });
     }
-    const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : await generateAutoCode('category', cleanName, [], 'categories');
     const classFromDesc = (description || '').match(/\[class:([^\]]+)\]/)?.[1];
     const targetSubGroupName = (className || subGroupName || classFromDesc || '').trim();
 
@@ -1744,11 +1892,13 @@ export async function createAssetSubGroup(req, res, next) {
   try {
     await ensureAssetSubGroupsTable();
     const { code, name, assetGroupId, assetGroupName, groupName, assetType, description, active, status } = req.body;
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: 'Asset Sub Group Code and Name are required.' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Asset Sub Group Name is required.' });
     }
-    const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('asset_sub_group', cleanName, readAssetSubGroupsFromFile(), 'asset_sub_groups');
     const cleanGroup = (groupName || assetGroupName || '').trim();
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
 
@@ -2161,11 +2311,13 @@ export async function createSubCategory(req, res, next) {
   try {
     await ensureSubCategoriesTable();
     const { code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, className, assetGroupId, assetGroupName, groupName, description, active, status } = req.body;
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: 'Sub Category Code and Name are required.' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Sub Category Name is required.' });
     }
-    const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('sub_category', cleanName, readSubCategoriesFromFile(), 'sub_categories');
     let resolvedCatName = (categoryName || '').trim();
     let cleanSubGroup = (assetSubGroupName || className || '').trim();
     let cleanGroup = (assetGroupName || groupName || '').trim();
@@ -2593,7 +2745,9 @@ export async function createManufacturer(req, res, next) {
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Manufacturer Name is required.' });
 
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : `MFG-${cleanName.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('manufacturer', cleanName, inMemoryManufacturers, 'manufacturers');
 
     // Duplicate check
     if (inMemoryManufacturers.some(m => (m.code || '').toUpperCase() === cleanCode)) {
@@ -2865,7 +3019,15 @@ export async function getModels(req, res, next) {
 
 export async function createModel(req, res, next) {
   try {
-    const model = await prisma.assetModel.create({ data: req.body });
+    const payload = { ...req.body };
+    const rawCode = payload.modelNumber || payload.code;
+    if (!rawCode || !rawCode.trim()) {
+      payload.modelNumber = await generateAutoCode('model', payload.name || '', [], 'asset_models');
+    } else {
+      payload.modelNumber = rawCode.trim().toUpperCase();
+    }
+    delete payload.code;
+    const model = await prisma.assetModel.create({ data: payload });
     res.status(201).json({ success: true, model });
   } catch (err) { next(err); }
 }
@@ -2945,7 +3107,9 @@ export async function createDepartment(req, res, next) {
       return res.status(400).json({ success: false, message: 'Department Name is required.' });
     }
     const cleanName = name.trim();
-    const cleanCode = (code || `DEP-${Date.now()}`).trim().toUpperCase();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('department', cleanName, [], 'departments');
 
     if (isDbConnected()) {
       try {
@@ -3195,7 +3359,9 @@ export async function createCostCenter(req, res, next) {
       return res.status(400).json({ success: false, message: 'Cost Center Name is required.' });
     }
     const cleanName = name.trim();
-    const cleanCode = (code || `CC-${Date.now()}`).trim().toUpperCase();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('cost_center', cleanName, [], 'cost_centers');
 
     if (isDbConnected()) {
       try {
@@ -3371,7 +3537,9 @@ export async function createEmployee(req, res, next) {
       return res.status(400).json({ success: false, message: 'Custodian Full Name is required.' });
     }
 
-    const code = (employeeCode || `EMP-${Date.now().toString().slice(-4)}`).trim().toUpperCase();
+    const code = (employeeCode && employeeCode.trim())
+      ? employeeCode.trim().toUpperCase()
+      : await generateAutoCode('employee', fullName, [], 'employees');
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const mail = (email || `${code.toLowerCase()}@company.local`).trim();
 
@@ -3602,7 +3770,11 @@ export async function getCustomFields(req, res, next) {
 
 export async function createCustomField(req, res, next) {
   try {
-    const field = await prisma.customFieldDefinition.create({ data: req.body });
+    const data = { ...req.body };
+    if (!data.name || !data.name.trim()) {
+      data.name = await generateAutoCode('custom_field', data.label || 'custom_field');
+    }
+    const field = await prisma.customFieldDefinition.create({ data });
     res.status(201).json({ success: true, field });
   } catch (err) { next(err); }
 }
@@ -3946,9 +4118,11 @@ export async function getAssetTypes(req, res, next) {
 export async function createAssetType(req, res, next) {
   try {
     const { code, name, description, category, stage, active } = req.body;
-    if (!name) return res.status(400).json({ success: false, message: 'Asset Type Name is required.' });
-    const cleanCode = (code || name.slice(0, 4)).toUpperCase().trim();
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Asset Type Name is required.' });
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('asset_type', cleanName, inMemoryAssetTypes, 'asset_types');
     const cleanDesc = description || '';
     const cleanCat = category || 'Discrete Count';
     const cleanStage = stage || 'Operational';
@@ -4673,15 +4847,16 @@ async function ensureUomsTable() {
 
 // Generate Next Item Code (e.g. ITM-000104)
 function generateNextItemCode() {
+  const prefix = getPrefixForEntity('item_master') || 'ITM-';
   const existingCodes = inMemoryItemMasters
     .map(i => i.itemCode || '')
-    .filter(c => c.startsWith('ITM-'));
+    .filter(c => c.startsWith(prefix));
   let maxSeq = 100;
   for (const c of existingCodes) {
-    const num = parseInt(c.replace('ITM-', ''), 10);
+    const num = parseInt(c.replace(prefix, ''), 10);
     if (!isNaN(num) && num > maxSeq) maxSeq = num;
   }
-  return `ITM-${String(maxSeq + 1).padStart(6, '0')}`;
+  return `${prefix}${String(maxSeq + 1).padStart(6, '0')}`;
 }
 
 export async function getItemMasters(req, res, next) {
@@ -5219,9 +5394,11 @@ export async function getUoms(req, res, next) {
 export async function createUom(req, res, next) {
   try {
     const { code, name, symbol, category, description, active } = req.body;
-    if (!code || !name) return res.status(400).json({ success: false, message: 'UOM Code and Name are required.' });
-    const cleanCode = code.trim().toUpperCase();
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'UOM Name is required.' });
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('uom', cleanName, inMemoryUoms, 'units_of_measure');
     const cleanSymbol = (symbol || '').trim();
     const cleanCategory = (category || 'Discrete Count').trim();
     const cleanDesc = (description || '').trim();
@@ -5407,8 +5584,10 @@ export async function createDisposalStatus(req, res, next) {
     const { code, name, description } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Name is required' });
 
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase().replace(/\s+/g, '_') : name.trim().toUpperCase().replace(/\s+/g, '_');
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase().replace(/\s+/g, '_')
+      : await generateAutoCode('disposal_status', cleanName, inMemoryDisposalStatuses, 'disposal_statuses');
 
     if (inMemoryDisposalStatuses.some(s => s.code.toLowerCase() === cleanCode.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Disposal status code "${cleanCode}" already exists.` });
@@ -5620,7 +5799,9 @@ export async function createBrand(req, res, next) {
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Brand Name is required.' });
 
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : `BRD-${cleanName.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`;
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('brand', cleanName, inMemoryBrands, 'brands');
 
     // Duplicate check on Code and Name
     if (inMemoryBrands.some(b => (b.code || '').toUpperCase() === cleanCode)) {
@@ -5933,7 +6114,9 @@ export async function createCountry(req, res, next) {
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Country name is required' });
 
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase().replace(/\s+/g, '_') : cleanName.substring(0, 3).toUpperCase();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase().replace(/\s+/g, '_')
+      : await generateAutoCode('country', cleanName, inMemoryCountries, 'countries');
 
     if (inMemoryCountries.some(c => c.name.toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Country "${cleanName}" already exists.` });
@@ -6010,7 +6193,9 @@ export async function createLocationType(req, res, next) {
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Location Type name is required' });
 
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase().replace(/\s+/g, '_') : cleanName.toUpperCase().replace(/\s+/g, '_');
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase().replace(/\s+/g, '_')
+      : await generateAutoCode('location_type', cleanName, inMemoryLocationTypes, 'location_types');
 
     if (inMemoryLocationTypes.some(t => t.name.toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Location Type "${cleanName}" already exists.` });
@@ -6132,11 +6317,13 @@ export async function createLocationLevel(req, res, next) {
     const level = parseInt(req.params.level, 10) || 1;
     const tableName = `location_level_${level}`;
     const { code, name, description, status, active } = req.body;
-    if (!code || !name) {
-      return res.status(400).json({ success: false, message: 'Location Code and Location Name are required.' });
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Location Name is required.' });
     }
-    const cleanCode = code.trim().toUpperCase();
     const cleanName = name.trim();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode(`location_level_${level}`, cleanName, readLocationLevelsFromFile(level), tableName);
 
     if (isDbConnected()) {
       try {
@@ -6328,6 +6515,47 @@ export async function getAssetConditions(req, res, next) {
   } catch (err) { next(err); }
 }
 
+export async function createAssetCondition(req, res, next) {
+  try {
+    await ensureAssetConditionsTable();
+    const { code, name, description, active } = req.body;
+    if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Condition Name is required.' });
+    const cleanName = name.trim();
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('asset_condition', cleanName, inMemoryAssetConditions, 'asset_conditions');
+    const cleanDesc = (description || '').trim();
+    const isAct = active !== false;
+
+    if (inMemoryAssetConditions.some(c => (c.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Asset Condition with code "${cleanCode}" already exists.` });
+    }
+
+    const newCond = {
+      id: `cond-${Date.now().toString(36)}`,
+      code: cleanCode,
+      name: cleanName,
+      description: cleanDesc,
+      active: isAct
+    };
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO asset_conditions (id, code, name, description, active)
+          VALUES ('${newCond.id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', ${isAct ? 1 : 0})
+        `);
+      } catch (dbErr) {
+        console.warn('DB createAssetCondition skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryAssetConditions.push(newCond);
+    writeAssetConditionsToFile(inMemoryAssetConditions);
+    res.status(201).json({ success: true, condition: newCond, assetCondition: newCond });
+  } catch (err) { next(err); }
+}
+
 export async function getSuppliers(req, res, next) {
   try {
     const includeInactive = req.query.includeInactive !== 'false';
@@ -6375,7 +6603,9 @@ export async function createSupplier(req, res, next) {
     const cleanName = (providerName || name || '').trim();
     if (!cleanName) return res.status(400).json({ success: false, message: 'Supplier/Vendor Name is required.' });
 
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : `SUP-${cleanName.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}-${Date.now().toString().slice(-4)}`;
+    const cleanCode = (code && code.trim())
+      ? code.trim().toUpperCase()
+      : await generateAutoCode('supplier', cleanName, inMemorySuppliers, 'service_providers');
     const newRecord = {
       id: crypto.randomUUID(),
       code: cleanCode,

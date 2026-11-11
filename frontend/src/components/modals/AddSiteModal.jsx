@@ -23,11 +23,11 @@ export function AddSiteModal({ isOpen, onClose, onSuccess, companies = [] }) {
     setSubmitting(true);
     setErrorMsg('');
 
-    const siteCode = code.trim() ? code.toUpperCase().trim() : `SITE-${name.slice(0, 4).toUpperCase()}`;
+    const siteCode = code.trim() ? code.toUpperCase().trim() : undefined;
     const newSiteObj = {
       _id: `site-${Date.now()}`,
       name: name.trim(),
-      code: siteCode,
+      ...(siteCode ? { code: siteCode } : {}),
       companyId: companyId || undefined,
       city: city.trim(),
       country: country.trim() || 'USA'
@@ -111,7 +111,7 @@ export function AddSiteModal({ isOpen, onClose, onSuccess, companies = [] }) {
             </label>
             <input
               type="text"
-              placeholder="e.g. SITE-BLR"
+              placeholder="Auto-generated if left blank"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               className="input-field font-mono"

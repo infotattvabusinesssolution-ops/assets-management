@@ -22,11 +22,11 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }) {
     setSubmitting(true);
     setErrorMsg('');
 
-    const cmpCode = code.trim() ? code.toUpperCase().trim() : `CMP-${name.slice(0, 4).toUpperCase()}`;
+    const cmpCode = code.trim() ? code.toUpperCase().trim() : undefined;
     const newCompanyObj = {
       _id: `cmp-${Date.now()}`,
       name: name.trim(),
-      code: cmpCode,
+      ...(cmpCode ? { code: cmpCode } : {}),
       currency: currency || 'USD',
       taxId: taxId.trim()
     };
@@ -109,7 +109,7 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }) {
             </label>
             <input
               type="text"
-              placeholder="e.g. CMP-INDIA"
+              placeholder="Auto-generated if left blank"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               className="input-field font-mono"

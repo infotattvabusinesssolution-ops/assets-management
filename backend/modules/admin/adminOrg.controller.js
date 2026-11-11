@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
+import { generateAutoCode } from '../master-data/masterData.controller.js';
 
 // ==========================================
 // SEED DATA PRE-LOADED WITH SCREENSHOT MATCH
@@ -826,7 +827,10 @@ export async function getCostCentersList(req, res) {
 export async function createCompany(req, res) {
   try {
     const data = req.body;
-    if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Name and Code are required' });
+    if (!data.name) return res.status(400).json({ success: false, error: 'Company Name is required' });
+    if (!data.code || !data.code.trim()) {
+      data.code = await generateAutoCode('company', data.name, memoryCompanies, 'companies');
+    }
 
     let createdCompany = null;
     try {
@@ -910,7 +914,10 @@ export async function deleteCompany(req, res) {
 export async function createDepartment(req, res) {
   try {
     const data = req.body;
-    if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Department Name and Code are required' });
+    if (!data.name) return res.status(400).json({ success: false, error: 'Department Name is required' });
+    if (!data.code || !data.code.trim()) {
+      data.code = await generateAutoCode('department', data.name, memoryDepartments, 'departments');
+    }
 
     let comp = null;
     if (data.companyId || data.company) {
@@ -1003,7 +1010,10 @@ export async function deleteDepartment(req, res) {
 export async function createLocation(req, res) {
   try {
     const data = req.body;
-    if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Location Name and Code are required' });
+    if (!data.name) return res.status(400).json({ success: false, error: 'Location Name is required' });
+    if (!data.code || !data.code.trim()) {
+      data.code = await generateAutoCode('site', data.name, memoryLocations, 'sites');
+    }
 
     let comp = null;
     if (data.companyId || data.company) {
@@ -1099,7 +1109,10 @@ export async function deleteLocation(req, res) {
 export async function createCostCenter(req, res) {
   try {
     const data = req.body;
-    if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Cost Center Name and Code are required' });
+    if (!data.name) return res.status(400).json({ success: false, error: 'Cost Center Name is required' });
+    if (!data.code || !data.code.trim()) {
+      data.code = await generateAutoCode('cost_center', data.name, memoryCostCenters, 'cost_centers');
+    }
 
     let comp = null;
     if (data.companyId || data.company) {
@@ -1191,7 +1204,10 @@ export async function deleteCostCenter(req, res) {
 export async function createBusinessUnit(req, res) {
   try {
     const data = req.body;
-    if (!data.name || !data.code) return res.status(400).json({ success: false, error: 'Business Unit Name and Code are required' });
+    if (!data.name) return res.status(400).json({ success: false, error: 'Business Unit Name is required' });
+    if (!data.code || !data.code.trim()) {
+      data.code = await generateAutoCode('business_unit', data.name, memoryBusinessUnits);
+    }
 
     const newUnit = {
       id: `BU-${String(Date.now()).slice(-6)}`,

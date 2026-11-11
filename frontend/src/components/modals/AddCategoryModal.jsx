@@ -28,11 +28,11 @@ export function AddCategoryModal({
     setSubmitting(true);
     setErrorMsg('');
 
-    const catCode = code.trim() ? code.toUpperCase().trim() : `CAT-${name.slice(0, 4).toUpperCase()}`;
+    const catCode = code.trim() ? code.toUpperCase().trim() : undefined;
     const newCategoryObj = {
       _id: `cat-${Date.now()}`,
       name: name.trim(),
-      code: catCode,
+      ...(catCode ? { code: catCode } : {}),
       defaultUsefulLifeMonths: Number(defaultUsefulLifeMonths) || 36,
       description: description.trim()
     };
@@ -115,7 +115,7 @@ export function AddCategoryModal({
             </label>
             <input
               type="text"
-              placeholder="e.g. CAT-NET"
+              placeholder="Auto-generated if left blank"
               value={code}
               onChange={(e) => setCode(e.target.value.toUpperCase())}
               className="input-field font-mono"

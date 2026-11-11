@@ -29,8 +29,9 @@ import {
   getCountries, createCountry,
   getLocationTypes, createLocationType,
   getLocationLevels, createLocationLevel, updateLocationLevel, deleteLocationLevel,
-  getAssetConditions,
-  getSuppliers, createSupplier
+  getAssetConditions, createAssetCondition,
+  getSuppliers, createSupplier,
+  getCodePrefixes, updateCodePrefixes
 } from './masterData.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
@@ -176,8 +177,13 @@ router.post('/location-levels/:level', createLocationLevel);
 router.put('/location-levels/:level/:id', updateLocationLevel);
 router.delete('/location-levels/:level/:id', deleteLocationLevel);
 
+// Master Code Prefixes (Auto-generation settings)
+router.get('/code-prefixes', getCodePrefixes);
+router.put('/code-prefixes', updateCodePrefixes);
+
 // Asset Conditions (Database Enum Master Data)
 router.get('/asset-conditions', getAssetConditions);
+router.post('/asset-conditions', createAssetCondition);
 
 // Suppliers / Vendors (Master Data)
 router.get('/suppliers', getSuppliers);

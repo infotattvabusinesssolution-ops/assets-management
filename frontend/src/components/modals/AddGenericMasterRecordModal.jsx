@@ -44,12 +44,18 @@ export function AddGenericMasterRecordModal({ isOpen, onClose, onSuccess, entity
       else if (entityType === 'custom_field') endpoint = '/master-data/custom-fields';
       else endpoint = `/master-data/${entityType}s`;
 
-      // Code auto-generation if omitted
-      if (!payload.code && (payload.name || payload.fullName)) {
-        payload.code = (payload.name || payload.fullName).toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 10);
+      // Let backend autogenerate code based on prefix settings if omitted
+      if (!payload.code || !payload.code.trim()) {
+        delete payload.code;
+      } else {
+        payload.code = payload.code.trim().toUpperCase();
       }
-      if (entityType === 'employee' && !payload.employeeCode) {
-        payload.employeeCode = `EMP-${Date.now().toString().slice(-6)}`;
+      if (entityType === 'employee') {
+        if (!payload.employeeCode || !payload.employeeCode.trim()) {
+          delete payload.employeeCode;
+        } else {
+          payload.employeeCode = payload.employeeCode.trim().toUpperCase();
+        }
       }
 
       const res = await api.post(endpoint, payload);
@@ -125,11 +131,13 @@ export function AddGenericMasterRecordModal({ isOpen, onClose, onSuccess, entity
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Employee Code</label>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Employee Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                </label>
                 <input
                   type="text"
                   name="employeeCode"
-                  placeholder="EMP-10492 (Auto-generated if blank)"
+                  placeholder="Auto-generated if left blank"
                   value={formData.employeeCode}
                   onChange={handleChange}
                   className="input-primary w-full font-mono"
@@ -180,11 +188,13 @@ export function AddGenericMasterRecordModal({ isOpen, onClose, onSuccess, entity
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">Identifier Code</label>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Identifier Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                </label>
                 <input
                   type="text"
                   name="code"
-                  placeholder="AUTO_GENERATED (e.g. IT_DEPT)"
+                  placeholder="Auto-generated if left blank"
                   value={formData.code}
                   onChange={handleChange}
                   className="input-primary w-full font-mono"
