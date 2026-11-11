@@ -1299,14 +1299,9 @@ export function GenericMasterTab({
             <form onSubmit={handleSave} className="space-y-3.5 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-semibold text-slate-700">
-                      {tabConfig.singular} Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
-                    </label>
-                    <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
-                      Auto-generated if blank
-                    </span>
-                  </div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    {tabConfig.singular} Code
+                  </label>
                   <MasterCodeInput
                     entityKey={activeTab === 'manufacturers' ? 'manufacturer' : activeTab === 'brands' ? 'brand' : activeTab === 'uom' ? 'uom' : activeTab === 'status-codes' ? 'asset_type' : activeTab === 'asset-types' ? 'asset_type' : activeTab.replace(/-/g, '_')}
                     value={formState.code}

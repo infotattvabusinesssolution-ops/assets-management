@@ -105,14 +105,9 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }) {
           </div>
 
           <div>
-            <div className="flex items-center justify-between mb-1">
-              <label className="text-xs font-semibold text-slate-700">
-                Company Code <span className="text-slate-400 font-normal">(Optional)</span>
-              </label>
-              <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
-                Auto-generated if blank
-              </span>
-            </div>
+            <label className="text-xs font-semibold text-slate-700 block mb-1">
+              Company Code
+            </label>
             <MasterCodeInput
               entityKey="company"
               value={code}

@@ -493,14 +493,9 @@ export function DisposalStatusesTab({
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="text-[11px] font-bold text-slate-700">
-                    Status Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
-                  </label>
-                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
-                    Auto-generated if blank
-                  </span>
-                </div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Status Code
+                </label>
                 <MasterCodeInput
                   entityKey="disposal_status"
                   value={formData.code}
