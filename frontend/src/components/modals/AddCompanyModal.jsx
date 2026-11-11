@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../../services/api';
 import { Building, X, AlertCircle } from 'lucide-react';
+import MasterCodeInput from '../master-data/MasterCodeInput';
 
 export function AddCompanyModal({ isOpen, onClose, onSuccess }) {
   const [name, setName] = useState('');
@@ -112,16 +113,11 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }) {
                 Auto-generated if blank
               </span>
             </div>
-            <input
-              type="text"
-              placeholder="Auto-generated using prefix setting (e.g. CMP-001)"
+            <MasterCodeInput
+              entityKey="company"
               value={code}
-              onChange={(e) => setCode(e.target.value.toUpperCase())}
-              className="input-field font-mono"
+              onChange={setCode}
             />
-            <p className="text-[11px] text-slate-400 mt-1">
-              Leave blank to automatically assign the next sequential code using the Company prefix.
-            </p>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

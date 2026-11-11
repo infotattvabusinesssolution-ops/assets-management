@@ -19,6 +19,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
+import MasterCodeInput from './MasterCodeInput';
 
 export function LocationLevelTab({
   level = 1,
@@ -663,14 +664,12 @@ export function LocationLevelTab({
                     Auto-generated if blank
                   </span>
                 </div>
-                <input
-                  type="text"
-                  placeholder={`Auto-generated using prefix (e.g. LOC-L${level}-001)`}
+                <MasterCodeInput
+                  entityKey={`location_level_${level}`}
                   value={formState.code}
-                  onChange={(e) => setFormState({ ...formState, code: e.target.value.toUpperCase() })}
-                  className="w-full font-mono uppercase bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-slate-900 font-bold focus:border-[#6C2BD9] focus:outline-none placeholder:text-slate-400 placeholder:font-normal"
+                  onChange={(code) => setFormState({ ...formState, code })}
+                  disabled={!!editingItem}
                 />
-                <p className="text-[10px] text-slate-400 mt-1">Leave blank to automatically generate code using prefix LOC-L{level}- (or custom setting).</p>
               </div>
 
               <div>

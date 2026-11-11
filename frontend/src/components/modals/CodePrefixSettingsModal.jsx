@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../../services/api';
+import { fetchCodePrefixes } from '../../services/codePrefixService';
 import {
   Settings,
   X,
@@ -160,6 +161,7 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
       const res = await api.put('/master-data/code-prefixes', { prefixes });
       if (res && res.success) {
         setInitialPrefixes(res.prefixes || prefixes);
+        await fetchCodePrefixes(true);
         setStatusMsg({ type: 'success', text: 'Master code prefixes saved successfully! New records will use these prefixes.' });
         setTimeout(() => {
           setStatusMsg({ type: '', text: '' });

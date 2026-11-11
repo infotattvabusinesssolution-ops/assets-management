@@ -24,6 +24,7 @@ import { DEFAULT_ASSET_TYPES } from './GenericMasterTab';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
+import MasterCodeInput from './MasterCodeInput';
 
 export const INITIAL_ASSET_GROUPS = [];
 
@@ -916,19 +917,15 @@ export function AssetGroupsTab({
                     Auto-generated if blank
                   </span>
                 </div>
-                <input
-                  type="text"
+                <MasterCodeInput
+                  entityKey="asset_group"
                   value={grpFormState.code}
-                  onChange={(e) => {
+                  onChange={(code) => {
                     setModalError('');
-                    setGrpFormState({ ...grpFormState, code: e.target.value });
+                    setGrpFormState({ ...grpFormState, code });
                   }}
-                  placeholder="Auto-generated using prefix setting (e.g. GRP-001)"
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
+                  disabled={!!editingGroup}
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Leave blank to automatically generate code using prefix GRP- (or custom setting).
-                </p>
               </div>
 
               <div>

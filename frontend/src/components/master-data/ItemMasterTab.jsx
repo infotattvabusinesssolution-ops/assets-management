@@ -28,6 +28,7 @@ import {
 import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
+import MasterCodeInput from './MasterCodeInput';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 
 // Dynamic Master Data State (strictly driven from database / master data screens)
@@ -399,7 +400,7 @@ export function ItemMasterTab({
     } else {
       setEditingItem(null);
       setFormState({
-        itemCode: nextItemCodePreview,
+        itemCode: '',
         itemName: '',
         supplierBarcode: '',
         description: '',
@@ -506,8 +507,11 @@ export function ItemMasterTab({
     setModalFieldErrors({});
 
     try {
+      const finalCode = cleanCode || nextItemCodePreview;
       const payload = {
         ...formState,
+        itemCode: finalCode,
+        code: finalCode,
         active: formState.status === 'Active'
       };
 
@@ -1011,14 +1015,19 @@ export function ItemMasterTab({
             <form onSubmit={handleSaveItem} className="space-y-4 text-xs">
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">
-                    Item Code <span className="text-purple-600 text-[10px]">(System Generated)</span>
-                  </label>
-                  <input
-                    type="text"
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-bold text-slate-700">
+                      Item Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                      Auto-generated if blank
+                    </span>
+                  </div>
+                  <MasterCodeInput
+                    entityKey="item_master"
                     value={formState.itemCode}
-                    readOnly
-                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-purple-700 outline-none"
+                    onChange={(code) => setFormState({ ...formState, itemCode: code })}
+                    disabled={!!editingItem}
                   />
                 </div>
                 <div>

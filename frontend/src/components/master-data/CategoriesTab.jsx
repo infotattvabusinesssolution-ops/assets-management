@@ -27,6 +27,7 @@ import { INITIAL_CLASSES } from './ClassesTab';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
+import MasterCodeInput from './MasterCodeInput';
 
 export const INITIAL_CATEGORIES = [];
 
@@ -965,16 +966,12 @@ export function CategoriesTab({
                     Auto-generated if blank
                   </span>
                 </div>
-                <input
-                  type="text"
+                <MasterCodeInput
+                  entityKey="category"
                   value={catFormState.code}
-                  onChange={(e) => setCatFormState({ ...catFormState, code: e.target.value })}
-                  placeholder="Auto-generated using prefix setting (e.g. CAT-001)"
-                  className="w-full border border-slate-200 rounded-xl px-3.5 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
+                  onChange={(code) => setCatFormState({ ...catFormState, code })}
+                  disabled={!!editingCategory}
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Leave blank to automatically generate code using prefix CAT- (or custom setting).
-                </p>
               </div>
 
               <div>

@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../../services/api';
 import { X, Building2, Tag, Users, Grid, Plus, CheckCircle2, AlertCircle } from 'lucide-react';
+import MasterCodeInput from '../master-data/MasterCodeInput';
 
 export function AddGenericMasterRecordModal({ isOpen, onClose, onSuccess, entityType = 'category', entityTitle = 'Record' }) {
   const [formData, setFormData] = useState({
@@ -139,17 +140,11 @@ export function AddGenericMasterRecordModal({ isOpen, onClose, onSuccess, entity
                     Auto-generated if blank
                   </span>
                 </div>
-                <input
-                  type="text"
-                  name="employeeCode"
-                  placeholder="Auto-generated using prefix setting (e.g. EMP-001)"
+                <MasterCodeInput
+                  entityKey="employee"
                   value={formData.employeeCode}
-                  onChange={handleChange}
-                  className="input-primary w-full font-mono"
+                  onChange={(val) => setFormData(prev => ({ ...prev, employeeCode: val }))}
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Leave blank to automatically assign the next sequential employee code.
-                </p>
               </div>
             </>
           ) : entityType === 'custom_field' ? (
@@ -204,17 +199,11 @@ export function AddGenericMasterRecordModal({ isOpen, onClose, onSuccess, entity
                     Auto-generated if blank
                   </span>
                 </div>
-                <input
-                  type="text"
-                  name="code"
-                  placeholder="Auto-generated using prefix setting (e.g. DEP-001)"
+                <MasterCodeInput
+                  entityKey={entityType}
                   value={formData.code}
-                  onChange={handleChange}
-                  className="input-primary w-full font-mono"
+                  onChange={(val) => setFormData(prev => ({ ...prev, code: val }))}
                 />
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Leave blank to automatically assign the next sequential code based on the master prefix setting.
-                </p>
               </div>
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Description</label>

@@ -23,6 +23,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
+import MasterCodeInput from './MasterCodeInput';
 
 export const INITIAL_DISPOSAL_STATUSES = [];
 
@@ -486,28 +487,25 @@ export function DisposalStatusesTab({
                   required
                   placeholder="e.g. Scrapped, Sold, Donated, Written Off"
                   value={formData.name}
-                  onChange={(e) => {
-                    const name = e.target.value;
-                    setFormData(prev => ({
-                      ...prev,
-                      name,
-                      code: prev.code || name.toUpperCase().replace(/\s+/g, '_')
-                    }));
-                  }}
+                  onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
                 />
               </div>
 
               <div>
-                <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                  Status Code <span className="text-slate-400 font-normal">(System Identifier)</span>
-                </label>
-                <input
-                  type="text"
-                  placeholder="e.g. SCRAPPED, SOLD"
+                <div className="flex items-center justify-between mb-1">
+                  <label className="text-[11px] font-bold text-slate-700">
+                    Status Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                    Auto-generated if blank
+                  </span>
+                </div>
+                <MasterCodeInput
+                  entityKey="disposal_status"
                   value={formData.code}
-                  onChange={(e) => setFormData(prev => ({ ...prev, code: e.target.value.toUpperCase().replace(/\s+/g, '_') }))}
-                  className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-mono font-bold text-purple-700 focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
+                  onChange={(code) => setFormData(prev => ({ ...prev, code }))}
+                  disabled={!!editingStatus}
                 />
               </div>
 

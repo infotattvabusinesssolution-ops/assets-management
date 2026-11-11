@@ -24,6 +24,7 @@ import clsx from 'clsx';
 import { api } from '../../services/api';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
+import MasterCodeInput from './MasterCodeInput';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -784,16 +785,12 @@ export function CostCentersTab({
                       Auto-generated if blank
                     </span>
                   </div>
-                  <input
-                    type="text"
+                  <MasterCodeInput
+                    entityKey="cost_center"
                     value={ccFormState.code}
-                    onChange={(e) => setCcFormState({ ...ccFormState, code: e.target.value.toUpperCase() })}
-                    placeholder="Auto-generated using prefix setting (e.g. CC-001)"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none uppercase"
+                    onChange={(code) => setCcFormState({ ...ccFormState, code })}
+                    disabled={!!editingCostCenter}
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Leave blank to automatically generate code using prefix CC- (or custom setting).
-                  </p>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Cost Center Name *</label>

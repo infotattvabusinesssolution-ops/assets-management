@@ -29,6 +29,7 @@ import { api } from '../../services/api';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
+import MasterCodeInput from './MasterCodeInput';
 
 export function CustodiansTab({
   triggerToast,
@@ -789,16 +790,12 @@ export function CustodiansTab({
                       Auto-generated if blank
                     </span>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Auto-generated using prefix setting (e.g. EMP-001)"
+                  <MasterCodeInput
+                    entityKey="employee"
                     value={formState.employeeCode}
-                    onChange={(e) => setFormState({ ...formState, employeeCode: e.target.value.toUpperCase() })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
+                    onChange={(code) => setFormState({ ...formState, employeeCode: code })}
+                    disabled={!!editingCustodian}
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Leave blank to automatically generate code using prefix EMP- (or custom setting).
-                  </p>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Full Name *</label>

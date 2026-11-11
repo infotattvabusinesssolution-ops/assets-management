@@ -24,6 +24,7 @@ import { api } from '../../services/api';
 import { SmartDeleteModal } from './SmartDeleteModal';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
+import MasterCodeInput from './MasterCodeInput';
 
 export function CompaniesTab({
   triggerToast,
@@ -615,16 +616,12 @@ export function CompaniesTab({
                       Auto-generated if blank
                     </span>
                   </div>
-                  <input
-                    type="text"
-                    placeholder="Auto-generated using prefix (e.g. CMP-001)"
+                  <MasterCodeInput
+                    entityKey="company"
                     value={formState.code}
-                    onChange={(e) => setFormState({ ...formState, code: e.target.value.toUpperCase() })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-mono font-bold text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
+                    onChange={(code) => setFormState({ ...formState, code })}
+                    disabled={!!editingCompany}
                   />
-                  <p className="text-[11px] text-slate-400 mt-1">
-                    Leave blank to automatically generate code using prefix CMP- (or custom setting).
-                  </p>
                 </div>
                 <div>
                   <label className="block font-bold text-slate-700 mb-1">Base Currency</label>
