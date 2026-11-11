@@ -40,6 +40,7 @@ export function DepartmentsTab({
   const [costCenters, setCostCenters] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
   const [locationsList, setLocationsList] = useState([]);
+  const [custodiansList, setCustodiansList] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -67,6 +68,7 @@ export function DepartmentsTab({
         customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
       } catch (_) {}
       const combinedEmployees = [...allLoadedEmployees, ...customCustodians];
+      setCustodiansList(combinedEmployees);
 
       if (res?.departments && res.departments.length > 0) {
         const mapped = res.departments.map((dept) => {
@@ -219,6 +221,37 @@ export function DepartmentsTab({
     });
   }, [companiesList]);
 
+  const sortedCustodians = useMemo(() => {
+    return [...custodiansList].sort((a, b) => {
+      const aInactive = a.active === false || a.status === 'Inactive';
+      const bInactive = b.active === false || b.status === 'Inactive';
+      if (!aInactive && bInactive) return -1;
+      if (aInactive && !bInactive) return 1;
+      const nameA = a.fullName || a.name || '';
+      const nameB = b.fullName || b.name || '';
+      return nameA.localeCompare(nameB);
+    });
+  }, [custodiansList]);
+
+  const loadCustodians = async () => {
+    try {
+      const empRes = await api.get('/master-data/employees?includeInactive=true').catch(() => null);
+      const allLoadedEmployees = [
+        ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : (Array.isArray(empRes) ? empRes : [])))
+      ];
+      let customCustodians = [];
+      try {
+        customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      } catch (_) {}
+      const customIds = new Set(customCustodians.map(c => c.id));
+      const merged = [...customCustodians, ...allLoadedEmployees.filter(e => !customIds.has(e.id))];
+      setCustodiansList(merged);
+      return merged;
+    } catch (_) {
+      return custodiansList;
+    }
+  };
+
   const {
     currentPage,
     totalPages,
@@ -239,16 +272,25 @@ export function DepartmentsTab({
   const handleOpenAddDeptModal = (deptToEdit = null) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     setModalError('');
+    loadCustodians();
     if (deptToEdit) {
       setEditingDepartment(deptToEdit);
+      const matchedCust = custodiansList.find(c =>
+        deptToEdit.manager && (
+          (c.fullName && c.fullName.trim().toLowerCase() === deptToEdit.manager.trim().toLowerCase()) ||
+          (c.name && c.name.trim().toLowerCase() === deptToEdit.manager.trim().toLowerCase()) ||
+          (c.employeeCode && c.employeeCode.trim().toLowerCase() === deptToEdit.manager.trim().toLowerCase()) ||
+          (c.code && c.code.trim().toLowerCase() === deptToEdit.manager.trim().toLowerCase())
+        )
+      );
       setDeptFormState({
         code: deptToEdit.code || '',
         name: deptToEdit.name || '',
         location: deptToEdit.location || '',
         company: deptToEdit.company || '',
         manager: deptToEdit.manager || '',
-        email: deptToEdit.email || '',
-        phone: deptToEdit.phone || '',
+        email: deptToEdit.email || matchedCust?.email || '',
+        phone: deptToEdit.phone || matchedCust?.phone || '',
         description: deptToEdit.description || '',
         status: deptToEdit.status || 'Active'
       });
@@ -1007,32 +1049,82 @@ export function DepartmentsTab({
               <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Manager</label>
-                  <input
-                    type="text"
-                    value={deptFormState.manager}
-                    onChange={(e) => setDeptFormState({ ...deptFormState, manager: e.target.value })}
-                    placeholder="Manager Name"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
-                  />
+                  <select
+                    value={deptFormState.manager || ''}
+                    onChange={(e) => {
+                      const selectedVal = e.target.value;
+                      if (!selectedVal) {
+                        setDeptFormState({
+                          ...deptFormState,
+                          manager: '',
+                          email: '',
+                          phone: ''
+                        });
+                        return;
+                      }
+                      const matchedCust = custodiansList.find(c => 
+                        (c.fullName && c.fullName.trim().toLowerCase() === selectedVal.trim().toLowerCase()) ||
+                        (c.name && c.name.trim().toLowerCase() === selectedVal.trim().toLowerCase()) ||
+                        (c.employeeCode && c.employeeCode.trim().toLowerCase() === selectedVal.trim().toLowerCase()) ||
+                        (c.code && c.code.trim().toLowerCase() === selectedVal.trim().toLowerCase()) ||
+                        String(c.id) === selectedVal
+                      );
+                      setDeptFormState({
+                        ...deptFormState,
+                        manager: matchedCust ? (matchedCust.fullName || matchedCust.name || selectedVal) : selectedVal,
+                        email: matchedCust?.email || '',
+                        phone: matchedCust?.phone || ''
+                      });
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="">- Select Manager (Custodian) -</option>
+                    {editingDepartment?.manager && !sortedCustodians.some(c => (c.fullName || c.name) === editingDepartment.manager) && (
+                      <option value={editingDepartment.manager}>
+                        {editingDepartment.manager} (Current)
+                      </option>
+                    )}
+                    {sortedCustodians.map((c) => {
+                      const isInactive = c.active === false || c.status === 'Inactive';
+                      const name = c.fullName || c.name || '';
+                      const code = c.employeeCode || c.code || '';
+                      return (
+                        <option
+                          key={c.id || code || name}
+                          value={name}
+                          disabled={isInactive}
+                          className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                        >
+                          {name}{code ? ` (${code})` : ''}{isInactive ? ' (Inactive)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Email</label>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Email <span className="text-[10px] text-slate-400 font-normal">(Autoloaded)</span>
+                  </label>
                   <input
                     type="email"
-                    value={deptFormState.email}
-                    onChange={(e) => setDeptFormState({ ...deptFormState, email: e.target.value })}
-                    placeholder="department@company.com"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                    readOnly
+                    value={deptFormState.email || ''}
+                    placeholder="Autoloaded from Manager"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs bg-slate-100/80 text-slate-600 cursor-not-allowed select-none focus:outline-none"
+                    tabIndex={-1}
                   />
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Phone</label>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Phone <span className="text-[10px] text-slate-400 font-normal">(Autoloaded)</span>
+                  </label>
                   <input
                     type="text"
-                    value={deptFormState.phone}
-                    onChange={(e) => setDeptFormState({ ...deptFormState, phone: e.target.value })}
-                    placeholder="+971 50..."
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs focus:border-[#6C2BD9] focus:outline-none"
+                    readOnly
+                    value={deptFormState.phone || ''}
+                    placeholder="Autoloaded from Manager"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 font-mono text-xs bg-slate-100/80 text-slate-600 cursor-not-allowed select-none focus:outline-none"
+                    tabIndex={-1}
                   />
                 </div>
               </div>
