@@ -571,6 +571,20 @@ export async function updateCompany(req, res, next) {
           where: { id },
           data: updateData
         });
+        if (updateData.active === false) {
+          await prisma.department.updateMany({
+            where: { companyId: id },
+            data: { active: false }
+          }).catch(e => console.warn('Cascade deactivation to departments error:', e.message));
+          await prisma.costCenter.updateMany({
+            where: { companyId: id },
+            data: { active: false }
+          }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
+          await prisma.serviceProvider.updateMany({
+            where: { companyId: id },
+            data: { status: 'INACTIVE' }
+          }).catch(e => console.warn('Cascade deactivation to suppliers error:', e.message));
+        }
         return res.json({ success: true, company });
       } catch (dbErr) {
         console.warn('DB update company skipped:', dbErr.message);
@@ -615,7 +629,19 @@ export async function deleteCompany(req, res, next) {
           where: { id },
           data: { active: false }
         });
-        return res.json({ success: true, deactivated: true, message: `Company deactivated successfully (${totalLinked} linked records preserved).` });
+        await prisma.department.updateMany({
+          where: { companyId: id },
+          data: { active: false }
+        }).catch(e => console.warn('Cascade deactivation to departments error:', e.message));
+        await prisma.costCenter.updateMany({
+          where: { companyId: id },
+          data: { active: false }
+        }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
+        await prisma.serviceProvider.updateMany({
+          where: { companyId: id },
+          data: { status: 'INACTIVE' }
+        }).catch(e => console.warn('Cascade deactivation to suppliers error:', e.message));
+        return res.json({ success: true, deactivated: true, message: `Company, departments, and suppliers deactivated successfully (${totalLinked} linked records preserved).` });
       }
 
       // Hard delete: if force is true and records are linked, unlink or cascade empty structures
@@ -2832,7 +2858,12 @@ export async function createModel(req, res, next) {
 export async function getDepartments(req, res, next) {
   try {
     const includeInactive = req.query.includeInactive !== 'false';
-    const where = includeInactive ? {} : { active: true };
+    const where = includeInactive
+      ? {}
+      : {
+          active: true,
+          company: { active: true }
+        };
     if (req.query.companyId) {
       where.companyId = req.query.companyId;
     }
@@ -2863,7 +2894,19 @@ export async function getDepartments(req, res, next) {
         orderBy: { name: 'asc' }
       });
     }
-    res.json({ success: true, departments });
+
+    const sanitized = (departments || []).map((dept) => {
+      const isCompanyInactive = dept.company && (dept.company.active === false || dept.company.status === 'Inactive');
+      if (isCompanyInactive) {
+        return {
+          ...dept,
+          active: false
+        };
+      }
+      return dept;
+    });
+
+    res.json({ success: true, departments: sanitized });
   } catch (err) { next(err); }
 }
 
@@ -2895,7 +2938,7 @@ export async function createDepartment(req, res, next) {
           where: {
             OR: [
               { code: cleanCode },
-              { name: { equals: cleanName, mode: 'insensitive' } }
+              { name: cleanName }
             ]
           }
         });
@@ -2908,9 +2951,36 @@ export async function createDepartment(req, res, next) {
     }
 
     let targetCompanyId = companyId || req.body.companyId;
+    if (!targetCompanyId && req.body.company) {
+      const comp = await prisma.company.findFirst({
+        where: {
+          OR: [
+            { name: req.body.company },
+            { code: req.body.company }
+          ]
+        }
+      });
+      if (comp) targetCompanyId = comp.id;
+    }
     if (!targetCompanyId) {
-      const firstComp = await prisma.company.findFirst();
-      targetCompanyId = firstComp ? firstComp.id : null;
+      const firstActiveComp = await prisma.company.findFirst({ where: { active: true } });
+      targetCompanyId = firstActiveComp ? firstActiveComp.id : null;
+    }
+    if (!targetCompanyId) {
+      return res.status(400).json({ success: false, message: 'An active Company is required to create a Department.' });
+    }
+
+    const checkCompany = await prisma.company.findUnique({
+      where: { id: targetCompanyId }
+    });
+    if (!checkCompany) {
+      return res.status(404).json({ success: false, message: 'Selected Company was not found.' });
+    }
+    if (checkCompany.active === false || checkCompany.status === 'Inactive') {
+      return res.status(400).json({
+        success: false,
+        message: `Cannot assign Department to inactive Company "${checkCompany.name}". Please select an active Company.`
+      });
     }
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const department = await prisma.department.create({
@@ -2965,7 +3035,7 @@ export async function updateDepartment(req, res, next) {
             id: { not: id },
             OR: [
               ...(cleanCode ? [{ code: cleanCode }] : []),
-              ...(cleanName ? [{ name: { equals: cleanName, mode: 'insensitive' } }] : [])
+              ...(cleanName ? [{ name: cleanName }] : [])
             ]
           }
         });
@@ -2977,12 +3047,57 @@ export async function updateDepartment(req, res, next) {
       }
     }
 
+    let targetCompanyId = companyId;
+    if (!targetCompanyId && req.body.company) {
+      const comp = await prisma.company.findFirst({
+        where: {
+          OR: [
+            { name: req.body.company },
+            { code: req.body.company }
+          ]
+        }
+      });
+      if (comp) targetCompanyId = comp.id;
+    }
     const updateData = {};
     if (cleanCode) updateData.code = cleanCode;
     if (cleanName) updateData.name = cleanName;
-    if (companyId) updateData.companyId = companyId;
+    if (targetCompanyId) updateData.companyId = targetCompanyId;
     if (active !== undefined) updateData.active = Boolean(active);
     else if (status !== undefined) updateData.active = status === 'Active';
+
+    let finalCompanyId = targetCompanyId;
+    if (!finalCompanyId && isDbConnected()) {
+      const existingDept = await prisma.department.findUnique({
+        where: { id },
+        select: { companyId: true }
+      });
+      if (existingDept) finalCompanyId = existingDept.companyId;
+    }
+
+    if (finalCompanyId && isDbConnected()) {
+      const checkCompany = await prisma.company.findUnique({
+        where: { id: finalCompanyId }
+      });
+      if (!checkCompany) {
+        return res.status(404).json({ success: false, message: 'Selected Company was not found.' });
+      }
+      if (checkCompany.active === false || checkCompany.status === 'Inactive') {
+        if (targetCompanyId) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot assign Department to inactive Company "${checkCompany.name}". Please select an active Company.`
+          });
+        }
+        if (updateData.active === true) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot activate Department because parent Company "${checkCompany.name}" is inactive.`
+          });
+        }
+        updateData.active = false;
+      }
+    }
     if (type !== undefined) updateData.type = type || null;
     if (parentDepartment !== undefined) updateData.parentDepartment = parentDepartment || null;
     if (location !== undefined) updateData.location = location || null;
@@ -3485,7 +3600,37 @@ export async function updateMasterEntity(req, res, next) {
       return res.status(400).json({ success: false, message: `Unsupported entity type: ${entityType}` });
     }
 
+    if ((entityType === 'department' || modelName === 'department') && req.body.active === true) {
+      const existing = await prisma.department.findUnique({ where: { id } });
+      const targetCompId = req.body.companyId || existing?.companyId;
+      if (targetCompId) {
+        const comp = await prisma.company.findUnique({ where: { id: targetCompId } });
+        if (comp && (comp.active === false || comp.status === 'Inactive')) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot activate Department because parent Company "${comp.name}" is inactive.`
+          });
+        }
+      }
+    }
+
     const updated = await prisma[modelName].update({ where: { id }, data: req.body });
+
+    if ((entityType === 'company' || modelName === 'company') && req.body.active === false) {
+      await prisma.department.updateMany({
+        where: { companyId: id },
+        data: { active: false }
+      }).catch(e => console.warn('Cascade deactivation to departments error:', e.message));
+      await prisma.costCenter.updateMany({
+        where: { companyId: id },
+        data: { active: false }
+      }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
+      await prisma.serviceProvider.updateMany({
+        where: { companyId: id },
+        data: { status: 'INACTIVE' }
+      }).catch(e => console.warn('Cascade deactivation to suppliers error:', e.message));
+    }
+
     res.json({ success: true, entity: updated });
   } catch (err) { next(err); }
 }
@@ -3503,10 +3648,47 @@ export async function toggleMasterEntityStatus(req, res, next) {
       return res.status(404).json({ success: false, message: 'Record not found' });
     }
 
+    // Validation: prevent activating child entity if parent company is inactive
+    if ((entityType === 'department' || modelName === 'department') && !existing.active) {
+      const comp = await prisma.company.findUnique({ where: { id: existing.companyId } });
+      if (comp && (comp.active === false || comp.status === 'Inactive')) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot activate Department because parent Company "${comp.name}" is inactive.`
+        });
+      }
+    } else if ((entityType === 'cost_center' || entityType === 'costCenter' || modelName === 'costCenter') && !existing.active) {
+      if (existing.companyId) {
+        const comp = await prisma.company.findUnique({ where: { id: existing.companyId } });
+        if (comp && (comp.active === false || comp.status === 'Inactive')) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot activate Cost Center because parent Company "${comp.name}" is inactive.`
+          });
+        }
+      }
+    }
+
     const updated = await prisma[modelName].update({
       where: { id },
       data: { active: !existing.active }
     });
+
+    // Cascade deactivation to departments and cost centers when company is deactivated
+    if ((entityType === 'company' || modelName === 'company') && updated.active === false) {
+      await prisma.department.updateMany({
+        where: { companyId: id },
+        data: { active: false }
+      }).catch(e => console.warn('Cascade deactivation to departments error:', e.message));
+      await prisma.costCenter.updateMany({
+        where: { companyId: id },
+        data: { active: false }
+      }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
+      await prisma.serviceProvider.updateMany({
+        where: { companyId: id },
+        data: { status: 'INACTIVE' }
+      }).catch(e => console.warn('Cascade deactivation to suppliers error:', e.message));
+    }
 
     res.json({ success: true, entity: updated, message: `Status updated to ${updated.active ? 'ACTIVE' : 'INACTIVE'}` });
   } catch (err) { next(err); }
@@ -3590,6 +3772,8 @@ function getPrismaModelName(entityType) {
     department: 'department',
     cost_center: 'costCenter',
     employee: 'employee',
+    supplier: 'serviceProvider',
+    service_provider: 'serviceProvider',
     custom_field: 'customFieldDefinition'
   };
   return map[entityType];

@@ -39,6 +39,7 @@ model Company {
   fiscalPeriods    FiscalPeriod[]
   depreciationRuns DepreciationRun[]
   receipts         Receipt[]
+  serviceProviders ServiceProvider[]
 
   @@map("companies")
 }
@@ -989,7 +990,8 @@ model ServiceProvider {
   city                  String? @db.NVarChar(100)
   state                 String? @db.NVarChar(100)
   country               String? @db.NVarChar(100)
-  companyId             String? @db.NVarChar(36)
+  companyId             String? @db.NVarChar(1000)
+  company               Company? @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   createdAt             DateTime @default(now())
   updatedAt             DateTime @updatedAt
   categories            ProviderCategory[]

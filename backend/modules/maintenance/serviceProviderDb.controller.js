@@ -4,7 +4,7 @@ import prisma from '../../config/prisma.js';
 const scope = req => req.dataScopeFilter?.companyId ? { companyId: req.dataScopeFilter.companyId } : {};
 const actor = req => req.user?.fullName || req.user?.username || 'System User';
 const trim = value => String(value ?? '').trim();
-const include = { categories: true, contacts: true, addresses: true, services: true, certifications: true, documents: true, notes: { orderBy: { createdAt: 'desc' } } };
+const include = { company: true, categories: true, contacts: true, addresses: true, services: true, certifications: true, documents: true, notes: { orderBy: { createdAt: 'desc' } } };
 const models = { categories: 'providerCategory', contacts: 'providerContact', addresses: 'providerAddress', services: 'providerService', certifications: 'providerCertification', documents: 'providerDocument', notes: 'providerNote' };
 const fail = (res, message, status = 400) => res.status(status).json({ success: false, message });
 const find = req => prisma.serviceProvider.findFirst({ where: { OR: [{ id: req.params.id }, { providerCode: req.params.id }], ...scope(req) }, include });
@@ -74,19 +74,30 @@ export async function getServiceProviders(req, res, next) {
     const where = { ...scope(req) };
     if (req.query.search) where.OR = [{ providerName: { contains: String(req.query.search) } }, { providerCode: { contains: String(req.query.search) } }];
     if (req.query.type && req.query.type !== 'ALL') where.providerType = String(req.query.type);
-    if (req.query.status && req.query.status !== 'ALL') { where.status = String(req.query.status); } else if (req.query.includeInactive !== 'true') { where.status = { not: 'INACTIVE' }; }
-    const providers = await prisma.serviceProvider.findMany({ where, orderBy: { providerName: 'asc' } });
-    const companyIds = [...new Set(providers.map(p => p.companyId).filter(Boolean))];
-    let companyMap = new Map();
-    if (companyIds.length > 0) {
-      const companies = await prisma.company.findMany({ where: { id: { in: companyIds } }, select: { id: true, name: true } });
-      companyMap = new Map(companies.map(c => [c.id, c.name]));
+    if (req.query.status && req.query.status !== 'ALL') {
+      where.status = String(req.query.status);
+    } else if (req.query.includeInactive !== 'true') {
+      where.status = { not: 'INACTIVE' };
+      where.company = { active: true };
     }
-    const mappedProviders = providers.map(p => ({
-      ...p,
-      company: p.companyId && companyMap.has(p.companyId) ? { id: p.companyId, name: companyMap.get(p.companyId) } : null,
-      companyName: p.companyId ? companyMap.get(p.companyId) || null : null
-    }));
+    const providers = await prisma.serviceProvider.findMany({
+      where,
+      include: { company: true },
+      orderBy: { providerName: 'asc' }
+    });
+
+    const mappedProviders = providers.map(p => {
+      const isCompActive = p.company ? (p.company.active !== false && p.company.status !== 'Inactive') : true;
+      const effectiveStatus = (p.status === 'INACTIVE' || !isCompActive) ? 'INACTIVE' : p.status;
+      return {
+        ...p,
+        status: effectiveStatus,
+        active: effectiveStatus === 'ACTIVE',
+        company: p.company ? { id: p.company.id, name: p.company.name, active: p.company.active } : null,
+        companyName: p.company ? p.company.name : null,
+        companyActive: isCompActive
+      };
+    });
     res.json({ success: true, count: mappedProviders.length, providers: mappedProviders });
   } catch (error) { next(error); }
 }
@@ -112,13 +123,25 @@ export async function createServiceProvider(req, res, next) {
     if (requestedCode && await prisma.serviceProvider.findUnique({ where: { providerCode: requestedCode } })) return fail(res, 'Provider code already exists.', 409);
     const finalCode = requestedCode || 'SP-' + new Date().getUTCFullYear() + '-' + randomUUID().slice(0, 8).toUpperCase();
     const finalCompanyId = parsed.data.companyId || scope(req).companyId || req.user?.companyId || null;
+
+    if (finalCompanyId) {
+      const comp = await prisma.company.findUnique({ where: { id: finalCompanyId } });
+      if (!comp) {
+        return fail(res, 'Selected company was not found.', 404);
+      }
+      if (comp.active === false || comp.status === 'Inactive') {
+        return fail(res, `Cannot assign Supplier to inactive Company "${comp.name}". Please select an active Company.`, 400);
+      }
+    }
+
     const provider = await prisma.serviceProvider.create({
       data: {
         ...parsed.data,
         companyId: finalCompanyId,
         providerCode: finalCode,
         notes: { create: { text: 'Provider created', authorName: actor(req) } }
-      }
+      },
+      include: { company: true }
     });
     res.status(201).json({ success: true, provider });
   } catch (error) { next(error); }
@@ -141,14 +164,30 @@ export async function updateServiceProvider(req, res, next) {
     const requestedCode = trim(req.body.providerCode) || old.providerCode;
     if (!requestedCode) return fail(res, 'Provider code is required.');
     if (requestedCode !== old.providerCode && await prisma.serviceProvider.findUnique({ where: { providerCode: requestedCode } })) return fail(res, 'Provider code already exists.', 409);
+
+    const targetCompanyId = parsed.data.companyId !== undefined ? parsed.data.companyId : old.companyId;
+    if (targetCompanyId) {
+      const comp = await prisma.company.findUnique({ where: { id: targetCompanyId } });
+      if (comp && (comp.active === false || comp.status === 'Inactive')) {
+        if (parsed.data.companyId && parsed.data.companyId !== old.companyId) {
+          return fail(res, `Cannot assign Supplier to inactive Company "${comp.name}". Please select an active Company.`, 400);
+        }
+        if (parsed.data.status === 'ACTIVE') {
+          return fail(res, `Cannot activate Supplier because parent Company "${comp.name}" is inactive.`, 400);
+        }
+        parsed.data.status = 'INACTIVE';
+      }
+    }
+
     const provider = await prisma.serviceProvider.update({
       where: { id: old.id },
       data: {
         ...parsed.data,
-        companyId: parsed.data.companyId !== undefined ? parsed.data.companyId : old.companyId,
+        companyId: targetCompanyId,
         providerCode: requestedCode,
         notes: { create: { text: 'Provider information updated', authorName: actor(req) } }
-      }
+      },
+      include: { company: true }
     });
     res.json({ success: true, provider });
   } catch (error) { next(error); }
@@ -159,9 +198,19 @@ export async function toggleServiceProviderStatus(req, res, next) {
     const old = await find(req);
     if (!old) return fail(res, 'Provider not found.', 404);
     const status = old.status === 'ACTIVE' ? 'INACTIVE' : 'ACTIVE';
+    if (status === 'ACTIVE' && old.companyId) {
+      const comp = await prisma.company.findUnique({ where: { id: old.companyId } });
+      if (comp && (comp.active === false || comp.status === 'Inactive')) {
+        return fail(res, `Cannot activate Supplier because parent Company "${comp.name}" is inactive.`, 400);
+      }
+    }
     const parsed = master({ status }, old);
     if (parsed.error) return fail(res, parsed.error);
-    const provider = await prisma.serviceProvider.update({ where: { id: old.id }, data: { status, notes: { create: { text: 'Status changed to ' + status, authorName: actor(req) } } } });
+    const provider = await prisma.serviceProvider.update({
+      where: { id: old.id },
+      data: { status, notes: { create: { text: 'Status changed to ' + status, authorName: actor(req) } } },
+      include: { company: true }
+    });
     res.json({ success: true, provider });
   } catch (error) { next(error); }
 }
