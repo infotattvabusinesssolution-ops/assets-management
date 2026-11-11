@@ -2688,9 +2688,10 @@ export function AssetForm() {
             {availableManufacturers && availableManufacturers.length > 0 ? (
               availableManufacturers.map((m) => {
                 const name = m.name || m.title || m;
+                const isInactive = m.active === false || m.status === 'Inactive';
                 return (
-                  <option key={m.id || m._id || name} value={name}>
-                    {name}
+                  <option key={m.id || m._id || name} value={name} disabled={isInactive}>
+                    {name}{isInactive ? ' (Inactive)' : ''}
                   </option>
                 );
               })
@@ -2731,9 +2732,10 @@ export function AssetForm() {
             {availableBrands && availableBrands.length > 0 ? (
               availableBrands.map((b) => {
                 const name = b.name || b.title || b;
+                const isInactive = b.active === false || b.status === 'Inactive' || b.manufacturerActive === false;
                 return (
-                  <option key={b.id || b._id || name} value={name}>
-                    {name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}
+                  <option key={b.id || b._id || name} value={name} disabled={isInactive}>
+                    {name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}{isInactive ? ' (Inactive)' : ''}
                   </option>
                 );
               })
@@ -4843,9 +4845,10 @@ export function AssetForm() {
                     {availableManufacturers && availableManufacturers.length > 0 ? (
                       availableManufacturers.map((m) => {
                         const name = m.name || m.title || m;
+                        const isInactive = m.active === false || m.status === 'Inactive';
                         return (
-                          <option key={m.id || m._id || name} value={name}>
-                            {name}
+                          <option key={m.id || m._id || name} value={name} disabled={isInactive}>
+                            {name}{isInactive ? ' (Inactive)' : ''}
                           </option>
                         );
                       })
@@ -4877,9 +4880,10 @@ export function AssetForm() {
                       {availableBrands && availableBrands.length > 0 ? (
                         availableBrands.map((b) => {
                           const name = b.name || b.title || b;
+                          const isInactive = b.active === false || b.status === 'Inactive' || b.manufacturerActive === false;
                           return (
-                            <option key={b.id || b._id || name} value={name}>
-                              {name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}
+                            <option key={b.id || b._id || name} value={name} disabled={isInactive}>
+                              {name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}{isInactive ? ' (Inactive)' : ''}
                             </option>
                           );
                         })
