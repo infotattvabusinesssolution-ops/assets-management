@@ -6526,7 +6526,6 @@ export async function createLocationLevel(req, res, next) {
       }
     }
 
-    const list = readLocationLevelsFromFile(level);
     list.unshift(newRecord);
     writeLocationLevelsToFile(level, list);
     res.status(201).json({ success: true, locationLevel: newRecord });
