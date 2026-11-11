@@ -9,7 +9,6 @@ import {
   MoreHorizontal,
   AlertTriangle,
   X,
-  Check,
   CheckCircle2,
   Trash,
   Tag,
@@ -540,9 +539,8 @@ export function DisposalStatusesTab({
                 <button
                   type="submit"
                   disabled={isSaving}
-                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs rounded-xl shadow-md transition-all cursor-pointer"
                 >
-                  <Check className="w-4 h-4" />
                   {isSaving ? 'Saving...' : editingStatus ? 'Update Status' : 'Add'}
                 </button>
               </div>
