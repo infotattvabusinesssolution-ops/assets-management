@@ -131,17 +131,25 @@ export function AddGenericMasterRecordModal({ isOpen, onClose, onSuccess, entity
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Employee Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    Employee Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                    Auto-generated if blank
+                  </span>
+                </div>
                 <input
                   type="text"
                   name="employeeCode"
-                  placeholder="Auto-generated if left blank"
+                  placeholder="Auto-generated using prefix setting (e.g. EMP-001)"
                   value={formData.employeeCode}
                   onChange={handleChange}
                   className="input-primary w-full font-mono"
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Leave blank to automatically assign the next sequential employee code.
+                </p>
               </div>
             </>
           ) : entityType === 'custom_field' ? (
@@ -188,17 +196,25 @@ export function AddGenericMasterRecordModal({ isOpen, onClose, onSuccess, entity
                 />
               </div>
               <div>
-                <label className="block font-bold text-slate-700 mb-1">
-                  Identifier Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
-                </label>
+                <div className="flex items-center justify-between mb-1">
+                  <label className="block font-bold text-slate-700">
+                    Identifier Code <span className="text-slate-400 font-normal text-[11px]">(Optional)</span>
+                  </label>
+                  <span className="text-[10px] text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md font-semibold border border-purple-100">
+                    Auto-generated if blank
+                  </span>
+                </div>
                 <input
                   type="text"
                   name="code"
-                  placeholder="Auto-generated if left blank"
+                  placeholder="Auto-generated using prefix setting (e.g. DEP-001)"
                   value={formData.code}
                   onChange={handleChange}
                   className="input-primary w-full font-mono"
                 />
+                <p className="text-[11px] text-slate-400 mt-1">
+                  Leave blank to automatically assign the next sequential code based on the master prefix setting.
+                </p>
               </div>
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Description</label>
