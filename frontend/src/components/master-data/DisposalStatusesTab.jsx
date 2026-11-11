@@ -480,6 +480,18 @@ export function DisposalStatusesTab({
             <form onSubmit={handleSave} className="p-6 space-y-4">
               <div>
                 <label className="text-[11px] font-bold text-slate-700 block mb-1">
+                  Status Code
+                </label>
+                <MasterCodeInput
+                  entityKey="disposal_status"
+                  value={formData.code}
+                  onChange={(code) => setFormData(prev => ({ ...prev, code }))}
+                  disabled={!!editingStatus}
+                />
+              </div>
+
+              <div>
+                <label className="text-[11px] font-bold text-slate-700 block mb-1">
                   Status Name <span className="text-rose-500">*</span>
                 </label>
                 <input
@@ -489,18 +501,6 @@ export function DisposalStatusesTab({
                   value={formData.name}
                   onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
                   className="w-full px-3.5 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] focus:bg-white"
-                />
-              </div>
-
-              <div>
-                <label className="text-[11px] font-bold text-slate-700 block mb-1">
-                  Status Code
-                </label>
-                <MasterCodeInput
-                  entityKey="disposal_status"
-                  value={formData.code}
-                  onChange={(code) => setFormData(prev => ({ ...prev, code }))}
-                  disabled={!!editingStatus}
                 />
               </div>
 
