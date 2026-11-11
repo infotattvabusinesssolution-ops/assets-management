@@ -2720,6 +2720,21 @@ export async function updateManufacturer(req, res, next) {
             active: updated.active
           }
         });
+
+        // Cascade deactivation to brands when manufacturer is deactivated
+        if (updated.active === false) {
+          await prisma.brand.updateMany({
+            where: { manufacturerId: existing.id },
+            data: { active: false }
+          }).catch(e => console.warn('Cascade deactivation to brands error:', e.message));
+
+          inMemoryBrands = inMemoryBrands.map(b =>
+            (b.manufacturerId === existing.id || (b.manufacturerName || '').toLowerCase() === cleanName.toLowerCase())
+              ? { ...b, active: false, status: 'Inactive' }
+              : b
+          );
+          writeBrandsToFile(inMemoryBrands);
+        }
       } catch (dbErr) {
         console.warn('DB update manufacturer skipped:', dbErr.message);
       }
@@ -3612,6 +3627,18 @@ export async function updateMasterEntity(req, res, next) {
           });
         }
       }
+    } else if ((entityType === 'brand' || modelName === 'brand') && req.body.active === true) {
+      const existing = await prisma.brand.findUnique({ where: { id } });
+      const targetMfrId = req.body.manufacturerId || existing?.manufacturerId;
+      if (targetMfrId) {
+        const mfr = await prisma.manufacturer.findUnique({ where: { id: targetMfrId } });
+        if (mfr && (mfr.active === false || mfr.status === 'Inactive')) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot activate Brand because parent Manufacturer "${mfr.name}" is inactive.`
+          });
+        }
+      }
     }
 
     const updated = await prisma[modelName].update({ where: { id }, data: req.body });
@@ -3629,6 +3656,15 @@ export async function updateMasterEntity(req, res, next) {
         where: { companyId: id },
         data: { status: 'INACTIVE' }
       }).catch(e => console.warn('Cascade deactivation to suppliers error:', e.message));
+    } else if ((entityType === 'manufacturer' || modelName === 'manufacturer') && req.body.active === false) {
+      await prisma.brand.updateMany({
+        where: { manufacturerId: id },
+        data: { active: false }
+      }).catch(e => console.warn('Cascade deactivation to brands error:', e.message));
+      inMemoryBrands = inMemoryBrands.map(b =>
+        b.manufacturerId === id ? { ...b, active: false, status: 'Inactive' } : b
+      );
+      writeBrandsToFile(inMemoryBrands);
     }
 
     res.json({ success: true, entity: updated });
@@ -3648,7 +3684,7 @@ export async function toggleMasterEntityStatus(req, res, next) {
       return res.status(404).json({ success: false, message: 'Record not found' });
     }
 
-    // Validation: prevent activating child entity if parent company is inactive
+    // Validation: prevent activating child entity if parent company/manufacturer is inactive
     if ((entityType === 'department' || modelName === 'department') && !existing.active) {
       const comp = await prisma.company.findUnique({ where: { id: existing.companyId } });
       if (comp && (comp.active === false || comp.status === 'Inactive')) {
@@ -3664,6 +3700,16 @@ export async function toggleMasterEntityStatus(req, res, next) {
           return res.status(400).json({
             success: false,
             message: `Cannot activate Cost Center because parent Company "${comp.name}" is inactive.`
+          });
+        }
+      }
+    } else if ((entityType === 'brand' || modelName === 'brand') && !existing.active) {
+      if (existing.manufacturerId) {
+        const mfr = await prisma.manufacturer.findUnique({ where: { id: existing.manufacturerId } });
+        if (mfr && (mfr.active === false || mfr.status === 'Inactive')) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot activate Brand because parent Manufacturer "${mfr.name}" is inactive.`
           });
         }
       }
@@ -3688,6 +3734,15 @@ export async function toggleMasterEntityStatus(req, res, next) {
         where: { companyId: id },
         data: { status: 'INACTIVE' }
       }).catch(e => console.warn('Cascade deactivation to suppliers error:', e.message));
+    } else if ((entityType === 'manufacturer' || modelName === 'manufacturer') && updated.active === false) {
+      await prisma.brand.updateMany({
+        where: { manufacturerId: id },
+        data: { active: false }
+      }).catch(e => console.warn('Cascade deactivation to brands error:', e.message));
+      inMemoryBrands = inMemoryBrands.map(b =>
+        b.manufacturerId === id ? { ...b, active: false, status: 'Inactive' } : b
+      );
+      writeBrandsToFile(inMemoryBrands);
     }
 
     res.json({ success: true, entity: updated, message: `Status updated to ${updated.active ? 'ACTIVE' : 'INACTIVE'}` });
@@ -3750,6 +3805,13 @@ export async function deleteMasterEntity(req, res, next) {
           message: `This manufacturer is referenced by ${modelCount} asset model(s) and cannot be deleted.`
         });
       }
+      const brandCount = await prisma.brand.count({ where: { manufacturerId: id } }).catch(() => 0);
+      if (brandCount > 0) {
+        return res.status(400).json({
+          success: false,
+          message: `This manufacturer is referenced by ${brandCount} brand(s) and cannot be deleted.`
+        });
+      }
     }
 
     await prisma[modelName].delete({ where: { id } });
@@ -3768,6 +3830,7 @@ function getPrismaModelName(entityType) {
     category: 'category',
     asset_class: 'assetClass',
     manufacturer: 'manufacturer',
+    brand: 'brand',
     model: 'assetModel',
     department: 'department',
     cost_center: 'costCenter',
@@ -4455,13 +4518,30 @@ async function ensureBrandsTable() {
         id NVARCHAR(100) PRIMARY KEY,
         code NVARCHAR(50) NOT NULL UNIQUE,
         name NVARCHAR(100) NOT NULL,
-        manufacturerId NVARCHAR(100) NULL,
+        manufacturerId NVARCHAR(1000) NULL,
         manufacturerName NVARCHAR(200) NULL,
         description NVARCHAR(500) NULL,
         active BIT DEFAULT 1,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('brands') AND name = 'manufacturerId' AND max_length < 2000)
+      BEGIN
+        ALTER TABLE brands ALTER COLUMN manufacturerId NVARCHAR(1000) NULL;
+      END
+
+      IF NOT EXISTS (
+        SELECT * FROM sys.foreign_keys 
+        WHERE name = 'FK_brands_manufacturers' AND parent_object_id = OBJECT_ID('brands')
+      )
+      BEGIN
+        ALTER TABLE brands
+        ADD CONSTRAINT FK_brands_manufacturers
+        FOREIGN KEY (manufacturerId) REFERENCES manufacturers(id)
+        ON DELETE SET NULL
+        ON UPDATE NO ACTION;
+      END
     `);
     brandsTableEnsured = true;
   } catch (err) {
@@ -5492,18 +5572,32 @@ export async function getBrands(req, res, next) {
     const includeInactive = req.query.includeInactive !== 'false';
     if (isDbConnected()) {
       try {
-        const whereClause = includeInactive ? '' : 'WHERE active = 1';
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM brands ${whereClause} ORDER BY name ASC`);
-        if (Array.isArray(rows) && rows.length > 0) {
-          const list = rows.map(r => ({
-            id: r.id,
-            code: r.code,
-            name: r.name,
-            manufacturerId: r.manufacturerId || '',
-            manufacturerName: r.manufacturerName || '',
-            description: r.description || '',
-            active: Boolean(r.active)
-          }));
+        const whereClause = includeInactive ? {} : { active: true };
+        const rows = await prisma.brand.findMany({
+          where: whereClause,
+          include: {
+            manufacturer: {
+              select: { id: true, name: true, active: true }
+            }
+          },
+          orderBy: { name: 'asc' }
+        });
+        if (Array.isArray(rows)) {
+          const list = rows.map(r => {
+            const mfrActive = r.manufacturer ? r.manufacturer.active !== false : true;
+            const effectiveActive = mfrActive ? Boolean(r.active) : false;
+            return {
+              id: r.id,
+              code: r.code,
+              name: r.name,
+              manufacturerId: r.manufacturerId || '',
+              manufacturerName: r.manufacturer?.name || r.manufacturerName || '',
+              manufacturerActive: mfrActive,
+              description: r.description || '',
+              active: effectiveActive,
+              status: effectiveActive ? 'Active' : 'Inactive'
+            };
+          });
           inMemoryBrands = list;
           writeBrandsToFile(list);
           return res.json({ success: true, brands: list });
@@ -5538,14 +5632,48 @@ export async function createBrand(req, res, next) {
 
     if (isDbConnected()) {
       try {
-        const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM brands WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
-        );
-        if (Array.isArray(existing) && existing.length > 0) {
+        const existing = await prisma.brand.findFirst({
+          where: {
+            OR: [
+              { code: cleanCode },
+              { name: cleanName }
+            ]
+          }
+        });
+        if (existing) {
           return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
       } catch (dbErr) {
         console.warn('DB check duplicate brand skipped:', dbErr.message);
+      }
+    }
+
+    // Resolve and validate Manufacturer
+    let targetMfrId = (manufacturerId || '').trim();
+    let targetMfrName = (manufacturerName || '').trim();
+    let mfrObj = null;
+
+    if (isDbConnected() && (targetMfrId || targetMfrName)) {
+      try {
+        if (targetMfrId) {
+          mfrObj = await prisma.manufacturer.findUnique({ where: { id: targetMfrId } });
+        }
+        if (!mfrObj && targetMfrName) {
+          mfrObj = await prisma.manufacturer.findFirst({ where: { name: targetMfrName } });
+        }
+      } catch (e) {
+        console.warn('Failed to find manufacturer:', e.message);
+      }
+    }
+
+    if (mfrObj) {
+      targetMfrId = mfrObj.id;
+      targetMfrName = mfrObj.name;
+      if (mfrObj.active === false || mfrObj.status === 'Inactive') {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot assign Brand to inactive Manufacturer "${mfrObj.name}". Please select an active Manufacturer.`
+        });
       }
     }
 
@@ -5556,19 +5684,28 @@ export async function createBrand(req, res, next) {
       id,
       code: cleanCode,
       name: cleanName,
-      manufacturerId: manufacturerId || '',
-      manufacturerName: manufacturerName || '',
+      manufacturerId: targetMfrId || '',
+      manufacturerName: targetMfrName || '',
       description: description ? description.trim() : '',
       active: isAct,
+      status: isAct ? 'Active' : 'Inactive',
+      manufacturerActive: mfrObj ? mfrObj.active !== false : true,
       createdAt: new Date().toISOString()
     };
 
     if (isDbConnected()) {
       try {
-        await prisma.$executeRawUnsafe(`
-          INSERT INTO brands (id, code, name, manufacturerId, manufacturerName, description, active, createdAt, updatedAt)
-          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(manufacturerId || '').replace(/'/g, "''")}', '${(manufacturerName || '').replace(/'/g, "''")}', '${(description || '').replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
-        `);
+        await prisma.brand.create({
+          data: {
+            id,
+            code: cleanCode,
+            name: cleanName,
+            manufacturerId: targetMfrId || null,
+            manufacturerName: targetMfrName || null,
+            description: description ? description.trim() : null,
+            active: isAct
+          }
+        });
       } catch (dbErr) {
         console.warn('DB insert brands skipped:', dbErr.message);
       }
@@ -5584,28 +5721,33 @@ export async function updateBrand(req, res, next) {
   try {
     const { id } = req.params;
     let idx = inMemoryBrands.findIndex(b => b.id === id || b.code === id);
-    if (idx === -1 && isDbConnected()) {
+    let existingDb = null;
+    if (isDbConnected()) {
       try {
-        const safeId = (id || '').replace(/'/g, "''");
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM brands WHERE id = '${safeId}' OR code = '${safeId}'`);
-        if (Array.isArray(rows) && rows[0]) {
-          const loaded = {
-            id: rows[0].id,
-            code: rows[0].code,
-            name: rows[0].name,
-            manufacturerId: rows[0].manufacturerId || '',
-            manufacturerName: rows[0].manufacturerName || '',
-            description: rows[0].description || '',
-            active: Boolean(rows[0].active)
-          };
-          inMemoryBrands.push(loaded);
-          idx = inMemoryBrands.length - 1;
-        }
+        existingDb = await prisma.brand.findFirst({
+          where: { OR: [{ id }, { code: id }] },
+          include: { manufacturer: true }
+        });
       } catch (_) {}
     }
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Brand not found' });
 
-    const existing = inMemoryBrands[idx];
+    if (idx === -1 && existingDb) {
+      inMemoryBrands.push({
+        id: existingDb.id,
+        code: existingDb.code,
+        name: existingDb.name,
+        manufacturerId: existingDb.manufacturerId || '',
+        manufacturerName: existingDb.manufacturerName || '',
+        description: existingDb.description || '',
+        active: Boolean(existingDb.active),
+        status: existingDb.active ? 'Active' : 'Inactive'
+      });
+      idx = inMemoryBrands.length - 1;
+    }
+
+    if (idx === -1 && !existingDb) return res.status(404).json({ success: false, message: 'Brand not found' });
+
+    const existing = inMemoryBrands[idx] || existingDb;
     const { code, name, manufacturerId, manufacturerName, description, active, status } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : existing.code;
     const cleanName = name ? name.trim() : existing.name;
@@ -5620,14 +5762,16 @@ export async function updateBrand(req, res, next) {
 
     if (isDbConnected() && (cleanCode || cleanName)) {
       try {
-        const whereParts = [];
-        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
-        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-        const safeId = (id || '').replace(/'/g, "''");
-        const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM brands WHERE id != '${safeId}' AND code != '${safeId}' AND (${whereParts.join(' OR ')})`
-        );
-        if (Array.isArray(existing) && existing.length > 0) {
+        const dup = await prisma.brand.findFirst({
+          where: {
+            id: { not: existing.id },
+            OR: [
+              ...(cleanCode ? [{ code: cleanCode }] : []),
+              ...(cleanName ? [{ name: cleanName }] : [])
+            ]
+          }
+        });
+        if (dup) {
           return res.status(409).json({ success: false, message: `Another brand with this code or name already exists.` });
         }
       } catch (dbErr) {
@@ -5635,32 +5779,80 @@ export async function updateBrand(req, res, next) {
       }
     }
 
+    // Resolve and validate Manufacturer
+    let targetMfrId = manufacturerId !== undefined ? (manufacturerId || '').trim() : (existing.manufacturerId || '').trim();
+    let targetMfrName = manufacturerName !== undefined ? (manufacturerName || '').trim() : (existing.manufacturerName || '').trim();
+    let mfrObj = null;
+
+    if (isDbConnected() && (targetMfrId || targetMfrName)) {
+      try {
+        if (targetMfrId) {
+          mfrObj = await prisma.manufacturer.findUnique({ where: { id: targetMfrId } });
+        }
+        if (!mfrObj && targetMfrName) {
+          mfrObj = await prisma.manufacturer.findFirst({ where: { name: targetMfrName } });
+        }
+      } catch (e) {
+        console.warn('Failed to find manufacturer:', e.message);
+      }
+    }
+
+    if (mfrObj) {
+      targetMfrId = mfrObj.id;
+      targetMfrName = mfrObj.name;
+    }
+
+    const nextActive = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : existing.active);
+
+    // Validation: cannot assign to or activate under inactive manufacturer
+    if (mfrObj && (mfrObj.active === false || mfrObj.status === 'Inactive')) {
+      if (manufacturerId !== undefined || manufacturerName !== undefined) {
+        if (targetMfrId !== existing.manufacturerId) {
+          return res.status(400).json({
+            success: false,
+            message: `Cannot assign Brand to inactive Manufacturer "${mfrObj.name}". Please select an active Manufacturer.`
+          });
+        }
+      }
+      if (nextActive && (!existing.active || active === true || status === 'Active')) {
+        return res.status(400).json({
+          success: false,
+          message: `Cannot activate Brand because parent Manufacturer "${mfrObj.name}" is inactive.`
+        });
+      }
+    }
+
+    const effectiveActive = (mfrObj && mfrObj.active === false) ? false : nextActive;
+
     const updated = {
       ...existing,
       ...req.body,
       code: cleanCode,
       name: cleanName,
+      manufacturerId: targetMfrId || '',
+      manufacturerName: targetMfrName || '',
+      manufacturerActive: mfrObj ? mfrObj.active !== false : true,
+      active: effectiveActive,
+      status: effectiveActive ? 'Active' : 'Inactive',
       updatedAt: new Date().toISOString()
     };
-    if (active !== undefined) updated.active = Boolean(active);
-    else if (status !== undefined) updated.active = status === 'Active';
 
-    inMemoryBrands[idx] = updated;
+    if (idx !== -1) inMemoryBrands[idx] = updated;
 
     await ensureBrandsTable();
     if (isDbConnected()) {
       try {
-        await prisma.$executeRawUnsafe(`
-          UPDATE brands
-          SET code = '${cleanCode.replace(/'/g, "''")}',
-              name = '${cleanName.replace(/'/g, "''")}',
-              manufacturerId = '${(updated.manufacturerId || '').replace(/'/g, "''")}',
-              manufacturerName = '${(updated.manufacturerName || '').replace(/'/g, "''")}',
-              description = '${(updated.description || '').replace(/'/g, "''")}',
-              active = ${updated.active ? 1 : 0},
-              updatedAt = CURRENT_TIMESTAMP
-          WHERE id = '${existing.id.replace(/'/g, "''")}'
-        `);
+        await prisma.brand.update({
+          where: { id: existing.id },
+          data: {
+            code: cleanCode,
+            name: cleanName,
+            manufacturerId: targetMfrId || null,
+            manufacturerName: targetMfrName || null,
+            description: updated.description ? updated.description.trim() : null,
+            active: effectiveActive
+          }
+        });
       } catch (dbErr) {
         console.warn('DB update brands skipped:', dbErr.message);
       }
@@ -5680,8 +5872,9 @@ export async function deleteBrand(req, res, next) {
     let dbBrand = null;
     if (isDbConnected()) {
       try {
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM brands WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
-        if (Array.isArray(rows) && rows.length > 0) dbBrand = rows[0];
+        dbBrand = await prisma.brand.findFirst({
+          where: { OR: [{ id }, { code: id }] }
+        });
       } catch (e) {
         console.warn('DB find brand error:', e.message);
       }
@@ -5696,7 +5889,7 @@ export async function deleteBrand(req, res, next) {
 
     if (isDbConnected()) {
       try {
-        await prisma.$executeRawUnsafe(`DELETE FROM brands WHERE id = '${targetId.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
+        await prisma.brand.delete({ where: { id: targetId } });
       } catch (dbErr) {
         console.warn('DB delete brands skipped:', dbErr.message);
       }

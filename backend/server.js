@@ -7,8 +7,23 @@ import { runDueMaintenancePlans } from './modules/maintenance/maintenancePlans.c
 import { runDuePreventiveSchedules } from './modules/maintenance/preventive.controller.js';
 
 async function startServer() {
-  app.listen(config.port, () => {
+  const server = app.listen(config.port, () => {
     logger.info(`🚀 FAMS API Server running on port ${config.port} [env: ${config.env}]`);
+  });
+
+  server.on('error', (err) => {
+    if (err.code === 'EADDRINUSE') {
+      logger.error(`❌ Port ${config.port} is already in use by another process.`);
+      console.error(`\n============================================================`);
+      console.error(`❌ ERROR: Port ${config.port} is already in use by another running instance.`);
+      console.error(`👉 To free port ${config.port}, run this in PowerShell:`);
+      console.error(`   Stop-Process -Id (Get-NetTCPConnection -LocalPort ${config.port} -ErrorAction SilentlyContinue).OwningProcess -Force`);
+      console.error(`============================================================\n`);
+      process.exit(1);
+    } else {
+      logger.error(`Server error: ${err.message}`);
+      process.exit(1);
+    }
   });
 
   try {
