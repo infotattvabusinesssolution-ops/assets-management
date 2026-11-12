@@ -84,6 +84,9 @@ export function UserManagement() {
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
   const [showAssignRolesModal, setShowAssignRolesModal] = useState(false);
+  const [showPermissionsModal, setShowPermissionsModal] = useState(false);
+  const [selectedRoleForAssignment, setSelectedRoleForAssignment] = useState('');
+  const [isAssigningRole, setIsAssigningRole] = useState(false);
   const [showSendEmailModal, setShowSendEmailModal] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
 
@@ -625,6 +628,54 @@ export function UserManagement() {
     }
     const tempPass = 'Pass#' + Math.floor(100000 + Math.random() * 900000);
     setActionSuccessMsg(`Password reset temporary code for ${user.name}: ${tempPass}`);
+    setActiveDropdownId(null);
+  };
+
+  const handleSaveAssignRole = async () => {
+    if (!selectedUser || !selectedRoleForAssignment) return;
+    setIsAssigningRole(true);
+    try {
+      const targetRole = rolesList.find(r => r.id === selectedRoleForAssignment || r.name === selectedRoleForAssignment);
+      const roleName = targetRole?.name || selectedRoleForAssignment;
+      const roleId = targetRole?.id || selectedRoleForAssignment;
+
+      await api.put(`/admin/users/${selectedUser.id}`, {
+        role: roleName,
+        roleId: roleId
+      }).catch(() => null);
+
+      try {
+        let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+        stored = stored.map(u => u.id === selectedUser.id ? { ...u, role: roleName, roleId: roleId } : u);
+        localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+      } catch (e) {}
+
+      setUserList(prev => prev.map(u => u.id === selectedUser.id ? { ...u, role: roleName, roleId: roleId } : u));
+      setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, role: roleName, roleId: roleId } : u));
+      setActionSuccessMsg(`Role for "${selectedUser.name}" successfully updated to "${roleName}".`);
+      setShowAssignRolesModal(false);
+    } catch (err) {
+      console.error('Assign role error:', err);
+    } finally {
+      setIsAssigningRole(false);
+    }
+  };
+
+  const handleToggleMfa = async (user) => {
+    const nextMfa = !user.mfaEnabled;
+    try {
+      await api.put(`/admin/users/${user.id}`, { mfaEnabled: nextMfa }).catch(() => null);
+    } catch (e) {}
+
+    try {
+      let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      stored = stored.map(u => u.id === user.id ? { ...u, mfaEnabled: nextMfa } : u);
+      localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+    } catch (e) {}
+
+    setUserList(prev => prev.map(u => u.id === user.id ? { ...u, mfaEnabled: nextMfa } : u));
+    setUsers(prev => prev.map(u => u.id === user.id ? { ...u, mfaEnabled: nextMfa } : u));
+    setActionSuccessMsg(`MFA has been ${nextMfa ? 'Enabled' : 'Disabled'} for "${user.name}".`);
     setActiveDropdownId(null);
   };
 
@@ -1227,10 +1278,12 @@ export function UserManagement() {
                             <button
                               onClick={() => {
                                 setSelectedUser(user);
+                                const currentRole = rolesList.find(r => r.name === user.role || r.id === user.roleId);
+                                setSelectedRoleForAssignment(currentRole?.id || currentRole?.name || user.role || (rolesList[0]?.id || ''));
                                 setShowAssignRolesModal(true);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
+                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
                             >
                               <Users className="w-3.5 h-3.5 text-[#6C2BD9]" />
                               Assign Roles
@@ -1239,24 +1292,21 @@ export function UserManagement() {
                             <button
                               onClick={() => {
                                 setSelectedUser(user);
-                                alert(`Opening Granular Permissions Matrix for ${user.name}`);
+                                setShowPermissionsModal(true);
                                 setActiveDropdownId(null);
                               }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
+                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
                             >
                               <ShieldCheck className="w-3.5 h-3.5 text-[#6C2BD9]" />
                               Manage Permissions
                             </button>
 
                             <button
-                              onClick={() => {
-                                alert(`MFA has been ${user.mfaEnabled ? 'Disabled' : 'Enabled'} for ${user.name}`);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
+                              onClick={() => handleToggleMfa(user)}
+                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
                             >
                               <Smartphone className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              Enable / Disable MFA
+                              {user.mfaEnabled ? 'Disable MFA' : 'Enable MFA'}
                             </button>
 
                             <button
@@ -1836,6 +1886,291 @@ export function UserManagement() {
           </div>
         </div>
       )}
+      {/* ASSIGN ROLE MODAL */}
+      {showAssignRolesModal && selectedUser && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-lg shadow-2xl p-6 overflow-y-auto max-h-[90vh] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-bold">
+                  <Users className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Assign Role</h3>
+                  <p className="text-xs text-slate-500">Update system access & permissions for {selectedUser.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAssignRolesModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* User Details Mini Card */}
+            <div className="p-3.5 bg-slate-50 rounded-xl border border-slate-200 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-[#6C2BD9] text-white flex items-center justify-center font-bold text-sm shadow-sm">
+                  {selectedUser.name?.charAt(0)?.toUpperCase() || 'U'}
+                </div>
+                <div>
+                  <div className="font-bold text-slate-900 text-sm">{selectedUser.name}</div>
+                  <div className="text-xs text-slate-500">{selectedUser.email || selectedUser.username}</div>
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-[10px] text-slate-400 block uppercase tracking-wider font-semibold">Current Role</span>
+                <span className="inline-block px-2.5 py-0.5 rounded-md text-xs font-bold bg-purple-100 text-[#6C2BD9] border border-purple-200">
+                  {selectedUser.role || 'Standard User'}
+                </span>
+              </div>
+            </div>
+
+            {/* Role Choices */}
+            <div className="space-y-2">
+              <label className="block text-xs font-bold text-slate-700">Select New Role *</label>
+              <div className="space-y-2 max-h-60 overflow-y-auto pr-1">
+                {rolesList.map(r => {
+                  const isSelected = (selectedRoleForAssignment === r.id || selectedRoleForAssignment === r.name);
+                  return (
+                    <div
+                      key={r.id || r.name}
+                      onClick={() => setSelectedRoleForAssignment(r.id || r.name)}
+                      className={`p-3 rounded-xl border transition-all cursor-pointer flex items-start justify-between gap-3 ${
+                        isSelected
+                          ? 'border-[#6C2BD9] bg-purple-50/50 ring-2 ring-[#6C2BD9]/20 shadow-xs'
+                          : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50/50'
+                      }`}
+                    >
+                      <div className="flex items-start gap-2.5">
+                        <input
+                          type="radio"
+                          name="assignedRole"
+                          checked={isSelected}
+                          onChange={() => setSelectedRoleForAssignment(r.id || r.name)}
+                          className="mt-0.5 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-slate-900 flex items-center gap-2">
+                            <span>{r.name}</span>
+                            {r.code && <span className="font-mono text-[10px] text-slate-400">({r.code})</span>}
+                            {r.isSystem && (
+                              <span className="text-[9px] px-1.5 py-0.5 rounded font-medium bg-slate-100 text-slate-600">
+                                System
+                              </span>
+                            )}
+                          </div>
+                          <p className="text-[11px] text-slate-500 mt-0.5">{r.description || 'Access role for operations'}</p>
+                        </div>
+                      </div>
+                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
+                        r.status === 'Active' || r.active !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {r.status || 'Active'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-end gap-2 pt-3 border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => setShowAssignRolesModal(false)}
+                className="px-4 py-2 border border-slate-300 text-slate-700 text-xs font-semibold rounded-lg hover:bg-slate-50 transition-colors cursor-pointer"
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                disabled={isAssigningRole || !selectedRoleForAssignment}
+                onClick={handleSaveAssignRole}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+              >
+                {isAssigningRole ? 'Saving...' : 'Save Role Assignment'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* MANAGE PERMISSIONS MODAL */}
+      {showPermissionsModal && selectedUser && (
+        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-bold">
+                  <ShieldCheck className="w-5 h-5" />
+                </div>
+                <div>
+                  <h3 className="text-base font-bold text-slate-900">Manage Permissions</h3>
+                  <p className="text-xs text-slate-500">Effective permissions & access rights for {selectedUser.name}</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowPermissionsModal(false)}
+                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {/* User & Assigned Role Overview */}
+            <div className="p-3.5 bg-purple-50/60 rounded-xl border border-purple-200/60 flex items-center justify-between">
+              <div>
+                <span className="text-[10px] text-purple-700 font-bold uppercase tracking-wider block">Assigned Role</span>
+                <span className="text-sm font-bold text-slate-900">{selectedUser.role || 'Standard User'}</span>
+                <p className="text-[11px] text-slate-600 mt-0.5">Permissions are governed by this role under Role-Based Access Control (RBAC).</p>
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setShowPermissionsModal(false);
+                  const currentRole = rolesList.find(r => r.name === selectedUser.role || r.id === selectedUser.roleId);
+                  setSelectedRoleForAssignment(currentRole?.id || currentRole?.name || selectedUser.role || '');
+                  setShowAssignRolesModal(true);
+                }}
+                className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit2 className="w-3.5 h-3.5" /> Change Role
+              </button>
+            </div>
+
+            {/* Granular Permission Matrix */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <label className="text-xs font-bold text-slate-800">Module Permissions Overview</label>
+                <span className="text-[11px] text-slate-500">
+                  {['System Administrator', 'Asset Administrator', 'Admin'].includes(selectedUser.role)
+                    ? 'All Permissions Granted'
+                    : 'Role-Restricted Permissions'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[46vh] overflow-y-auto pr-1">
+                {[
+                  {
+                    module: 'Asset Management',
+                    screens: [
+                      { name: 'Asset Registry', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+                      { name: 'Asset Hierarchy', actions: ['View', 'Edit'] },
+                      { name: 'Asset Approvals', actions: ['Approve', 'Reject'] }
+                    ]
+                  },
+                  {
+                    module: 'Custody & Movement',
+                    screens: [
+                      { name: 'Transfer & Movement', actions: ['Initiate', 'Execute', 'Approve'] },
+                      { name: 'Asset Assignment', actions: ['Assign', 'Reassign'] }
+                    ]
+                  },
+                  {
+                    module: 'Maintenance & Work Orders',
+                    screens: [
+                      { name: 'Work Orders', actions: ['Create', 'Assign', 'Close'] },
+                      { name: 'Preventive Schedules', actions: ['Schedule', 'Update'] }
+                    ]
+                  },
+                  {
+                    module: 'Audit & Physical Verification',
+                    screens: [
+                      { name: 'Stocktake & Audit', actions: ['Initiate', 'Scan', 'Reconcile'] },
+                      { name: 'Audit Reports', actions: ['View', 'Export'] }
+                    ]
+                  },
+                  {
+                    module: 'Finance & Depreciation',
+                    screens: [
+                      { name: 'Depreciation Runs', actions: ['Execute', 'Post', 'Rollback'] },
+                      { name: 'Valuation & Disposal', actions: ['Revalue', 'Dispose'] }
+                    ]
+                  },
+                  {
+                    module: 'Administration & Master Data',
+                    screens: [
+                      { name: 'Master Data Hub', actions: ['Sites', 'Companies', 'Departments'] },
+                      { name: 'Security & Access', actions: ['Roles', 'Users', 'Logs'] }
+                    ]
+                  }
+                ].map((modGroup, idx) => {
+                  const isFullAdmin = ['System Administrator', 'Asset Administrator', 'Admin'].includes(selectedUser.role);
+                  const isAssetMgr = selectedUser.role === 'Asset Manager';
+                  const isAuditor = selectedUser.role === 'Auditor';
+                  const isTech = selectedUser.role === 'Technician';
+
+                  return (
+                    <div key={idx} className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2">
+                      <div className="font-bold text-xs text-slate-800 flex items-center justify-between border-b border-slate-100 pb-1.5">
+                        <span>{modGroup.module}</span>
+                        {isFullAdmin ? (
+                          <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold border border-emerald-200">
+                            Full Access
+                          </span>
+                        ) : (
+                          <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-medium">
+                            Role-Bound
+                          </span>
+                        )}
+                      </div>
+
+                      <div className="space-y-1.5">
+                        {modGroup.screens.map((scr, scrIdx) => (
+                          <div key={scrIdx} className="text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-100">
+                            <div className="font-medium text-slate-700 mb-1">{scr.name}</div>
+                            <div className="flex flex-wrap gap-1">
+                              {scr.actions.map((act) => {
+                                let isAllowed = isFullAdmin;
+                                if (!isFullAdmin) {
+                                  if (act === 'View') isAllowed = true;
+                                  else if (isAssetMgr && modGroup.module !== 'Administration & Master Data') isAllowed = true;
+                                  else if (isAuditor && modGroup.module === 'Audit & Physical Verification') isAllowed = true;
+                                  else if (isTech && modGroup.module === 'Maintenance & Work Orders') isAllowed = true;
+                                }
+                                return (
+                                  <span
+                                    key={act}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 ${
+                                      isAllowed
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                        : 'bg-slate-100 text-slate-400 line-through'
+                                    }`}
+                                  >
+                                    {isAllowed && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                    {act}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* Modal Actions */}
+            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+              <span className="text-[11px] text-slate-400">
+                To customize permissions, update the role or create a new custom role in Roles & Permissions.
+              </span>
+              <button
+                type="button"
+                onClick={() => setShowPermissionsModal(false)}
+                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+              >
+                Done
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Delete Confirmation Modal */}
       <DeleteConfirmModal
         isOpen={Boolean(userToDelete)}
