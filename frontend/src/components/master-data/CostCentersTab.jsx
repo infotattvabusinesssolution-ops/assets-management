@@ -40,6 +40,7 @@ export function CostCentersTab({
   const [costCentersList, setCostCentersList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
   const [departmentsList, setDepartmentsList] = useState([]);
+  const [custodiansList, setCustodiansList] = useState([]);
   const [selectedCostCenter, setSelectedCostCenter] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -47,13 +48,24 @@ export function CostCentersTab({
   const loadCostCenters = async () => {
     setIsLoading(true);
     try {
-      const [res, compRes, deptRes] = await Promise.all([
+      const [res, compRes, deptRes, empRes] = await Promise.all([
         api.get('/master-data/cost-centers?includeInactive=true'),
         api.get('/master-data/companies?includeInactive=true').catch(() => null),
-        api.get('/master-data/departments?includeInactive=true').catch(() => null)
+        api.get('/master-data/departments?includeInactive=true').catch(() => null),
+        api.get('/master-data/employees?includeInactive=true').catch(() => null)
       ]);
       if (compRes?.companies) setCompaniesList(compRes.companies);
       if (deptRes?.departments) setDepartmentsList(deptRes.departments);
+
+      const allLoadedEmployees = [
+        ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : (Array.isArray(empRes) ? empRes : [])))
+      ];
+      let customCustodians = [];
+      try {
+        customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      } catch (_) {}
+      const combinedEmployees = [...allLoadedEmployees, ...customCustodians];
+      setCustodiansList(combinedEmployees);
       if (res?.costCenters && res.costCenters.length > 0) {
         const mapped = res.costCenters.map((cc) => {
           const isCompActive = cc.company ? (cc.company.active !== false && cc.company.status !== 'Inactive') : true;
@@ -124,11 +136,20 @@ export function CostCentersTab({
     name: '',
     company: '',
     departmentId: '',
-    type: 'Operational',
     manager: '',
+    email: '',
+    phone: '',
     description: '',
     status: 'Active'
   });
+
+  const sortedCustodians = useMemo(() => {
+    return [...custodiansList].sort((a, b) => {
+      const nameA = (a.fullName || a.name || '').toLowerCase();
+      const nameB = (b.fullName || b.name || '').toLowerCase();
+      return nameA.localeCompare(nameB);
+    });
+  }, [custodiansList]);
 
   const filteredCostCenters = useMemo(() => {
     return costCentersList.filter((cc) => {
@@ -178,13 +199,18 @@ export function CostCentersTab({
     setModalError('');
     if (ccToEdit) {
       setEditingCostCenter(ccToEdit);
+      const matchedCust = custodiansList.find(c => 
+        (c.fullName && c.fullName.trim().toLowerCase() === (ccToEdit.manager || '').trim().toLowerCase()) ||
+        (c.name && c.name.trim().toLowerCase() === (ccToEdit.manager || '').trim().toLowerCase())
+      );
       setCcFormState({
         code: ccToEdit.code || '',
         name: ccToEdit.name || '',
         company: ccToEdit.company && ccToEdit.company !== '-' ? ccToEdit.company : (companiesList[0]?.name || ''),
         departmentId: ccToEdit.departmentId || '',
-        type: ccToEdit.type && ccToEdit.type !== '-' ? ccToEdit.type : 'Operational',
         manager: ccToEdit.manager && ccToEdit.manager !== '-' ? ccToEdit.manager : '',
+        email: matchedCust?.email || '',
+        phone: matchedCust?.phone || '',
         description: ccToEdit.description || '',
         status: ccToEdit.status || 'Active'
       });
@@ -195,8 +221,9 @@ export function CostCentersTab({
         name: '',
         company: companiesList[0]?.name || '',
         departmentId: '',
-        type: 'Operational',
         manager: '',
+        email: '',
+        phone: '',
         description: '',
         status: 'Active'
       });
@@ -250,7 +277,6 @@ export function CostCentersTab({
       name: cleanName,
       companyId,
       departmentId: ccFormState.departmentId || null,
-      type: ccFormState.type || null,
       manager: ccFormState.manager ? ccFormState.manager.trim() : null,
       description: ccFormState.description ? ccFormState.description.trim() : null,
       active: ccFormState.status === 'Active',
@@ -644,15 +670,39 @@ export function CostCentersTab({
                 <span className="col-span-2 font-semibold text-[#6C2BD9]">{selectedCostCenter.department || 'Not Assigned'}</span>
               </div>
 
-              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Type</span>
-                <span className="col-span-2 text-slate-700">{selectedCostCenter.type || '-'}</span>
-              </div>
+              {selectedCostCenter.type && (
+                <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                  <span className="text-slate-500 font-medium">Type</span>
+                  <span className="col-span-2 text-slate-700">{selectedCostCenter.type}</span>
+                </div>
+              )}
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Manager</span>
                 <span className="col-span-2 font-semibold text-slate-900">{selectedCostCenter.manager || '-'}</span>
               </div>
+              {(() => {
+                const matchedCust = custodiansList.find(c =>
+                  (c.fullName && c.fullName.trim().toLowerCase() === (selectedCostCenter.manager || '').trim().toLowerCase()) ||
+                  (c.name && c.name.trim().toLowerCase() === (selectedCostCenter.manager || '').trim().toLowerCase())
+                );
+                return (
+                  <>
+                    {matchedCust?.email && (
+                      <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                        <span className="text-slate-500 font-medium">Email</span>
+                        <span className="col-span-2 font-mono text-[11px] text-slate-700">{matchedCust.email}</span>
+                      </div>
+                    )}
+                    {matchedCust?.phone && (
+                      <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                        <span className="text-slate-500 font-medium">Phone</span>
+                        <span className="col-span-2 font-mono text-[11px] text-slate-700">{matchedCust.phone}</span>
+                      </div>
+                    )}
+                  </>
+                );
+              })()}
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Description</span>
@@ -876,28 +926,159 @@ export function CostCentersTab({
                 </div>
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Type</label>
-                  <select
-                    value={ccFormState.type}
-                    onChange={(e) => setCcFormState({ ...ccFormState, type: e.target.value })}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
-                  >
-                    <option value="Operational">Operational</option>
-                    <option value="Administrative">Administrative</option>
-                    <option value="Capital">Capital</option>
-                  </select>
-                </div>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Manager</label>
-                  <input
-                    type="text"
-                    value={ccFormState.manager}
-                    onChange={(e) => setCcFormState({ ...ccFormState, manager: e.target.value })}
-                    placeholder="Manager Name"
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
-                  />
+                  <select
+                    value={ccFormState.manager || ''}
+                    onChange={(e) => {
+                      const selectedVal = e.target.value;
+                      if (!selectedVal) {
+                        setCcFormState({
+                          ...ccFormState,
+                          manager: '',
+                          email: '',
+                          phone: ''
+                        });
+                        return;
+                      }
+                      const matchedCust = custodiansList.find(c => 
+                        (c.fullName && c.fullName.trim().toLowerCase() === selectedVal.trim().toLowerCase()) ||
+                        (c.name && c.name.trim().toLowerCase() === selectedVal.trim().toLowerCase()) ||
+                        (c.employeeCode && c.employeeCode.trim().toLowerCase() === selectedVal.trim().toLowerCase()) ||
+                        String(c.id) === selectedVal
+                      );
+                      setCcFormState({
+                        ...ccFormState,
+                        manager: matchedCust ? (matchedCust.fullName || matchedCust.name || selectedVal) : selectedVal,
+                        email: matchedCust?.email || '',
+                        phone: matchedCust?.phone || ''
+                      });
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer"
+                  >
+                    <option value="">- Select Manager (Custodian) -</option>
+                    {editingCostCenter?.manager && !sortedCustodians.some(c => (c.fullName || c.name) === editingCostCenter.manager) && (
+                      <option value={editingCostCenter.manager}>
+                        {editingCostCenter.manager} (Current)
+                      </option>
+                    )}
+                    {sortedCustodians.map((c) => {
+                      const isInactive = c.active === false || c.status === 'Inactive';
+                      const name = c.fullName || c.name || '';
+                      const code = c.employeeCode || c.code || '';
+                      return (
+                        <option
+                          key={c.id || code || name}
+                          value={name}
+                          disabled={isInactive}
+                          className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                        >
+                          {name}{code ? ` (${code})` : ''}{isInactive ? ' (Inactive)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Email</label>
+                  <select
+                    value={ccFormState.email || ''}
+                    onChange={(e) => {
+                      const selectedEmail = e.target.value;
+                      if (!selectedEmail) {
+                        setCcFormState({
+                          ...ccFormState,
+                          email: '',
+                          manager: '',
+                          phone: ''
+                        });
+                        return;
+                      }
+                      const matchedCust = custodiansList.find(c => (c.email || '').trim().toLowerCase() === selectedEmail.trim().toLowerCase());
+                      setCcFormState({
+                        ...ccFormState,
+                        email: selectedEmail,
+                        manager: matchedCust ? (matchedCust.fullName || matchedCust.name || ccFormState.manager) : ccFormState.manager,
+                        phone: matchedCust?.phone || ''
+                      });
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-mono"
+                  >
+                    <option value="">- Select Email -</option>
+                    {ccFormState.email && !sortedCustodians.some(c => (c.email || '').toLowerCase() === ccFormState.email.toLowerCase()) && (
+                      <option value={ccFormState.email}>
+                        {ccFormState.email} (Current)
+                      </option>
+                    )}
+                    {sortedCustodians
+                      .filter(c => !!c.email)
+                      .map((c) => {
+                        const isInactive = c.active === false || c.status === 'Inactive';
+                        const name = c.fullName || c.name || '';
+                        return (
+                          <option
+                            key={`email-${c.id || c.email}`}
+                            value={c.email}
+                            disabled={isInactive}
+                            className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                          >
+                            {c.email} ({name})
+                          </option>
+                        );
+                      })}
+                  </select>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Phone No.</label>
+                  <select
+                    value={ccFormState.phone || ''}
+                    onChange={(e) => {
+                      const selectedPhone = e.target.value;
+                      if (!selectedPhone) {
+                        setCcFormState({
+                          ...ccFormState,
+                          phone: '',
+                          manager: '',
+                          email: ''
+                        });
+                        return;
+                      }
+                      const matchedCust = custodiansList.find(c => (c.phone || '').trim() === selectedPhone.trim());
+                      setCcFormState({
+                        ...ccFormState,
+                        phone: selectedPhone,
+                        manager: matchedCust ? (matchedCust.fullName || matchedCust.name || ccFormState.manager) : ccFormState.manager,
+                        email: matchedCust?.email || ''
+                      });
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-mono"
+                  >
+                    <option value="">- Select Phone No. -</option>
+                    {ccFormState.phone && !sortedCustodians.some(c => (c.phone || '').trim() === ccFormState.phone.trim()) && (
+                      <option value={ccFormState.phone}>
+                        {ccFormState.phone} (Current)
+                      </option>
+                    )}
+                    {sortedCustodians
+                      .filter(c => !!c.phone)
+                      .map((c) => {
+                        const isInactive = c.active === false || c.status === 'Inactive';
+                        const name = c.fullName || c.name || '';
+                        return (
+                          <option
+                            key={`phone-${c.id || c.phone}`}
+                            value={c.phone}
+                            disabled={isInactive}
+                            className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
+                          >
+                            {c.phone} ({name})
+                          </option>
+                        );
+                      })}
+                  </select>
                 </div>
               </div>
 
