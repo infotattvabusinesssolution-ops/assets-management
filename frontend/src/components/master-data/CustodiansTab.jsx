@@ -66,6 +66,48 @@ export function CustodiansTab({
   // Master Data Options
   const [companies, setCompanies] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [sections, setSections] = useState([]);
+  const [locations, setLocations] = useState([]);
+
+  const uniqueCompanies = useMemo(() => {
+    const seen = new Set();
+    return companies.filter(c => {
+      const key = (c.id || c.code || c.name || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [companies]);
+
+  const uniqueDepartments = useMemo(() => {
+    const seen = new Set();
+    return departments.filter(d => {
+      const key = (d.id || d.code || d.name || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [departments]);
+
+  const uniqueSections = useMemo(() => {
+    const seen = new Set();
+    return sections.filter(s => {
+      const key = (s.name || s.code || s.id || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [sections]);
+
+  const uniqueLocations = useMemo(() => {
+    const seen = new Set();
+    return locations.filter(l => {
+      const key = (l.name || l.code || l.id || '').trim().toLowerCase();
+      if (!key || seen.has(key)) return false;
+      seen.add(key);
+      return true;
+    });
+  }, [locations]);
 
   // Modal State
   const [showAddModal, setShowAddModal] = useState(false);
@@ -82,6 +124,7 @@ export function CustodiansTab({
     companyId: '',
     departmentId: '',
     section: '',
+    costCenterId: '',
     location: '',
     organization: '',
     status: 'Active'
@@ -90,14 +133,57 @@ export function CustodiansTab({
   const loadCustodians = async () => {
     setIsLoading(true);
     try {
-      const [empRes, compRes, deptRes] = await Promise.all([
+      const [empRes, compRes, deptRes, ccRes, siteRes] = await Promise.all([
         api.get('/master-data/employees?includeInactive=true').catch(() => null),
         api.get('/master-data/companies?includeInactive=true').catch(() => null),
-        api.get('/master-data/departments').catch(() => null)
+        api.get('/master-data/departments?includeInactive=true').catch(() => null),
+        api.get('/master-data/cost-centers?includeInactive=true').catch(() => null),
+        api.get('/master-data/sites?includeInactive=true').catch(() => null)
       ]);
 
-      if (compRes?.companies) setCompanies(compRes.companies);
-      if (deptRes?.departments) setDepartments(deptRes.departments);
+      let customCompanies = [];
+      try { customCompanies = JSON.parse(localStorage.getItem('fams_custom_companies') || '[]'); } catch (_) {}
+      const serverComps = Array.isArray(compRes?.companies) ? compRes.companies : [];
+      const mergedCompanies = [...serverComps];
+      for (const c of customCompanies) {
+        if (!mergedCompanies.some(x => x.id === c.id || (x.code && x.code.toLowerCase() === (c.code || '').toLowerCase()))) {
+          mergedCompanies.push(c);
+        }
+      }
+      setCompanies(mergedCompanies);
+
+      let customDepartments = [];
+      try { customDepartments = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]'); } catch (_) {}
+      const serverDepts = Array.isArray(deptRes?.departments) ? deptRes.departments : [];
+      const mergedDepartments = [...serverDepts];
+      for (const d of customDepartments) {
+        if (!mergedDepartments.some(x => x.id === d.id || (x.code && x.code.toLowerCase() === (d.code || '').toLowerCase()))) {
+          mergedDepartments.push(d);
+        }
+      }
+      setDepartments(mergedDepartments);
+
+      let customCostCenters = [];
+      try { customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
+      const serverCostCenters = Array.isArray(ccRes?.costCenters) ? ccRes.costCenters : [];
+      const mergedSections = [...serverCostCenters];
+      for (const s of customCostCenters) {
+        if (!mergedSections.some(x => x.id === s.id || (x.code && x.code.toLowerCase() === (s.code || '').toLowerCase()))) {
+          mergedSections.push(s);
+        }
+      }
+      setSections(mergedSections);
+
+      let customLocations = [];
+      try { customLocations = JSON.parse(localStorage.getItem('fams_custom_locations') || '[]'); } catch (_) {}
+      const serverSites = Array.isArray(siteRes?.sites) ? siteRes.sites : (Array.isArray(siteRes?.locations) ? siteRes.locations : []);
+      const mergedLocations = [...serverSites];
+      for (const l of customLocations) {
+        if (!mergedLocations.some(x => x.id === l.id || (x.code && x.code.toLowerCase() === (l.code || '').toLowerCase()))) {
+          mergedLocations.push(l);
+        }
+      }
+      setLocations(mergedLocations);
 
       const customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
       const serverCustodians = Array.isArray(empRes?.employees) ? empRes.employees : [];
@@ -106,6 +192,22 @@ export function CustodiansTab({
       setSelectedCustodian(merged[0] || null);
     } catch (err) {
       console.warn('Failed to load custodians:', err);
+      let customComps = [];
+      try { customComps = JSON.parse(localStorage.getItem('fams_custom_companies') || '[]'); } catch (_) {}
+      setCompanies(customComps);
+
+      let customDepts = [];
+      try { customDepts = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]'); } catch (_) {}
+      setDepartments(customDepts);
+
+      let customCC = [];
+      try { customCC = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
+      setSections(customCC);
+
+      let customLocs = [];
+      try { customLocs = JSON.parse(localStorage.getItem('fams_custom_locations') || '[]'); } catch (_) {}
+      setLocations(customLocs);
+
       const customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
       const deduped = deduplicateCustodians(customCustodians);
       setCustodians(deduped);
@@ -174,6 +276,33 @@ export function CustodiansTab({
 
   const handleOpenAddModal = (custToEdit = null) => {
     setModalError('');
+    try {
+      const customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]');
+      if (customCostCenters.length > 0) {
+        setSections(prev => {
+          const merged = [...prev];
+          for (const s of customCostCenters) {
+            if (!merged.some(x => x.id === s.id || (x.code && x.code.toLowerCase() === (s.code || '').toLowerCase()))) {
+              merged.push(s);
+            }
+          }
+          return merged;
+        });
+      }
+      const customLocs = JSON.parse(localStorage.getItem('fams_custom_locations') || '[]');
+      if (customLocs.length > 0) {
+        setLocations(prev => {
+          const merged = [...prev];
+          for (const l of customLocs) {
+            if (!merged.some(x => x.id === l.id || (x.code && x.code.toLowerCase() === (l.code || '').toLowerCase()))) {
+              merged.push(l);
+            }
+          }
+          return merged;
+        });
+      }
+    } catch (_) {}
+
     if (custToEdit) {
       setEditingCustodian(custToEdit);
       setFormState({
@@ -182,9 +311,10 @@ export function CustodiansTab({
         fullName: custToEdit.fullName || '',
         email: custToEdit.email || '',
         phone: custToEdit.phone || '',
-        companyId: custToEdit.companyId || (companies[0]?.id || ''),
-        departmentId: custToEdit.departmentId || '',
-        section: custToEdit.section || '',
+        companyId: custToEdit.companyId || (custToEdit.company?.id || ''),
+        departmentId: custToEdit.departmentId || (custToEdit.department?.id || ''),
+        section: custToEdit.section || (custToEdit.costCenter?.name || ''),
+        costCenterId: custToEdit.costCenterId || (custToEdit.costCenter?.id || ''),
         location: custToEdit.location || '',
         organization: custToEdit.organization || '',
         status: custToEdit.active === false ? 'Inactive' : 'Active'
@@ -197,9 +327,10 @@ export function CustodiansTab({
         fullName: '',
         email: '',
         phone: '',
-        companyId: companies[0]?.id || '',
+        companyId: '',
         departmentId: '',
         section: '',
+        costCenterId: '',
         location: '',
         organization: '',
         status: 'Active'
@@ -219,9 +350,10 @@ export function CustodiansTab({
       fullName: `${c.fullName || ''} (Copy)`,
       email: c.email ? `copy.${c.email}` : '',
       phone: c.phone || '',
-      companyId: c.companyId || (companies[0]?.id || ''),
-      departmentId: c.departmentId || '',
-      section: c.section || '',
+      companyId: c.companyId || (c.company?.id || ''),
+      departmentId: c.departmentId || (c.department?.id || ''),
+      section: c.section || (c.costCenter?.name || ''),
+      costCenterId: c.costCenterId || (c.costCenter?.id || ''),
       location: c.location || '',
       organization: c.organization || '',
       status: 'Active'
@@ -270,16 +402,18 @@ export function CustodiansTab({
     try {
       const selectedComp = companies.find(c => c.id === formState.companyId);
       const selectedDept = departments.find(d => d.id === formState.departmentId);
+      const matchedSec = sections.find(s => (s.name || s.code) === formState.section || s.id === formState.costCenterId);
 
       const payload = {
         fullName: cleanName,
         email: cleanEmail,
         phone: formState.phone.trim(),
         custodianType: formState.custodianType,
-        companyId: formState.companyId,
+        companyId: formState.companyId || undefined,
         company: selectedComp ? { name: selectedComp.name } : undefined,
         departmentId: formState.departmentId || undefined,
         department: selectedDept ? { name: selectedDept.name } : undefined,
+        costCenterId: formState.costCenterId || matchedSec?.id || undefined,
         section: formState.section.trim(),
         location: formState.location.trim(),
         organization: formState.custodianType === 'External' ? formState.organization.trim() : '',
@@ -888,7 +1022,8 @@ export function CustodiansTab({
                     onChange={(e) => setFormState({ ...formState, companyId: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
                   >
-                    {companies.map(c => (
+                    <option value="">-- Select Company --</option>
+                    {uniqueCompanies.map(c => (
                       <option key={c.id} value={c.id}>{c.name}</option>
                     ))}
                   </select>
@@ -901,7 +1036,7 @@ export function CustodiansTab({
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
                   >
                     <option value="">-- Select Department --</option>
-                    {departments.map(d => (
+                    {uniqueDepartments.map(d => (
                       <option key={d.id} value={d.id}>{d.name}</option>
                     ))}
                   </select>
@@ -911,23 +1046,55 @@ export function CustodiansTab({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Section</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Cybersecurity, Application Dev"
+                  <select
                     value={formState.section}
-                    onChange={(e) => setFormState({ ...formState, section: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
-                  />
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const matchedSec = sections.find(s => (s.name || s.code) === val || s.id === val);
+                      setFormState({
+                        ...formState,
+                        section: val,
+                        costCenterId: matchedSec?.id || ''
+                      });
+                    }}
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                  >
+                    <option value="">-- Select Section --</option>
+                    {uniqueSections.map(s => {
+                      const val = s.name || s.code;
+                      const label = s.name ? `${s.name}${s.code ? ` (${s.code})` : ''}` : s.code;
+                      return (
+                        <option key={s.id || s.code} value={val}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                    {formState.section && !uniqueSections.some(s => (s.name || s.code) === formState.section) && (
+                      <option value={formState.section}>{formState.section}</option>
+                    )}
+                  </select>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Assigned Location</label>
-                  <input
-                    type="text"
-                    placeholder="e.g. Headquarters - Floor 2"
+                  <select
                     value={formState.location}
                     onChange={(e) => setFormState({ ...formState, location: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs text-slate-800 placeholder-slate-400 focus:outline-none focus:border-[#6C2BD9]"
-                  />
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                  >
+                    <option value="">-- Select Location --</option>
+                    {uniqueLocations.map(l => {
+                      const val = l.name || l.code;
+                      const label = l.name ? `${l.name}${l.code ? ` (${l.code})` : ''}` : l.code;
+                      return (
+                        <option key={l.id || l.code} value={val}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                    {formState.location && !uniqueLocations.some(l => (l.name || l.code) === formState.location) && (
+                      <option value={formState.location}>{formState.location}</option>
+                    )}
+                  </select>
                 </div>
               </div>
 
