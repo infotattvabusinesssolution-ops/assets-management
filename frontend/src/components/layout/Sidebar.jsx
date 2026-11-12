@@ -344,13 +344,23 @@ export function Sidebar({ collapsed, setCollapsed }) {
   };
 
   const visibleNavItems = NAV_STRUCTURE.filter(item => {
-    if (userRoleCode === 'SYS_ADMIN') return true;
+    if (userRoleCode === 'SYS_ADMIN' || userRoleCode === 'ASSET_ADMIN') return true;
     if (item.roles.includes('*')) return true;
+
+    // Check dynamic permissions if assigned to user's role
+    const perms = user?.role?.permissions;
+    if (perms && typeof perms === 'object' && Object.keys(perms).length > 0) {
+      const modPerms = perms[item.id] || (item.id === 'stocktakes' ? perms['audit'] : null);
+      if (Array.isArray(modPerms) && modPerms.length > 0) return true;
+      if (typeof modPerms === 'boolean' && modPerms) return true;
+      return false;
+    }
+
     return item.roles.includes(userRoleCode);
   }).map(item => {
     if (!item.subItems) return item;
     const filteredSubs = item.subItems.filter(sub => {
-      if (!sub.roles || sub.roles.includes('*') || userRoleCode === 'SYS_ADMIN') return true;
+      if (!sub.roles || sub.roles.includes('*') || userRoleCode === 'SYS_ADMIN' || userRoleCode === 'ASSET_ADMIN') return true;
       return sub.roles.includes(userRoleCode);
     });
     return { ...item, subItems: filteredSubs };

@@ -198,6 +198,7 @@ export function RolesPermissions() {
   // Permissions Matrix State
   const [expandedModules, setExpandedModules] = useState({ assets: true, movements: true, audit: true, administration: true });
   const [rolePermissions, setRolePermissions] = useState({});
+  const [isSavingPermissions, setIsSavingPermissions] = useState(false);
 
   // Filtered Roles Memo
   const filteredRoles = useMemo(() => {
@@ -526,14 +527,41 @@ export function RolesPermissions() {
 
   const handleOpenPermissions = (role) => {
     setSelectedRole(role);
-    setRolePermissions(role.permissions || {});
+    let perms = role.permissions;
+    if (typeof perms === 'string') {
+      try {
+        perms = JSON.parse(perms);
+      } catch (e) {
+        perms = {};
+      }
+    }
+    setRolePermissions(perms && typeof perms === 'object' ? perms : {});
     setShowPermissionsModal(true);
     setActiveDropdownId(null);
   };
 
-  const handleSavePermissions = () => {
-    triggerToast(`Permissions updated for "${selectedRole?.name}".`);
-    setShowPermissionsModal(false);
+  const handleSavePermissions = async () => {
+    if (!selectedRole) return;
+    setIsSavingPermissions(true);
+    try {
+      await api.put(`/admin/roles/${selectedRole.id}`, {
+        permissions: rolePermissions
+      });
+
+      setRoles((prev) =>
+        prev.map((r) =>
+          r.id === selectedRole.id ? { ...r, permissions: rolePermissions } : r
+        )
+      );
+
+      triggerToast(`Permissions for "${selectedRole.name}" saved successfully in database.`);
+      setShowPermissionsModal(false);
+    } catch (err) {
+      console.error('Error saving role permissions:', err);
+      triggerToast(err.response?.data?.error || 'Failed to save permissions to database.');
+    } finally {
+      setIsSavingPermissions(false);
+    }
   };
 
   const togglePermission = (moduleKey, action) => {
@@ -546,10 +574,34 @@ export function RolesPermissions() {
 
   const MODULE_STRUCTURE = [
     {
+      key: 'dashboard',
+      name: 'Dashboard & Analytics',
+      screens: ['Executive Dashboard', 'Asset Analytics & KPIs'],
+      actions: ['View', 'Export']
+    },
+    {
       key: 'assets',
       name: 'Asset Management',
       screens: ['Asset Register', 'New Asset Registration', 'My Assets', 'Asset Hierarchy', 'Asset Approvals'],
       actions: ['View', 'Create', 'Edit', 'Delete', 'Approve', 'Export', 'Import']
+    },
+    {
+      key: 'receiving',
+      name: 'Receiving & Tagging',
+      screens: ['Receive with PO', 'Receive without PO', 'Tag Assets', 'Bulk Tagging', 'Print Tags', 'Receive History'],
+      actions: ['View', 'Receive', 'Tag', 'Print', 'Export', 'Approve']
+    },
+    {
+      key: 'tracking',
+      name: 'Tracking & Location (RTLS)',
+      screens: ['Asset Tracking', 'RTLS Map & Location', 'Geofencing', 'Location History', 'Proximity Search'],
+      actions: ['View', 'Locate', 'Configure Geofence', 'Export']
+    },
+    {
+      key: 'discovery',
+      name: 'Auto Discovery',
+      screens: ['Network Discovery', 'Discovery Jobs', 'Discovered Devices', 'Import to Asset360', 'Discovery Settings'],
+      actions: ['View', 'Scan', 'Import', 'Configure']
     },
     {
       key: 'movements',
@@ -558,22 +610,40 @@ export function RolesPermissions() {
       actions: ['View', 'Create', 'Assign', 'Transfer', 'Approve', 'Export']
     },
     {
-      key: 'audit',
+      key: 'stocktakes',
       name: 'Verification & Audit',
-      screens: ['Audit Management', 'Audit Execution', 'Audit Reports'],
-      actions: ['View', 'Create', 'Verify', 'Execute', 'Export', 'Delete']
+      screens: ['Asset Verification', 'Audit Management', 'Audit Execution', 'Audit Reports'],
+      actions: ['View', 'Create Audit', 'Scan Tags', 'Reconcile', 'Approve', 'Export']
     },
     {
       key: 'maintenance',
-      name: 'Maintenance',
-      screens: ['Work Orders', 'Preventive Maintenance'],
-      actions: ['View', 'Create', 'Edit', 'Execute', 'Approve', 'Delete']
+      name: 'Maintenance & Work Orders',
+      screens: ['Work Orders', 'Maintenance Plans', 'Preventive Maintenance', 'Service Providers', 'Spare Parts & Inventory'],
+      actions: ['View', 'Create', 'Edit', 'Assign', 'Close', 'Approve', 'Export']
+    },
+    {
+      key: 'disposal',
+      name: 'Disposal & Retirement',
+      screens: ['Disposal Workbench', 'Disposed Assets Ledger', 'Pending Disposal'],
+      actions: ['View', 'Initiate Disposal', 'Approve Disposal', 'Execute', 'Export']
+    },
+    {
+      key: 'reports',
+      name: 'Reports & Analytics',
+      screens: ['Dashboard Reports', 'Asset Reports', 'Inventory Reports', 'Financial Reports', 'Compliance Reports', 'Custom Reports'],
+      actions: ['View', 'Generate', 'Export', 'Schedule']
+    },
+    {
+      key: 'master-data',
+      name: 'Master Data Hub',
+      screens: ['Item Master', 'Asset Group', 'Category', 'Company', 'Custodian', 'Location', 'Department', 'Section', 'Supplier'],
+      actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export']
     },
     {
       key: 'administration',
-      name: 'Administration',
-      screens: ['User Management', 'Roles & Permissions', 'Company & Organization', 'System Configuration', 'Audit Logs'],
-      actions: ['View', 'Create', 'Edit', 'Delete', 'Administer']
+      name: 'Administration & Security',
+      screens: ['User Management', 'Roles & Permissions', 'Company & Organization', 'System Configuration', 'Audit Logs', 'Email Notifications'],
+      actions: ['View', 'Create', 'Edit', 'Delete', 'Administer', 'Export']
     }
   ];
 
@@ -1079,7 +1149,7 @@ export function RolesPermissions() {
       {showPermissionsModal && selectedRole && (
         <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
           <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-4xl shadow-2xl p-6 max-h-[90vh] flex flex-col space-y-4 animate-fadeIn">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100 shrink-0">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 border-b border-slate-100 gap-2 shrink-0">
               <div>
                 <h3 className="text-base font-black text-slate-900 flex items-center gap-2">
                   <ShieldCheck className="w-5 h-5 text-[#6C2BD9]" />
@@ -1089,9 +1159,29 @@ export function RolesPermissions() {
                   Configure granular action-level access across all Asset360 modules &amp; screens.
                 </p>
               </div>
-              <button onClick={() => setShowPermissionsModal(false)} className="text-slate-400 hover:text-slate-600">
-                <X className="w-5 h-5" />
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const allPerms = {};
+                    MODULE_STRUCTURE.forEach(m => { allPerms[m.key] = [...m.actions]; });
+                    setRolePermissions(allPerms);
+                  }}
+                  className="px-2.5 py-1 text-[11px] font-bold text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  Grant Full Access
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setRolePermissions({})}
+                  className="px-2.5 py-1 text-[11px] font-bold text-slate-600 bg-slate-50 hover:bg-slate-100 border border-slate-200 rounded-lg transition-colors cursor-pointer"
+                >
+                  Clear All
+                </button>
+                <button onClick={() => setShowPermissionsModal(false)} className="text-slate-400 hover:text-slate-600 p-1">
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
             </div>
 
             {/* Warning if role has users */}
@@ -1191,10 +1281,11 @@ export function RolesPermissions() {
               </button>
               <button
                 type="button"
+                disabled={isSavingPermissions}
                 onClick={handleSavePermissions}
-                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer"
+                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
               >
-                Save Permissions
+                {isSavingPermissions ? 'Saving to Database...' : 'Save Permissions'}
               </button>
             </div>
           </div>
