@@ -251,6 +251,7 @@ export function RolesPermissions() {
         await api.put(`/admin/roles/${editingRole.id}`, {
           name: roleForm.name,
           description: roleForm.description,
+          status: roleForm.status,
           active: roleForm.status === 'Active'
         }).catch(() => null);
       } catch (err) {
@@ -263,7 +264,7 @@ export function RolesPermissions() {
                 ...r,
                 name: roleForm.name,
                 description: roleForm.description,
-                roleType: roleForm.roleType || 'Custom Role',
+                roleType: editingRole.isSystem ? 'System Role' : 'Custom Role',
                 status: roleForm.status
               }
             : r
@@ -271,25 +272,26 @@ export function RolesPermissions() {
       );
       triggerToast(`Role "${roleForm.name}" updated successfully.`);
     } else {
-      let createdId = Date.now();
+      let createdRole = null;
       try {
         const res = await api.post('/admin/roles', {
           name: roleForm.name,
           code: roleForm.name.toUpperCase().replace(/\s+/g, '_'),
           description: roleForm.description,
+          status: roleForm.status,
           active: roleForm.status === 'Active'
         }).catch(() => null);
-        if (res && res.role && res.role.id) {
-          createdId = res.role.id;
+        if (res && res.role) {
+          createdRole = res.role;
         }
       } catch (err) {
         console.error(err);
       }
-      const newRole = {
-        id: createdId,
+      const newRole = createdRole || {
+        id: Date.now(),
         name: roleForm.name,
         description: roleForm.description,
-        roleType: roleForm.roleType || 'Custom Role',
+        roleType: 'Custom Role',
         userCount: 0,
         status: roleForm.status || 'Active',
         dateCreated: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -304,18 +306,18 @@ export function RolesPermissions() {
 
   const handleCloneRole = async (role) => {
     setActiveDropdownId(null);
-    let clonedId = Date.now();
+    let clonedRole = null;
     try {
       const res = await api.post(`/admin/roles/${role.id}/clone`).catch(() => null);
-      if (res && res.role && res.role.id) {
-        clonedId = res.role.id;
+      if (res && res.role) {
+        clonedRole = res.role;
       }
     } catch (err) {
       console.error(err);
     }
-    const cloned = {
+    const cloned = clonedRole || {
       ...role,
-      id: clonedId,
+      id: Date.now(),
       name: `${role.name} (Copy)`,
       roleType: 'Custom Role',
       userCount: 0,
@@ -1086,15 +1088,11 @@ export function RolesPermissions() {
 
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block font-bold text-slate-700 mb-1">Role Type</label>
-                  <select
-                    value={roleForm.roleType}
-                    onChange={(e) => setRoleForm({ ...roleForm, roleType: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer"
-                  >
-                    <option value="Custom Role">Custom Role</option>
-                    <option value="System Role">System Role</option>
-                  </select>
+                  <label className="block font-bold text-slate-700 mb-1">Role Classification</label>
+                  <div className="px-3 py-2 bg-slate-50 border border-slate-200 rounded-xl text-slate-600 font-medium flex items-center justify-between text-xs">
+                    <span>{editingRole?.isSystem ? 'System Role' : 'Custom Role'}</span>
+                    <span className="text-[10px] text-purple-700 bg-purple-100/70 px-2 py-0.5 rounded font-bold">Standard</span>
+                  </div>
                 </div>
 
                 <div>
@@ -1102,7 +1100,7 @@ export function RolesPermissions() {
                   <select
                     value={roleForm.status}
                     onChange={(e) => setRoleForm({ ...roleForm, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>

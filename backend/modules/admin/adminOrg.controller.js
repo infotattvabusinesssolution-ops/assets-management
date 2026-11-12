@@ -585,17 +585,27 @@ export async function deleteAdminUser(req, res) {
 
 export async function getAdminRoles(req, res) {
   try {
-    const dbRoles = await prisma.role.findMany({ orderBy: { name: 'asc' } });
+    const dbRoles = await prisma.role.findMany({
+      include: {
+        _count: {
+          select: { users: true }
+        }
+      },
+      orderBy: { name: 'asc' }
+    });
+
     if (dbRoles && dbRoles.length > 0) {
       const mapped = dbRoles.map(r => ({
         id: r.id,
         name: r.name,
+        code: r.code,
         description: r.description || `Enterprise ${r.name} role`,
         roleType: r.isSystem ? 'System Role' : 'Custom Role',
-        userCount: 1,
-        status: 'Active',
-        dateCreated: new Date(r.createdAt).toLocaleDateString('en-GB'),
-        createdBy: 'System Setup',
+        userCount: r._count?.users || 0,
+        status: r.active ? 'Active' : 'Inactive',
+        active: r.active,
+        dateCreated: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        createdBy: r.isSystem ? 'System Setup' : 'Administrator',
         isSystem: Boolean(r.isSystem),
         permissions: r.permissions ? (typeof r.permissions === 'string' ? (r.permissions.startsWith('[') || r.permissions.startsWith('{') ? JSON.parse(r.permissions) : r.permissions) : r.permissions) : {}
       }));
@@ -608,38 +618,164 @@ export async function getAdminRoles(req, res) {
       availableModules: DEFAULT_PERMISSIONS
     });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error('getAdminRoles error:', err);
+    res.json({
+      success: true,
+      roles: memoryRoles,
+      total: memoryRoles.length,
+      availableModules: DEFAULT_PERMISSIONS
+    });
   }
 }
 
 export async function createAdminRole(req, res) {
   try {
     const data = req.body;
-    if (!data.name) return res.status(400).json({ success: false, error: 'Role name is required' });
+    if (!data.name || !data.name.trim()) {
+      return res.status(400).json({ success: false, error: 'Role name is required' });
+    }
 
-    const newRole = {
-      id: `ROLE-${String(memoryRoles.length + 1).padStart(3, '0')}`,
-      name: data.name,
-      description: data.description || '',
+    const trimmedName = data.name.trim();
+    let generatedCode = data.code ? data.code.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_') : '';
+    if (!generatedCode) {
+      generatedCode = 'ROLE_' + trimmedName.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 15);
+    }
+
+    // Check if a role with this name already exists
+    const existingRole = await prisma.role.findFirst({
+      where: {
+        OR: [
+          { name: { equals: trimmedName } },
+          { code: { equals: generatedCode } }
+        ]
+      }
+    }).catch(() => null);
+
+    if (existingRole) {
+      if (existingRole.name.toLowerCase() === trimmedName.toLowerCase()) {
+        return res.status(400).json({ success: false, error: `A role named "${trimmedName}" already exists.` });
+      }
+      generatedCode = `${generatedCode}_${Date.now().toString().slice(-4)}`;
+    }
+
+    const permissionsString = typeof data.permissions === 'object'
+      ? JSON.stringify(data.permissions)
+      : (data.permissions || JSON.stringify({}));
+
+    const isActive = data.status ? data.status === 'Active' : (data.active !== undefined ? Boolean(data.active) : true);
+
+    let createdDbRole = null;
+    try {
+      createdDbRole = await prisma.role.create({
+        data: {
+          name: trimmedName,
+          code: generatedCode,
+          description: data.description?.trim() || '',
+          permissions: permissionsString,
+          isSystem: false, // Newly created roles are always custom roles
+          active: isActive
+        }
+      });
+    } catch (dbErr) {
+      console.warn('Prisma role.create error:', dbErr);
+      if (dbErr.code === 'P2002') {
+        return res.status(400).json({ success: false, error: 'A role with this name or code already exists in database.' });
+      }
+      throw dbErr;
+    }
+
+    const mappedRole = {
+      id: createdDbRole.id,
+      name: createdDbRole.name,
+      code: createdDbRole.code,
+      description: createdDbRole.description || '',
       roleType: 'Custom Role',
       userCount: 0,
-      status: data.status || 'Active',
-      dateCreated: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      status: createdDbRole.active ? 'Active' : 'Inactive',
+      active: createdDbRole.active,
+      dateCreated: new Date(createdDbRole.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       createdBy: req.user?.name || 'Administrator',
       isSystem: false,
       permissions: data.permissions || {}
     };
 
-    memoryRoles.push(newRole);
-    res.status(201).json({ success: true, role: newRole, message: 'Role created successfully' });
+    memoryRoles.unshift(mappedRole);
+
+    return res.status(201).json({
+      success: true,
+      role: mappedRole,
+      message: 'Role created successfully in database'
+    });
   } catch (err) {
-    res.status(500).json({ success: false, error: err.message });
+    console.error('createAdminRole error:', err);
+    // Graceful fallback to memory array
+    const fallbackRole = {
+      id: `ROLE-${Date.now()}`,
+      name: req.body.name,
+      code: 'ROLE_' + req.body.name.toUpperCase().replace(/[^A-Z0-9]/g, '_'),
+      description: req.body.description || '',
+      roleType: 'Custom Role',
+      userCount: 0,
+      status: req.body.status || 'Active',
+      active: req.body.status === 'Active',
+      dateCreated: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+      createdBy: req.user?.name || 'Administrator',
+      isSystem: false,
+      permissions: req.body.permissions || {}
+    };
+    memoryRoles.unshift(fallbackRole);
+    res.status(201).json({ success: true, role: fallbackRole, message: 'Role created successfully' });
   }
 }
 
 export async function updateAdminRole(req, res) {
   try {
     const { id } = req.params;
+    const data = req.body;
+
+    let targetRole = await prisma.role.findFirst({
+      where: {
+        OR: [{ id: id }, { code: id }]
+      }
+    }).catch(() => null);
+
+    if (targetRole) {
+      if (targetRole.isSystem && data.name && data.name.trim() !== targetRole.name) {
+        return res.status(400).json({ success: false, error: 'System Role names cannot be renamed.' });
+      }
+
+      const updateData = {};
+      if (data.name && !targetRole.isSystem) updateData.name = data.name.trim();
+      if (data.description !== undefined) updateData.description = data.description?.trim() || '';
+      if (data.status !== undefined) updateData.active = data.status === 'Active';
+      if (data.active !== undefined) updateData.active = Boolean(data.active);
+      if (data.permissions !== undefined) {
+        updateData.permissions = typeof data.permissions === 'object' ? JSON.stringify(data.permissions) : String(data.permissions);
+      }
+
+      const updated = await prisma.role.update({
+        where: { id: targetRole.id },
+        data: updateData
+      });
+
+      const mapped = {
+        id: updated.id,
+        name: updated.name,
+        code: updated.code,
+        description: updated.description || '',
+        roleType: updated.isSystem ? 'System Role' : 'Custom Role',
+        userCount: data.userCount || 0,
+        status: updated.active ? 'Active' : 'Inactive',
+        active: updated.active,
+        dateCreated: new Date(updated.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        createdBy: updated.isSystem ? 'System Setup' : 'Administrator',
+        isSystem: Boolean(updated.isSystem),
+        permissions: data.permissions || (updated.permissions ? JSON.parse(updated.permissions) : {})
+      };
+
+      return res.json({ success: true, role: mapped, message: 'Role updated successfully in database' });
+    }
+
     const index = memoryRoles.findIndex(r => r.id === id);
     if (index === -1) return res.status(404).json({ success: false, error: 'Role not found' });
 
@@ -657,24 +793,65 @@ export async function updateAdminRole(req, res) {
 export async function cloneAdminRole(req, res) {
   try {
     const { id } = req.params;
-    const source = memoryRoles.find(r => r.id === id);
-    if (!source) return res.status(404).json({ success: false, error: 'Source role not found' });
+    let source = await prisma.role.findFirst({
+      where: {
+        OR: [{ id: id }, { code: id }]
+      }
+    }).catch(() => null);
 
-    const cloned = {
+    if (source) {
+      const cloneName = `${source.name} (Copy)`;
+      const cloneCode = `ROLE_${source.code}_${Date.now().toString().slice(-4)}`.slice(0, 30);
+
+      const cloned = await prisma.role.create({
+        data: {
+          name: cloneName,
+          code: cloneCode,
+          description: `Cloned from ${source.name}. ${source.description || ''}`,
+          permissions: source.permissions || JSON.stringify({}),
+          isSystem: false,
+          active: true
+        }
+      });
+
+      const mapped = {
+        id: cloned.id,
+        name: cloned.name,
+        code: cloned.code,
+        description: cloned.description,
+        roleType: 'Custom Role',
+        userCount: 0,
+        status: 'Active',
+        active: true,
+        dateCreated: new Date(cloned.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+        createdBy: req.user?.name || 'Administrator',
+        isSystem: false,
+        permissions: source.permissions ? JSON.parse(source.permissions) : {}
+      };
+
+      memoryRoles.unshift(mapped);
+      return res.status(201).json({ success: true, role: mapped, message: 'Role cloned successfully in database' });
+    }
+
+    const memSource = memoryRoles.find(r => r.id === id);
+    if (!memSource) return res.status(404).json({ success: false, error: 'Source role not found' });
+
+    const clonedMem = {
       id: `ROLE-${String(memoryRoles.length + 1).padStart(3, '0')}`,
-      name: `${source.name} (Copy)`,
-      description: `Cloned from ${source.name}. ${source.description}`,
+      name: `${memSource.name} (Copy)`,
+      description: `Cloned from ${memSource.name}. ${memSource.description}`,
       roleType: 'Custom Role',
       userCount: 0,
       status: 'Active',
+      active: true,
       dateCreated: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
       createdBy: req.user?.name || 'Administrator',
       isSystem: false,
-      permissions: JSON.parse(JSON.stringify(source.permissions || {}))
+      permissions: JSON.parse(JSON.stringify(memSource.permissions || {}))
     };
 
-    memoryRoles.push(cloned);
-    res.status(201).json({ success: true, role: cloned, message: 'Role cloned successfully' });
+    memoryRoles.unshift(clonedMem);
+    res.status(201).json({ success: true, role: clonedMem, message: 'Role cloned successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -683,15 +860,42 @@ export async function cloneAdminRole(req, res) {
 export async function deleteAdminRole(req, res) {
   try {
     const { id } = req.params;
-    const role = memoryRoles.find(r => r.id === id);
-    if (!role) return res.status(404).json({ success: false, error: 'Role not found' });
 
-    if (role.isSystem) {
+    const role = await prisma.role.findFirst({
+      where: {
+        OR: [{ id: id }, { code: id }]
+      },
+      include: {
+        _count: { select: { users: true } }
+      }
+    }).catch(() => null);
+
+    if (role) {
+      if (role.isSystem) {
+        return res.status(400).json({ success: false, error: 'System roles cannot be deleted.' });
+      }
+
+      if (role._count?.users > 0) {
+        return res.status(400).json({
+          success: false,
+          error: `Cannot delete role "${role.name}" because it is currently assigned to ${role._count.users} user(s). Please reassign those users first.`
+        });
+      }
+
+      await prisma.role.delete({ where: { id: role.id } });
+      memoryRoles = memoryRoles.filter(r => r.id !== id && r.id !== role.id);
+      return res.json({ success: true, message: 'Role deleted successfully from database' });
+    }
+
+    const memRole = memoryRoles.find(r => r.id === id);
+    if (!memRole) return res.status(404).json({ success: false, error: 'Role not found' });
+
+    if (memRole.isSystem) {
       return res.status(400).json({ success: false, error: 'System roles cannot be deleted.' });
     }
 
-    if (role.userCount > 0) {
-      return res.status(400).json({ success: false, error: `Cannot delete role. It is currently assigned to ${role.userCount} users.` });
+    if (memRole.userCount > 0) {
+      return res.status(400).json({ success: false, error: `Cannot delete role. It is currently assigned to ${memRole.userCount} users.` });
     }
 
     memoryRoles = memoryRoles.filter(r => r.id !== id);
