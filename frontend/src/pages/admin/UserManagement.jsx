@@ -69,16 +69,6 @@ export function UserManagement() {
   const [departmentsList, setDepartmentsList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
   const [rolesList, setRolesList] = useState([]);
-  const [userTypesList, setUserTypesList] = useState([
-    'System User',
-    'Portal User',
-    'Mobile User',
-    'Contractor',
-    'Auditor',
-    'Technician',
-    'Asset Manager',
-    'Department Manager'
-  ]);
 
   // Inline Quick-Add States
   const [isAddingLocation, setIsAddingLocation] = useState(false);
@@ -87,8 +77,6 @@ export function UserManagement() {
   const [newDepartmentInput, setNewDepartmentInput] = useState('');
   const [isAddingCompany, setIsAddingCompany] = useState(false);
   const [newCompanyInput, setNewCompanyInput] = useState('');
-  const [isAddingUserType, setIsAddingUserType] = useState(false);
-  const [newUserTypeInput, setNewUserTypeInput] = useState('');
 
   // Modals & Drawers
   const [showAddModal, setShowAddModal] = useState(false);
@@ -101,7 +89,6 @@ export function UserManagement() {
 
   // Advanced Filters Form State
   const [advancedFilters, setAdvancedFilters] = useState({
-    userType: 'All Users',
     status: 'Active',
     role: 'All Roles',
     department: 'All Departments',
@@ -129,7 +116,6 @@ export function UserManagement() {
     location: '',
     company: '',
     businessUnit: 'Corporate Services',
-    userType: 'System User',
     password: '',
     passwordOption: 'custom',
     forcePasswordChange: true,
@@ -256,15 +242,6 @@ export function UserManagement() {
     fetchMetadata();
   }, []);
 
-  useEffect(() => {
-    if (users && users.length > 0) {
-      const types = users.map(u => u.userType).filter(Boolean);
-      if (types.length > 0) {
-        setUserTypesList(prev => Array.from(new Set([...prev, ...types])));
-      }
-    }
-  }, [users]);
-
   // Quick on-the-fly add functions
   const handleAddLocation = async () => {
     const val = newLocationInput.trim();
@@ -324,16 +301,6 @@ export function UserManagement() {
       setUserFormData(prev => ({ ...prev, company: val }));
       setIsAddingCompany(false);
     }
-  };
-
-  const handleAddUserType = () => {
-    const val = newUserTypeInput.trim();
-    if (!val) return;
-    setUserTypesList(prev => Array.from(new Set([...prev, val])));
-    setUserFormData(prev => ({ ...prev, userType: val }));
-    setNewUserTypeInput('');
-    setIsAddingUserType(false);
-    setActionSuccessMsg(`User Type "${val}" added and selected.`);
   };
 
   const handleLookupEmployee = (lookupQuery) => {
@@ -454,7 +421,6 @@ export function UserManagement() {
       location: '',
       company: '',
       businessUnit: 'Corporate Operations',
-      userType: userTypesList.length > 0 ? userTypesList[0] : 'System User',
       password: '',
       passwordOption: 'custom',
       forcePasswordChange: true,
@@ -472,7 +438,6 @@ export function UserManagement() {
     setIsAddingLocation(false);
     setIsAddingDepartment(false);
     setIsAddingCompany(false);
-    setIsAddingUserType(false);
     setEmployeeLookupCode('');
     setEmployeeLookupStatus(null);
     setShowAddModal(true);
@@ -492,7 +457,6 @@ export function UserManagement() {
           limit: 100,
           search: searchQuery,
           status: statusFilter,
-          userType: advancedFilters.userType,
           role: advancedFilters.role,
           department: advancedFilters.department,
           location: advancedFilters.location,
@@ -551,10 +515,6 @@ export function UserManagement() {
       filtered = filtered.filter((u) => u.status.toLowerCase() === statusFilter.toLowerCase());
     }
 
-    if (advancedFilters.userType && advancedFilters.userType !== 'All Users') {
-      filtered = filtered.filter((u) => u.userType === advancedFilters.userType);
-    }
-
     if (advancedFilters.role && advancedFilters.role !== 'All Roles') {
       filtered = filtered.filter((u) => u.role === advancedFilters.role);
     }
@@ -607,7 +567,6 @@ export function UserManagement() {
     setSearchQuery('');
     setStatusFilter('');
     setAdvancedFilters({
-      userType: 'All Users',
       status: 'All',
       role: 'All Roles',
       department: 'All Departments',
@@ -871,7 +830,6 @@ export function UserManagement() {
                   <button
                     onClick={() => {
                       setAdvancedFilters({
-                        userType: 'All Users',
                         status: 'All',
                         role: 'All Roles',
                         department: 'All Departments',
@@ -903,21 +861,6 @@ export function UserManagement() {
 
               {/* Filters Grid */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-xs">
-                {/* User Type */}
-                <div>
-                  <label className="block font-medium text-slate-700 mb-1">User Type</label>
-                  <select
-                    value={advancedFilters.userType}
-                    onChange={(e) => setAdvancedFilters({ ...advancedFilters, userType: e.target.value })}
-                    className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-xs focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
-                  >
-                    <option value="All Users">All Users</option>
-                    {userTypesList.map(type => (
-                      <option key={type} value={type}>{type}</option>
-                    ))}
-                  </select>
-                </div>
-
                 {/* Status */}
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">Status</label>
@@ -1404,7 +1347,7 @@ export function UserManagement() {
                 <div className="grid grid-cols-2 gap-2">
                   <div><span className="text-slate-400">Email:</span> <span className="font-medium text-slate-800 block">{selectedUser.email}</span></div>
                   <div><span className="text-slate-400">Phone:</span> <span className="font-medium text-slate-800 block">{selectedUser.phone}</span></div>
-                  <div><span className="text-slate-400">User Type:</span> <span className="font-medium text-slate-800 block">{selectedUser.userType}</span></div>
+                  <div><span className="text-slate-400">Role:</span> <span className="font-medium text-slate-800 block">{selectedUser.role}</span></div>
                   <div><span className="text-slate-400">MFA:</span> <span className="font-medium text-slate-800 block">{selectedUser.mfaEnabled ? 'Enabled' : 'Disabled'}</span></div>
                   <div><span className="text-slate-400">Last Login:</span> <span className="font-medium text-slate-800 block">{selectedUser.lastLogin}</span></div>
                   <div><span className="text-slate-400">Created:</span> <span className="font-medium text-slate-800 block">{selectedUser.createdDate}</span></div>
@@ -1729,17 +1672,15 @@ export function UserManagement() {
                   </select>
                 </div>
 
-                {/* User Type */}
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">User Type</label>
+                  <label className="block font-medium text-slate-700 mb-1">Status</label>
                   <select
-                    value={userFormData.userType}
-                    onChange={(e) => setUserFormData({ ...userFormData, userType: e.target.value })}
+                    value={userFormData.status}
+                    onChange={(e) => setUserFormData({ ...userFormData, status: e.target.value })}
                     className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs"
                   >
-                    {userTypesList.map(t => (
-                      <option key={t} value={t}>{t}</option>
-                    ))}
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
                   </select>
                 </div>
 
@@ -1798,7 +1739,7 @@ export function UserManagement() {
                 </div>
 
                 {/* Primary Location from Master Data */}
-                <div>
+                <div className="col-span-2">
                   <div className="flex items-center justify-between mb-1">
                     <label className="font-medium text-slate-700">Primary Location *</label>
                     {isCustodianLinked && custodianLinkedFields.location && (
@@ -1823,18 +1764,6 @@ export function UserManagement() {
                     ))}
                   </select>
                   <p className="text-[10px] text-slate-400 mt-1">Configured in Master Data. Ordinary users cannot add locations on the fly.</p>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-slate-700 mb-1">Status</label>
-                  <select
-                    value={userFormData.status}
-                    onChange={(e) => setUserFormData({ ...userFormData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs"
-                  >
-                    <option value="Active">Active</option>
-                    <option value="Inactive">Inactive</option>
-                  </select>
                 </div>
               </div>
 
