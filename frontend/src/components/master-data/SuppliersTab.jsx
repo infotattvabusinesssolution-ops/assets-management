@@ -30,6 +30,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_SUPPLIERS = [];
 
@@ -50,6 +51,8 @@ export function SuppliersTab({
   const [modalError, setModalError] = useState('');
   const [supToDelete, setSupToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [supToToggleStatus, setSupToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Load live suppliers / service providers from database
   const loadSuppliers = async () => {
@@ -375,7 +378,7 @@ export function SuppliersTab({
     triggerToast && triggerToast(`Supplier "${sup.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleSupStatus = async (sup) => {
+  const handleToggleSupStatus = (sup) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = sup.status === 'Active' ? 'Inactive' : 'Active';
     if (newStatus === 'Active' && sup.company && sup.company !== '-') {
@@ -386,6 +389,14 @@ export function SuppliersTab({
         return;
       }
     }
+    setSupToToggleStatus(sup);
+  };
+
+  const handleConfirmToggleSupStatus = async () => {
+    if (!supToToggleStatus) return;
+    const sup = supToToggleStatus;
+    const newStatus = sup.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.patch(`/maintenance/service-providers/${sup.id}/status`);
       await loadSuppliers();
@@ -395,6 +406,9 @@ export function SuppliersTab({
       const msg = err.response?.data?.message || err.message || 'Failed to update supplier status.';
       triggerToast && triggerToast(msg);
       await loadSuppliers();
+    } finally {
+      setIsStatusUpdating(false);
+      setSupToToggleStatus(null);
     }
   };
 
@@ -1126,6 +1140,18 @@ export function SuppliersTab({
         itemName={supToDelete?.name}
         itemCode={supToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(supToToggleStatus)}
+        onClose={() => setSupToToggleStatus(null)}
+        onConfirm={handleConfirmToggleSupStatus}
+        entityName="Supplier"
+        itemName={supToToggleStatus?.name}
+        itemCode={supToToggleStatus?.code}
+        currentStatus={supToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
     </div>
   );

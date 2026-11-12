@@ -30,6 +30,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_CATEGORIES = [];
 
@@ -48,6 +49,8 @@ export function CategoriesTab({
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
   const [categoryToDelete, setCategoryToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [catToToggleStatus, setCatToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Load live categories from backend database
   const loadCategories = async () => {
@@ -433,9 +436,16 @@ export function CategoriesTab({
     triggerToast && triggerToast(`Category "${cat.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleCategoryStatus = async (cat) => {
+  const handleToggleCategoryStatus = (cat) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
+    setCatToToggleStatus(cat);
+  };
+
+  const handleConfirmToggleCategoryStatus = async () => {
+    if (!catToToggleStatus) return;
+    const cat = catToToggleStatus;
     const newStatus = cat.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.patch(`/master-data/entities/category/${cat.id}/status`);
       await loadCategories();
@@ -450,6 +460,9 @@ export function CategoriesTab({
         setSelectedCategory({ ...selectedCategory, status: newStatus });
       }
       triggerToast && triggerToast(`Category "${cat.code}" status changed to ${newStatus}.`);
+    } finally {
+      setIsStatusUpdating(false);
+      setCatToToggleStatus(null);
     }
   };
 
@@ -1151,6 +1164,18 @@ export function CategoriesTab({
         itemName={categoryToDelete?.name}
         itemCode={categoryToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(catToToggleStatus)}
+        onClose={() => setCatToToggleStatus(null)}
+        onConfirm={handleConfirmToggleCategoryStatus}
+        entityName="Category"
+        itemName={catToToggleStatus?.name}
+        itemCode={catToToggleStatus?.code}
+        currentStatus={catToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
 
       <SmartDeleteModal

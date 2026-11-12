@@ -22,6 +22,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_CONDITIONS = [];
 
@@ -57,6 +58,8 @@ export function ConditionsTab({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingCondition, setEditingCondition] = useState(null);
   const [conditionToDelete, setConditionToDelete] = useState(null);
+  const [conditionToToggleStatus, setConditionToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [modalError, setModalError] = useState('');
 
@@ -137,9 +140,17 @@ export function ConditionsTab({
     setShowAddModal(true);
   };
 
-  const handleToggleStatus = async (item, e) => {
+  const handleToggleStatus = (item, e) => {
     e?.stopPropagation();
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setConditionToToggleStatus(item);
+  };
+
+  const handleConfirmToggleConditionStatus = async () => {
+    if (!conditionToToggleStatus) return;
+    const item = conditionToToggleStatus;
     const nextActive = item.active === false ? true : false;
+    setIsStatusUpdating(true);
     try {
       await api.put(`/master-data/asset-conditions/${item.id}`, { active: nextActive }).catch(() => null);
       setConditions(prev => {
@@ -150,6 +161,9 @@ export function ConditionsTab({
       triggerToast?.(`Asset condition marked as ${nextActive ? 'Active' : 'Inactive'}`, 'success');
     } catch {
       triggerToast?.('Failed to update status', 'error');
+    } finally {
+      setIsStatusUpdating(false);
+      setConditionToToggleStatus(null);
     }
   };
 
@@ -576,6 +590,18 @@ export function ConditionsTab({
         itemCode={conditionToDelete?.code}
         description="Assets currently assigned to this condition will retain their recorded state, but this condition will no longer be available for new selections."
         isLoading={isSaving}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(conditionToToggleStatus)}
+        onClose={() => setConditionToToggleStatus(null)}
+        onConfirm={handleConfirmToggleConditionStatus}
+        entityName="Condition"
+        itemName={conditionToToggleStatus?.name}
+        itemCode={conditionToToggleStatus?.code}
+        currentStatus={conditionToToggleStatus?.active ? 'Active' : 'Inactive'}
+        isLoading={isStatusUpdating}
       />
     </div>
   );

@@ -22,6 +22,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export function LocationLevelTab({
   level = 1,
@@ -48,6 +49,8 @@ export function LocationLevelTab({
   const [editingItem, setEditingItem] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [levelToToggleStatus, setLevelToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [modalError, setModalError] = useState('');
 
   // Form State
@@ -290,9 +293,16 @@ export function LocationLevelTab({
   };
 
   // Toggle Active / Inactive Status
-  const handleToggleStatus = async (item) => {
+  const handleToggleStatus = (item) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
+    setLevelToToggleStatus(item);
+  };
+
+  const handleConfirmToggleLevelStatus = async () => {
+    if (!levelToToggleStatus) return;
+    const item = levelToToggleStatus;
     const newStatus = item.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.put(`/master-data/location-levels/${level}/${item.id}`, {
         status: newStatus,
@@ -308,8 +318,11 @@ export function LocationLevelTab({
         setSelectedItem({ ...selectedItem, status: newStatus, active: newStatus === 'Active' });
       }
       triggerToast && triggerToast(`${levelName} "${item.code}" status changed to ${newStatus}.`);
+      setLevelToToggleStatus(null);
     } catch (err) {
       triggerToast && triggerToast('Failed to update status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
   };
 
@@ -751,6 +764,18 @@ export function LocationLevelTab({
         entityName={levelName}
         itemName={itemToDelete?.name}
         itemCode={itemToDelete?.code}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(levelToToggleStatus)}
+        onClose={() => setLevelToToggleStatus(null)}
+        onConfirm={handleConfirmToggleLevelStatus}
+        entityName={levelName}
+        itemName={levelToToggleStatus?.name}
+        itemCode={levelToToggleStatus?.code}
+        currentStatus={levelToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
     </div>
   );

@@ -27,6 +27,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const DEFAULT_CURRENCIES = [
   { code: 'AED', name: 'UAE Dirham', symbol: 'AED' },
@@ -63,6 +64,8 @@ export function CompaniesTab({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [companyToDelete, setCompanyToDelete] = useState(null);
+  const [companyToToggleStatus, setCompanyToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
@@ -263,9 +266,17 @@ export function CompaniesTab({
     }
   };
 
-  const handleToggleStatus = async (comp, e) => {
+  const handleToggleStatus = (comp, e) => {
     e?.stopPropagation();
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setCompanyToToggleStatus(comp);
+  };
+
+  const handleConfirmToggleCompanyStatus = async () => {
+    if (!companyToToggleStatus) return;
+    const comp = companyToToggleStatus;
     const nextStatus = comp.active === false ? true : false;
+    setIsStatusUpdating(true);
     try {
       await api.put(`/master-data/companies/${comp.id}`, { active: nextStatus });
       const updated = companies.map(c => c.id === comp.id ? { ...c, active: nextStatus } : c);
@@ -278,6 +289,9 @@ export function CompaniesTab({
       }
     } catch {
       triggerToast && triggerToast('Failed to update company status.');
+    } finally {
+      setIsStatusUpdating(false);
+      setCompanyToToggleStatus(null);
     }
   };
 
@@ -760,6 +774,18 @@ export function CompaniesTab({
         itemName={companyToDelete?.name}
         itemCode={companyToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* STATUS CONFIRM MODAL */}
+      <StatusConfirmModal
+        isOpen={Boolean(companyToToggleStatus)}
+        onClose={() => setCompanyToToggleStatus(null)}
+        onConfirm={handleConfirmToggleCompanyStatus}
+        entityName="Company"
+        itemName={companyToToggleStatus?.name}
+        itemCode={companyToToggleStatus?.code}
+        currentStatus={companyToToggleStatus?.active ? 'Active' : 'Inactive'}
+        isLoading={isStatusUpdating}
       />
 
       {/* SMART DELETE MODAL */}

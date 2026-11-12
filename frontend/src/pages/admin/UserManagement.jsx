@@ -30,6 +30,7 @@ import {
   AlertTriangle
 } from 'lucide-react';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
+import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
 
 export const INITIAL_USERS = [];
 
@@ -48,6 +49,8 @@ export function UserManagement() {
   const [activeDropdownId, setActiveDropdownId] = useState(null);
   const [userToDelete, setUserToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [userToToggleStatus, setUserToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Dynamic Metadata States
   const [sitesList, setSitesList] = useState([]);
@@ -558,8 +561,16 @@ export function UserManagement() {
   };
 
   // Actions
-  const handleToggleStatus = async (user) => {
+  const handleToggleStatus = (user) => {
+    setActiveDropdownId(null);
+    setUserToToggleStatus(user);
+  };
+
+  const handleConfirmToggleUserStatus = async () => {
+    if (!userToToggleStatus) return;
+    const user = userToToggleStatus;
     const nextStatus = user.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.patch(`/admin/users/${user.id}/toggle-status`).catch(() => null);
     } catch (err) {}
@@ -573,7 +584,8 @@ export function UserManagement() {
     setUserList(prev => prev.map(u => u.id === user.id ? { ...u, status: nextStatus } : u));
     setUsers(prev => prev.map(u => u.id === user.id ? { ...u, status: nextStatus } : u));
     setActionSuccessMsg(`Status updated to ${nextStatus} for ${user.name}`);
-    setActiveDropdownId(null);
+    setUserToToggleStatus(null);
+    setIsStatusUpdating(false);
   };
 
   const handleResetPassword = async (user) => {
@@ -1818,6 +1830,18 @@ export function UserManagement() {
         itemCode={userToDelete?.email}
         description="This action will remove the user account and verify that no active custody is held."
         isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(userToToggleStatus)}
+        onClose={() => setUserToToggleStatus(null)}
+        onConfirm={handleConfirmToggleUserStatus}
+        entityName="User"
+        itemName={userToToggleStatus?.name}
+        itemCode={userToToggleStatus?.email}
+        currentStatus={userToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
     </div>
   );

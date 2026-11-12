@@ -25,6 +25,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_DISPOSAL_STATUSES = [];
 
@@ -48,6 +49,8 @@ export function DisposalStatusesTab({
   const [showAddModal, setShowAddModal] = useState(false);
   const [editingStatus, setEditingStatus] = useState(null);
   const [statusToDelete, setStatusToDelete] = useState(null);
+  const [statusToToggleStatus, setStatusToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [modalError, setModalError] = useState('');
 
@@ -128,9 +131,17 @@ export function DisposalStatusesTab({
     setShowAddModal(true);
   };
 
-  const handleToggleStatus = async (item, e) => {
+  const handleToggleStatus = (item, e) => {
     e?.stopPropagation();
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setStatusToToggleStatus(item);
+  };
+
+  const handleConfirmToggleStatus = async () => {
+    if (!statusToToggleStatus) return;
+    const item = statusToToggleStatus;
     const nextActive = item.active === false ? true : false;
+    setIsStatusUpdating(true);
     try {
       await api.put(`/master-data/disposal-statuses/${item.id}`, { active: nextActive }).catch(() => null);
       setStatuses(prev => {
@@ -141,6 +152,9 @@ export function DisposalStatusesTab({
       triggerToast?.(`Disposal status marked as ${nextActive ? 'Active' : 'Inactive'}`, 'success');
     } catch {
       triggerToast?.('Failed to update status', 'error');
+    } finally {
+      setIsStatusUpdating(false);
+      setStatusToToggleStatus(null);
     }
   };
 
@@ -561,6 +575,18 @@ export function DisposalStatusesTab({
         itemName={statusToDelete?.name}
         itemCode={statusToDelete?.code}
         isLoading={isSaving}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(statusToToggleStatus)}
+        onClose={() => setStatusToToggleStatus(null)}
+        onConfirm={handleConfirmToggleStatus}
+        entityName="Disposal Status"
+        itemName={statusToToggleStatus?.name}
+        itemCode={statusToToggleStatus?.code}
+        currentStatus={statusToToggleStatus?.active ? 'Active' : 'Inactive'}
+        isLoading={isStatusUpdating}
       />
     </div>
   );

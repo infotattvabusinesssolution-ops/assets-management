@@ -32,6 +32,7 @@ import MasterCodeInput from './MasterCodeInput';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 // Dynamic Master Data State (strictly driven from database / master data screens)
 
@@ -54,6 +55,8 @@ export function ItemMasterTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [itemToToggleStatus, setItemToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Search & Filters
   const [searchQuery, setSearchQuery] = useState('');
@@ -550,9 +553,17 @@ export function ItemMasterTab({
     }
   };
 
-  const handleToggleStatus = async (item, e) => {
+  const handleToggleStatus = (item, e) => {
     e?.stopPropagation();
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setItemToToggleStatus(item);
+  };
+
+  const handleConfirmToggleItemStatus = async () => {
+    if (!itemToToggleStatus) return;
+    const item = itemToToggleStatus;
     const nextStatus = item.active === false ? true : false;
+    setIsStatusUpdating(true);
     try {
       await api.put(`/master-data/items/${item.id}`, { ...item, active: nextStatus }).catch(() => null);
       try {
@@ -563,8 +574,11 @@ export function ItemMasterTab({
       setItems(updated);
       if (selectedItem?.id === item.id) setSelectedItem({ ...selectedItem, active: nextStatus });
       triggerToast && triggerToast(`Item "${item.itemName}" marked as ${nextStatus ? 'Active' : 'Inactive'}.`);
+      setItemToToggleStatus(null);
     } catch {
       triggerToast && triggerToast('Failed to update item status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
   };
 
@@ -1516,6 +1530,18 @@ export function ItemMasterTab({
         itemName={itemToDelete?.itemName}
         itemCode={itemToDelete?.itemCode}
         isLoading={isDeleting}
+      />
+
+      {/* MODAL: Status Confirmation */}
+      <StatusConfirmModal
+        isOpen={Boolean(itemToToggleStatus)}
+        onClose={() => setItemToToggleStatus(null)}
+        onConfirm={handleConfirmToggleItemStatus}
+        entityName="Item Master"
+        itemName={itemToToggleStatus?.itemName}
+        itemCode={itemToToggleStatus?.itemCode}
+        currentStatus={itemToToggleStatus?.active !== false ? 'Active' : 'Inactive'}
+        isLoading={isStatusUpdating}
       />
     </div>
   );

@@ -23,6 +23,8 @@ import {
   X
 } from 'lucide-react';
 import clsx from 'clsx';
+import { DeleteConfirmModal } from '../common/DeleteConfirmModal';
+import { StatusConfirmModal } from '../common/StatusConfirmModal';
 
 export const INITIAL_BUSINESS_UNITS = [];
 
@@ -88,6 +90,10 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab, openAddModalTrigge
   const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [selectedUnit, setSelectedUnit] = useState(null);
   const [editingUnit, setEditingUnit] = useState(null);
+  const [unitToDelete, setUnitToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [unitToToggleStatus, setUnitToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [unitForm, setUnitForm] = useState({
     name: '',
     code: '',
@@ -254,34 +260,54 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab, openAddModalTrigge
     setShowAddUnitModal(false);
   };
 
-  const handleToggleStatus = async (unit) => {
+  const handleToggleStatus = (unit) => {
     setActiveDropdownId(null);
+    setUnitToToggleStatus(unit);
+  };
+
+  const handleConfirmToggleUnitStatus = async () => {
+    if (!unitToToggleStatus) return;
+    const unit = unitToToggleStatus;
     const nextStatus = unit.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.put(`/admin/organization/business-units/${unit.id}`, {
         active: nextStatus === 'Active'
       }).catch(() => null);
+      setUnits(units.map((u) => (u.id === unit.id ? { ...u, status: nextStatus } : u)));
+      triggerToast && triggerToast(`Business Unit "${unit.name}" status set to ${nextStatus}.`);
+      setUnitToToggleStatus(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to update status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
-    setUnits(units.map((u) => (u.id === unit.id ? { ...u, status: nextStatus } : u)));
-    triggerToast && triggerToast(`Business Unit "${unit.name}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteUnit = async (unit) => {
+  const handleDeleteUnit = (unit) => {
     setActiveDropdownId(null);
     if (unit.departmentsCount > 0 || unit.locationsCount > 0) {
       alert(`Dependency Notice: "${unit.name}" has ${unit.departmentsCount} Departments and ${unit.locationsCount} Locations assigned. Reassign child entities before deletion.`);
       return;
     }
-    if (!window.confirm(`Are you sure you want to delete "${unit.name}"?`)) return;
+    setUnitToDelete(unit);
+  };
+
+  const handleConfirmDeleteUnit = async () => {
+    if (!unitToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/organization/business-units/${unit.id}`).catch(() => null);
+      await api.delete(`/admin/organization/business-units/${unitToDelete.id}`).catch(() => null);
+      setUnits(units.filter((u) => u.id !== unitToDelete.id));
+      triggerToast && triggerToast(`Business Unit "${unitToDelete.name}" deleted.`);
+      setUnitToDelete(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to delete Business Unit.');
+    } finally {
+      setIsDeleting(false);
     }
-    setUnits(units.filter((u) => u.id !== unit.id));
-    triggerToast && triggerToast(`Business Unit "${unit.name}" deleted.`);
   };
 
   return (
@@ -907,6 +933,29 @@ export function BusinessUnitsTab({ triggerToast, onSwitchTab, openAddModalTrigge
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(unitToDelete)}
+        onClose={() => setUnitToDelete(null)}
+        onConfirm={handleConfirmDeleteUnit}
+        entityName="Business Unit"
+        itemName={unitToDelete?.name}
+        itemCode={unitToDelete?.code}
+        isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(unitToToggleStatus)}
+        onClose={() => setUnitToToggleStatus(null)}
+        onConfirm={handleConfirmToggleUnitStatus}
+        entityName="Business Unit"
+        itemName={unitToToggleStatus?.name}
+        itemCode={unitToToggleStatus?.code}
+        currentStatus={unitToToggleStatus?.status}
+        isLoading={isStatusUpdating}
+      />
     </div>
   );
 }

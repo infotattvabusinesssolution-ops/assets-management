@@ -27,6 +27,8 @@ import {
   CheckSquare
 } from 'lucide-react';
 import clsx from 'clsx';
+import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
+import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
 
 const INITIAL_ROLES = [
   {
@@ -178,6 +180,10 @@ export function RolesPermissions() {
   const [showAssignUsersModal, setShowAssignUsersModal] = useState(false);
   const [editingRole, setEditingRole] = useState(null);
   const [selectedRole, setSelectedRole] = useState(null);
+  const [roleToDelete, setRoleToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [roleToToggleStatus, setRoleToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [roleForm, setRoleForm] = useState({ name: '', description: '', roleType: 'Custom Role', status: 'Active' });
 
   // Permissions Matrix State
@@ -320,9 +326,16 @@ export function RolesPermissions() {
     triggerToast(`Role "${role.name}" cloned as "${cloned.name}"`);
   };
 
-  const handleToggleStatus = async (role) => {
+  const handleToggleStatus = (role) => {
     setActiveDropdownId(null);
+    setRoleToToggleStatus(role);
+  };
+
+  const handleConfirmToggleRoleStatus = async () => {
+    if (!roleToToggleStatus) return;
+    const role = roleToToggleStatus;
     const nextStatus = role.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.put(`/admin/roles/${role.id}`, {
         active: nextStatus === 'Active'
@@ -332,18 +345,27 @@ export function RolesPermissions() {
     }
     setRoles(roles.map((r) => (r.id === role.id ? { ...r, status: nextStatus } : r)));
     triggerToast(`Role "${role.name}" marked as ${nextStatus}.`);
+    setRoleToToggleStatus(null);
+    setIsStatusUpdating(false);
   };
 
-  const handleDeleteRole = async (role) => {
+  const handleDeleteRole = (role) => {
     setActiveDropdownId(null);
-    if (!window.confirm(`Are you sure you want to delete role "${role.name}"?`)) return;
+    setRoleToDelete(role);
+  };
+
+  const handleConfirmDeleteRole = async () => {
+    if (!roleToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/roles/${role.id}`).catch(() => null);
+      await api.delete(`/admin/roles/${roleToDelete.id}`).catch(() => null);
     } catch (err) {
       console.error(err);
     }
-    setRoles(roles.filter((r) => r.id !== role.id));
-    triggerToast(`Role "${role.name}" deleted.`);
+    setRoles(roles.filter((r) => r.id !== roleToDelete.id));
+    triggerToast(`Role "${roleToDelete.name}" deleted.`);
+    setRoleToDelete(null);
+    setIsDeleting(false);
   };
 
   const handleOpenPermissions = (role) => {
@@ -1168,6 +1190,28 @@ export function RolesPermissions() {
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(roleToDelete)}
+        onClose={() => setRoleToDelete(null)}
+        onConfirm={handleConfirmDeleteRole}
+        entityName="Role"
+        itemName={roleToDelete?.name}
+        description="Deleting this role will revoke these permissions from assigned users."
+        isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(roleToToggleStatus)}
+        onClose={() => setRoleToToggleStatus(null)}
+        onConfirm={handleConfirmToggleRoleStatus}
+        entityName="Role"
+        itemName={roleToToggleStatus?.name}
+        currentStatus={roleToToggleStatus?.status}
+        isLoading={isStatusUpdating}
+      />
     </div>
   );
 }

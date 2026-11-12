@@ -27,6 +27,7 @@ import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { deduplicateCustodians } from './custodianUtils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_DEPARTMENTS = [];
 
@@ -47,6 +48,8 @@ export function DepartmentsTab({
   const [isLoading, setIsLoading] = useState(false);
   const [deptToDelete, setDeptToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [deptToToggleStatus, setDeptToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Load live departments from database
   const loadDepartments = async () => {
@@ -428,7 +431,7 @@ export function DepartmentsTab({
     triggerToast && triggerToast(`Department "${dept.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleDepartmentStatus = async (dept) => {
+  const handleToggleDepartmentStatus = (dept) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = dept.status === 'Active' ? 'Inactive' : 'Active';
     if (newStatus === 'Active') {
@@ -439,6 +442,14 @@ export function DepartmentsTab({
         return;
       }
     }
+    setDeptToToggleStatus(dept);
+  };
+
+  const handleConfirmToggleDepartmentStatus = async () => {
+    if (!deptToToggleStatus) return;
+    const dept = deptToToggleStatus;
+    const newStatus = dept.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.patch(`/master-data/entities/department/${dept.id}/status`);
       await loadDepartments();
@@ -448,6 +459,9 @@ export function DepartmentsTab({
       const msg = err.response?.data?.message || err.message || 'Failed to update department status.';
       triggerToast && triggerToast(msg);
       await loadDepartments();
+    } finally {
+      setIsStatusUpdating(false);
+      setDeptToToggleStatus(null);
     }
   };
 
@@ -1204,6 +1218,18 @@ export function DepartmentsTab({
         itemName={deptToDelete?.name}
         itemCode={deptToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(deptToToggleStatus)}
+        onClose={() => setDeptToToggleStatus(null)}
+        onConfirm={handleConfirmToggleDepartmentStatus}
+        entityName="Department"
+        itemName={deptToToggleStatus?.name}
+        itemCode={deptToToggleStatus?.code}
+        currentStatus={deptToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
     </div>
   );

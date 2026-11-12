@@ -27,6 +27,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_ASSET_GROUPS = [];
 
@@ -53,6 +54,8 @@ export function AssetGroupsTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [groupToDelete, setGroupToDelete] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [groupToToggleStatus, setGroupToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Related items explorer modal state
@@ -466,9 +469,17 @@ export function AssetGroupsTab({
     }
   };
 
-  const handleToggleStatus = async (grp, e) => {
+  const handleToggleStatus = (grp, e) => {
     e?.stopPropagation();
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setGroupToToggleStatus(grp);
+  };
+
+  const handleConfirmToggleGroupStatus = async () => {
+    if (!groupToToggleStatus) return;
+    const grp = groupToToggleStatus;
     const nextStatus = grp.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       const res = await api.put(`/master-data/asset-groups/${grp.id}`, {
         ...grp,
@@ -481,8 +492,11 @@ export function AssetGroupsTab({
         setSelectedGroup({ ...selectedGroup, ...updatedGroup });
       }
       triggerToast && triggerToast(`Group "${grp.code}" is now ${nextStatus}.`);
+      setGroupToToggleStatus(null);
     } catch (err) {
       triggerToast && triggerToast('Failed to update group status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
   };
 
@@ -994,6 +1008,18 @@ export function AssetGroupsTab({
         itemName={groupToDelete?.name}
         itemCode={groupToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* Modal: Status Confirmation */}
+      <StatusConfirmModal
+        isOpen={Boolean(groupToToggleStatus)}
+        onClose={() => setGroupToToggleStatus(null)}
+        onConfirm={handleConfirmToggleGroupStatus}
+        entityName="Asset Group"
+        itemName={groupToToggleStatus?.name}
+        itemCode={groupToToggleStatus?.code}
+        currentStatus={groupToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
 
       {/* Modal: Related Items Explorer */}

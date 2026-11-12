@@ -24,6 +24,8 @@ import {
   X
 } from 'lucide-react';
 import clsx from 'clsx';
+import { DeleteConfirmModal } from '../common/DeleteConfirmModal';
+import { StatusConfirmModal } from '../common/StatusConfirmModal';
 
 export const INITIAL_DEPARTMENTS = [];
 
@@ -97,6 +99,10 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
   const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [selectedDept, setSelectedDept] = useState(null);
   const [editingDept, setEditingDept] = useState(null);
+  const [deptToDelete, setDeptToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [deptToToggleStatus, setDeptToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [deptForm, setDeptForm] = useState({
     name: '',
     code: '',
@@ -276,30 +282,50 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
     setShowAddDeptModal(false);
   };
 
-  const handleToggleStatus = async (dept) => {
+  const handleToggleStatus = (dept) => {
     setActiveDropdownId(null);
+    setDeptToToggleStatus(dept);
+  };
+
+  const handleConfirmToggleDeptStatus = async () => {
+    if (!deptToToggleStatus) return;
+    const dept = deptToToggleStatus;
     const nextStatus = dept.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.put(`/admin/organization/departments/${dept.id}`, {
         active: nextStatus === 'Active'
       }).catch(() => null);
+      setDepartments(departments.map((d) => (d.id === dept.id ? { ...d, status: nextStatus } : d)));
+      triggerToast && triggerToast(`Department "${dept.name}" status set to ${nextStatus}.`);
+      setDeptToToggleStatus(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to update status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
-    setDepartments(departments.map((d) => (d.id === dept.id ? { ...d, status: nextStatus } : d)));
-    triggerToast && triggerToast(`Department "${dept.name}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteDept = async (dept) => {
+  const handleDeleteDept = (dept) => {
     setActiveDropdownId(null);
-    if (!window.confirm(`Are you sure you want to delete department "${dept.name}"?`)) return;
+    setDeptToDelete(dept);
+  };
+
+  const handleConfirmDeleteDept = async () => {
+    if (!deptToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/organization/departments/${dept.id}`).catch(() => null);
+      await api.delete(`/admin/organization/departments/${deptToDelete.id}`).catch(() => null);
+      setDepartments(departments.filter((d) => d.id !== deptToDelete.id));
+      triggerToast && triggerToast(`Department "${deptToDelete.name}" deleted.`);
+      setDeptToDelete(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to delete department.');
+    } finally {
+      setIsDeleting(false);
     }
-    setDepartments(departments.filter((d) => d.id !== dept.id));
-    triggerToast && triggerToast(`Department "${dept.name}" deleted.`);
   };
 
   return (
@@ -974,6 +1000,29 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deptToDelete)}
+        onClose={() => setDeptToDelete(null)}
+        onConfirm={handleConfirmDeleteDept}
+        entityName="Department"
+        itemName={deptToDelete?.name}
+        itemCode={deptToDelete?.code}
+        isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(deptToToggleStatus)}
+        onClose={() => setDeptToToggleStatus(null)}
+        onConfirm={handleConfirmToggleDeptStatus}
+        entityName="Department"
+        itemName={deptToToggleStatus?.name}
+        itemCode={deptToToggleStatus?.code}
+        currentStatus={deptToToggleStatus?.status}
+        isLoading={isStatusUpdating}
+      />
     </div>
   );
 }

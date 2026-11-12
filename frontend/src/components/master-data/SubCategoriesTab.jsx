@@ -29,6 +29,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_SUB_CATEGORIES = [];
 
@@ -46,6 +47,8 @@ export function SubCategoriesTab({
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
   const [subCategoryToDelete, setSubCategoryToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [subCatToToggleStatus, setSubCatToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [categories, setCategories] = useState([]);
 
   // Load live sub-categories / asset classes from backend database
@@ -414,15 +417,25 @@ export function SubCategoriesTab({
     triggerToast && triggerToast(`Sub Category "${sc.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleSubCategoryStatus = async (sc) => {
+  const handleToggleSubCategoryStatus = (sc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
+    setSubCatToToggleStatus(sc);
+  };
+
+  const handleConfirmToggleSubCategoryStatus = async () => {
+    if (!subCatToToggleStatus) return;
+    const sc = subCatToToggleStatus;
     const newStatus = sc.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.put(`/master-data/sub-categories/${sc.id}`, { status: newStatus });
       await loadSubCategories();
       triggerToast && triggerToast(`Sub Category "${sc.code}" status changed to ${newStatus}.`);
     } catch (err) {
       console.warn('Status toggle error:', err);
+    } finally {
+      setIsStatusUpdating(false);
+      setSubCatToToggleStatus(null);
     }
   };
 
@@ -1054,6 +1067,18 @@ export function SubCategoriesTab({
         itemName={subCategoryToDelete?.name}
         itemCode={subCategoryToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(subCatToToggleStatus)}
+        onClose={() => setSubCatToToggleStatus(null)}
+        onConfirm={handleConfirmToggleSubCategoryStatus}
+        entityName="Sub Category"
+        itemName={subCatToToggleStatus?.name}
+        itemCode={subCatToToggleStatus?.code}
+        currentStatus={subCatToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
 
       {/* Smart Delete Modal (Linked Dependencies Protection) */}

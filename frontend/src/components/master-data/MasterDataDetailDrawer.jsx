@@ -19,6 +19,7 @@ import {
   Users
 } from 'lucide-react';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 const ENTITY_TYPE_MAP = {
   org: 'company',
@@ -51,6 +52,7 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
   const [successMsg, setSuccessMsg] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState(null);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [itemToToggleStatus, setItemToToggleStatus] = useState(null);
 
   const isReadOnly = userRole === 'AUDITOR' || userRole === 'MANAGEMENT';
   const entityType = card ? (ENTITY_TYPE_MAP[card.id] || card.id) : '';
@@ -89,8 +91,14 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
     }
   }
 
-  async function handleToggleStatus(item) {
+  function handleToggleStatus(item) {
     if (isReadOnly) return;
+    setItemToToggleStatus(item);
+  }
+
+  async function handleConfirmToggleStatus() {
+    if (!itemToToggleStatus) return;
+    const item = itemToToggleStatus;
     setActionLoadingId(item._id);
     setErrorMsg('');
     try {
@@ -100,6 +108,7 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
         setTimeout(() => setSuccessMsg(''), 4000);
         loadEntityItems();
       }
+      setItemToToggleStatus(null);
     } catch (err) {
       setErrorMsg(err?.message || 'Failed to update record status');
     } finally {
@@ -415,6 +424,18 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
           entityName={card?.title || 'Record'}
           itemName={itemToDelete?.name || itemToDelete?.fullName}
           itemCode={itemToDelete?.code}
+          isLoading={Boolean(actionLoadingId)}
+        />
+
+        {/* Status Confirmation Modal */}
+        <StatusConfirmModal
+          isOpen={Boolean(itemToToggleStatus)}
+          onClose={() => setItemToToggleStatus(null)}
+          onConfirm={handleConfirmToggleStatus}
+          entityName={card?.title || 'Record'}
+          itemName={itemToToggleStatus?.name || itemToToggleStatus?.fullName}
+          itemCode={itemToToggleStatus?.code}
+          currentStatus={itemToToggleStatus?.isActive !== false && itemToToggleStatus?.status !== 'Inactive' ? 'Active' : 'Inactive'}
           isLoading={Boolean(actionLoadingId)}
         />
 

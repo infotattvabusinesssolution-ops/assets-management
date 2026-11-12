@@ -27,6 +27,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_LOCATIONS = [];
 
@@ -145,6 +146,8 @@ export function LocationsTab({
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
   const [locToDelete, setLocToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [locToToggleStatus, setLocToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Load live location types from database
   const loadLocationTypes = async () => {
@@ -487,9 +490,16 @@ export function LocationsTab({
     triggerToast && triggerToast('Specify unique hierarchy levels for the duplicated location.');
   };
 
-  const handleToggleLocStatus = async (loc) => {
+  const handleToggleLocStatus = (loc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
+    setLocToToggleStatus(loc);
+  };
+
+  const handleConfirmToggleLocStatus = async () => {
+    if (!locToToggleStatus) return;
+    const loc = locToToggleStatus;
     const newStatus = loc.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.patch(`/master-data/entities/site/${loc.id}/status`);
       await loadLocations();
@@ -504,6 +514,9 @@ export function LocationsTab({
         setSelectedLocation({ ...selectedLocation, status: newStatus });
       }
       triggerToast && triggerToast(`Location "${loc.code}" status changed to ${newStatus}.`);
+    } finally {
+      setIsStatusUpdating(false);
+      setLocToToggleStatus(null);
     }
   };
 
@@ -1158,6 +1171,18 @@ export function LocationsTab({
         itemName={locToDelete?.name}
         itemCode={locToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(locToToggleStatus)}
+        onClose={() => setLocToToggleStatus(null)}
+        onConfirm={handleConfirmToggleLocStatus}
+        entityName="Location"
+        itemName={locToToggleStatus?.name}
+        itemCode={locToToggleStatus?.code}
+        currentStatus={locToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
 
       {/* SMART DELETE MODAL */}

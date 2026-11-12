@@ -24,6 +24,8 @@ import {
   DollarSign
 } from 'lucide-react';
 import clsx from 'clsx';
+import { DeleteConfirmModal } from '../common/DeleteConfirmModal';
+import { StatusConfirmModal } from '../common/StatusConfirmModal';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -98,6 +100,10 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
   const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [selectedCc, setSelectedCc] = useState(null);
   const [editingCc, setEditingCc] = useState(null);
+  const [ccToDelete, setCcToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [ccToToggleStatus, setCcToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   const [ccForm, setCcForm] = useState({
     code: '',
@@ -310,30 +316,50 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
     setShowAddCcModal(false);
   };
 
-  const handleToggleStatus = async (cc) => {
+  const handleToggleStatus = (cc) => {
     setActiveDropdownId(null);
+    setCcToToggleStatus(cc);
+  };
+
+  const handleConfirmToggleCcStatus = async () => {
+    if (!ccToToggleStatus) return;
+    const cc = ccToToggleStatus;
     const nextStatus = cc.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.put(`/admin/organization/cost-centers/${cc.id}`, {
         active: nextStatus === 'Active'
       }).catch(() => null);
+      setCostCenters(costCenters.map((c) => (c.id === cc.id ? { ...c, status: nextStatus } : c)));
+      triggerToast && triggerToast(`Section "${cc.code}" status set to ${nextStatus}.`);
+      setCcToToggleStatus(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to update status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
-    setCostCenters(costCenters.map((c) => (c.id === cc.id ? { ...c, status: nextStatus } : c)));
-    triggerToast && triggerToast(`Section "${cc.code}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteCc = async (cc) => {
+  const handleDeleteCc = (cc) => {
     setActiveDropdownId(null);
-    if (!window.confirm(`Are you sure you want to delete section "${cc.code} - ${cc.name}"?`)) return;
+    setCcToDelete(cc);
+  };
+
+  const handleConfirmDeleteCc = async () => {
+    if (!ccToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/organization/cost-centers/${cc.id}`).catch(() => null);
+      await api.delete(`/admin/organization/cost-centers/${ccToDelete.id}`).catch(() => null);
+      setCostCenters(costCenters.filter((c) => c.id !== ccToDelete.id));
+      triggerToast && triggerToast(`Section "${ccToDelete.code}" deleted.`);
+      setCcToDelete(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to delete section.');
+    } finally {
+      setIsDeleting(false);
     }
-    setCostCenters(costCenters.filter((c) => c.id !== cc.id));
-    triggerToast && triggerToast(`Section "${cc.code}" deleted.`);
   };
 
   return (
@@ -1086,6 +1112,29 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(ccToDelete)}
+        onClose={() => setCcToDelete(null)}
+        onConfirm={handleConfirmDeleteCc}
+        entityName="Section"
+        itemName={ccToDelete?.name}
+        itemCode={ccToDelete?.code}
+        isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(ccToToggleStatus)}
+        onClose={() => setCcToToggleStatus(null)}
+        onConfirm={handleConfirmToggleCcStatus}
+        entityName="Section"
+        itemName={ccToToggleStatus?.name}
+        itemCode={ccToToggleStatus?.code}
+        currentStatus={ccToToggleStatus?.status}
+        isLoading={isStatusUpdating}
+      />
     </div>
   );
 }

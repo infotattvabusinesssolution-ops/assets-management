@@ -21,6 +21,8 @@ import {
   X
 } from 'lucide-react';
 import clsx from 'clsx';
+import { DeleteConfirmModal } from '../common/DeleteConfirmModal';
+import { StatusConfirmModal } from '../common/StatusConfirmModal';
 
 export const INITIAL_COMPANIES = [];
 
@@ -76,6 +78,10 @@ export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger })
   const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [selectedCompany, setSelectedCompany] = useState(null);
   const [editingCompany, setEditingCompany] = useState(null);
+  const [companyToDelete, setCompanyToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [companyToToggleStatus, setCompanyToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [companyForm, setCompanyForm] = useState({
     name: '',
     code: '',
@@ -237,36 +243,56 @@ export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger })
     setShowAddCompanyModal(false);
   };
 
-  const handleToggleStatus = async (company) => {
+  const handleToggleStatus = (company) => {
     setActiveDropdownId(null);
+    setCompanyToToggleStatus(company);
+  };
+
+  const handleConfirmToggleCompanyStatus = async () => {
+    if (!companyToToggleStatus) return;
+    const company = companyToToggleStatus;
     const nextStatus = company.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.put(`/admin/organization/companies/${company.id}`, {
         active: nextStatus === 'Active'
       }).catch(() => null);
+      setCompanies(
+        companies.map((c) => (c.id === company.id ? { ...c, status: nextStatus } : c))
+      );
+      triggerToast && triggerToast(`Company "${company.name}" status set to ${nextStatus}.`);
+      setCompanyToToggleStatus(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to update status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
-    setCompanies(
-      companies.map((c) => (c.id === company.id ? { ...c, status: nextStatus } : c))
-    );
-    triggerToast && triggerToast(`Company "${company.name}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteCompany = async (company) => {
+  const handleDeleteCompany = (company) => {
     setActiveDropdownId(null);
     if (company.businessUnitsCount > 0 || company.locationsCount > 0) {
       alert(`Dependency Notice: "${company.name}" has ${company.businessUnitsCount} Business Units and ${company.locationsCount} Locations attached. Please reassign or remove child entities before deleting.`);
       return;
     }
-    if (!window.confirm(`Are you sure you want to delete company "${company.name}"?`)) return;
+    setCompanyToDelete(company);
+  };
+
+  const handleConfirmDeleteCompany = async () => {
+    if (!companyToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/organization/companies/${company.id}`).catch(() => null);
+      await api.delete(`/admin/organization/companies/${companyToDelete.id}`).catch(() => null);
+      setCompanies(companies.filter((c) => c.id !== companyToDelete.id));
+      triggerToast && triggerToast(`Company "${companyToDelete.name}" deleted.`);
+      setCompanyToDelete(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to delete company.');
+    } finally {
+      setIsDeleting(false);
     }
-    setCompanies(companies.filter((c) => c.id !== company.id));
-    triggerToast && triggerToast(`Company "${company.name}" deleted.`);
   };
 
   return (
@@ -870,6 +896,29 @@ export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger })
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(companyToDelete)}
+        onClose={() => setCompanyToDelete(null)}
+        onConfirm={handleConfirmDeleteCompany}
+        entityName="Company"
+        itemName={companyToDelete?.name}
+        itemCode={companyToDelete?.code}
+        isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(companyToToggleStatus)}
+        onClose={() => setCompanyToToggleStatus(null)}
+        onConfirm={handleConfirmToggleCompanyStatus}
+        entityName="Company"
+        itemName={companyToToggleStatus?.name}
+        itemCode={companyToToggleStatus?.code}
+        currentStatus={companyToToggleStatus?.status}
+        isLoading={isStatusUpdating}
+      />
     </div>
   );
 }

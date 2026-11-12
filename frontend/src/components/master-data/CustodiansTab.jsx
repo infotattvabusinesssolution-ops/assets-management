@@ -33,6 +33,7 @@ import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { deduplicateCustodians } from './custodianUtils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export function CustodiansTab({
   triggerToast,
@@ -51,6 +52,8 @@ export function CustodiansTab({
   const [isSaving, setIsSaving] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
   const [custodianToDelete, setCustodianToDelete] = useState(null);
+  const [custodianToToggleStatus, setCustodianToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
@@ -317,9 +320,17 @@ export function CustodiansTab({
     }
   };
 
-  const handleToggleStatus = async (cust, e) => {
+  const handleToggleStatus = (cust, e) => {
     e?.stopPropagation();
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setCustodianToToggleStatus(cust);
+  };
+
+  const handleConfirmToggleCustodianStatus = async () => {
+    if (!custodianToToggleStatus) return;
+    const cust = custodianToToggleStatus;
     const nextStatus = cust.active === false ? true : false;
+    setIsStatusUpdating(true);
     try {
       await api.put(`/master-data/employees/${cust.id}`, { active: nextStatus });
       const list = custodians.map(c => c.id === cust.id ? { ...c, active: nextStatus } : c);
@@ -328,6 +339,9 @@ export function CustodiansTab({
       triggerToast && triggerToast(`Custodian "${cust.fullName}" marked as ${nextStatus ? 'Active' : 'Inactive'}.`);
     } catch {
       triggerToast && triggerToast('Failed to update custodian status.');
+    } finally {
+      setIsStatusUpdating(false);
+      setCustodianToToggleStatus(null);
     }
   };
 
@@ -964,6 +978,18 @@ export function CustodiansTab({
         itemName={custodianToDelete?.fullName}
         itemCode={custodianToDelete?.employeeCode || custodianToDelete?.id}
         isLoading={isDeleting}
+      />
+
+      {/* STATUS CONFIRM MODAL */}
+      <StatusConfirmModal
+        isOpen={Boolean(custodianToToggleStatus)}
+        onClose={() => setCustodianToToggleStatus(null)}
+        onConfirm={handleConfirmToggleCustodianStatus}
+        entityName="Custodian"
+        itemName={custodianToToggleStatus?.fullName}
+        itemCode={custodianToToggleStatus?.employeeCode || custodianToToggleStatus?.id}
+        currentStatus={custodianToToggleStatus?.active ? 'Active' : 'Inactive'}
+        isLoading={isStatusUpdating}
       />
 
       {/* SMART DELETE MODAL */}

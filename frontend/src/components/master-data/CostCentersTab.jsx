@@ -28,6 +28,7 @@ import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { deduplicateCustodians } from './custodianUtils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -47,6 +48,8 @@ export function CostCentersTab({
   const [isLoading, setIsLoading] = useState(false);
   const [ccToDelete, setCcToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [ccToToggleStatus, setCcToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Load live cost centers from database
   const loadCostCenters = async () => {
@@ -359,7 +362,7 @@ export function CostCentersTab({
     triggerToast && triggerToast(`Section "${cc.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleCCStatus = async (cc) => {
+  const handleToggleCCStatus = (cc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = cc.status === 'Active' ? 'Inactive' : 'Active';
     if (newStatus === 'Active') {
@@ -370,6 +373,14 @@ export function CostCentersTab({
         return;
       }
     }
+    setCcToToggleStatus(cc);
+  };
+
+  const handleConfirmToggleCCStatus = async () => {
+    if (!ccToToggleStatus) return;
+    const cc = ccToToggleStatus;
+    const newStatus = cc.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.patch(`/master-data/entities/cost_center/${cc.id}/status`);
       await loadCostCenters();
@@ -379,6 +390,9 @@ export function CostCentersTab({
       const msg = err.response?.data?.message || err.message || 'Failed to update section status.';
       triggerToast && triggerToast(msg);
       await loadCostCenters();
+    } finally {
+      setIsStatusUpdating(false);
+      setCcToToggleStatus(null);
     }
   };
 
@@ -1094,6 +1108,18 @@ export function CostCentersTab({
         itemName={ccToDelete?.name}
         itemCode={ccToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(ccToToggleStatus)}
+        onClose={() => setCcToToggleStatus(null)}
+        onConfirm={handleConfirmToggleCCStatus}
+        entityName="Section"
+        itemName={ccToToggleStatus?.name}
+        itemCode={ccToToggleStatus?.code}
+        currentStatus={ccToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
     </div>
   );

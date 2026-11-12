@@ -24,6 +24,8 @@ import {
   Plus
 } from 'lucide-react';
 import clsx from 'clsx';
+import { DeleteConfirmModal } from '../common/DeleteConfirmModal';
+import { StatusConfirmModal } from '../common/StatusConfirmModal';
 
 export const INITIAL_LOCATIONS = [];
 
@@ -92,6 +94,10 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
   const [showViewDetailsModal, setShowViewDetailsModal] = useState(false);
   const [selectedLoc, setSelectedLoc] = useState(null);
   const [editingLoc, setEditingLoc] = useState(null);
+  const [locToDelete, setLocToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [locToToggleStatus, setLocToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   const [locForm, setLocForm] = useState({
     name: '',
@@ -303,30 +309,50 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
     setShowAddLocModal(false);
   };
 
-  const handleToggleStatus = async (loc) => {
+  const handleToggleStatus = (loc) => {
     setActiveDropdownId(null);
+    setLocToToggleStatus(loc);
+  };
+
+  const handleConfirmToggleLocStatus = async () => {
+    if (!locToToggleStatus) return;
+    const loc = locToToggleStatus;
     const nextStatus = loc.status === 'Active' ? 'Inactive' : 'Active';
+    setIsStatusUpdating(true);
     try {
       await api.put(`/admin/organization/locations/${loc.id}`, {
         active: nextStatus === 'Active'
       }).catch(() => null);
+      setLocations(locations.map((l) => (l.id === loc.id ? { ...l, status: nextStatus } : l)));
+      triggerToast && triggerToast(`Location "${loc.name}" status set to ${nextStatus}.`);
+      setLocToToggleStatus(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to update status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
-    setLocations(locations.map((l) => (l.id === loc.id ? { ...l, status: nextStatus } : l)));
-    triggerToast && triggerToast(`Location "${loc.name}" status set to ${nextStatus}.`);
   };
 
-  const handleDeleteLoc = async (loc) => {
+  const handleDeleteLoc = (loc) => {
     setActiveDropdownId(null);
-    if (!window.confirm(`Are you sure you want to delete location "${loc.name}"?`)) return;
+    setLocToDelete(loc);
+  };
+
+  const handleConfirmDeleteLoc = async () => {
+    if (!locToDelete) return;
+    setIsDeleting(true);
     try {
-      await api.delete(`/admin/organization/locations/${loc.id}`).catch(() => null);
+      await api.delete(`/admin/organization/locations/${locToDelete.id}`).catch(() => null);
+      setLocations(locations.filter((l) => l.id !== locToDelete.id));
+      triggerToast && triggerToast(`Location "${locToDelete.name}" deleted.`);
+      setLocToDelete(null);
     } catch (err) {
       console.error(err);
+      triggerToast && triggerToast('Failed to delete location.');
+    } finally {
+      setIsDeleting(false);
     }
-    setLocations(locations.filter((l) => l.id !== loc.id));
-    triggerToast && triggerToast(`Location "${loc.name}" deleted.`);
   };
 
   return (
@@ -1039,6 +1065,29 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(locToDelete)}
+        onClose={() => setLocToDelete(null)}
+        onConfirm={handleConfirmDeleteLoc}
+        entityName="Location"
+        itemName={locToDelete?.name}
+        itemCode={locToDelete?.code}
+        isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(locToToggleStatus)}
+        onClose={() => setLocToToggleStatus(null)}
+        onConfirm={handleConfirmToggleLocStatus}
+        entityName="Location"
+        itemName={locToToggleStatus?.name}
+        itemCode={locToToggleStatus?.code}
+        currentStatus={locToToggleStatus?.status}
+        isLoading={isStatusUpdating}
+      />
     </div>
   );
 }

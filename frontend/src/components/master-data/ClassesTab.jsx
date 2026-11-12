@@ -29,6 +29,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const INITIAL_CLASSES = [];
 
@@ -48,6 +49,8 @@ export function ClassesTab({
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
   const [classToDelete, setClassToDelete] = useState(null);
   const [isDeleting, setIsDeleting] = useState(false);
+  const [classToToggleStatus, setClassToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
   // Load live classes from database (Filtered strictly to true Asset Classes, excluding Sub Categories)
   const loadClasses = async () => {
@@ -388,20 +391,32 @@ export function ClassesTab({
     triggerToast && triggerToast(`Asset Sub Group "${cls.name}" duplicated as "${duplicated.code}".`);
   };
 
-  const handleToggleClassStatus = async (cls) => {
+  const handleToggleClassStatus = (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
+    setClassToToggleStatus(cls);
+  };
+
+  const handleConfirmToggleClassStatus = async () => {
+    if (!classToToggleStatus) return;
+    const cls = classToToggleStatus;
     const newStatus = cls.status === 'Active' ? 'Inactive' : 'Active';
-    if (typeof cls.id === 'string' && cls.id.length > 10) {
-      await api.put(`/master-data/asset-sub-groups/${cls.id}`, { status: newStatus }).catch(() => null);
+    setIsStatusUpdating(true);
+    try {
+      if (typeof cls.id === 'string' && cls.id.length > 10) {
+        await api.put(`/master-data/asset-sub-groups/${cls.id}`, { status: newStatus }).catch(() => null);
+      }
+      const updated = classesList.map((c) =>
+        c.id === cls.id ? { ...c, status: newStatus } : c
+      );
+      setClassesList(updated);
+      if (selectedClass?.id === cls.id) {
+        setSelectedClass({ ...selectedClass, status: newStatus });
+      }
+      triggerToast && triggerToast(`Asset Sub Group "${cls.code}" status changed to ${newStatus}.`);
+    } finally {
+      setIsStatusUpdating(false);
+      setClassToToggleStatus(null);
     }
-    const updated = classesList.map((c) =>
-      c.id === cls.id ? { ...c, status: newStatus } : c
-    );
-    setClassesList(updated);
-    if (selectedClass.id === cls.id) {
-      setSelectedClass({ ...selectedClass, status: newStatus });
-    }
-    triggerToast && triggerToast(`Asset Sub Group "${cls.code}" status changed to ${newStatus}.`);
   };
 
   const handleInitiateDeleteClass = (cls) => {
@@ -1031,6 +1046,18 @@ export function ClassesTab({
         itemName={classToDelete?.name}
         itemCode={classToDelete?.code}
         isLoading={isDeleting}
+      />
+
+      {/* Status Confirmation Modal */}
+      <StatusConfirmModal
+        isOpen={Boolean(classToToggleStatus)}
+        onClose={() => setClassToToggleStatus(null)}
+        onConfirm={handleConfirmToggleClassStatus}
+        entityName="Asset Sub Group"
+        itemName={classToToggleStatus?.name}
+        itemCode={classToToggleStatus?.code}
+        currentStatus={classToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
 
       {/* Smart Delete Modal (Linked Dependencies Protection) */}

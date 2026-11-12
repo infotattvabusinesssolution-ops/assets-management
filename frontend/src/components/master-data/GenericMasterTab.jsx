@@ -30,6 +30,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
+import { StatusConfirmModal } from './StatusConfirmModal';
 
 export const DEFAULT_MANUFACTURERS = [];
 
@@ -121,6 +122,8 @@ export function GenericMasterTab({
   const [editingItem, setEditingItem] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [genericToToggleStatus, setGenericToToggleStatus] = useState(null);
+  const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [modalError, setModalError] = useState('');
 
   // Form State
@@ -463,7 +466,7 @@ export function GenericMasterTab({
     setShowAddModal(true);
   };
 
-  const handleToggleStatus = async (item, e) => {
+  const handleToggleStatus = (item, e) => {
     e?.stopPropagation();
     if (item.isSystem) {
       triggerToast && triggerToast('System enumeration status cannot be changed.');
@@ -471,6 +474,20 @@ export function GenericMasterTab({
     }
     const nextStatus = item.status === 'Active' ? 'Inactive' : 'Active';
     const nextActive = nextStatus === 'Active';
+    if (activeTab === 'brands' && nextActive && isParentMfrInactive(item)) {
+      triggerToast && triggerToast(`Cannot activate Brand because parent Manufacturer "${item.manufacturerName || 'Selected'}" is inactive.`);
+      return;
+    }
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setGenericToToggleStatus(item);
+  };
+
+  const handleConfirmToggleGenericStatus = async () => {
+    if (!genericToToggleStatus) return;
+    const item = genericToToggleStatus;
+    const nextStatus = item.status === 'Active' ? 'Inactive' : 'Active';
+    const nextActive = nextStatus === 'Active';
+    setIsStatusUpdating(true);
     try {
       if (activeTab === 'uom') {
         await api.put(`/master-data/uoms/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
@@ -487,10 +504,6 @@ export function GenericMasterTab({
           localStorage.setItem('fams_custom_asset_types', JSON.stringify(updatedCustom));
         } catch (_) {}
       } else if (activeTab === 'brands') {
-        if (nextActive && isParentMfrInactive(item)) {
-          triggerToast && triggerToast(`Cannot activate Brand because parent Manufacturer "${item.manufacturerName || 'Selected'}" is inactive.`);
-          return;
-        }
         await api.put(`/master-data/brands/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
@@ -518,8 +531,11 @@ export function GenericMasterTab({
         setSelectedItem({ ...selectedItem, status: nextStatus, active: nextActive });
       }
       triggerToast && triggerToast(`${tabConfig.singular} "${item.name}" marked as ${nextStatus}.`);
+      setGenericToToggleStatus(null);
     } catch {
       triggerToast && triggerToast('Failed to update status.');
+    } finally {
+      setIsStatusUpdating(false);
     }
   };
 
@@ -1529,6 +1545,18 @@ export function GenericMasterTab({
         entityName={tabConfig.singular}
         itemName={itemToDelete?.name}
         itemCode={itemToDelete?.code}
+      />
+
+      {/* MODAL: Status Confirmation */}
+      <StatusConfirmModal
+        isOpen={Boolean(genericToToggleStatus)}
+        onClose={() => setGenericToToggleStatus(null)}
+        onConfirm={handleConfirmToggleGenericStatus}
+        entityName={tabConfig.singular}
+        itemName={genericToToggleStatus?.name}
+        itemCode={genericToToggleStatus?.code}
+        currentStatus={genericToToggleStatus?.status}
+        isLoading={isStatusUpdating}
       />
     </div>
   );
