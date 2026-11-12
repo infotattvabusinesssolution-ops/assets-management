@@ -475,7 +475,7 @@ export async function createUser(req, res, next) {
       role: matchedRole,
       company: defaultCompany,
       site: defaultSite,
-      department: { id: 'dept-001', code: 'GEN', name: 'General' },
+      department: null,
       active: active !== undefined ? Boolean(active) : true,
       lastLogin: null
     };

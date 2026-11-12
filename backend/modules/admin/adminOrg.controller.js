@@ -272,19 +272,19 @@ export async function getAdminUsers(req, res) {
       employeeId: u.employee?.employeeCode || u.employeeId || 'EMP-001',
       role: u.role?.name || 'Standard User',
       roleId: u.role?.id || u.roleId,
-      department: u.department?.name || 'General',
-      location: u.site?.name || 'Main Campus',
-      company: u.company?.name || 'Corporate',
+      department: u.department?.name || '',
+      location: u.site?.name || '',
+      company: u.company?.name || '',
       businessUnit: 'Corporate Operations',
-      costCenter: u.costCenter?.code || 'CC-IT01',
+      costCenter: u.costCenter?.code || '',
       userType: 'System User',
       status: u.active ? 'Active' : 'Inactive',
       accountStatus: u.active ? 'Active' : 'Locked',
       mfaEnabled: true,
       lastLogin: u.lastLogin ? new Date(u.lastLogin).toLocaleDateString('en-GB') : 'Recently',
       createdDate: new Date(u.createdAt).toISOString().split('T')[0],
-      assignedLocations: [u.site?.name || 'Main Campus'],
-      assignedCompanies: [u.company?.name || 'Corporate']
+      assignedLocations: [u.site?.name].filter(Boolean),
+      assignedCompanies: [u.company?.name].filter(Boolean)
     }));
 
     const existingIds = new Set(filtered.map(u => u.id));
@@ -419,19 +419,19 @@ export async function createAdminUser(req, res) {
       employeeId: data.employeeId || `EMP-${String(Math.floor(100 + Math.random() * 900))}`,
       role: data.role || 'Standard User',
       roleId: data.roleId || 'ROLE-006',
-      department: data.department || 'General',
-      location: data.location || 'Main Campus',
-      company: data.company || 'Corporate',
-      businessUnit: data.businessUnit || 'Corporate Operations',
-      costCenter: data.costCenter || 'CC-01',
+      department: data.department || '',
+      location: data.location || '',
+      company: data.company || '',
+      businessUnit: data.businessUnit || '',
+      costCenter: data.costCenter || '',
       userType: data.userType || 'System User',
       status: data.status || 'Active',
       accountStatus: 'Active',
       mfaEnabled: Boolean(data.mfaEnabled),
       lastLogin: 'Never',
       createdDate: new Date().toISOString().split('T')[0],
-      assignedLocations: data.assignedLocations || [data.location || 'Main Campus'],
-      assignedCompanies: data.assignedCompanies || [data.company || 'Corporate']
+      assignedLocations: data.assignedLocations || [data.location].filter(Boolean),
+      assignedCompanies: data.assignedCompanies || [data.company].filter(Boolean)
     };
 
     memoryUsers.unshift(newUser);

@@ -58,6 +58,14 @@ export function UserManagement() {
   const [employeeLookupCode, setEmployeeLookupCode] = useState('');
   const [showLookupDropdown, setShowLookupDropdown] = useState(false);
   const [employeeLookupStatus, setEmployeeLookupStatus] = useState(null);
+  const [custodianLinkedFields, setCustodianLinkedFields] = useState({
+    name: false,
+    email: false,
+    phone: false,
+    company: false,
+    department: false,
+    location: false
+  });
   const [departmentsList, setDepartmentsList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
   const [rolesList, setRolesList] = useState([]);
@@ -117,9 +125,9 @@ export function UserManagement() {
     phone: '',
     employeeId: '',
     role: 'Standard User',
-    department: 'Information Technology',
-    location: 'Dubai HQ',
-    company: 'Asset360 Holdings',
+    department: '',
+    location: '',
+    company: '',
     businessUnit: 'Corporate Services',
     userType: 'System User',
     password: '',
@@ -182,8 +190,8 @@ export function UserManagement() {
           if (!c || typeof c !== 'object') return null;
           const fullName = getStrVal(c.fullName, getStrVal(c.name, ''));
           const employeeCode = getStrVal(c.employeeCode, getStrVal(c.code, ''));
-          const dept = getStrVal(c.department, 'General');
-          const comp = getStrVal(c.company, getStrVal(c.organization, 'Enterprise'));
+          const dept = getStrVal(c.department, '');
+          const comp = getStrVal(c.company, getStrVal(c.organization, ''));
           const loc = getStrVal(c.location, '');
           const type = getStrVal(c.custodianType, 'Internal');
           return {
@@ -219,11 +227,13 @@ export function UserManagement() {
         })));
       }
       if (deptsRes && Array.isArray(deptsRes.departments)) {
-        setDepartmentsList(deptsRes.departments.map(d => ({
-          ...d,
-          name: typeof d.name === 'string' ? d.name : (d.name?.name || String(d.name || '')),
-          code: typeof d.code === 'string' ? d.code : String(d.code || '')
-        })));
+        setDepartmentsList(deptsRes.departments
+          .filter(d => d && d.name && d.name !== 'General')
+          .map(d => ({
+            ...d,
+            name: typeof d.name === 'string' ? d.name : (d.name?.name || String(d.name || '')),
+            code: typeof d.code === 'string' ? d.code : String(d.code || '')
+          })));
       }
       if (compsRes && Array.isArray(compsRes.companies)) {
         setCompaniesList(compsRes.companies.map(c => ({
@@ -349,14 +359,14 @@ export function UserManagement() {
 
       const matchedName = getStr(match.fullName, getStr(match.name, ''));
       const matchedCode = getStr(match.employeeCode, getStr(match.code, clean));
-      const matchedDept = getStr(match.department, departmentsList[0]?.name || 'General');
-      const matchedComp = getStr(match.company, getStr(match.organization, companiesList[0]?.name || ''));
-      const matchedLoc = getStr(match.location, sitesList[0]?.name || '');
+      const matchedDept = getStr(match.department, '');
+      const matchedComp = getStr(match.company, getStr(match.organization, ''));
+      const matchedLoc = getStr(match.location, '');
       const matchedEmail = getStr(match.email, '');
       const matchedPhone = getStr(match.phone, '');
       const matchedType = getStr(match.custodianType, 'Internal');
 
-      // Ensure custodian's company, department, and location exist in dropdown choices
+      // Ensure custodian's company, department, and location exist in dropdown choices if present
       if (matchedComp && !companiesList.some(c => c.name === matchedComp)) {
         setCompaniesList(prev => [...prev, { id: `CMP-${Date.now()}`, name: matchedComp }]);
       }
@@ -373,14 +383,30 @@ export function UserManagement() {
         name: matchedName || prev.name,
         email: matchedEmail || prev.email,
         phone: matchedPhone || prev.phone,
-        department: matchedDept || prev.department,
-        company: matchedComp || prev.company,
-        location: matchedLoc || prev.location,
+        department: matchedDept || (showEditModal ? prev.department : ''),
+        company: matchedComp || (showEditModal ? prev.company : ''),
+        location: matchedLoc || (showEditModal ? prev.location : ''),
         username: prev.username || (matchedEmail ? matchedEmail.split('@')[0] : (matchedCode ? matchedCode.toLowerCase() : ''))
       }));
+
+      setCustodianLinkedFields({
+        name: Boolean(matchedName),
+        email: Boolean(matchedEmail),
+        phone: Boolean(matchedPhone),
+        company: Boolean(matchedComp),
+        department: Boolean(matchedDept),
+        location: Boolean(matchedLoc)
+      });
+
+      const detailsSuffix = [
+        matchedType,
+        matchedDept,
+        matchedComp
+      ].filter(Boolean).join(' - ');
+
       setEmployeeLookupStatus({
         found: true,
-        message: `Matched Custodian: ${matchedName || clean} (${matchedType} - ${matchedDept})`
+        message: `Matched Custodian: ${matchedName || clean}${detailsSuffix ? ` (${detailsSuffix})` : ''}`
       });
     } else {
       setEmployeeLookupStatus({
@@ -393,6 +419,14 @@ export function UserManagement() {
   const handleUnlinkCustodian = () => {
     setEmployeeLookupCode('');
     setEmployeeLookupStatus(null);
+    setCustodianLinkedFields({
+      name: false,
+      email: false,
+      phone: false,
+      company: false,
+      department: false,
+      location: false
+    });
     setUserFormData((prev) => ({
       ...prev,
       employeeId: ''
@@ -408,7 +442,7 @@ export function UserManagement() {
     setUserFormData((prev) => ({ ...prev, password: pass }));
   };
 
-    const openAddUserModal = () => {
+  const openAddUserModal = () => {
     setUserFormData({
       name: '',
       username: '',
@@ -416,13 +450,24 @@ export function UserManagement() {
       phone: '',
       employeeId: '',
       role: rolesList.length > 0 ? rolesList[0].name : 'Standard User',
-      department: departmentsList.length > 0 ? departmentsList[0].name : '',
-      location: sitesList.length > 0 ? sitesList[0].name : '',
-      company: companiesList.length > 0 ? companiesList[0].name : '',
+      department: '',
+      location: '',
+      company: '',
       businessUnit: 'Corporate Operations',
       userType: userTypesList.length > 0 ? userTypesList[0] : 'System User',
+      password: '',
+      passwordOption: 'custom',
+      forcePasswordChange: true,
       status: 'Active',
       mfaEnabled: false
+    });
+    setCustodianLinkedFields({
+      name: false,
+      email: false,
+      phone: false,
+      company: false,
+      department: false,
+      location: false
     });
     setIsAddingLocation(false);
     setIsAddingDepartment(false);
@@ -1211,6 +1256,14 @@ export function UserManagement() {
                                 setUserFormData({ ...user });
                                 setEmployeeLookupCode(user.employeeId || '');
                                 setEmployeeLookupStatus(null);
+                                setCustodianLinkedFields({
+                                  name: Boolean(user.employeeId && user.name),
+                                  email: Boolean(user.employeeId && user.email),
+                                  phone: Boolean(user.employeeId && user.phone),
+                                  company: Boolean(user.employeeId && user.company),
+                                  department: Boolean(user.employeeId && user.department),
+                                  location: Boolean(user.employeeId && user.location)
+                                });
                                 setShowEditModal(true);
                                 setActiveDropdownId(null);
                               }}
@@ -1496,7 +1549,7 @@ export function UserManagement() {
                               const nameStr = typeof c.fullName === 'string' ? c.fullName : (typeof c.name === 'string' ? c.name : (c.name?.name || 'Unnamed'));
                               const codeStr = typeof c.employeeCode === 'string' ? c.employeeCode : (typeof c.code === 'string' ? c.code : nameStr);
                               const typeStr = typeof c.custodianType === 'string' ? c.custodianType : 'Internal';
-                              const deptStr = typeof c.department === 'string' ? c.department : (c.department?.name || 'General');
+                              const deptStr = typeof c.department === 'string' ? c.department : (c.department?.name || '');
 
                               return (
                                 <button
@@ -1512,7 +1565,7 @@ export function UserManagement() {
                                 >
                                   <div>
                                     <div className="font-semibold text-slate-900 group-hover:text-[#6C2BD9]">{nameStr}</div>
-                                    <div className="text-[10px] text-slate-500">{deptStr} • {c.email || 'No email'}</div>
+                                    <div className="text-[10px] text-slate-500">{deptStr ? `${deptStr} • ` : ''}{c.email || 'No email'}</div>
                                   </div>
                                   <div className="flex items-center gap-1.5 shrink-0">
                                     <span className="font-mono text-[10px] px-1.5 py-0.5 rounded bg-purple-100 text-[#6C2BD9] font-bold">{codeStr}</span>
@@ -1694,22 +1747,23 @@ export function UserManagement() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="font-medium text-slate-700">Company *</label>
-                    {isCustodianLinked && (
+                    {isCustodianLinked && custodianLinkedFields.company && (
                       <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
                         <Lock className="w-2.5 h-2.5" /> Synced from Custodian
                       </span>
                     )}
                   </div>
                   <select
-                    disabled={isCustodianLinked}
+                    disabled={isCustodianLinked && custodianLinkedFields.company}
                     value={userFormData.company}
                     onChange={(e) => setUserFormData({ ...userFormData, company: e.target.value })}
                     className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
-                      isCustodianLinked
+                      isCustodianLinked && custodianLinkedFields.company
                         ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed'
                         : 'bg-white border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
                     }`}
                   >
+                    <option value="">Select Master Company...</option>
                     {companiesList.map(c => (
                       <option key={c.id || c.name} value={c.name}>{c.name}</option>
                     ))}
@@ -1720,22 +1774,23 @@ export function UserManagement() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="font-medium text-slate-700">Department</label>
-                    {isCustodianLinked && (
+                    {isCustodianLinked && custodianLinkedFields.department && (
                       <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
                         <Lock className="w-2.5 h-2.5" /> Synced from Custodian
                       </span>
                     )}
                   </div>
                   <select
-                    disabled={isCustodianLinked}
+                    disabled={isCustodianLinked && custodianLinkedFields.department}
                     value={userFormData.department}
                     onChange={(e) => setUserFormData({ ...userFormData, department: e.target.value })}
                     className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
-                      isCustodianLinked
+                      isCustodianLinked && custodianLinkedFields.department
                         ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed'
                         : 'bg-white border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
                     }`}
                   >
+                    <option value="">-- Select Department --</option>
                     {departmentsList.map(d => (
                       <option key={d.id || d.name} value={d.name}>{d.name} {d.code ? `(${d.code})` : ''}</option>
                     ))}
@@ -1746,18 +1801,18 @@ export function UserManagement() {
                 <div>
                   <div className="flex items-center justify-between mb-1">
                     <label className="font-medium text-slate-700">Primary Location *</label>
-                    {isCustodianLinked && (
+                    {isCustodianLinked && custodianLinkedFields.location && (
                       <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
                         <Lock className="w-2.5 h-2.5" /> Synced from Custodian
                       </span>
                     )}
                   </div>
                   <select
-                    disabled={isCustodianLinked}
+                    disabled={isCustodianLinked && custodianLinkedFields.location}
                     value={userFormData.location}
                     onChange={(e) => setUserFormData({ ...userFormData, location: e.target.value })}
                     className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
-                      isCustodianLinked
+                      isCustodianLinked && custodianLinkedFields.location
                         ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed'
                         : 'bg-white border-slate-200 focus:outline-none focus:border-[#6C2BD9] cursor-pointer'
                     }`}
