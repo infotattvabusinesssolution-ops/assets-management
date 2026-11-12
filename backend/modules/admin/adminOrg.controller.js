@@ -636,27 +636,28 @@ export async function createAdminRole(req, res) {
     }
 
     const trimmedName = data.name.trim();
+
+    // Check if a role with this name already exists (case-insensitive check)
+    const allDbRoles = await prisma.role.findMany({ select: { id: true, name: true, code: true } }).catch(() => []);
+    const isDuplicateName = allDbRoles.some(r => r.name.trim().toLowerCase() === trimmedName.toLowerCase()) ||
+      memoryRoles.some(r => r.name.trim().toLowerCase() === trimmedName.toLowerCase());
+
+    if (isDuplicateName) {
+      return res.status(400).json({ success: false, error: `A role named "${trimmedName}" already exists. Duplicate roles are not allowed.` });
+    }
+
     let generatedCode = data.code ? data.code.trim().toUpperCase().replace(/[^A-Z0-9_]/g, '_') : '';
     if (!generatedCode) {
       generatedCode = 'ROLE_' + trimmedName.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 15);
     }
 
-    // Check if a role with this name already exists
-    const existingRole = await prisma.role.findFirst({
-      where: {
-        OR: [
-          { name: { equals: trimmedName } },
-          { code: { equals: generatedCode } }
-        ]
-      }
-    }).catch(() => null);
-
-    if (existingRole) {
-      if (existingRole.name.toLowerCase() === trimmedName.toLowerCase()) {
-        return res.status(400).json({ success: false, error: `A role named "${trimmedName}" already exists.` });
-      }
-      generatedCode = `${generatedCode}_${Date.now().toString().slice(-4)}`;
+    // Ensure generated code is unique
+    let uniqueCode = generatedCode;
+    let codeSuffix = 1;
+    while (allDbRoles.some(r => r.code === uniqueCode) || memoryRoles.some(r => r.code === uniqueCode)) {
+      uniqueCode = `${generatedCode}_${codeSuffix++}`;
     }
+    generatedCode = uniqueCode;
 
     const permissionsString = typeof data.permissions === 'object'
       ? JSON.stringify(data.permissions)
@@ -745,7 +746,15 @@ export async function updateAdminRole(req, res) {
       }
 
       const updateData = {};
-      if (data.name && !targetRole.isSystem) updateData.name = data.name.trim();
+      if (data.name && !targetRole.isSystem) {
+        const trimmedUpdateName = data.name.trim();
+        const allDbRoles = await prisma.role.findMany({ select: { id: true, name: true } }).catch(() => []);
+        const isDuplicate = allDbRoles.some(r => r.id !== targetRole.id && r.name.trim().toLowerCase() === trimmedUpdateName.toLowerCase());
+        if (isDuplicate) {
+          return res.status(400).json({ success: false, error: `A role named "${trimmedUpdateName}" already exists.` });
+        }
+        updateData.name = trimmedUpdateName;
+      }
       if (data.description !== undefined) updateData.description = data.description?.trim() || '';
       if (data.status !== undefined) updateData.active = data.status === 'Active';
       if (data.active !== undefined) updateData.active = Boolean(data.active);

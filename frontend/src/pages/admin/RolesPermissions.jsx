@@ -185,6 +185,7 @@ export function RolesPermissions() {
   const [roleToToggleStatus, setRoleToToggleStatus] = useState(null);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [roleForm, setRoleForm] = useState({ name: '', description: '', roleType: 'Custom Role', status: 'Active' });
+  const [roleFormError, setRoleFormError] = useState('');
 
   // Permissions Matrix State
   const [expandedModules, setExpandedModules] = useState({ assets: true, movements: true, audit: true, administration: true });
@@ -244,25 +245,50 @@ export function RolesPermissions() {
 
   const handleSaveRole = async (e) => {
     e.preventDefault();
-    if (!roleForm.name) return;
+    const trimmedName = (roleForm.name || '').trim();
+    if (!trimmedName) {
+      setRoleFormError('Role Name is required.');
+      return;
+    }
+
+    // Check for duplicate role name (case-insensitive)
+    const isDuplicate = roles.some(
+      (r) =>
+        r.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
+        (!editingRole || r.id !== editingRole.id)
+    );
+
+    if (isDuplicate) {
+      setRoleFormError(`A role named "${trimmedName}" already exists. Duplicate roles are not permitted.`);
+      return;
+    }
+
+    setRoleFormError('');
 
     if (editingRole) {
       try {
-        await api.put(`/admin/roles/${editingRole.id}`, {
-          name: roleForm.name,
+        const res = await api.put(`/admin/roles/${editingRole.id}`, {
+          name: trimmedName,
           description: roleForm.description,
           status: roleForm.status,
           active: roleForm.status === 'Active'
-        }).catch(() => null);
+        });
+        if (res && res.error) {
+          setRoleFormError(res.error);
+          return;
+        }
       } catch (err) {
         console.error(err);
+        const errMsg = err?.response?.data?.error || err?.message || 'Failed to update role';
+        setRoleFormError(errMsg);
+        return;
       }
       setRoles(
         roles.map((r) =>
           r.id === editingRole.id
             ? {
                 ...r,
-                name: roleForm.name,
+                name: trimmedName,
                 description: roleForm.description,
                 roleType: editingRole.isSystem ? 'System Role' : 'Custom Role',
                 status: roleForm.status
@@ -270,38 +296,43 @@ export function RolesPermissions() {
             : r
         )
       );
-      triggerToast(`Role "${roleForm.name}" updated successfully.`);
+      triggerToast(`Role "${trimmedName}" updated successfully.`);
+      setShowAddRoleModal(false);
+      setEditingRole(null);
     } else {
       let createdRole = null;
       try {
         const res = await api.post('/admin/roles', {
-          name: roleForm.name,
-          code: roleForm.name.toUpperCase().replace(/\s+/g, '_'),
+          name: trimmedName,
+          code: trimmedName.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 20),
           description: roleForm.description,
           status: roleForm.status,
           active: roleForm.status === 'Active'
-        }).catch(() => null);
+        });
+        if (res && res.error) {
+          setRoleFormError(res.error);
+          return;
+        }
         if (res && res.role) {
           createdRole = res.role;
         }
       } catch (err) {
         console.error(err);
+        const errMsg = err?.response?.data?.error || err?.message || 'Failed to create role';
+        setRoleFormError(errMsg);
+        return;
       }
-      const newRole = createdRole || {
-        id: Date.now(),
-        name: roleForm.name,
-        description: roleForm.description,
-        roleType: 'Custom Role',
-        userCount: 0,
-        status: roleForm.status || 'Active',
-        dateCreated: new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-        createdBy: 'Admin User'
-      };
-      setRoles([newRole, ...roles]);
-      triggerToast(`Role "${roleForm.name}" created successfully.`);
+
+      if (!createdRole) {
+        setRoleFormError('Failed to create role. Please try again.');
+        return;
+      }
+
+      setRoles([createdRole, ...roles]);
+      triggerToast(`Role "${trimmedName}" created successfully.`);
+      setShowAddRoleModal(false);
+      setEditingRole(null);
     }
-    setShowAddRoleModal(false);
-    setEditingRole(null);
   };
 
   const handleCloneRole = async (role) => {
@@ -464,6 +495,7 @@ export function RolesPermissions() {
               onClick={() => {
                 setEditingRole(null);
                 setRoleForm({ name: '', description: '', roleType: 'Custom Role', status: 'Active' });
+                setRoleFormError('');
                 setShowAddRoleModal(true);
               }}
               className="inline-flex items-center gap-1.5 px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl transition shadow-xs cursor-pointer"
@@ -773,10 +805,11 @@ export function RolesPermissions() {
                                 setEditingRole(role);
                                 setRoleForm({
                                   name: role.name,
-                                  description: role.description,
-                                  roleType: role.roleType,
+                                  description: role.description || '',
+                                  roleType: role.roleType || 'Custom Role',
                                   status: role.status
                                 });
+                                setRoleFormError('');
                                 setShowAddRoleModal(true);
                                 setActiveDropdownId(null);
                               }}
@@ -1069,10 +1102,23 @@ export function RolesPermissions() {
                   type="text"
                   required
                   value={roleForm.name}
-                  onChange={(e) => setRoleForm({ ...roleForm, name: e.target.value })}
+                  onChange={(e) => {
+                    setRoleForm({ ...roleForm, name: e.target.value });
+                    if (roleFormError) setRoleFormError('');
+                  }}
                   placeholder="e.g. Asset Custodian"
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] font-medium"
+                  className={`w-full px-3 py-2 border rounded-xl font-medium transition-colors ${
+                    roleFormError
+                      ? 'border-rose-400 focus:ring-2 focus:ring-rose-400/20 focus:border-rose-500'
+                      : 'border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
+                  }`}
                 />
+                {roleFormError && (
+                  <p className="text-[11px] text-rose-600 font-medium flex items-center gap-1 mt-1.5 animate-fadeIn">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    <span>{roleFormError}</span>
+                  </p>
+                )}
               </div>
 
               <div>
