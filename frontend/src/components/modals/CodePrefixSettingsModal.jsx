@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../../services/api';
 import { fetchCodePrefixes, updateLocalPrefixes, getCachedPrefix } from '../../services/codePrefixService';
@@ -8,6 +8,7 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
+  AlertTriangle,
   RotateCcw,
   Sparkles,
   Building2,
@@ -51,7 +52,7 @@ const ENTITY_GROUPS = [
     icon: Tag,
     entities: [
       { key: 'asset_group', label: 'Asset Group', defaultPrefix: 'GRP-', description: 'Level 1 high-level asset group (e.g. IT, Furniture)' },
-      { key: 'asset_sub_group', label: 'Asset Sub-Group', defaultPrefix: 'SUB-', description: 'Level 2 asset sub-classification' },
+      { key: 'asset_sub_group', label: 'Asset Sub-Group', defaultPrefix: 'ASG-', description: 'Level 2 asset sub-classification' },
       { key: 'category', label: 'Asset Category', defaultPrefix: 'CAT-', description: 'Level 3 asset category classification' },
       { key: 'sub_category', label: 'Sub-Category', defaultPrefix: 'SUB-', description: 'Level 4 detailed sub-category classification' },
       { key: 'asset_class', label: 'Asset Class', defaultPrefix: 'CLS-', description: 'Accounting or lifecycle asset class' },
@@ -154,8 +155,70 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
     setStatusMsg({ type: 'info', text: 'All prefixes have been reset to defaults. Click "Save Changes" to apply.' });
   };
 
+  // Real-time conflict detector: maps each entity key to its conflict details if prefix is duplicated
+  const duplicateMap = useMemo(() => {
+    const usage = {}; // cleanPrefix -> Array<{ key, label }>
+    ENTITY_GROUPS.forEach(g => {
+      g.entities.forEach(ent => {
+        const raw = prefixes[ent.key] !== undefined ? prefixes[ent.key] : ent.defaultPrefix;
+        const norm = (raw || '').trim().toUpperCase().replace(/\s+/g, '');
+        const clean = norm ? (norm.endsWith('-') ? norm : `${norm}-`) : '';
+        if (!clean) return;
+        if (!usage[clean]) usage[clean] = [];
+        usage[clean].push({ key: ent.key, label: ent.label });
+      });
+    });
+
+    const conflicts = {}; // ent.key -> { prefix, conflictsWith: string[] }
+    Object.entries(usage).forEach(([pfx, list]) => {
+      if (list.length > 1) {
+        list.forEach(item => {
+          conflicts[item.key] = {
+            prefix: pfx,
+            conflictsWith: list.filter(other => other.key !== item.key).map(other => other.label)
+          };
+        });
+      }
+    });
+    return conflicts;
+  }, [prefixes]);
+
+  const hasDuplicates = Object.keys(duplicateMap).length > 0;
+
+  const emptyPrefixList = useMemo(() => {
+    const list = [];
+    ENTITY_GROUPS.forEach(g => {
+      g.entities.forEach(ent => {
+        const val = prefixes[ent.key] !== undefined ? prefixes[ent.key] : ent.defaultPrefix;
+        if (!val || !val.trim()) {
+          list.push(ent.label);
+        }
+      });
+    });
+    return list;
+  }, [prefixes]);
+
+  const hasEmptyPrefixes = emptyPrefixList.length > 0;
+
   const handleSave = async (e) => {
     e.preventDefault();
+
+    if (hasDuplicates) {
+      setStatusMsg({
+        type: 'error',
+        text: 'Cannot save: duplicate prefixes detected. Every master entity must have a unique prefix to avoid code collisions.'
+      });
+      return;
+    }
+
+    if (hasEmptyPrefixes) {
+      setStatusMsg({
+        type: 'error',
+        text: `Cannot save: prefix cannot be empty for: ${emptyPrefixList.join(', ')}`
+      });
+      return;
+    }
+
     setSaving(true);
     setStatusMsg({ type: '', text: '' });
 
@@ -295,6 +358,24 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
           </div>
         </div>
 
+        {/* Duplicate Warning Banner */}
+        {hasDuplicates && (
+          <div className="mx-5 mt-4 p-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center justify-between gap-3 animate-in fade-in duration-150">
+            <div className="flex items-center gap-2.5">
+              <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+              <div>
+                <span className="font-bold">Duplicate code prefix detected!</span>{' '}
+                <span className="text-rose-700">
+                  Multiple master entities have been assigned identical prefixes. Every master entity must have a unique prefix to prevent asset code conflicts.
+                </span>
+              </div>
+            </div>
+            <span className="px-2.5 py-1 rounded-full bg-rose-200/80 text-rose-800 text-[11px] font-bold shrink-0">
+              {Object.keys(duplicateMap).length} Conflicts
+            </span>
+          </div>
+        )}
+
         {/* Status Notification Banner */}
         {statusMsg.text && (
           <div
@@ -347,15 +428,31 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
                     const currentVal = getCleanPrefix(ent.key, ent.defaultPrefix);
                     const isCustomized = currentVal !== ent.defaultPrefix;
                     const preview = getPreviewCode(currentVal);
+                    const conflict = duplicateMap[ent.key];
+                    const isDuplicate = !!conflict;
+                    const isEmpty = (currentVal || '').trim() === '';
 
                     return (
                       <div
                         key={ent.key}
-                        className="bg-white border border-slate-200/90 hover:border-purple-200 rounded-xl p-3.5 transition-all shadow-xs space-y-2.5"
+                        className={`bg-white border rounded-xl p-3.5 transition-all shadow-xs space-y-2.5 ${
+                          isDuplicate
+                            ? 'border-rose-400 bg-rose-50/25 ring-1 ring-rose-300'
+                            : isEmpty
+                            ? 'border-amber-400 bg-amber-50/20'
+                            : 'border-slate-200/90 hover:border-purple-200'
+                        }`}
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div>
-                            <h4 className="text-xs font-bold text-slate-900">{ent.label}</h4>
+                            <div className="flex items-center gap-2">
+                              <h4 className="text-xs font-bold text-slate-900">{ent.label}</h4>
+                              {isDuplicate && (
+                                <span className="text-[10px] px-1.5 py-0.5 rounded-md bg-rose-100 text-rose-700 font-bold border border-rose-200">
+                                  Duplicate
+                                </span>
+                              )}
+                            </div>
                             <p className="text-[11px] text-slate-500 mt-0.5 leading-snug">{ent.description}</p>
                           </div>
                           {isCustomized && (
@@ -381,7 +478,13 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
                               value={currentVal}
                               onChange={(e) => handlePrefixChange(ent.key, e.target.value)}
                               placeholder={ent.defaultPrefix}
-                              className="w-full px-3 py-1.5 text-xs font-mono font-bold bg-slate-50 border border-slate-200 rounded-lg text-slate-900 uppercase focus:bg-white focus:outline-none focus:ring-2 focus:ring-purple-500"
+                              className={`w-full px-3 py-1.5 text-xs font-mono font-bold rounded-lg uppercase focus:outline-none focus:ring-2 ${
+                                isDuplicate
+                                  ? 'bg-rose-50 border border-rose-400 text-rose-900 focus:ring-rose-500'
+                                  : isEmpty
+                                  ? 'bg-amber-50 border border-amber-400 text-amber-900 focus:ring-amber-500'
+                                  : 'bg-slate-50 border border-slate-200 text-slate-900 focus:bg-white focus:ring-purple-500'
+                              }`}
                             />
                           </div>
 
@@ -389,11 +492,29 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
                             <label className="block text-[10px] font-semibold text-slate-500 uppercase tracking-wider mb-1">
                               Live Preview
                             </label>
-                            <div className="px-2.5 py-1.5 text-xs font-mono font-bold bg-purple-50 border border-purple-200 text-purple-800 rounded-lg text-center truncate">
+                            <div className={`px-2.5 py-1.5 text-xs font-mono font-bold rounded-lg text-center truncate ${
+                              isDuplicate
+                                ? 'bg-rose-100 border border-rose-200 text-rose-800'
+                                : 'bg-purple-50 border border-purple-200 text-purple-800'
+                            }`}>
                               {preview}
                             </div>
                           </div>
                         </div>
+
+                        {/* Inline Duplicate Alert */}
+                        {isDuplicate && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-rose-600 font-semibold pt-0.5 animate-in fade-in">
+                            <AlertTriangle className="w-3.5 h-3.5 shrink-0 text-rose-500" />
+                            <span>Conflict: "{conflict.prefix}" is also used by {conflict.conflictsWith.join(', ')}</span>
+                          </div>
+                        )}
+                        {isEmpty && (
+                          <div className="flex items-center gap-1.5 text-[11px] text-amber-600 font-semibold pt-0.5 animate-in fade-in">
+                            <AlertCircle className="w-3.5 h-3.5 shrink-0 text-amber-500" />
+                            <span>Prefix cannot be empty.</span>
+                          </div>
+                        )}
                       </div>
                     );
                   })}
@@ -425,8 +546,17 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
             <button
               type="button"
               onClick={handleSave}
-              disabled={saving}
-              className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md shadow-purple-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+              disabled={saving || hasDuplicates || hasEmptyPrefixes || !hasChanges}
+              title={
+                hasDuplicates
+                  ? 'Resolve duplicate prefixes before saving'
+                  : hasEmptyPrefixes
+                  ? 'Prefixes cannot be empty'
+                  : !hasChanges
+                  ? 'No changes to save'
+                  : 'Save prefix settings'
+              }
+              className="px-5 py-2 text-xs font-bold text-white bg-purple-600 hover:bg-purple-700 rounded-xl shadow-md shadow-purple-500/20 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {saving ? (
                 <>

@@ -15,7 +15,7 @@ export const DEFAULT_MASTER_PREFIXES = {
   asset_group: 'GRP-',
   category: 'CAT-',
   sub_category: 'SUB-',
-  asset_sub_group: 'SUB-',
+  asset_sub_group: 'ASG-',
   asset_class: 'CLS-',
   asset_type: 'TYP-',
   item_master: 'ITM-',

@@ -42,6 +42,7 @@ export const DEFAULT_MASTER_CODE_PREFIXES = {
   asset_group: 'GRP-',
   category: 'CAT-',
   sub_category: 'SUB-',
+  asset_sub_group: 'ASG-',
   asset_class: 'CLS-',
   asset_type: 'TYP-',
   item_master: 'ITM-',
@@ -145,11 +146,46 @@ export async function updateCodePrefixes(req, res, next) {
     const cleanPrefixes = {};
     for (const [k, v] of Object.entries(prefixes)) {
       if (typeof v === 'string') {
-        const clean = v.trim().toUpperCase();
-        cleanPrefixes[k.toLowerCase()] = clean.endsWith('-') ? clean : (clean ? `${clean}-` : '');
+        const clean = v.trim().toUpperCase().replace(/\s+/g, '');
+        if (clean) {
+          cleanPrefixes[k.toLowerCase()] = clean.endsWith('-') ? clean : `${clean}-`;
+        }
       }
     }
-    inMemoryCodePrefixes = { ...DEFAULT_MASTER_CODE_PREFIXES, ...cleanPrefixes };
+    const merged = { ...DEFAULT_MASTER_CODE_PREFIXES, ...cleanPrefixes };
+
+    // Validate: each entity must have a non-empty prefix
+    for (const [k, v] of Object.entries(merged)) {
+      if (!v || !v.trim()) {
+        return res.status(400).json({
+          success: false,
+          message: `Code prefix for "${k}" cannot be empty.`
+        });
+      }
+    }
+
+    // Validate: duplicate prefixes are strictly forbidden across masters
+    const usageMap = {};
+    const duplicateList = [];
+    for (const [entKey, pfx] of Object.entries(merged)) {
+      if (!usageMap[pfx]) usageMap[pfx] = [];
+      usageMap[pfx].push(entKey);
+    }
+
+    for (const [pfx, entities] of Object.entries(usageMap)) {
+      if (entities.length > 1) {
+        duplicateList.push(`"${pfx}" used by [${entities.join(', ')}]`);
+      }
+    }
+
+    if (duplicateList.length > 0) {
+      return res.status(400).json({
+        success: false,
+        message: `Duplicate code prefixes detected. Every master entity must have a unique prefix to avoid code collisions. Conflicts: ${duplicateList.join('; ')}`
+      });
+    }
+
+    inMemoryCodePrefixes = merged;
     writeCodePrefixesToFile(inMemoryCodePrefixes);
     res.json({ success: true, message: 'Master code prefixes updated successfully.', prefixes: inMemoryCodePrefixes });
   } catch (err) { next(err); }
