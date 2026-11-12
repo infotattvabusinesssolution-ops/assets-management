@@ -24,41 +24,34 @@ const ENTITY_GROUPS = [
     groupName: 'Organization Masters',
     icon: Building2,
     entities: [
-      { key: 'department', label: 'Department', defaultPrefix: 'DEP-', description: 'Divisions and operational departments' },
-      { key: 'cost_center', label: 'Section', defaultPrefix: 'CC-', description: 'Financial sections and accounting codes' },
-      { key: 'company', label: 'Company Entity', defaultPrefix: 'CMP-', description: 'Legal business entities and operating companies' },
-      { key: 'site', label: 'Site / Location', defaultPrefix: 'LOC-', description: 'Physical sites, facilities and campuses' },
-      { key: 'business_unit', label: 'Business Unit', defaultPrefix: 'BU-', description: 'Corporate business units and branches' }
+      { key: 'company', label: 'Company', defaultPrefix: 'CMP-', description: 'Legal entities and operating corporate units' },
+      { key: 'department', label: 'Department', defaultPrefix: 'DEP-', description: 'Operational divisions and departments' },
+      { key: 'cost_center', label: 'Section', defaultPrefix: 'SEC-', description: 'Financial sections and cost center codes' },
+      { key: 'employee', label: 'Custodian / Employee', defaultPrefix: 'EMP-', description: 'Asset custodians and employees' }
     ]
   },
   {
     groupId: 'locations',
-    groupName: 'Hierarchical Locations',
+    groupName: 'Location Hierarchy',
     icon: MapPin,
     entities: [
-      { key: 'building', label: 'Building', defaultPrefix: 'BLD-', description: 'Specific buildings within a site campus' },
-      { key: 'floor', label: 'Floor', defaultPrefix: 'FLR-', description: 'Floor levels within buildings' },
-      { key: 'room', label: 'Room / Space', defaultPrefix: 'RM-', description: 'Rooms, offices, labs, and storage areas' },
-      { key: 'location_level_1', label: 'Location Level 1', defaultPrefix: 'LOC-L1-', description: 'Top hierarchical location dimension' },
-      { key: 'location_level_2', label: 'Location Level 2', defaultPrefix: 'LOC-L2-', description: 'Secondary hierarchical location level' },
-      { key: 'location_level_3', label: 'Location Level 3', defaultPrefix: 'LOC-L3-', description: 'Tertiary hierarchical location level' },
-      { key: 'location_level_4', label: 'Location Level 4', defaultPrefix: 'LOC-L4-', description: 'Detailed sub-location tier' },
-      { key: 'location_type', label: 'Location Type', defaultPrefix: 'LT-', description: 'Campus, warehouse, branch, data center classifications' }
+      { key: 'site', label: 'Location (Site)', defaultPrefix: 'LOC-', description: 'Primary physical location sites and campuses' },
+      { key: 'location_level_1', label: 'Location Level 1', defaultPrefix: 'LOC-L1-', description: 'Primary hierarchy tier (Level 1)' },
+      { key: 'location_level_2', label: 'Location Level 2', defaultPrefix: 'LOC-L2-', description: 'Secondary hierarchy tier (Level 2)' },
+      { key: 'location_level_3', label: 'Location Level 3', defaultPrefix: 'LOC-L3-', description: 'Tertiary hierarchy tier (Level 3)' },
+      { key: 'location_level_4', label: 'Location Level 4', defaultPrefix: 'LOC-L4-', description: 'Granular sub-location tier (Level 4)' }
     ]
   },
   {
     groupId: 'catalog',
-    groupName: 'Classification & Catalog',
+    groupName: 'Catalog & Classification',
     icon: Tag,
     entities: [
-      { key: 'asset_group', label: 'Asset Group', defaultPrefix: 'GRP-', description: 'Level 1 high-level asset group (e.g. IT, Furniture)' },
-      { key: 'asset_sub_group', label: 'Asset Sub-Group', defaultPrefix: 'ASG-', description: 'Level 2 asset sub-classification' },
-      { key: 'category', label: 'Asset Category', defaultPrefix: 'CAT-', description: 'Level 3 asset category classification' },
-      { key: 'sub_category', label: 'Sub-Category', defaultPrefix: 'SUB-', description: 'Level 4 detailed sub-category classification' },
-      { key: 'asset_class', label: 'Asset Class', defaultPrefix: 'CLS-', description: 'Accounting or lifecycle asset class' },
-      { key: 'asset_type', label: 'Asset Type / Status', defaultPrefix: 'TYP-', description: 'Asset type descriptors and operational statuses' },
-      { key: 'item_master', label: 'Item Master', defaultPrefix: 'ITM-', description: 'Catalog items, hardware SKUs, and equipment types' },
-      { key: 'model', label: 'Asset Model', defaultPrefix: 'MOD-', description: 'Manufacturer equipment model numbers' }
+      { key: 'item_master', label: 'Item Master', defaultPrefix: 'ITM-', description: 'Central catalog item SKUs and hardware models' },
+      { key: 'asset_group', label: 'Asset Group', defaultPrefix: 'GRP-', description: 'Level 1 high-level asset group classification' },
+      { key: 'asset_sub_group', label: 'Asset Sub-Group', defaultPrefix: 'ASG-', description: 'Level 2 sub-group classification' },
+      { key: 'category', label: 'Category', defaultPrefix: 'CAT-', description: 'Level 3 asset category classification' },
+      { key: 'sub_category', label: 'Sub-Category', defaultPrefix: 'SUB-', description: 'Level 4 detailed sub-category classification' }
     ]
   },
   {
@@ -67,23 +60,19 @@ const ENTITY_GROUPS = [
     icon: Truck,
     entities: [
       { key: 'manufacturer', label: 'Manufacturer (OEM)', defaultPrefix: 'MFR-', description: 'Equipment manufacturers and OEMs' },
-      { key: 'brand', label: 'Brand', defaultPrefix: 'BRD-', description: 'Equipment product brands and lines' },
-      { key: 'supplier', label: 'Supplier / Vendor', defaultPrefix: 'SUP-', description: 'Approved suppliers, contractors, and service providers' },
-      { key: 'vendor', label: 'Vendor Secondary', defaultPrefix: 'VEN-', description: 'Alternate vendor prefix convention' }
+      { key: 'brand', label: 'Brand', defaultPrefix: 'BRD-', description: 'Equipment and product brand lines' },
+      { key: 'supplier', label: 'Supplier / Vendor', defaultPrefix: 'SUP-', description: 'Approved suppliers, vendors, and service partners' }
     ]
   },
   {
-    groupId: 'custodians_misc',
-    groupName: 'Custodians & Reference Masters',
+    groupId: 'lifecycle',
+    groupName: 'Lifecycle & Reference Masters',
     icon: Users2,
     entities: [
-      { key: 'employee', label: 'Employee / Custodian', defaultPrefix: 'EMP-', description: 'Asset custodians and employees' },
-      { key: 'uom', label: 'Unit of Measure (UOM)', defaultPrefix: 'UOM-', description: 'Quantification units (Each, Set, Box, Kg)' },
-      { key: 'asset_condition', label: 'Asset Condition', defaultPrefix: 'COND-', description: 'Physical condition ratings (New, Good, Damaged)' },
-      { key: 'reason', label: 'Reason Code', defaultPrefix: 'RSN-', description: 'Disposal, transfer, and adjustment reason codes' },
-      { key: 'custom_field', label: 'Custom Field', defaultPrefix: 'CF-', description: 'User-defined asset attribute fields' },
-      { key: 'disposal_status', label: 'Disposal Status', defaultPrefix: 'DISP-', description: 'Disposal lifecycle stages and statuses' },
-      { key: 'country', label: 'Country', defaultPrefix: 'CNT-', description: 'Country reference master data' }
+      { key: 'asset_condition', label: 'Condition', defaultPrefix: 'COND-', description: 'Physical ratings (New, Good, Fair, Damaged, Scrap)' },
+      { key: 'disposal_status', label: 'Disposal Status', defaultPrefix: 'DISP-', description: 'Disposal stages (Scrapped, Sold, Donated, Written Off)' },
+      { key: 'asset_type', label: 'Status Code', defaultPrefix: 'TYP-', description: 'Asset operational and lifecycle status descriptors' },
+      { key: 'uom', label: 'Unit of Measure (UOM)', defaultPrefix: 'UOM-', description: 'Quantification units (Each, Set, Box, Meter, Kg)' }
     ]
   }
 ];

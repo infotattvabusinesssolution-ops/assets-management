@@ -28,38 +28,27 @@ function resolveDataFile(filename) {
 const MASTER_CODE_PREFIXES_FILE = resolveDataFile('master_code_prefixes.json');
 
 export const DEFAULT_MASTER_CODE_PREFIXES = {
-  department: 'DEP-',
-  cost_center: 'CC-',
   company: 'CMP-',
+  department: 'DEP-',
+  cost_center: 'SEC-',
+  employee: 'EMP-',
   site: 'LOC-',
-  building: 'BLD-',
-  floor: 'FLR-',
-  room: 'RM-',
   location_level_1: 'LOC-L1-',
   location_level_2: 'LOC-L2-',
   location_level_3: 'LOC-L3-',
   location_level_4: 'LOC-L4-',
+  item_master: 'ITM-',
   asset_group: 'GRP-',
+  asset_sub_group: 'ASG-',
   category: 'CAT-',
   sub_category: 'SUB-',
-  asset_sub_group: 'ASG-',
-  asset_class: 'CLS-',
-  asset_type: 'TYP-',
-  item_master: 'ITM-',
-  model: 'MOD-',
   manufacturer: 'MFR-',
   brand: 'BRD-',
-  employee: 'EMP-',
   supplier: 'SUP-',
-  vendor: 'VEN-',
-  uom: 'UOM-',
   asset_condition: 'COND-',
-  reason: 'RSN-',
-  custom_field: 'CF-',
   disposal_status: 'DISP-',
-  country: 'CNT-',
-  location_type: 'LT-',
-  business_unit: 'BU-'
+  asset_type: 'TYP-',
+  uom: 'UOM-'
 };
 
 let inMemoryCodePrefixes = readCodePrefixesFromFile();
