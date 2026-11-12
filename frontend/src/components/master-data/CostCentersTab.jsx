@@ -982,9 +982,7 @@ export function CostCentersTab({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Email <span className="text-[10px] text-slate-400 font-normal">(Autoloaded)</span>
-                  </label>
+                  <label className="block font-semibold text-slate-700 mb-1">Email</label>
                   <select
                     disabled
                     value={ccFormState.email || ''}
@@ -992,7 +990,7 @@ export function CostCentersTab({
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-100/80 text-slate-600 cursor-not-allowed select-none focus:outline-none font-mono"
                     tabIndex={-1}
                   >
-                    <option value="">{ccFormState.email || '- Autoloaded from Manager -'}</option>
+                    <option value="">{ccFormState.email || '-'}</option>
                     {ccFormState.email && (
                       <option value={ccFormState.email}>{ccFormState.email}</option>
                     )}
@@ -1000,9 +998,7 @@ export function CostCentersTab({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">
-                    Phone No. <span className="text-[10px] text-slate-400 font-normal">(Autoloaded)</span>
-                  </label>
+                  <label className="block font-semibold text-slate-700 mb-1">Phone No.</label>
                   <select
                     disabled
                     value={ccFormState.phone || ''}
@@ -1010,7 +1006,7 @@ export function CostCentersTab({
                     className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-100/80 text-slate-600 cursor-not-allowed select-none focus:outline-none font-mono"
                     tabIndex={-1}
                   >
-                    <option value="">{ccFormState.phone || '- Autoloaded from Manager -'}</option>
+                    <option value="">{ccFormState.phone || '-'}</option>
                     {ccFormState.phone && (
                       <option value={ccFormState.phone}>{ccFormState.phone}</option>
                     )}
