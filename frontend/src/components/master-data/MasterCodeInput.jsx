@@ -3,10 +3,11 @@ import { getCachedPrefix, fetchCodePrefixes, subscribePrefixes } from '../../ser
 
 /**
  * MasterCodeInput
- * Displays a fixed prefix add-on box (e.g. [ DEP- ]) directly attached to the input.
- * - If user types a suffix (e.g. 101), onChange returns the full code (e.g. DEP-101).
+ * Displays a fixed prefix add-on box (e.g. [ DEP- ] or [ DSP- ]) directly attached to the input.
+ * - If user types a suffix (e.g. 101), onChange returns the full code (e.g. DSP-101).
  * - If user leaves it blank (or clears it), onChange returns '' so backend autogenerates the next number.
  * - Strips duplicate prefix if typed or pasted.
+ * - Reacts reactively to prefix configuration changes in real time.
  */
 export function MasterCodeInput({
   entityKey,
@@ -25,21 +26,51 @@ export function MasterCodeInput({
       setActivePrefix(propPrefix);
       return;
     }
+
+    // Immediately sync with currently cached/stored prefix
+    setActivePrefix(getCachedPrefix(entityKey));
+
+    // Ensure backend prefixes are fetched/refreshed
     fetchCodePrefixes().then(() => {
       setActivePrefix(getCachedPrefix(entityKey));
     });
-    return subscribePrefixes(() => {
+
+    const unsubscribe = subscribePrefixes(() => {
       setActivePrefix(getCachedPrefix(entityKey));
     });
+
+    const handleCustomEvent = () => {
+      setActivePrefix(getCachedPrefix(entityKey));
+    };
+
+    window.addEventListener('fams_master_prefixes_changed', handleCustomEvent);
+    window.addEventListener('storage', handleCustomEvent);
+
+    return () => {
+      unsubscribe();
+      window.removeEventListener('fams_master_prefixes_changed', handleCustomEvent);
+      window.removeEventListener('storage', handleCustomEvent);
+    };
   }, [entityKey, propPrefix]);
 
   const prefix = activePrefix || 'CODE-';
-
-  // Extract display value without prefix
   const rawValue = String(value || '');
-  const displayValue = rawValue.toUpperCase().startsWith(prefix.toUpperCase())
-    ? rawValue.slice(prefix.length)
-    : rawValue;
+
+  // For disabled existing records, reflect the record's existing prefix convention if present
+  let effectivePrefix = prefix;
+  let displayValue = rawValue;
+
+  if (disabled && rawValue) {
+    const hyphenIdx = rawValue.lastIndexOf('-');
+    if (hyphenIdx > 0) {
+      effectivePrefix = rawValue.slice(0, hyphenIdx + 1);
+      displayValue = rawValue.slice(hyphenIdx + 1);
+    }
+  } else {
+    displayValue = rawValue.toUpperCase().startsWith(prefix.toUpperCase())
+      ? rawValue.slice(prefix.length)
+      : rawValue;
+  }
 
   const handleInputChange = (e) => {
     if (!onChange) return;
@@ -68,9 +99,9 @@ export function MasterCodeInput({
         className={`px-3 py-2 text-xs font-mono font-bold flex items-center select-none border-r border-slate-200 shrink-0 ${
           disabled ? 'bg-slate-200 text-slate-500' : 'bg-purple-50 text-[#6C2BD9]'
         }`}
-        title={`Prefix: ${prefix}`}
+        title={`Prefix: ${effectivePrefix}`}
       >
-        {prefix}
+        {effectivePrefix}
       </div>
 
       {/* Custom Suffix Input */}
@@ -92,4 +123,3 @@ export function MasterCodeInput({
 }
 
 export default MasterCodeInput;
-

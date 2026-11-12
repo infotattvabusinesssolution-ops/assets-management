@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { api } from '../../services/api';
-import { fetchCodePrefixes } from '../../services/codePrefixService';
+import { fetchCodePrefixes, updateLocalPrefixes, getCachedPrefix } from '../../services/codePrefixService';
 import {
   Settings,
   X,
@@ -107,17 +107,19 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
     setStatusMsg({ type: '', text: '' });
     try {
       const res = await api.get('/master-data/code-prefixes');
-      if (res && res.prefixes) {
-        setPrefixes(res.prefixes);
-        setInitialPrefixes(res.prefixes);
+      const loaded = res?.prefixes || res?.data?.prefixes;
+      if (loaded && typeof loaded === 'object') {
+        setPrefixes(loaded);
+        setInitialPrefixes(loaded);
+        updateLocalPrefixes(loaded);
       }
     } catch (err) {
       console.warn('Failed to load code prefixes from backend:', err);
-      // Fallback to default prefixes
+      // Fallback to default or cached prefixes
       const defaults = {};
       ENTITY_GROUPS.forEach(g => {
         g.entities.forEach(e => {
-          defaults[e.key] = e.defaultPrefix;
+          defaults[e.key] = getCachedPrefix(e.key) || e.defaultPrefix;
         });
       });
       setPrefixes(defaults);
@@ -159,8 +161,11 @@ export function CodePrefixSettingsModal({ isOpen, onClose }) {
 
     try {
       const res = await api.put('/master-data/code-prefixes', { prefixes });
-      if (res && res.success) {
-        setInitialPrefixes(res.prefixes || prefixes);
+      const savedPrefixes = res?.prefixes || res?.data?.prefixes || prefixes;
+      if (res && (res.success || res.prefixes)) {
+        setInitialPrefixes(savedPrefixes);
+        setPrefixes(savedPrefixes);
+        updateLocalPrefixes(savedPrefixes);
         await fetchCodePrefixes(true);
         setStatusMsg({ type: 'success', text: 'Master code prefixes saved successfully! New records will use these prefixes.' });
         setTimeout(() => {

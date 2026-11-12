@@ -35,23 +35,66 @@ export const DEFAULT_MASTER_PREFIXES = {
   business_unit: 'BU-'
 };
 
-let cachedPrefixes = { ...DEFAULT_MASTER_PREFIXES };
+const STORAGE_KEY = 'fams_master_code_prefixes';
+
+function loadStoredPrefixes() {
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      const stored = window.localStorage.getItem(STORAGE_KEY);
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (parsed && typeof parsed === 'object') {
+          return { ...DEFAULT_MASTER_PREFIXES, ...parsed };
+        }
+      }
+    }
+  } catch (_) {}
+  return { ...DEFAULT_MASTER_PREFIXES };
+}
+
+let cachedPrefixes = loadStoredPrefixes();
 let fetchPromise = null;
 const listeners = new Set();
 
+export function updateLocalPrefixes(newPrefixes) {
+  if (!newPrefixes || typeof newPrefixes !== 'object') return cachedPrefixes;
+  const cleaned = {};
+  for (const [k, v] of Object.entries(newPrefixes)) {
+    if (typeof v === 'string') {
+      const val = v.trim().toUpperCase();
+      cleaned[k.toLowerCase()] = val.endsWith('-') ? val : (val ? `${val}-` : '');
+    }
+  }
+  cachedPrefixes = { ...DEFAULT_MASTER_PREFIXES, ...cachedPrefixes, ...cleaned };
+  try {
+    if (typeof window !== 'undefined' && window.localStorage) {
+      window.localStorage.setItem(STORAGE_KEY, JSON.stringify(cachedPrefixes));
+      window.dispatchEvent(new CustomEvent('fams_master_prefixes_changed', { detail: cachedPrefixes }));
+    }
+  } catch (_) {}
+  listeners.forEach((fn) => {
+    try { fn(cachedPrefixes); } catch (_) {}
+  });
+  return cachedPrefixes;
+}
+
 export async function fetchCodePrefixes(force = false) {
-  if (!force && fetchPromise) return fetchPromise;
+  if (force) {
+    fetchPromise = null;
+  } else if (fetchPromise) {
+    return fetchPromise;
+  }
+
   fetchPromise = (async () => {
     try {
       const res = await api.get('/master-data/code-prefixes');
-      if (res.data?.success && res.data?.prefixes) {
-        cachedPrefixes = { ...DEFAULT_MASTER_PREFIXES, ...res.data.prefixes };
-        listeners.forEach((fn) => {
-          try { fn(cachedPrefixes); } catch (_) {}
-        });
+      // Axios interceptor in api.js returns response.data directly
+      const prefixes = res?.prefixes || res?.data?.prefixes;
+      if (prefixes && typeof prefixes === 'object') {
+        updateLocalPrefixes(prefixes);
       }
     } catch (err) {
-      console.warn('Failed to load code prefixes from backend, using defaults:', err.message);
+      console.warn('Failed to load code prefixes from backend, using defaults/cached:', err.message);
     }
     return cachedPrefixes;
   })();
@@ -70,3 +113,7 @@ export function subscribePrefixes(listener) {
   return () => listeners.delete(listener);
 }
 
+// Eagerly prefetch in browser environment
+if (typeof window !== 'undefined') {
+  fetchCodePrefixes().catch(() => {});
+}

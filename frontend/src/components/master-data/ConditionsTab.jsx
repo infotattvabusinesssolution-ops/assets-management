@@ -498,7 +498,7 @@ export function ConditionsTab({
                   entityKey="asset_condition"
                   nameSeed={formData.name}
                   existingList={conditions}
-                  placeholder="e.g. COND-001 or NEW"
+                  placeholder="e.g. 001 or NEW"
                 />
               </div>
 
