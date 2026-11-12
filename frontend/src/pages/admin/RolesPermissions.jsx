@@ -1251,7 +1251,22 @@ export function RolesPermissions() {
         onConfirm={handleConfirmDeleteRole}
         entityName="Role"
         itemName={roleToDelete?.name}
-        description="Deleting this role will revoke these permissions from assigned users."
+        itemCode={roleToDelete?.code}
+        description={
+          roleToDelete?.isSystem
+            ? "Built-in system roles cannot be deleted to maintain system access."
+            : (roleToDelete?.userCount > 0)
+              ? `Currently assigned to ${roleToDelete.userCount} active user(s).`
+              : "Deleting this role will permanently remove it from the system."
+        }
+        warningMessage={
+          roleToDelete?.isSystem
+            ? "This is a core system role and cannot be deleted."
+            : (roleToDelete?.userCount > 0)
+              ? `Cannot delete this role because it is currently assigned to ${roleToDelete.userCount} active user(s). Please reassign all users in User Management first.`
+              : ""
+        }
+        disableConfirm={Boolean(roleToDelete?.isSystem || (roleToDelete?.userCount > 0))}
         isLoading={isDeleting}
       />
 

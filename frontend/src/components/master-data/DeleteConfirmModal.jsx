@@ -14,6 +14,8 @@ export function DeleteConfirmModal({
   itemCode = '',
   title,
   description,
+  warningMessage = '',
+  disableConfirm = false,
   confirmLabel = 'Confirm Delete',
   isLoading = false
 }) {
@@ -61,6 +63,17 @@ export function DeleteConfirmModal({
           )}
         </div>
 
+        {/* Warning Banner if blocked */}
+        {warningMessage && (
+          <div className="p-3 bg-amber-50 border border-amber-200 rounded-xl text-left text-xs text-amber-900 flex items-start gap-2.5">
+            <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+            <div className="flex-1 leading-snug">
+              <strong className="block font-bold mb-0.5 text-amber-950">Action Blocked</strong>
+              <span>{warningMessage}</span>
+            </div>
+          </div>
+        )}
+
         {/* Action Buttons */}
         <div className="flex items-center justify-center gap-2.5 pt-2">
           <button
@@ -74,8 +87,12 @@ export function DeleteConfirmModal({
           <button
             type="button"
             onClick={onConfirm}
-            disabled={isLoading}
-            className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
+            disabled={isLoading || disableConfirm}
+            className={`px-4 py-2 font-bold text-xs rounded-xl transition-all flex items-center gap-1.5 ${
+              disableConfirm
+                ? 'bg-slate-200 text-slate-400 cursor-not-allowed shadow-none'
+                : 'bg-rose-600 hover:bg-rose-700 text-white shadow-md cursor-pointer disabled:opacity-50'
+            }`}
           >
             {isLoading ? (
               <RefreshCw className="w-3.5 h-3.5 animate-spin" />
