@@ -29,6 +29,7 @@ import {
   Briefcase,
   AlertTriangle
 } from 'lucide-react';
+import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 
 export const INITIAL_USERS = [];
 
@@ -45,6 +46,8 @@ export function UserManagement() {
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeDropdownId, setActiveDropdownId] = useState(null);
+  const [userToDelete, setUserToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Dynamic Metadata States
   const [sitesList, setSitesList] = useState([]);
@@ -589,10 +592,15 @@ export function UserManagement() {
     setActiveDropdownId(null);
   };
 
-  const handleDeleteUser = async (user) => {
-    if (!window.confirm(`Are you sure you want to delete user ${user.name}? This action will verify that no active transactions are held.`)) {
-      return;
-    }
+  const handleDeleteUser = (user) => {
+    setActiveDropdownId(null);
+    setUserToDelete(user);
+  };
+
+  const handleConfirmDeleteUser = async () => {
+    if (!userToDelete) return;
+    const user = userToDelete;
+    setIsDeleting(true);
     try {
       await api.delete(`/admin/users/${user.id}`).catch(() => null);
     } catch (err) {}
@@ -607,7 +615,8 @@ export function UserManagement() {
     setUsers(prev => prev.filter(u => u.id !== user.id));
     setTotalUsers(prev => Math.max(0, prev - 1));
     setActionSuccessMsg(`User ${user.name} removed successfully.`);
-    setActiveDropdownId(null);
+    setIsDeleting(false);
+    setUserToDelete(null);
   };
 
   const handleSaveUser = async (e) => {
@@ -1799,6 +1808,17 @@ export function UserManagement() {
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(userToDelete)}
+        onClose={() => setUserToDelete(null)}
+        onConfirm={handleConfirmDeleteUser}
+        entityName="User"
+        itemName={userToDelete?.name}
+        itemCode={userToDelete?.email}
+        description="This action will remove the user account and verify that no active custody is held."
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

@@ -18,6 +18,7 @@ import {
   Grid,
   Users
 } from 'lucide-react';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 const ENTITY_TYPE_MAP = {
   org: 'company',
@@ -49,6 +50,7 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
   const [errorMsg, setErrorMsg] = useState('');
   const [successMsg, setSuccessMsg] = useState('');
   const [actionLoadingId, setActionLoadingId] = useState(null);
+  const [itemToDelete, setItemToDelete] = useState(null);
 
   const isReadOnly = userRole === 'AUDITOR' || userRole === 'MANAGEMENT';
   const entityType = card ? (ENTITY_TYPE_MAP[card.id] || card.id) : '';
@@ -105,12 +107,14 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
     }
   }
 
-  async function handleDelete(item) {
+  function handleDelete(item) {
     if (isReadOnly) return;
-    if (!window.confirm(`Are you sure you want to delete "${item.name || item.fullName || item.code || 'this record'}"?`)) {
-      return;
-    }
+    setItemToDelete(item);
+  }
 
+  async function handleConfirmDelete() {
+    if (!itemToDelete) return;
+    const item = itemToDelete;
     setActionLoadingId(item._id);
     setErrorMsg('');
     try {
@@ -121,10 +125,10 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
         loadEntityItems();
       }
     } catch (err) {
-      // Show backend dependency protection message
       setErrorMsg(err?.message || 'Record is currently in use by active assets or transactions and cannot be deleted.');
     } finally {
       setActionLoadingId(null);
+      setItemToDelete(null);
     }
   }
 
@@ -402,6 +406,17 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
             Close
           </button>
         </div>
+
+        {/* Delete Confirmation Modal */}
+        <DeleteConfirmModal
+          isOpen={Boolean(itemToDelete)}
+          onClose={() => setItemToDelete(null)}
+          onConfirm={handleConfirmDelete}
+          entityName={card?.title || 'Record'}
+          itemName={itemToDelete?.name || itemToDelete?.fullName}
+          itemCode={itemToDelete?.code}
+          isLoading={Boolean(actionLoadingId)}
+        />
 
       </div>
     </div>,

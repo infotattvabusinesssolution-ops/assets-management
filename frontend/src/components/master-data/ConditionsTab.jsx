@@ -21,6 +21,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_CONDITIONS = [];
 
@@ -566,39 +567,16 @@ export function ConditionsTab({
       )}
 
       {/* Delete Confirmation Modal */}
-      {conditionToDelete && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-100 animate-in fade-in zoom-in-95 duration-150">
-            <div className="flex items-center gap-3 text-rose-600 mb-3">
-              <div className="p-2.5 bg-rose-50 rounded-xl">
-                <AlertTriangle className="w-6 h-6" />
-              </div>
-              <h3 className="text-base font-bold text-slate-900">Delete Condition</h3>
-            </div>
-            <p className="text-xs text-slate-600 mb-6 leading-relaxed">
-              Are you sure you want to delete <span className="font-bold text-slate-900">"{conditionToDelete.name}"</span>? Assets currently assigned to this condition will retain their recorded state, but this condition will no longer be available for new selections.
-            </p>
-            <div className="flex items-center justify-end gap-2.5">
-              <button
-                type="button"
-                onClick={() => setConditionToDelete(null)}
-                className="px-4 py-2 border border-slate-200 text-slate-600 font-bold text-xs rounded-xl hover:bg-slate-50 transition-colors cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isSaving}
-                className="px-4 py-2 bg-rose-600 text-white font-bold text-xs rounded-xl hover:bg-rose-700 transition-colors flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
-              >
-                {isSaving && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                <span>Delete Condition</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={Boolean(conditionToDelete)}
+        onClose={() => setConditionToDelete(null)}
+        onConfirm={handleDelete}
+        entityName="Condition"
+        itemName={conditionToDelete?.name}
+        itemCode={conditionToDelete?.code}
+        description="Assets currently assigned to this condition will retain their recorded state, but this condition will no longer be available for new selections."
+        isLoading={isSaving}
+      />
     </div>
   );
 }

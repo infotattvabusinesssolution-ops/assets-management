@@ -27,6 +27,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { deduplicateCustodians } from './custodianUtils';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -44,6 +45,8 @@ export function CostCentersTab({
   const [custodiansList, setCustodiansList] = useState([]);
   const [selectedCostCenter, setSelectedCostCenter] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [ccToDelete, setCcToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load live cost centers from database
   const loadCostCenters = async () => {
@@ -379,20 +382,27 @@ export function CostCentersTab({
     }
   };
 
-  const handleDeleteCostCenter = async (cc) => {
+  const handleDeleteCostCenter = (cc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Section "${cc.name}" (${cc.code})?`)) {
-      try {
-        await api.delete(`/master-data/cost-centers/${cc.id}`);
-        await loadCostCenters();
-        triggerToast && triggerToast(`Section "${cc.code}" deleted successfully.`);
-      } catch (err) {
-        console.warn('Delete cost center error:', err);
-        const remaining = costCentersList.filter((c) => c.id !== cc.id);
-        setCostCentersList(remaining);
-        if (remaining.length > 0) setSelectedCostCenter(remaining[0]);
-        triggerToast && triggerToast(`Section "${cc.code}" deleted successfully.`);
-      }
+    setCcToDelete(cc);
+  };
+
+  const handleConfirmDeleteCostCenter = async () => {
+    if (!ccToDelete) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/master-data/cost-centers/${ccToDelete.id}`);
+      await loadCostCenters();
+      triggerToast && triggerToast(`Section "${ccToDelete.code}" deleted successfully.`);
+    } catch (err) {
+      console.warn('Delete cost center error:', err);
+      const remaining = costCentersList.filter((c) => c.id !== ccToDelete.id);
+      setCostCentersList(remaining);
+      if (remaining.length > 0) setSelectedCostCenter(remaining[0]);
+      triggerToast && triggerToast(`Section "${ccToDelete.code}" deleted successfully.`);
+    } finally {
+      setIsDeleting(false);
+      setCcToDelete(null);
     }
   };
 
@@ -1075,6 +1085,16 @@ export function CostCentersTab({
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(ccToDelete)}
+        onClose={() => setCcToDelete(null)}
+        onConfirm={handleConfirmDeleteCostCenter}
+        entityName="Section"
+        itemName={ccToDelete?.name}
+        itemCode={ccToDelete?.code}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

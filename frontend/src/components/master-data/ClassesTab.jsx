@@ -28,6 +28,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_CLASSES = [];
 
@@ -45,6 +46,8 @@ export function ClassesTab({
   const [liveCategories, setLiveCategories] = useState([]);
   const [liveSubCategories, setLiveSubCategories] = useState([]);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+  const [classToDelete, setClassToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load live classes from database (Filtered strictly to true Asset Classes, excluding Sub Categories)
   const loadClasses = async () => {
@@ -430,43 +433,55 @@ export function ClassesTab({
     handleDeleteClass(cls);
   };
 
-  const handleDeleteClass = async (cls) => {
+  const handleDeleteClass = (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Asset Sub Group "${cls.name}" (${cls.code})?`)) {
-      try {
-        const res = await api.delete(
-          `/master-data/asset-sub-groups/${cls.id}?name=${encodeURIComponent(cls.name || '')}&code=${encodeURIComponent(cls.code || '')}`
-        );
-        if (res?.requiresConfirmation) {
-          setSmartDeleteState({
-            isOpen: true,
-            item: cls,
-            linkedCount: res.linkedCount || 0,
-            details: res.details || null,
-            isProcessing: false
-          });
-          return;
-        }
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-          localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== cls.id)));
-        } catch (_) { }
-        await loadClasses();
-        triggerToast && triggerToast(`Asset Sub Group "${cls.name || cls.code}" deleted successfully.`);
-      } catch (err) {
-        const data = err?.response?.data;
-        if (data?.requiresConfirmation) {
-          setSmartDeleteState({
-            isOpen: true,
-            item: cls,
-            linkedCount: data.linkedCount || 0,
-            details: data.details || null,
-            isProcessing: false
-          });
-          return;
-        }
-        triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete Asset Sub Group.');
+    setClassToDelete(cls);
+  };
+
+  const handleConfirmDeleteClass = async () => {
+    if (!classToDelete) return;
+    const cls = classToDelete;
+    setIsDeleting(true);
+
+    try {
+      const res = await api.delete(
+        `/master-data/asset-sub-groups/${cls.id}?name=${encodeURIComponent(cls.name || '')}&code=${encodeURIComponent(cls.code || '')}`
+      );
+      if (res?.requiresConfirmation) {
+        setClassToDelete(null);
+        setSmartDeleteState({
+          isOpen: true,
+          item: cls,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
       }
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+        localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== cls.id)));
+      } catch (_) { }
+      setClassToDelete(null);
+      await loadClasses();
+      triggerToast && triggerToast(`Asset Sub Group "${cls.name || cls.code}" deleted successfully.`);
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.requiresConfirmation) {
+        setClassToDelete(null);
+        setSmartDeleteState({
+          isOpen: true,
+          item: cls,
+          linkedCount: data.linkedCount || 0,
+          details: data.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      setClassToDelete(null);
+      triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete Asset Sub Group.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1007,6 +1022,17 @@ export function ClassesTab({
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(classToDelete)}
+        onClose={() => setClassToDelete(null)}
+        onConfirm={handleConfirmDeleteClass}
+        entityName="Asset Sub Group"
+        itemName={classToDelete?.name}
+        itemCode={classToDelete?.code}
+        isLoading={isDeleting}
+      />
+
       {/* Smart Delete Modal (Linked Dependencies Protection) */}
       <SmartDeleteModal
         isOpen={smartDeleteState.isOpen}

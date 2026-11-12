@@ -24,6 +24,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_DISPOSAL_STATUSES = [];
 
@@ -552,39 +553,15 @@ export function DisposalStatusesTab({
       )}
 
       {/* Delete Confirmation Modal */}
-      {statusToDelete && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-900/40 backdrop-blur-xs animate-in fade-in">
-          <div className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl border border-slate-200 space-y-4">
-            <div className="w-10 h-10 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-200 mx-auto">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div className="text-center">
-              <h3 className="font-bold text-slate-900 text-sm">Delete Disposal Status?</h3>
-              <p className="text-xs text-slate-500 mt-1">
-                Are you sure you want to delete <span className="font-bold text-slate-800">{statusToDelete.name}</span> ({statusToDelete.code})?
-              </p>
-            </div>
-            <div className="flex items-center justify-center gap-2.5 pt-2">
-              <button
-                type="button"
-                onClick={() => setStatusToDelete(null)}
-                className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 font-bold text-xs rounded-xl transition-all"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDelete}
-                disabled={isSaving}
-                className="px-4 py-2 bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs rounded-xl shadow-md transition-all flex items-center gap-1.5"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-                {isSaving ? 'Deleting...' : 'Confirm Delete'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={Boolean(statusToDelete)}
+        onClose={() => setStatusToDelete(null)}
+        onConfirm={handleDelete}
+        entityName="Disposal Status"
+        itemName={statusToDelete?.name}
+        itemCode={statusToDelete?.code}
+        isLoading={isSaving}
+      />
     </div>
   );
 }

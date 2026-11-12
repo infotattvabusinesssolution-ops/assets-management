@@ -29,6 +29,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_CATEGORIES = [];
 
@@ -45,6 +46,8 @@ export function CategoriesTab({
   const [isLoading, setIsLoading] = useState(false);
   const [liveSubCategories, setLiveSubCategories] = useState([]);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+  const [categoryToDelete, setCategoryToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load live categories from backend database
   const loadCategories = async () => {
@@ -473,15 +476,22 @@ export function CategoriesTab({
     handleDeleteCategory(cat);
   };
 
-  const handleDeleteCategory = async (cat) => {
+  const handleDeleteCategory = (cat) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (!window.confirm(`Are you sure you want to delete Category "${cat.name}" (${cat.code})?`)) return;
+    setCategoryToDelete(cat);
+  };
+
+  const handleConfirmDeleteCategory = async () => {
+    if (!categoryToDelete) return;
+    const cat = categoryToDelete;
+    setIsDeleting(true);
 
     try {
       const res = await api.delete(
         `/master-data/categories/${cat.id}?name=${encodeURIComponent(cat.name || '')}&code=${encodeURIComponent(cat.code || '')}`
       );
       if (res?.requiresConfirmation) {
+        setCategoryToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: cat,
@@ -495,11 +505,13 @@ export function CategoriesTab({
         const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
         localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
       } catch (_) { }
+      setCategoryToDelete(null);
       await loadCategories();
       triggerToast && triggerToast(res?.message || `Category "${cat.name || cat.code}" deleted successfully.`);
     } catch (err) {
       const data = err?.response?.data;
       if (data?.requiresConfirmation) {
+        setCategoryToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: cat,
@@ -509,8 +521,11 @@ export function CategoriesTab({
         });
         return;
       }
+      setCategoryToDelete(null);
       console.warn('Delete category error:', err);
       triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete category.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1126,6 +1141,17 @@ export function CategoriesTab({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(categoryToDelete)}
+        onClose={() => setCategoryToDelete(null)}
+        onConfirm={handleConfirmDeleteCategory}
+        entityName="Category"
+        itemName={categoryToDelete?.name}
+        itemCode={categoryToDelete?.code}
+        isLoading={isDeleting}
+      />
 
       <SmartDeleteModal
         isOpen={smartDeleteState.isOpen}

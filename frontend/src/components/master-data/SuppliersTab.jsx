@@ -29,6 +29,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_SUPPLIERS = [];
 
@@ -47,6 +48,8 @@ export function SuppliersTab({
   const [selectedSupplier, setSelectedSupplier] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [modalError, setModalError] = useState('');
+  const [supToDelete, setSupToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load live suppliers / service providers from database
   const loadSuppliers = async () => {
@@ -395,20 +398,27 @@ export function SuppliersTab({
     }
   };
 
-  const handleDeleteSupplier = async (sup) => {
+  const handleDeleteSupplier = (sup) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Supplier "${sup.name}" (${sup.code})?`)) {
-      try {
-        await api.delete(`/maintenance/service-providers/${sup.id}`);
-        await loadSuppliers();
-        triggerToast && triggerToast(`Supplier "${sup.code}" deleted successfully.`);
-      } catch (err) {
-        console.warn('Delete supplier error:', err);
-        const remaining = suppliersList.filter((s) => s.id !== sup.id);
-        setSuppliersList(remaining);
-        if (remaining.length > 0) setSelectedSupplier(remaining[0]);
-        triggerToast && triggerToast(`Supplier "${sup.code}" deleted successfully.`);
-      }
+    setSupToDelete(sup);
+  };
+
+  const handleConfirmDeleteSupplier = async () => {
+    if (!supToDelete) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/maintenance/service-providers/${supToDelete.id}`);
+      await loadSuppliers();
+      triggerToast && triggerToast(`Supplier "${supToDelete.code}" deleted successfully.`);
+    } catch (err) {
+      console.warn('Delete supplier error:', err);
+      const remaining = suppliersList.filter((s) => s.id !== supToDelete.id);
+      setSuppliersList(remaining);
+      if (remaining.length > 0) setSelectedSupplier(remaining[0]);
+      triggerToast && triggerToast(`Supplier "${supToDelete.code}" deleted successfully.`);
+    } finally {
+      setIsDeleting(false);
+      setSupToDelete(null);
     }
   };
 
@@ -1107,6 +1117,16 @@ export function SuppliersTab({
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(supToDelete)}
+        onClose={() => setSupToDelete(null)}
+        onConfirm={handleConfirmDeleteSupplier}
+        entityName="Supplier"
+        itemName={supToDelete?.name}
+        itemCode={supToDelete?.code}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

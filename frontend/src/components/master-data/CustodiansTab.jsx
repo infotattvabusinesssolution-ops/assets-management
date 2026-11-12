@@ -32,6 +32,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { deduplicateCustodians } from './custodianUtils';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export function CustodiansTab({
   triggerToast,
@@ -330,9 +331,14 @@ export function CustodiansTab({
     }
   };
 
-  const handleInitiateDeleteCustodian = async (cust) => {
-    if (!window.confirm(`Are you sure you want to delete Custodian "${cust.fullName}" (${cust.employeeCode || cust.id})?`)) return;
+  const handleInitiateDeleteCustodian = (cust) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setCustodianToDelete(cust);
+  };
 
+  const handleConfirmDeleteCustodian = async () => {
+    if (!custodianToDelete) return;
+    const cust = custodianToDelete;
     setIsDeleting(true);
 
     // Clean up from browser localStorage immediately so it never resurrects
@@ -345,6 +351,7 @@ export function CustodiansTab({
     try {
       const res = await api.delete(`/master-data/employees/${cust.id}`);
       if (res?.requiresConfirmation) {
+        setCustodianToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: cust,
@@ -354,11 +361,13 @@ export function CustodiansTab({
         });
         return;
       }
+      setCustodianToDelete(null);
       await loadCustodians();
       triggerToast && triggerToast(res?.message || `Custodian "${cust.fullName}" deleted successfully.`);
     } catch (err) {
       const data = err?.response?.data;
       if (data?.requiresConfirmation) {
+        setCustodianToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: cust,
@@ -368,6 +377,7 @@ export function CustodiansTab({
         });
         return;
       }
+      setCustodianToDelete(null);
       // If server returned 404/500 (e.g. record only existed in local cache), remove from UI state
       setCustodians(prev => prev.filter(c => c.id !== cust.id));
       if (selectedCustodian?.id === cust.id) setSelectedCustodian(null);
@@ -944,6 +954,17 @@ export function CustodiansTab({
           </div>
         </div>
       )}
+
+      {/* DELETE CONFIRM MODAL */}
+      <DeleteConfirmModal
+        isOpen={Boolean(custodianToDelete)}
+        onClose={() => setCustodianToDelete(null)}
+        onConfirm={handleConfirmDeleteCustodian}
+        entityName="Custodian"
+        itemName={custodianToDelete?.fullName}
+        itemCode={custodianToDelete?.employeeCode || custodianToDelete?.id}
+        isLoading={isDeleting}
+      />
 
       {/* SMART DELETE MODAL */}
       <SmartDeleteModal

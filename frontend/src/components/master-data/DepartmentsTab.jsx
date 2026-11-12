@@ -26,6 +26,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { deduplicateCustodians } from './custodianUtils';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_DEPARTMENTS = [];
 
@@ -44,6 +45,8 @@ export function DepartmentsTab({
   const [custodiansList, setCustodiansList] = useState([]);
   const [selectedDepartment, setSelectedDepartment] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [deptToDelete, setDeptToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load live departments from database
   const loadDepartments = async () => {
@@ -448,20 +451,27 @@ export function DepartmentsTab({
     }
   };
 
-  const handleDeleteDepartment = async (dept) => {
+  const handleDeleteDepartment = (dept) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Department "${dept.name}" (${dept.code})?`)) {
-      try {
-        await api.delete(`/master-data/departments/${dept.id}`);
-        await loadDepartments();
-        triggerToast && triggerToast(`Department "${dept.code}" deleted successfully.`);
-      } catch (err) {
-        console.warn('Delete department error:', err);
-        const remaining = departmentsList.filter((d) => d.id !== dept.id);
-        setDepartmentsList(remaining);
-        if (remaining.length > 0) setSelectedDepartment(remaining[0]);
-        triggerToast && triggerToast(`Department "${dept.code}" deleted successfully.`);
-      }
+    setDeptToDelete(dept);
+  };
+
+  const handleConfirmDeleteDepartment = async () => {
+    if (!deptToDelete) return;
+    setIsDeleting(true);
+    try {
+      await api.delete(`/master-data/departments/${deptToDelete.id}`);
+      await loadDepartments();
+      triggerToast && triggerToast(`Department "${deptToDelete.code}" deleted successfully.`);
+    } catch (err) {
+      console.warn('Delete department error:', err);
+      const remaining = departmentsList.filter((d) => d.id !== deptToDelete.id);
+      setDepartmentsList(remaining);
+      if (remaining.length > 0) setSelectedDepartment(remaining[0]);
+      triggerToast && triggerToast(`Department "${deptToDelete.code}" deleted successfully.`);
+    } finally {
+      setIsDeleting(false);
+      setDeptToDelete(null);
     }
   };
 
@@ -1185,6 +1195,16 @@ export function DepartmentsTab({
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(deptToDelete)}
+        onClose={() => setDeptToDelete(null)}
+        onConfirm={handleConfirmDeleteDepartment}
+        entityName="Department"
+        itemName={deptToDelete?.name}
+        itemCode={deptToDelete?.code}
+        isLoading={isDeleting}
+      />
     </div>
   );
 }

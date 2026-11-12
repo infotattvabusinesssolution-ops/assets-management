@@ -26,6 +26,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const DEFAULT_CURRENCIES = [
   { code: 'AED', name: 'UAE Dirham', symbol: 'AED' },
@@ -280,13 +281,19 @@ export function CompaniesTab({
     }
   };
 
-  const handleInitiateDeleteCompany = async (comp) => {
-    if (!window.confirm(`Are you sure you want to delete Company "${comp.name}" (${comp.code})?`)) return;
+  const handleInitiateDeleteCompany = (comp) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    setCompanyToDelete(comp);
+  };
 
+  const handleConfirmDeleteCompany = async () => {
+    if (!companyToDelete) return;
+    const comp = companyToDelete;
     setIsDeleting(true);
     try {
       const res = await api.delete(`/master-data/companies/${comp.id}`);
       if (res?.requiresConfirmation) {
+        setCompanyToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: comp,
@@ -296,11 +303,13 @@ export function CompaniesTab({
         });
         return;
       }
+      setCompanyToDelete(null);
       await loadCompanies();
       triggerToast && triggerToast(res?.message || `Company "${comp.name}" deleted successfully.`);
     } catch (err) {
       const data = err?.response?.data;
       if (data?.requiresConfirmation) {
+        setCompanyToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: comp,
@@ -310,6 +319,7 @@ export function CompaniesTab({
         });
         return;
       }
+      setCompanyToDelete(null);
       triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete company.');
     } finally {
       setIsDeleting(false);
@@ -740,6 +750,17 @@ export function CompaniesTab({
           </div>
         </div>
       )}
+
+      {/* DELETE CONFIRM MODAL */}
+      <DeleteConfirmModal
+        isOpen={Boolean(companyToDelete)}
+        onClose={() => setCompanyToDelete(null)}
+        onConfirm={handleConfirmDeleteCompany}
+        entityName="Company"
+        itemName={companyToDelete?.name}
+        itemCode={companyToDelete?.code}
+        isLoading={isDeleting}
+      />
 
       {/* SMART DELETE MODAL */}
       <SmartDeleteModal

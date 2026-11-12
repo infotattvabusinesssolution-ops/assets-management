@@ -26,6 +26,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_LOCATIONS = [];
 
@@ -142,6 +143,8 @@ export function LocationsTab({
 
   const [isLoading, setIsLoading] = useState(false);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+  const [locToDelete, setLocToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Load live location types from database
   const loadLocationTypes = async () => {
@@ -504,13 +507,20 @@ export function LocationsTab({
     }
   };
 
-  const handleDeleteLocation = async (loc) => {
+  const handleDeleteLocation = (loc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (!window.confirm(`Are you sure you want to delete Location "${loc.name}" (${loc.code})?`)) return;
+    setLocToDelete(loc);
+  };
+
+  const handleConfirmDeleteLocation = async () => {
+    if (!locToDelete) return;
+    const loc = locToDelete;
+    setIsDeleting(true);
 
     try {
       const res = await api.delete(`/master-data/sites/${loc.id}`);
       if (res?.requiresConfirmation) {
+        setLocToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: loc,
@@ -520,11 +530,13 @@ export function LocationsTab({
         });
         return;
       }
+      setLocToDelete(null);
       await loadLocations();
       triggerToast && triggerToast(res?.message || `Location "${loc.code}" deleted successfully.`);
     } catch (err) {
       const data = err?.response?.data;
       if (data?.requiresConfirmation) {
+        setLocToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: loc,
@@ -534,9 +546,12 @@ export function LocationsTab({
         });
         return;
       }
+      setLocToDelete(null);
       console.warn('Delete location error:', err);
       const errMsg = data?.message || err?.message || 'Cannot delete location.';
       triggerToast && triggerToast(errMsg);
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1133,6 +1148,17 @@ export function LocationsTab({
           </div>
         </div>
       )}
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(locToDelete)}
+        onClose={() => setLocToDelete(null)}
+        onConfirm={handleConfirmDeleteLocation}
+        entityName="Location"
+        itemName={locToDelete?.name}
+        itemCode={locToDelete?.code}
+        isLoading={isDeleting}
+      />
 
       {/* SMART DELETE MODAL */}
       <SmartDeleteModal

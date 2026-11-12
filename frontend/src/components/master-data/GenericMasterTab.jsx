@@ -29,6 +29,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const DEFAULT_MANUFACTURERS = [];
 
@@ -1518,40 +1519,17 @@ export function GenericMasterTab({
       )}
 
       {/* MODAL: Delete Confirmation */}
-      {showDeleteModal && itemToDelete && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Delete {tabConfig.singular}?</h3>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-slate-900">"{itemToDelete.name}"</span>? This will remove this master data definition.
-              </p>
-            </div>
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteModal(false);
-                  setItemToDelete(null);
-                }}
-                className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                onClick={handleDeleteConfirm}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer shadow-xs"
-              >
-                Delete
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={Boolean(showDeleteModal && itemToDelete)}
+        onClose={() => {
+          setShowDeleteModal(false);
+          setItemToDelete(null);
+        }}
+        onConfirm={handleDeleteConfirm}
+        entityName={tabConfig.singular}
+        itemName={itemToDelete?.name}
+        itemCode={itemToDelete?.code}
+      />
     </div>
   );
 }

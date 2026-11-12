@@ -28,6 +28,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_SUB_CATEGORIES = [];
 
@@ -43,6 +44,8 @@ export function SubCategoriesTab({
   const [selectedSubCategory, setSelectedSubCategory] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
   const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+  const [subCategoryToDelete, setSubCategoryToDelete] = useState(null);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [categories, setCategories] = useState([]);
 
   // Load live sub-categories / asset classes from backend database
@@ -441,41 +444,53 @@ export function SubCategoriesTab({
     handleDeleteSubCategory(sc);
   };
 
-  const handleDeleteSubCategory = async (sc) => {
+  const handleDeleteSubCategory = (sc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
-    if (window.confirm(`Are you sure you want to delete Sub Category "${sc.name}" (${sc.code})?`)) {
-      try {
-        const res = await api.delete(`/master-data/sub-categories/${sc.id}?name=${encodeURIComponent(sc.name || '')}&code=${encodeURIComponent(sc.code || '')}`);
-        if (res?.requiresConfirmation) {
-          setSmartDeleteState({
-            isOpen: true,
-            item: sc,
-            linkedCount: res.linkedCount || 0,
-            details: res.details || null,
-            isProcessing: false
-          });
-          return;
-        }
-        try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-          localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => c.id !== sc.id)));
-        } catch (_) { }
-        await loadSubCategories();
-        triggerToast && triggerToast(`Sub Category "${sc.name || sc.code}" deleted successfully.`);
-      } catch (err) {
-        const data = err?.response?.data;
-        if (data?.requiresConfirmation) {
-          setSmartDeleteState({
-            isOpen: true,
-            item: sc,
-            linkedCount: data.linkedCount || 0,
-            details: data.details || null,
-            isProcessing: false
-          });
-          return;
-        }
-        triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete Sub Category.');
+    setSubCategoryToDelete(sc);
+  };
+
+  const handleConfirmDeleteSubCategory = async () => {
+    if (!subCategoryToDelete) return;
+    const sc = subCategoryToDelete;
+    setIsDeleting(true);
+
+    try {
+      const res = await api.delete(`/master-data/sub-categories/${sc.id}?name=${encodeURIComponent(sc.name || '')}&code=${encodeURIComponent(sc.code || '')}`);
+      if (res?.requiresConfirmation) {
+        setSubCategoryToDelete(null);
+        setSmartDeleteState({
+          isOpen: true,
+          item: sc,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
       }
+      try {
+        const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+        localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => c.id !== sc.id)));
+      } catch (_) { }
+      setSubCategoryToDelete(null);
+      await loadSubCategories();
+      triggerToast && triggerToast(`Sub Category "${sc.name || sc.code}" deleted successfully.`);
+    } catch (err) {
+      const data = err?.response?.data;
+      if (data?.requiresConfirmation) {
+        setSubCategoryToDelete(null);
+        setSmartDeleteState({
+          isOpen: true,
+          item: sc,
+          linkedCount: data.linkedCount || 0,
+          details: data.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      setSubCategoryToDelete(null);
+      triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete Sub Category.');
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -1030,6 +1045,17 @@ export function SubCategoriesTab({
           </div>
         </div>
       )}
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={Boolean(subCategoryToDelete)}
+        onClose={() => setSubCategoryToDelete(null)}
+        onConfirm={handleConfirmDeleteSubCategory}
+        entityName="Sub Category"
+        itemName={subCategoryToDelete?.name}
+        itemCode={subCategoryToDelete?.code}
+        isLoading={isDeleting}
+      />
+
       {/* Smart Delete Modal (Linked Dependencies Protection) */}
       <SmartDeleteModal
         isOpen={smartDeleteState.isOpen}

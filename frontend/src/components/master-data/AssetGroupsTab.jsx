@@ -26,6 +26,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { DeleteConfirmModal } from './DeleteConfirmModal';
 
 export const INITIAL_ASSET_GROUPS = [];
 
@@ -982,42 +983,18 @@ export function AssetGroupsTab({
       )}
 
       {/* Modal: Delete Confirmation */}
-      {showDeleteConfirmModal && groupToDelete && (
-        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
-          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-sm w-full p-5 space-y-4 animate-in fade-in zoom-in-95 duration-150">
-            <div className="w-10 h-10 rounded-2xl bg-rose-50 text-rose-600 flex items-center justify-center border border-rose-100">
-              <AlertTriangle className="w-5 h-5" />
-            </div>
-            <div>
-              <h3 className="text-sm font-bold text-slate-900">Delete Asset Group?</h3>
-              <p className="text-xs text-slate-500 mt-1 leading-relaxed">
-                Are you sure you want to delete <span className="font-bold text-slate-900">"{groupToDelete.name}" ({groupToDelete.code})</span>? This action removes the group from database master data.
-              </p>
-            </div>
-            <div className="pt-2 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
-              <button
-                type="button"
-                onClick={() => {
-                  setShowDeleteConfirmModal(false);
-                  setGroupToDelete(null);
-                }}
-                className="px-3.5 py-2 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-semibold cursor-pointer"
-              >
-                Cancel
-              </button>
-              <button
-                type="button"
-                disabled={isDeleting}
-                onClick={handleConfirmDelete}
-                className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold cursor-pointer shadow-xs flex items-center gap-1.5"
-              >
-                {isDeleting && <RefreshCw className="w-3 h-3 animate-spin" />}
-                <span>Delete Group</span>
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={Boolean(showDeleteConfirmModal && groupToDelete)}
+        onClose={() => {
+          setShowDeleteConfirmModal(false);
+          setGroupToDelete(null);
+        }}
+        onConfirm={handleConfirmDelete}
+        entityName="Asset Group"
+        itemName={groupToDelete?.name}
+        itemCode={groupToDelete?.code}
+        isLoading={isDeleting}
+      />
 
       {/* Modal: Related Items Explorer */}
       {selectedRelatedType && selectedGroup && (
