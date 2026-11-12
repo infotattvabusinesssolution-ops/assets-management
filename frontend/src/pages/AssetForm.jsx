@@ -4,10 +4,6 @@ import { QRCodeSVG } from 'qrcode.react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { api } from '../services/api';
 
-import { INITIAL_ASSET_GROUPS } from '../components/master-data/AssetGroupsTab';
-import { INITIAL_CLASSES } from '../components/master-data/ClassesTab';
-import { INITIAL_SUB_CATEGORIES } from '../components/master-data/SubCategoriesTab';
-
 import { DEFAULT_ASSET_TYPES } from '../components/master-data/GenericMasterTab';
 import { uploadToCloudinary, uploadMultipleToCloudinary, fetchUploadPolicy, validateFileWithPolicy, formatBytes } from '../services/cloudinary';
 import {
@@ -112,63 +108,6 @@ export const ASSET_CLASSIFICATION_ENUM = Object.freeze({
   }
 });
 
-// Standard Enterprise Baseline Master Data (guarantees options exist even if DB tables are empty)
-const BASELINE_GROUPS = [
-  { id: 'grp-01', code: 'GRP-IT', name: 'Information Technology' },
-  { id: 'grp-02', code: 'GRP-FUR', name: 'Furniture & Fixtures' },
-  { id: 'grp-03', code: 'GRP-VEH', name: 'Motor Vehicles' },
-  { id: 'grp-04', code: 'GRP-FAC', name: 'Facilities & Building Equipment' },
-  { id: 'grp-05', code: 'GRP-OFF', name: 'Office Electronics' }
-];
-
-const BASELINE_SUBGROUPS = [
-  { id: 'subgrp-01', code: 'CLS-LAP', name: 'Laptops', groupName: 'Information Technology' },
-  { id: 'subgrp-02', code: 'CLS-DSK', name: 'Desktops & Workstations', groupName: 'Information Technology' },
-  { id: 'subgrp-03', code: 'CLS-SRV', name: 'Servers & Storage', groupName: 'Information Technology' },
-  { id: 'subgrp-04', code: 'CLS-NET', name: 'Network Switches & Routers', groupName: 'Information Technology' },
-  { id: 'subgrp-05', code: 'CLS-MON', name: 'Monitors & Displays', groupName: 'Information Technology' },
-  { id: 'subgrp-06', code: 'CLS-CHR', name: 'Executive & Task Chairs', groupName: 'Furniture & Fixtures' },
-  { id: 'subgrp-07', code: 'CLS-DSK2', name: 'Workstations & Desks', groupName: 'Furniture & Fixtures' },
-  { id: 'subgrp-08', code: 'CLS-SED', name: 'Sedan & Passenger Cars', groupName: 'Motor Vehicles' },
-  { id: 'subgrp-09', code: 'CLS-VAN', name: 'Delivery Vans & Trucks', groupName: 'Motor Vehicles' },
-  { id: 'subgrp-10', code: 'CLS-PRN', name: 'Multifunction Printers', groupName: 'Office Electronics' },
-  { id: 'subgrp-11', code: 'CLS-HW', name: 'Hardware', groupName: 'Information Technology' }
-];
-
-const BASELINE_CATEGORIES = [
-  { id: 'cat-01', code: 'CAT-IT', name: 'Computer Equipment', groupName: 'Information Technology' },
-  { id: 'cat-02', code: 'CAT-FUR', name: 'Office Furniture', groupName: 'Furniture & Fixtures' },
-  { id: 'cat-03', code: 'CAT-VEH', name: 'Vehicles', groupName: 'Motor Vehicles' },
-  { id: 'cat-04', code: 'CAT-PLT', name: 'Plant & Machinery', groupName: 'Facilities & Building Equipment' },
-  { id: 'cat-05', code: 'CAT-OFF', name: 'Office Equipment', groupName: 'Office Electronics' },
-  { id: 'cat-06', code: 'CAT-LAP', name: 'Laptops & Notebooks', groupName: 'Information Technology' },
-  { id: 'cat-07', code: 'CAT-SRV', name: 'Enterprise Servers', groupName: 'Information Technology' },
-  { id: 'cat-08', code: 'CAT-SEAT', name: 'Ergonomic Chairs', groupName: 'Furniture & Fixtures' }
-];
-
-const BASELINE_SUBCATEGORIES = [
-  { id: 'subcat-01', code: 'SCAT-PORT', name: 'Portable Computing', categoryName: 'Computer Equipment' },
-  { id: 'subcat-02', code: 'SCAT-DESK', name: 'Fixed Workstations', categoryName: 'Computer Equipment' },
-  { id: 'subcat-03', code: 'SCAT-SEAT', name: 'Ergonomic Seating', categoryName: 'Office Furniture' },
-  { id: 'subcat-04', code: 'SCAT-TABL', name: 'Conference & Office Tables', categoryName: 'Office Furniture' },
-  { id: 'subcat-05', code: 'SCAT-FLEET', name: 'Corporate Fleet', categoryName: 'Vehicles' },
-  { id: 'subcat-06', code: 'SUB-LAP', name: 'Business Laptops', categoryName: 'Laptops & Notebooks' },
-  { id: 'subcat-07', code: 'SUB-SRV', name: 'Rack Servers', categoryName: 'Enterprise Servers' },
-  { id: 'subcat-08', code: 'SUB-SEAT', name: 'Executive Task Chairs', categoryName: 'Ergonomic Chairs' }
-];
-
-const BASELINE_MANUFACTURERS = [
-  { id: 'mfr-01', name: 'Lenovo' },
-  { id: 'mfr-02', name: 'Dell Technologies' },
-  { id: 'mfr-03', name: 'HP Inc.' },
-  { id: 'mfr-04', name: 'Apple Inc.' },
-  { id: 'mfr-05', name: 'Cisco Systems' },
-  { id: 'mfr-06', name: 'Steelcase' },
-  { id: 'mfr-07', name: 'Herman Miller' },
-  { id: 'mfr-08', name: 'Toyota' },
-  { id: 'mfr-09', name: 'Mercedes-Benz' },
-  { id: 'mfr-10', name: 'Caterpillar' }
-];
 
 const DEFAULT_CATALOG_ITEMS = [];
 
@@ -536,34 +475,12 @@ export function AssetForm() {
     ];
   }, [assetTypes]);
 
-  const [assetGroups, setAssetGroups] = useState(() => {
-    try {
-      const local = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-      return [...local, ...INITIAL_ASSET_GROUPS.filter(ig => !local.some(lg => (lg.code && ig.code && lg.code.toUpperCase() === ig.code.toUpperCase()) || lg.id === ig.id))];
-    } catch (_) {
-      return INITIAL_ASSET_GROUPS;
-    }
-  });
-
+  const [assetGroups, setAssetGroups] = useState([]);
   const [categories, setCategories] = useState([]);
   const [itemMasters, setItemMasters] = useState([]);
   const [selectedItemMasterId, setSelectedItemMasterId] = useState('');
-  const [assetClasses, setAssetClasses] = useState(() => {
-    try {
-      const local = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-      return [...local, ...INITIAL_CLASSES.filter(ic => !local.some(lc => (lc.code && ic.code && lc.code.toUpperCase() === ic.code.toUpperCase()) || lc.id === ic.id))];
-    } catch (_) {
-      return INITIAL_CLASSES;
-    }
-  });
-  const [subCategories, setSubCategories] = useState(() => {
-    try {
-      const local = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-      return [...local, ...INITIAL_SUB_CATEGORIES];
-    } catch (_) {
-      return INITIAL_SUB_CATEGORIES;
-    }
-  });
+  const [assetClasses, setAssetClasses] = useState([]);
+  const [subCategories, setSubCategories] = useState([]);
   const [sites, setSites] = useState([]);
   const [level1List, setLevel1List] = useState([]);
   const [level2List, setLevel2List] = useState([]);
@@ -649,47 +566,33 @@ export function AssetForm() {
         if (typeRes?.assetTypes && Array.isArray(typeRes.assetTypes) && typeRes.assetTypes.length > 0) {
           setAssetTypes(typeRes.assetTypes);
         }
-        if (groupRes?.assetGroups && Array.isArray(groupRes.assetGroups) && groupRes.assetGroups.length > 0) {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-          const server = groupRes.assetGroups;
-          const merged = [...custom, ...server.filter(sg => !custom.some(cg => (cg.code && sg.code && cg.code.toUpperCase() === sg.code.toUpperCase()) || cg.id === sg.id))];
-          setAssetGroups(merged);
+        if (groupRes?.assetGroups && Array.isArray(groupRes.assetGroups)) {
+          setAssetGroups(groupRes.assetGroups.filter(g => g.active !== false && g.status !== 'Inactive'));
+        } else {
+          setAssetGroups([]);
         }
 
-        // Sub Categories from server & local storage
-        const customSub = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+        // Sub Categories from server
         const rawServerSubs = subCatRes?.subCategories || classRes?.assetClasses?.filter(ac => (ac.description || '').includes('[kind:subcat]')) || [];
-        const serverSubCats = rawServerSubs.map(sc => ({
+        const serverSubCats = rawServerSubs.filter(sc => sc.active !== false && sc.status !== 'Inactive').map(sc => ({
           ...sc,
           categoryName: sc.categoryName || sc.category?.name || 'General'
         }));
-        const mergedSubs = [
-          ...customSub,
-          ...serverSubCats.filter(sc => !customSub.some(cs => cs.id === sc.id || (cs.code && sc.code && cs.code.toUpperCase() === sc.code.toUpperCase())))
-        ];
-        if (mergedSubs.length > 0) {
-          setSubCategories(mergedSubs);
-        }
+        setSubCategories(serverSubCats);
 
-        // Asset Sub Groups (Classes) from server & local storage
-        const customCls = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
+        // Asset Sub Groups (Classes) from server
         const rawServerCls = asgRes?.assetSubGroups || classRes?.assetClasses || [];
-        const serverClasses = rawServerCls.map(ac => {
+        const serverClasses = rawServerCls.filter(ac => ac.active !== false && ac.status !== 'Inactive').map(ac => {
           const groupMatch = (ac.description || '').match(/\[group:([^\]]+)\]/);
           return {
             ...ac,
             groupName: groupMatch ? groupMatch[1] : (ac.groupName || ac.assetGroupName || 'General')
           };
         });
-        const mergedCls = [
-          ...customCls,
-          ...serverClasses.filter(sc => !customCls.some(cc => (cc.code && sc.code && cc.code.toUpperCase() === sc.code.toUpperCase()) || cc.id === sc.id))
-        ];
-        if (mergedCls.length > 0) {
-          setAssetClasses(mergedCls);
-        }
-        if (catRes?.categories) {
-          const enrichedCategories = catRes.categories.map(c => {
+        setAssetClasses(serverClasses);
+
+        if (catRes?.categories && Array.isArray(catRes.categories)) {
+          const enrichedCategories = catRes.categories.filter(c => c.active !== false && c.status !== 'Inactive').map(c => {
             const groupMatch = (c.description || '').match(/\[group:([^\]]+)\]/);
             const classMatch = (c.description || '').match(/\[class:([^\]]+)\]/);
             return {
@@ -699,43 +602,26 @@ export function AssetForm() {
             };
           });
           setCategories(enrichedCategories);
+        } else {
+          setCategories([]);
         }
-        if (siteRes?.sites) setSites(siteRes.sites);
+        if (siteRes?.sites) setSites(siteRes.sites.filter(s => s.active !== false && s.status !== 'Inactive'));
         if (companyRes?.companies) {
           try { localStorage.removeItem('fams_companies'); } catch (_) { }
-          setCompanies(companyRes.companies);
+          setCompanies(companyRes.companies.filter(c => c.active !== false && c.status !== 'Inactive'));
         }
         if (buildingRes?.buildings) {
-          const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
-          const server = buildingRes.buildings;
-          const merged = [...stored, ...server.filter(s => !stored.some(st => st.id === s.id || (st.code && s.code && st.code.toUpperCase() === s.code.toUpperCase())))];
-          setBuildings(merged);
+          setBuildings(buildingRes.buildings.filter(b => b.active !== false && b.status !== 'Inactive'));
         }
-        if (floorRes?.floors) setFloors(floorRes.floors);
-        if (roomRes?.rooms) setRooms(roomRes.rooms);
+        if (floorRes?.floors) setFloors(floorRes.floors.filter(f => f.active !== false && f.status !== 'Inactive'));
+        if (roomRes?.rooms) setRooms(roomRes.rooms.filter(r => r.active !== false && r.status !== 'Inactive'));
         if (deptRes?.departments) {
-          const customDepts = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
-          const serverDepts = deptRes.departments;
-          const mergedDepts = [...serverDepts, ...customDepts.filter(cd => !serverDepts.some(sd => sd.id === cd.id || (sd.code && cd.code && sd.code.toUpperCase() === cd.code.toUpperCase())))];
-          setDepartments(mergedDepts);
+          setDepartments(deptRes.departments.filter(d => d.active !== false && d.status !== 'Inactive'));
         }
-        if (ccRes?.costCenters) setCostCenters(ccRes.costCenters);
-        let customMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
-        if (customMfrs.some(c => (c.code || '').toUpperCase() === 'SFEF' || (c.name || '').toLowerCase() === 'fes')) {
-          customMfrs = customMfrs.filter(c => (c.code || '').toUpperCase() !== 'SFEF' && (c.name || '').toLowerCase() !== 'fes');
-          try { localStorage.setItem('fams_custom_manufacturers', JSON.stringify(customMfrs)); } catch (_) { }
-        }
-        const serverMfrs = mfrRes?.manufacturers || [];
-        const existingNames = new Set(serverMfrs.map(m => (m.name || '').toLowerCase()));
-        const mergedMfrs = [...serverMfrs, ...customMfrs.filter(cm => !existingNames.has((cm.name || '').toLowerCase()))];
-        setManufacturers(mergedMfrs);
-
-        const customBrands = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
-        const serverBrands = brandRes?.brands || [];
-        const existingBrandNames = new Set(serverBrands.map(b => (b.name || '').toLowerCase()));
-        const mergedBrands = [...serverBrands, ...customBrands.filter(cb => !existingBrandNames.has((cb.name || '').toLowerCase()))];
-        setBrands(mergedBrands);
-        if (empRes?.employees) setEmployees(empRes.employees);
+        if (ccRes?.costCenters) setCostCenters(ccRes.costCenters.filter(cc => cc.active !== false && cc.status !== 'Inactive'));
+        setManufacturers((mfrRes?.manufacturers || []).filter(m => m.active !== false && m.status !== 'Inactive'));
+        setBrands((brandRes?.brands || []).filter(b => b.active !== false && b.status !== 'Inactive'));
+        if (empRes?.employees) setEmployees(empRes.employees.filter(e => e.active !== false && e.status !== 'Inactive'));
 
         const parseLevelItems = (res, lvl) => {
           let items = res?.locationLevels && Array.isArray(res.locationLevels) ? res.locationLevels : [];
@@ -955,7 +841,7 @@ export function AssetForm() {
   const subcategoryCode = subCategories.find(subCat => subCat.id === formData.assetClassId || subCat.name === formData.subcategory)?.code?.replace(/^CLS[-_ ]?/i, '') || formData.subcategory;
   // 1. Cascading Asset Groups based on selected Asset Type
   const availableAssetGroups = useMemo(() => {
-    let list = (assetGroups && assetGroups.length > 0) ? assetGroups : BASELINE_GROUPS;
+    let list = assetGroups || [];
     if (formData.assetGroup && !list.some(g => (g.name || g.code) === formData.assetGroup || g.id === formData.assetGroup)) {
       list = [{ id: 'sel-grp', name: formData.assetGroup, code: formData.assetGroup }, ...list];
     }
@@ -964,7 +850,7 @@ export function AssetForm() {
 
   // 2. Cascading Asset Classes (Sub Groups) based on selected Asset Group
   const availableAssetClassesDropdown = useMemo(() => {
-    let list = (assetClasses && assetClasses.length > 0) ? assetClasses : BASELINE_SUBGROUPS;
+    let list = assetClasses || [];
     if (formData.assetGroup) {
       const filtered = list.filter(cls => matchesClassToGroup(cls, formData.assetGroup));
       list = filtered.length > 0 ? filtered : list;
@@ -977,7 +863,7 @@ export function AssetForm() {
 
   // 3. Cascading Categories based on Asset Class / Group / Type
   const availableCategories = useMemo(() => {
-    let cats = (categories && categories.length > 0) ? categories.filter(c => c.active !== false) : BASELINE_CATEGORIES;
+    let cats = (categories && categories.length > 0) ? categories.filter(c => c.active !== false) : [];
     const targetSubGroup = (formData.assetClass || '').toLowerCase().trim();
     const targetGroup = (formData.assetGroup || '').toLowerCase().trim();
 
@@ -1005,7 +891,7 @@ export function AssetForm() {
 
   // 4. Cascading Sub Categories strictly based on selected Category / Sub Group
   const availableAssetClasses = useMemo(() => {
-    let list = (subCategories && subCategories.length > 0) ? subCategories : BASELINE_SUBCATEGORIES;
+    let list = subCategories || [];
     const selectedCatName = (formData.category || '').trim().toLowerCase();
     const selectedCatId = formData.categoryId;
     const targetSubGroup = (formData.assetClass || '').trim().toLowerCase();
@@ -1052,7 +938,7 @@ export function AssetForm() {
 
   // 5. Cascading / Prioritized Manufacturers based on Type & Category
   const availableManufacturers = useMemo(() => {
-    let mfrs = (manufacturers && manufacturers.length > 0) ? manufacturers : BASELINE_MANUFACTURERS;
+    let mfrs = manufacturers || [];
     if (formData.manufacturer && !mfrs.some(m => (m.name || m.title || m).toLowerCase() === formData.manufacturer.toLowerCase())) {
       mfrs = [{ id: 'sel-mfr', name: formData.manufacturer }, ...mfrs];
     }
