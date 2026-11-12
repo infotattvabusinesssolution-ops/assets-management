@@ -982,102 +982,38 @@ export function CostCentersTab({
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Email</label>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Email <span className="text-[10px] text-slate-400 font-normal">(Autoloaded)</span>
+                  </label>
                   <select
+                    disabled
                     value={ccFormState.email || ''}
-                    onChange={(e) => {
-                      const selectedEmail = e.target.value;
-                      if (!selectedEmail) {
-                        setCcFormState({
-                          ...ccFormState,
-                          email: '',
-                          manager: '',
-                          phone: ''
-                        });
-                        return;
-                      }
-                      const matchedCust = custodiansList.find(c => (c.email || '').trim().toLowerCase() === selectedEmail.trim().toLowerCase());
-                      setCcFormState({
-                        ...ccFormState,
-                        email: selectedEmail,
-                        manager: matchedCust ? (matchedCust.fullName || matchedCust.name || ccFormState.manager) : ccFormState.manager,
-                        phone: matchedCust?.phone || ''
-                      });
-                    }}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-mono"
+                    title="Autoloaded from selected Manager"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-100/80 text-slate-600 cursor-not-allowed select-none focus:outline-none font-mono"
+                    tabIndex={-1}
                   >
-                    <option value="">- Select Email -</option>
-                    {ccFormState.email && !sortedCustodians.some(c => (c.email || '').toLowerCase() === ccFormState.email.toLowerCase()) && (
-                      <option value={ccFormState.email}>
-                        {ccFormState.email} (Current)
-                      </option>
+                    <option value="">{ccFormState.email || '- Autoloaded from Manager -'}</option>
+                    {ccFormState.email && (
+                      <option value={ccFormState.email}>{ccFormState.email}</option>
                     )}
-                    {sortedCustodians
-                      .filter(c => !!c.email)
-                      .map((c) => {
-                        const isInactive = c.active === false || c.status === 'Inactive';
-                        const name = c.fullName || c.name || '';
-                        return (
-                          <option
-                            key={`email-${c.id || c.email}`}
-                            value={c.email}
-                            disabled={isInactive}
-                            className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
-                          >
-                            {c.email} ({name})
-                          </option>
-                        );
-                      })}
                   </select>
                 </div>
 
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Phone No.</label>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Phone No. <span className="text-[10px] text-slate-400 font-normal">(Autoloaded)</span>
+                  </label>
                   <select
+                    disabled
                     value={ccFormState.phone || ''}
-                    onChange={(e) => {
-                      const selectedPhone = e.target.value;
-                      if (!selectedPhone) {
-                        setCcFormState({
-                          ...ccFormState,
-                          phone: '',
-                          manager: '',
-                          email: ''
-                        });
-                        return;
-                      }
-                      const matchedCust = custodiansList.find(c => (c.phone || '').trim() === selectedPhone.trim());
-                      setCcFormState({
-                        ...ccFormState,
-                        phone: selectedPhone,
-                        manager: matchedCust ? (matchedCust.fullName || matchedCust.name || ccFormState.manager) : ccFormState.manager,
-                        email: matchedCust?.email || ''
-                      });
-                    }}
-                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-mono"
+                    title="Autoloaded from selected Manager"
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs bg-slate-100/80 text-slate-600 cursor-not-allowed select-none focus:outline-none font-mono"
+                    tabIndex={-1}
                   >
-                    <option value="">- Select Phone No. -</option>
-                    {ccFormState.phone && !sortedCustodians.some(c => (c.phone || '').trim() === ccFormState.phone.trim()) && (
-                      <option value={ccFormState.phone}>
-                        {ccFormState.phone} (Current)
-                      </option>
+                    <option value="">{ccFormState.phone || '- Autoloaded from Manager -'}</option>
+                    {ccFormState.phone && (
+                      <option value={ccFormState.phone}>{ccFormState.phone}</option>
                     )}
-                    {sortedCustodians
-                      .filter(c => !!c.phone)
-                      .map((c) => {
-                        const isInactive = c.active === false || c.status === 'Inactive';
-                        const name = c.fullName || c.name || '';
-                        return (
-                          <option
-                            key={`phone-${c.id || c.phone}`}
-                            value={c.phone}
-                            disabled={isInactive}
-                            className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}
-                          >
-                            {c.phone} ({name})
-                          </option>
-                        );
-                      })}
                   </select>
                 </div>
               </div>
