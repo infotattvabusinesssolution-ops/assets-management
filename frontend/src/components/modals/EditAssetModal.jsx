@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { X, Edit3, CheckCircle2 } from 'lucide-react';
+import { api } from '../../services/api';
 
 export function EditAssetModal({ isOpen, onClose, asset, onSaveAsset }) {
+  const [conditionsList, setConditionsList] = useState([]);
   const [formData, setFormData] = useState({
     serialNumber: '',
     assetName: '',
@@ -10,6 +12,18 @@ export function EditAssetModal({ isOpen, onClose, asset, onSaveAsset }) {
     condition: 'New',
     tagNumber: ''
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/master-data/asset-conditions?includeInactive=false')
+        .then(res => {
+          if (res?.assetConditions && Array.isArray(res.assetConditions)) {
+            setConditionsList(res.assetConditions);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     if (asset) {
@@ -109,10 +123,17 @@ export function EditAssetModal({ isOpen, onClose, asset, onSaveAsset }) {
                 onChange={e => setFormData({ ...formData, condition: e.target.value })}
                 className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white"
               >
-                <option value="New">New</option>
-                <option value="Good">Good</option>
-                <option value="Fair">Fair</option>
-                <option value="Refurbished">Refurbished</option>
+                {(conditionsList.length > 0 ? conditionsList : [
+                  { code: 'NEW', name: 'New' },
+                  { code: 'GOOD', name: 'Good' },
+                  { code: 'FAIR', name: 'Fair' },
+                  { code: 'DAMAGED', name: 'Damaged' },
+                  { code: 'REFURBISHED', name: 'Refurbished' }
+                ]).filter(c => c.active !== false).map(c => (
+                  <option key={c.id || c.code} value={c.name || c.code}>
+                    {c.name || c.code}
+                  </option>
+                ))}
               </select>
             </div>
             <div>

@@ -264,6 +264,7 @@ export function AssetEdit() {
   const [models, setModels] = useState([]);
   const [assetClasses, setAssetClasses] = useState([]);
   const [departments, setDepartments] = useState([]);
+  const [conditionsList, setConditionsList] = useState([]);
 
   // Image & Document Upload States
   const fileInputRef = useRef(null);
@@ -353,8 +354,9 @@ export function AssetEdit() {
       api.get('/master-data/manufacturers'),
       api.get('/master-data/models'),
       api.get('/master-data/asset-classes'),
-      api.get('/master-data/departments')
-    ]).then(([catRes, mfrRes, mdlRes, clsRes, depRes]) => {
+      api.get('/master-data/departments'),
+      api.get('/master-data/asset-conditions')
+    ]).then(([catRes, mfrRes, mdlRes, clsRes, depRes, condRes]) => {
       if (catRes.status === 'fulfilled' && catRes.value?.categories) {
         setCategories(catRes.value.categories);
       }
@@ -369,6 +371,9 @@ export function AssetEdit() {
       }
       if (depRes.status === 'fulfilled' && depRes.value?.departments) {
         setDepartments(depRes.value.departments);
+      }
+      if (condRes.status === 'fulfilled' && condRes.value?.assetConditions && Array.isArray(condRes.value.assetConditions)) {
+        setConditionsList(condRes.value.assetConditions);
       }
     });
   }, []);
@@ -1196,11 +1201,17 @@ export function AssetEdit() {
                     onChange={(e) => setFormData({ ...formData, condition: e.target.value })}
                     className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2.5 text-slate-900 font-bold focus:border-[#6C2BD9] focus:bg-white outline-none"
                   >
-                    <option value="New">New</option>
-                    <option value="Good">Good</option>
-                    <option value="Fair">Fair</option>
-                    <option value="Damaged">Damaged</option>
-                    <option value="Retired">Retired</option>
+                    {(conditionsList.length > 0 ? conditionsList : [
+                      { code: 'NEW', name: 'New' },
+                      { code: 'GOOD', name: 'Good' },
+                      { code: 'FAIR', name: 'Fair' },
+                      { code: 'DAMAGED', name: 'Damaged' },
+                      { code: 'REFURBISHED', name: 'Refurbished' }
+                    ]).filter(c => c.active !== false).map(c => (
+                      <option key={c.id || c.code} value={c.name || c.code}>
+                        {c.name || c.code}
+                      </option>
+                    ))}
                   </select>
                 </div>
               </div>

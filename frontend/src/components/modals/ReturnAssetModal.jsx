@@ -1,9 +1,10 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { X, RotateCcw, Wrench, ShieldCheck, AlertTriangle } from 'lucide-react';
 import { api } from '../../services/api';
 
 export function ReturnAssetModal({ isOpen, onClose, asset, onReturnCompleted }) {
   const [loading, setLoading] = useState(false);
+  const [conditionsList, setConditionsList] = useState([]);
   const [formData, setFormData] = useState({
     returnDestination: 'Central Storage / Store',
     condition: 'Good',
@@ -11,6 +12,18 @@ export function ReturnAssetModal({ isOpen, onClose, asset, onReturnCompleted }) 
     notes: '',
     createMaintenanceRequest: false
   });
+
+  useEffect(() => {
+    if (isOpen) {
+      api.get('/master-data/asset-conditions?includeInactive=false')
+        .then(res => {
+          if (res?.assetConditions && Array.isArray(res.assetConditions)) {
+            setConditionsList(res.assetConditions);
+          }
+        })
+        .catch(() => {});
+    }
+  }, [isOpen]);
 
   if (!isOpen || !asset) return null;
 
@@ -107,15 +120,21 @@ export function ReturnAssetModal({ isOpen, onClose, asset, onReturnCompleted }) 
                 setFormData({
                   ...formData,
                   condition: cond,
-                  createMaintenanceRequest: cond === 'Damaged' || cond === 'Fair'
+                  createMaintenanceRequest: cond === 'Damaged' || cond === 'Fair' || cond === 'Poor'
                 });
               }}
               className="w-full px-3 py-2 rounded-xl border border-slate-200 bg-white text-xs text-slate-800"
             >
-              <option value="Good">Good (Operational &amp; Clean)</option>
-              <option value="Fair">Fair (Minor Wear &amp; Tear)</option>
-              <option value="Damaged">Damaged (Requires Repair / Maintenance)</option>
-              <option value="Non-Functional">Non-Functional (Requires Inspection)</option>
+              {(conditionsList.length > 0 ? conditionsList : [
+                { code: 'GOOD', name: 'Good' },
+                { code: 'FAIR', name: 'Fair' },
+                { code: 'POOR', name: 'Poor' },
+                { code: 'DAMAGED', name: 'Damaged' }
+              ]).map(c => (
+                <option key={c.id || c.code} value={c.name || c.code}>
+                  {c.name || c.code} {c.description ? `(${c.description})` : ''}
+                </option>
+              ))}
             </select>
           </div>
 

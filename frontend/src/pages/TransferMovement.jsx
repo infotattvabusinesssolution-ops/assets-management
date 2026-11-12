@@ -175,6 +175,7 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   // Transfers & Movement History from server
   const [transfersList, setTransfersList] = useState([]);
   const [historyList, setHistoryList] = useState([]);
+  const [conditionsList, setConditionsList] = useState([]);
 
   // Fetch data on mount
   useEffect(() => {
@@ -184,13 +185,18 @@ export default function TransferMovement({ defaultTab = 'form' }) {
   const fetchInitialData = async () => {
     try {
       setLoading(true);
-      const [hRes, rRes, aRes, tRes, histRes] = await Promise.allSettled([
+      const [hRes, rRes, aRes, tRes, histRes, cRes] = await Promise.allSettled([
         api.get('/custody-transfers/locations/hierarchy'),
         api.get('/custody-transfers/master-references'),
         api.get('/custody-transfers/assets/eligible'),
         api.get('/custody-transfers/movement-records'),
-        api.get('/custody-transfers/movement-history')
+        api.get('/custody-transfers/movement-history'),
+        api.get('/master-data/asset-conditions')
       ]);
+
+      if (cRes.status === 'fulfilled' && cRes.value?.assetConditions && Array.isArray(cRes.value.assetConditions)) {
+        setConditionsList(cRes.value.assetConditions);
+      }
 
       if (hRes.status === 'fulfilled' && hRes.value.success) {
         const sites = hRes.value.sites || [];
@@ -1149,11 +1155,17 @@ export default function TransferMovement({ defaultTab = 'form' }) {
                       onChange={(e) => setConditionAtTransfer(e.target.value)}
                       className="w-full border border-gray-300 rounded-lg p-2 text-xs outline-none"
                     >
-                      <option>Good</option>
-                      <option>Excellent</option>
-                      <option>Fair</option>
-                      <option>Damaged</option>
-                      <option>Requires Inspection</option>
+                      {(conditionsList.length > 0 ? conditionsList : [
+                        { code: 'GOOD', name: 'Good' },
+                        { code: 'NEW', name: 'New' },
+                        { code: 'FAIR', name: 'Fair' },
+                        { code: 'DAMAGED', name: 'Damaged' },
+                        { code: 'POOR', name: 'Poor' }
+                      ]).filter(c => c.active !== false).map(c => (
+                        <option key={c.id || c.code} value={c.name || c.code}>
+                          {c.name || c.code}
+                        </option>
+                      ))}
                     </select>
                   </div>
 

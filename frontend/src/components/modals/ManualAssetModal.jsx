@@ -3,6 +3,7 @@ import { X, Plus, AlertCircle, CheckCircle2, Laptop } from 'lucide-react';
 import { api } from '../../services/api';
 
 export function ManualAssetModal({ isOpen, onClose, onAddAsset, defaultValues = {}, existingItems = [] }) {
+  const [conditionsList, setConditionsList] = useState([]);
   const [formData, setFormData] = useState({
     serialNumber: '',
     assetName: '',
@@ -21,6 +22,13 @@ export function ManualAssetModal({ isOpen, onClose, onAddAsset, defaultValues = 
 
   useEffect(() => {
     if (isOpen) {
+      api.get('/master-data/asset-conditions?includeInactive=false')
+        .then(res => {
+          if (res?.assetConditions && Array.isArray(res.assetConditions)) {
+            setConditionsList(res.assetConditions);
+          }
+        })
+        .catch(() => {});
       setFormData({
         serialNumber: '',
         assetName: `${defaultValues.manufacturer || 'Dell'} ${defaultValues.model || 'Latitude 7450'}`.trim(),
@@ -230,10 +238,16 @@ export function ManualAssetModal({ isOpen, onClose, onAddAsset, defaultValues = 
                 onChange={e => setFormData({ ...formData, condition: e.target.value })}
                 className="w-full px-3 py-2 text-xs rounded-xl border border-slate-200 bg-white"
               >
-                <option value="New">New</option>
-                <option value="Good">Good</option>
-                <option value="Fair">Fair</option>
-                <option value="Refurbished">Refurbished</option>
+                {(conditionsList.length > 0 ? conditionsList : [
+                  { code: 'NEW', name: 'New' },
+                  { code: 'GOOD', name: 'Good' },
+                  { code: 'FAIR', name: 'Fair' },
+                  { code: 'REFURBISHED', name: 'Refurbished' }
+                ]).filter(c => c.active !== false).map(c => (
+                  <option key={c.id || c.code} value={c.name || c.code}>
+                    {c.name || c.code}
+                  </option>
+                ))}
               </select>
             </div>
 

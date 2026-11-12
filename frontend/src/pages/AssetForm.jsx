@@ -3097,7 +3097,7 @@ export function AssetForm() {
         <label className="space-y-1 text-xs font-bold text-slate-700">Warranty in years<input type="text" readOnly value={value('warrantyYears') ? `${value('warrantyYears')} Year${Number(value('warrantyYears')) > 1 ? 's' : ''}` : ''} placeholder="Calculated from End Date" className="w-full rounded-xl border border-slate-200 bg-slate-100 p-2 text-slate-700 cursor-not-allowed" /></label>
         {input('Warranty provider', 'provider')}{input('Warranty type', 'warrantyType')}
         {input('Coverage', 'coverage')}{input('Contract reference', 'contractReference')}
-        <label className="space-y-1 text-xs font-bold text-slate-700">Condition<select value={value('condition')} onChange={event => updateAssetItem({ condition: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2">{['New', 'Good', 'Fair', 'Damaged', 'Refurbished'].map(condition => <option key={condition} value={condition}>{condition}</option>)}</select></label>
+        <label className="space-y-1 text-xs font-bold text-slate-700">Condition<select value={value('condition')} onChange={event => updateAssetItem({ condition: event.target.value })} className="w-full rounded-xl border border-slate-200 bg-slate-50 p-2">{(assetConditions.length > 0 ? assetConditions : [{ code: 'NEW', name: 'New' }, { code: 'GOOD', name: 'Good' }, { code: 'FAIR', name: 'Fair' }, { code: 'DAMAGED', name: 'Damaged' }, { code: 'REFURBISHED', name: 'Refurbished' }]).map(c => <option key={c.id || c.code} value={c.name || c.code}>{c.name || c.code}</option>)}</select></label>
       </div>
       {renderCategoryDepreciation()}
     </section>;

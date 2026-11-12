@@ -58,18 +58,24 @@ export function AssignAsset() {
   const [buildingsList, setBuildingsList] = useState([]);
   const [floorsList, setFloorsList] = useState([]);
   const [roomsList, setRoomsList] = useState([]);
+  const [conditionsList, setConditionsList] = useState([]);
 
   // Fetch live assets and master references from database API
   useEffect(() => {
     const fetchInitialData = async () => {
       try {
         setLoading(true);
-        const [assetsRes, empRes, refRes, hierRes] = await Promise.allSettled([
+        const [assetsRes, empRes, refRes, hierRes, condRes] = await Promise.allSettled([
           api.get('/assets', { params: { limit: 100 } }),
           api.get('/master-data/employees'),
           api.get('/custody-transfers/master-references'),
-          api.get('/custody-transfers/locations/hierarchy')
+          api.get('/custody-transfers/locations/hierarchy'),
+          api.get('/master-data/asset-conditions')
         ]);
+
+        if (condRes.status === 'fulfilled' && condRes.value?.assetConditions && Array.isArray(condRes.value.assetConditions)) {
+          setConditionsList(condRes.value.assetConditions);
+        }
 
         if (empRes.status === 'fulfilled' && empRes.value?.employees?.length) {
           setEmployeesList(empRes.value.employees);
@@ -1294,10 +1300,15 @@ export function AssignAsset() {
                         onChange={(e) => setFormData({ ...formData, conditionAtIssue: e.target.value })}
                         className="w-full px-3 py-2 bg-white border border-slate-200 rounded-lg text-slate-800 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                       >
-                        <option value="Good">Good</option>
-                        <option value="New / Sealed">New / Sealed</option>
-                        <option value="Excellent">Excellent</option>
-                        <option value="Fair">Fair</option>
+                        {(conditionsList.length > 0 ? conditionsList : [
+                          { code: 'GOOD', name: 'Good' },
+                          { code: 'NEW', name: 'New' },
+                          { code: 'FAIR', name: 'Fair' }
+                        ]).filter(c => c.active !== false).map(c => (
+                          <option key={c.id || c.code} value={c.name || c.code}>
+                            {c.name || c.code}
+                          </option>
+                        ))}
                       </select>
                     </div>
 

@@ -69,6 +69,7 @@ export function ReceiveWithoutPO() {
   const [manufacturersList, setManufacturersList] = useState([]);
   const [modelsList, setModelsList] = useState([]);
   const [sitesList, setSitesList] = useState([]);
+  const [conditionsList, setConditionsList] = useState([]);
   const [isSupplierDropdownOpen, setIsSupplierDropdownOpen] = useState(false);
   const [supplierSearch, setSupplierSearch] = useState('');
 
@@ -109,13 +110,14 @@ export function ReceiveWithoutPO() {
   useEffect(() => {
     const loadMasterData = async () => {
       try {
-        const [reasonsRes, suppliersRes, catsRes, mfgsRes, modelsRes, sitesRes] = await Promise.allSettled([
+        const [reasonsRes, suppliersRes, catsRes, mfgsRes, modelsRes, sitesRes, condsRes] = await Promise.allSettled([
           api.get('/receiving/non-po-reasons'),
           api.get('/receiving/suppliers'),
           api.get('/master-data/categories'),
           api.get('/master-data/manufacturers'),
           api.get('/master-data/models'),
-          api.get('/master-data/sites')
+          api.get('/master-data/sites'),
+          api.get('/master-data/asset-conditions')
         ]);
 
         if (reasonsRes.status === 'fulfilled' && reasonsRes.value?.reasons) {
@@ -135,6 +137,9 @@ export function ReceiveWithoutPO() {
         }
         if (sitesRes.status === 'fulfilled' && sitesRes.value?.sites) {
           setSitesList(sitesRes.value.sites);
+        }
+        if (condsRes.status === 'fulfilled' && condsRes.value?.assetConditions && Array.isArray(condsRes.value.assetConditions)) {
+          setConditionsList(condsRes.value.assetConditions);
         }
       } catch (err) {
         showToast(err?.message || 'Could not load receiving reference data', 'error');
@@ -822,10 +827,16 @@ export function ReceiveWithoutPO() {
                       onChange={(e) => setAssetDefaults({ ...assetDefaults, condition: e.target.value })}
                       className="w-full px-3 py-2 rounded-xl border border-slate-200 text-xs text-slate-800 bg-white cursor-pointer"
                     >
-                      <option value="New">New</option>
-                      <option value="Good">Good</option>
-                      <option value="Fair">Fair</option>
-                      <option value="Refurbished">Refurbished</option>
+                      {(conditionsList.length > 0 ? conditionsList : [
+                        { code: 'NEW', name: 'New' },
+                        { code: 'GOOD', name: 'Good' },
+                        { code: 'FAIR', name: 'Fair' },
+                        { code: 'REFURBISHED', name: 'Refurbished' }
+                      ]).filter(c => c.active !== false).map(c => (
+                        <option key={c.id || c.code} value={c.name || c.code}>
+                          {c.name || c.code}
+                        </option>
+                      ))}
                     </select>
                   </div>
 
