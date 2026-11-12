@@ -347,14 +347,25 @@ export function UserManagement() {
         return String(val);
       };
 
-      const matchedName = getStr(match.fullName, getStr(match.name, prev => prev.name || ''));
+      const matchedName = getStr(match.fullName, getStr(match.name, ''));
       const matchedCode = getStr(match.employeeCode, getStr(match.code, clean));
-      const matchedDept = getStr(match.department, 'Information Technology');
-      const matchedComp = getStr(match.company, getStr(match.organization, 'Asset360 Holdings'));
-      const matchedLoc = getStr(match.location, '');
+      const matchedDept = getStr(match.department, departmentsList[0]?.name || 'General');
+      const matchedComp = getStr(match.company, getStr(match.organization, companiesList[0]?.name || ''));
+      const matchedLoc = getStr(match.location, sitesList[0]?.name || '');
       const matchedEmail = getStr(match.email, '');
       const matchedPhone = getStr(match.phone, '');
       const matchedType = getStr(match.custodianType, 'Internal');
+
+      // Ensure custodian's company, department, and location exist in dropdown choices
+      if (matchedComp && !companiesList.some(c => c.name === matchedComp)) {
+        setCompaniesList(prev => [...prev, { id: `CMP-${Date.now()}`, name: matchedComp }]);
+      }
+      if (matchedDept && !departmentsList.some(d => d.name === matchedDept)) {
+        setDepartmentsList(prev => [...prev, { id: `DEP-${Date.now()}`, name: matchedDept }]);
+      }
+      if (matchedLoc && !sitesList.some(s => s.name === matchedLoc || s.fullPath === matchedLoc)) {
+        setSitesList(prev => [...prev, { id: `SITE-${Date.now()}`, name: matchedLoc, fullPath: matchedLoc }]);
+      }
 
       setUserFormData((prev) => ({
         ...prev,
@@ -377,6 +388,15 @@ export function UserManagement() {
         message: `No custodian record found for "${q}". You can enter user details manually or add them to the Custodian Master first.`
       });
     }
+  };
+
+  const handleUnlinkCustodian = () => {
+    setEmployeeLookupCode('');
+    setEmployeeLookupStatus(null);
+    setUserFormData((prev) => ({
+      ...prev,
+      employeeId: ''
+    }));
   };
 
   const handleGeneratePassword = () => {
@@ -676,6 +696,11 @@ export function UserManagement() {
   };
 
   const totalPages = Math.ceil(totalUsers / limit) || 1;
+
+  const isCustodianLinked = Boolean(
+    (employeeLookupStatus && employeeLookupStatus.found) ||
+    (showEditModal && userFormData.employeeId)
+  );
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased text-[#0F172A] p-6">
@@ -1184,6 +1209,8 @@ export function UserManagement() {
                               onClick={() => {
                                 setSelectedUser(user);
                                 setUserFormData({ ...user });
+                                setEmployeeLookupCode(user.employeeId || '');
+                                setEmployeeLookupStatus(null);
                                 setShowEditModal(true);
                                 setActiveDropdownId(null);
                               }}
@@ -1429,8 +1456,13 @@ export function UserManagement() {
                           setEmployeeLookupCode(e.target.value);
                           setShowLookupDropdown(true);
                           const val = e.target.value.trim().toUpperCase();
-                          const foundDirect = custodiansList.find(c => (c.employeeCode || c.code || '').toUpperCase() === val);
-                          if (foundDirect) handleLookupEmployee(e.target.value);
+                          if (!val) {
+                            setEmployeeLookupStatus(null);
+                            setUserFormData(prev => ({ ...prev, employeeId: '' }));
+                          } else {
+                            const foundDirect = custodiansList.find(c => (c.employeeCode || c.code || '').toUpperCase() === val);
+                            if (foundDirect) handleLookupEmployee(e.target.value);
+                          }
                         }}
                         onKeyDown={(e) => {
                           if (e.key === 'Enter') {
@@ -1504,22 +1536,69 @@ export function UserManagement() {
                     </button>
                   </div>
                   {employeeLookupStatus && (
-                    <div className={`p-2 rounded-lg text-[11px] flex items-center gap-2 ${employeeLookupStatus.found ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
-                      <span className="font-medium">{employeeLookupStatus.message}</span>
+                    <div className={`p-2.5 rounded-lg text-[11px] flex items-center justify-between gap-2 ${employeeLookupStatus.found ? 'bg-emerald-50 text-emerald-800 border border-emerald-200' : 'bg-amber-50 text-amber-800 border border-amber-200'}`}>
+                      <div className="flex items-center gap-1.5 font-medium">
+                        {employeeLookupStatus.found ? (
+                          <Lock className="w-3.5 h-3.5 text-emerald-600 shrink-0" />
+                        ) : (
+                          <AlertTriangle className="w-3.5 h-3.5 text-amber-600 shrink-0" />
+                        )}
+                        <span>{employeeLookupStatus.message}</span>
+                      </div>
+                      {employeeLookupStatus.found && (
+                        <button
+                          type="button"
+                          onClick={handleUnlinkCustodian}
+                          className="text-[10px] text-emerald-700 hover:text-emerald-950 font-semibold underline shrink-0 cursor-pointer"
+                        >
+                          Unlink / Clear
+                        </button>
+                      )}
                     </div>
                   )}
                 </div>
               )}
 
+              {/* Linked Custodian Notification in Edit Modal */}
+              {showEditModal && userFormData.employeeId && (
+                <div className="p-2.5 bg-purple-50/70 rounded-xl border border-purple-200 text-xs flex items-center justify-between text-purple-900">
+                  <div className="flex items-center gap-2">
+                    <Lock className="w-3.5 h-3.5 text-purple-600 shrink-0" />
+                    <span>
+                      Linked to Custodian: <strong className="font-semibold font-mono">{userFormData.employeeId}</strong>. Identity & organization fields are synced from Custodian Master.
+                    </span>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => setUserFormData(prev => ({ ...prev, employeeId: '' }))}
+                    className="text-[10px] text-purple-700 hover:text-purple-950 font-semibold underline shrink-0 cursor-pointer"
+                  >
+                    Unlink
+                  </button>
+                </div>
+              )}
+
               <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Full Name *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-medium text-slate-700">Full Name *</label>
+                    {isCustodianLinked && (
+                      <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
+                        <Lock className="w-2.5 h-2.5" /> Synced from Custodian
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
                     required
+                    readOnly={isCustodianLinked}
                     value={userFormData.name}
                     onChange={(e) => setUserFormData({ ...userFormData, name: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                    className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
+                      isCustodianLinked
+                        ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed select-none'
+                        : 'bg-white border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
+                    }`}
                   />
                 </div>
                 <div>
@@ -1529,26 +1608,50 @@ export function UserManagement() {
                     required
                     value={userFormData.username}
                     onChange={(e) => setUserFormData({ ...userFormData, username: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
                   />
                 </div>
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Email Address *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-medium text-slate-700">Email Address *</label>
+                    {isCustodianLinked && (
+                      <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
+                        <Lock className="w-2.5 h-2.5" /> Synced from Custodian
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="email"
                     required
+                    readOnly={isCustodianLinked}
                     value={userFormData.email}
                     onChange={(e) => setUserFormData({ ...userFormData, email: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                    className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
+                      isCustodianLinked
+                        ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed select-none'
+                        : 'bg-white border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
+                    }`}
                   />
                 </div>
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Phone Number</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-medium text-slate-700">Phone Number</label>
+                    {isCustodianLinked && (
+                      <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
+                        <Lock className="w-2.5 h-2.5" /> Synced from Custodian
+                      </span>
+                    )}
+                  </div>
                   <input
                     type="text"
+                    readOnly={isCustodianLinked}
                     value={userFormData.phone}
                     onChange={(e) => setUserFormData({ ...userFormData, phone: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                    className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
+                      isCustodianLinked
+                        ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed select-none'
+                        : 'bg-white border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
+                    }`}
                   />
                 </div>
                 <div>
@@ -1556,7 +1659,7 @@ export function UserManagement() {
                   <select
                     value={userFormData.role}
                     onChange={(e) => setUserFormData({ ...userFormData, role: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs"
                   >
                     {rolesList.length > 0 ? (
                       rolesList.map(r => (
@@ -1579,7 +1682,7 @@ export function UserManagement() {
                   <select
                     value={userFormData.userType}
                     onChange={(e) => setUserFormData({ ...userFormData, userType: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs"
                   >
                     {userTypesList.map(t => (
                       <option key={t} value={t}>{t}</option>
@@ -1589,45 +1692,79 @@ export function UserManagement() {
 
                 {/* Company */}
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Company *</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-medium text-slate-700">Company *</label>
+                    {isCustodianLinked && (
+                      <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
+                        <Lock className="w-2.5 h-2.5" /> Synced from Custodian
+                      </span>
+                    )}
+                  </div>
                   <select
+                    disabled={isCustodianLinked}
                     value={userFormData.company}
                     onChange={(e) => setUserFormData({ ...userFormData, company: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
+                      isCustodianLinked
+                        ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed'
+                        : 'bg-white border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
+                    }`}
                   >
                     {companiesList.map(c => (
-                      <option key={c.id} value={c.name}>{c.name}</option>
+                      <option key={c.id || c.name} value={c.name}>{c.name}</option>
                     ))}
                   </select>
                 </div>
 
                 {/* Department */}
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">Department</label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-medium text-slate-700">Department</label>
+                    {isCustodianLinked && (
+                      <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
+                        <Lock className="w-2.5 h-2.5" /> Synced from Custodian
+                      </span>
+                    )}
+                  </div>
                   <select
+                    disabled={isCustodianLinked}
                     value={userFormData.department}
                     onChange={(e) => setUserFormData({ ...userFormData, department: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
+                      isCustodianLinked
+                        ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed'
+                        : 'bg-white border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
+                    }`}
                   >
                     {departmentsList.map(d => (
-                      <option key={d.id} value={d.name}>{d.name} {d.code ? `(${d.code})` : ''}</option>
+                      <option key={d.id || d.name} value={d.name}>{d.name} {d.code ? `(${d.code})` : ''}</option>
                     ))}
                   </select>
                 </div>
 
                 {/* Primary Location from Master Data */}
                 <div>
-                  <label className="block font-medium text-slate-700 mb-1">
-                    Primary Location *
-                  </label>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="font-medium text-slate-700">Primary Location *</label>
+                    {isCustodianLinked && (
+                      <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
+                        <Lock className="w-2.5 h-2.5" /> Synced from Custodian
+                      </span>
+                    )}
+                  </div>
                   <select
+                    disabled={isCustodianLinked}
                     value={userFormData.location}
                     onChange={(e) => setUserFormData({ ...userFormData, location: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
+                    className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
+                      isCustodianLinked
+                        ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed'
+                        : 'bg-white border-slate-200 focus:outline-none focus:border-[#6C2BD9] cursor-pointer'
+                    }`}
                   >
                     <option value="">Select Master Location...</option>
                     {sitesList.map(s => (
-                      <option key={s.id} value={s.name}>{s.fullPath || s.name} {s.code ? `(${s.code})` : ''}</option>
+                      <option key={s.id || s.name} value={s.name}>{s.fullPath || s.name} {s.code ? `(${s.code})` : ''}</option>
                     ))}
                   </select>
                   <p className="text-[10px] text-slate-400 mt-1">Configured in Master Data. Ordinary users cannot add locations on the fly.</p>
@@ -1638,7 +1775,7 @@ export function UserManagement() {
                   <select
                     value={userFormData.status}
                     onChange={(e) => setUserFormData({ ...userFormData, status: e.target.value })}
-                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white text-xs"
                   >
                     <option value="Active">Active</option>
                     <option value="Inactive">Inactive</option>
