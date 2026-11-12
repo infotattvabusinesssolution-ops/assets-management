@@ -1573,157 +1573,52 @@ export function UserManagement() {
                   </select>
                 </div>
 
-                {/* Dynamic User Type */}
+                {/* User Type */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-medium text-slate-700">User Type</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingUserType(!isAddingUserType)}
-                      className="text-[11px] text-[#6C2BD9] hover:underline font-semibold"
-                    >
-                      {isAddingUserType ? 'Cancel' : '+ Add User Type'}
-                    </button>
-                  </div>
-                  {isAddingUserType ? (
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        placeholder="e.g. Field Auditor, Warehouse Staff"
-                        value={newUserTypeInput}
-                        onChange={(e) => setNewUserTypeInput(e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-purple-50/40 text-xs focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddUserType}
-                        className="px-2.5 py-1.5 bg-[#6C2BD9] text-white text-xs font-semibold rounded-lg hover:bg-[#5B21B6]"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ) : (
-                    <select
-                      value={userFormData.userType}
-                      onChange={(e) => {
-                        if (e.target.value === '__add_new__') {
-                          setIsAddingUserType(true);
-                        } else {
-                          setUserFormData({ ...userFormData, userType: e.target.value });
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                    >
-                      {userTypesList.map(t => (
-                        <option key={t} value={t}>{t}</option>
-                      ))}
-                      <option value="__add_new__">+ Add Custom User Type...</option>
-                    </select>
-                  )}
+                  <label className="block font-medium text-slate-700 mb-1">User Type</label>
+                  <select
+                    value={userFormData.userType}
+                    onChange={(e) => setUserFormData({ ...userFormData, userType: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                  >
+                    {userTypesList.map(t => (
+                      <option key={t} value={t}>{t}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Dynamic Company */}
+                {/* Company */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-medium text-slate-700">Company *</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingCompany(!isAddingCompany)}
-                      className="text-[11px] text-[#6C2BD9] hover:underline font-semibold"
-                    >
-                      {isAddingCompany ? 'Cancel' : '+ Add Company'}
-                    </button>
-                  </div>
-                  {isAddingCompany ? (
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        placeholder="Enter company name"
-                        value={newCompanyInput}
-                        onChange={(e) => setNewCompanyInput(e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-purple-50/40 text-xs focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddCompany}
-                        className="px-2.5 py-1.5 bg-[#6C2BD9] text-white text-xs font-semibold rounded-lg hover:bg-[#5B21B6]"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ) : (
-                    <select
-                      value={userFormData.company}
-                      onChange={(e) => {
-                        if (e.target.value === '__add_new__') {
-                          setIsAddingCompany(true);
-                        } else {
-                          setUserFormData({ ...userFormData, company: e.target.value });
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                    >
-                      {companiesList.map(c => (
-                        <option key={c.id} value={c.name}>{c.name}</option>
-                      ))}
-                      <option value="__add_new__">+ Add New Company...</option>
-                    </select>
-                  )}
+                  <label className="block font-medium text-slate-700 mb-1">Company *</label>
+                  <select
+                    value={userFormData.company}
+                    onChange={(e) => setUserFormData({ ...userFormData, company: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                  >
+                    {companiesList.map(c => (
+                      <option key={c.id} value={c.name}>{c.name}</option>
+                    ))}
+                  </select>
                 </div>
 
-                {/* Dynamic Department */}
+                {/* Department */}
                 <div>
-                  <div className="flex items-center justify-between mb-1">
-                    <label className="block font-medium text-slate-700">Department</label>
-                    <button
-                      type="button"
-                      onClick={() => setIsAddingDepartment(!isAddingDepartment)}
-                      className="text-[11px] text-[#6C2BD9] hover:underline font-semibold"
-                    >
-                      {isAddingDepartment ? 'Cancel' : '+ Add Department'}
-                    </button>
-                  </div>
-                  {isAddingDepartment ? (
-                    <div className="flex items-center gap-1.5">
-                      <input
-                        type="text"
-                        placeholder="Enter department name"
-                        value={newDepartmentInput}
-                        onChange={(e) => setNewDepartmentInput(e.target.value)}
-                        className="w-full px-2.5 py-1.5 border border-purple-300 rounded-lg bg-purple-50/40 text-xs focus:outline-none focus:ring-1 focus:ring-[#6C2BD9]"
-                      />
-                      <button
-                        type="button"
-                        onClick={handleAddDepartment}
-                        className="px-2.5 py-1.5 bg-[#6C2BD9] text-white text-xs font-semibold rounded-lg hover:bg-[#5B21B6]"
-                      >
-                        Add
-                      </button>
-                    </div>
-                  ) : (
-                    <select
-                      value={userFormData.department}
-                      onChange={(e) => {
-                        if (e.target.value === '__add_new__') {
-                          setIsAddingDepartment(true);
-                        } else {
-                          setUserFormData({ ...userFormData, department: e.target.value });
-                        }
-                      }}
-                      className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
-                    >
-                      {departmentsList.map(d => (
-                        <option key={d.id} value={d.name}>{d.name} {d.code ? `(${d.code})` : ''}</option>
-                      ))}
-                      <option value="__add_new__">+ Add New Department...</option>
-                    </select>
-                  )}
+                  <label className="block font-medium text-slate-700 mb-1">Department</label>
+                  <select
+                    value={userFormData.department}
+                    onChange={(e) => setUserFormData({ ...userFormData, department: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg bg-white"
+                  >
+                    {departmentsList.map(d => (
+                      <option key={d.id} value={d.name}>{d.name} {d.code ? `(${d.code})` : ''}</option>
+                    ))}
+                  </select>
                 </div>
 
                 {/* Primary Location from Master Data */}
                 <div>
                   <label className="block font-medium text-slate-700 mb-1">
-                    Primary Location * <span className="text-[10px] text-slate-400 font-normal">(From Location Master)</span>
+                    Primary Location *
                   </label>
                   <select
                     value={userFormData.location}
