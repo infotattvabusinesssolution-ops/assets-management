@@ -30,7 +30,7 @@ import {
   getCurrencies, createCurrency,
   getLocationTypes, createLocationType,
   getLocationLevels, createLocationLevel, updateLocationLevel, deleteLocationLevel,
-  getAssetConditions, createAssetCondition,
+  getAssetConditions, createAssetCondition, updateAssetCondition, deleteAssetCondition,
   getSuppliers, createSupplier,
   getCodePrefixes, updateCodePrefixes
 } from './masterData.controller.js';
@@ -189,6 +189,8 @@ router.put('/code-prefixes', updateCodePrefixes);
 // Asset Conditions (Database Enum Master Data)
 router.get('/asset-conditions', getAssetConditions);
 router.post('/asset-conditions', createAssetCondition);
+router.put('/asset-conditions/:id', updateAssetCondition);
+router.delete('/asset-conditions/:id', deleteAssetCondition);
 
 // Suppliers / Vendors (Master Data)
 router.get('/suppliers', getSuppliers);

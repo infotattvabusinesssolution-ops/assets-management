@@ -4475,8 +4475,10 @@ const DEFAULT_ASSET_CONDITIONS = [
   { id: 'cond-new', code: 'NEW', name: 'New', description: 'Brand new, unused condition', active: true },
   { id: 'cond-good', code: 'GOOD', name: 'Good', description: 'Normal working condition, minor wear', active: true },
   { id: 'cond-fair', code: 'FAIR', name: 'Fair', description: 'Functional with noticeable wear or minor defects', active: true },
-  { id: 'cond-damaged', code: 'DAMAGED', name: 'Damaged', description: 'Requires repair or maintenance', active: true },
-  { id: 'cond-refurbished', code: 'REFURBISHED', name: 'Refurbished', description: 'Restored to working order', active: true }
+  { id: 'cond-poor', code: 'POOR', name: 'Poor', description: 'Significant wear or frequent breakdown, requires overhaul', active: true },
+  { id: 'cond-damaged', code: 'DAMAGED', name: 'Damaged', description: 'Non-operational, physical defect or component failure', active: true },
+  { id: 'cond-scrap', code: 'SCRAP', name: 'Scrap / BER', description: 'Beyond economic repair, ready for retirement or disposal', active: true },
+  { id: 'cond-refurbished', code: 'REFURBISHED', name: 'Refurbished', description: 'Restored to working order from repairs', active: true }
 ];
 
 let inMemoryAssetConditions = readAssetConditionsFromFile();
@@ -6821,6 +6823,99 @@ export async function createAssetCondition(req, res, next) {
     inMemoryAssetConditions.push(newCond);
     writeAssetConditionsToFile(inMemoryAssetConditions);
     res.status(201).json({ success: true, condition: newCond, assetCondition: newCond });
+  } catch (err) { next(err); }
+}
+
+export async function updateAssetCondition(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { code, name, description, active } = req.body;
+    await ensureAssetConditionsTable();
+
+    let idx = inMemoryAssetConditions.findIndex(s => s.id === id || s.code === id);
+    if (idx === -1 && isDbConnected()) {
+      try {
+        const safeId = (id || '').replace(/'/g, "''");
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM asset_conditions WHERE id = '${safeId}' OR code = '${safeId}'`);
+        if (Array.isArray(rows) && rows[0]) {
+          const loaded = {
+            id: rows[0].id,
+            code: rows[0].code,
+            name: rows[0].name,
+            description: rows[0].description || '',
+            active: Boolean(rows[0].active)
+          };
+          inMemoryAssetConditions.push(loaded);
+          idx = inMemoryAssetConditions.length - 1;
+        }
+      } catch (dbErr) {
+        console.warn('DB lookup asset_conditions error:', dbErr.message);
+      }
+    }
+
+    if (idx === -1) {
+      return res.status(404).json({ success: false, message: 'Asset Condition not found.' });
+    }
+
+    const current = inMemoryAssetConditions[idx];
+    const cleanCode = code ? code.trim().toUpperCase() : current.code;
+    const cleanName = name ? name.trim() : current.name;
+    const cleanDesc = description !== undefined ? description.trim() : current.description;
+    const isAct = active !== undefined ? Boolean(active) : current.active;
+
+    if (cleanCode !== current.code && inMemoryAssetConditions.some((s, i) => i !== idx && (s.code || '').toUpperCase() === cleanCode)) {
+      return res.status(409).json({ success: false, message: `Asset Condition code "${cleanCode}" already exists.` });
+    }
+
+    const updated = {
+      ...current,
+      code: cleanCode,
+      name: cleanName,
+      description: cleanDesc,
+      active: isAct
+    };
+
+    if (isDbConnected()) {
+      try {
+        const safeId = (current.id || '').replace(/'/g, "''");
+        await prisma.$executeRawUnsafe(`
+          UPDATE asset_conditions
+          SET code = '${cleanCode.replace(/'/g, "''")}',
+              name = '${cleanName.replace(/'/g, "''")}',
+              description = '${cleanDesc.replace(/'/g, "''")}',
+              active = ${isAct ? 1 : 0},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${safeId}' OR code = '${safeId}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB update asset_conditions skipped:', dbErr.message);
+      }
+    }
+
+    inMemoryAssetConditions[idx] = updated;
+    writeAssetConditionsToFile(inMemoryAssetConditions);
+    res.json({ success: true, condition: updated, assetCondition: updated });
+  } catch (err) { next(err); }
+}
+
+export async function deleteAssetCondition(req, res, next) {
+  try {
+    const { id } = req.params;
+    await ensureAssetConditionsTable();
+    if (isDbConnected()) {
+      try {
+        const safeId = (id || '').replace(/'/g, "''");
+        await prisma.$executeRawUnsafe(`
+          DELETE FROM asset_conditions
+          WHERE id = '${safeId}' OR code = '${safeId}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB delete asset_conditions skipped:', dbErr.message);
+      }
+    }
+    inMemoryAssetConditions = inMemoryAssetConditions.filter(s => s.id !== id && s.code !== id);
+    writeAssetConditionsToFile(inMemoryAssetConditions);
+    res.json({ success: true, message: 'Asset Condition deleted successfully.' });
   } catch (err) { next(err); }
 }
 

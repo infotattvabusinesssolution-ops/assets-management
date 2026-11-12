@@ -201,6 +201,7 @@ const NAV_STRUCTURE = [
       { name: 'Brand', path: '/admin/master-data?tab=brands' },
       { name: 'UOM', path: '/admin/master-data?tab=uom' },
       { name: 'Status Code', path: '/admin/master-data?tab=status-codes' },
+      { name: 'Condition', path: '/admin/master-data?tab=conditions' },
       { name: 'Disposal Status', path: '/admin/master-data?tab=disposal-statuses' },
       { name: 'Depreciation Policy', path: '/admin/master-data?tab=depreciation' }
     ]

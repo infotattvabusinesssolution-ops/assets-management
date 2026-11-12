@@ -70,6 +70,7 @@ import {
 } from '../../components/master-data/GenericMasterTab';
 import { DepreciationPoliciesTab } from '../../components/master-data/DepreciationPoliciesTab';
 import { DisposalStatusesTab } from '../../components/master-data/DisposalStatusesTab';
+import { ConditionsTab } from '../../components/master-data/ConditionsTab';
 import { api } from '../../services/api';
 
 const getSingularName = (name = '') => {
@@ -406,7 +407,8 @@ export function MasterDataSetup() {
     { id: 'brands', name: 'Brands', icon: Tag, desc: 'Manage equipment and product brands linked to items and asset catalog.' },
     { id: 'uom', name: 'UOM', icon: Scale, desc: 'Define standard Units of Measure (UOM) for inventory parts, bulk materials, and asset counting.' },
     { id: 'status-codes', name: 'Status Codes', icon: ShieldCheck, desc: 'Configure lifecycle status codes, operational states, and workflow status indicators.' },
-    { id: 'disposal-statuses', name: 'Disposal Statuses', icon: Trash2, desc: 'Manage disposal statuses (Scrapped, Sold, Donated, Written Off, Traded In) for asset retirement transactions.' }
+    { id: 'disposal-statuses', name: 'Disposal Statuses', icon: Trash2, desc: 'Manage disposal statuses (Scrapped, Sold, Donated, Written Off, Traded In) for asset retirement transactions.' },
+    { id: 'conditions', aliasId: 'asset-conditions', name: 'Conditions', icon: ShieldCheck, desc: 'Define and manage asset physical and operational conditions (New, Good, Fair, Damaged, Scrap) across the asset lifecycle.' }
   ];
 
   const MORE_TABS = [
@@ -788,6 +790,16 @@ export function MasterDataSetup() {
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
           externalShowAddModal={activeAddModalTab === 'disposal-statuses'}
+          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
+        />
+      )}
+
+      {(activeTab === 'conditions' || activeTab === 'asset-conditions') && (
+        <ConditionsTab
+          triggerToast={triggerToast}
+          activeRowMenuId={activeRowMenuId}
+          setActiveRowMenuId={setActiveRowMenuId}
+          externalShowAddModal={activeAddModalTab === 'conditions' || activeAddModalTab === 'asset-conditions'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}
