@@ -25,6 +25,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { deduplicateCustodians } from './custodianUtils';
 
 export const INITIAL_DEPARTMENTS = [];
 
@@ -67,7 +68,7 @@ export function DepartmentsTab({
       try {
         customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
       } catch (_) {}
-      const combinedEmployees = [...allLoadedEmployees, ...customCustodians];
+      const combinedEmployees = deduplicateCustodians(allLoadedEmployees, customCustodians);
       setCustodiansList(combinedEmployees);
 
       if (res?.departments && res.departments.length > 0) {
@@ -222,7 +223,8 @@ export function DepartmentsTab({
   }, [companiesList]);
 
   const sortedCustodians = useMemo(() => {
-    return [...custodiansList].sort((a, b) => {
+    const deduped = deduplicateCustodians(custodiansList);
+    return deduped.sort((a, b) => {
       const aInactive = a.active === false || a.status === 'Inactive';
       const bInactive = b.active === false || b.status === 'Inactive';
       if (!aInactive && bInactive) return -1;
@@ -243,10 +245,9 @@ export function DepartmentsTab({
       try {
         customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
       } catch (_) {}
-      const customIds = new Set(customCustodians.map(c => c.id));
-      const merged = [...customCustodians, ...allLoadedEmployees.filter(e => !customIds.has(e.id))];
-      setCustodiansList(merged);
-      return merged;
+      const deduped = deduplicateCustodians(allLoadedEmployees, customCustodians);
+      setCustodiansList(deduped);
+      return deduped;
     } catch (_) {
       return custodiansList;
     }
@@ -1084,13 +1085,14 @@ export function DepartmentsTab({
                         {editingDepartment.manager} (Current)
                       </option>
                     )}
-                    {sortedCustodians.map((c) => {
+                    {sortedCustodians.map((c, idx) => {
                       const isInactive = c.active === false || c.status === 'Inactive';
                       const name = c.fullName || c.name || '';
                       const code = c.employeeCode || c.code || '';
+                      const optKey = `dept-cust-${c.id || code || name || idx}-${idx}`;
                       return (
                         <option
-                          key={c.id || code || name}
+                          key={optKey}
                           value={name}
                           disabled={isInactive}
                           className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}

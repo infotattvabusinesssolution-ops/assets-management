@@ -26,6 +26,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { deduplicateCustodians } from './custodianUtils';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -64,7 +65,7 @@ export function CostCentersTab({
       try {
         customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
       } catch (_) {}
-      const combinedEmployees = [...allLoadedEmployees, ...customCustodians];
+      const combinedEmployees = deduplicateCustodians(allLoadedEmployees, customCustodians);
       setCustodiansList(combinedEmployees);
       if (res?.costCenters && res.costCenters.length > 0) {
         const mapped = res.costCenters.map((cc) => {
@@ -144,12 +145,35 @@ export function CostCentersTab({
   });
 
   const sortedCustodians = useMemo(() => {
-    return [...custodiansList].sort((a, b) => {
+    const deduped = deduplicateCustodians(custodiansList);
+    return deduped.sort((a, b) => {
+      const aInactive = a.active === false || a.status === 'Inactive';
+      const bInactive = b.active === false || b.status === 'Inactive';
+      if (!aInactive && bInactive) return -1;
+      if (aInactive && !bInactive) return 1;
       const nameA = (a.fullName || a.name || '').toLowerCase();
       const nameB = (b.fullName || b.name || '').toLowerCase();
       return nameA.localeCompare(nameB);
     });
   }, [custodiansList]);
+
+  const loadCustodians = async () => {
+    try {
+      const empRes = await api.get('/master-data/employees?includeInactive=true').catch(() => null);
+      const allLoadedEmployees = [
+        ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : (Array.isArray(empRes) ? empRes : [])))
+      ];
+      let customCustodians = [];
+      try {
+        customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      } catch (_) {}
+      const deduped = deduplicateCustodians(allLoadedEmployees, customCustodians);
+      setCustodiansList(deduped);
+      return deduped;
+    } catch (_) {
+      return custodiansList;
+    }
+  };
 
   const filteredCostCenters = useMemo(() => {
     return costCentersList.filter((cc) => {
@@ -197,6 +221,7 @@ export function CostCentersTab({
   const handleOpenAddCCModal = (ccToEdit = null) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     setModalError('');
+    loadCustodians();
     if (ccToEdit) {
       setEditingCostCenter(ccToEdit);
       const matchedCust = custodiansList.find(c => 
@@ -963,13 +988,14 @@ export function CostCentersTab({
                         {editingCostCenter.manager} (Current)
                       </option>
                     )}
-                    {sortedCustodians.map((c) => {
+                    {sortedCustodians.map((c, idx) => {
                       const isInactive = c.active === false || c.status === 'Inactive';
                       const name = c.fullName || c.name || '';
                       const code = c.employeeCode || c.code || '';
+                      const optKey = `cc-cust-${c.id || code || name || idx}-${idx}`;
                       return (
                         <option
-                          key={c.id || code || name}
+                          key={optKey}
                           value={name}
                           disabled={isInactive}
                           className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-800 font-medium'}

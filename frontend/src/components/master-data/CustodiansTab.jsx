@@ -31,6 +31,7 @@ import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
+import { deduplicateCustodians } from './custodianUtils';
 
 export function CustodiansTab({
   triggerToast,
@@ -95,20 +96,16 @@ export function CustodiansTab({
       if (deptRes?.departments) setDepartments(deptRes.departments);
 
       const customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-      const customIds = new Set(customCustodians.map(c => c.id));
-      if (empRes?.employees && Array.isArray(empRes.employees) && empRes.employees.length > 0) {
-        const merged = [...customCustodians, ...empRes.employees.filter(e => !customIds.has(e.id))];
-        setCustodians(merged);
-        setSelectedCustodian(merged[0] || null);
-      } else {
-        setCustodians(customCustodians);
-        setSelectedCustodian(customCustodians[0] || null);
-      }
+      const serverCustodians = Array.isArray(empRes?.employees) ? empRes.employees : [];
+      const merged = deduplicateCustodians(serverCustodians, customCustodians);
+      setCustodians(merged);
+      setSelectedCustodian(merged[0] || null);
     } catch (err) {
       console.warn('Failed to load custodians:', err);
       const customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-      setCustodians(customCustodians);
-      setSelectedCustodian(customCustodians[0] || null);
+      const deduped = deduplicateCustodians(customCustodians);
+      setCustodians(deduped);
+      setSelectedCustodian(deduped[0] || null);
     } finally {
       setIsLoading(false);
     }
