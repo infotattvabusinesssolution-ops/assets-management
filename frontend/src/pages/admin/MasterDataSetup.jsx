@@ -455,8 +455,8 @@ export function MasterDataSetup() {
           </p>
         </div>
 
-        {/* Action Buttons Top Right */}
-        {activeTab !== 'depreciation' && <div className="flex items-center gap-2 relative">
+        {/* Action Buttons Top Right (only shown for actual master entity tables) */}
+        {!['depreciation', 'code-prefixes', 'audit-log', 'import-guidelines'].includes(activeTab) && <div className="flex items-center gap-2 relative">
           {/* Import Dropdown */}
           <div className="relative" ref={importDropdownRef}>
             <button
@@ -805,8 +805,7 @@ export function MasterDataSetup() {
       )}
 
       {/* GENERIC MASTER DATA TABS (Asset Types, Manufacturers, UOM, Status Codes & Custom Views) */}
-      {(['manufacturers', 'brands', 'uom', 'status-codes', 'asset-types'].includes(activeTab) ||
-        (MORE_TABS.some((mt) => mt.id === activeTab) && activeTab !== 'depreciation')) && (
+      {['manufacturers', 'brands', 'uom', 'status-codes', 'asset-types'].includes(activeTab) && (
         <GenericMasterTab
           key={activeTab}
           activeTab={activeTab}
