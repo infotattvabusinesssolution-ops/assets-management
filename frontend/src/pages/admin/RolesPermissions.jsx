@@ -391,14 +391,23 @@ export function RolesPermissions() {
     if (!roleToDelete) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/admin/roles/${roleToDelete.id}`).catch(() => null);
+      const res = await api.delete(`/admin/roles/${roleToDelete.id}`);
+      if (res && res.error) {
+        triggerToast(res.error);
+        setIsDeleting(false);
+        setRoleToDelete(null);
+        return;
+      }
+      setRoles(roles.filter((r) => r.id !== roleToDelete.id));
+      triggerToast(`Role "${roleToDelete.name}" deleted.`);
     } catch (err) {
       console.error(err);
+      const errMsg = err?.response?.data?.error || err?.response?.data?.message || err?.message || 'Failed to delete role.';
+      triggerToast(errMsg);
+    } finally {
+      setRoleToDelete(null);
+      setIsDeleting(false);
     }
-    setRoles(roles.filter((r) => r.id !== roleToDelete.id));
-    triggerToast(`Role "${roleToDelete.name}" deleted.`);
-    setRoleToDelete(null);
-    setIsDeleting(false);
   };
 
   const handleOpenPermissions = (role) => {
