@@ -640,7 +640,7 @@ export function SubCategoriesTab({
                   <MasterEmptyState
                     icon={FolderTree}
                     title="No Sub Categories found"
-                    subtitle={scSearchQuery ? "No sub categories match your search criteria." : "Get started by defining your first asset sub category."}
+                    subtitle={subCatSearchQuery ? "No sub categories match your search criteria." : "Get started by defining your first asset sub category."}
                     actionLabel="Add Sub Category"
                     onAction={() => handleOpenAddSubCatModal(null)}
                     colSpan={8}
