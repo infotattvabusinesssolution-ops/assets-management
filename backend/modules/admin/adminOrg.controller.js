@@ -914,6 +914,77 @@ export async function deleteAdminRole(req, res) {
   }
 }
 
+export async function assignUsersToRole(req, res) {
+  try {
+    const { id } = req.params;
+    const { userIds } = req.body;
+
+    if (!Array.isArray(userIds)) {
+      return res.status(400).json({ success: false, error: 'userIds array is required' });
+    }
+
+    const role = await prisma.role.findFirst({
+      where: { OR: [{ id: id }, { code: id }] }
+    }).catch(() => null);
+
+    if (!role) {
+      return res.status(404).json({ success: false, error: 'Role not found' });
+    }
+
+    // 1. Assign selected users to this role
+    if (userIds.length > 0) {
+      await prisma.user.updateMany({
+        where: { id: { in: userIds } },
+        data: { roleId: role.id }
+      }).catch(err => console.warn('Prisma updateMany assigned error:', err.message));
+    }
+
+    // 2. For users who had this role but were unselected, reassign them to Standard User
+    const standardRole = await prisma.role.findFirst({
+      where: { OR: [{ code: 'STANDARD_USER' }, { name: 'Standard User' }] }
+    }).catch(() => null);
+
+    if (standardRole && standardRole.id !== role.id) {
+      await prisma.user.updateMany({
+        where: {
+          roleId: role.id,
+          id: { notIn: userIds }
+        },
+        data: { roleId: standardRole.id }
+      }).catch(err => console.warn('Prisma updateMany unassigned error:', err.message));
+    }
+
+    // 3. Keep memoryUsers in sync
+    memoryUsers = memoryUsers.map(u => {
+      if (userIds.includes(u.id)) {
+        return { ...u, role: role.name, roleId: role.id };
+      }
+      if (u.roleId === role.id && !userIds.includes(u.id)) {
+        return { ...u, role: standardRole?.name || 'Standard User', roleId: standardRole?.id || '' };
+      }
+      return u;
+    });
+
+    const userCount = await prisma.user.count({ where: { roleId: role.id } }).catch(() => userIds.length);
+
+    // Also update role's userCount in memoryRoles
+    const memRoleIndex = memoryRoles.findIndex(r => r.id === role.id || r.code === role.code);
+    if (memRoleIndex !== -1) {
+      memoryRoles[memRoleIndex].userCount = userCount;
+    }
+
+    res.json({
+      success: true,
+      message: `Assigned ${userIds.length} user(s) to role "${role.name}"`,
+      roleId: role.id,
+      userCount
+    });
+  } catch (err) {
+    console.error('assignUsersToRole error:', err);
+    res.status(500).json({ success: false, error: err.message });
+  }
+}
+
 // ==========================================
 // ORGANIZATION HIERARCHY ENDPOINTS
 // ==========================================

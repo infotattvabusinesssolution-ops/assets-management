@@ -11,6 +11,7 @@ import {
   updateAdminRole,
   cloneAdminRole,
   deleteAdminRole,
+  assignUsersToRole,
   getCompaniesList,
   getBusinessUnitsList,
   getDepartmentsList,
@@ -54,6 +55,7 @@ router.post('/roles', createAdminRole);
 router.put('/roles/:id', updateAdminRole);
 router.post('/roles/:id/clone', cloneAdminRole);
 router.delete('/roles/:id', deleteAdminRole);
+router.post('/roles/:id/assign-users', assignUsersToRole);
 
 // Organization Hierarchy Routes
 router.get('/organization/companies', getCompaniesList);

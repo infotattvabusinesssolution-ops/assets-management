@@ -24,7 +24,8 @@ import {
   XCircle,
   ArrowUpDown,
   FileSpreadsheet,
-  CheckSquare
+  CheckSquare,
+  RefreshCw
 } from 'lucide-react';
 import clsx from 'clsx';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
@@ -186,6 +187,13 @@ export function RolesPermissions() {
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [roleForm, setRoleForm] = useState({ name: '', description: '', roleType: 'Custom Role', status: 'Active' });
   const [roleFormError, setRoleFormError] = useState('');
+
+  // Assign Users Dynamic State
+  const [usersList, setUsersList] = useState([]);
+  const [loadingUsers, setLoadingUsers] = useState(false);
+  const [selectedUserIds, setSelectedUserIds] = useState(new Set());
+  const [assignUserSearch, setAssignUserSearch] = useState('');
+  const [isSavingAssignments, setIsSavingAssignments] = useState(false);
 
   // Permissions Matrix State
   const [expandedModules, setExpandedModules] = useState({ assets: true, movements: true, audit: true, administration: true });
@@ -407,6 +415,112 @@ export function RolesPermissions() {
     } finally {
       setRoleToDelete(null);
       setIsDeleting(false);
+    }
+  };
+
+  const handleOpenAssignUsers = async (role) => {
+    setSelectedRole(role);
+    setActiveDropdownId(null);
+    setShowAssignUsersModal(true);
+    setLoadingUsers(true);
+    setAssignUserSearch('');
+
+    try {
+      const res = await api.get('/admin/users', { params: { limit: 200 } }).catch(() => null);
+      let fetchedUsers = [];
+      if (res && res.users && Array.isArray(res.users)) {
+        fetchedUsers = res.users;
+      } else if (Array.isArray(res)) {
+        fetchedUsers = res;
+      }
+
+      let localUsers = [];
+      try {
+        localUsers = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      } catch (e) {}
+
+      const demoDomains = ['infotatwaa.com', 'corporate.com', 'infotattva.com', 'apexfacilities.com'];
+      const combined = [...localUsers, ...fetchedUsers].filter((u) => {
+        if (!u) return false;
+        const email = String(u.email || '').toLowerCase();
+        return !demoDomains.some((d) => email.includes(d));
+      });
+
+      const seen = new Set();
+      const uniqueUsers = [];
+      for (const u of combined) {
+        const key = (u.id || u.username || u.email || '').toLowerCase();
+        if (key && !seen.has(key)) {
+          seen.add(key);
+          uniqueUsers.push(u);
+        }
+      }
+
+      setUsersList(uniqueUsers);
+
+      // Pre-select users who currently have this role
+      const initialAssigned = new Set(
+        uniqueUsers
+          .filter(u => u.roleId === role.id || (u.role && u.role.toLowerCase() === role.name.toLowerCase()))
+          .map(u => u.id)
+      );
+      setSelectedUserIds(initialAssigned);
+    } catch (err) {
+      console.error('Failed to load users for assignment:', err);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  const toggleUserAssignment = (userId) => {
+    setSelectedUserIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(userId)) {
+        next.delete(userId);
+      } else {
+        next.add(userId);
+      }
+      return next;
+    });
+  };
+
+  const handleSaveUserAssignments = async () => {
+    if (!selectedRole) return;
+    setIsSavingAssignments(true);
+    const assignedArray = Array.from(selectedUserIds);
+
+    try {
+      const res = await api.post(`/admin/roles/${selectedRole.id}/assign-users`, {
+        userIds: assignedArray
+      }).catch(() => null);
+
+      // Update localStorage custom users so User Management reflects role immediately
+      try {
+        let localUsers = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+        localUsers = localUsers.map((u) => {
+          if (assignedArray.includes(u.id)) {
+            return { ...u, role: selectedRole.name, roleId: selectedRole.id };
+          }
+          if ((u.roleId === selectedRole.id || u.role === selectedRole.name) && !assignedArray.includes(u.id)) {
+            return { ...u, role: 'Standard User' };
+          }
+          return u;
+        });
+        localStorage.setItem('fams_custom_users', JSON.stringify(localUsers));
+      } catch (e) {}
+
+      const newCount = res?.userCount !== undefined ? res.userCount : assignedArray.length;
+      setRoles((prev) =>
+        prev.map((r) => (r.id === selectedRole.id ? { ...r, userCount: newCount } : r))
+      );
+
+      triggerToast(`Assigned ${newCount} user${newCount === 1 ? '' : 's'} to "${selectedRole.name}".`);
+      setShowAssignUsersModal(false);
+    } catch (err) {
+      console.error('Error saving user assignments:', err);
+      triggerToast('Failed to save assignments.');
+    } finally {
+      setIsSavingAssignments(false);
     }
   };
 
@@ -842,11 +956,7 @@ export function RolesPermissions() {
                               Clone Role
                             </button>
                             <button
-                              onClick={() => {
-                                setSelectedRole(role);
-                                setShowAssignUsersModal(true);
-                                setActiveDropdownId(null);
-                              }}
+                              onClick={() => handleOpenAssignUsers(role)}
                               className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
                             >
                               <Users className="w-4 h-4 text-[#6C2BD9]" />
@@ -1193,7 +1303,9 @@ export function RolesPermissions() {
                   <Users className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-black text-slate-900">Assign Users to {selectedRole.name}</h3>
+                  <h3 className="text-base font-black text-slate-900">
+                    Assign Users to <span className="text-[#6C2BD9]">{selectedRole.name}</span>
+                  </h3>
                   <p className="text-xs text-slate-400">Select users to associate with this access role</p>
                 </div>
               </div>
@@ -1202,43 +1314,114 @@ export function RolesPermissions() {
               </button>
             </div>
 
-            <div className="space-y-2 max-h-60 overflow-y-auto pr-1 text-xs">
-              {[
-                { name: 'John Doe', email: 'john.doe@infotatwaa.com', assigned: true },
-                { name: 'Sarah Ahmed', email: 'sarah.ahmed@infotatwaa.com', assigned: true },
-                { name: 'Ramesh Kumar', email: 'ramesh.kumar@infotatwaa.com', assigned: false },
-                { name: 'Priya Nair', email: 'priya.nair@infotatwaa.com', assigned: false },
-                { name: 'Michael Brown', email: 'michael.brown@infotatwaa.com', assigned: false }
-              ].map((u, i) => (
-                <label key={i} className="flex items-center justify-between p-2.5 rounded-xl border border-slate-100 bg-slate-50/50 hover:bg-slate-100 cursor-pointer">
-                  <div className="flex items-center gap-2.5">
-                    <input type="checkbox" defaultChecked={u.assigned} className="rounded text-[#6C2BD9]" />
-                    <div>
-                      <div className="font-bold text-slate-800">{u.name}</div>
-                      <div className="text-[10px] text-slate-400">{u.email}</div>
-                    </div>
-                  </div>
-                  {u.assigned && <span className="text-[10px] font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded">Assigned</span>}
-                </label>
-              ))}
+            {/* Search Input */}
+            <div className="relative">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+              <input
+                type="text"
+                placeholder="Search users by name, username, or email..."
+                value={assignUserSearch}
+                onChange={(e) => setAssignUserSearch(e.target.value)}
+                className="w-full pl-9 pr-3 py-2 border border-slate-200 rounded-xl text-xs bg-white text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+              />
             </div>
 
-            <div className="pt-3 border-t border-slate-100 flex items-center justify-end gap-2 text-xs">
-              <button
-                onClick={() => setShowAssignUsersModal(false)}
-                className="px-4 py-2 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50"
-              >
-                Cancel
-              </button>
-              <button
-                onClick={() => {
-                  setShowAssignUsersModal(false);
-                  triggerToast(`User assignments updated for ${selectedRole.name}.`);
-                }}
-                className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl shadow-xs"
-              >
-                Save Assignments
-              </button>
+            {/* Users list */}
+            <div className="space-y-2 max-h-72 overflow-y-auto pr-1 text-xs">
+              {loadingUsers ? (
+                <div className="py-8 text-center text-slate-400">
+                  <RefreshCw className="w-5 h-5 animate-spin mx-auto mb-2 text-[#6C2BD9]" />
+                  <span>Loading users from database...</span>
+                </div>
+              ) : usersList.length === 0 ? (
+                <div className="py-8 text-center text-slate-400">
+                  <Users className="w-6 h-6 mx-auto mb-2 text-slate-300" />
+                  <span>No users found. Create users in User Management first.</span>
+                </div>
+              ) : (
+                usersList
+                  .filter((u) => {
+                    if (!assignUserSearch) return true;
+                    const q = assignUserSearch.toLowerCase().trim();
+                    return (
+                      (u.name && u.name.toLowerCase().includes(q)) ||
+                      (u.username && u.username.toLowerCase().includes(q)) ||
+                      (u.email && u.email.toLowerCase().includes(q)) ||
+                      (u.department && u.department.toLowerCase().includes(q))
+                    );
+                  })
+                  .map((u) => {
+                    const isAssigned = selectedUserIds.has(u.id);
+                    const displayName = u.name || u.username || 'Unnamed User';
+                    return (
+                      <label
+                        key={u.id}
+                        className={`flex items-center justify-between p-2.5 rounded-xl border transition-colors cursor-pointer ${
+                          isAssigned
+                            ? 'border-purple-200 bg-purple-50/60 hover:bg-purple-50'
+                            : 'border-slate-100 bg-slate-50/50 hover:bg-slate-100'
+                        }`}
+                      >
+                        <div className="flex items-center gap-2.5">
+                          <input
+                            type="checkbox"
+                            checked={isAssigned}
+                            onChange={() => toggleUserAssignment(u.id)}
+                            className="rounded text-[#6C2BD9] focus:ring-[#6C2BD9] cursor-pointer"
+                          />
+                          <div>
+                            <div className="font-bold text-slate-800">{displayName}</div>
+                            <div className="text-[10px] text-slate-400">{u.email || u.username}</div>
+                          </div>
+                        </div>
+                        <div>
+                          {isAssigned ? (
+                            <span className="text-[10px] font-bold text-purple-700 bg-purple-100/70 border border-purple-200 px-2 py-0.5 rounded-md">
+                              Assigned
+                            </span>
+                          ) : (
+                            u.role && u.role !== selectedRole.name && (
+                              <span className="text-[10px] text-slate-500 bg-slate-100 px-2 py-0.5 rounded-md">
+                                {u.role}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </label>
+                    );
+                  })
+              )}
+            </div>
+
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between text-xs">
+              <span className="text-slate-500 font-medium">
+                <strong className="text-slate-900">{selectedUserIds.size}</strong> user(s) selected
+              </span>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAssignUsersModal(false)}
+                  disabled={isSavingAssignments}
+                  className="px-4 py-2 border border-slate-200 text-slate-700 font-bold rounded-xl hover:bg-slate-50 cursor-pointer disabled:opacity-50"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="button"
+                  onClick={handleSaveUserAssignments}
+                  disabled={isSavingAssignments}
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-xl shadow-xs cursor-pointer disabled:opacity-50 flex items-center gap-1.5"
+                >
+                  {isSavingAssignments ? (
+                    <>
+                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                      <span>Saving...</span>
+                    </>
+                  ) : (
+                    <span>Save Assignments</span>
+                  )}
+                </button>
+              </div>
             </div>
           </div>
         </div>
