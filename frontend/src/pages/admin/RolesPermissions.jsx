@@ -146,14 +146,19 @@ export function RolesPermissions() {
           const list = res.roles || res;
           if (list.length > 0) {
             const mapped = list.map((r) => ({
+              ...r,
               id: r.id,
               name: r.name,
+              code: r.code,
               description: r.description || '',
               roleType: r.isSystem ? 'System Role' : 'Custom Role',
               userCount: r._count?.users || r.userCount || 0,
-              status: r.active ? 'Active' : 'Inactive',
+              status: r.active ? 'Active' : (r.status || 'Active'),
+              active: r.active !== undefined ? r.active : (r.status === 'Active'),
               dateCreated: new Date(r.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-              createdBy: r.createdBy || 'System'
+              createdBy: r.createdBy || (r.isSystem ? 'System Setup' : 'Administrator'),
+              isSystem: Boolean(r.isSystem),
+              permissions: r.permissions || {}
             }));
             setRoles(mapped);
           }
@@ -550,7 +555,50 @@ export function RolesPermissions() {
         perms = {};
       }
     }
-    setRolePermissions(perms && typeof perms === 'object' ? perms : {});
+
+    let matrixPerms = {};
+
+    // 1. Full wildcard access
+    if (Array.isArray(perms) && perms.includes('*')) {
+      MODULE_STRUCTURE.forEach(m => {
+        matrixPerms[m.key] = [...m.actions];
+      });
+    } else if (Array.isArray(perms)) {
+      // 2. Convert legacy flat array of codes (e.g. ['ASSETS_VIEW', 'ASSETS_CREATE']) to matrix
+      perms.forEach(code => {
+        const parts = String(code).toLowerCase().split('_');
+        const modPrefix = parts[0];
+        const actPart = parts.slice(1).join('_');
+        let modKey = modPrefix;
+        if (['audit', 'verification'].includes(modPrefix)) modKey = 'stocktakes';
+        if (['rtls', 'location', 'maps'].includes(modPrefix)) modKey = 'tracking';
+        if (['users', 'roles', 'settings', 'admin'].includes(modPrefix)) modKey = 'administration';
+
+        if (!matrixPerms[modKey]) matrixPerms[modKey] = [];
+        if (!actPart || actPart === 'view') {
+          if (!matrixPerms[modKey].includes('View')) matrixPerms[modKey].push('View');
+        } else if (actPart === 'create' || actPart === 'add') {
+          if (!matrixPerms[modKey].includes('Create')) matrixPerms[modKey].push('Create');
+        } else if (actPart === 'edit' || actPart === 'update') {
+          if (!matrixPerms[modKey].includes('Edit')) matrixPerms[modKey].push('Edit');
+        } else if (actPart === 'delete') {
+          if (!matrixPerms[modKey].includes('Delete')) matrixPerms[modKey].push('Delete');
+        } else if (actPart === 'approve') {
+          if (!matrixPerms[modKey].includes('Approve')) matrixPerms[modKey].push('Approve');
+        } else if (actPart === 'export') {
+          if (!matrixPerms[modKey].includes('Export')) matrixPerms[modKey].push('Export');
+        } else if (actPart === 'import') {
+          if (!matrixPerms[modKey].includes('Import')) matrixPerms[modKey].push('Import');
+        } else {
+          const cap = actPart.charAt(0).toUpperCase() + actPart.slice(1);
+          if (!matrixPerms[modKey].includes(cap)) matrixPerms[modKey].push(cap);
+        }
+      });
+    } else if (perms && typeof perms === 'object') {
+      matrixPerms = { ...perms };
+    }
+
+    setRolePermissions(matrixPerms);
     setShowPermissionsModal(true);
     setActiveDropdownId(null);
   };
