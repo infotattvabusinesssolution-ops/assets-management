@@ -369,7 +369,7 @@ export function Login() {
       redirectByUserRole(res.user);
     } else {
       // Smart fallback for admin account
-      if (targetUser === 'admin' && targetPass !== 'Password@123') {
+      if (targetUser === 'admin' && password !== 'Password@123') {
         const retryRes = await login('admin', 'Password@123');
         if (retryRes && retryRes.success) {
           redirectByUserRole(retryRes.user);
