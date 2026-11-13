@@ -138,13 +138,13 @@ const MASTER_CONFIGS = {
     endpoint: '/master-data/asset-groups?includeInactive=true',
     postEndpoint: '/master-data/asset-groups',
     dataKey: 'assetGroups',
-    headers: ['Group Code', 'Group Name', 'Asset Type', 'Description', 'Status'],
-    fields: ['code', 'name', 'assetType', 'description', 'status'],
+    headers: ['Group Code', 'Group Name', 'Description', 'Status'],
+    fields: ['code', 'name', 'description', 'status'],
     sampleRows: [
-      ['IT', 'Information Technology', 'Physical', 'Computers, servers, and networking hardware', 'Active'],
-      ['VEH', 'Fleet Vehicles & Transport', 'Physical', 'Company automobiles, vans, and transport fleet', 'Active'],
-      ['FURN', 'Furniture & Office Fixtures', 'Physical', 'Desks, chairs, cabinets, and workstations', 'Active'],
-      ['SW', 'Enterprise Software Licenses', 'Intangible', 'ERP and operating system digital software licenses', 'Active']
+      ['IT', 'Information Technology', 'Computers, servers, and networking hardware', 'Active'],
+      ['VEH', 'Fleet Vehicles & Transport', 'Company automobiles, vans, and transport fleet', 'Active'],
+      ['FURN', 'Furniture & Office Fixtures', 'Desks, chairs, cabinets, and workstations', 'Active'],
+      ['SW', 'Enterprise Software Licenses', 'ERP and operating system digital software licenses', 'Active']
     ],
     mapRow: (r) => ({
       code: r.code || r['group code'] || '',
