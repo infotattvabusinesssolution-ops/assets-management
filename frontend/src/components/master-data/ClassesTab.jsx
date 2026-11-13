@@ -93,11 +93,14 @@ export function ClassesTab({
           const parsedGroup = groupMatch ? groupMatch[1] : (ac.groupName || '-');
 
           const childCats = allLiveCats.filter(cat => {
+            if (cat.assetSubGroupId && (cat.assetSubGroupId === ac.id || cat.assetSubGroupId === ac.code)) return true;
+            if (cat.assetSubGroup?.id && (cat.assetSubGroup.id === ac.id || cat.assetSubGroup.id === ac.code)) return true;
+            if (cat.assetSubGroup?.code && (cat.assetSubGroup.code === ac.id || cat.assetSubGroup.code === ac.code)) return true;
             const catClass = (cat.description || '').match(/\[class:([^\]]+)\]/)?.[1] || cat.className || '';
             return (
               (catClass && (catClass.toLowerCase() === (ac.name || '').toLowerCase() || catClass.toLowerCase() === (ac.code || '').toLowerCase())) ||
-              ((cat.description || '').toLowerCase().includes(`[class:${(ac.name || '').toLowerCase()}]`)) ||
-              ((cat.description || '').toLowerCase().includes(`[class:${(ac.code || '').toLowerCase()}]`))
+              (ac.name && (cat.description || '').toLowerCase().includes(`[class:${ac.name.toLowerCase()}]`)) ||
+              (ac.code && (cat.description || '').toLowerCase().includes(`[class:${ac.code.toLowerCase()}]`))
             );
           });
 
@@ -434,11 +437,14 @@ export function ClassesTab({
   const handleInitiateDeleteClass = (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     const childCats = (liveCategories || []).filter(cat => {
+      if (cat.assetSubGroupId && (cat.assetSubGroupId === cls.id || cat.assetSubGroupId === cls.code)) return true;
+      if (cat.assetSubGroup?.id && (cat.assetSubGroup.id === cls.id || cat.assetSubGroup.id === cls.code)) return true;
+      if (cat.assetSubGroup?.code && (cat.assetSubGroup.code === cls.id || cat.assetSubGroup.code === cls.code)) return true;
       const catClass = (cat.description || '').match(/\[class:([^\]]+)\]/)?.[1] || cat.className || '';
       return (
         (catClass && (catClass.toLowerCase() === (cls.name || '').toLowerCase() || catClass.toLowerCase() === (cls.code || '').toLowerCase())) ||
-        ((cat.description || '').toLowerCase().includes(`[class:${(cls.name || '').toLowerCase()}]`)) ||
-        ((cat.description || '').toLowerCase().includes(`[class:${(cls.code || '').toLowerCase()}]`))
+        (cls.name && (cat.description || '').toLowerCase().includes(`[class:${cls.name.toLowerCase()}]`)) ||
+        (cls.code && (cat.description || '').toLowerCase().includes(`[class:${cls.code.toLowerCase()}]`))
       );
     });
 
