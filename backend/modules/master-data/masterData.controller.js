@@ -2475,7 +2475,8 @@ export async function updateAssetSubGroup(req, res, next) {
             SET active = 0
             WHERE assetSubGroupId = '${id.replace(/'/g, "''")}'
                ${subCode ? `OR assetSubGroupId = '${subCode.replace(/'/g, "''")}'` : ''}
-               ${subName ? `OR description LIKE '%[class:${subName.replace(/'/g, "''")}]%'` : ''}
+               ${subName ? `OR description LIKE '%[[]class:${subName.replace(/'/g, "''")}]%'` : ''}
+               ${subCode ? `OR description LIKE '%[[]class:${subCode.replace(/'/g, "''")}]%'` : ''}
           `).catch(e => console.warn('Cascade deactivation to categories error:', e.message));
 
           await prisma.$executeRawUnsafe(`
@@ -2550,26 +2551,14 @@ export async function deleteAssetSubGroup(req, res, next) {
     let categoriesCount = 0;
     if (isDbConnected()) {
       try {
-        const pCatCount = await prisma.category.count({
-          where: {
-            OR: [
-              ...(subGroupName ? [{ description: { contains: `[class:${subGroupName}]` } }, { description: { contains: subGroupName } }] : []),
-              ...(subGroupCode ? [{ description: { contains: `[class:${subGroupCode}]` } }, { description: { contains: subGroupCode } }] : [])
-            ]
-          }
-        }).catch(() => 0);
-        if (pCatCount > categoriesCount) categoriesCount = pCatCount;
-      } catch (_) {}
-
-      try {
         const catRows = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM categories
-          WHERE description LIKE '%[class:${subGroupName.replace(/'/g, "''")}]%'
-             OR description LIKE '%[class:${subGroupCode.replace(/'/g, "''")}]%'
-             ${subGroupName ? `OR description LIKE '%${subGroupName.replace(/'/g, "''")}%'` : ''}
+          WHERE assetSubGroupId = '${id.replace(/'/g, "''")}'
+             ${subGroupCode ? `OR assetSubGroupId = '${subGroupCode.replace(/'/g, "''")}'` : ''}
+             ${subGroupName ? `OR description LIKE '%[[]class:${subGroupName.replace(/'/g, "''")}]%'` : ''}
+             ${subGroupCode ? `OR description LIKE '%[[]class:${subGroupCode.replace(/'/g, "''")}]%'` : ''}
         `);
-        const dbCatCount = Number(catRows?.[0]?.cnt || 0);
-        if (dbCatCount > categoriesCount) categoriesCount = dbCatCount;
+        categoriesCount = Number(catRows?.[0]?.cnt || 0);
       } catch (dbErr) {
         console.warn('DB check categories in deleteAssetSubGroup skipped:', dbErr.message);
       }
@@ -2618,7 +2607,8 @@ export async function deleteAssetSubGroup(req, res, next) {
             SET active = 0
             WHERE assetSubGroupId = '${id.replace(/'/g, "''")}'
                ${subGroupCode ? `OR assetSubGroupId = '${subGroupCode.replace(/'/g, "''")}'` : ''}
-               ${subGroupName ? `OR description LIKE '%[class:${subGroupName.replace(/'/g, "''")}]%'` : ''}
+               ${subGroupName ? `OR description LIKE '%[[]class:${subGroupName.replace(/'/g, "''")}]%'` : ''}
+               ${subGroupCode ? `OR description LIKE '%[[]class:${subGroupCode.replace(/'/g, "''")}]%'` : ''}
           `).catch(() => null);
           await prisma.$executeRawUnsafe(`
             UPDATE sub_categories
