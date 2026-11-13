@@ -199,23 +199,23 @@ const ROLE_DESTINATIONS = {
 };
 
 // Asset360 Official Brand Logo Component matching exact crop typography
-function BrandLogo({ className = "" }) {
+function BrandLogo({ className = "", compact = false }) {
   return (
-    <div className={`flex items-center gap-3.5 ${className}`}>
+    <div className={`flex items-center gap-3 ${className}`}>
       {/* High-Fidelity Infinity Symbol PNG Logo Asset */}
       <img
         src="/logo-asset.png"
         alt="Asset360 Logo"
-        className="h-10 sm:h-12 w-auto object-contain pointer-events-none flex-shrink-0"
+        className={`${compact ? 'h-8 sm:h-9' : 'h-10 sm:h-12'} w-auto object-contain pointer-events-none flex-shrink-0`}
       />
       
       {/* Brand Text Block matching exact crop typography */}
       <div className="text-left leading-none">
         <div className="flex items-baseline">
-          <span className="text-3xl font-black text-[#1E293B] tracking-tight font-sans">Asset</span>
-          <span className="text-3xl font-black text-[#6C2BD9] tracking-tight font-sans">360</span>
+          <span className={`${compact ? 'text-2xl' : 'text-3xl'} font-black text-[#1E293B] tracking-tight font-sans`}>Asset</span>
+          <span className={`${compact ? 'text-2xl' : 'text-3xl'} font-black text-[#6C2BD9] tracking-tight font-sans`}>360</span>
         </div>
-        <p className="text-xs font-semibold text-[#64748B] tracking-wide mt-1 font-sans">
+        <p className={`${compact ? 'text-[10px]' : 'text-xs'} font-semibold text-[#64748B] tracking-wide mt-0.5 font-sans`}>
           Asset Management System
         </p>
       </div>
@@ -544,14 +544,14 @@ export function Login() {
         {/* ======================================================== */}
         {/* RIGHT COLUMN: AUTHENTICATION FORM & LOGIC               */}
         {/* ======================================================== */}
-        <div className="lg:col-span-5 bg-[#EBE7FF] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-y-auto lg:overflow-hidden h-full">
+        <div className="lg:col-span-5 bg-[#EBE7FF] p-3 sm:p-5 lg:p-6 flex flex-col justify-between relative overflow-hidden h-full">
           
           {/* Background Concentric Circles */}
           <div className="absolute -right-20 -bottom-20 w-80 h-80 rounded-full border-[30px] border-purple-200/40 pointer-events-none"></div>
           <div className="absolute -right-10 -bottom-10 w-60 h-60 rounded-full border-[20px] border-purple-200/30 pointer-events-none"></div>
 
           {/* Language Selector Dropdown */}
-          <div className="flex justify-end relative z-30 mb-2 sm:mb-4" ref={langRef}>
+          <div className="flex justify-end relative z-30 shrink-0" ref={langRef}>
             <button
               type="button"
               onClick={() => setIsLangOpen(!isLangOpen)}
@@ -585,45 +585,36 @@ export function Login() {
             )}
           </div>
 
-          {/* Elevated White Login Card matching Image 1 exact screenshot */}
-          <div className="bg-white rounded-3xl p-5 sm:p-6 lg:p-7 shadow-xl border border-slate-100 space-y-3 sm:space-y-3.5 my-auto z-10 w-full max-w-[420px] mx-auto">
+          {/* Elevated White Login Card */}
+          <div className="bg-white rounded-3xl px-5 py-4 sm:px-6 sm:py-5 lg:px-7 lg:py-5 shadow-xl border border-slate-100 space-y-2.5 sm:space-y-3 my-auto z-10 w-full max-w-[420px] mx-auto shrink-0">
             
-            {/* Centered Brand Logo matching exact crop typography */}
-            <div className="flex justify-center pb-0.5">
-              <BrandLogo className="scale-95 origin-center" />
+            {/* Centered Brand Logo */}
+            <div className="flex justify-center">
+              <BrandLogo compact={true} />
             </div>
 
             {/* Welcome Back Header */}
             <div className="text-center space-y-0.5">
-              <h2 className="text-xl sm:text-2xl font-black text-[#1E293B] tracking-tight">{t.welcomeBack}</h2>
+              <h2 className="text-lg sm:text-xl font-black text-[#1E293B] tracking-tight">{t.welcomeBack}</h2>
               <p className="text-[11px] sm:text-xs text-[#64748B] font-medium">
                 {t.signInToAccount}
               </p>
             </div>
 
             {error && (
-              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 shadow-2xs">
-                <div className="flex items-center gap-2 min-w-0">
-                  <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
-                  <span className="font-semibold truncate">{error}</span>
+              <div className="py-1.5 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 shadow-2xs animate-fadeIn">
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-rose-600" />
+                  <span className="font-semibold truncate text-[11px] sm:text-xs">{error}</span>
                 </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  <button
-                    type="button"
-                    onClick={handleQuickAdminLogin}
-                    className="px-2 py-0.5 rounded-md bg-rose-100 hover:bg-rose-200 text-rose-800 text-[11px] font-bold transition-colors cursor-pointer"
-                  >
-                    Login as Admin
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setError('')}
-                    className="p-1 hover:bg-rose-100 rounded-lg text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
-                    title="Dismiss"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
+                <button
+                  type="button"
+                  onClick={() => setError('')}
+                  className="p-0.5 hover:bg-rose-100 rounded text-rose-500 hover:text-rose-700 transition-colors cursor-pointer flex-shrink-0"
+                  title="Dismiss"
+                >
+                  <X className="w-3.5 h-3.5" />
+                </button>
               </div>
             )}
 
@@ -643,11 +634,11 @@ export function Login() {
             </div>
 
             {/* Standard Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
+            <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
               
               {/* Username Field */}
               <div className="relative">
-                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 sm:top-3.5 z-10 pointer-events-none" />
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5 sm:top-3 z-10 pointer-events-none" />
                 <input
                   type="text"
                   value={username}
@@ -656,14 +647,14 @@ export function Login() {
                     if (error) setError('');
                   }}
                   placeholder={t.username}
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 sm:py-3 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15 transition-all shadow-2xs"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2 sm:py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15 transition-all shadow-2xs"
                   required
                 />
               </div>
 
               {/* Password Field */}
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 sm:top-3.5 z-10 pointer-events-none" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5 sm:top-3 z-10 pointer-events-none" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -672,15 +663,15 @@ export function Login() {
                     if (error) setError('');
                   }}
                   placeholder={t.password}
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 sm:py-3 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15 transition-all shadow-2xs"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2 sm:py-2.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15 transition-all shadow-2xs"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-2.5 sm:top-3 text-slate-400 hover:text-slate-600 transition-colors z-10 p-1"
+                  className="absolute right-3 top-2 sm:top-2.5 text-slate-400 hover:text-slate-600 transition-colors z-10 p-0.5"
                 >
-                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
                 </button>
               </div>
 
@@ -689,8 +680,9 @@ export function Login() {
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <div
                     onClick={() => setRememberMe(!rememberMe)}
-                    className={`w-4 h-4 rounded flex items-center justify-center transition-all cursor-pointer ${rememberMe ? 'bg-[#6C2BD9] text-white' : 'border border-slate-300 bg-white'
-                      }`}
+                    className={`w-4 h-4 rounded flex items-center justify-center transition-all cursor-pointer ${
+                      rememberMe ? 'bg-[#6C2BD9] text-white' : 'border border-slate-300 bg-white'
+                    }`}
                   >
                     {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
@@ -711,7 +703,7 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs sm:text-sm py-2.5 sm:py-3 px-4 rounded-xl shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
+                className="w-full bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs sm:text-sm py-2 sm:py-2.5 px-4 rounded-xl shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -727,7 +719,7 @@ export function Login() {
               </button>
 
               {/* Divider: OR */}
-              <div className="relative py-0.5 flex items-center justify-center">
+              <div className="relative py-0 flex items-center justify-center">
                 <div className="border-t border-slate-200 w-full"></div>
                 <span className="bg-white px-2.5 text-[10px] font-bold text-slate-400 tracking-wider uppercase absolute">
                   {t.or}
@@ -738,7 +730,7 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => setShowSsoModal(true)}
-                className="w-full bg-white hover:bg-slate-50 border border-[#6C2BD9] text-[#1E293B] font-bold text-xs py-2.5 sm:py-3 px-4 rounded-xl shadow-2xs flex items-center justify-center gap-2 transition-all cursor-pointer"
+                className="w-full bg-white hover:bg-slate-50 border border-[#6C2BD9] text-[#1E293B] font-bold text-xs py-2 sm:py-2.5 px-4 rounded-xl shadow-2xs flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
                 <svg className="w-4 h-4 text-[#6C2BD9]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 20h20"/>
@@ -756,7 +748,7 @@ export function Login() {
           </div>
 
           {/* Footer Support Section */}
-          <div className="text-center pt-2 sm:pt-3 z-10 mt-1">
+          <div className="text-center pt-1.5 pb-0.5 z-10 shrink-0">
             <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
               <span className="font-bold text-slate-900">{t.needHelp}</span>{' '}
               {t.contactAdminOr}{' '}
