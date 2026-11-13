@@ -73,6 +73,552 @@ import { DisposalStatusesTab } from '../../components/master-data/DisposalStatus
 import { ConditionsTab } from '../../components/master-data/ConditionsTab';
 import { api } from '../../services/api';
 
+function parseCSVLine(line) {
+  const result = [];
+  let current = '';
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const char = line[i];
+    if (char === '"') {
+      if (inQuotes && line[i + 1] === '"') {
+        current += '"';
+        i++;
+      } else {
+        inQuotes = !inQuotes;
+      }
+    } else if (char === ',' && !inQuotes) {
+      result.push(current.trim());
+      current = '';
+    } else {
+      current += char;
+    }
+  }
+  result.push(current.trim());
+  return result;
+}
+
+function escapeXml(unsafe) {
+  return String(unsafe ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&apos;');
+}
+
+const MASTER_CONFIGS = {
+  'item-master': {
+    name: 'Item Master',
+    endpoint: '/master-data/items?includeInactive=true',
+    postEndpoint: '/master-data/items',
+    dataKey: 'items',
+    headers: ['Item Code', 'Item Name', 'Barcode', 'Category', 'Sub Category', 'Asset Group', 'Sub Group', 'Manufacturer', 'Brand', 'UOM', 'Description', 'Status'],
+    fields: ['itemCode', 'itemName', 'supplierBarcode', 'categoryName', 'subCategoryName', 'assetGroupName', 'assetSubGroupName', 'manufacturerName', 'brandName', 'uom', 'description', 'status'],
+    sampleRows: [
+      ['ITM-LAP-01', 'Enterprise Laptop 15-inch', '8901234567890', 'Laptops & Notebooks', 'Business Laptops', 'Information Technology', 'Computer Equipment', 'Dell Technologies Inc.', 'Latitude', 'Unit', 'Enterprise i7 16GB RAM laptop', 'Active'],
+      ['ITM-CHAIR-01', 'Ergonomic Mesh Chair High-Back', '8901234567891', 'Office Seating', 'Executive Chairs', 'Furniture & Fixtures', 'Office Furniture', 'Steelcase Inc.', 'Steelcase', 'Unit', 'Adjustable lumbar support chair', 'Active']
+    ],
+    mapRow: (r) => ({
+      itemCode: r.itemCode || r['item code'] || r.code || '',
+      itemName: r.itemName || r['item name'] || r.name || '',
+      supplierBarcode: r.supplierBarcode || r.barcode || r['barcode'] || '',
+      categoryName: r.categoryName || r['category'] || '',
+      subCategoryName: r.subCategoryName || r['sub category'] || '',
+      assetGroupName: r.assetGroupName || r['asset group'] || '',
+      assetSubGroupName: r.assetSubGroupName || r['sub group'] || '',
+      manufacturerName: r.manufacturerName || r['manufacturer'] || '',
+      brandName: r.brandName || r['brand'] || '',
+      uom: r.uom || r['uom'] || 'Unit',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'asset-groups': {
+    name: 'Asset Groups',
+    endpoint: '/master-data/asset-groups?includeInactive=true',
+    postEndpoint: '/master-data/asset-groups',
+    dataKey: 'assetGroups',
+    headers: ['Group Code', 'Group Name', 'Asset Type', 'Description', 'Status'],
+    fields: ['code', 'name', 'assetType', 'description', 'status'],
+    sampleRows: [
+      ['IT', 'Information Technology', 'Physical', 'Computers, servers, and networking hardware', 'Active'],
+      ['VEH', 'Fleet Vehicles & Transport', 'Physical', 'Company automobiles, vans, and transport fleet', 'Active'],
+      ['FURN', 'Furniture & Office Fixtures', 'Physical', 'Desks, chairs, cabinets, and workstations', 'Active'],
+      ['SW', 'Enterprise Software Licenses', 'Intangible', 'ERP and operating system digital software licenses', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['group code'] || '',
+      name: r.name || r['group name'] || '',
+      assetType: r.assetType || r['asset type'] || 'Both',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'sub-groups': {
+    name: 'Asset Sub Groups',
+    endpoint: '/master-data/asset-sub-groups?includeInactive=true',
+    postEndpoint: '/master-data/asset-sub-groups',
+    dataKey: 'assetSubGroups',
+    headers: ['Sub Group Code', 'Sub Group Name', 'Asset Group', 'Asset Type', 'Description', 'Status'],
+    fields: ['code', 'name', 'groupName', 'assetType', 'description', 'status'],
+    sampleRows: [
+      ['COMP', 'Computer Equipment', 'Information Technology', 'Physical', 'Desktops, laptops, workstations, and tablets', 'Active'],
+      ['NET', 'Network Infrastructure', 'Information Technology', 'Physical', 'Routers, switches, firewalls, and rack servers', 'Active'],
+      ['OFF-FURN', 'Office Furniture', 'Furniture & Office Fixtures', 'Physical', 'Desks, ergonomic seating, and meeting tables', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['sub group code'] || r['class code'] || '',
+      name: r.name || r['sub group name'] || r['class name'] || '',
+      groupName: r.groupName || r['asset group'] || '',
+      assetType: r.assetType || r['asset type'] || 'Both',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'classes': {
+    name: 'Asset Sub Groups',
+    endpoint: '/master-data/asset-sub-groups?includeInactive=true',
+    postEndpoint: '/master-data/asset-sub-groups',
+    dataKey: 'assetSubGroups',
+    headers: ['Sub Group Code', 'Sub Group Name', 'Asset Group', 'Asset Type', 'Description', 'Status'],
+    fields: ['code', 'name', 'groupName', 'assetType', 'description', 'status'],
+    sampleRows: [
+      ['COMP', 'Computer Equipment', 'Information Technology', 'Physical', 'Desktops, laptops, workstations, and tablets', 'Active'],
+      ['NET', 'Network Infrastructure', 'Information Technology', 'Physical', 'Routers, switches, firewalls, and rack servers', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['sub group code'] || r['class code'] || '',
+      name: r.name || r['sub group name'] || r['class name'] || '',
+      groupName: r.groupName || r['asset group'] || '',
+      assetType: r.assetType || r['asset type'] || 'Both',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'categories': {
+    name: 'Categories',
+    endpoint: '/master-data/categories?includeInactive=true',
+    postEndpoint: '/master-data/categories',
+    dataKey: 'categories',
+    headers: ['Category Code', 'Category Name', 'Sub Group / Class', 'Asset Group', 'Description', 'Status'],
+    fields: ['code', 'name', 'className', 'groupName', 'description', 'status'],
+    sampleRows: [
+      ['CAT-LAP', 'Laptops & Notebooks', 'Computer Equipment', 'Information Technology', 'Enterprise portable computing devices', 'Active'],
+      ['CAT-SRV', 'Datacenter Servers', 'Computer Equipment', 'Information Technology', 'Rackmount and blade compute servers', 'Active'],
+      ['CAT-CHR', 'Office Task Seating', 'Office Furniture', 'Furniture & Office Fixtures', 'Ergonomic task chairs and executive chairs', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['category code'] || '',
+      name: r.name || r['category name'] || '',
+      className: r.className || r['sub group / class'] || r['sub group'] || r['class'] || '',
+      groupName: r.groupName || r['asset group'] || '',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'subcategories': {
+    name: 'Sub Categories',
+    endpoint: '/master-data/sub-categories?includeInactive=true',
+    postEndpoint: '/master-data/sub-categories',
+    dataKey: 'subCategories',
+    headers: ['Sub Category Code', 'Sub Category Name', 'Category', 'Sub Group', 'Asset Group', 'Description', 'Status'],
+    fields: ['code', 'name', 'categoryName', 'groupName', 'description', 'status'],
+    sampleRows: [
+      ['SCAT-BUS-LAP', 'Business Laptops 14-16 inch', 'Laptops & Notebooks', 'Computer Equipment', 'Information Technology', 'Standard enterprise notebooks', 'Active'],
+      ['SCAT-ULTRA', 'Ultrabooks & 2-in-1s', 'Laptops & Notebooks', 'Computer Equipment', 'Information Technology', 'Lightweight executive notebooks', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['sub category code'] || '',
+      name: r.name || r['sub category name'] || '',
+      categoryName: r.categoryName || r['category'] || '',
+      groupName: r.groupName || r['sub group'] || '',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'companies': {
+    name: 'Companies',
+    endpoint: '/master-data/companies?includeInactive=true',
+    postEndpoint: '/master-data/companies',
+    dataKey: 'companies',
+    headers: ['Company Code', 'Company Name', 'Currency', 'Registration Number', 'Country', 'Status'],
+    fields: ['code', 'name', 'currency', 'registrationNumber', 'country', 'status'],
+    sampleRows: [
+      ['COMP-HQ', 'Global Tech Enterprises FZE', 'USD', 'REG-2023-8891', 'United Arab Emirates', 'Active'],
+      ['COMP-UK', 'Global Tech Services UK Ltd', 'GBP', 'GB-8829102', 'United Kingdom', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['company code'] || '',
+      name: r.name || r['company name'] || '',
+      currency: r.currency || r['currency'] || 'USD',
+      registrationNumber: r.registrationNumber || r['registration number'] || '',
+      country: r.country || r['country'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'custodians': {
+    name: 'Custodians',
+    endpoint: '/master-data/employees?includeInactive=true',
+    postEndpoint: '/master-data/employees',
+    dataKey: 'employees',
+    headers: ['Custodian Code', 'Full Name', 'Email', 'Department', 'Custodian Type', 'Phone', 'Status'],
+    fields: ['employeeCode', 'fullName', 'email', 'department', 'custodianType', 'phone', 'status'],
+    sampleRows: [
+      ['EMP-1001', 'Alexander Wright', 'alex.wright@asset360.internal', 'IT & Systems', 'Internal', '+971 50 123 4567', 'Active'],
+      ['EMP-1002', 'Sarah Jenkins', 'sarah.j@asset360.internal', 'Operations & Logistics', 'Internal', '+971 50 234 5678', 'Active']
+    ],
+    mapRow: (r) => ({
+      employeeCode: r.employeeCode || r['custodian code'] || r.code || '',
+      fullName: r.fullName || r['full name'] || r.name || '',
+      email: r.email || r['email'] || '',
+      department: r.department || r['department'] || '',
+      custodianType: r.custodianType || r['custodian type'] || 'Internal',
+      phone: r.phone || r['phone'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'locations': {
+    name: 'Locations',
+    endpoint: '/master-data/sites?includeInactive=true',
+    postEndpoint: '/master-data/sites',
+    dataKey: 'sites',
+    headers: ['Location Code', 'Location Name', 'Location Type', 'City', 'Country', 'Address', 'Status'],
+    fields: ['code', 'name', 'type', 'city', 'country', 'address', 'status'],
+    sampleRows: [
+      ['LOC-DXB-HQ', 'Dubai Headquarters Tower A', 'Internal', 'Dubai', 'United Arab Emirates', 'Sheikh Zayed Road, DIFC, Floor 18', 'Active'],
+      ['LOC-AUH-WH', 'Abu Dhabi Central Warehouse', 'Internal', 'Abu Dhabi', 'United Arab Emirates', 'Industrial Zone ICAD 1', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['location code'] || '',
+      name: r.name || r['location name'] || '',
+      type: r.type || r['location type'] || 'Internal',
+      city: r.city || r['city'] || '',
+      country: r.country || r['country'] || '',
+      address: r.address || r['address'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'departments': {
+    name: 'Departments',
+    endpoint: '/master-data/departments?includeInactive=true',
+    postEndpoint: '/master-data/departments',
+    dataKey: 'departments',
+    headers: ['Department Code', 'Department Name', 'Department Type', 'Manager', 'Email', 'Phone', 'Status'],
+    fields: ['code', 'name', 'type', 'manager', 'email', 'phone', 'status'],
+    sampleRows: [
+      ['DEPT-IT', 'Information Technology', 'Internal', 'Michael Chen', 'it.manager@asset360.internal', '+971 50 111 2233', 'Active'],
+      ['DEPT-FIN', 'Finance & Accounting', 'Internal', 'David Ross', 'finance.dir@asset360.internal', '+971 50 222 3344', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['department code'] || '',
+      name: r.name || r['department name'] || '',
+      type: r.type || r['department type'] || 'Internal',
+      manager: r.manager || r['manager'] || '',
+      email: r.email || r['email'] || '',
+      phone: r.phone || r['phone'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'cost-centers': {
+    name: 'Sections',
+    endpoint: '/master-data/cost-centers?includeInactive=true',
+    postEndpoint: '/master-data/cost-centers',
+    dataKey: 'costCenters',
+    headers: ['Section Code', 'Section Name', 'Type', 'Manager', 'Description', 'Status'],
+    fields: ['code', 'name', 'type', 'manager', 'description', 'status'],
+    sampleRows: [
+      ['CC-1010', 'Corporate IT Operations', 'Operational', 'Michael Chen', 'Cost center for IT infrastructure', 'Active'],
+      ['CC-2020', 'Executive Administration', 'Administrative', 'Sarah Mitchell', 'Corporate leadership center', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['section code'] || r['cost center code'] || '',
+      name: r.name || r['section name'] || r['cost center name'] || '',
+      type: r.type || r['type'] || 'Operational',
+      manager: r.manager || r['manager'] || '',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'suppliers': {
+    name: 'Suppliers',
+    endpoint: '/master-data/suppliers?includeInactive=true',
+    postEndpoint: '/master-data/suppliers',
+    dataKey: 'suppliers',
+    headers: ['Supplier Code', 'Supplier Name', 'Contact Person', 'Email', 'Phone', 'Website', 'Status'],
+    fields: ['code', 'name', 'contact', 'email', 'phone', 'website', 'status'],
+    sampleRows: [
+      ['SUP-DELL', 'Dell Direct Enterprise Services', 'Marcus Vance', 'enterprise.sales@dell.com', '+1 800 624 9897', 'https://www.dell.com', 'Active'],
+      ['SUP-CISCO', 'Cisco Systems Commercial Sales', 'Rachel Adams', 'sales-support@cisco.com', '+1 800 553 6387', 'https://www.cisco.com', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['supplier code'] || '',
+      name: r.name || r['supplier name'] || '',
+      contact: r.contact || r['contact person'] || '',
+      email: r.email || r['email'] || '',
+      phone: r.phone || r['phone'] || '',
+      website: r.website || r['website'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'manufacturers': {
+    name: 'Manufacturers',
+    endpoint: '/master-data/manufacturers?includeInactive=true',
+    postEndpoint: '/master-data/manufacturers',
+    dataKey: 'manufacturers',
+    headers: ['Manufacturer Code', 'Manufacturer Name', 'Website', 'Support Contact', 'Country', 'Status'],
+    fields: ['code', 'name', 'website', 'supportContact', 'country', 'status'],
+    sampleRows: [
+      ['MFR-DELL', 'Dell Technologies Inc.', 'https://www.dell.com', 'prosupport@dell.com', 'United States', 'Active'],
+      ['MFR-CISCO', 'Cisco Systems Inc.', 'https://www.cisco.com', 'tac@cisco.com', 'United States', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['manufacturer code'] || '',
+      name: r.name || r['manufacturer name'] || '',
+      website: r.website || r['website'] || '',
+      supportContact: r.supportContact || r['support contact'] || '',
+      country: r.country || r['country'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'brands': {
+    name: 'Brands',
+    endpoint: '/master-data/brands?includeInactive=true',
+    postEndpoint: '/master-data/brands',
+    dataKey: 'brands',
+    headers: ['Brand Code', 'Brand Name', 'Manufacturer', 'Description', 'Status'],
+    fields: ['code', 'name', 'manufacturerName', 'description', 'status'],
+    sampleRows: [
+      ['BRD-LAT', 'Latitude', 'Dell Technologies Inc.', 'Enterprise business laptops and convertibles', 'Active'],
+      ['BRD-CAT', 'Catalyst', 'Cisco Systems Inc.', 'Enterprise ethernet switches and routers', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['brand code'] || '',
+      name: r.name || r['brand name'] || '',
+      manufacturerName: r.manufacturerName || r['manufacturer'] || '',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'uom': {
+    name: 'Units of Measure',
+    endpoint: '/master-data/uoms?includeInactive=true',
+    postEndpoint: '/master-data/uoms',
+    dataKey: 'uoms',
+    headers: ['UOM Code', 'UOM Name', 'Symbol', 'Category', 'Description', 'Status'],
+    fields: ['code', 'name', 'symbol', 'category', 'description', 'status'],
+    sampleRows: [
+      ['EA', 'Each / Unit', 'ea', 'Discrete Count', 'Standard single unit count item', 'Active'],
+      ['SET', 'Set / Kit', 'set', 'Pack & Assembly', 'Assembly or grouped component package', 'Active'],
+      ['LIC', 'Software License', 'lic', 'Digital & Rights', 'Named or concurrent user seat license', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['uom code'] || '',
+      name: r.name || r['uom name'] || '',
+      symbol: r.symbol || r['symbol'] || '',
+      category: r.category || r['category'] || 'Discrete Count',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'status-codes': {
+    name: 'Status Codes',
+    endpoint: null,
+    postEndpoint: null,
+    dataKey: null,
+    headers: ['Status Code', 'Status Name', 'Lifecycle Stage', 'Description', 'Status'],
+    fields: ['code', 'name', 'stage', 'description', 'status'],
+    sampleRows: [
+      ['STAT-INUSE', 'In Service', 'Operational', 'Asset is currently active and assigned to custodian', 'Active'],
+      ['STAT-STORE', 'In Storage', 'Inventory', 'Asset is held in storage available for allocation', 'Active'],
+      ['STAT-REPAIR', 'Under Maintenance', 'Maintenance', 'Asset is undergoing scheduled repairs', 'Active']
+    ],
+    mapRow: (r) => ({
+      id: `stat-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+      code: r.code || r['status code'] || '',
+      name: r.name || r['status name'] || '',
+      stage: r.stage || r['lifecycle stage'] || 'Operational',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active',
+      active: (r.status || r['status']) !== 'Inactive'
+    })
+  },
+  'disposal-statuses': {
+    name: 'Disposal Statuses',
+    endpoint: '/master-data/disposal-statuses',
+    postEndpoint: '/master-data/disposal-statuses',
+    dataKey: 'disposalStatuses',
+    headers: ['Status Code', 'Status Name', 'Description', 'Status'],
+    fields: ['code', 'name', 'description', 'status'],
+    sampleRows: [
+      ['DISP-SCRAP', 'Scrapped / Recycled', 'Asset physically retired and stripped for recycling', 'Active'],
+      ['DISP-SOLD', 'Sold / Auctioned', 'Asset sold on secondary market or company employee auction', 'Active'],
+      ['DISP-DONATE', 'Donated', 'Asset contributed to certified non-profit or educational program', 'Active'],
+      ['DISP-WRITE', 'Written Off', 'Asset damaged beyond repair or accounted as complete loss', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['status code'] || '',
+      name: r.name || r['status name'] || '',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'conditions': {
+    name: 'Asset Conditions',
+    endpoint: '/master-data/asset-conditions',
+    postEndpoint: '/master-data/asset-conditions',
+    dataKey: 'assetConditions',
+    headers: ['Condition Code', 'Condition Name', 'Description', 'Status'],
+    fields: ['code', 'name', 'description', 'status'],
+    sampleRows: [
+      ['COND-NEW', 'Brand New / Sealed', 'Factory sealed pristine item', 'Active'],
+      ['COND-EXC', 'Excellent Condition', 'Minor or no cosmetic wear, fully operational', 'Active'],
+      ['COND-GOOD', 'Good Condition', 'Normal operational wear and tear, fully operational', 'Active'],
+      ['COND-FAIR', 'Fair / Usable', 'Noticeable cosmetic wear, operational', 'Active'],
+      ['COND-POOR', 'Damaged / Needs Repair', 'Physical defects requiring servicing', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['condition code'] || '',
+      name: r.name || r['condition name'] || '',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'asset-conditions': {
+    name: 'Asset Conditions',
+    endpoint: '/master-data/asset-conditions',
+    postEndpoint: '/master-data/asset-conditions',
+    dataKey: 'assetConditions',
+    headers: ['Condition Code', 'Condition Name', 'Description', 'Status'],
+    fields: ['code', 'name', 'description', 'status'],
+    sampleRows: [
+      ['COND-NEW', 'Brand New / Sealed', 'Factory sealed pristine item', 'Active'],
+      ['COND-EXC', 'Excellent Condition', 'Minor or no cosmetic wear, fully operational', 'Active']
+    ],
+    mapRow: (r) => ({
+      code: r.code || r['condition code'] || '',
+      name: r.name || r['condition name'] || '',
+      description: r.description || r['description'] || '',
+      status: r.status || r['status'] || 'Active'
+    })
+  },
+  'depreciation': {
+    name: 'Depreciation Policies',
+    endpoint: '/master-data/depreciation-policies',
+    postEndpoint: null,
+    dataKey: 'policies',
+    headers: ['Asset Group', 'Sub Group', 'Method', 'Useful Life (Years)', 'Rate (%)', 'Salvage Value (%)'],
+    fields: ['assetGroupName', 'assetSubGroupName', 'method', 'usefulLifeYears', 'ratePercent', 'salvagePercent'],
+    sampleRows: [
+      ['Information Technology', 'Computer Equipment', 'Straight Line', '4', '25.00', '5.00'],
+      ['Fleet Vehicles & Transport', 'Fleet Vehicles', 'Reducing Balance', '5', '30.00', '10.00']
+    ],
+    mapRow: null
+  }
+};
+
+const getMasterConfig = (tabId) => {
+  if (tabId && tabId.startsWith('location-level-')) {
+    const lvl = parseInt(tabId.replace('location-level-', ''), 10) || 1;
+    return {
+      name: `Location Level ${lvl}`,
+      endpoint: `/master-data/location-levels/${lvl}`,
+      postEndpoint: `/master-data/location-levels/${lvl}`,
+      dataKey: 'locationLevels',
+      headers: ['Code', 'Name', 'Description', 'Status'],
+      fields: ['code', 'name', 'description', 'status'],
+      sampleRows: [
+        [`LVL${lvl}-01`, `Zone / Tier 01`, `Tier ${lvl} location classification`, 'Active'],
+        [`LVL${lvl}-02`, `Zone / Tier 02`, `Tier ${lvl} location classification`, 'Active']
+      ],
+      mapRow: (r) => ({
+        code: r.code || r['code'] || '',
+        name: r.name || r['name'] || '',
+        description: r.description || r['description'] || '',
+        status: r.status || r['status'] || 'Active'
+      })
+    };
+  }
+  if (tabId === 'classes') return MASTER_CONFIGS['sub-groups'];
+  if (tabId === 'asset-conditions') return MASTER_CONFIGS['conditions'];
+  return MASTER_CONFIGS[tabId] || MASTER_CONFIGS['asset-groups'];
+};
+
+const formatItemToRow = (item, fields) => {
+  return fields.map((field) => {
+    let val = item[field];
+    if (val === undefined || val === null) {
+      if (field === 'code') val = item.itemCode || item.employeeCode || item.code || '';
+      else if (field === 'name') val = item.itemName || item.fullName || item.name || '';
+      else if (field === 'itemCode') val = item.code || '';
+      else if (field === 'itemName') val = item.name || '';
+      else if (field === 'employeeCode') val = item.code || item.employeeId || '';
+      else if (field === 'groupName') val = item.assetGroupName || item.group || '';
+      else if (field === 'className') val = item.assetSubGroupName || item.subGroupName || '';
+      else if (field === 'categoryName') val = item.category || '';
+      else if (field === 'subCategoryName') val = item.subCategory || '';
+      else if (field === 'supplierBarcode') val = item.barcode || '';
+      else if (field === 'contact') val = item.contactPerson || '';
+      else if (field === 'registrationNumber') val = item.regNumber || '';
+      else val = '';
+    }
+    if (typeof val === 'boolean') val = val ? 'Active' : 'Inactive';
+    return String(val);
+  });
+};
+
+const fetchActiveTabExportData = async (config, activeTab) => {
+  if (activeTab === 'status-codes') {
+    try {
+      const custom = JSON.parse(localStorage.getItem('fams_custom_status_codes') || '[]');
+      return custom.length > 0 ? custom : DEFAULT_STATUS_CODES;
+    } catch {
+      return DEFAULT_STATUS_CODES;
+    }
+  }
+  if (!config.endpoint) {
+    return config.sampleRows.map((row) => {
+      const obj = {};
+      config.fields.forEach((f, i) => {
+        obj[f] = row[i];
+      });
+      return obj;
+    });
+  }
+  try {
+    const res = await api.get(config.endpoint);
+    let items = [];
+    if (config.dataKey && res[config.dataKey]) {
+      items = res[config.dataKey];
+    } else if (res.items || res.data || res.records) {
+      items = res.items || res.data || res.records;
+    } else if (Array.isArray(res)) {
+      items = res;
+    } else {
+      for (const val of Object.values(res)) {
+        if (Array.isArray(val) && val.length > 0) {
+          items = val;
+          break;
+        }
+      }
+    }
+    if (items && items.length > 0) return items;
+  } catch (err) {
+    console.warn('Export fetch failed, using fallback:', err);
+  }
+
+  // Fallback to initial/sample data if API was empty or errored
+  if (config.sampleRows && config.sampleRows.length > 0) {
+    return config.sampleRows.map((row) => {
+      const obj = {};
+      config.fields.forEach((f, i) => {
+        obj[f] = row[i];
+      });
+      return obj;
+    });
+  }
+  return [];
+};
+
 const getSingularName = (name = '') => {
   if (name.startsWith('Location Level')) return name;
   if (name === 'Asset Sub Groups' || name === 'Sub Groups') return 'Asset Sub Group';
@@ -183,25 +729,52 @@ export function MasterDataSetup() {
       triggerToast('Please provide at least one record with both Code and Name.');
       return;
     }
+    const config = getMasterConfig(activeTab);
     setIsSavingMultiple(true);
     try {
-      if (activeTab === 'asset-groups') {
+      if (activeTab === 'status-codes') {
+        const existing = JSON.parse(localStorage.getItem('fams_custom_status_codes') || JSON.stringify(DEFAULT_STATUS_CODES));
+        const newRecords = validRows.map((r) => ({
+          id: `stat-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
+          code: r.code.trim().toUpperCase(),
+          name: r.name.trim(),
+          stage: 'Operational',
+          description: r.description || '',
+          status: 'Active',
+          active: true
+        }));
+        localStorage.setItem('fams_custom_status_codes', JSON.stringify([...newRecords, ...existing]));
+        triggerToast(`Successfully added ${validRows.length} Status Codes!`);
+      } else if (config.postEndpoint || config.endpoint) {
+        const targetUrl = config.postEndpoint || config.endpoint.split('?')[0];
         let created = 0;
         for (const r of validRows) {
-          await api.post('/master-data/asset-groups', {
-            code: r.code.trim().toUpperCase(),
-            name: r.name.trim(),
-            assetType: r.assetType || 'Both',
-            description: r.description || '',
-            status: 'Active'
-          });
-          created++;
+          try {
+            const mapped = config.mapRow
+              ? config.mapRow({
+                  ...r,
+                  code: r.code.trim().toUpperCase(),
+                  name: r.name.trim(),
+                  assetType: r.assetType || 'Both',
+                  description: r.description || '',
+                  status: 'Active'
+                })
+              : {
+                  code: r.code.trim().toUpperCase(),
+                  name: r.name.trim(),
+                  assetType: r.assetType || 'Both',
+                  description: r.description || '',
+                  status: 'Active'
+                };
+            await api.post(targetUrl, mapped);
+            created++;
+          } catch (rowErr) {
+            console.warn('Batch create error:', rowErr.response?.data?.message || rowErr.message);
+          }
         }
-        setGroupReloadTrigger((prev) => prev + 1);
-        triggerToast(`Successfully created ${created} Asset Groups!`);
-      } else {
-        triggerToast(`Batch added ${validRows.length} records!`);
+        triggerToast(`Successfully created ${created} ${config.name} records!`);
       }
+      setGroupReloadTrigger((prev) => prev + 1);
       setShowAddMultipleModal(false);
       setMultipleRecordsRows([
         { code: '', name: '', assetType: 'Both', description: '' },
@@ -216,17 +789,21 @@ export function MasterDataSetup() {
   };
 
   const handleDownloadTemplate = () => {
-    const headers = 'Group Code,Group Name,Asset Type,Description,Status\n';
-    const sample = 'NET,Networking Equipment,Physical,Routers switches and racks,Active\nIOT,IoT & Smart Sensors,Physical,Smart edge devices,Active\nSEC,Security Software,Intangible,Cybersecurity and licenses,Active\n';
-    const blob = new Blob([headers + sample], { type: 'text/csv;charset=utf-8;' });
+    const config = getMasterConfig(activeTab);
+    const headersStr = config.headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(',') + '\n';
+    const sampleStr = config.sampleRows
+      .map((row) => row.map((cell) => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+      .join('\n') + '\n';
+
+    const blob = new Blob([headersStr + sampleStr], { type: 'text/csv;charset=utf-8;' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.href = url;
-    link.setAttribute('download', 'Asset_Groups_Template.csv');
+    link.setAttribute('download', `${config.name.replace(/\s+/g, '_')}_Template.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
-    triggerToast('Asset Groups CSV template downloaded.');
+    triggerToast(`${config.name} CSV template downloaded.`);
   };
 
   const handleFileSelect = (e) => {
@@ -241,19 +818,31 @@ export function MasterDataSetup() {
         triggerToast('The uploaded CSV file is empty or missing data rows.');
         return;
       }
+      const config = getMasterConfig(activeTab);
+      const headerLine = parseCSVLine(lines[0]).map((h) => h.toLowerCase().trim());
+
       const dataRows = [];
       for (let i = 1; i < lines.length; i++) {
-        const parts = lines[i].split(',').map((p) => p.trim().replace(/^"|"$/g, ''));
-        if (parts.length >= 2 && parts[0] && parts[1]) {
-          dataRows.push({
-            code: parts[0].toUpperCase(),
-            name: parts[1],
-            assetType: parts[2] || 'Both',
-            description: parts[3] || '',
-            status: parts[4] || 'Active'
-          });
+        const parts = parseCSVLine(lines[i]);
+        if (parts.length === 0 || parts.every((p) => !p.trim())) continue;
+
+        const rowObj = {};
+        headerLine.forEach((hdr, idx) => {
+          rowObj[hdr] = parts[idx] !== undefined ? parts[idx] : '';
+        });
+        config.fields.forEach((fieldKey, idx) => {
+          if (rowObj[fieldKey] === undefined && parts[idx] !== undefined) {
+            rowObj[fieldKey] = parts[idx];
+          }
+        });
+
+        const mapped = config.mapRow ? config.mapRow(rowObj) : rowObj;
+        const hasIdent = mapped.name || mapped.itemName || mapped.fullName || mapped.code || mapped.itemCode || parts[0] || parts[1];
+        if (hasIdent) {
+          dataRows.push(mapped);
         }
       }
+
       setImportParsedRows(dataRows);
       triggerToast(`Loaded ${dataRows.length} valid rows from ${file.name}. Click "Start Import" to save.`);
     };
@@ -265,24 +854,51 @@ export function MasterDataSetup() {
       triggerToast('Please select a valid CSV file first.');
       return;
     }
+    const config = getMasterConfig(activeTab);
     setIsImporting(true);
+    let imported = 0;
     try {
-      let imported = 0;
-      for (const row of importParsedRows) {
-        try {
-          await api.post('/master-data/asset-groups', row);
-          imported++;
-        } catch {
-          // ignore duplicate
+      if (activeTab === 'status-codes') {
+        const existing = JSON.parse(localStorage.getItem('fams_custom_status_codes') || JSON.stringify(DEFAULT_STATUS_CODES));
+        const updated = [
+          ...importParsedRows,
+          ...existing.filter((e) => !importParsedRows.some((r) => (r.code && r.code.toUpperCase() === (e.code || '').toUpperCase())))
+        ];
+        localStorage.setItem('fams_custom_status_codes', JSON.stringify(updated));
+        imported = importParsedRows.length;
+      } else if (config.postEndpoint || config.endpoint) {
+        const targetUrl = config.postEndpoint || config.endpoint.split('?')[0];
+        for (const row of importParsedRows) {
+          try {
+            await api.post(targetUrl, row);
+            imported++;
+          } catch (err) {
+            console.warn('Row import failed:', err.response?.data?.message || err.message);
+          }
         }
       }
+
+      // Record in import history
+      try {
+        const history = JSON.parse(localStorage.getItem('fams_import_history') || '[]');
+        history.unshift({
+          id: `imp-${Date.now()}`,
+          entity: config.name,
+          fileName: importFileName || 'uploaded_data.csv',
+          totalRows: importParsedRows.length,
+          importedRows: imported,
+          timestamp: new Date().toLocaleString()
+        });
+        localStorage.setItem('fams_import_history', JSON.stringify(history.slice(0, 30)));
+      } catch (_) {}
+
       setGroupReloadTrigger((prev) => prev + 1);
       setShowImportModal(false);
       setImportFileName('');
       setImportParsedRows([]);
-      triggerToast(`Successfully imported ${imported} Asset Groups from CSV!`);
+      triggerToast(`Successfully imported ${imported} of ${importParsedRows.length} ${config.name} records from CSV!`);
     } catch {
-      triggerToast('Import failed. Please verify file format.');
+      triggerToast('Import encountered an error. Please verify the file format.');
     } finally {
       setIsImporting(false);
     }
@@ -308,82 +924,152 @@ export function MasterDataSetup() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, [activeRowMenuId]);
 
-  // Handle Export to CSV
-  const handleExportCSV = () => {
+  // Handle Universal Export to CSV
+  const handleExportCSV = async () => {
     setShowExportDropdown(false);
-    const isGroups = activeTab === 'asset-groups';
-    const isClasses = activeTab === 'classes' || activeTab === 'sub-groups';
-    const isCats = activeTab === 'categories';
-    const isSubCats = activeTab === 'subcategories';
-    const isLocations = activeTab === 'locations';
-    const isDepts = activeTab === 'departments';
-    const isCostCenters = activeTab === 'cost-centers';
-    const isSuppliers = activeTab === 'suppliers';
-    const isMfg = activeTab === 'manufacturers';
-    const isBrands = activeTab === 'brands';
-    const isUom = activeTab === 'uom';
-    const isStatusCodes = activeTab === 'status-codes';
-    let headers, rows, filename;
+    const config = getMasterConfig(activeTab);
+    try {
+      const records = await fetchActiveTabExportData(config, activeTab);
+      const rows = records.map((item) => formatItemToRow(item, config.fields));
+      const csvContent = [
+        config.headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(','),
+        ...rows.map((r) => r.map((c) => `"${String(c ?? '').replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
 
-    if (isGroups) {
-      headers = ['Group Code', 'Group Name', 'Description', 'Asset Type', 'Total Assets', 'Status'];
-      rows = INITIAL_ASSET_GROUPS.map((g) => [g.code, g.name, `"${g.description}"`, g.assetType, g.totalAssets, g.status]);
-      filename = 'Asset_Groups';
-    } else if (isSuppliers) {
-      headers = ['Supplier Code', 'Supplier Name', 'Supplier Type', 'Country', 'Contact Person', 'Phone', 'Status'];
-      rows = INITIAL_SUPPLIERS.map((s) => [s.code, s.name, s.type, s.country, `"${s.contactPerson}"`, s.phone, s.status]);
-      filename = 'Asset_Suppliers';
-    } else if (isCostCenters) {
-      headers = ['Section Code', 'Section Name', 'Company', 'Type', 'Manager', 'Description', 'Total Assets', 'Status'];
-      rows = INITIAL_COST_CENTERS.map((c) => [c.code, c.name, c.company, c.type, `"${c.manager}"`, `"${c.description}"`, c.totalAssets, c.status]);
-      filename = 'Asset_Sections';
-    } else if (isDepts) {
-      headers = ['Department Code', 'Department Name', 'Department Type', 'Parent Department', 'Location', 'Company', 'Manager', 'Email', 'Phone', 'Employees', 'Status'];
-      rows = INITIAL_DEPARTMENTS.map((d) => [d.code, d.name, d.type, d.parentDepartment, d.location, d.company, `"${d.manager}"`, d.email, d.phone, d.employees, d.status]);
-      filename = 'Asset_Departments';
-    } else if (isLocations) {
-      headers = ['Location Code', 'Location Name', 'Location Type', 'Parent Location', 'Country', 'City', 'Total Assets', 'Status'];
-      rows = INITIAL_LOCATIONS.map((l) => [l.code, l.name, l.type, l.parentLocation, l.country, l.city, l.totalAssets, l.status]);
-      filename = 'Asset_Locations';
-    } else if (isSubCats) {
-      headers = ['Sub Category Code', 'Sub Category Name', 'Category', 'Class', 'Asset Group', 'Description', 'Total Assets', 'Status'];
-      rows = INITIAL_SUB_CATEGORIES.map((s) => [s.code, s.name, `"${s.categoryName}"`, `"${s.className}"`, `"${s.groupName}"`, `"${s.description}"`, s.totalAssets, s.status]);
-      filename = 'Asset_SubCategories';
-    } else if (isCats) {
-      headers = ['Category Code', 'Category Name', 'Asset Class', 'Asset Group', 'Description', 'Total Assets', 'Status'];
-      rows = INITIAL_CATEGORIES.map((c) => [c.code, c.name, `"${c.className}"`, `"${c.groupName}"`, `"${c.description}"`, c.totalAssets, c.status]);
-      filename = 'Asset_Categories';
-    } else if (isMfg) {
-      headers = ['Manufacturer Code', 'Manufacturer Name', 'Website', 'Support Contact', 'Country', 'Status'];
-      rows = DEFAULT_MANUFACTURERS.map((m) => [m.code, `"${m.name}"`, m.website, m.supportContact, m.country, m.status]);
-      filename = 'Asset_Manufacturers';
-    } else if (isBrands) {
-      headers = ['Brand Code', 'Brand Name', 'Manufacturer', 'Description', 'Status'];
-      rows = DEFAULT_BRANDS.map((b) => [b.code, `"${b.name}"`, `"${b.manufacturerName || ''}"`, `"${b.description || ''}"`, b.status]);
-      filename = 'Asset_Brands';
-    } else if (isUom) {
-      headers = ['UOM Code', 'UOM Name', 'Symbol', 'Category', 'Description', 'Status'];
-      rows = DEFAULT_UOM.map((u) => [u.code, `"${u.name}"`, u.symbol, u.category, `"${u.description}"`, u.status]);
-      filename = 'Asset_UOM';
-    } else if (isStatusCodes) {
-      headers = ['Status Code', 'Status Name', 'Lifecycle Stage', 'Description', 'Status'];
-      rows = DEFAULT_STATUS_CODES.map((s) => [s.code, `"${s.name}"`, s.stage, `"${s.description}"`, s.status]);
-      filename = 'Asset_StatusCodes';
-    } else {
-      headers = ['Class Code', 'Class Name', 'Asset Group', 'Description', 'Asset Type', 'Total Assets', 'Status'];
-      rows = INITIAL_CLASSES.map((c) => [c.code, c.name, `"${c.groupName}"`, `"${c.description}"`, c.assetType, c.totalAssets, c.status]);
-      filename = 'Asset_SubGroups';
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.csv`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      triggerToast(`Exported ${rows.length} ${config.name} records to CSV!`);
+    } catch (err) {
+      triggerToast(`Failed to export CSV: ${err.message || 'Error'}`);
     }
+  };
 
-    const csvContent = 'data:text/csv;charset=utf-8,' + [headers.join(','), ...rows.map((r) => r.join(','))].join('\n');
-    const encodedUri = encodeURI(csvContent);
-    const link = document.createElement('a');
-    link.setAttribute('href', encodedUri);
-    link.setAttribute('download', `${filename}_${new Date().toISOString().slice(0, 10)}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    triggerToast(`Exported to CSV successfully!`);
+  // Handle Universal Export to Excel (.xls XML format)
+  const handleExportExcel = async () => {
+    setShowExportDropdown(false);
+    const config = getMasterConfig(activeTab);
+    try {
+      const records = await fetchActiveTabExportData(config, activeTab);
+      const rows = records.map((item) => formatItemToRow(item, config.fields));
+      const excelHtml = `
+        <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
+        <head>
+          <meta http-equiv="Content-Type" content="text/html; charset=utf-8" />
+          <style>
+            table { border-collapse: collapse; font-family: Calibri, sans-serif; }
+            th { background-color: #6C2BD9; color: #ffffff; font-weight: bold; border: 1px solid #5B21B6; padding: 8px 12px; }
+            td { border: 1px solid #e2e8f0; padding: 6px 10px; font-size: 11pt; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+          </style>
+        </head>
+        <body>
+          <table>
+            <thead>
+              <tr>${config.headers.map((h) => `<th>${escapeXml(h)}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${rows.map((r) => `<tr>${r.map((c) => `<td>${escapeXml(c)}</td>`).join('')}</tr>`).join('')}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `;
+
+      const blob = new Blob([excelHtml], { type: 'application/vnd.ms-excel;charset=utf-8;' });
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', `${config.name.replace(/\s+/g, '_')}_${new Date().toISOString().slice(0, 10)}.xls`);
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      triggerToast(`Exported ${rows.length} ${config.name} records to Excel!`);
+    } catch (err) {
+      triggerToast(`Failed to export Excel: ${err.message || 'Error'}`);
+    }
+  };
+
+  // Handle Universal Export to PDF / Print view
+  const handleExportPDF = async () => {
+    setShowExportDropdown(false);
+    const config = getMasterConfig(activeTab);
+    try {
+      const records = await fetchActiveTabExportData(config, activeTab);
+      const rows = records.map((item) => formatItemToRow(item, config.fields));
+
+      const printWindow = window.open('', '_blank');
+      if (!printWindow) {
+        triggerToast('Popup blocked. Please allow popups for printable export.');
+        return;
+      }
+      printWindow.document.write(`
+        <!DOCTYPE html>
+        <html>
+        <head>
+          <title>${escapeXml(config.name)} Master Data Report</title>
+          <style>
+            body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Arial, sans-serif; padding: 24px; color: #0f172a; margin: 0; }
+            .report-header { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 2px solid #6C2BD9; padding-bottom: 12px; margin-bottom: 16px; }
+            .org-title { font-size: 18px; font-weight: 800; color: #1e1b4b; margin: 0; }
+            .report-sub { font-size: 11px; color: #64748b; margin-top: 4px; }
+            .report-meta { text-align: right; font-size: 11px; color: #64748b; line-height: 1.5; }
+            table { width: 100%; border-collapse: collapse; font-size: 11px; margin-top: 8px; }
+            th { background-color: #f1f5f9; color: #334155; font-weight: 700; text-align: left; padding: 7px 10px; border: 1px solid #cbd5e1; }
+            td { padding: 6px 10px; border: 1px solid #e2e8f0; }
+            tr:nth-child(even) { background-color: #f8fafc; }
+            .badge-active { display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 10px; font-weight: 700; background: #ecfdf5; color: #047857; }
+            .badge-inactive { display: inline-block; padding: 2px 6px; border-radius: 9999px; font-size: 10px; font-weight: 700; background: #fef2f2; color: #b91c1c; }
+            @media print {
+              @page { size: landscape; margin: 12mm; }
+              body { padding: 0; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="report-header">
+            <div>
+              <h1 class="org-title">Asset360 Enterprise &bull; ${escapeXml(config.name)} Report</h1>
+              <div class="report-sub">Master Data Export &bull; Fixed Asset Management System</div>
+            </div>
+            <div class="report-meta">
+              <div><strong>Total Records:</strong> ${rows.length}</div>
+              <div><strong>Export Date:</strong> ${new Date().toLocaleString()}</div>
+            </div>
+          </div>
+          <table>
+            <thead>
+              <tr>${config.headers.map((h) => `<th>${escapeXml(h)}</th>`).join('')}</tr>
+            </thead>
+            <tbody>
+              ${rows.map((r) => `
+                <tr>
+                  ${r.map((c) => `
+                    <td>
+                      ${c === 'Active' ? '<span class="badge-active">Active</span>' : c === 'Inactive' ? '<span class="badge-inactive">Inactive</span>' : escapeXml(c)}
+                    </td>
+                  `).join('')}
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </body>
+        </html>
+      `);
+      printWindow.document.close();
+      printWindow.focus();
+      setTimeout(() => {
+        printWindow.print();
+      }, 350);
+      triggerToast(`Exporting ${rows.length} ${config.name} records to PDF...`);
+    } catch (err) {
+      triggerToast(`Failed to export PDF: ${err.message || 'Error'}`);
+    }
   };
 
   // Exact 11 items matching the Master Data section in the left sidebar
@@ -477,7 +1163,7 @@ export function MasterDataSetup() {
                 <button
                   onClick={() => {
                     setShowImportDropdown(false);
-                    triggerToast('CSV / Excel import template downloaded.');
+                    handleDownloadTemplate();
                   }}
                   className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2 cursor-pointer"
                 >
@@ -543,20 +1229,14 @@ export function MasterDataSetup() {
                   <span>Export to CSV</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setShowExportDropdown(false);
-                    triggerToast(`Exporting to Excel...`);
-                  }}
+                  onClick={handleExportExcel}
                   className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <FileCode className="w-3.5 h-3.5 text-[#6C2BD9]" />
                   <span>Export to Excel</span>
                 </button>
                 <button
-                  onClick={() => {
-                    setShowExportDropdown(false);
-                    triggerToast(`Exporting to PDF...`);
-                  }}
+                  onClick={handleExportPDF}
                   className="w-full text-left px-3 py-2 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2 cursor-pointer"
                 >
                   <FileCheck className="w-3.5 h-3.5 text-[#6C2BD9]" />
@@ -650,6 +1330,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'item-master' && (
         <ItemMasterTab
+          key={`item-master-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -661,6 +1342,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'asset-groups' && (
         <AssetGroupsTab
+          key={`asset-groups-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -673,6 +1355,7 @@ export function MasterDataSetup() {
 
       {(activeTab === 'classes' || activeTab === 'sub-groups') && (
         <ClassesTab
+          key={`classes-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -684,6 +1367,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'categories' && (
         <CategoriesTab
+          key={`categories-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -693,10 +1377,11 @@ export function MasterDataSetup() {
         />
       )}
 
-      {activeTab === 'depreciation' && <DepreciationPoliciesTab />}
+      {activeTab === 'depreciation' && <DepreciationPoliciesTab key={`depreciation-${groupReloadTrigger}`} />}
 
       {activeTab === 'subcategories' && (
         <SubCategoriesTab
+          key={`subcategories-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -708,6 +1393,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'companies' && (
         <CompaniesTab
+          key={`companies-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -718,6 +1404,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'custodians' && (
         <CustodiansTab
+          key={`custodians-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -728,6 +1415,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'locations' && (
         <LocationsTab
+          key={`locations-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -740,6 +1428,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'departments' && (
         <DepartmentsTab
+          key={`departments-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -751,7 +1440,7 @@ export function MasterDataSetup() {
 
       {['location-level-1', 'location-level-2', 'location-level-3', 'location-level-4'].includes(activeTab) && (
         <LocationLevelTab
-          key={activeTab}
+          key={`${activeTab}-${groupReloadTrigger}`}
           level={parseInt(activeTab.replace('location-level-', ''), 10)}
           levelName={currentTabObject?.name || 'Location Level'}
           triggerToast={triggerToast}
@@ -765,6 +1454,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'cost-centers' && (
         <CostCentersTab
+          key={`cost-centers-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -776,6 +1466,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'suppliers' && (
         <SuppliersTab
+          key={`suppliers-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -786,6 +1477,7 @@ export function MasterDataSetup() {
 
       {activeTab === 'disposal-statuses' && (
         <DisposalStatusesTab
+          key={`disposal-statuses-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -796,6 +1488,7 @@ export function MasterDataSetup() {
 
       {(activeTab === 'conditions' || activeTab === 'asset-conditions') && (
         <ConditionsTab
+          key={`conditions-${groupReloadTrigger}`}
           triggerToast={triggerToast}
           activeRowMenuId={activeRowMenuId}
           setActiveRowMenuId={setActiveRowMenuId}
@@ -807,7 +1500,7 @@ export function MasterDataSetup() {
       {/* GENERIC MASTER DATA TABS (Asset Types, Manufacturers, UOM, Status Codes & Custom Views) */}
       {['manufacturers', 'brands', 'uom', 'status-codes', 'asset-types'].includes(activeTab) && (
         <GenericMasterTab
-          key={activeTab}
+          key={`${activeTab}-${groupReloadTrigger}`}
           activeTab={activeTab}
           tabName={currentTabObject?.name}
           triggerToast={triggerToast}
@@ -1067,6 +1760,136 @@ export function MasterDataSetup() {
               >
                 {isImporting && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
                 <span>Start Import ({importParsedRows.length})</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GLOBAL MODAL 4: Import History Modal */}
+      {showImportHistoryModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <History className="w-4 h-4 text-[#6C2BD9]" />
+                <span>Import History</span>
+              </h3>
+              <button onClick={() => setShowImportHistoryModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-2 text-xs max-h-80 overflow-y-auto pr-1">
+              {(() => {
+                const history = JSON.parse(localStorage.getItem('fams_import_history') || '[]');
+                if (history.length === 0) {
+                  return (
+                    <div className="p-8 text-center text-slate-500">
+                      <History className="w-8 h-8 text-slate-300 mx-auto mb-2" />
+                      <p className="font-semibold text-slate-700">No Import History Found</p>
+                      <p className="text-[11px] text-slate-400 mt-1">Completed CSV master data imports will be logged here with timestamps and row counts.</p>
+                    </div>
+                  );
+                }
+                return (
+                  <div className="divide-y divide-slate-100">
+                    {history.map((item) => (
+                      <div key={item.id} className="py-2.5 flex items-center justify-between text-xs">
+                        <div>
+                          <p className="font-bold text-slate-800">{item.entity}</p>
+                          <p className="text-[11px] text-slate-400">{item.fileName} &bull; {item.timestamp}</p>
+                        </div>
+                        <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                          {item.importedRows} / {item.totalRows} Imported
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                );
+              })()}
+            </div>
+
+            <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  localStorage.removeItem('fams_import_history');
+                  triggerToast('Import history cleared.');
+                  setShowImportHistoryModal(false);
+                }}
+                className="text-xs text-rose-600 hover:underline cursor-pointer font-medium"
+              >
+                Clear History
+              </button>
+              <button
+                onClick={() => setShowImportHistoryModal(false)}
+                className="px-4 py-2 bg-[#6C2BD9] text-white font-bold rounded-xl text-xs hover:bg-[#5B21B6] cursor-pointer"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* GLOBAL MODAL 5: Import Guidelines Modal */}
+      {showImportGuidelinesModal && (
+        <div className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl border border-slate-200 shadow-2xl max-w-lg w-full p-6 space-y-4">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <h3 className="text-sm font-bold text-slate-900 flex items-center gap-2">
+                <BookOpen className="w-4 h-4 text-[#6C2BD9]" />
+                <span>Import Guidelines &bull; {currentTabObject?.name || 'Master Data'}</span>
+              </h3>
+              <button onClick={() => setShowImportGuidelinesModal(false)} className="text-slate-400 hover:text-slate-600 p-1 cursor-pointer">
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <div className="space-y-3 text-xs max-h-80 overflow-y-auto pr-1 text-slate-600">
+              <div className="p-3 bg-purple-50/60 rounded-xl border border-purple-100 space-y-1">
+                <p className="font-bold text-[#6C2BD9]">Standard CSV File Requirements</p>
+                <p className="text-[11px] text-slate-600 leading-relaxed">
+                  Use UTF-8 encoded .csv files. First line must contain column headers matching the template. Values containing commas or quotes should be enclosed in double quotes.
+                </p>
+              </div>
+
+              <div>
+                <p className="font-bold text-slate-800 mb-1.5">Columns Expected for {currentTabObject?.name || 'Active Master'}:</p>
+                <div className="flex flex-wrap gap-1.5">
+                  {getMasterConfig(activeTab).headers.map((h, i) => (
+                    <span key={i} className="px-2 py-1 rounded-lg bg-slate-100 border border-slate-200 text-slate-700 font-mono text-[11px]">
+                      {h}
+                    </span>
+                  ))}
+                </div>
+              </div>
+
+              <div className="space-y-1 text-[11px] text-slate-500">
+                <p>&bull; <strong>Codes:</strong> Must be unique. Duplicates are automatically skipped during batch import.</p>
+                <p>&bull; <strong>Status:</strong> Use &quot;Active&quot; or &quot;Inactive&quot; (defaults to &quot;Active&quot; if left empty).</p>
+                <p>&bull; <strong>Relationships:</strong> Group, Category, and Manufacturer names should correspond to existing master names.</p>
+              </div>
+            </div>
+
+            <div className="pt-2 flex items-center justify-between border-t border-slate-100">
+              <button
+                type="button"
+                onClick={() => {
+                  handleDownloadTemplate();
+                  setShowImportGuidelinesModal(false);
+                }}
+                className="text-xs text-[#6C2BD9] hover:underline cursor-pointer font-bold flex items-center gap-1"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Download Sample Template</span>
+              </button>
+              <button
+                onClick={() => setShowImportGuidelinesModal(false)}
+                className="px-4 py-2 bg-[#6C2BD9] text-white font-bold rounded-xl text-xs hover:bg-[#5B21B6] cursor-pointer"
+              >
+                Got It
               </button>
             </div>
           </div>
