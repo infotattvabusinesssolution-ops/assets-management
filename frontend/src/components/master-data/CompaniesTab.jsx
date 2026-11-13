@@ -785,6 +785,7 @@ export function CompaniesTab({
         itemName={companyToToggleStatus?.name}
         itemCode={companyToToggleStatus?.code}
         currentStatus={companyToToggleStatus?.active ? 'Active' : 'Inactive'}
+        warningNote="Deactivating this Company will also deactivate its linked Departments, Sections, and Suppliers."
         isLoading={isStatusUpdating}
       />
 

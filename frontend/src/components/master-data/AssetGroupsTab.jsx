@@ -1019,6 +1019,7 @@ export function AssetGroupsTab({
         itemName={groupToToggleStatus?.name}
         itemCode={groupToToggleStatus?.code}
         currentStatus={groupToToggleStatus?.status}
+        warningNote="Deactivating this Asset Group will also deactivate all linked Sub Groups, Categories, and Sub Categories."
         isLoading={isStatusUpdating}
       />
 

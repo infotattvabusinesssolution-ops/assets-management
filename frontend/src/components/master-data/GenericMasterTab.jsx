@@ -1043,7 +1043,7 @@ export function GenericMasterTab({
                                 <span>{item.manufacturerName}</span>
                                 {isParentMfrInactive(item) && (
                                   <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-50 text-rose-600 border border-rose-200">
-                                    (Inactive)
+                                    (Parent Inactive)
                                   </span>
                                 )}
                               </div>
@@ -1556,6 +1556,7 @@ export function GenericMasterTab({
         itemName={genericToToggleStatus?.name}
         itemCode={genericToToggleStatus?.code}
         currentStatus={genericToToggleStatus?.status}
+        warningNote={activeTab === 'manufacturers' ? 'Deactivating this Manufacturer will also deactivate its linked Brands.' : ''}
         isLoading={isStatusUpdating}
       />
     </div>

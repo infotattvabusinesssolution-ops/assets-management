@@ -366,9 +366,15 @@ export function CostCentersTab({
     setActiveRowMenuId && setActiveRowMenuId(null);
     const newStatus = cc.status === 'Active' ? 'Inactive' : 'Active';
     if (newStatus === 'Active') {
-      const comp = companiesList.find(c => c.name === cc.company || c.code === cc.company || c.id === cc.companyId);
+      const comp = companiesList.find(c => (c.name || c.code) === cc.company || c.id === cc.companyId);
       if ((comp && (comp.active === false || comp.status === 'Inactive')) || cc.companyActive === false) {
-        const msg = `Cannot activate Section "${cc.code}" because parent Company "${cc.company || 'assigned company'}" is inactive.`;
+        const msg = `Cannot activate Section "${cc.code}" because parent Company "${cc.company || comp?.name || 'assigned company'}" is inactive.`;
+        triggerToast && triggerToast(msg);
+        return;
+      }
+      const dept = departmentsList.find(d => (d.name || d.code) === cc.department || d.id === cc.departmentId);
+      if ((dept && (dept.active === false || dept.status === 'Inactive')) || cc.departmentActive === false) {
+        const msg = `Cannot activate Section "${cc.code}" because parent Department "${cc.department || dept?.name || 'assigned department'}" is inactive.`;
         triggerToast && triggerToast(msg);
         return;
       }
@@ -587,22 +593,63 @@ export function CostCentersTab({
                       <td className="py-2.5 px-2 text-center text-slate-400 text-[11px]">{startIndex + index + 1}</td>
                       <td className="py-2.5 px-3 font-mono font-bold text-[#6C2BD9]">{cc.code}</td>
                       <td className="py-2.5 px-3 text-[#1E1B4B] font-bold">{cc.name}</td>
-                      <td className="py-2.5 px-3 text-slate-700">{cc.company}</td>
-                      <td className="py-2.5 px-3 text-slate-700 font-semibold">{cc.department}</td>
+                      <td className="py-2.5 px-3 text-slate-700">
+                        <div className="flex items-center gap-1">
+                          <span>{cc.company || '-'}</span>
+                          {(() => {
+                            const comp = companiesList.find(c => (c.name || c.code) === cc.company || c.id === cc.companyId);
+                            const isCompInact = (comp && (comp.active === false || comp.status === 'Inactive')) || cc.companyActive === false;
+                            if (isCompInact) {
+                              return (
+                                <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0 rounded">
+                                  (Parent Inactive)
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
+                      <td className="py-2.5 px-3 text-slate-700 font-semibold">
+                        <div className="flex items-center gap-1">
+                          <span>{cc.department || '-'}</span>
+                          {(() => {
+                            const dept = departmentsList.find(d => (d.name || d.code) === cc.department || d.id === cc.departmentId);
+                            const isDeptInact = (dept && (dept.active === false || dept.status === 'Inactive')) || cc.departmentActive === false;
+                            if (isDeptInact) {
+                              return (
+                                <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0 rounded">
+                                  (Parent Inactive)
+                                </span>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      </td>
                       <td className="py-2.5 px-3 text-slate-700">{cc.type || '-'}</td>
                       <td className="py-2.5 px-3 text-slate-800 font-medium">{cc.manager || '-'}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                         {(cc.totalAssets ?? 0).toLocaleString()}
                       </td>
                       <td className="py-2.5 px-3 text-center">
-                        <span
-                          className={clsx(
-                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold',
-                            cc.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                          )}
-                        >
-                          {cc.status}
-                        </span>
+                        {(() => {
+                          const comp = companiesList.find(c => (c.name || c.code) === cc.company || c.id === cc.companyId);
+                          const isCompInact = (comp && (comp.active === false || comp.status === 'Inactive')) || cc.companyActive === false;
+                          const dept = departmentsList.find(d => (d.name || d.code) === cc.department || d.id === cc.departmentId);
+                          const isDeptInact = (dept && (dept.active === false || dept.status === 'Inactive')) || cc.departmentActive === false;
+                          const effectiveActive = cc.status === 'Active' && !isCompInact && !isDeptInact;
+                          return (
+                            <span
+                              className={clsx(
+                                'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold',
+                                effectiveActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                              )}
+                            >
+                              {effectiveActive ? 'Active' : 'Inactive'}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
@@ -711,12 +758,40 @@ export function CostCentersTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Company</span>
-                <span className="col-span-2 text-slate-700">{selectedCostCenter.company}</span>
+                <span className="col-span-2 text-slate-700 flex items-center gap-1.5 flex-wrap">
+                  <span>{selectedCostCenter.company}</span>
+                  {(() => {
+                    const comp = companiesList.find(c => (c.name || c.code) === selectedCostCenter.company || c.id === selectedCostCenter.companyId);
+                    const isCompInact = (comp && (comp.active === false || comp.status === 'Inactive')) || selectedCostCenter.companyActive === false;
+                    if (isCompInact) {
+                      return (
+                        <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0 rounded">
+                          (Parent Inactive)
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Department</span>
-                <span className="col-span-2 font-semibold text-[#6C2BD9]">{selectedCostCenter.department || 'Not Assigned'}</span>
+                <span className="col-span-2 font-semibold text-[#6C2BD9] flex items-center gap-1.5 flex-wrap">
+                  <span>{selectedCostCenter.department || 'Not Assigned'}</span>
+                  {(() => {
+                    const dept = departmentsList.find(d => (d.name || d.code) === selectedCostCenter.department || d.id === selectedCostCenter.departmentId);
+                    const isDeptInact = (dept && (dept.active === false || dept.status === 'Inactive')) || selectedCostCenter.departmentActive === false;
+                    if (isDeptInact) {
+                      return (
+                        <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0 rounded">
+                          (Parent Inactive)
+                        </span>
+                      );
+                    }
+                    return null;
+                  })()}
+                </span>
               </div>
 
               {selectedCostCenter.type && (
@@ -761,9 +836,21 @@ export function CostCentersTab({
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Status</span>
                 <span className="col-span-2">
-                  <span className={clsx('inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold', selectedCostCenter.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>
-                    {selectedCostCenter.status}
-                  </span>
+                  {(() => {
+                    const comp = companiesList.find(c => (c.name || c.code) === selectedCostCenter.company || c.id === selectedCostCenter.companyId);
+                    const isCompInact = (comp && (comp.active === false || comp.status === 'Inactive')) || selectedCostCenter.companyActive === false;
+                    const dept = departmentsList.find(d => (d.name || d.code) === selectedCostCenter.department || d.id === selectedCostCenter.departmentId);
+                    const isDeptInact = (dept && (dept.active === false || dept.status === 'Inactive')) || selectedCostCenter.departmentActive === false;
+                    const effectiveActive = selectedCostCenter.status === 'Active' && !isCompInact && !isDeptInact;
+                    return (
+                      <span className={clsx(
+                        'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
+                        effectiveActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                      )}>
+                        {effectiveActive ? 'Active' : 'Inactive'}
+                      </span>
+                    );
+                  })()}
                 </span>
               </div>
 

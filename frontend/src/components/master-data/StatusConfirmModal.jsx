@@ -14,6 +14,7 @@ export function StatusConfirmModal({
   itemCode = '',
   nextStatus,
   currentStatus,
+  warningNote = '',
   isLoading = false
 }) {
   useEffect(() => {
@@ -77,6 +78,12 @@ export function StatusConfirmModal({
               ? 'This record will be marked as Inactive and will be unavailable for new asset assignments.'
               : 'This record will be marked as Active and restored for asset assignments.'}
           </p>
+          {warningNote && isDeactivating && (
+            <div className="mt-2.5 p-2.5 rounded-xl bg-amber-50/80 border border-amber-200/90 text-amber-800 text-[11px] text-left flex items-start gap-2">
+              <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0 mt-0.5" />
+              <span className="font-medium leading-relaxed">{warningNote}</span>
+            </div>
+          )}
         </div>
 
         {/* Action Buttons */}

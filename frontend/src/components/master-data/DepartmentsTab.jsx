@@ -667,7 +667,7 @@ export function DepartmentsTab({
                                 if (isInactive) {
                                   return (
                                     <span className="text-[9px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1 py-0 rounded">
-                                      (Inactive)
+                                      (Parent Inactive)
                                     </span>
                                   );
                                 }
@@ -682,14 +682,21 @@ export function DepartmentsTab({
                       <td className="py-2.5 px-3 text-slate-700">{dept.location || '-'}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{dept.employees}</td>
                       <td className="py-2.5 px-3 text-center">
-                        <span
-                          className={clsx(
-                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold',
-                            dept.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
-                          )}
-                        >
-                          {dept.status}
-                        </span>
+                        {(() => {
+                          const comp = companiesList.find(c => (c.name || c.code) === dept.company || c.id === dept.companyId);
+                          const isCompInact = (comp && isCompanyInactive(comp)) || dept.companyActive === false;
+                          const effectiveActive = dept.status === 'Active' && !isCompInact;
+                          return (
+                            <span
+                              className={clsx(
+                                'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold',
+                                effectiveActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
+                              )}
+                            >
+                              {effectiveActive ? 'Active' : 'Inactive'}
+                            </span>
+                          );
+                        })()}
                       </td>
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
@@ -1229,6 +1236,7 @@ export function DepartmentsTab({
         itemName={deptToToggleStatus?.name}
         itemCode={deptToToggleStatus?.code}
         currentStatus={deptToToggleStatus?.status}
+        warningNote="Deactivating this Department will also deactivate its linked Sections."
         isLoading={isStatusUpdating}
       />
     </div>

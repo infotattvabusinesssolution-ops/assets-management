@@ -191,6 +191,12 @@ export function ClassesTab({
     });
   }, [availableAssetGroups]);
 
+  const isParentGroupInactive = (cls) => {
+    if (!cls) return false;
+    const grp = availableAssetGroups.find(g => (g.name || g.code) === cls.groupName || (cls.assetGroupId && g.id === cls.assetGroupId));
+    return grp ? (grp.active === false || grp.status === 'Inactive') : false;
+  };
+
   const filteredClasses = useMemo(() => {
     return classesList.filter((cls) => {
       const matchesSearch =
@@ -393,6 +399,12 @@ export function ClassesTab({
 
   const handleToggleClassStatus = (cls) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
+    const nextStatus = cls.status === 'Active' ? 'Inactive' : 'Active';
+    if (nextStatus === 'Active' && isParentGroupInactive(cls)) {
+      const grp = availableAssetGroups.find(g => (g.name || g.code) === cls.groupName || (cls.assetGroupId && g.id === cls.assetGroupId));
+      triggerToast && triggerToast(`Cannot activate Sub Group because parent Asset Group "${grp?.name || cls.groupName || 'assigned group'}" is inactive.`);
+      return;
+    }
     setClassToToggleStatus(cls);
   };
 
@@ -657,17 +669,11 @@ export function ClassesTab({
                       <td className="py-3.5 px-3.5 text-slate-700">
                         <div className="flex items-center gap-1.5 flex-wrap">
                           <span>{cls.groupName || '-'}</span>
-                          {(() => {
-                            const grp = availableAssetGroups.find(g => (g.name || g.code) === cls.groupName || (cls.assetGroupId && g.id === cls.assetGroupId));
-                            if (grp && (grp.active === false || grp.status === 'Inactive')) {
-                              return (
-                                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md inline-block">
-                                  (Inactive)
-                                </span>
-                              );
-                            }
-                            return null;
-                          })()}
+                          {isParentGroupInactive(cls) && (
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md inline-block">
+                              (Parent Inactive)
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={cls.description}>
@@ -681,12 +687,12 @@ export function ClassesTab({
                         <span
                           className={clsx(
                             'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-                            cls.status === 'Active'
+                            (cls.status === 'Active' && !isParentGroupInactive(cls))
                               ? 'bg-emerald-100 text-emerald-700'
                               : 'bg-rose-100 text-rose-700'
                           )}
                         >
-                          {cls.status}
+                          {(cls.status === 'Active' && !isParentGroupInactive(cls)) ? 'Active' : 'Inactive'}
                         </span>
                       </td>
 
@@ -803,17 +809,11 @@ export function ClassesTab({
                 <span className="text-slate-500 font-medium">Asset Group</span>
                 <span className="col-span-2 font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
                   <span>{selectedClass.groupName || '-'}</span>
-                  {(() => {
-                    const grp = availableAssetGroups.find(g => (g.name || g.code) === selectedClass.groupName || (selectedClass.assetGroupId && g.id === selectedClass.assetGroupId));
-                    if (grp && (grp.active === false || grp.status === 'Inactive')) {
-                      return (
-                        <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
-                          (Inactive)
-                        </span>
-                      );
-                    }
-                    return null;
-                  })()}
+                  {isParentGroupInactive(selectedClass) && (
+                    <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
+                      (Parent Inactive)
+                    </span>
+                  )}
                 </span>
               </div>
 
@@ -822,13 +822,16 @@ export function ClassesTab({
                 <span className="col-span-2 text-slate-700 leading-relaxed">{selectedClass.description}</span>
               </div>
 
-
-
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Status</span>
                 <span className="col-span-2">
-                  <span className={clsx('inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold', selectedClass.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>
-                    {selectedClass.status}
+                  <span className={clsx(
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
+                    (selectedClass.status === 'Active' && !isParentGroupInactive(selectedClass))
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-rose-100 text-rose-700'
+                  )}>
+                    {(selectedClass.status === 'Active' && !isParentGroupInactive(selectedClass)) ? 'Active' : 'Inactive'}
                   </span>
                 </span>
               </div>
@@ -1057,6 +1060,7 @@ export function ClassesTab({
         itemName={classToToggleStatus?.name}
         itemCode={classToToggleStatus?.code}
         currentStatus={classToToggleStatus?.status}
+        warningNote="Deactivating this Sub Group will also deactivate its linked Categories and Sub Categories."
         isLoading={isStatusUpdating}
       />
 

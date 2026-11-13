@@ -200,6 +200,15 @@ export function CategoriesTab({
     return false;
   };
 
+  const isCategoryParentInactive = (cat) => {
+    if (!cat) return false;
+    const cls = availableAssetClasses.find(c => (c.name || c.code) === cat.className || (cat.assetSubGroupId && c.id === cat.assetSubGroupId));
+    if (cls && isClassInactive(cls)) return true;
+    const grp = availableAssetGroups.find(g => (g.name || g.code) === cat.groupName);
+    if (grp && (grp.active === false || grp.active === 0 || grp.status === 'Inactive')) return true;
+    return false;
+  };
+
   // Sort sub groups so active ones appear first, followed by inactive ones
   const sortedAssetClasses = useMemo(() => {
     return [...availableAssetClasses].sort((a, b) => {
@@ -438,6 +447,12 @@ export function CategoriesTab({
 
   const handleToggleCategoryStatus = (cat) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
+    const nextStatus = cat.status === 'Active' ? 'Inactive' : 'Active';
+    if (nextStatus === 'Active' && isCategoryParentInactive(cat)) {
+      const cls = availableAssetClasses.find(c => (c.name || c.code) === cat.className || (cat.assetSubGroupId && c.id === cat.assetSubGroupId));
+      triggerToast && triggerToast(`Cannot activate Category because parent Sub Group "${cls?.name || cat.className || 'assigned sub group'}" is inactive.`);
+      return;
+    }
     setCatToToggleStatus(cat);
   };
 
@@ -716,17 +731,11 @@ export function CategoriesTab({
                       <td className="py-3.5 px-3 text-slate-700">
                         <div className="flex flex-col items-start gap-0.5">
                           <span>{cat.className || '-'}</span>
-                          {(() => {
-                            const cls = availableAssetClasses.find(c => (c.name || c.code) === cat.className || (cat.assetSubGroupId && c.id === cat.assetSubGroupId));
-                            if (cls && isClassInactive(cls)) {
-                              return (
-                                <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md inline-block">
-                                  (Inactive)
-                                </span>
-                              );
-                            }
-                            return null;
-                          })()}
+                          {isCategoryParentInactive(cat) && (
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md inline-block">
+                              (Parent Inactive)
+                            </span>
+                          )}
                         </div>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={cat.description}>
@@ -739,12 +748,12 @@ export function CategoriesTab({
                         <span
                           className={clsx(
                             'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-                            cat.status === 'Active'
+                            (cat.status === 'Active' && !isCategoryParentInactive(cat))
                               ? 'bg-emerald-100 text-emerald-700'
                               : 'bg-rose-100 text-rose-700'
                           )}
                         >
-                          {cat.status}
+                          {(cat.status === 'Active' && !isCategoryParentInactive(cat)) ? 'Active' : 'Inactive'}
                         </span>
                       </td>
 
@@ -866,7 +875,7 @@ export function CategoriesTab({
                     if (cls && isClassInactive(cls)) {
                       return (
                         <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
-                          (Inactive)
+                          (Parent Inactive)
                         </span>
                       );
                     }
@@ -884,7 +893,7 @@ export function CategoriesTab({
                     if (grp && (grp.active === false || grp.active === 0 || grp.status === 'Inactive')) {
                       return (
                         <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
-                          (Inactive)
+                          (Parent Inactive)
                         </span>
                       );
                     }
@@ -901,8 +910,13 @@ export function CategoriesTab({
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Status</span>
                 <span className="col-span-2">
-                  <span className={clsx('inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold', selectedCategory.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>
-                    {selectedCategory.status}
+                  <span className={clsx(
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
+                    (selectedCategory.status === 'Active' && !isCategoryParentInactive(selectedCategory))
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-rose-100 text-rose-700'
+                  )}>
+                    {(selectedCategory.status === 'Active' && !isCategoryParentInactive(selectedCategory)) ? 'Active' : 'Inactive'}
                   </span>
                 </span>
               </div>
@@ -1175,6 +1189,7 @@ export function CategoriesTab({
         itemName={catToToggleStatus?.name}
         itemCode={catToToggleStatus?.code}
         currentStatus={catToToggleStatus?.status}
+        warningNote="Deactivating this Category will also deactivate its linked Sub Categories."
         isLoading={isStatusUpdating}
       />
 

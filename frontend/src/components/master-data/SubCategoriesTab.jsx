@@ -202,6 +202,28 @@ export function SubCategoriesTab({
     return false;
   };
 
+  const isSubCatParentInactive = (sc) => {
+    if (!sc) return false;
+    const cat = categories.find(c =>
+      (sc.categoryId && (c.id === sc.categoryId || c.code === sc.categoryId)) ||
+      (sc.categoryName && (c.name || '').toLowerCase() === sc.categoryName.toLowerCase())
+    );
+    if (cat && isCategoryInactive(cat)) return true;
+    const subGrp = availableAssetClasses.find(c =>
+      (sc.assetSubGroupId && c.id === sc.assetSubGroupId) ||
+      (sc.className && (c.name || c.code || '').toLowerCase() === sc.className.toLowerCase()) ||
+      (sc.assetSubGroupName && (c.name || c.code || '').toLowerCase() === sc.assetSubGroupName.toLowerCase())
+    );
+    if (subGrp && (subGrp.active === false || subGrp.status === 'Inactive')) return true;
+    const grp = availableAssetGroups.find(g =>
+      (sc.assetGroupId && g.id === sc.assetGroupId) ||
+      (sc.groupName && (g.name || g.code || '').toLowerCase() === sc.groupName.toLowerCase()) ||
+      (sc.assetGroupName && (g.name || g.code || '').toLowerCase() === sc.assetGroupName.toLowerCase())
+    );
+    if (grp && (grp.active === false || grp.status === 'Inactive')) return true;
+    return false;
+  };
+
   const sortedCategories = useMemo(() => {
     return [...categories].sort((a, b) => {
       const aInactive = isCategoryInactive(a);
@@ -419,6 +441,11 @@ export function SubCategoriesTab({
 
   const handleToggleSubCategoryStatus = (sc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
+    const nextStatus = sc.status === 'Active' ? 'Inactive' : 'Active';
+    if (nextStatus === 'Active' && isSubCatParentInactive(sc)) {
+      triggerToast && triggerToast(`Cannot activate Sub Category because parent Category "${sc.categoryName || 'assigned category'}" is inactive.`);
+      return;
+    }
     setSubCatToToggleStatus(sc);
   };
 
@@ -691,7 +718,16 @@ export function SubCategoriesTab({
                       <td className="py-3.5 px-2 text-center text-slate-400">{startIndex + index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{sc.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{sc.name}</td>
-                      <td className="py-3.5 px-3 text-slate-700">{sc.categoryName}</td>
+                      <td className="py-3.5 px-3 text-slate-700">
+                        <div className="flex flex-col items-start gap-0.5">
+                          <span>{sc.categoryName || '-'}</span>
+                          {isSubCatParentInactive(sc) && (
+                            <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md inline-block">
+                              (Parent Inactive)
+                            </span>
+                          )}
+                        </div>
+                      </td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={sc.description}>
                         {sc.description || '-'}
                       </td>
@@ -702,12 +738,12 @@ export function SubCategoriesTab({
                         <span
                           className={clsx(
                             'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-                            sc.status === 'Active'
+                            (sc.status === 'Active' && !isSubCatParentInactive(sc))
                               ? 'bg-emerald-100 text-emerald-700'
                               : 'bg-rose-100 text-rose-700'
                           )}
                         >
-                          {sc.status}
+                          {(sc.status === 'Active' && !isSubCatParentInactive(sc)) ? 'Active' : 'Inactive'}
                         </span>
                       </td>
 
@@ -822,7 +858,14 @@ export function SubCategoriesTab({
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Category</span>
-                <span className="col-span-2 font-semibold text-slate-800">{selectedSubCategory.categoryName}</span>
+                <span className="col-span-2 font-semibold text-slate-800 flex items-center gap-1.5 flex-wrap">
+                  <span>{selectedSubCategory.categoryName}</span>
+                  {isSubCatParentInactive(selectedSubCategory) && (
+                    <span className="text-[10px] font-bold text-rose-600 bg-rose-50 border border-rose-200 px-1.5 py-0.2 rounded-md">
+                      (Parent Inactive)
+                    </span>
+                  )}
+                </span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
@@ -843,8 +886,13 @@ export function SubCategoriesTab({
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Status</span>
                 <span className="col-span-2">
-                  <span className={clsx('inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold', selectedSubCategory.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>
-                    {selectedSubCategory.status}
+                  <span className={clsx(
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
+                    (selectedSubCategory.status === 'Active' && !isSubCatParentInactive(selectedSubCategory))
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-rose-100 text-rose-700'
+                  )}>
+                    {(selectedSubCategory.status === 'Active' && !isSubCatParentInactive(selectedSubCategory)) ? 'Active' : 'Inactive'}
                   </span>
                 </span>
               </div>
