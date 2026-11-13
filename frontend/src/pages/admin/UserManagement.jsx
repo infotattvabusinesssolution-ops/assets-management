@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../../context/AuthContext';
 import { api, API_BASE_URL } from '../../services/api';
 import {
   Users,
@@ -35,6 +37,9 @@ import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
 export const INITIAL_USERS = [];
 
 export function UserManagement() {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+
   // State
   const [userList, setUserList] = useState([]);
   const [users, setUsers] = useState([]);
@@ -676,6 +681,22 @@ export function UserManagement() {
     setUsers(prev => prev.map(u => u.id === user.id ? { ...u, mfaEnabled: nextMfa } : u));
     setActionSuccessMsg(`MFA has been ${nextMfa ? 'Enabled' : 'Disabled'} for "${user.name}".`);
     setActiveDropdownId(null);
+  };
+
+  const handleLoginAsUser = (targetUser) => {
+    const targetUsername = targetUser.username || targetUser.email || '';
+    if (!targetUsername) return;
+    setActiveDropdownId(null);
+    try {
+      sessionStorage.setItem('asset360_login_as_username', targetUsername);
+      localStorage.setItem('asset360_remembered_username', targetUsername);
+    } catch (_) {}
+    if (typeof logout === 'function') {
+      logout();
+    }
+    navigate(`/login?username=${encodeURIComponent(targetUsername)}`, {
+      state: { prefillUsername: targetUsername, blankPassword: true }
+    });
   };
 
   const handleDeleteUser = (user) => {
@@ -1330,11 +1351,8 @@ export function UserManagement() {
                             </button>
 
                             <button
-                              onClick={() => {
-                                alert(`Simulating Administrator Impersonation: Logged in as ${user.name} (${user.role})`);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
+                              onClick={() => handleLoginAsUser(user)}
+                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
                             >
                               <LogIn className="w-3.5 h-3.5 text-[#6C2BD9]" />
                               Login As User

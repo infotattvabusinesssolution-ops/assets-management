@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useLocation } from 'react-router-dom';
 import {
   ShieldCheck,
   Lock,
@@ -224,12 +224,24 @@ function BrandLogo({ className = "", compact = false }) {
 }
 
 export function Login() {
-  const initialRememberedUser = localStorage.getItem('asset360_remembered_username') || 'admin';
+  const navigate = useNavigate();
+  const location = useLocation();
+
+  const searchParams = new URLSearchParams(location.search);
+  const paramUser =
+    searchParams.get('username') ||
+    location.state?.prefillUsername ||
+    (typeof window !== 'undefined' ? sessionStorage.getItem('asset360_login_as_username') : '') ||
+    '';
+  const isLoginAsUser = Boolean(paramUser || location.state?.blankPassword);
+
+  const initialRememberedUser = paramUser || localStorage.getItem('asset360_remembered_username') || 'admin';
   const [username, setUsername] = useState(initialRememberedUser);
-  const [password, setPassword] = useState('Password@123');
+  const [password, setPassword] = useState(isLoginAsUser ? '' : 'Password@123');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
+  const passwordInputRef = useRef(null);
 
   // Language State
   const [selectedLang, setSelectedLang] = useState(LANGUAGES[0]);
@@ -260,9 +272,28 @@ export function Login() {
   const langRef = useRef(null);
 
   const { login, changePassword, logout, loading } = useAuth();
-  const navigate = useNavigate();
 
   const t = TRANSLATIONS[selectedLang.code] || TRANSLATIONS.en;
+
+  useEffect(() => {
+    const qUser =
+      new URLSearchParams(location.search).get('username') ||
+      location.state?.prefillUsername ||
+      (typeof window !== 'undefined' ? sessionStorage.getItem('asset360_login_as_username') : '');
+    if (qUser) {
+      setUsername(qUser);
+      setPassword('');
+      setError('');
+      try {
+        sessionStorage.removeItem('asset360_login_as_username');
+      } catch (_) {}
+      setTimeout(() => {
+        if (passwordInputRef.current) {
+          passwordInputRef.current.focus();
+        }
+      }, 100);
+    }
+  }, [location.search, location.state]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -307,8 +338,19 @@ export function Login() {
     e.preventDefault();
     setError('');
 
-    const targetUser = username.trim() || 'admin';
-    const targetPass = password || 'Password@123';
+    const targetUser = username.trim();
+    if (!targetUser) {
+      setError('Please enter your username.');
+      return;
+    }
+
+    if (!password) {
+      setError('Please enter your password.');
+      if (passwordInputRef.current) {
+        passwordInputRef.current.focus();
+      }
+      return;
+    }
 
     if (rememberMe) {
       localStorage.setItem('asset360_remembered_username', targetUser);
@@ -316,7 +358,7 @@ export function Login() {
       localStorage.removeItem('asset360_remembered_username');
     }
 
-    const res = await login(targetUser, targetPass);
+    const res = await login(targetUser, password);
     if (res && res.success) {
       // Check if user is required to change password on first login
       if (res.mustChangePassword || res.user?.forcePasswordChange) {
@@ -656,6 +698,7 @@ export function Login() {
               <div className="relative">
                 <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-2.5 sm:top-3 z-10 pointer-events-none" />
                 <input
+                  ref={passwordInputRef}
                   type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => {
