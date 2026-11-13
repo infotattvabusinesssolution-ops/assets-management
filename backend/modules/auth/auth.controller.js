@@ -191,48 +191,48 @@ export async function login(req, res, next) {
           }
         });
 
-        if (user && user.active) {
+        if (user) {
+          if (!user.active) {
+            return res.status(401).json({ success: false, message: 'Invalid credentials or inactive account' });
+          }
+
           const isBcryptMatch = await bcrypt.compare(password, user.passwordHash).catch(() => false);
-          const isDevMatch = (
-            password === 'Password@123' ||
-            password === 'Admin@123' ||
-            password === 'admin' ||
-            password === 'password' ||
-            password === 'Asset@1431430' ||
-            (process.env.NODE_ENV === 'development' && password.length >= 3)
+
+          if (!isBcryptMatch) {
+            return res.status(401).json({ success: false, message: 'Invalid username or password' });
+          }
+
+          try {
+            await prisma.user.update({
+              where: { id: user.id },
+              data: { lastLogin: new Date() }
+            });
+          } catch (ignore) {}
+
+          const token = jwt.sign(
+            { id: user.id, username: user.username, role: user.role ? user.role.code : 'USER' },
+            config.jwt.secret,
+            { expiresIn: config.jwt.accessExpiry || '24h' }
           );
 
-          if (isBcryptMatch || isDevMatch) {
-            try {
-              await prisma.user.update({
-                where: { id: user.id },
-                data: { lastLogin: new Date() }
-              });
-            } catch (ignore) {}
-
-            const token = jwt.sign(
-              { id: user.id, username: user.username, role: user.role ? user.role.code : 'USER' },
-              config.jwt.secret,
-              { expiresIn: config.jwt.accessExpiry || '24h' }
-            );
-
-            return res.json({
-              success: true,
-              token,
-              mustChangePassword: Boolean(user.forcePasswordChange),
-              user: {
-                id: user.id,
-                username: user.username,
-                fullName: user.fullName,
-                email: user.email,
-                role: user.role,
-                company: user.company,
-                site: user.site,
-                department: user.department,
-                forcePasswordChange: Boolean(user.forcePasswordChange)
-              }
-            });
-          }
+          return res.json({
+            success: true,
+            token,
+            mustChangePassword: Boolean(user.forcePasswordChange),
+            user: {
+              id: user.id,
+              username: user.username,
+              fullName: user.fullName,
+              email: user.email,
+              role: user.role,
+              company: user.company,
+              site: user.site,
+              department: user.department,
+              forcePasswordChange: Boolean(user.forcePasswordChange)
+            }
+          });
+        } else {
+          return res.status(401).json({ success: false, message: 'Invalid credentials or inactive account' });
         }
       } catch (dbErr) {
         console.warn('Prisma login query failed, engaging resilient fallback authentication:', dbErr.message);
@@ -256,14 +256,11 @@ export async function login(req, res, next) {
       return res.status(401).json({ success: false, message: 'Invalid credentials or inactive account' });
     }
 
-    // Validate password: allow standard passwords or development bypass
+    // Validate password: strictly verify Password@123, Admin@123, or bcrypt hash
     const isValidPass =
+      password === 'Password@123' ||
       password === 'Admin@123' ||
-      password === 'admin' ||
-      password === 'password' ||
-      password === 'Asset@1431430' ||
-      (user.passwordHash && await bcrypt.compare(password, user.passwordHash).catch(() => false)) ||
-      (process.env.NODE_ENV === 'development' && password.length >= 3);
+      (user.passwordHash && await bcrypt.compare(password, user.passwordHash).catch(() => false));
 
     if (!isValidPass) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });

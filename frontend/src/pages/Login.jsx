@@ -237,7 +237,7 @@ export function Login() {
 
   const initialRememberedUser = paramUser || localStorage.getItem('asset360_remembered_username') || 'admin';
   const [username, setUsername] = useState(initialRememberedUser);
-  const [password, setPassword] = useState(isLoginAsUser ? '' : 'Password@123');
+  const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [rememberMe, setRememberMe] = useState(true);
   const [error, setError] = useState('');
@@ -368,14 +368,6 @@ export function Login() {
       }
       redirectByUserRole(res.user);
     } else {
-      // Smart fallback for admin account
-      if (targetUser === 'admin' && password !== 'Password@123') {
-        const retryRes = await login('admin', 'Password@123');
-        if (retryRes && retryRes.success) {
-          redirectByUserRole(retryRes.user);
-          return;
-        }
-      }
       setError(res?.message || 'Invalid username or password');
     }
   };
