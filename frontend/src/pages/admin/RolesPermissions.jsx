@@ -671,7 +671,7 @@ export function RolesPermissions() {
     {
       key: 'administration',
       name: 'Administration & Security',
-      screens: ['User Management', 'Roles & Permissions', 'Company & Organization', 'System Configuration', 'Audit Logs', 'Email Notifications'],
+      screens: ['Company & Organization', 'System Configuration', 'Audit Logs', 'Email Notifications', 'Backup & Scheduler'],
       actions: ['View', 'Create', 'Edit', 'Delete', 'Administer', 'Export']
     }
   ];

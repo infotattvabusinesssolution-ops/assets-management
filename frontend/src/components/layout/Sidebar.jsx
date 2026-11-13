@@ -374,6 +374,12 @@ export function Sidebar({ collapsed, setCollapsed }) {
     }
 
     const filteredSubs = item.subItems.filter(sub => {
+      // Strictly reserve 'User Management' and 'Roles & Permissions' for SYS_ADMIN only
+      const subLower = sub.name.toLowerCase();
+      if (subLower.includes('roles & permissions') || subLower.includes('user management')) {
+        return userRoleCode === 'SYS_ADMIN';
+      }
+
       if (userRoleCode === 'SYS_ADMIN') return true;
 
       if (perms && typeof perms === 'object' && !Array.isArray(perms) && Object.keys(perms).length > 0) {

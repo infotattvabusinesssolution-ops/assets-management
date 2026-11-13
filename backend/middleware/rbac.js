@@ -113,6 +113,24 @@ export function requirePermission(...permissionCodes) {
   };
 }
 
+export function requireRole(...allowedRoles) {
+  return (req, res, next) => {
+    if (!req.user) {
+      return res.status(401).json({ success: false, message: 'Unauthorized' });
+    }
+    const role = req.user.role || req.user.roleId;
+    const roleCode = typeof role === 'string' ? role : role?.code;
+    const targets = allowedRoles.flat();
+    if (roleCode === 'SYS_ADMIN' || targets.includes(roleCode)) {
+      return next();
+    }
+    return res.status(403).json({
+      success: false,
+      message: `Forbidden: This resource is strictly restricted to [${targets.join(' or ')}] users.`
+    });
+  };
+}
+
 /**
  * Attaches query data scope filters based on user assigned scopes
  */

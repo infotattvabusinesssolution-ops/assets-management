@@ -35,27 +35,29 @@ import {
 } from './adminOrg.controller.js';
 
 import adminGovernanceRoutes from './adminGovernance.routes.js';
+import { authenticateToken } from '../../middleware/auth.js';
+import { requireRole } from '../../middleware/rbac.js';
 
 const router = Router();
 
 // Mount Governance, Config, Integrations, Audit, Notifications, Backup
 router.use(adminGovernanceRoutes);
 
-// User Management Routes
-router.get('/users', getAdminUsers);
-router.post('/users', createAdminUser);
-router.put('/users/:id', updateAdminUser);
-router.patch('/users/:id/toggle-status', toggleAdminUserStatus);
-router.post('/users/:id/reset-password', resetAdminUserPassword);
-router.delete('/users/:id', deleteAdminUser);
+// User Management Routes (Strictly System Administrator only)
+router.get('/users', authenticateToken, requireRole('SYS_ADMIN'), getAdminUsers);
+router.post('/users', authenticateToken, requireRole('SYS_ADMIN'), createAdminUser);
+router.put('/users/:id', authenticateToken, requireRole('SYS_ADMIN'), updateAdminUser);
+router.patch('/users/:id/toggle-status', authenticateToken, requireRole('SYS_ADMIN'), toggleAdminUserStatus);
+router.post('/users/:id/reset-password', authenticateToken, requireRole('SYS_ADMIN'), resetAdminUserPassword);
+router.delete('/users/:id', authenticateToken, requireRole('SYS_ADMIN'), deleteAdminUser);
 
-// Roles & Permissions Routes
-router.get('/roles', getAdminRoles);
-router.post('/roles', createAdminRole);
-router.put('/roles/:id', updateAdminRole);
-router.post('/roles/:id/clone', cloneAdminRole);
-router.delete('/roles/:id', deleteAdminRole);
-router.post('/roles/:id/assign-users', assignUsersToRole);
+// Roles & Permissions Routes (Strictly System Administrator only)
+router.get('/roles', authenticateToken, requireRole('SYS_ADMIN'), getAdminRoles);
+router.post('/roles', authenticateToken, requireRole('SYS_ADMIN'), createAdminRole);
+router.put('/roles/:id', authenticateToken, requireRole('SYS_ADMIN'), updateAdminRole);
+router.post('/roles/:id/clone', authenticateToken, requireRole('SYS_ADMIN'), cloneAdminRole);
+router.delete('/roles/:id', authenticateToken, requireRole('SYS_ADMIN'), deleteAdminRole);
+router.post('/roles/:id/assign-users', authenticateToken, requireRole('SYS_ADMIN'), assignUsersToRole);
 
 // Organization Hierarchy Routes
 router.get('/organization/companies', getCompaniesList);
