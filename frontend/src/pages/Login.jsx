@@ -544,20 +544,20 @@ export function Login() {
         {/* ======================================================== */}
         {/* RIGHT COLUMN: AUTHENTICATION FORM & LOGIC               */}
         {/* ======================================================== */}
-        <div className="lg:col-span-5 bg-[#EBE7FF] p-5 sm:p-8 lg:p-10 flex flex-col justify-between relative overflow-hidden h-full">
+        <div className="lg:col-span-5 bg-[#EBE7FF] p-4 sm:p-6 lg:p-8 flex flex-col justify-between relative overflow-y-auto lg:overflow-hidden h-full">
           
           {/* Background Concentric Circles */}
           <div className="absolute -right-20 -bottom-20 w-80 h-80 rounded-full border-[30px] border-purple-200/40 pointer-events-none"></div>
           <div className="absolute -right-10 -bottom-10 w-60 h-60 rounded-full border-[20px] border-purple-200/30 pointer-events-none"></div>
 
           {/* Language Selector Dropdown */}
-          <div className="flex justify-end relative z-30" ref={langRef}>
+          <div className="flex justify-end relative z-30 mb-2 sm:mb-4" ref={langRef}>
             <button
               type="button"
               onClick={() => setIsLangOpen(!isLangOpen)}
-              className="flex items-center gap-2 px-3.5 py-2 bg-white border border-slate-200 hover:border-purple-300 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs transition-all"
+              className="flex items-center gap-2 px-3 py-1.5 bg-white border border-slate-200 hover:border-purple-300 rounded-xl text-xs font-semibold text-slate-700 shadow-2xs transition-all cursor-pointer"
             >
-              <Globe className="w-4 h-4 text-slate-700" />
+              <Globe className="w-3.5 h-3.5 text-slate-700" />
               <span>{selectedLang.name}</span>
               <ChevronDown className={`w-3.5 h-3.5 text-slate-400 transition-transform ${isLangOpen ? 'rotate-180 text-[#6C2BD9]' : ''}`} />
             </button>
@@ -572,7 +572,7 @@ export function Login() {
                       setSelectedLang(lang);
                       setIsLangOpen(false);
                     }}
-                    className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold rounded-xl transition-all ${selectedLang.code === lang.code
+                    className={`w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold rounded-xl transition-all cursor-pointer ${selectedLang.code === lang.code
                         ? 'bg-purple-50 text-[#6C2BD9]'
                         : 'hover:bg-slate-50 text-slate-700'
                       }`}
@@ -586,23 +586,23 @@ export function Login() {
           </div>
 
           {/* Elevated White Login Card matching Image 1 exact screenshot */}
-          <div className="bg-white rounded-3xl p-6 sm:p-8 shadow-xl border border-slate-100 space-y-5 my-auto z-10 w-full max-w-[440px] mx-auto">
+          <div className="bg-white rounded-3xl p-5 sm:p-6 lg:p-7 shadow-xl border border-slate-100 space-y-3 sm:space-y-3.5 my-auto z-10 w-full max-w-[420px] mx-auto">
             
             {/* Centered Brand Logo matching exact crop typography */}
-            <div className="flex justify-center pb-1">
-              <BrandLogo />
+            <div className="flex justify-center pb-0.5">
+              <BrandLogo className="scale-95 origin-center" />
             </div>
 
             {/* Welcome Back Header */}
-            <div className="text-center space-y-1">
-              <h2 className="text-2xl font-black text-[#1E293B] tracking-tight">{t.welcomeBack}</h2>
-              <p className="text-xs text-[#64748B] font-medium">
+            <div className="text-center space-y-0.5">
+              <h2 className="text-xl sm:text-2xl font-black text-[#1E293B] tracking-tight">{t.welcomeBack}</h2>
+              <p className="text-[11px] sm:text-xs text-[#64748B] font-medium">
                 {t.signInToAccount}
               </p>
             </div>
 
             {error && (
-              <div className="p-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 shadow-2xs">
+              <div className="p-2.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 shadow-2xs">
                 <div className="flex items-center gap-2 min-w-0">
                   <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
                   <span className="font-semibold truncate">{error}</span>
@@ -628,26 +628,26 @@ export function Login() {
             )}
 
             {/* Quick Demo Credentials Pill */}
-            <div className="flex items-center justify-between px-3 py-2 text-[11px] text-slate-600 bg-purple-50/70 border border-purple-100 rounded-xl">
-              <span className="flex items-center gap-1.5">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
-                <span>System Admin: <strong className="text-slate-800">admin</strong> / <strong className="text-slate-800">Password@123</strong></span>
+            <div className="flex items-center justify-between px-3 py-1.5 text-[11px] text-slate-600 bg-purple-50/70 border border-purple-100 rounded-xl">
+              <span className="flex items-center gap-1.5 min-w-0 truncate">
+                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
+                <span className="truncate">System Admin: <strong className="text-slate-800">admin</strong> / <strong className="text-slate-800">Password@123</strong></span>
               </span>
               <button
                 type="button"
                 onClick={handleQuickAdminLogin}
-                className="text-[#6C2BD9] hover:text-[#5b21b6] font-bold hover:underline cursor-pointer"
+                className="text-[#6C2BD9] hover:text-[#5b21b6] font-bold hover:underline cursor-pointer flex-shrink-0 ml-1.5"
               >
                 Auto-fill &amp; Login
               </button>
             </div>
 
             {/* Standard Login Form */}
-            <form onSubmit={handleSubmit} className="space-y-4">
+            <form onSubmit={handleSubmit} className="space-y-3 sm:space-y-3.5">
               
               {/* Username Field */}
               <div className="relative">
-                <User className="w-5 h-5 text-slate-500 absolute left-4 top-3.5 z-10 pointer-events-none" />
+                <User className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 sm:top-3.5 z-10 pointer-events-none" />
                 <input
                   type="text"
                   value={username}
@@ -656,14 +656,14 @@ export function Login() {
                     if (error) setError('');
                   }}
                   placeholder={t.username}
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-4 py-3.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15 transition-all shadow-2xs"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-4 py-2.5 sm:py-3 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15 transition-all shadow-2xs"
                   required
                 />
               </div>
 
               {/* Password Field */}
               <div className="relative">
-                <Lock className="w-5 h-5 text-slate-500 absolute left-4 top-3.5 z-10 pointer-events-none" />
+                <Lock className="w-4 h-4 text-slate-400 absolute left-3.5 top-3 sm:top-3.5 z-10 pointer-events-none" />
                 <input
                   type={showPassword ? 'text' : 'password'}
                   value={password}
@@ -672,27 +672,27 @@ export function Login() {
                     if (error) setError('');
                   }}
                   placeholder={t.password}
-                  className="w-full bg-white border border-slate-200 rounded-xl pl-12 pr-12 py-3.5 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15 transition-all shadow-2xs"
+                  className="w-full bg-white border border-slate-200 rounded-xl pl-10 pr-10 py-2.5 sm:py-3 text-xs font-medium text-slate-900 placeholder-slate-400 focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15 transition-all shadow-2xs"
                   required
                 />
                 <button
                   type="button"
                   onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-4 top-3.5 text-slate-500 hover:text-slate-700 transition-colors z-10"
+                  className="absolute right-3 top-2.5 sm:top-3 text-slate-400 hover:text-slate-600 transition-colors z-10 p-1"
                 >
-                  {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
 
               {/* Remember Me Checkbox & Password Recovery Link */}
-              <div className="flex items-center justify-between pt-1">
+              <div className="flex items-center justify-between pt-0.5">
                 <label className="flex items-center gap-2 cursor-pointer select-none">
                   <div
                     onClick={() => setRememberMe(!rememberMe)}
-                    className={`w-5 h-5 rounded flex items-center justify-center transition-all cursor-pointer ${rememberMe ? 'bg-[#6C2BD9] text-white' : 'border border-slate-300 bg-white'
+                    className={`w-4 h-4 rounded flex items-center justify-center transition-all cursor-pointer ${rememberMe ? 'bg-[#6C2BD9] text-white' : 'border border-slate-300 bg-white'
                       }`}
                   >
-                    {rememberMe && <Check className="w-3.5 h-3.5 stroke-[3]" />}
+                    {rememberMe && <Check className="w-3 h-3 stroke-[3]" />}
                   </div>
                   <span className="text-xs font-semibold text-slate-800" onClick={() => setRememberMe(!rememberMe)}>
                     {t.rememberMe}
@@ -701,7 +701,7 @@ export function Login() {
                 <button
                   type="button"
                   onClick={() => setShowForgotModal(true)}
-                  className="text-xs font-bold text-[#6C2BD9] hover:underline"
+                  className="text-xs font-bold text-[#6C2BD9] hover:underline cursor-pointer"
                 >
                   {t.forgotPassword}
                 </button>
@@ -711,7 +711,7 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className="w-full bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-sm py-3.5 px-4 rounded-xl shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50"
+                className="w-full bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-bold text-xs sm:text-sm py-2.5 sm:py-3 px-4 rounded-xl shadow-md shadow-purple-600/30 flex items-center justify-center gap-2 transition-all active:scale-[0.99] disabled:opacity-50 cursor-pointer"
               >
                 {loading ? (
                   <span className="flex items-center gap-2">
@@ -721,15 +721,15 @@ export function Login() {
                 ) : (
                   <span className="flex items-center gap-2">
                     <span>{t.signIn}</span>
-                    <ArrowRight className="w-5 h-5" />
+                    <ArrowRight className="w-4 h-4" />
                   </span>
                 )}
               </button>
 
               {/* Divider: OR */}
-              <div className="relative py-1 flex items-center justify-center">
+              <div className="relative py-0.5 flex items-center justify-center">
                 <div className="border-t border-slate-200 w-full"></div>
-                <span className="bg-white px-3 text-[10px] font-bold text-slate-400 tracking-wider uppercase absolute">
+                <span className="bg-white px-2.5 text-[10px] font-bold text-slate-400 tracking-wider uppercase absolute">
                   {t.or}
                 </span>
               </div>
@@ -738,9 +738,9 @@ export function Login() {
               <button
                 type="button"
                 onClick={() => setShowSsoModal(true)}
-                className="w-full bg-white hover:bg-slate-50 border border-[#6C2BD9] text-[#1E293B] font-bold text-xs py-3.5 px-4 rounded-xl shadow-2xs flex items-center justify-center gap-2.5 transition-all"
+                className="w-full bg-white hover:bg-slate-50 border border-[#6C2BD9] text-[#1E293B] font-bold text-xs py-2.5 sm:py-3 px-4 rounded-xl shadow-2xs flex items-center justify-center gap-2 transition-all cursor-pointer"
               >
-                <svg className="w-5 h-5 text-[#6C2BD9]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                <svg className="w-4 h-4 text-[#6C2BD9]" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
                   <path d="M2 20h20"/>
                   <path d="M4 20V10"/>
                   <path d="M10 20V10"/>
@@ -756,18 +756,18 @@ export function Login() {
           </div>
 
           {/* Footer Support Section */}
-          <div className="text-center pt-4 space-y-1 z-10">
-            <p className="text-xs font-bold text-slate-900">{t.needHelp}</p>
-            <p className="text-xs text-slate-500 font-medium">
-              {t.contactAdminOr}
+          <div className="text-center pt-2 sm:pt-3 z-10 mt-1">
+            <p className="text-[11px] sm:text-xs text-slate-500 font-medium">
+              <span className="font-bold text-slate-900">{t.needHelp}</span>{' '}
+              {t.contactAdminOr}{' '}
+              <button
+                type="button"
+                onClick={() => setShowSupportModal(true)}
+                className="font-bold text-[#6C2BD9] hover:underline inline cursor-pointer"
+              >
+                {t.contactSupport}
+              </button>
             </p>
-            <button
-              type="button"
-              onClick={() => setShowSupportModal(true)}
-              className="text-xs font-bold text-[#6C2BD9] hover:underline block mx-auto"
-            >
-              {t.contactSupport}
-            </button>
           </div>
 
         </div>
