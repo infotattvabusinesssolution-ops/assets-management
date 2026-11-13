@@ -12,38 +12,94 @@ export function requirePermission(...permissionCodes) {
     const role = user.role || user.roleId;
     const roleCode = typeof role === 'string' ? role : role?.code;
 
-    // Super Admin & Admin bypass
-    if (roleCode === 'SYS_ADMIN' || roleCode === 'ASSET_ADMIN' || roleCode === 'MANAGEMENT') {
+    // Super Admin has full bypass
+    if (roleCode === 'SYS_ADMIN') {
       return next();
     }
 
-    // Parse permissions safely if stored as JSON string or array
-    let permissions = [];
+    // Parse permissions safely if stored as JSON string, object, or array
+    let permissions = null;
     if (role && role.permissions) {
-      if (Array.isArray(role.permissions)) {
-        permissions = [...role.permissions];
-      } else if (typeof role.permissions === 'string') {
+      if (typeof role.permissions === 'string') {
         try {
-          const parsed = JSON.parse(role.permissions);
-          permissions = Array.isArray(parsed) ? [...parsed] : [role.permissions];
+          permissions = JSON.parse(role.permissions);
         } catch (_) {
           permissions = role.permissions.split(',').map(s => s.trim());
         }
+      } else {
+        permissions = role.permissions;
       }
     }
 
-    // All operational enterprise roles have permission to view, create, and maintain assets in their workflow
-    if (['IT_MANAGER', 'FACILITIES', 'RECEIVING', 'TECHNICIAN', 'FINANCE', 'AUDITOR', 'CUSTODIAN'].includes(roleCode)) {
-      if (!permissions.includes('ASSETS_VIEW')) permissions.push('ASSETS_VIEW');
-      if (!permissions.includes('ASSETS_CREATE')) permissions.push('ASSETS_CREATE');
-      if (!permissions.includes('ASSETS_EDIT')) permissions.push('ASSETS_EDIT');
+    const targets = permissionCodes.flat();
+
+    // 1. Check Dynamic Permission Matrix Object: { assets: ['View', 'Create'], administration: ['View'] }
+    if (permissions && typeof permissions === 'object' && !Array.isArray(permissions) && Object.keys(permissions).length > 0) {
+      const hasMatrixAccess = targets.some(targetCode => {
+        const parts = targetCode.toLowerCase().split('_');
+        const prefix = parts[0];
+        const action = parts.slice(1).join('_');
+
+        let moduleKey = prefix;
+        if (['users', 'roles', 'settings', 'admin', 'integrations', 'audit', 'notifications'].includes(prefix)) {
+          moduleKey = 'administration';
+        }
+
+        const modActions = permissions[moduleKey] || (moduleKey === 'stocktakes' ? permissions['audit'] : null);
+        if (!modActions || (Array.isArray(modActions) && modActions.length === 0)) return false;
+
+        if (Array.isArray(modActions)) {
+          if (modActions.includes('*')) return true;
+          if (!action || action === 'view') {
+            return modActions.some(a => a.toLowerCase() === 'view');
+          }
+          if (action === 'create' || action === 'add') {
+            return modActions.some(a => ['create', 'receive', 'create audit'].includes(a.toLowerCase()));
+          }
+          if (action === 'edit' || action === 'update') {
+            return modActions.some(a => a.toLowerCase() === 'edit');
+          }
+          if (action === 'delete') {
+            return modActions.some(a => a.toLowerCase() === 'delete');
+          }
+          if (action === 'approve') {
+            return modActions.some(a => ['approve', 'approve disposal'].includes(a.toLowerCase()));
+          }
+          if (action === 'export') {
+            return modActions.some(a => a.toLowerCase() === 'export');
+          }
+          if (action === 'import') {
+            return modActions.some(a => a.toLowerCase() === 'import');
+          }
+          return modActions.some(a => a.toLowerCase() === action);
+        }
+        return Boolean(modActions);
+      });
+
+      if (hasMatrixAccess) {
+        return next();
+      }
+      console.warn(`[RBAC] Matrix access denied for user ${user.username} (${roleCode}) - requires [${targets.join(' or ')}]`);
+      return res.status(403).json({
+        success: false,
+        message: `Forbidden: Missing required action permission [${targets.join(' or ')}]`
+      });
     }
 
-    const targets = permissionCodes.flat();
-    const hasPermission = 
-      permissions.includes('*') ||
-      targets.some(code => permissions.includes(code)) ||
-      (targets.includes('ASSETS_VIEW') && ['FINANCE', 'IT_MANAGER', 'FACILITIES', 'AUDITOR', 'RECEIVING', 'CUSTODIAN', 'TECHNICIAN'].includes(roleCode));
+    // 2. Check Flat Array Permissions or Wildcard
+    let flatPerms = Array.isArray(permissions) ? permissions : [];
+    if (flatPerms.includes('*') || targets.some(code => flatPerms.includes(code))) {
+      return next();
+    }
+
+    // 3. Fallback for unconfigured legacy roles
+    if (['ASSET_ADMIN', 'MANAGEMENT'].includes(roleCode)) {
+      return next();
+    }
+
+    if (targets.includes('ASSETS_VIEW') && ['FINANCE', 'IT_MANAGER', 'FACILITIES', 'AUDITOR', 'RECEIVING', 'CUSTODIAN', 'TECHNICIAN'].includes(roleCode)) {
+      return next();
+    }
 
     if (!hasPermission) {
       console.warn(`[RBAC] Access denied for user ${user.username} (role: ${roleCode}) - requires [${targets.join(' or ')}]`);

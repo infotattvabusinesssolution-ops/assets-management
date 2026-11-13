@@ -569,6 +569,20 @@ export function RolesPermissions() {
         )
       );
 
+      // If the currently logged in user has this role, update their permissions in session immediately
+      const currentStoredUser = localStorage.getItem('fams_user');
+      if (currentStoredUser) {
+        try {
+          const parsed = JSON.parse(currentStoredUser);
+          if (parsed.role && (parsed.role.id === selectedRole.id || parsed.role.code === selectedRole.code)) {
+            parsed.role.permissions = rolePermissions;
+            localStorage.setItem('fams_user', JSON.stringify(parsed));
+            // Trigger storage event so other components / context update dynamically
+            window.dispatchEvent(new Event('storage'));
+          }
+        } catch (_) {}
+      }
+
       triggerToast(`Permissions for "${selectedRole.name}" saved successfully in database.`);
       setShowPermissionsModal(false);
     } catch (err) {
@@ -1257,13 +1271,32 @@ export function RolesPermissions() {
                 <button
                   type="button"
                   onClick={() => {
-                    const allPerms = {};
-                    MODULE_STRUCTURE.forEach(m => { allPerms[m.key] = [...m.actions]; });
-                    setRolePermissions(allPerms);
+                    const isAllGlobalSelected = MODULE_STRUCTURE.every(m => {
+                      const sel = rolePermissions[m.key] || [];
+                      return m.actions.every(a => sel.includes(a));
+                    });
+                    if (isAllGlobalSelected) {
+                      setRolePermissions({});
+                    } else {
+                      const allPerms = {};
+                      MODULE_STRUCTURE.forEach(m => { allPerms[m.key] = [...m.actions]; });
+                      setRolePermissions(allPerms);
+                    }
                   }}
-                  className="px-2.5 py-1 text-[11px] font-bold text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 border border-purple-200 rounded-lg transition-colors cursor-pointer"
+                  className={clsx(
+                    "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer border",
+                    MODULE_STRUCTURE.every(m => {
+                      const sel = rolePermissions[m.key] || [];
+                      return m.actions.every(a => sel.includes(a));
+                    })
+                      ? "text-rose-600 bg-rose-50 hover:bg-rose-100 border-rose-200"
+                      : "text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 border-purple-200"
+                  )}
                 >
-                  Grant Full Access
+                  {MODULE_STRUCTURE.every(m => {
+                    const sel = rolePermissions[m.key] || [];
+                    return m.actions.every(a => sel.includes(a));
+                  }) ? 'Deselect All' : 'Select All'}
                 </button>
                 <button
                   type="button"
@@ -1318,9 +1351,14 @@ export function RolesPermissions() {
                               [mod.key]: isAllSelected ? [] : [...allActions]
                             });
                           }}
-                          className="text-[11px] font-bold text-[#6C2BD9] hover:underline"
+                          className={clsx(
+                            "text-[11px] font-bold px-2 py-0.5 rounded transition-colors",
+                            mod.actions.every((a) => selectedActions.includes(a))
+                              ? "text-rose-600 hover:text-rose-800 hover:bg-rose-50"
+                              : "text-[#6C2BD9] hover:text-[#5b21b6] hover:bg-purple-50"
+                          )}
                         >
-                          Select All
+                          {mod.actions.every((a) => selectedActions.includes(a)) ? 'Deselect All' : 'Select All'}
                         </button>
                       </div>
                     </div>

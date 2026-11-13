@@ -4,6 +4,23 @@ import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { config } from '../../config/index.js';
 
+// Helper to safely format and parse role permissions
+export function formatUserRole(role) {
+  if (!role) return null;
+  let permissions = role.permissions;
+  if (typeof permissions === 'string') {
+    try {
+      permissions = JSON.parse(permissions);
+    } catch (_) {
+      permissions = {};
+    }
+  }
+  return {
+    ...role,
+    permissions: permissions || {}
+  };
+}
+
 // Enterprise Roles Definition for Resilient / Offline Mode
 export const FALLBACK_ROLES = [
   { id: 'role-001', code: 'SYS_ADMIN', name: 'System Administrator', permissions: ['*'], isSystem: true },
@@ -224,7 +241,7 @@ export async function login(req, res, next) {
               username: user.username,
               fullName: user.fullName,
               email: user.email,
-              role: user.role,
+              role: formatUserRole(user.role),
               company: user.company,
               site: user.site,
               department: user.department,
@@ -314,7 +331,15 @@ export async function getProfile(req, res, next) {
             costCenter: true
           }
         });
-        if (user) return res.json({ success: true, user });
+        if (user) {
+          return res.json({
+            success: true,
+            user: {
+              ...user,
+              role: formatUserRole(user.role)
+            }
+          });
+        }
       } catch (e) {
         console.warn('Prisma getProfile error, falling back:', e.message);
       }
@@ -324,7 +349,13 @@ export async function getProfile(req, res, next) {
       u => u.id === req.user.id || u.username.toLowerCase() === (req.user.username || '').toLowerCase()
     ) || req.user;
 
-    res.json({ success: true, user: fallbackUser });
+    res.json({
+      success: true,
+      user: {
+        ...fallbackUser,
+        role: formatUserRole(fallbackUser.role)
+      }
+    });
   } catch (err) {
     next(err);
   }
@@ -345,7 +376,13 @@ export async function getUsers(req, res, next) {
           orderBy: { createdAt: 'desc' }
         });
         if (users && users.length > 0) {
-          return res.json({ success: true, users });
+          return res.json({
+            success: true,
+            users: users.map(u => ({
+              ...u,
+              role: formatUserRole(u.role)
+            }))
+          });
         }
       } catch (e) {
         console.warn('Prisma getUsers error, falling back:', e.message);

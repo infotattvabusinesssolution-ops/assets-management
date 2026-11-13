@@ -96,6 +96,27 @@ export const MOCK_ROLES_DATA = {
   }
 };
 
+// Helper to normalize user permissions object
+function normalizeUserProfile(userObj) {
+  if (!userObj) return null;
+  const clone = { ...userObj };
+  if (clone.role) {
+    let perms = clone.role.permissions;
+    if (typeof perms === 'string') {
+      try {
+        perms = JSON.parse(perms);
+      } catch (_) {
+        perms = {};
+      }
+    }
+    clone.role = {
+      ...clone.role,
+      permissions: perms || {}
+    };
+  }
+  return clone;
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
     if (localStorage.getItem('fams_explicit_logout') === 'true') return null;
@@ -104,21 +125,41 @@ export function AuthProvider({ children }) {
     localStorage.setItem('fams_token', initial);
     return initial;
   });
-  const [user, setUser] = useState(null);
-  const [loading, setLoading] = useState(Boolean(token));
+  const [user, setUser] = useState(() => {
+    try {
+      const stored = localStorage.getItem('fams_user');
+      return stored ? normalizeUserProfile(JSON.parse(stored)) : null;
+    } catch (_) {
+      return null;
+    }
+  });
+  const [loading, setLoading] = useState(Boolean(token && !user));
+
+  useEffect(() => {
+    const handleStorageChange = () => {
+      try {
+        const stored = localStorage.getItem('fams_user');
+        if (stored) {
+          setUser(normalizeUserProfile(JSON.parse(stored)));
+        }
+      } catch (_) {}
+    };
+    window.addEventListener('storage', handleStorageChange);
+    return () => window.removeEventListener('storage', handleStorageChange);
+  }, []);
 
   useEffect(() => {
     if (!token) { setLoading(false); return; }
     let active = true;
-    setLoading(true);
     api.get('/auth/profile')
       .then(res => {
         if (!active) return;
         if (!res?.success || !res.user) throw new Error('Profile unavailable');
         const { passwordHash, ...profile } = res.user;
-        setUser(profile);
-        localStorage.setItem('fams_user', JSON.stringify(profile));
-        localStorage.setItem('fams_primary_role', profile.role?.code || '');
+        const normalized = normalizeUserProfile(profile);
+        setUser(normalized);
+        localStorage.setItem('fams_user', JSON.stringify(normalized));
+        localStorage.setItem('fams_primary_role', normalized.role?.code || '');
       })
       .catch(() => {
         if (!active) return;
@@ -137,15 +178,16 @@ export function AuthProvider({ children }) {
     try {
       const res = await api.post('/auth/login', { username: username.trim(), password });
       if (!res?.success || !res.token || !res.user) throw new Error(res?.message || 'Login failed.');
+      const normalized = normalizeUserProfile(res.user);
       localStorage.removeItem('fams_explicit_logout');
       localStorage.setItem('fams_token', res.token);
-      localStorage.setItem('fams_user', JSON.stringify(res.user));
-      localStorage.setItem('fams_primary_role', res.user.role?.code || '');
-      setUser(res.user);
+      localStorage.setItem('fams_user', JSON.stringify(normalized));
+      localStorage.setItem('fams_primary_role', normalized.role?.code || '');
+      setUser(normalized);
       setToken(res.token);
       return {
         success: true,
-        user: res.user,
+        user: normalized,
         mustChangePassword: Boolean(res.mustChangePassword ?? res.user?.forcePasswordChange)
       };
     } catch (err) {
@@ -183,11 +225,53 @@ export function AuthProvider({ children }) {
     localStorage.removeItem('fams_user');
   };
 
-  const hasPermission = (permCode) => {
+  // Evaluates whether the active user has access to a module and/or specific action
+  const can = (moduleKey, actionName) => {
     if (!user?.role) return false;
     if (user.role.code === 'SYS_ADMIN') return true;
-    const perms = user.role.permissions || [];
-    return perms.includes('*') || perms.includes(permCode);
+
+    let perms = user.role.permissions;
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+    }
+    if (!perms) return false;
+
+    // Wildcard bypass
+    if (Array.isArray(perms) && perms.includes('*')) return true;
+
+    // Permissions Matrix Object: { assets: ['View', 'Create', 'Edit', 'Delete'], ... }
+    if (typeof perms === 'object' && !Array.isArray(perms)) {
+      const modActions = perms[moduleKey] || (moduleKey === 'stocktakes' ? perms['audit'] : null);
+      if (!modActions) return false;
+
+      // Module-level access check
+      if (!actionName) {
+        if (Array.isArray(modActions)) return modActions.length > 0;
+        return Boolean(modActions);
+      }
+
+      // Action-level access check (e.g. 'Create', 'Edit', 'Delete', 'Export')
+      if (Array.isArray(modActions)) {
+        const actLower = actionName.toLowerCase();
+        return modActions.some(a => typeof a === 'string' && (a.toLowerCase() === actLower || a === '*'));
+      }
+      return Boolean(modActions);
+    }
+
+    // Flat permissions array
+    if (Array.isArray(perms)) {
+      if (!actionName) {
+        return perms.some(p => p.toLowerCase().startsWith(moduleKey.toLowerCase()));
+      }
+      const targetCode = `${moduleKey}_${actionName}`.toUpperCase();
+      return perms.includes(targetCode);
+    }
+
+    return false;
+  };
+
+  const hasPermission = (moduleOrCode, action) => {
+    return can(moduleOrCode, action);
   };
 
   const hasRole = (roleCode) => user?.role?.code === roleCode;
@@ -195,7 +279,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, token, isAuthenticated: !!user, loading, login, logout, changePassword,
-      switchRole: () => false, hasPermission, hasRole
+      switchRole: () => false, can, hasPermission, hasRole
     }}>
       {children}
     </AuthContext.Provider>

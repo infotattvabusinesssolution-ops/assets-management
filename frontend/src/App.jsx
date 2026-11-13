@@ -75,11 +75,11 @@ function ProtectedRoute({ children }) {
 }
 
 function RoleRoute({ children, allowedRoles }) {
-  const { user, isAuthenticated, loading } = useAuth();
+  const { user, isAuthenticated, loading, can } = useAuth();
   if (loading) return <div className="p-8 text-sm text-slate-500">Loading account...</div>;
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   const roleCode = user?.role?.code || 'SYS_ADMIN';
-  if (roleCode === 'SYS_ADMIN' || !allowedRoles || allowedRoles.includes('*') || allowedRoles.includes(roleCode)) {
+  if (roleCode === 'SYS_ADMIN' || !allowedRoles || allowedRoles.includes('*') || allowedRoles.includes(roleCode) || (can && can('administration', 'View'))) {
     return children;
   }
   return <Navigate to="/" replace />;

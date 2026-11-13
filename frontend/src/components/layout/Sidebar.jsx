@@ -312,7 +312,7 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
 };
 
 export function Sidebar({ collapsed, setCollapsed }) {
-  const { user, logout } = useAuth();
+  const { user, logout, can } = useAuth();
   const location = useLocation();
   const userRoleCode = user?.role?.code || 'SYS_ADMIN';
 
@@ -344,25 +344,65 @@ export function Sidebar({ collapsed, setCollapsed }) {
   };
 
   const visibleNavItems = NAV_STRUCTURE.filter(item => {
-    if (userRoleCode === 'SYS_ADMIN' || userRoleCode === 'ASSET_ADMIN') return true;
-    if (item.roles.includes('*')) return true;
+    // Only SYS_ADMIN has super-admin bypass
+    if (userRoleCode === 'SYS_ADMIN') return true;
 
-    // Check dynamic permissions if assigned to user's role
-    const perms = user?.role?.permissions;
-    if (perms && typeof perms === 'object' && Object.keys(perms).length > 0) {
-      const modPerms = perms[item.id] || (item.id === 'stocktakes' ? perms['audit'] : null);
-      if (Array.isArray(modPerms) && modPerms.length > 0) return true;
-      if (typeof modPerms === 'boolean' && modPerms) return true;
+    // Check dynamic permissions matrix object if configured by Administrator
+    let perms = user?.role?.permissions;
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = null; }
+    }
+
+    if (perms && typeof perms === 'object' && !Array.isArray(perms) && Object.keys(perms).length > 0) {
+      const modActions = perms[item.id] || (item.id === 'stocktakes' ? perms['audit'] : null);
+      if (Array.isArray(modActions) && modActions.length > 0) return true;
+      if (typeof modActions === 'boolean' && modActions) return true;
+      // If Administrator defined permissions and this module has 0 actions or is omitted, HIDE IT!
       return false;
     }
 
+    // Default fallback for unconfigured legacy roles
+    if (userRoleCode === 'ASSET_ADMIN') return true;
+    if (item.roles.includes('*')) return true;
     return item.roles.includes(userRoleCode);
   }).map(item => {
     if (!item.subItems) return item;
+
+    let perms = user?.role?.permissions;
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = null; }
+    }
+
     const filteredSubs = item.subItems.filter(sub => {
-      if (!sub.roles || sub.roles.includes('*') || userRoleCode === 'SYS_ADMIN' || userRoleCode === 'ASSET_ADMIN') return true;
+      if (userRoleCode === 'SYS_ADMIN') return true;
+
+      if (perms && typeof perms === 'object' && !Array.isArray(perms) && Object.keys(perms).length > 0) {
+        const modActions = perms[item.id] || (item.id === 'stocktakes' ? perms['audit'] : []);
+        if (Array.isArray(modActions)) {
+          const subLower = sub.name.toLowerCase();
+          // Filter sub-screens by actions
+          if (subLower.includes('new') || subLower.includes('create') || subLower.includes('add')) {
+            return modActions.some(a => ['create', 'receive', 'create audit'].includes(a.toLowerCase()));
+          }
+          if (subLower.includes('edit') || subLower.includes('update')) {
+            return modActions.some(a => ['edit'].includes(a.toLowerCase()));
+          }
+          if (subLower.includes('approval') || subLower.includes('approve')) {
+            return modActions.some(a => ['approve', 'approve disposal'].includes(a.toLowerCase()));
+          }
+          if (subLower.includes('bulk upload') || subLower.includes('import')) {
+            return modActions.some(a => ['import', 'create'].includes(a.toLowerCase()));
+          }
+          // Default: if module has View or any action, allow viewing this standard screen
+          return modActions.length > 0;
+        }
+      }
+
+      if (userRoleCode === 'ASSET_ADMIN') return true;
+      if (!sub.roles || sub.roles.includes('*')) return true;
       return sub.roles.includes(userRoleCode);
     });
+
     return { ...item, subItems: filteredSubs };
   });
 
@@ -485,7 +525,7 @@ export function Sidebar({ collapsed, setCollapsed }) {
 
       {/* Sidebar Footer matching reference screenshot */}
       <div className={clsx('p-3 border-t border-slate-200 shrink-0 bg-white space-y-2', collapsed && 'flex flex-col items-center p-2')}>
-        {(userRoleCode === 'SYS_ADMIN' || userRoleCode === 'ASSET_ADMIN') && (
+        {(userRoleCode === 'SYS_ADMIN' || can('administration', 'View') || can('administration', 'Administer')) && (
           <NavLink
             to="/admin/system-config"
             className={({ isActive }) =>

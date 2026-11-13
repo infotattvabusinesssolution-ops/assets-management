@@ -62,13 +62,14 @@ const INITIAL_MOCK_ASSETS = [];
 
 export function AssetList() {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, can } = useAuth();
   const [searchParams] = useSearchParams();
 
   const userRoleCode = user?.role?.code || 'SYS_ADMIN';
-  const canCreate = ['SYS_ADMIN', 'ASSET_ADMIN', 'RECEIVING'].includes(userRoleCode);
-  const canEdit = ['SYS_ADMIN', 'ASSET_ADMIN', 'TECHNICIAN', 'RECEIVING'].includes(userRoleCode);
-  const canDelete = ['SYS_ADMIN', 'ASSET_ADMIN'].includes(userRoleCode);
+  const canCreate = can ? can('assets', 'Create') : ['SYS_ADMIN', 'ASSET_ADMIN'].includes(userRoleCode);
+  const canEdit = can ? can('assets', 'Edit') : ['SYS_ADMIN', 'ASSET_ADMIN'].includes(userRoleCode);
+  const canDelete = can ? can('assets', 'Delete') : ['SYS_ADMIN', 'ASSET_ADMIN'].includes(userRoleCode);
+  const canExport = can ? can('assets', 'Export') : true;
 
   // Parse initial filter params from URL
   const initialStatusParam = searchParams.get('status') || 'ALL';
@@ -688,8 +689,14 @@ export function AssetList() {
           </button>
 
           <button
-            onClick={handleExport}
-            className="px-3.5 py-2 bg-white border border-slate-200 hover:bg-slate-50 text-slate-700 text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all cursor-pointer"
+            onClick={canExport ? handleExport : () => showToast('error', 'You do not have permission to export assets.')}
+            disabled={!canExport}
+            className={`px-3.5 py-2 border text-xs font-bold rounded-xl flex items-center gap-1.5 shadow-2xs transition-all ${
+              canExport
+                ? 'bg-white border-slate-200 hover:bg-slate-50 text-slate-700 cursor-pointer'
+                : 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed opacity-60'
+            }`}
+            title={canExport ? "Export assets" : "Export permission restricted"}
           >
             <Upload className="w-4 h-4 text-slate-500" /> Export
           </button>
