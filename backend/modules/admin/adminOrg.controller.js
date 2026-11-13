@@ -1,3 +1,4 @@
+import bcrypt from 'bcryptjs';
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { generateAutoCode } from '../master-data/masterData.controller.js';
@@ -235,7 +236,7 @@ export async function getAdminUsers(req, res) {
   try {
     const {
       page = 1,
-      limit = 10,
+      limit = 100,
       search = '',
       status = '',
       role = '',
@@ -384,18 +385,23 @@ export async function createAdminUser(req, res) {
         }
 
         if (roleRecord) {
+          const passwordHash = data.password
+            ? await bcrypt.hash(data.password, 10).catch(() => '$2a$10$dummyHashForAdminCreatedUser')
+            : '$2a$10$dummyHashForAdminCreatedUser';
+
           const dbCreated = await prisma.user.create({
             data: {
               fullName: data.name,
               username: data.username,
               email: data.email,
               phone: data.phone || '',
-              passwordHash: '$2a$10$dummyHashForAdminCreatedUser',
+              passwordHash,
               roleId: roleRecord.id,
               siteId: siteRecord ? siteRecord.id : null,
               departmentId: deptRecord ? deptRecord.id : null,
               companyId: compRecord ? compRecord.id : null,
-              active: data.status === 'Active'
+              active: data.status ? String(data.status).toLowerCase() === 'active' : true,
+              forcePasswordChange: data.forcePasswordChange !== false
             }
           }).catch(err => {
             console.warn('Prisma create user skipped:', err.message);
@@ -482,7 +488,7 @@ export async function updateAdminUser(req, res) {
         username: req.body.username,
         email: req.body.email,
         phone: req.body.phone,
-        active: req.body.status === 'Active'
+        active: req.body.status ? String(req.body.status).toLowerCase() === 'active' : true
       };
       if (roleRecord) updateData.roleId = roleRecord.id;
       if (siteRecord) updateData.siteId = siteRecord.id;

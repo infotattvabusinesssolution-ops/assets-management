@@ -17,6 +17,7 @@ import {
   AlertTriangle,
   X,
   ChevronDown,
+  ChevronLeft,
   ChevronRight,
   Lock,
   Check,
@@ -220,6 +221,20 @@ export function RolesPermissions() {
       return matchesSearch && matchesStatus && matchesType && matchesCreatedBy;
     });
   }, [roles, searchQuery, statusFilter, roleTypeFilter, createdByFilter]);
+
+  // Pagination State
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(10);
+
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, statusFilter, roleTypeFilter, createdByFilter]);
+
+  const totalPages = Math.ceil(filteredRoles.length / pageSize) || 1;
+  const paginatedRoles = useMemo(() => {
+    const startIndex = (page - 1) * pageSize;
+    return filteredRoles.slice(startIndex, startIndex + pageSize);
+  }, [filteredRoles, page, pageSize]);
 
   const triggerToast = (msg) => {
     setToastMsg(msg);
@@ -916,7 +931,7 @@ export function RolesPermissions() {
                   </td>
                 </tr>
               ) : (
-                filteredRoles.map((role, idx) => {
+                paginatedRoles.map((role, idx) => {
                   const isSelected = selectedRoleIds.includes(role.id);
                   return (
                     <tr
@@ -934,7 +949,7 @@ export function RolesPermissions() {
                           className="rounded border-slate-300 text-[#6C2BD9] cursor-pointer"
                         />
                       </td>
-                      <td className="p-3 text-slate-400 font-mono text-[11px]">{idx + 1}</td>
+                      <td className="p-3 text-slate-400 font-mono text-[11px]">{(page - 1) * pageSize + idx + 1}</td>
                       <td className="p-3 font-bold text-[#6C2BD9]">
                         <span
                           className="cursor-pointer hover:underline"
@@ -1080,10 +1095,89 @@ export function RolesPermissions() {
           </table>
         </div>
 
-        {/* Table Summary Footer */}
-        <div className="px-4 py-3 border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
-          <div className="font-medium text-slate-600">Showing {filteredRoles.length} roles</div>
-          <div className="text-slate-400">Scroll down to view all records</div>
+        {/* Pagination Bar */}
+        <div className="px-5 py-3.5 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 bg-white">
+          <div className="flex items-center gap-3">
+            <span className="font-medium text-slate-700">
+              Showing {filteredRoles.length === 0 ? 0 : (page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredRoles.length)} of {filteredRoles.length} roles
+            </span>
+            <div className="flex items-center gap-1.5 ml-2 border-l border-slate-200 pl-3">
+              <span className="text-slate-500">Rows per page:</span>
+              <select
+                value={pageSize}
+                onChange={(e) => {
+                  setPageSize(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1 border border-slate-200 rounded-md bg-white text-slate-700 text-xs font-medium focus:ring-1 focus:ring-[#6C2BD9] cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPage(1)}
+              disabled={page <= 1}
+              className="px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+              title="First Page"
+            >
+              &laquo;
+            </button>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Previous</span>
+            </button>
+
+            {/* Page number buttons */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .map((p, idx, arr) => {
+                  const prev = arr[idx - 1];
+                  const showEllipsis = prev && p - prev > 1;
+                  return (
+                    <React.Fragment key={p}>
+                      {showEllipsis && <span className="px-1 text-slate-400">...</span>}
+                      <button
+                        onClick={() => setPage(p)}
+                        className={`w-7 h-7 rounded-md text-xs font-semibold transition cursor-pointer ${
+                          page === p
+                            ? 'bg-[#6C2BD9] text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+            >
+              <span>Next</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={page >= totalPages}
+              className="px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+              title="Last Page"
+            >
+              &raquo;
+            </button>
+          </div>
         </div>
       </div>
 

@@ -43,7 +43,7 @@ export function UserManagement() {
   const [page, setPage] = useState(1);
   const [limit, setLimit] = useState(10);
   const [searchQuery, setSearchQuery] = useState('');
-  const [statusFilter, setStatusFilter] = useState('Active'); // Default screenshot filter
+  const [statusFilter, setStatusFilter] = useState(''); // Default: show all users
   const [showAdvancedFilters, setShowAdvancedFilters] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [activeDropdownId, setActiveDropdownId] = useState(null);
@@ -92,7 +92,7 @@ export function UserManagement() {
 
   // Advanced Filters Form State
   const [advancedFilters, setAdvancedFilters] = useState({
-    status: 'Active',
+    status: 'All',
     role: 'All Roles',
     department: 'All Departments',
     location: 'All Locations',
@@ -456,8 +456,7 @@ export function UserManagement() {
     try {
       const data = await api.get('/admin/users', {
         params: {
-          page,
-          limit: 100,
+          limit: 500,
           search: searchQuery,
           status: statusFilter,
           role: advancedFilters.role,
@@ -750,7 +749,8 @@ export function UserManagement() {
     setShowEditModal(false);
   };
 
-  const totalPages = Math.ceil(totalUsers / limit) || 1;
+  const totalPages = Math.ceil(users.length / limit) || 1;
+  const paginatedUsers = users.slice((page - 1) * limit, page * limit);
 
   const isCustodianLinked = Boolean(
     (employeeLookupStatus && employeeLookupStatus.found) ||
@@ -1165,7 +1165,7 @@ export function UserManagement() {
                   </td>
                 </tr>
               ) : (
-                users.map((user, idx) => {
+                paginatedUsers.map((user, idx) => {
                   const userNameStr = typeof user.name === 'string' ? user.name : (user.name?.name || 'User');
                   const initials = userNameStr
                     .split(' ')
@@ -1360,10 +1360,90 @@ export function UserManagement() {
           </table>
         </div>
 
-        {/* Table Summary Footer */}
-        <div className="px-5 py-3.5 border-t border-slate-200 flex items-center justify-between text-xs text-slate-500">
-          <div className="font-medium text-slate-600">Showing {users.length} users</div>
-          <div className="text-slate-400">Scroll down to view all records</div>
+        {/* Pagination Bar */}
+        <div className="px-5 py-3.5 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 bg-white">
+          <div className="flex items-center gap-3">
+            <span className="font-medium text-slate-700">
+              Showing {users.length === 0 ? 0 : (page - 1) * limit + 1} to {Math.min(page * limit, users.length)} of {users.length} users
+            </span>
+            <div className="flex items-center gap-1.5 ml-2 border-l border-slate-200 pl-3">
+              <span className="text-slate-500">Rows per page:</span>
+              <select
+                value={limit}
+                onChange={(e) => {
+                  setLimit(Number(e.target.value));
+                  setPage(1);
+                }}
+                className="px-2 py-1 border border-slate-200 rounded-md bg-white text-slate-700 text-xs font-medium focus:ring-1 focus:ring-[#6C2BD9] cursor-pointer"
+              >
+                <option value={10}>10</option>
+                <option value={25}>25</option>
+                <option value={50}>50</option>
+                <option value={100}>100</option>
+              </select>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-1.5">
+            <button
+              onClick={() => setPage(1)}
+              disabled={page <= 1}
+              className="px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+              title="First Page"
+            >
+              &laquo;
+            </button>
+            <button
+              onClick={() => setPage(p => Math.max(1, p - 1))}
+              disabled={page <= 1}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+            >
+              <ChevronLeft className="w-3.5 h-3.5" />
+              <span>Previous</span>
+            </button>
+
+            {/* Page number buttons */}
+            <div className="flex items-center gap-1">
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter(p => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .map((p, idx, arr) => {
+                  const prev = arr[idx - 1];
+                  const showEllipsis = prev && p - prev > 1;
+                  return (
+                    <React.Fragment key={p}>
+                      {showEllipsis && <span className="px-1 text-slate-400">...</span>}
+                      <button
+                        onClick={() => setPage(p)}
+                        className={`w-7 h-7 rounded-md text-xs font-semibold transition cursor-pointer ${
+                          page === p
+                            ? 'bg-[#6C2BD9] text-white shadow-xs'
+                            : 'text-slate-600 hover:bg-slate-100 border border-slate-200'
+                        }`}
+                      >
+                        {p}
+                      </button>
+                    </React.Fragment>
+                  );
+                })}
+            </div>
+
+            <button
+              onClick={() => setPage(p => Math.min(totalPages, p + 1))}
+              disabled={page >= totalPages}
+              className="flex items-center gap-1 px-3 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+            >
+              <span>Next</span>
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+            <button
+              onClick={() => setPage(totalPages)}
+              disabled={page >= totalPages}
+              className="px-2.5 py-1.5 rounded-md border border-slate-200 text-slate-600 hover:bg-slate-50 disabled:opacity-40 disabled:cursor-not-allowed transition font-medium cursor-pointer"
+              title="Last Page"
+            >
+              &raquo;
+            </button>
+          </div>
         </div>
       </div>
 
