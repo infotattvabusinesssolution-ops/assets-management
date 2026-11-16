@@ -233,7 +233,35 @@ const INITIAL_ROLES = [
 ];
 
 export function RolesPermissions() {
-  const [roles, setRoles] = useState(INITIAL_ROLES);
+  const [roles, setRoles] = useState(() => {
+    try {
+      const cached = localStorage.getItem('fams_cached_roles_list');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+      }
+    } catch (_) {}
+    return [];
+  });
+  const [loadingRoles, setLoadingRoles] = useState(() => {
+    try {
+      const cached = localStorage.getItem('fams_cached_roles_list');
+      if (cached) {
+        const parsed = JSON.parse(cached);
+        if (Array.isArray(parsed) && parsed.length > 0) return false;
+      }
+    } catch (_) {}
+    return true;
+  });
+
+  // Keep cache synced with state updates
+  useEffect(() => {
+    if (roles && roles.length > 0) {
+      try {
+        localStorage.setItem('fams_cached_roles_list', JSON.stringify(roles));
+      } catch (_) {}
+    }
+  }, [roles]);
 
   useEffect(() => {
     const fetchRoles = async () => {
@@ -279,21 +307,27 @@ export function RolesPermissions() {
               };
             });
             setRoles(mapped);
+            setLoadingRoles(false);
             return;
           }
         }
 
-        // If backend fetch was unavailable or empty, merge localStorage into fallback roles
-        if (Object.keys(savedPermsMap).length > 0) {
-          setRoles((prev) =>
-            prev.map((r) => {
+        // If backend fetch was unavailable or empty, only fallback if state has no cached roles
+        setRoles((prev) => {
+          if (prev.length > 0) return prev;
+          let fallback = [...INITIAL_ROLES];
+          if (Object.keys(savedPermsMap).length > 0) {
+            fallback = fallback.map((r) => {
               const cached = savedPermsMap[r.id] || (r.code ? savedPermsMap[r.code] : null);
               return cached ? { ...r, permissions: cached } : r;
-            })
-          );
-        }
+            });
+          }
+          return fallback;
+        });
       } catch (err) {
         console.error('Failed to load roles from DB:', err);
+      } finally {
+        setLoadingRoles(false);
       }
     };
     fetchRoles();
@@ -1106,7 +1140,9 @@ export function RolesPermissions() {
       <div className="bg-white border border-slate-200 rounded-2xl overflow-hidden shadow-xs">
         <div className="p-4 border-b border-slate-100 flex flex-col md:flex-row md:items-center justify-between gap-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-sm font-black text-slate-900">Roles ({filteredRoles.length})</h2>
+            <h2 className="text-sm font-black text-slate-900">
+              Roles {loadingRoles && roles.length === 0 ? '' : `(${filteredRoles.length})`}
+            </h2>
           </div>
 
           <div className="relative w-full md:w-80">
@@ -1175,7 +1211,14 @@ export function RolesPermissions() {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 font-medium">
-              {filteredRoles.length === 0 ? (
+              {loadingRoles && roles.length === 0 ? (
+                <tr>
+                  <td colSpan="10" className="p-12 text-center text-slate-400">
+                    <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#6C2BD9]" />
+                    <span className="text-xs font-semibold text-slate-500">Loading roles from database...</span>
+                  </td>
+                </tr>
+              ) : filteredRoles.length === 0 ? (
                 <tr>
                   <td colSpan="10" className="p-8 text-center text-slate-500 font-semibold">
                     No roles match current filter criteria.
@@ -1350,7 +1393,7 @@ export function RolesPermissions() {
         <div className="px-5 py-3.5 border-t border-slate-200 flex flex-col sm:flex-row items-center justify-between gap-3 text-xs text-slate-500 bg-white">
           <div className="flex items-center gap-3">
             <span className="font-medium text-slate-700">
-              Showing {filteredRoles.length === 0 ? 0 : (page - 1) * pageSize + 1} to {Math.min(page * pageSize, filteredRoles.length)} of {filteredRoles.length} roles
+              Showing {loadingRoles && roles.length === 0 ? 0 : (filteredRoles.length === 0 ? 0 : (page - 1) * pageSize + 1)} to {Math.min(page * pageSize, filteredRoles.length)} of {filteredRoles.length} roles
             </span>
             <div className="flex items-center gap-1.5 ml-2 border-l border-slate-200 pl-3">
               <span className="text-slate-500">Rows per page:</span>
