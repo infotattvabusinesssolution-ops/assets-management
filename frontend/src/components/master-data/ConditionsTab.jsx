@@ -390,7 +390,7 @@ export function ConditionsTab({
                         "inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold border",
                         item.active !== false
                           ? "bg-emerald-50 text-emerald-700 border-emerald-200"
-                          : "bg-slate-100 text-slate-600 border-slate-200"
+                          : "bg-rose-50 text-rose-700 border-rose-200"
                       )}>
                         {item.active !== false ? 'Active' : 'Inactive'}
                       </span>

@@ -762,8 +762,8 @@ export function ServiceProviderAction() {
                   </div>
 
                   <span className={`px-2 py-0.5 rounded-full text-[10px] font-semibold border ${
-                    p.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border-emerald-200' :
-                    p.status === 'Inactive' ? 'bg-amber-50 text-amber-700 border-amber-200' : 'bg-slate-100 text-slate-600 border-slate-200'
+                    p.status === 'Active' ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' :
+                    p.status === 'Inactive' ? 'bg-rose-50 text-rose-700 border border-rose-200' : 'bg-slate-100 text-slate-600 border border-slate-200'
                   }`}>
                     {p.status}
                   </span>

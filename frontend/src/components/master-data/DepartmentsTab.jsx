@@ -886,7 +886,7 @@ export function DepartmentsTab({
                         <span
                           className={clsx(
                             'text-[9px] font-bold px-1.5 py-0.5 rounded-full whitespace-nowrap',
-                            cc.active === false ? 'bg-slate-200 text-slate-600' : 'bg-emerald-100 text-emerald-700'
+                            cc.active === false ? 'bg-rose-100 text-rose-700' : 'bg-emerald-100 text-emerald-700'
                           )}
                         >
                           {cc.active === false ? 'Inactive' : 'Active'}

@@ -10,6 +10,8 @@ const STATUS_COLOR_MAP = {
   MISSING: 'bg-rose-100 text-black border-rose-300',
   DISPOSED: 'bg-slate-100 text-black border-slate-300',
   ACTIVE: 'bg-emerald-100 text-black border-emerald-300',
+  INACTIVE: 'bg-rose-100 text-rose-700 border-rose-300',
+  Inactive: 'bg-rose-100 text-rose-700 border-rose-300',
   COMPLETED: 'bg-emerald-100 text-black border-emerald-300',
   MATCHED: 'bg-purple-100 text-black border-purple-300',
   SUGGESTED: 'bg-amber-100 text-black border-amber-300',

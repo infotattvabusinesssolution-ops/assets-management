@@ -490,7 +490,7 @@ export function CompaniesTab({
                               'px-2 py-0.5 rounded-full text-[10px] font-bold transition-all',
                               c.active !== false
                                 ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-slate-100 text-slate-500 border border-slate-200 hover:bg-slate-200'
+                                : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
                             )}
                           >
                             {c.active !== false ? 'Active' : 'Inactive'}

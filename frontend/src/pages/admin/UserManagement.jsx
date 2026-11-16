@@ -2063,7 +2063,7 @@ export function UserManagement() {
                         </div>
                       </div>
                       <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                        r.status === 'Active' || r.active !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600'
+                        r.status === 'Active' || r.active !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
                       }`}>
                         {r.status || 'Active'}
                       </span>
