@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { api, API_BASE_URL } from '../../services/api';
@@ -29,10 +29,16 @@ import {
   Building2,
   MapPin,
   Briefcase,
-  AlertTriangle
+  AlertTriangle,
+  Check,
+  ExternalLink,
+  Database,
+  Layers,
+  Shield
 } from 'lucide-react';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
+import { MODULE_STRUCTURE, MASTER_DATA_ENTITIES } from './RolesPermissions';
 
 export const INITIAL_USERS = [];
 
@@ -94,6 +100,11 @@ export function UserManagement() {
   const [isAssigningRole, setIsAssigningRole] = useState(false);
   const [showSendEmailModal, setShowSendEmailModal] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
+
+  // Permissions Modal Filter & View States
+  const [permModalSearch, setPermModalSearch] = useState('');
+  const [permModalTab, setPermModalTab] = useState('all'); // 'all', 'modules', 'master_data'
+  const [permModalOnlyAllowed, setPermModalOnlyAllowed] = useState(false);
 
   // Advanced Filters Form State
   const [advancedFilters, setAdvancedFilters] = useState({
@@ -235,11 +246,32 @@ export function UserManagement() {
           name: typeof c.name === 'string' ? c.name : (c.name?.name || String(c.name || ''))
         })));
       }
-      if (rolesRes && Array.isArray(rolesRes.roles)) {
-        setRolesList(rolesRes.roles.map(r => ({
-          ...r,
-          name: typeof r.name === 'string' ? r.name : (r.name?.name || String(r.name || ''))
-        })));
+      const fetchedRoles = rolesRes?.roles || (Array.isArray(rolesRes) ? rolesRes : []);
+      if (fetchedRoles.length > 0) {
+        let savedPermsMap = {};
+        try {
+          savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+        } catch (_) {}
+
+        setRolesList(fetchedRoles.map(r => {
+          let perms = r.permissions;
+          if (typeof perms === 'string') {
+            try {
+              perms = (perms.startsWith('{') || perms.startsWith('[')) ? JSON.parse(perms) : perms;
+            } catch (_) {
+              perms = {};
+            }
+          }
+          const cached = savedPermsMap[r.id] || (r.code ? savedPermsMap[r.code] : null) || (r.name ? savedPermsMap[r.name] : null);
+          if (cached) {
+            perms = cached;
+          }
+          return {
+            ...r,
+            permissions: perms,
+            name: typeof r.name === 'string' ? r.name : (r.name?.name || String(r.name || ''))
+          };
+        }));
       }
     } catch (e) {
       console.warn('Metadata fetch error:', e);
@@ -656,6 +688,7 @@ export function UserManagement() {
 
       setUserList(prev => prev.map(u => u.id === selectedUser.id ? { ...u, role: roleName, roleId: roleId } : u));
       setUsers(prev => prev.map(u => u.id === selectedUser.id ? { ...u, role: roleName, roleId: roleId } : u));
+      setSelectedUser(prev => prev && prev.id === selectedUser.id ? { ...prev, role: roleName, roleId: roleId } : prev);
       setActionSuccessMsg(`Role for "${selectedUser.name}" successfully updated to "${roleName}".`);
       setShowAssignRolesModal(false);
     } catch (err) {
@@ -777,6 +810,165 @@ export function UserManagement() {
     (employeeLookupStatus && employeeLookupStatus.found) ||
     (showEditModal && userFormData.employeeId)
   );
+
+  // Effective Role & Granular Permissions derivation for Manage Permissions modal
+  const effectiveRoleData = useMemo(() => {
+    if (!selectedUser) return { roleObj: null, roleName: '', roleCode: '', perms: {}, isSuperAdmin: false };
+
+    let savedPermsMap = {};
+    try {
+      savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+    } catch (_) {}
+
+    const userRoleIdentifier = selectedUser.roleId || selectedUser.role;
+    let roleObj = rolesList.find(r =>
+      (r.id && (r.id === userRoleIdentifier || String(r.id) === String(userRoleIdentifier))) ||
+      (r.name && (r.name === userRoleIdentifier || r.name === selectedUser.role)) ||
+      (r.code && (r.code === userRoleIdentifier || r.code === selectedUser.role))
+    );
+
+    let roleName = typeof selectedUser.role === 'string' ? selectedUser.role : (selectedUser.role?.name || roleObj?.name || 'Standard User');
+    let roleCode = selectedUser.role?.code || roleObj?.code || '';
+    let roleId = roleObj?.id || selectedUser.roleId || roleName;
+
+    let perms = roleObj?.permissions || {};
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+    }
+
+    // Check localStorage cache for freshest saved permissions
+    const cached = savedPermsMap[roleId] || (roleCode ? savedPermsMap[roleCode] : null) || savedPermsMap[roleName];
+    if (cached) {
+      perms = cached;
+    }
+
+    const isSuperAdmin = (
+      roleCode === 'SYS_ADMIN' ||
+      roleCode === 'ADMIN' ||
+      ['System Administrator', 'Asset Administrator', 'Admin', 'Super Admin'].includes(roleName) ||
+      (Array.isArray(perms) && perms.includes('*')) ||
+      (perms['*'] && Array.isArray(perms['*']) && perms['*'].includes('*'))
+    );
+
+    // If perms is empty and not superadmin, construct default matrix matching RolesPermissions defaults
+    const effectivePerms = { ...perms };
+    if (Object.keys(effectivePerms).length === 0 && !isSuperAdmin) {
+      const isAuditor = roleName.toLowerCase().includes('audit');
+      const isTech = roleName.toLowerCase().includes('tech');
+      const isAssetMgr = roleName.toLowerCase().includes('asset');
+
+      MODULE_STRUCTURE.forEach((mod) => {
+        if (isAuditor) {
+          effectivePerms[mod.key] = mod.actions.filter(a => ['View', 'Export'].includes(a));
+        } else if (isTech) {
+          if (['maintenance', 'tracking', 'assets'].includes(mod.key)) {
+            effectivePerms[mod.key] = mod.actions.filter(a => ['View', 'Create', 'Edit'].includes(a));
+          } else {
+            effectivePerms[mod.key] = mod.actions.filter(a => ['View'].includes(a));
+          }
+        } else if (isAssetMgr) {
+          effectivePerms[mod.key] = [...mod.actions];
+        } else {
+          effectivePerms[mod.key] = mod.actions.filter(a => ['View'].includes(a));
+        }
+      });
+
+      MASTER_DATA_ENTITIES.forEach((e) => {
+        if (isAuditor) {
+          effectivePerms[`master_data_${e.key}`] = e.actions.filter(a => ['View', 'Export'].includes(a));
+        } else if (isAssetMgr) {
+          effectivePerms[`master_data_${e.key}`] = [...e.actions];
+        } else {
+          effectivePerms[`master_data_${e.key}`] = e.actions.filter(a => ['View'].includes(a));
+        }
+      });
+    }
+
+    return {
+      roleObj: roleObj || { id: roleId, name: roleName, code: roleCode, roleType: 'Custom Role' },
+      roleName,
+      roleCode,
+      perms: effectivePerms,
+      isSuperAdmin
+    };
+  }, [selectedUser, rolesList, showPermissionsModal]);
+
+  const isModuleActionGranted = (moduleKey, action) => {
+    if (effectiveRoleData.isSuperAdmin) return true;
+    const perms = effectiveRoleData.perms;
+    if (!perms) return false;
+
+    if (Array.isArray(perms)) {
+      return perms.includes('*') || perms.includes(action);
+    }
+
+    const modActions = perms[moduleKey] || (moduleKey === 'stocktakes' ? perms['audit'] : null);
+    if (Array.isArray(modActions)) {
+      return modActions.includes(action) || modActions.includes('*');
+    }
+    return false;
+  };
+
+  const isMasterActionGranted = (catalogKey, action) => {
+    if (effectiveRoleData.isSuperAdmin) return true;
+    const perms = effectiveRoleData.perms;
+    if (!perms) return false;
+
+    if (Array.isArray(perms)) {
+      return perms.includes('*') || perms.includes(action);
+    }
+
+    // Direct match: master_data_${catalogKey} or master-data:${catalogKey}
+    const direct = perms[`master_data_${catalogKey}`] || perms[`master-data:${catalogKey}`];
+    if (Array.isArray(direct)) {
+      return direct.includes(action) || direct.includes('*');
+    }
+
+    // Fall back to parent master-data if granular key is not explicitly set
+    const parent = perms['master-data'] || perms['master_data'];
+    if (Array.isArray(parent)) {
+      return parent.includes(action) || parent.includes('*');
+    }
+    return false;
+  };
+
+  const permissionStats = useMemo(() => {
+    let operationalModulesCount = 0;
+    let operationalActionsCount = 0;
+    const opModules = MODULE_STRUCTURE.filter(m => m.key !== 'master-data');
+
+    opModules.forEach(mod => {
+      let modGranted = false;
+      mod.actions.forEach(act => {
+        if (isModuleActionGranted(mod.key, act)) {
+          modGranted = true;
+          operationalActionsCount++;
+        }
+      });
+      if (modGranted) operationalModulesCount++;
+    });
+
+    let masterCatalogsCount = 0;
+    let masterActionsCount = 0;
+    MASTER_DATA_ENTITIES.forEach(cat => {
+      let catGranted = false;
+      cat.actions.forEach(act => {
+        if (isMasterActionGranted(cat.key, act)) {
+          catGranted = true;
+          masterActionsCount++;
+        }
+      });
+      if (catGranted) masterCatalogsCount++;
+    });
+
+    return {
+      operationalModulesCount,
+      totalOperationalModules: opModules.length,
+      masterCatalogsCount,
+      totalMasterCatalogs: MASTER_DATA_ENTITIES.length,
+      totalActionsGranted: operationalActionsCount + masterActionsCount
+    };
+  }, [effectiveRoleData]);
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased text-[#0F172A] p-6">
@@ -2097,173 +2289,426 @@ export function UserManagement() {
 
       {/* MANAGE PERMISSIONS MODAL */}
       {showPermissionsModal && selectedUser && (
-        <div className="fixed inset-0 z-50 bg-black/40 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
-          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-2xl shadow-2xl p-6 overflow-y-auto max-h-[90vh] space-y-4">
-            <div className="flex items-center justify-between pb-3 border-b border-slate-100">
-              <div className="flex items-center gap-2.5">
-                <div className="w-9 h-9 rounded-xl bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-bold">
+        <div className="fixed inset-0 z-50 bg-black/50 backdrop-blur-xs flex items-center justify-center p-4 animate-in fade-in duration-150">
+          <div className="bg-white border border-slate-200 rounded-2xl w-full max-w-4xl shadow-2xl flex flex-col max-h-[92vh] overflow-hidden">
+            {/* Modal Header */}
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100 bg-white">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-xl bg-purple-100 text-[#6C2BD9] flex items-center justify-center font-bold shadow-xs">
                   <ShieldCheck className="w-5 h-5" />
                 </div>
                 <div>
-                  <h3 className="text-base font-bold text-slate-900">Manage Permissions</h3>
-                  <p className="text-xs text-slate-500">Effective permissions & access rights for {selectedUser.name}</p>
+                  <div className="flex items-center gap-2">
+                    <h3 className="text-base font-bold text-slate-900">Manage Permissions</h3>
+                    <span className="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-purple-100 text-purple-700">
+                      {effectiveRoleData.roleName}
+                    </span>
+                    {effectiveRoleData.isSuperAdmin && (
+                      <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                        Superadmin Full Access
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-slate-500">
+                    Effective access rights for <strong className="text-slate-700 font-semibold">{selectedUser.name}</strong> ({selectedUser.email || selectedUser.username || 'User'})
+                  </p>
                 </div>
               </div>
               <button
                 onClick={() => setShowPermissionsModal(false)}
-                className="text-slate-400 hover:text-slate-600 p-1 rounded-lg hover:bg-slate-100 transition-colors"
+                className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100 transition-colors cursor-pointer"
+                title="Close"
               >
                 <X className="w-5 h-5" />
               </button>
             </div>
 
-            {/* User & Assigned Role Overview */}
-            <div className="p-3.5 bg-purple-50/60 rounded-xl border border-purple-200/60 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] text-purple-700 font-bold uppercase tracking-wider block">Assigned Role</span>
-                <span className="text-sm font-bold text-slate-900">{selectedUser.role || 'Standard User'}</span>
-                <p className="text-[11px] text-slate-600 mt-0.5">Permissions are governed by this role under Role-Based Access Control (RBAC).</p>
+            {/* User & Assigned Role Overview Bar */}
+            <div className="px-6 py-3 bg-purple-50/50 border-b border-purple-100 flex flex-wrap items-center justify-between gap-3">
+              <div className="flex items-center gap-6 text-xs">
+                <div>
+                  <span className="text-[10px] text-purple-800 font-bold uppercase tracking-wider block">Assigned Role</span>
+                  <span className="font-bold text-slate-900 text-sm flex items-center gap-1.5">
+                    <Shield className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                    {effectiveRoleData.roleName}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Role Type</span>
+                  <span className="text-slate-700 font-medium">
+                    {effectiveRoleData.roleObj?.roleType || (effectiveRoleData.isSuperAdmin ? 'System Role' : 'Custom Role')}
+                  </span>
+                </div>
+                <div>
+                  <span className="text-[10px] text-slate-500 font-semibold uppercase tracking-wider block">Department / Org</span>
+                  <span className="text-slate-700 font-medium">{selectedUser.department || selectedUser.company || 'All Enterprise Units'}</span>
+                </div>
               </div>
-              <button
-                type="button"
-                onClick={() => {
-                  setShowPermissionsModal(false);
-                  const currentRole = rolesList.find(r => r.name === selectedUser.role || r.id === selectedUser.roleId);
-                  setSelectedRoleForAssignment(currentRole?.id || currentRole?.name || selectedUser.role || '');
-                  setShowAssignRolesModal(true);
-                }}
-                className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
-              >
-                <Edit2 className="w-3.5 h-3.5" /> Change Role
-              </button>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPermissionsModal(false);
+                    const currentRole = rolesList.find(r => r.name === selectedUser.role || r.id === selectedUser.roleId);
+                    setSelectedRoleForAssignment(currentRole?.id || currentRole?.name || selectedUser.role || '');
+                    setShowAssignRolesModal(true);
+                  }}
+                  className="px-3 py-1.5 bg-white border border-[#6C2BD9] text-[#6C2BD9] hover:bg-purple-50 text-xs font-bold rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <Edit2 className="w-3.5 h-3.5" /> Change Role
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPermissionsModal(false);
+                    navigate('/admin/roles');
+                  }}
+                  className="px-3 py-1.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-lg shadow-2xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Edit Role Permissions
+                </button>
+              </div>
             </div>
 
-            {/* Granular Permission Matrix */}
-            <div className="space-y-3">
-              <div className="flex items-center justify-between">
-                <label className="text-xs font-bold text-slate-800">Module Permissions Overview</label>
-                <span className="text-[11px] text-slate-500">
-                  {['System Administrator', 'Asset Administrator', 'Admin'].includes(selectedUser.role)
-                    ? 'All Permissions Granted'
-                    : 'Role-Restricted Permissions'}
-                </span>
+            {/* Filter & Metric Bar */}
+            <div className="px-6 py-3 bg-slate-50/80 border-b border-slate-100 flex flex-wrap items-center justify-between gap-3">
+              {/* Metric Counters */}
+              <div className="flex items-center gap-2 text-xs">
+                <div className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg shadow-2xs flex items-center gap-1.5">
+                  <Layers className="w-3.5 h-3.5 text-purple-600" />
+                  <span className="text-slate-600 font-medium">Modules:</span>
+                  <strong className="text-slate-800 font-bold">{permissionStats.operationalModulesCount} / {permissionStats.totalOperationalModules}</strong>
+                </div>
+                <div className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg shadow-2xs flex items-center gap-1.5">
+                  <Database className="w-3.5 h-3.5 text-indigo-600" />
+                  <span className="text-slate-600 font-medium">Master Catalogs:</span>
+                  <strong className="text-slate-800 font-bold">{permissionStats.masterCatalogsCount} / {permissionStats.totalMasterCatalogs}</strong>
+                </div>
+                <div className="px-2.5 py-1 bg-white border border-slate-200 rounded-lg shadow-2xs flex items-center gap-1.5">
+                  <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span className="text-slate-600 font-medium">Granted Actions:</span>
+                  <strong className="text-emerald-700 font-bold">{permissionStats.totalActionsGranted}</strong>
+                </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[46vh] overflow-y-auto pr-1">
-                {[
-                  {
-                    module: 'Asset Management',
-                    screens: [
-                      { name: 'Asset Registry', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
-                      { name: 'Asset Hierarchy', actions: ['View', 'Edit'] },
-                      { name: 'Asset Approvals', actions: ['Approve', 'Reject'] }
-                    ]
-                  },
-                  {
-                    module: 'Custody & Movement',
-                    screens: [
-                      { name: 'Transfer & Movement', actions: ['Initiate', 'Execute', 'Approve'] },
-                      { name: 'Asset Assignment', actions: ['Assign', 'Reassign'] }
-                    ]
-                  },
-                  {
-                    module: 'Maintenance & Work Orders',
-                    screens: [
-                      { name: 'Work Orders', actions: ['Create', 'Assign', 'Close'] },
-                      { name: 'Preventive Schedules', actions: ['Schedule', 'Update'] }
-                    ]
-                  },
-                  {
-                    module: 'Audit & Physical Verification',
-                    screens: [
-                      { name: 'Stocktake & Audit', actions: ['Initiate', 'Scan', 'Reconcile'] },
-                      { name: 'Audit Reports', actions: ['View', 'Export'] }
-                    ]
-                  },
-                  {
-                    module: 'Finance & Depreciation',
-                    screens: [
-                      { name: 'Depreciation Runs', actions: ['Execute', 'Post', 'Rollback'] },
-                      { name: 'Valuation & Disposal', actions: ['Revalue', 'Dispose'] }
-                    ]
-                  },
-                  {
-                    module: 'Administration & Master Data',
-                    screens: [
-                      { name: 'Master Data Hub', actions: ['Sites', 'Companies', 'Departments'] },
-                      { name: 'Security & Access', actions: ['Roles', 'Users', 'Logs'] }
-                    ]
-                  }
-                ].map((modGroup, idx) => {
-                  const isFullAdmin = ['System Administrator', 'Asset Administrator', 'Admin'].includes(selectedUser.role);
-                  const isAssetMgr = selectedUser.role === 'Asset Manager';
-                  const isAuditor = selectedUser.role === 'Auditor';
-                  const isTech = selectedUser.role === 'Technician';
+              {/* Search, Tabs & Options */}
+              <div className="flex items-center gap-2.5 flex-1 justify-end min-w-[280px]">
+                <div className="relative flex-1 max-w-xs">
+                  <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
+                  <input
+                    type="text"
+                    value={permModalSearch}
+                    onChange={(e) => setPermModalSearch(e.target.value)}
+                    placeholder="Search module, catalog, or action..."
+                    className="w-full pl-8 pr-7 py-1.5 bg-white border border-slate-200 rounded-lg text-xs placeholder:text-slate-400 focus:outline-none focus:ring-1 focus:ring-[#6C2BD9] focus:border-[#6C2BD9]"
+                  />
+                  {permModalSearch && (
+                    <button
+                      onClick={() => setPermModalSearch('')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                    </button>
+                  )}
+                </div>
 
-                  return (
-                    <div key={idx} className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2">
-                      <div className="font-bold text-xs text-slate-800 flex items-center justify-between border-b border-slate-100 pb-1.5">
-                        <span>{modGroup.module}</span>
-                        {isFullAdmin ? (
-                          <span className="text-[10px] text-emerald-700 bg-emerald-50 px-1.5 py-0.5 rounded font-bold border border-emerald-200">
-                            Full Access
-                          </span>
-                        ) : (
-                          <span className="text-[10px] text-slate-500 bg-slate-100 px-1.5 py-0.5 rounded font-medium">
-                            Role-Bound
-                          </span>
-                        )}
-                      </div>
+                {/* Tab Switcher */}
+                <div className="flex items-center bg-white border border-slate-200 p-0.5 rounded-lg text-xs">
+                  <button
+                    type="button"
+                    onClick={() => setPermModalTab('all')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                      permModalTab === 'all' ? 'bg-[#6C2BD9] text-white font-bold shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    All
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPermModalTab('modules')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                      permModalTab === 'modules' ? 'bg-[#6C2BD9] text-white font-bold shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Modules ({permissionStats.totalOperationalModules})
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setPermModalTab('master_data')}
+                    className={`px-2.5 py-1 rounded-md font-medium transition cursor-pointer ${
+                      permModalTab === 'master_data' ? 'bg-[#6C2BD9] text-white font-bold shadow-2xs' : 'text-slate-600 hover:bg-slate-100'
+                    }`}
+                  >
+                    Masters ({permissionStats.totalMasterCatalogs})
+                  </button>
+                </div>
 
-                      <div className="space-y-1.5">
-                        {modGroup.screens.map((scr, scrIdx) => (
-                          <div key={scrIdx} className="text-[11px] bg-slate-50 p-2 rounded-lg border border-slate-100">
-                            <div className="font-medium text-slate-700 mb-1">{scr.name}</div>
-                            <div className="flex flex-wrap gap-1">
-                              {scr.actions.map((act) => {
-                                let isAllowed = isFullAdmin;
-                                if (!isFullAdmin) {
-                                  if (act === 'View') isAllowed = true;
-                                  else if (isAssetMgr && modGroup.module !== 'Administration & Master Data') isAllowed = true;
-                                  else if (isAuditor && modGroup.module === 'Audit & Physical Verification') isAllowed = true;
-                                  else if (isTech && modGroup.module === 'Maintenance & Work Orders') isAllowed = true;
-                                }
+                <label className="flex items-center gap-1.5 text-xs text-slate-600 select-none cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={permModalOnlyAllowed}
+                    onChange={(e) => setPermModalOnlyAllowed(e.target.checked)}
+                    className="rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]/30 cursor-pointer"
+                  />
+                  <span className="text-[11px] font-medium whitespace-nowrap">Granted only</span>
+                </label>
+              </div>
+            </div>
+
+            {/* Scrollable Permissions Body */}
+            <div className="p-6 overflow-y-auto flex-1 space-y-6">
+              {/* 1. OPERATIONAL MODULES SECTION */}
+              {(permModalTab === 'all' || permModalTab === 'modules') && (
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Layers className="w-4 h-4 text-[#6C2BD9]" />
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Operational Modules & System Capabilities
+                      </h4>
+                    </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {permissionStats.operationalModulesCount} of {permissionStats.totalOperationalModules} active
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {MODULE_STRUCTURE
+                      .filter(mod => {
+                        if (mod.key === 'master-data') return false; // Rendered below with full granular catalog detail
+                        const q = permModalSearch.toLowerCase().trim();
+                        if (q) {
+                          const matchName = mod.name.toLowerCase().includes(q);
+                          const matchKey = mod.key.toLowerCase().includes(q);
+                          const matchAct = mod.actions.some(a => a.toLowerCase().includes(q));
+                          const matchScreen = mod.screens.some(s => s.toLowerCase().includes(q));
+                          if (!matchName && !matchKey && !matchAct && !matchScreen) return false;
+                        }
+                        if (permModalOnlyAllowed) {
+                          const hasAny = mod.actions.some(a => isModuleActionGranted(mod.key, a));
+                          if (!hasAny) return false;
+                        }
+                        return true;
+                      })
+                      .map((mod) => {
+                        const grantedActions = mod.actions.filter(a => isModuleActionGranted(mod.key, a));
+                        const isAllGranted = grantedActions.length === mod.actions.length;
+                        const isNoneGranted = grantedActions.length === 0;
+
+                        return (
+                          <div
+                            key={mod.key}
+                            className="p-3.5 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2.5 hover:border-purple-200 transition-colors"
+                          >
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-2">
+                              <div>
+                                <span className="font-bold text-xs text-slate-900 block">{mod.name}</span>
+                                <span className="text-[10px] text-slate-400 font-mono">
+                                  {mod.screens.length} Screens ({mod.screens.slice(0, 2).join(', ')}{mod.screens.length > 2 ? '...' : ''})
+                                </span>
+                              </div>
+                              {isAllGranted ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Full Access
+                                </span>
+                              ) : !isNoneGranted ? (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                                  Custom ({grantedActions.length}/{mod.actions.length})
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-2 py-0.5 rounded-full bg-slate-100 text-slate-500 border border-slate-200">
+                                  No Access
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Actions */}
+                            <div className="flex flex-wrap gap-1.5 pt-0.5">
+                              {mod.actions.map((act) => {
+                                const isGranted = isModuleActionGranted(mod.key, act);
+                                if (permModalOnlyAllowed && !isGranted) return null;
                                 return (
                                   <span
                                     key={act}
-                                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 ${
-                                      isAllowed
-                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                        : 'bg-slate-100 text-slate-400 line-through'
+                                    className={`px-2 py-0.5 rounded-md text-[11px] font-medium flex items-center gap-1 transition-colors ${
+                                      isGranted
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 font-semibold'
+                                        : 'bg-slate-50 text-slate-400 line-through border border-slate-200/50 opacity-70'
                                     }`}
+                                    title={isGranted ? `Permission Granted: ${act}` : `Permission Denied: ${act}`}
                                   >
-                                    {isAllowed && <CheckCircle2 className="w-2.5 h-2.5" />}
+                                    {isGranted ? (
+                                      <CheckCircle2 className="w-3 h-3 text-emerald-600 shrink-0" />
+                                    ) : (
+                                      <XCircle className="w-3 h-3 text-slate-300 shrink-0" />
+                                    )}
                                     {act}
                                   </span>
                                 );
                               })}
                             </div>
                           </div>
-                        ))}
-                      </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* 2. GRANULAR MASTER DATA HUB SECTION (19 CATALOGS) */}
+              {(permModalTab === 'all' || permModalTab === 'master_data') && (
+                <div className="space-y-3 pt-2">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <Database className="w-4 h-4 text-indigo-600" />
+                      <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">
+                        Master Data Hub (19 Catalogs)
+                      </h4>
                     </div>
-                  );
-                })}
-              </div>
+                    <span className="text-[11px] text-slate-500 font-medium">
+                      {permissionStats.masterCatalogsCount} of {permissionStats.totalMasterCatalogs} catalogs accessible
+                    </span>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                    {MASTER_DATA_ENTITIES
+                      .filter(cat => {
+                        const q = permModalSearch.toLowerCase().trim();
+                        if (q) {
+                          const matchName = cat.name.toLowerCase().includes(q);
+                          const matchKey = cat.key.toLowerCase().includes(q);
+                          const matchAct = cat.actions.some(a => a.toLowerCase().includes(q));
+                          if (!matchName && !matchKey && !matchAct) return false;
+                        }
+                        if (permModalOnlyAllowed) {
+                          const hasAny = cat.actions.some(a => isMasterActionGranted(cat.key, a));
+                          if (!hasAny) return false;
+                        }
+                        return true;
+                      })
+                      .map((cat) => {
+                        const grantedActions = cat.actions.filter(a => isMasterActionGranted(cat.key, a));
+                        const isAllGranted = grantedActions.length === cat.actions.length;
+                        const isViewOnly = grantedActions.length === 1 && grantedActions[0] === 'View';
+                        const isNoneGranted = grantedActions.length === 0;
+
+                        return (
+                          <div
+                            key={cat.key}
+                            className="p-3 bg-white rounded-xl border border-slate-200 shadow-2xs space-y-2 hover:border-purple-200 transition-colors"
+                          >
+                            <div className="flex items-center justify-between border-b border-slate-100 pb-1.5">
+                              <span className="font-bold text-xs text-slate-900">{cat.name}</span>
+                              {isAllGranted ? (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-200">
+                                  Full Access
+                                </span>
+                              ) : isViewOnly ? (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-sky-50 text-sky-700 border border-sky-200">
+                                  View Only
+                                </span>
+                              ) : !isNoneGranted ? (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-purple-50 text-purple-700 border border-purple-200">
+                                  Custom ({grantedActions.length}/{cat.actions.length})
+                                </span>
+                              ) : (
+                                <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-rose-50 text-rose-700 border border-rose-200">
+                                  No Access
+                                </span>
+                              )}
+                            </div>
+
+                            {/* Granular Action Pills */}
+                            <div className="flex flex-wrap gap-1 pt-0.5">
+                              {cat.actions.map((act) => {
+                                const isGranted = isMasterActionGranted(cat.key, act);
+                                if (permModalOnlyAllowed && !isGranted) return null;
+                                return (
+                                  <span
+                                    key={act}
+                                    className={`px-1.5 py-0.5 rounded text-[10px] font-medium flex items-center gap-1 transition-colors ${
+                                      isGranted
+                                        ? 'bg-emerald-50 text-emerald-700 border border-emerald-200/80 font-semibold'
+                                        : 'bg-slate-50 text-slate-400 line-through border border-slate-200/50 opacity-60'
+                                    }`}
+                                    title={isGranted ? `Permission Granted: ${act}` : `Permission Denied: ${act}`}
+                                  >
+                                    {isGranted ? (
+                                      <CheckCircle2 className="w-2.5 h-2.5 text-emerald-600 shrink-0" />
+                                    ) : (
+                                      <XCircle className="w-2.5 h-2.5 text-slate-300 shrink-0" />
+                                    )}
+                                    {act}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        );
+                      })}
+                  </div>
+                </div>
+              )}
+
+              {/* Empty state if search or filter matches nothing */}
+              {permModalSearch && (
+                (() => {
+                  const q = permModalSearch.toLowerCase().trim();
+                  const anyOpMatch = MODULE_STRUCTURE
+                    .filter(m => m.key !== 'master-data')
+                    .some(m => m.name.toLowerCase().includes(q) || m.key.toLowerCase().includes(q) || m.actions.some(a => a.toLowerCase().includes(q)));
+                  const anyMasterMatch = MASTER_DATA_ENTITIES
+                    .some(c => c.name.toLowerCase().includes(q) || c.key.toLowerCase().includes(q) || c.actions.some(a => a.toLowerCase().includes(q)));
+
+                  if (!anyOpMatch && !anyMasterMatch) {
+                    return (
+                      <div className="py-12 text-center space-y-2">
+                        <Search className="w-8 h-8 text-slate-300 mx-auto" />
+                        <h5 className="text-xs font-bold text-slate-700">No matching permissions found</h5>
+                        <p className="text-[11px] text-slate-400">
+                          No module, master catalog, or action matched "{permModalSearch}".
+                        </p>
+                        <button
+                          type="button"
+                          onClick={() => setPermModalSearch('')}
+                          className="mt-2 text-xs text-[#6C2BD9] hover:underline font-semibold cursor-pointer"
+                        >
+                          Clear search filter
+                        </button>
+                      </div>
+                    );
+                  }
+                  return null;
+                })()
+              )}
             </div>
 
-            {/* Modal Actions */}
-            <div className="flex items-center justify-between pt-3 border-t border-slate-100">
-              <span className="text-[11px] text-slate-400">
-                To customize permissions, update the role or create a new custom role in Roles & Permissions.
-              </span>
-              <button
-                type="button"
-                onClick={() => setShowPermissionsModal(false)}
-                className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
-              >
-                Done
-              </button>
+            {/* Modal Footer */}
+            <div className="px-6 py-3.5 bg-white border-t border-slate-100 flex items-center justify-between gap-3">
+              <div className="flex items-center gap-2 text-[11px] text-slate-500">
+                <Shield className="w-4 h-4 text-purple-600 shrink-0" />
+                <span>
+                  Permissions are governed by the assigned role (<strong>{effectiveRoleData.roleName}</strong>).
+                </span>
+              </div>
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowPermissionsModal(false);
+                    navigate('/admin/roles');
+                  }}
+                  className="px-3.5 py-2 bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 border border-purple-200 text-xs font-semibold rounded-lg transition-colors cursor-pointer flex items-center gap-1.5"
+                >
+                  <ExternalLink className="w-3.5 h-3.5" /> Open Roles & Permissions
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setShowPermissionsModal(false)}
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-semibold rounded-lg shadow-sm transition-colors cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
             </div>
           </div>
         </div>
