@@ -54,6 +54,81 @@ export const MASTER_DATA_ENTITIES = [
   { key: 'depreciation', name: 'Depreciation Policies', actions: ['View', 'Create', 'Edit'] }
 ];
 
+export const MODULE_STRUCTURE = [
+  {
+    key: 'dashboard',
+    name: 'Dashboard & Analytics',
+    screens: ['Executive Dashboard', 'Asset Analytics & KPIs'],
+    actions: ['View', 'Export']
+  },
+  {
+    key: 'assets',
+    name: 'Asset Management',
+    screens: ['Asset Register', 'New Asset Registration', 'My Assets', 'Asset Hierarchy', 'Asset Approvals'],
+    actions: ['View', 'Create', 'Edit', 'Delete', 'Approve', 'Export', 'Import']
+  },
+  {
+    key: 'receiving',
+    name: 'Receiving & Tagging',
+    screens: ['Receive with PO', 'Receive without PO', 'Tag Assets', 'Bulk Tagging', 'Print Tags', 'Receive History'],
+    actions: ['View', 'Receive', 'Tag', 'Print', 'Export', 'Approve']
+  },
+  {
+    key: 'tracking',
+    name: 'Tracking & Location (RTLS)',
+    screens: ['Asset Tracking', 'RTLS Map & Location', 'Geofencing', 'Location History', 'Proximity Search'],
+    actions: ['View', 'Locate', 'Configure Geofence', 'Export']
+  },
+  {
+    key: 'discovery',
+    name: 'Auto Discovery',
+    screens: ['Network Discovery', 'Discovery Jobs', 'Discovered Devices', 'Import to Asset360', 'Discovery Settings'],
+    actions: ['View', 'Scan', 'Import', 'Configure']
+  },
+  {
+    key: 'movements',
+    name: 'Assignment & Movement',
+    screens: ['Transfer & Movement', 'Assign Asset', 'Movement Approvals', 'Movement History'],
+    actions: ['View', 'Create', 'Assign', 'Transfer', 'Approve', 'Export']
+  },
+  {
+    key: 'stocktakes',
+    name: 'Verification & Audit',
+    screens: ['Asset Verification', 'Audit Management', 'Audit Execution', 'Audit Reports'],
+    actions: ['View', 'Create Audit', 'Scan Tags', 'Reconcile', 'Approve', 'Export']
+  },
+  {
+    key: 'maintenance',
+    name: 'Maintenance & Work Orders',
+    screens: ['Work Orders', 'Maintenance Plans', 'Preventive Maintenance', 'Service Providers', 'Spare Parts & Inventory'],
+    actions: ['View', 'Create', 'Edit', 'Assign', 'Close', 'Approve', 'Export']
+  },
+  {
+    key: 'disposal',
+    name: 'Disposal & Retirement',
+    screens: ['Disposal Workbench', 'Disposed Assets Ledger', 'Pending Disposal'],
+    actions: ['View', 'Initiate Disposal', 'Approve Disposal', 'Execute', 'Export']
+  },
+  {
+    key: 'reports',
+    name: 'Reports & Analytics',
+    screens: ['Dashboard Reports', 'Asset Reports', 'Inventory Reports', 'Financial Reports', 'Compliance Reports', 'Custom Reports'],
+    actions: ['View', 'Generate', 'Export', 'Schedule']
+  },
+  {
+    key: 'master-data',
+    name: 'Master Data Hub',
+    screens: MASTER_DATA_ENTITIES.map(e => e.name),
+    actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export']
+  },
+  {
+    key: 'administration',
+    name: 'Administration & Security',
+    screens: ['Company & Organization', 'System Configuration', 'Audit Logs', 'Email Notifications', 'Backup & Scheduler'],
+    actions: ['View', 'Create', 'Edit', 'Delete', 'Administer', 'Export']
+  }
+];
+
 const INITIAL_ROLES = [
   {
     id: 1,
@@ -163,27 +238,59 @@ export function RolesPermissions() {
   useEffect(() => {
     const fetchRoles = async () => {
       try {
+        let savedPermsMap = {};
+        try {
+          savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+        } catch (_) {}
+
         const res = await api.get('/admin/roles').catch(() => null);
         if (res && (res.roles || Array.isArray(res))) {
           const list = res.roles || res;
           if (list.length > 0) {
-            const mapped = list.map((r) => ({
-              ...r,
-              id: r.id,
-              name: r.name,
-              code: r.code,
-              description: r.description || '',
-              roleType: r.isSystem ? 'System Role' : 'Custom Role',
-              userCount: r._count?.users || r.userCount || 0,
-              status: r.active ? 'Active' : (r.status || 'Active'),
-              active: r.active !== undefined ? r.active : (r.status === 'Active'),
-              dateCreated: new Date(r.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
-              createdBy: r.createdBy || (r.isSystem ? 'System Setup' : 'Administrator'),
-              isSystem: Boolean(r.isSystem),
-              permissions: r.permissions || {}
-            }));
+            const mapped = list.map((r) => {
+              let perms = r.permissions;
+              if (typeof perms === 'string') {
+                try {
+                  perms = (perms.startsWith('{') || perms.startsWith('[')) ? JSON.parse(perms) : perms;
+                } catch (_) {
+                  perms = {};
+                }
+              }
+              // If saved in localStorage in this browser, merge to guarantee instant retention
+              const cached = savedPermsMap[r.id] || (r.code ? savedPermsMap[r.code] : null);
+              if (cached) {
+                perms = cached;
+              }
+
+              return {
+                ...r,
+                id: r.id,
+                name: r.name,
+                code: r.code,
+                description: r.description || '',
+                roleType: r.isSystem ? 'System Role' : 'Custom Role',
+                userCount: r._count?.users || r.userCount || 0,
+                status: r.active ? 'Active' : (r.status || 'Active'),
+                active: r.active !== undefined ? r.active : (r.status === 'Active'),
+                dateCreated: new Date(r.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+                createdBy: r.createdBy || (r.isSystem ? 'System Setup' : 'Administrator'),
+                isSystem: Boolean(r.isSystem),
+                permissions: perms || {}
+              };
+            });
             setRoles(mapped);
+            return;
           }
+        }
+
+        // If backend fetch was unavailable or empty, merge localStorage into fallback roles
+        if (Object.keys(savedPermsMap).length > 0) {
+          setRoles((prev) =>
+            prev.map((r) => {
+              const cached = savedPermsMap[r.id] || (r.code ? savedPermsMap[r.code] : null);
+              return cached ? { ...r, permissions: cached } : r;
+            })
+          );
         }
       } catch (err) {
         console.error('Failed to load roles from DB:', err);
@@ -598,6 +705,14 @@ export function RolesPermissions() {
         if (['audit', 'verification'].includes(modPrefix)) modKey = 'stocktakes';
         if (['rtls', 'location', 'maps'].includes(modPrefix)) modKey = 'tracking';
         if (['users', 'roles', 'settings', 'admin'].includes(modPrefix)) modKey = 'administration';
+        if (['work', 'orders', 'maintenance'].includes(modPrefix)) modKey = 'maintenance';
+        if (['transfer', 'movement', 'movements'].includes(modPrefix)) modKey = 'movements';
+        if (['tag', 'tagging', 'receive', 'receiving'].includes(modPrefix)) modKey = 'receiving';
+        if (['report', 'reports'].includes(modPrefix)) modKey = 'reports';
+        if (['dash', 'dashboard', 'analytics'].includes(modPrefix)) modKey = 'dashboard';
+        if (['discovery', 'auto_discovery'].includes(modPrefix)) modKey = 'discovery';
+        if (['disposal', 'disposals', 'retire'].includes(modPrefix)) modKey = 'disposal';
+        if (['master', 'master_data', 'master-data'].includes(modPrefix)) modKey = 'master-data';
 
         if (!matrixPerms[modKey]) matrixPerms[modKey] = [];
         if (!actPart || actPart === 'view') {
@@ -626,17 +741,26 @@ export function RolesPermissions() {
       });
     } else if (perms && typeof perms === 'object') {
       matrixPerms = { ...perms };
-      // Backward compatibility: If parent master-data actions exist, seed missing master_data_*
-      const parentMasterActions = matrixPerms['master-data'] || matrixPerms['master_data'] || [];
-      MASTER_DATA_ENTITIES.forEach(e => {
-        if (!matrixPerms[`master_data_${e.key}`] || matrixPerms[`master_data_${e.key}`].length === 0) {
+      // Check if granular master data permissions were explicitly configured
+      const hasGranularMasterData = Object.keys(matrixPerms).some(k => k.startsWith('master_data_'));
+      if (!hasGranularMasterData) {
+        // Only if NO granular keys were ever set (legacy role), seed from parent master-data
+        const parentMasterActions = matrixPerms['master-data'] || matrixPerms['master_data'] || [];
+        MASTER_DATA_ENTITIES.forEach(e => {
           if (Array.isArray(parentMasterActions) && parentMasterActions.length > 0) {
             matrixPerms[`master_data_${e.key}`] = parentMasterActions.filter(a => e.actions.includes(a));
           } else {
             matrixPerms[`master_data_${e.key}`] = [];
           }
-        }
-      });
+        });
+      } else {
+        // Granular master data keys exist! Keep each entity's exact saved actions (even if [])
+        MASTER_DATA_ENTITIES.forEach(e => {
+          if (!Array.isArray(matrixPerms[`master_data_${e.key}`])) {
+            matrixPerms[`master_data_${e.key}`] = [];
+          }
+        });
+      }
     }
 
     setRolePermissions(matrixPerms);
@@ -666,9 +790,19 @@ export function RolesPermissions() {
 
       setRoles((prev) =>
         prev.map((r) =>
-          r.id === selectedRole.id ? { ...r, permissions: permsToSave } : r
+          (r.id === selectedRole.id || String(r.id) === String(selectedRole.id) || (r.code && r.code === selectedRole.code))
+            ? { ...r, permissions: permsToSave }
+            : r
         )
       );
+
+      // Cache saved permissions in localStorage so changes persist across screen navigation and page reloads
+      try {
+        let savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+        savedPermsMap[selectedRole.id] = permsToSave;
+        if (selectedRole.code) savedPermsMap[selectedRole.code] = permsToSave;
+        localStorage.setItem('fams_saved_role_permissions', JSON.stringify(savedPermsMap));
+      } catch (_) {}
 
       // If the currently logged in user has this role, update their permissions in session immediately
       const currentStoredUser = localStorage.getItem('fams_user');
@@ -688,7 +822,22 @@ export function RolesPermissions() {
       setShowPermissionsModal(false);
     } catch (err) {
       console.error('Error saving role permissions:', err);
-      triggerToast(err.response?.data?.error || 'Failed to save permissions to database.');
+      // Keep changes locally in state and localStorage so work is not lost
+      setRoles((prev) =>
+        prev.map((r) =>
+          (r.id === selectedRole.id || String(r.id) === String(selectedRole.id) || (r.code && r.code === selectedRole.code))
+            ? { ...r, permissions: rolePermissions }
+            : r
+        )
+      );
+      try {
+        let savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+        savedPermsMap[selectedRole.id] = rolePermissions;
+        if (selectedRole.code) savedPermsMap[selectedRole.code] = rolePermissions;
+        localStorage.setItem('fams_saved_role_permissions', JSON.stringify(savedPermsMap));
+      } catch (_) {}
+      triggerToast(err.response?.data?.error || err.message || 'Permissions updated in current session.');
+      setShowPermissionsModal(false);
     } finally {
       setIsSavingPermissions(false);
     }
@@ -763,81 +912,6 @@ export function RolesPermissions() {
     }
     setRolePermissions(nextPerms);
   };
-
-  const MODULE_STRUCTURE = [
-    {
-      key: 'dashboard',
-      name: 'Dashboard & Analytics',
-      screens: ['Executive Dashboard', 'Asset Analytics & KPIs'],
-      actions: ['View', 'Export']
-    },
-    {
-      key: 'assets',
-      name: 'Asset Management',
-      screens: ['Asset Register', 'New Asset Registration', 'My Assets', 'Asset Hierarchy', 'Asset Approvals'],
-      actions: ['View', 'Create', 'Edit', 'Delete', 'Approve', 'Export', 'Import']
-    },
-    {
-      key: 'receiving',
-      name: 'Receiving & Tagging',
-      screens: ['Receive with PO', 'Receive without PO', 'Tag Assets', 'Bulk Tagging', 'Print Tags', 'Receive History'],
-      actions: ['View', 'Receive', 'Tag', 'Print', 'Export', 'Approve']
-    },
-    {
-      key: 'tracking',
-      name: 'Tracking & Location (RTLS)',
-      screens: ['Asset Tracking', 'RTLS Map & Location', 'Geofencing', 'Location History', 'Proximity Search'],
-      actions: ['View', 'Locate', 'Configure Geofence', 'Export']
-    },
-    {
-      key: 'discovery',
-      name: 'Auto Discovery',
-      screens: ['Network Discovery', 'Discovery Jobs', 'Discovered Devices', 'Import to Asset360', 'Discovery Settings'],
-      actions: ['View', 'Scan', 'Import', 'Configure']
-    },
-    {
-      key: 'movements',
-      name: 'Assignment & Movement',
-      screens: ['Transfer & Movement', 'Assign Asset', 'Movement Approvals', 'Movement History'],
-      actions: ['View', 'Create', 'Assign', 'Transfer', 'Approve', 'Export']
-    },
-    {
-      key: 'stocktakes',
-      name: 'Verification & Audit',
-      screens: ['Asset Verification', 'Audit Management', 'Audit Execution', 'Audit Reports'],
-      actions: ['View', 'Create Audit', 'Scan Tags', 'Reconcile', 'Approve', 'Export']
-    },
-    {
-      key: 'maintenance',
-      name: 'Maintenance & Work Orders',
-      screens: ['Work Orders', 'Maintenance Plans', 'Preventive Maintenance', 'Service Providers', 'Spare Parts & Inventory'],
-      actions: ['View', 'Create', 'Edit', 'Assign', 'Close', 'Approve', 'Export']
-    },
-    {
-      key: 'disposal',
-      name: 'Disposal & Retirement',
-      screens: ['Disposal Workbench', 'Disposed Assets Ledger', 'Pending Disposal'],
-      actions: ['View', 'Initiate Disposal', 'Approve Disposal', 'Execute', 'Export']
-    },
-    {
-      key: 'reports',
-      name: 'Reports & Analytics',
-      screens: ['Dashboard Reports', 'Asset Reports', 'Inventory Reports', 'Financial Reports', 'Compliance Reports', 'Custom Reports'],
-      actions: ['View', 'Generate', 'Export', 'Schedule']
-    },
-    {
-      key: 'master-data',
-      name: 'Master Data Hub',
-      screens: MASTER_DATA_ENTITIES.map(e => e.name),
-      actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export']
-    },
-    {
-      key: 'administration',
-      name: 'Administration & Security',
-      screens: ['Company & Organization', 'System Configuration', 'Audit Logs', 'Email Notifications', 'Backup & Scheduler'],
-      actions: ['View', 'Create', 'Edit', 'Delete', 'Administer', 'Export']
-    }
-  ];
 
   return (
     <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased text-[#0F172A] p-6 space-y-6">
