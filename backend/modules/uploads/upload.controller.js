@@ -221,6 +221,7 @@ export async function uploadSingleFile(req, res, next) {
     }
 
     const { originalname, buffer, mimetype, size } = req.file;
+    const resourceType = getResourceType(originalname, mimetype);
 
     const cleanFilename = originalname.replace(/[^a-zA-Z0-9._-]/g, '_');
     const publicId = `${path.parse(cleanFilename).name}_${Date.now()}`;

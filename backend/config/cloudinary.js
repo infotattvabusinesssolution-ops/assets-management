@@ -3,9 +3,9 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'dk4iwkh0h',
-  api_key: process.env.CLOUDINARY_API_KEY || '982347999286849',
-  api_secret: process.env.CLOUDINARY_API_SECRET || 'X5iiHFV0Ox4P1ZR7AnytII-7fRI',
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME || 'sfuxk5xi',
+  api_key: process.env.CLOUDINARY_API_KEY || '337839555964131',
+  api_secret: process.env.CLOUDINARY_API_SECRET || 'jAUlmmzMA2dcCr6qKnG0mmV8mpE',
   secure: true
 });
 

@@ -956,18 +956,20 @@ export async function createAsset(req, res, next) {
       }
 
       for (const img of incomingImages) {
+        const safeStorageKey = (img.publicId || (img.url && img.url.length <= 250 ? img.url : null) || `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
         await tx.attachment.create({ data: {
           entityType: 'Asset', entityId: newAsset.id, fileName: img.name,
-          fileType: 'ASSET_IMAGE', storageKey: img.url, url: img.url,
+          fileType: 'ASSET_IMAGE', storageKey: safeStorageKey, url: img.url,
           fileSize: img.size,
           uploadedByUserId: finalUserId
         } });
       }
       for (const doc of Array.isArray(req.body.documents) ? req.body.documents : []) {
         if (!doc?.url) continue;
+        const safeStorageKey = (doc.publicId || (doc.url && doc.url.length <= 250 ? doc.url : null) || `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
         await tx.attachment.create({ data: {
           entityType: 'Asset', entityId: newAsset.id, fileName: doc.name || 'Document',
-          fileType: doc.type || 'Document', storageKey: doc.publicId || doc.url, url: doc.url,
+          fileType: doc.type || 'Document', storageKey: safeStorageKey, url: doc.url,
           fileSize: Number.isFinite(Number(doc.size)) ? Number(doc.size) : null,
           uploadedByUserId: finalUserId
         } });
@@ -1663,9 +1665,10 @@ export async function updateAsset(req, res, next) {
       });
 
       for (const img of incomingImages) {
+        const safeStorageKey = (img.publicId || (img.url && img.url.length <= 250 ? img.url : null) || `img-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
         await tx.attachment.create({ data: {
           entityType: 'Asset', entityId: oldAsset.id, fileName: img.name,
-          fileType: 'ASSET_IMAGE', storageKey: img.url, url: img.url,
+          fileType: 'ASSET_IMAGE', storageKey: safeStorageKey, url: img.url,
           fileSize: img.size,
           uploadedByUserId: finalUserId
         } });
@@ -1673,9 +1676,10 @@ export async function updateAsset(req, res, next) {
     }
     for (const doc of Array.isArray(documents) ? documents : []) {
       if (!doc?.url) continue;
+      const safeStorageKey = (doc.publicId || (doc.url && doc.url.length <= 250 ? doc.url : null) || `doc-${Date.now()}-${Math.random().toString(36).slice(2, 6)}`);
       await tx.attachment.create({ data: {
         entityType: 'Asset', entityId: oldAsset.id, fileName: doc.name || 'Document',
-        fileType: doc.type || 'Document', storageKey: doc.publicId || doc.url,
+        fileType: doc.type || 'Document', storageKey: safeStorageKey,
         url: doc.url, fileSize: Number.isFinite(Number(doc.size)) ? Number(doc.size) : null,
         uploadedByUserId: finalUserId
       } });
