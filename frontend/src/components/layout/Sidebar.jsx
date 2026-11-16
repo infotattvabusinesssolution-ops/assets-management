@@ -312,7 +312,7 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
 };
 
 export function Sidebar({ collapsed, setCollapsed }) {
-  const { user, logout, can } = useAuth();
+  const { user, logout, can, hasMasterPermission } = useAuth();
   const location = useLocation();
   const userRoleCode = user?.role?.code || 'SYS_ADMIN';
 
@@ -346,6 +346,24 @@ export function Sidebar({ collapsed, setCollapsed }) {
   const visibleNavItems = NAV_STRUCTURE.filter(item => {
     // Only SYS_ADMIN has super-admin bypass
     if (userRoleCode === 'SYS_ADMIN') return true;
+
+    // Master data module visibility check
+    if (item.id === 'master-data') {
+      let perms = user?.role?.permissions;
+      if (typeof perms === 'string') {
+        try { perms = JSON.parse(perms); } catch (_) { perms = null; }
+      }
+      if (perms && typeof perms === 'object' && !Array.isArray(perms) && Object.keys(perms).length > 0) {
+        // If parent master-data module is defined with actions OR any master_data_* key has View or any action
+        const modActions = perms['master-data'] || perms['master_data'];
+        if (Array.isArray(modActions) && modActions.length > 0) return true;
+        const hasAnyMasterPerm = Object.keys(perms).some(k => k.startsWith('master_data_') && Array.isArray(perms[k]) && perms[k].length > 0);
+        if (hasAnyMasterPerm) return true;
+        return false;
+      }
+      if (userRoleCode === 'ASSET_ADMIN') return true;
+      return false;
+    }
 
     // Check dynamic permissions matrix object if configured by Administrator
     let perms = user?.role?.permissions;
@@ -382,6 +400,14 @@ export function Sidebar({ collapsed, setCollapsed }) {
 
       if (userRoleCode === 'SYS_ADMIN') return true;
 
+      // Master data granular filter
+      if (item.id === 'master-data') {
+        const tabMatch = sub.path.match(/tab=([^&]+)/);
+        const tab = tabMatch ? tabMatch[1] : '';
+        const entityKey = tab.startsWith('location-level-') ? 'location-levels' : (tab === 'classes' ? 'sub-groups' : (tab === 'asset-conditions' ? 'conditions' : tab));
+        return hasMasterPermission ? hasMasterPermission(entityKey, 'View') : true;
+      }
+
       if (perms && typeof perms === 'object' && !Array.isArray(perms) && Object.keys(perms).length > 0) {
         const modActions = perms[item.id] || (item.id === 'stocktakes' ? perms['audit'] : []);
         if (Array.isArray(modActions)) {
@@ -410,6 +436,10 @@ export function Sidebar({ collapsed, setCollapsed }) {
     });
 
     return { ...item, subItems: filteredSubs };
+  }).filter(item => {
+    // If an item has subItems but all of them are hidden due to role permissions, hide the parent item too
+    if (item.subItems && item.subItems.length === 0) return false;
+    return true;
   });
 
   return (

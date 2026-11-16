@@ -32,6 +32,28 @@ import clsx from 'clsx';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
 
+export const MASTER_DATA_ENTITIES = [
+  { key: 'item-master', name: 'Item Master', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
+  { key: 'asset-groups', name: 'Asset Groups', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'sub-groups', name: 'Asset Sub Groups', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'categories', name: 'Categories', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'subcategories', name: 'Sub Categories', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'companies', name: 'Companies', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'custodians', name: 'Custodians', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'locations', name: 'Locations & Sites', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'location-levels', name: 'Location Levels (1 - 4)', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  { key: 'departments', name: 'Departments', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'cost-centers', name: 'Sections & Cost Centers', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'suppliers', name: 'Suppliers & Vendors', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'manufacturers', name: 'Manufacturers', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'brands', name: 'Brands', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'uom', name: 'Units of Measure (UOM)', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  { key: 'status-codes', name: 'Status Codes', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  { key: 'disposal-statuses', name: 'Disposal Statuses', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  { key: 'conditions', name: 'Conditions', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  { key: 'depreciation', name: 'Depreciation Policies', actions: ['View', 'Create', 'Edit'] }
+];
+
 const INITIAL_ROLES = [
   {
     id: 1,
@@ -563,6 +585,9 @@ export function RolesPermissions() {
       MODULE_STRUCTURE.forEach(m => {
         matrixPerms[m.key] = [...m.actions];
       });
+      MASTER_DATA_ENTITIES.forEach(e => {
+        matrixPerms[`master_data_${e.key}`] = [...e.actions];
+      });
     } else if (Array.isArray(perms)) {
       // 2. Convert legacy flat array of codes (e.g. ['ASSETS_VIEW', 'ASSETS_CREATE']) to matrix
       perms.forEach(code => {
@@ -594,8 +619,24 @@ export function RolesPermissions() {
           if (!matrixPerms[modKey].includes(cap)) matrixPerms[modKey].push(cap);
         }
       });
+      // Also seed master_data_* from master-data if set
+      const parentMasterActions = matrixPerms['master-data'] || [];
+      MASTER_DATA_ENTITIES.forEach(e => {
+        matrixPerms[`master_data_${e.key}`] = parentMasterActions.filter(a => e.actions.includes(a));
+      });
     } else if (perms && typeof perms === 'object') {
       matrixPerms = { ...perms };
+      // Backward compatibility: If parent master-data actions exist, seed missing master_data_*
+      const parentMasterActions = matrixPerms['master-data'] || matrixPerms['master_data'] || [];
+      MASTER_DATA_ENTITIES.forEach(e => {
+        if (!matrixPerms[`master_data_${e.key}`] || matrixPerms[`master_data_${e.key}`].length === 0) {
+          if (Array.isArray(parentMasterActions) && parentMasterActions.length > 0) {
+            matrixPerms[`master_data_${e.key}`] = parentMasterActions.filter(a => e.actions.includes(a));
+          } else {
+            matrixPerms[`master_data_${e.key}`] = [];
+          }
+        }
+      });
     }
 
     setRolePermissions(matrixPerms);
@@ -607,13 +648,25 @@ export function RolesPermissions() {
     if (!selectedRole) return;
     setIsSavingPermissions(true);
     try {
+      const permsToSave = { ...rolePermissions };
+      // Keep parent master-data in sync: has View if at least one master entity has View
+      const hasAnyMasterView = MASTER_DATA_ENTITIES.some(e => {
+        const eActs = permsToSave[`master_data_${e.key}`] || [];
+        return eActs.includes('View');
+      });
+      if (hasAnyMasterView) {
+        permsToSave['master-data'] = ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'];
+      } else {
+        permsToSave['master-data'] = [];
+      }
+
       await api.put(`/admin/roles/${selectedRole.id}`, {
-        permissions: rolePermissions
+        permissions: permsToSave
       });
 
       setRoles((prev) =>
         prev.map((r) =>
-          r.id === selectedRole.id ? { ...r, permissions: rolePermissions } : r
+          r.id === selectedRole.id ? { ...r, permissions: permsToSave } : r
         )
       );
 
@@ -623,7 +676,7 @@ export function RolesPermissions() {
         try {
           const parsed = JSON.parse(currentStoredUser);
           if (parsed.role && (parsed.role.id === selectedRole.id || parsed.role.code === selectedRole.code)) {
-            parsed.role.permissions = rolePermissions;
+            parsed.role.permissions = permsToSave;
             localStorage.setItem('fams_user', JSON.stringify(parsed));
             // Trigger storage event so other components / context update dynamically
             window.dispatchEvent(new Event('storage'));
@@ -647,6 +700,68 @@ export function RolesPermissions() {
       ? currentActions.filter((a) => a !== action)
       : [...currentActions, action];
     setRolePermissions({ ...rolePermissions, [moduleKey]: updated });
+  };
+
+  const toggleMasterEntityPermission = (entityKey, action) => {
+    const permKey = `master_data_${entityKey}`;
+    const currentActions = rolePermissions[permKey] || [];
+    let updated;
+    if (currentActions.includes(action)) {
+      updated = currentActions.filter((a) => a !== action);
+    } else {
+      // If adding Create, Edit, or Delete, also ensure View is enabled
+      if (['Create', 'Edit', 'Delete', 'Import', 'Export'].includes(action) && !currentActions.includes('View')) {
+        updated = [...currentActions, 'View', action];
+      } else {
+        updated = [...currentActions, action];
+      }
+    }
+
+    const nextPerms = { ...rolePermissions, [permKey]: updated };
+    const hasAnyMasterView = MASTER_DATA_ENTITIES.some(e => {
+      const eActions = (e.key === entityKey ? updated : (nextPerms[`master_data_${e.key}`] || []));
+      return eActions.includes('View');
+    });
+    nextPerms['master-data'] = hasAnyMasterView ? ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] : [];
+    setRolePermissions(nextPerms);
+  };
+
+  const toggleAllForMasterEntity = (entity) => {
+    const permKey = `master_data_${entity.key}`;
+    const currentActions = rolePermissions[permKey] || [];
+    const isAll = entity.actions.every(a => currentActions.includes(a));
+    const updated = isAll ? [] : [...entity.actions];
+
+    const nextPerms = { ...rolePermissions, [permKey]: updated };
+    const hasAnyMasterView = MASTER_DATA_ENTITIES.some(e => {
+      const eActions = (e.key === entity.key ? updated : (nextPerms[`master_data_${e.key}`] || []));
+      return eActions.includes('View');
+    });
+    nextPerms['master-data'] = hasAnyMasterView ? ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] : [];
+    setRolePermissions(nextPerms);
+  };
+
+  const isAllMasterDataSelected = useMemo(() => {
+    return MASTER_DATA_ENTITIES.every(e => {
+      const sel = rolePermissions[`master_data_${e.key}`] || [];
+      return e.actions.every(a => sel.includes(a));
+    });
+  }, [rolePermissions]);
+
+  const toggleAllMasterData = () => {
+    const nextPerms = { ...rolePermissions };
+    if (isAllMasterDataSelected) {
+      MASTER_DATA_ENTITIES.forEach(e => {
+        nextPerms[`master_data_${e.key}`] = [];
+      });
+      nextPerms['master-data'] = [];
+    } else {
+      MASTER_DATA_ENTITIES.forEach(e => {
+        nextPerms[`master_data_${e.key}`] = [...e.actions];
+      });
+      nextPerms['master-data'] = ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'];
+    }
+    setRolePermissions(nextPerms);
   };
 
   const MODULE_STRUCTURE = [
@@ -713,7 +828,7 @@ export function RolesPermissions() {
     {
       key: 'master-data',
       name: 'Master Data Hub',
-      screens: ['Item Master', 'Asset Group', 'Category', 'Company', 'Custodian', 'Location', 'Department', 'Section', 'Supplier'],
+      screens: MASTER_DATA_ENTITIES.map(e => e.name),
       actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export']
     },
     {
@@ -1320,6 +1435,7 @@ export function RolesPermissions() {
                   type="button"
                   onClick={() => {
                     const isAllGlobalSelected = MODULE_STRUCTURE.every(m => {
+                      if (m.key === 'master-data') return isAllMasterDataSelected;
                       const sel = rolePermissions[m.key] || [];
                       return m.actions.every(a => sel.includes(a));
                     });
@@ -1328,23 +1444,26 @@ export function RolesPermissions() {
                     } else {
                       const allPerms = {};
                       MODULE_STRUCTURE.forEach(m => { allPerms[m.key] = [...m.actions]; });
+                      MASTER_DATA_ENTITIES.forEach(e => { allPerms[`master_data_${e.key}`] = [...e.actions]; });
                       setRolePermissions(allPerms);
                     }
                   }}
                   className={clsx(
                     "px-2.5 py-1 text-[11px] font-bold rounded-lg transition-colors cursor-pointer border",
-                    MODULE_STRUCTURE.every(m => {
+                    (MODULE_STRUCTURE.every(m => {
+                      if (m.key === 'master-data') return isAllMasterDataSelected;
                       const sel = rolePermissions[m.key] || [];
                       return m.actions.every(a => sel.includes(a));
-                    })
+                    }))
                       ? "text-rose-600 bg-rose-50 hover:bg-rose-100 border-rose-200"
                       : "text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 border-purple-200"
                   )}
                 >
-                  {MODULE_STRUCTURE.every(m => {
+                  {(MODULE_STRUCTURE.every(m => {
+                    if (m.key === 'master-data') return isAllMasterDataSelected;
                     const sel = rolePermissions[m.key] || [];
                     return m.actions.every(a => sel.includes(a));
-                  }) ? 'Deselect All' : 'Select All'}
+                  })) ? 'Deselect All' : 'Select All'}
                 </button>
                 <button
                   type="button"
@@ -1392,58 +1511,130 @@ export function RolesPermissions() {
                         <button
                           type="button"
                           onClick={() => {
-                            const allActions = mod.actions;
-                            const isAllSelected = allActions.every((a) => selectedActions.includes(a));
-                            setRolePermissions({
-                              ...rolePermissions,
-                              [mod.key]: isAllSelected ? [] : [...allActions]
-                            });
+                            if (mod.key === 'master-data') {
+                              toggleAllMasterData();
+                            } else {
+                              const allActions = mod.actions;
+                              const isAllSelected = allActions.every((a) => selectedActions.includes(a));
+                              setRolePermissions({
+                                ...rolePermissions,
+                                [mod.key]: isAllSelected ? [] : [...allActions]
+                              });
+                            }
                           }}
                           className={clsx(
                             "text-[11px] font-bold px-2 py-0.5 rounded transition-colors",
-                            mod.actions.every((a) => selectedActions.includes(a))
+                            (mod.key === 'master-data'
+                              ? isAllMasterDataSelected
+                              : mod.actions.every((a) => selectedActions.includes(a))
+                            )
                               ? "text-rose-600 hover:text-rose-800 hover:bg-rose-50"
                               : "text-[#6C2BD9] hover:text-[#5b21b6] hover:bg-purple-50"
                           )}
                         >
-                          {mod.actions.every((a) => selectedActions.includes(a)) ? 'Deselect All' : 'Select All'}
+                          {(mod.key === 'master-data'
+                            ? isAllMasterDataSelected
+                            : mod.actions.every((a) => selectedActions.includes(a))
+                          ) ? 'Deselect All' : 'Select All'}
                         </button>
                       </div>
                     </div>
 
                     {isExpanded && (
-                      <div className="p-4 bg-white border-t border-slate-100 space-y-3">
-                        <div className="text-[11px] text-slate-500 mb-1">
-                          Applicable screens: {mod.screens.join(', ')}
-                        </div>
+                      mod.key === 'master-data' ? (
+                        <div className="p-4 bg-white border-t border-slate-100 space-y-3">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between text-[11px] text-slate-500 pb-2 border-b border-slate-100 gap-1">
+                            <span>Configure granular View, Create, Edit, and Delete access for each Master Data catalog:</span>
+                            <span className="font-bold text-slate-700 bg-slate-100 px-2 py-0.5 rounded-md self-start sm:self-auto">{MASTER_DATA_ENTITIES.length} Master Catalogs</span>
+                          </div>
 
-                        <div className="flex flex-wrap gap-2 pt-1">
-                          {mod.actions.map((act) => {
-                            const checked = selectedActions.includes(act);
-                            const isSensitive = ['Delete', 'Approve', 'Administer', 'Export'].includes(act);
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-3 max-h-[420px] overflow-y-auto pr-1">
+                            {MASTER_DATA_ENTITIES.map((entity) => {
+                              const entityPerms = rolePermissions[`master_data_${entity.key}`] || [];
+                              const isAllEntitySelected = entity.actions.every(a => entityPerms.includes(a));
 
-                            return (
-                              <button
-                                key={act}
-                                type="button"
-                                onClick={() => togglePermission(mod.key, act)}
-                                className={clsx(
-                                  'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer',
-                                  checked
-                                    ? isSensitive
-                                      ? 'bg-rose-50 border-rose-300 text-rose-700'
-                                      : 'bg-purple-50 border-purple-200 text-[#6C2BD9]'
-                                    : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
-                                )}
-                              >
-                                {checked && <Check className="w-3.5 h-3.5" />}
-                                {act}
-                                {isSensitive && <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-rose-100 text-rose-800 ml-1 font-extrabold">Sensitive</span>}
-                              </button>
-                            );
-                          })}
+                              return (
+                                <div key={entity.key} className="p-3 bg-slate-50/80 border border-slate-200 rounded-xl space-y-2 hover:bg-slate-50 transition-colors">
+                                  <div className="flex items-center justify-between">
+                                    <span className="font-bold text-xs text-slate-900">{entity.name}</span>
+                                    <button
+                                      type="button"
+                                      onClick={() => toggleAllForMasterEntity(entity)}
+                                      className="text-[10px] font-bold text-[#6C2BD9] hover:underline cursor-pointer"
+                                    >
+                                      {isAllEntitySelected ? 'Clear' : 'Select All'}
+                                    </button>
+                                  </div>
+
+                                  <div className="flex flex-wrap gap-1.5">
+                                    {entity.actions.map((act) => {
+                                      const checked = entityPerms.includes(act);
+                                      const isSensitive = ['Delete', 'Export'].includes(act);
+
+                                      return (
+                                        <button
+                                          key={act}
+                                          type="button"
+                                          onClick={() => toggleMasterEntityPermission(entity.key, act)}
+                                          className={clsx(
+                                            'inline-flex items-center gap-1 px-2.5 py-1 rounded-lg text-xs font-bold border transition cursor-pointer',
+                                            checked
+                                              ? isSensitive
+                                                ? 'bg-rose-50 border-rose-300 text-rose-700'
+                                                : 'bg-purple-50 border-purple-200 text-[#6C2BD9]'
+                                              : 'bg-white border-slate-200 text-slate-500 hover:bg-slate-100'
+                                          )}
+                                        >
+                                          {checked && <Check className="w-3 h-3" />}
+                                          {act}
+                                          {isSensitive && (
+                                            <span className="text-[8px] uppercase px-1 py-0.2 rounded bg-rose-100 text-rose-800 font-extrabold ml-0.5">
+                                              Sensitive
+                                            </span>
+                                          )}
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              );
+                            })}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="p-4 bg-white border-t border-slate-100 space-y-3">
+                          <div className="text-[11px] text-slate-500 mb-1">
+                            Applicable screens: {mod.screens.join(', ')}
+                          </div>
+
+                          <div className="flex flex-wrap gap-2 pt-1">
+                            {mod.actions.map((act) => {
+                              const checked = selectedActions.includes(act);
+                              const isSensitive = ['Delete', 'Approve', 'Administer', 'Export'].includes(act);
+
+                              return (
+                                <button
+                                  key={act}
+                                  type="button"
+                                  onClick={() => togglePermission(mod.key, act)}
+                                  className={clsx(
+                                    'inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-xs font-bold border transition cursor-pointer',
+                                    checked
+                                      ? isSensitive
+                                        ? 'bg-rose-50 border-rose-300 text-rose-700'
+                                        : 'bg-purple-50 border-purple-200 text-[#6C2BD9]'
+                                      : 'bg-white border-slate-200 text-slate-600 hover:bg-slate-50'
+                                  )}
+                                >
+                                  {checked && <Check className="w-3.5 h-3.5" />}
+                                  {act}
+                                  {isSensitive && <span className="text-[9px] uppercase px-1 py-0.2 rounded bg-rose-100 text-rose-800 ml-1 font-extrabold">Sensitive</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      )
                     )}
                   </div>
                 );

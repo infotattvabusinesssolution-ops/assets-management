@@ -239,10 +239,22 @@ export function AuthProvider({ children }) {
     // Wildcard bypass
     if (Array.isArray(perms) && perms.includes('*')) return true;
 
+    // Master Data granular permission check: can('master_data_companies', 'View') or can('master-data:companies', 'Create')
+    if (moduleKey.startsWith('master_data_') || moduleKey.startsWith('master-data:') || moduleKey.startsWith('master:')) {
+      const entityKey = moduleKey.replace(/^(master_data_|master-data:|master:)/, '');
+      return hasMasterPermission(entityKey, actionName || 'View');
+    }
+
     // Permissions Matrix Object: { assets: ['View', 'Create', 'Edit', 'Delete'], ... }
     if (typeof perms === 'object' && !Array.isArray(perms)) {
       const modActions = perms[moduleKey] || (moduleKey === 'stocktakes' ? perms['audit'] : null);
-      if (!modActions) return false;
+      if (!modActions) {
+        // If checking master-data parent module, check if any master_data_* key has View
+        if (moduleKey === 'master-data' || moduleKey === 'master_data') {
+          return Object.keys(perms).some(k => k.startsWith('master_data_') && Array.isArray(perms[k]) && perms[k].includes('View'));
+        }
+        return false;
+      }
 
       // Module-level access check
       if (!actionName) {
@@ -270,6 +282,43 @@ export function AuthProvider({ children }) {
     return false;
   };
 
+  const hasMasterPermission = (masterKey, action = 'View') => {
+    if (!user?.role) return false;
+    if (user.role.code === 'SYS_ADMIN') return true;
+
+    let perms = user.role.permissions;
+    if (typeof perms === 'string') {
+      try { perms = JSON.parse(perms); } catch (_) { perms = {}; }
+    }
+    if (!perms) return false;
+    if (Array.isArray(perms) && perms.includes('*')) return true;
+
+    // Normalize masterKey
+    const normalizedKey = masterKey === 'classes' ? 'sub-groups' : (masterKey === 'asset-conditions' ? 'conditions' : masterKey);
+
+    // 1. Check granular master permission: e.g. perms['master_data_companies']
+    if (typeof perms === 'object' && !Array.isArray(perms)) {
+      const granular = perms[`master_data_${normalizedKey}`] || perms[`master_${normalizedKey}`];
+      if (Array.isArray(granular)) {
+        if (!action) return granular.length > 0;
+        const actLower = action.toLowerCase();
+        return granular.some(a => typeof a === 'string' && (a.toLowerCase() === actLower || a === '*'));
+      }
+
+      // 2. Fallback to parent master-data permission if granular key is not explicitly set
+      const parentActions = perms['master-data'] || perms['master_data'];
+      if (Array.isArray(parentActions)) {
+        if (!action) return parentActions.length > 0;
+        const actLower = action.toLowerCase();
+        return parentActions.some(a => typeof a === 'string' && (a.toLowerCase() === actLower || a === '*'));
+      }
+    }
+
+    // 3. Fallback for admin roles
+    if (user.role.code === 'ASSET_ADMIN' || user.role.code === 'ADMIN') return true;
+    return false;
+  };
+
   const hasPermission = (moduleOrCode, action) => {
     return can(moduleOrCode, action);
   };
@@ -279,7 +328,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, token, isAuthenticated: !!user, loading, login, logout, changePassword,
-      switchRole: () => false, can, hasPermission, hasRole
+      switchRole: () => false, can, hasPermission, hasMasterPermission, hasRole
     }}>
       {children}
     </AuthContext.Provider>
