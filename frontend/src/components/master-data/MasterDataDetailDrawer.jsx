@@ -358,9 +358,9 @@ export function MasterDataDetailDrawer({ isOpen, onClose, card, onAddClick, user
                         </td>
                         <td className="py-3 px-4 text-center">
                           <span
-                            className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-extrabold uppercase tracking-wide border ${isActive
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                            className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${isActive
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700'
                               }`}
                           >
                             {isActive ? 'Active' : 'Inactive'}

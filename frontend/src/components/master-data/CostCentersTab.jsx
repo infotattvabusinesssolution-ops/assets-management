@@ -642,7 +642,7 @@ export function CostCentersTab({
                           return (
                             <span
                               className={clsx(
-                                'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold',
+                                'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
                                 effectiveActive ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                               )}
                             >

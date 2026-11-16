@@ -487,10 +487,10 @@ export function CompaniesTab({
                             type="button"
                             onClick={(e) => handleToggleStatus(c, e)}
                             className={clsx(
-                              'px-2 py-0.5 rounded-full text-[10px] font-bold transition-all',
+                              'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold cursor-pointer transition-opacity hover:opacity-80',
                               c.active !== false
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200 hover:bg-rose-100'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700'
                             )}
                           >
                             {c.active !== false ? 'Active' : 'Inactive'}

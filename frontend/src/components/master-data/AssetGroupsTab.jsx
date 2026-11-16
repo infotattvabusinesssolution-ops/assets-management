@@ -1158,10 +1158,10 @@ export function AssetGroupsTab({
                         <td className="py-2.5 px-3 text-center">
                           <span
                             className={clsx(
-                              'px-2 py-0.5 rounded-full text-[10px] font-bold',
+                              'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
                               item.status === 'Active'
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700'
                             )}
                           >
                             {item.status || 'Active'}

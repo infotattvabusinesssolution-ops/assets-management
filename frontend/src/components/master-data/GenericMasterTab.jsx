@@ -1087,10 +1087,10 @@ export function GenericMasterTab({
                         <td className="py-2.5 px-3 text-center">
                           <span
                             className={clsx(
-                              'px-2 py-0.5 rounded-full text-[10px] font-bold border',
+                              'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
                               (item.status === 'Active' && !isParentMfrInactive(item))
-                                ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                                : 'bg-rose-50 text-rose-700 border-rose-200'
+                                ? 'bg-emerald-100 text-emerald-700'
+                                : 'bg-rose-100 text-rose-700'
                             )}
                           >
                             {(item.status === 'Active' && !isParentMfrInactive(item)) ? 'Active' : 'Inactive'}
@@ -1275,10 +1275,10 @@ export function GenericMasterTab({
                 <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
                   <span className="text-slate-500 font-semibold">Status</span>
                   <span className={clsx(
-                    'px-2 py-0.5 rounded-full text-[10px] font-bold border',
+                    'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
                     (selectedItem.status === 'Active' && !isParentMfrInactive(selectedItem))
-                      ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                      : 'bg-rose-50 text-rose-700 border-rose-200'
+                      ? 'bg-emerald-100 text-emerald-700'
+                      : 'bg-rose-100 text-rose-700'
                   )}>
                     {(selectedItem.status === 'Active' && !isParentMfrInactive(selectedItem)) ? 'Active' : 'Inactive'}
                   </span>

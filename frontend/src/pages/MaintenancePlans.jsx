@@ -192,7 +192,7 @@ export function MaintenancePlans() {
                   <td className="p-2.5">{categoryName(p.categoryId)}</td>
                   <td className="p-2.5">{p.workType}</td>
                   <td className="p-2.5 whitespace-nowrap">{frequencyLabel(p)}</td>
-                  <td className="p-2.5 text-center"><span className={'rounded border px-2 py-0.5 text-[10px] font-bold ' + (p.active ? 'border-emerald-300 bg-emerald-100 text-emerald-800' : 'border-rose-300 bg-rose-100 text-rose-700')}>{p.active ? 'Active' : 'Inactive'}</span></td>
+                  <td className="p-2.5 text-center"><span className={'inline-flex items-center rounded-full px-2.5 py-0.5 text-[11px] font-bold ' + (p.active ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700')}>{p.active ? 'Active' : 'Inactive'}</span></td>
                   <td className="whitespace-nowrap p-2.5 font-mono text-slate-600">{date(p.nextDueDate)}</td>
                   <td className="p-2.5 text-center"><button type="button" onClick={e => { e.stopPropagation(); select(p.id); }} className="rounded p-1 text-[#6C2BD9] hover:bg-purple-100" aria-label={'View ' + p.name}>View</button></td>
                 </tr>)}

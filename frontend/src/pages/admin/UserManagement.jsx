@@ -1228,10 +1228,10 @@ export function UserManagement() {
                       <td className="p-3 text-slate-600 font-medium">{user.company}</td>
                       <td className="p-3">
                         <span
-                          className={`inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium border ${
+                          className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
                             user.status === 'Active'
-                              ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
-                              : 'bg-rose-50 text-rose-700 border-rose-200'
+                              ? 'bg-emerald-100 text-emerald-700'
+                              : 'bg-rose-100 text-rose-700'
                           }`}
                         >
                           {user.status}
@@ -2062,8 +2062,8 @@ export function UserManagement() {
                           <p className="text-[11px] text-slate-500 mt-0.5">{r.description || 'Access role for operations'}</p>
                         </div>
                       </div>
-                      <span className={`text-[10px] font-semibold px-2 py-0.5 rounded ${
-                        r.status === 'Active' || r.active !== false ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-rose-50 text-rose-700 border border-rose-200'
+                      <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                        r.status === 'Active' || r.active !== false ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                       }`}>
                         {r.status || 'Active'}
                       </span>

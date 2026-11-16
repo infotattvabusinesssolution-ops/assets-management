@@ -623,7 +623,7 @@ export function SuppliersTab({
                       <td className="py-2.5 px-3 text-center">
                         <span
                           className={clsx(
-                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-[10px] font-bold',
+                            'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
                             sup.status === 'Active' ? 'bg-emerald-100 text-emerald-700' : 'bg-rose-100 text-rose-700'
                           )}
                         >
