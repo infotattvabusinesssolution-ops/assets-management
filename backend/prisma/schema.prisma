@@ -375,6 +375,8 @@ model SubCategory {
   description       String?
   totalAssets       Int?      @default(0)
   active            Boolean?  @default(true)
+  lifeInMonths      Int?      @default(60)
+  prefix            String?
   createdAt         DateTime? @default(now())
   updatedAt         DateTime? @updatedAt
 

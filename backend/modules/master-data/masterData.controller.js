@@ -2142,9 +2142,17 @@ async function ensureSubCategoriesTable() {
         description NVARCHAR(500) NULL,
         totalAssets INT DEFAULT 0,
         active BIT DEFAULT 1,
+        lifeInMonths INT NULL DEFAULT 60,
+        prefix NVARCHAR(50) NULL,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      IF NOT EXISTS (SELECT * FROM syscolumns WHERE id=object_id('sub_categories') AND name='lifeInMonths')
+      ALTER TABLE sub_categories ADD lifeInMonths INT NULL DEFAULT 60;
+
+      IF NOT EXISTS (SELECT * FROM syscolumns WHERE id=object_id('sub_categories') AND name='prefix')
+      ALTER TABLE sub_categories ADD prefix NVARCHAR(50) NULL;
     `);
     subCategoriesTableEnsured = true;
   } catch (err) {
@@ -2729,7 +2737,7 @@ export async function getSubCategories(req, res, next) {
 export async function createSubCategory(req, res, next) {
   try {
     await ensureSubCategoriesTable();
-    const { code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, className, assetGroupId, assetGroupName, groupName, description, active, status } = req.body;
+    const { code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, className, assetGroupId, assetGroupName, groupName, description, active, status, lifeInMonths, prefix } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Sub Category Name is required.' });
     }
@@ -2740,6 +2748,10 @@ export async function createSubCategory(req, res, next) {
     let resolvedCatName = (categoryName || '').trim();
     let cleanSubGroup = (assetSubGroupName || className || '').trim();
     let cleanGroup = (assetGroupName || groupName || '').trim();
+    const cleanLifeInMonths = (lifeInMonths !== undefined && lifeInMonths !== null && lifeInMonths !== '')
+      ? Number(lifeInMonths)
+      : 60;
+    const cleanPrefix = (prefix || '').trim().toUpperCase();
 
     // Auto-resolve missing categoryName / subGroup / group from Category if possible
     if ((!resolvedCatName || resolvedCatName === '-') && categoryId && isDbConnected()) {
@@ -2778,6 +2790,8 @@ export async function createSubCategory(req, res, next) {
       totalAssets: 0,
       active: isAct,
       status: isAct ? 'Active' : 'Inactive',
+      lifeInMonths: cleanLifeInMonths,
+      prefix: cleanPrefix,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -2797,7 +2811,7 @@ export async function createSubCategory(req, res, next) {
           return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
         await prisma.$executeRawUnsafe(`
-          INSERT INTO sub_categories (id, code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, assetGroupId, assetGroupName, description, totalAssets, active, createdAt, updatedAt)
+          INSERT INTO sub_categories (id, code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, assetGroupId, assetGroupName, description, totalAssets, active, lifeInMonths, prefix, createdAt, updatedAt)
           VALUES (
             '${newSubCat.id}',
             '${cleanCode.replace(/'/g, "''")}',
@@ -2811,6 +2825,8 @@ export async function createSubCategory(req, res, next) {
             '${(description || '').replace(/'/g, "''")}',
             0,
             ${isAct ? 1 : 0},
+            ${cleanLifeInMonths},
+            ${cleanPrefix ? `'${cleanPrefix.replace(/'/g, "''")}'` : 'NULL'},
             CURRENT_TIMESTAMP,
             CURRENT_TIMESTAMP
           )
@@ -2928,6 +2944,11 @@ export async function updateSubCategory(req, res, next) {
       }
     }
 
+    const cleanLifeInMonths = (req.body.lifeInMonths !== undefined && req.body.lifeInMonths !== null && req.body.lifeInMonths !== '')
+      ? Number(req.body.lifeInMonths)
+      : undefined;
+    const cleanPrefix = req.body.prefix !== undefined ? (req.body.prefix || '').trim().toUpperCase() : undefined;
+
     if (isDbConnected()) {
       try {
         const sets = [];
@@ -2941,6 +2962,8 @@ export async function updateSubCategory(req, res, next) {
         if (cleanGroup !== undefined) sets.push(`assetGroupName = '${cleanGroup.replace(/'/g, "''")}'`);
         if (description !== undefined) sets.push(`description = '${description.replace(/'/g, "''")}'`);
         if (isAct !== undefined) sets.push(`active = ${isAct ? 1 : 0}`);
+        if (cleanLifeInMonths !== undefined) sets.push(`lifeInMonths = ${cleanLifeInMonths}`);
+        if (cleanPrefix !== undefined) sets.push(`prefix = ${cleanPrefix ? `'${cleanPrefix.replace(/'/g, "''")}'` : 'NULL'}`);
         sets.push(`updatedAt = CURRENT_TIMESTAMP`);
 
         await prisma.$executeRawUnsafe(`
@@ -2962,6 +2985,8 @@ export async function updateSubCategory(req, res, next) {
         ...(cleanSubGroup ? { assetSubGroupName: cleanSubGroup, className: cleanSubGroup } : {}),
         ...(cleanGroup ? { assetGroupName: cleanGroup, groupName: cleanGroup } : {}),
         ...(isAct !== undefined ? { active: isAct, status: isAct ? 'Active' : 'Inactive' } : {}),
+        ...(cleanLifeInMonths !== undefined ? { lifeInMonths: cleanLifeInMonths } : {}),
+        ...(cleanPrefix !== undefined ? { prefix: cleanPrefix } : {}),
         updatedAt: new Date().toISOString()
       };
       writeSubCategoriesToFile(current);
@@ -3131,41 +3156,97 @@ export async function getDepreciationPolicies(req, res, next) {
     const categories = await prisma.category.findMany({
       orderBy: { name: 'asc' },
       select: {
-        id: true, code: true, name: true, active: true,
+        id: true, code: true, name: true, active: true, description: true,
         depreciationMethod: true, annualDepreciationRatePercent: true,
         defaultUsefulLifeMonths: true, defaultResidualValuePercent: true
       }
     });
-    res.json({ success: true, categories });
+
+    const enriched = categories.map(c => {
+      const salvageMatch = (c.description || '').match(/\[salvage:([^\]]+)\]/);
+      const minCapMatch = (c.description || '').match(/\[minCap:([^\]]+)\]/);
+      const subCatMatch = (c.description || '').match(/\[subCat:([^\]]+)\]/);
+      return {
+        ...c,
+        totalSalvageValue: salvageMatch ? Number(salvageMatch[1]) : 0,
+        minCapitalizationValue: minCapMatch ? Number(minCapMatch[1]) : 0,
+        subCategoryId: subCatMatch ? subCatMatch[1] : null
+      };
+    });
+
+    let subCategories = [];
+    if (isDbConnected()) {
+      try {
+        await ensureSubCategoriesTable();
+        subCategories = await prisma.$queryRawUnsafe(`
+          SELECT id, code, name, categoryId, categoryName, lifeInMonths, prefix, active
+          FROM sub_categories
+        `);
+      } catch (_) {}
+    }
+    if (!subCategories || subCategories.length === 0) {
+      subCategories = readSubCategoriesFromFile();
+    }
+
+    res.json({ success: true, categories: enriched, subCategories });
   } catch (err) { next(err); }
 }
 
 export async function updateDepreciationPolicy(req, res, next) {
   try {
     const rate = Number(req.body.annualDepreciationRatePercent);
-    const life = rate > 0 ? Math.round(1200 / rate) : 0;
+    const life = req.body.defaultUsefulLifeMonths !== undefined && req.body.defaultUsefulLifeMonths !== null
+      ? Number(req.body.defaultUsefulLifeMonths)
+      : (rate > 0 ? Math.round(1200 / rate) : 60);
     const residual = Number(req.body.defaultResidualValuePercent);
+    const method = req.body.depreciationMethod || 'STRAIGHT_LINE';
+    const totalSalvageValue = req.body.totalSalvageValue !== undefined ? Number(req.body.totalSalvageValue) : 0;
+    const minCapitalizationValue = req.body.minCapitalizationValue !== undefined ? Number(req.body.minCapitalizationValue) : 0;
+    const subCategoryId = req.body.subCategoryId || '';
+
     if (!Number.isFinite(rate) || rate < 1 || rate > 100 ||
         !Number.isFinite(residual) || residual < 0 || residual >= 100) {
       return res.status(400).json({ success: false, message: 'Enter an annual rate from 1% to 100% and a residual percentage from 0% to below 100%.' });
     }
     const category = await prisma.category.findUnique({ where: { id: req.params.id } });
     if (!category) return res.status(404).json({ success: false, message: 'Category not found.' });
+
+    let cleanDesc = (category.description || '')
+      .replace(/\[salvage:[^\]]+\]/g, '')
+      .replace(/\[minCap:[^\]]+\]/g, '')
+      .replace(/\[subCat:[^\]]+\]/g, '')
+      .trim();
+    const tags = [];
+    if (totalSalvageValue) tags.push(`[salvage:${totalSalvageValue}]`);
+    if (minCapitalizationValue) tags.push(`[minCap:${minCapitalizationValue}]`);
+    if (subCategoryId) tags.push(`[subCat:${subCategoryId}]`);
+    const newDesc = [cleanDesc, ...tags].join(' ').trim();
+
     const { updated, booksUpdated } = await prisma.$transaction(async (tx) => {
       const updated = await tx.category.update({
         where: { id: category.id },
         data: {
-          depreciationMethod: 'STRAIGHT_LINE',
+          depreciationMethod: method,
           annualDepreciationRatePercent: rate,
           defaultUsefulLifeMonths: life,
-          defaultResidualValuePercent: residual
+          defaultResidualValuePercent: residual,
+          description: newDesc
         }
       });
       const booksUpdated = await tx.assetBookValue.updateMany({
         where: { asset: { categoryId: category.id }, isLocked: false },
         data: { annualDepreciationRatePercent: rate, usefulLifeMonths: life }
       });
-      return { updated, booksUpdated: booksUpdated.count };
+      return {
+        updated: {
+          ...updated,
+          depreciationMethod: method,
+          totalSalvageValue,
+          minCapitalizationValue,
+          subCategoryId
+        },
+        booksUpdated: booksUpdated.count
+      };
     });
     res.json({ success: true, category: updated, booksUpdated });
   } catch (err) { next(err); }

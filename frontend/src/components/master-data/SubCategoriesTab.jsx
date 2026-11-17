@@ -109,6 +109,8 @@ export function SubCategoriesTab({
             id: ac.id,
             code: ac.code,
             name: ac.name,
+            prefix: ac.prefix || '',
+            lifeInMonths: ac.lifeInMonths !== undefined && ac.lifeInMonths !== null ? Number(ac.lifeInMonths) : 60,
             categoryId: ac.categoryId,
             categoryName: resolvedCategoryName,
             className: classMatch ? classMatch[1] : (ac.className && ac.className !== '-' ? ac.className : (matchedCat?.className || '-')),
@@ -242,7 +244,9 @@ export function SubCategoriesTab({
     className: '',
     groupName: '',
     description: '',
-    status: 'Active'
+    status: 'Active',
+    lifeInMonths: 60,
+    prefix: ''
   });
 
   const filteredSubCategories = useMemo(() => {
@@ -307,7 +311,9 @@ export function SubCategoriesTab({
         className: scToEdit.className,
         groupName: scToEdit.groupName,
         description: scToEdit.description,
-        status: scToEdit.status
+        status: scToEdit.status,
+        lifeInMonths: scToEdit.lifeInMonths !== undefined && scToEdit.lifeInMonths !== null ? scToEdit.lifeInMonths : 60,
+        prefix: scToEdit.prefix || ''
       });
     } else {
       setEditingSubCategory(null);
@@ -319,7 +325,9 @@ export function SubCategoriesTab({
         className: '',
         groupName: '',
         description: '',
-        status: 'Active'
+        status: 'Active',
+        lifeInMonths: 60,
+        prefix: ''
       });
     }
     setShowAddSubCatModal(true);
@@ -393,7 +401,9 @@ export function SubCategoriesTab({
       assetGroupName: subCatFormState.groupName || '',
       groupName: subCatFormState.groupName || '',
       description: taggedDesc,
-      status: subCatFormState.status
+      status: subCatFormState.status,
+      lifeInMonths: Number(subCatFormState.lifeInMonths) || 60,
+      prefix: (subCatFormState.prefix || '').trim().toUpperCase()
     };
     if (cleanCode) payload.code = cleanCode;
 
@@ -683,7 +693,9 @@ export function SubCategoriesTab({
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Sub Category Code</th>
                   <th className="py-3 px-3">Sub Category Name</th>
+                  <th className="py-3 px-2 text-center">Prefix</th>
                   <th className="py-3 px-3">Category</th>
+                  <th className="py-3 px-2 text-center">Life (Months)</th>
                   <th className="py-3 px-4">Description</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
@@ -698,7 +710,7 @@ export function SubCategoriesTab({
                     subtitle={subCatSearchQuery ? "No sub categories match your search criteria." : "Get started by defining your first asset sub category."}
                     actionLabel="Add Sub Category"
                     onAction={() => handleOpenAddSubCatModal(null)}
-                    colSpan={8}
+                    colSpan={10}
                   />
                 ) : (
                   pagedSubCategories.map((sc, index) => {
@@ -718,6 +730,15 @@ export function SubCategoriesTab({
                       <td className="py-3.5 px-2 text-center text-slate-400">{startIndex + index + 1}</td>
                       <td className="py-3.5 px-3 font-bold font-mono text-[#6C2BD9]">{sc.code}</td>
                       <td className="py-3.5 px-3 font-semibold text-slate-900">{sc.name}</td>
+                      <td className="py-3.5 px-2 text-center font-mono">
+                        {sc.prefix ? (
+                          <span className="px-2 py-0.5 rounded font-mono font-bold text-[10px] bg-purple-50 text-[#6C2BD9] border border-purple-200">
+                            {sc.prefix}
+                          </span>
+                        ) : (
+                          <span className="text-slate-300">-</span>
+                        )}
+                      </td>
                       <td className="py-3.5 px-3 text-slate-700">
                         <div className="flex flex-col items-start gap-0.5">
                           <span>{sc.categoryName || '-'}</span>
@@ -727,6 +748,10 @@ export function SubCategoriesTab({
                             </span>
                           )}
                         </div>
+                      </td>
+                      <td className="py-3.5 px-2 text-center font-medium text-slate-700 whitespace-nowrap">
+                        <span className="font-bold text-slate-800">{sc.lifeInMonths || 60} mos</span>
+                        <span className="text-[10px] text-slate-400 block font-normal">({(((sc.lifeInMonths || 60) / 12)).toFixed(1)} yrs)</span>
                       </td>
                       <td className="py-3.5 px-4 text-slate-600 max-w-[180px] truncate" title={sc.description}>
                         {sc.description || '-'}
@@ -869,6 +894,26 @@ export function SubCategoriesTab({
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                <span className="text-slate-500 font-medium">Tag / Serial Prefix</span>
+                <span className="col-span-2">
+                  {selectedSubCategory.prefix ? (
+                    <span className="font-mono font-bold text-[#6C2BD9] bg-purple-50 px-2 py-0.5 rounded border border-purple-200 text-xs">
+                      {selectedSubCategory.prefix}
+                    </span>
+                  ) : (
+                    <span className="text-slate-400 font-normal">None configured</span>
+                  )}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                <span className="text-slate-500 font-medium">Predefined Life</span>
+                <span className="col-span-2 font-bold text-slate-800">
+                  {selectedSubCategory.lifeInMonths || 60} months ({(((selectedSubCategory.lifeInMonths || 60) / 12)).toFixed(1)} years)
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Asset Sub Group</span>
                 <span className="col-span-2 font-semibold text-slate-800">{selectedSubCategory.className}</span>
               </div>
@@ -999,6 +1044,46 @@ export function SubCategoriesTab({
                   placeholder="e.g. Laptops"
                   className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
                 />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Tag / Serial Prefix
+                  </label>
+                  <input
+                    type="text"
+                    value={subCatFormState.prefix}
+                    onChange={(e) => setSubCatFormState({ ...subCatFormState, prefix: e.target.value.toUpperCase() })}
+                    placeholder="e.g. LAP, SRV"
+                    maxLength={10}
+                    className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-mono font-bold uppercase focus:border-[#6C2BD9] focus:outline-none"
+                  />
+                  <p className="text-[10px] text-slate-400 mt-0.5">Prefix for auto-generated Tag IDs / Serial numbers.</p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Life in Months (Useful Life) *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="1"
+                      max="1200"
+                      step="1"
+                      required
+                      value={subCatFormState.lifeInMonths}
+                      onChange={(e) => setSubCatFormState({ ...subCatFormState, lifeInMonths: e.target.value === '' ? '' : Math.max(1, parseInt(e.target.value) || 1) })}
+                      placeholder="e.g. 60"
+                      className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold focus:border-[#6C2BD9] focus:outline-none"
+                    />
+                    <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">mos</span>
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">
+                    {subCatFormState.lifeInMonths ? `${subCatFormState.lifeInMonths} mos (${(Number(subCatFormState.lifeInMonths) / 12).toFixed(1)} yrs)` : 'Useful life in months.'}
+                  </p>
+                </div>
               </div>
 
               <div>

@@ -1150,6 +1150,8 @@ export function AssetForm() {
     const targetType = overrideType || formData.tagType || 'Barcode';
     const year = new Date().getFullYear();
     const startSeq = Math.floor(10000 + Math.random() * 80000);
+    const selectedSub = subCategories.find(subCat => subCat.id === formData.assetClassId || subCat.name === formData.subcategory || subCat.code === formData.subcategory);
+    const subPrefix = (selectedSub?.prefix || '').trim();
     setAssetItems(prev => prev.map((item, index) => {
       const seqStr = String(startSeq + index).padStart(5, '0');
       let tagNumber = '';
@@ -1159,9 +1161,9 @@ export function AssetForm() {
         tagNumber = `E2801170${seqStr}${hex}`.slice(0, 24);
         rfidEpc = tagNumber;
       } else if (targetType === 'QR Code') {
-        tagNumber = `QR-${year}-${seqStr}`;
+        tagNumber = subPrefix ? `${subPrefix}-QR-${year}-${seqStr}` : `QR-${year}-${seqStr}`;
       } else {
-        tagNumber = `TAG-${year}-${seqStr}`;
+        tagNumber = subPrefix ? `${subPrefix}-TAG-${year}-${seqStr}` : `TAG-${year}-${seqStr}`;
       }
       return {
         ...item,
@@ -1174,6 +1176,7 @@ export function AssetForm() {
     }));
     showToast('success', `Generated sequential ${targetType} tags for all ${quantityCount} units!`);
   };
+
   const generateRandomSerial = (prefix = 'SN', index = 0) => {
     const yr = new Date().getFullYear();
     const hex = Math.random().toString(36).substring(2, 7).toUpperCase();
@@ -1184,7 +1187,9 @@ export function AssetForm() {
   };
 
   const handleBatchGenerateSerials = () => {
-    const newSerials = Array.from({ length: quantityCount }, (_, i) => generateRandomSerial('SN', i));
+    const selectedSub = subCategories.find(subCat => subCat.id === formData.assetClassId || subCat.name === formData.subcategory || subCat.code === formData.subcategory);
+    const subPrefix = (selectedSub?.prefix || '').trim() || 'SN';
+    const newSerials = Array.from({ length: quantityCount }, (_, i) => generateRandomSerial(subPrefix, i));
     setSerialNumbers(newSerials);
     setFormData(prev => ({ ...prev, serialNumber: newSerials[0] }));
     clearFieldError('serialNumber');
