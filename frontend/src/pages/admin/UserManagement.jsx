@@ -75,9 +75,10 @@ export function UserManagement() {
     phone: false,
     company: false,
     department: false,
-    location: false
+    section: false
   });
   const [departmentsList, setDepartmentsList] = useState([]);
+  const [sectionsList, setSectionsList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
   const [rolesList, setRolesList] = useState([]);
 
@@ -132,6 +133,8 @@ export function UserManagement() {
     employeeId: '',
     role: 'Standard User',
     department: '',
+    section: '',
+    costCenter: '',
     location: '',
     company: '',
     businessUnit: 'Corporate Services',
@@ -145,12 +148,13 @@ export function UserManagement() {
   // Fetch Users
   const fetchMetadata = async () => {
     try {
-      const [sitesRes, deptsRes, compsRes, rolesRes, custRes] = await Promise.all([
+      const [sitesRes, deptsRes, compsRes, rolesRes, custRes, sectionsRes] = await Promise.all([
         api.get('/master-data/sites').catch(() => null),
         api.get('/master-data/departments').catch(() => null),
         api.get('/master-data/companies').catch(() => null),
         api.get('/admin/roles').catch(() => null),
-        api.get('/master-data/custodians').catch(() => null)
+        api.get('/master-data/custodians').catch(() => null),
+        api.get('/master-data/cost-centers').catch(() => null)
       ]);
 
       const serverCustodians = custRes?.custodians || custRes?.employees || (Array.isArray(custRes) ? custRes : []);
@@ -244,6 +248,29 @@ export function UserManagement() {
         setCompaniesList(compsRes.companies.map(c => ({
           ...c,
           name: typeof c.name === 'string' ? c.name : (c.name?.name || String(c.name || ''))
+        })));
+      }
+      if (sectionsRes && Array.isArray(sectionsRes.costCenters)) {
+        let customCostCenters = [];
+        try { customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
+        const mergedSections = [...sectionsRes.costCenters];
+        for (const s of customCostCenters) {
+          if (!mergedSections.some(x => x.id === s.id || (x.code && x.code.toLowerCase() === (s.code || '').toLowerCase()))) {
+            mergedSections.push(s);
+          }
+        }
+        setSectionsList(mergedSections.map(s => ({
+          ...s,
+          name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
+          code: typeof s.code === 'string' ? s.code : String(s.code || '')
+        })));
+      } else {
+        let customCostCenters = [];
+        try { customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
+        setSectionsList(customCostCenters.map(s => ({
+          ...s,
+          name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
+          code: typeof s.code === 'string' ? s.code : String(s.code || '')
         })));
       }
       const fetchedRoles = rolesRes?.roles || (Array.isArray(rolesRes) ? rolesRes : []);
@@ -368,20 +395,21 @@ export function UserManagement() {
       const matchedCode = getStr(match.employeeCode, getStr(match.code, clean));
       const matchedDept = getStr(match.department, '');
       const matchedComp = getStr(match.company, getStr(match.organization, ''));
+      const matchedSec = getStr(match.section, getStr(match.costCenter, ''));
       const matchedLoc = getStr(match.location, '');
       const matchedEmail = getStr(match.email, '');
       const matchedPhone = getStr(match.phone, '');
       const matchedType = getStr(match.custodianType, 'Internal');
 
-      // Ensure custodian's company, department, and location exist in dropdown choices if present
+      // Ensure custodian's company, department, and section exist in dropdown choices if present
       if (matchedComp && !companiesList.some(c => c.name === matchedComp)) {
         setCompaniesList(prev => [...prev, { id: `CMP-${Date.now()}`, name: matchedComp }]);
       }
       if (matchedDept && !departmentsList.some(d => d.name === matchedDept)) {
         setDepartmentsList(prev => [...prev, { id: `DEP-${Date.now()}`, name: matchedDept }]);
       }
-      if (matchedLoc && !sitesList.some(s => s.name === matchedLoc || s.fullPath === matchedLoc)) {
-        setSitesList(prev => [...prev, { id: `SITE-${Date.now()}`, name: matchedLoc, fullPath: matchedLoc }]);
+      if (matchedSec && !sectionsList.some(s => s.name === matchedSec || s.code === matchedSec)) {
+        setSectionsList(prev => [...prev, { id: `SEC-${Date.now()}`, name: matchedSec, code: matchedSec }]);
       }
 
       setUserFormData((prev) => ({
@@ -391,6 +419,8 @@ export function UserManagement() {
         email: matchedEmail || prev.email,
         phone: matchedPhone || prev.phone,
         department: matchedDept || (showEditModal ? prev.department : ''),
+        section: matchedSec || (showEditModal ? (prev.section || prev.costCenter) : ''),
+        costCenter: matchedSec || (showEditModal ? (prev.costCenter || prev.section) : ''),
         company: matchedComp || (showEditModal ? prev.company : ''),
         location: matchedLoc || (showEditModal ? prev.location : ''),
         username: prev.username || (matchedEmail ? matchedEmail.split('@')[0] : (matchedCode ? matchedCode.toLowerCase() : ''))
@@ -402,7 +432,7 @@ export function UserManagement() {
         phone: Boolean(matchedPhone),
         company: Boolean(matchedComp),
         department: Boolean(matchedDept),
-        location: Boolean(matchedLoc)
+        section: Boolean(matchedSec)
       });
 
       const detailsSuffix = [
@@ -432,7 +462,7 @@ export function UserManagement() {
       phone: false,
       company: false,
       department: false,
-      location: false
+      section: false
     });
     setUserFormData((prev) => ({
       ...prev,
@@ -458,6 +488,8 @@ export function UserManagement() {
       employeeId: '',
       role: rolesList.length > 0 ? rolesList[0].name : 'Standard User',
       department: '',
+      section: '',
+      costCenter: '',
       location: '',
       company: '',
       businessUnit: 'Corporate Operations',
@@ -473,7 +505,7 @@ export function UserManagement() {
       phone: false,
       company: false,
       department: false,
-      location: false
+      section: false
     });
     setIsAddingLocation(false);
     setIsAddingDepartment(false);
@@ -1469,7 +1501,7 @@ export function UserManagement() {
                                   phone: Boolean(user.employeeId && user.phone),
                                   company: Boolean(user.employeeId && user.company),
                                   department: Boolean(user.employeeId && user.department),
-                                  location: Boolean(user.employeeId && user.location)
+                                  section: Boolean(user.employeeId && (user.section || user.costCenter))
                                 });
                                 setShowEditModal(true);
                                 setActiveDropdownId(null);
@@ -2078,32 +2110,46 @@ export function UserManagement() {
                   </select>
                 </div>
 
-                {/* Primary Location from Master Data */}
+                {/* Section from Master Data */}
                 <div className="col-span-2">
                   <div className="flex items-center justify-between mb-1">
-                    <label className="font-medium text-slate-700">Primary Location *</label>
-                    {isCustodianLinked && custodianLinkedFields.location && (
+                    <label className="font-medium text-slate-700">Section</label>
+                    {isCustodianLinked && custodianLinkedFields.section && (
                       <span className="text-[10px] text-purple-700 bg-purple-50 border border-purple-200/60 px-1.5 py-0.5 rounded flex items-center gap-1 font-medium">
                         <Lock className="w-2.5 h-2.5" /> Synced from Custodian
                       </span>
                     )}
                   </div>
                   <select
-                    disabled={isCustodianLinked && custodianLinkedFields.location}
-                    value={userFormData.location}
-                    onChange={(e) => setUserFormData({ ...userFormData, location: e.target.value })}
+                    disabled={isCustodianLinked && custodianLinkedFields.section}
+                    value={userFormData.section || userFormData.costCenter || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      setUserFormData({ ...userFormData, section: val, costCenter: val });
+                    }}
                     className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
-                      isCustodianLinked && custodianLinkedFields.location
+                      isCustodianLinked && custodianLinkedFields.section
                         ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed'
                         : 'bg-white border-slate-200 focus:outline-none focus:border-[#6C2BD9] cursor-pointer'
                     }`}
                   >
-                    <option value="">Select Master Location...</option>
-                    {sitesList.map(s => (
-                      <option key={s.id || s.name} value={s.name}>{s.fullPath || s.name} {s.code ? `(${s.code})` : ''}</option>
-                    ))}
+                    <option value="">Select Section...</option>
+                    {sectionsList.map(s => {
+                      const val = s.name || s.code;
+                      const label = s.name ? `${s.name}${s.code ? ` (${s.code})` : ''}` : s.code;
+                      return (
+                        <option key={s.id || s.code || s.name} value={val}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                    {(userFormData.section || userFormData.costCenter) && !sectionsList.some(s => (s.name || s.code) === (userFormData.section || userFormData.costCenter)) && (
+                      <option value={userFormData.section || userFormData.costCenter}>
+                        {userFormData.section || userFormData.costCenter}
+                      </option>
+                    )}
                   </select>
-                  <p className="text-[10px] text-slate-400 mt-1">Configured in Master Data. Ordinary users cannot add locations on the fly.</p>
+                  <p className="text-[10px] text-slate-400 mt-1">Configured in Master Data &gt; Sections.</p>
                 </div>
               </div>
 

@@ -277,7 +277,8 @@ export async function getAdminUsers(req, res) {
       location: u.site?.name || '',
       company: u.company?.name || '',
       businessUnit: 'Corporate Operations',
-      costCenter: u.costCenter?.code || '',
+      costCenter: u.costCenter?.name || u.costCenter?.code || '',
+      section: u.costCenter?.name || u.costCenter?.code || '',
       userType: 'System User',
       status: u.active ? 'Active' : 'Inactive',
       accountStatus: u.active ? 'Active' : 'Locked',
@@ -384,6 +385,13 @@ export async function createAdminUser(req, res) {
           }).catch(() => null);
         }
 
+        let costCenterRecord = null;
+        if (data.section || data.costCenter || data.costCenterId) {
+          costCenterRecord = await prisma.costCenter.findFirst({
+            where: { OR: [{ id: data.costCenterId || '' }, { name: data.section || data.costCenter || '' }, { code: data.section || data.costCenter || '' }] }
+          }).catch(() => null);
+        }
+
         if (roleRecord) {
           const passwordHash = data.password
             ? await bcrypt.hash(data.password, 10).catch(() => '$2a$10$dummyHashForAdminCreatedUser')
@@ -400,6 +408,7 @@ export async function createAdminUser(req, res) {
               siteId: siteRecord ? siteRecord.id : null,
               departmentId: deptRecord ? deptRecord.id : null,
               companyId: compRecord ? compRecord.id : null,
+              costCenterId: costCenterRecord ? costCenterRecord.id : null,
               active: data.status ? String(data.status).toLowerCase() === 'active' : true,
               forcePasswordChange: data.forcePasswordChange !== false
             }
@@ -429,7 +438,8 @@ export async function createAdminUser(req, res) {
       location: data.location || '',
       company: data.company || '',
       businessUnit: data.businessUnit || '',
-      costCenter: data.costCenter || '',
+      costCenter: data.section || data.costCenter || '',
+      section: data.section || data.costCenter || '',
       userType: data.userType || 'System User',
       status: data.status || 'Active',
       accountStatus: 'Active',
@@ -482,6 +492,12 @@ export async function updateAdminUser(req, res) {
           where: { OR: [{ id: req.body.companyId || '' }, { name: req.body.company || '' }, { code: req.body.company || '' }] }
         }).catch(() => null);
       }
+      let costCenterRecord = null;
+      if (req.body.section || req.body.costCenter || req.body.costCenterId) {
+        costCenterRecord = await prisma.costCenter.findFirst({
+          where: { OR: [{ id: req.body.costCenterId || '' }, { name: req.body.section || req.body.costCenter || '' }, { code: req.body.section || req.body.costCenter || '' }] }
+        }).catch(() => null);
+      }
 
       const updateData = {
         fullName: req.body.name,
@@ -494,6 +510,7 @@ export async function updateAdminUser(req, res) {
       if (siteRecord) updateData.siteId = siteRecord.id;
       if (deptRecord) updateData.departmentId = deptRecord.id;
       if (compRecord) updateData.companyId = compRecord.id;
+      if (costCenterRecord) updateData.costCenterId = costCenterRecord.id;
 
       await prisma.user.update({
         where: { id },
