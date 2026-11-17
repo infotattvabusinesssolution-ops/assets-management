@@ -149,12 +149,12 @@ export function UserManagement() {
   const fetchMetadata = async () => {
     try {
       const [sitesRes, deptsRes, compsRes, rolesRes, custRes, sectionsRes] = await Promise.all([
-        api.get('/master-data/sites').catch(() => null),
-        api.get('/master-data/departments').catch(() => null),
-        api.get('/master-data/companies').catch(() => null),
+        api.get('/master-data/sites?includeInactive=false').catch(() => null),
+        api.get('/master-data/departments?includeInactive=false').catch(() => null),
+        api.get('/master-data/companies?includeInactive=false').catch(() => null),
         api.get('/admin/roles').catch(() => null),
         api.get('/master-data/custodians').catch(() => null),
-        api.get('/master-data/cost-centers').catch(() => null)
+        api.get('/master-data/cost-centers?includeInactive=false').catch(() => null)
       ]);
 
       const serverCustodians = custRes?.custodians || custRes?.employees || (Array.isArray(custRes) ? custRes : []);
@@ -235,9 +235,16 @@ export function UserManagement() {
           fullPath: typeof s.fullPath === 'string' ? s.fullPath : String(s.fullPath || s.name || '')
         })));
       }
+      const isRecordActive = (item) => {
+        if (!item) return false;
+        if (item.active === false || item.active === 'false' || item.active === 0) return false;
+        if (typeof item.status === 'string' && item.status.toLowerCase() === 'inactive') return false;
+        return true;
+      };
+
       if (deptsRes && Array.isArray(deptsRes.departments)) {
         setDepartmentsList(deptsRes.departments
-          .filter(d => d && d.name && d.name !== 'General')
+          .filter(d => d && d.name && d.name !== 'General' && isRecordActive(d))
           .map(d => ({
             ...d,
             name: typeof d.name === 'string' ? d.name : (d.name?.name || String(d.name || '')),
@@ -245,10 +252,12 @@ export function UserManagement() {
           })));
       }
       if (compsRes && Array.isArray(compsRes.companies)) {
-        setCompaniesList(compsRes.companies.map(c => ({
-          ...c,
-          name: typeof c.name === 'string' ? c.name : (c.name?.name || String(c.name || ''))
-        })));
+        setCompaniesList(compsRes.companies
+          .filter(c => c && isRecordActive(c))
+          .map(c => ({
+            ...c,
+            name: typeof c.name === 'string' ? c.name : (c.name?.name || String(c.name || ''))
+          })));
       }
       if (sectionsRes && Array.isArray(sectionsRes.costCenters)) {
         let customCostCenters = [];
@@ -259,18 +268,22 @@ export function UserManagement() {
             mergedSections.push(s);
           }
         }
-        setSectionsList(mergedSections.map(s => ({
+        setSectionsList(mergedSections.filter(isRecordActive).map(s => ({
           ...s,
           name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
-          code: typeof s.code === 'string' ? s.code : String(s.code || '')
+          code: typeof s.code === 'string' ? s.code : String(s.code || ''),
+          active: true,
+          status: 'Active'
         })));
       } else {
         let customCostCenters = [];
         try { customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
-        setSectionsList(customCostCenters.map(s => ({
+        setSectionsList(customCostCenters.filter(isRecordActive).map(s => ({
           ...s,
           name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
-          code: typeof s.code === 'string' ? s.code : String(s.code || '')
+          code: typeof s.code === 'string' ? s.code : String(s.code || ''),
+          active: true,
+          status: 'Active'
         })));
       }
       const fetchedRoles = rolesRes?.roles || (Array.isArray(rolesRes) ? rolesRes : []);
@@ -2134,18 +2147,20 @@ export function UserManagement() {
                     }`}
                   >
                     <option value="">Select Section...</option>
-                    {sectionsList.map(s => {
-                      const val = s.name || s.code;
-                      const label = s.name ? `${s.name}${s.code ? ` (${s.code})` : ''}` : s.code;
-                      return (
-                        <option key={s.id || s.code || s.name} value={val}>
-                          {label}
-                        </option>
-                      );
-                    })}
-                    {(userFormData.section || userFormData.costCenter) && !sectionsList.some(s => (s.name || s.code) === (userFormData.section || userFormData.costCenter)) && (
-                      <option value={userFormData.section || userFormData.costCenter}>
-                        {userFormData.section || userFormData.costCenter}
+                    {sectionsList
+                      .filter(s => s.active !== false && String(s.status || '').toLowerCase() !== 'inactive')
+                      .map(s => {
+                        const val = s.name || s.code;
+                        const label = s.name ? `${s.name}${s.code ? ` (${s.code})` : ''}` : s.code;
+                        return (
+                          <option key={s.id || s.code || s.name} value={val}>
+                            {label}
+                          </option>
+                        );
+                      })}
+                    {showEditModal && (userFormData.section || userFormData.costCenter) && !sectionsList.some(s => (s.name || s.code) === (userFormData.section || userFormData.costCenter)) && (
+                      <option value={userFormData.section || userFormData.costCenter} disabled>
+                        {userFormData.section || userFormData.costCenter} (Deactivated)
                       </option>
                     )}
                   </select>
