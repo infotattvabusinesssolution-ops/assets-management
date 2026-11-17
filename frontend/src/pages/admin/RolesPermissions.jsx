@@ -40,14 +40,14 @@ export const MASTER_DATA_ENTITIES = [
   { key: 'subcategories', name: 'Sub Categories', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
   { key: 'companies', name: 'Companies', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
   { key: 'custodians', name: 'Custodians', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
-  { key: 'locations', name: 'Locations & Sites', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
-  { key: 'location-levels', name: 'Location Levels (1 - 4)', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  { key: 'locations', name: 'Locations', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'location-levels', name: 'Location Levels', actions: ['View', 'Create', 'Edit', 'Delete'] },
   { key: 'departments', name: 'Departments', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
-  { key: 'cost-centers', name: 'Sections & Cost Centers', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
-  { key: 'suppliers', name: 'Suppliers & Vendors', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'cost-centers', name: 'Sections', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
+  { key: 'suppliers', name: 'Suppliers', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
   { key: 'manufacturers', name: 'Manufacturers', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
   { key: 'brands', name: 'Brands', actions: ['View', 'Create', 'Edit', 'Delete', 'Export'] },
-  { key: 'uom', name: 'Units of Measure (UOM)', actions: ['View', 'Create', 'Edit', 'Delete'] },
+  { key: 'uom', name: 'UOM', actions: ['View', 'Create', 'Edit', 'Delete'] },
   { key: 'status-codes', name: 'Status Codes', actions: ['View', 'Create', 'Edit', 'Delete'] },
   { key: 'disposal-statuses', name: 'Disposal Statuses', actions: ['View', 'Create', 'Edit', 'Delete'] },
   { key: 'conditions', name: 'Conditions', actions: ['View', 'Create', 'Edit', 'Delete'] },
@@ -75,7 +75,7 @@ export const MODULE_STRUCTURE = [
   },
   {
     key: 'tracking',
-    name: 'Tracking & Location (RTLS)',
+    name: 'Tracking & Location',
     screens: ['Asset Tracking', 'RTLS Map & Location', 'Geofencing', 'Location History', 'Proximity Search'],
     actions: ['View', 'Locate', 'Configure Geofence', 'Export']
   },
@@ -88,7 +88,7 @@ export const MODULE_STRUCTURE = [
   {
     key: 'movements',
     name: 'Assignment & Movement',
-    screens: ['Transfer & Movement', 'Assign Asset', 'Movement Approvals', 'Movement History'],
+    screens: ['Assign Asset', 'Transfer / Movement', 'Movement Approvals', 'Movement History'],
     actions: ['View', 'Create', 'Assign', 'Transfer', 'Approve', 'Export']
   },
   {
@@ -99,13 +99,13 @@ export const MODULE_STRUCTURE = [
   },
   {
     key: 'maintenance',
-    name: 'Maintenance & Work Orders',
+    name: 'Maintenance',
     screens: ['Work Orders', 'Maintenance Plans', 'Preventive Maintenance', 'Service Providers', 'Spare Parts & Inventory'],
     actions: ['View', 'Create', 'Edit', 'Assign', 'Close', 'Approve', 'Export']
   },
   {
     key: 'disposal',
-    name: 'Disposal & Retirement',
+    name: 'Disposal',
     screens: ['Disposal Workbench', 'Disposed Assets Ledger', 'Pending Disposal'],
     actions: ['View', 'Initiate Disposal', 'Approve Disposal', 'Execute', 'Export']
   },
@@ -123,7 +123,7 @@ export const MODULE_STRUCTURE = [
   },
   {
     key: 'administration',
-    name: 'Administration & Security',
+    name: 'Administration',
     screens: ['Company & Organization', 'System Configuration', 'Audit Logs', 'Email Notifications', 'Backup & Scheduler'],
     actions: ['View', 'Create', 'Edit', 'Delete', 'Administer', 'Export']
   }

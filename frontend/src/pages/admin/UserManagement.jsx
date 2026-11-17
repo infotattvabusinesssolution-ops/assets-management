@@ -1720,10 +1720,10 @@ export function UserManagement() {
                       { name: 'Asset Management', allowed: true },
                       { name: 'Asset 360 Registry', allowed: true },
                       { name: 'Master Data Hub', allowed: ['System Administrator', 'Asset Manager', 'Admin'].includes(selectedUser.role) },
-                      { name: 'Maintenance & Work Orders', allowed: ['System Administrator', 'Asset Manager', 'Technician'].includes(selectedUser.role) },
+                      { name: 'Maintenance', allowed: ['System Administrator', 'Asset Manager', 'Technician'].includes(selectedUser.role) },
                       { name: 'Verification & Audit', allowed: ['System Administrator', 'Asset Manager', 'Auditor'].includes(selectedUser.role) },
                       { name: 'Finance & Depreciation', allowed: ['System Administrator', 'Finance Controller', 'Asset Manager'].includes(selectedUser.role) },
-                      { name: 'Administration & Security', allowed: ['System Administrator', 'Admin'].includes(selectedUser.role) }
+                      { name: 'Administration', allowed: ['System Administrator', 'Admin'].includes(selectedUser.role) }
                     ].map((perm) => (
                       <div key={perm.name} className="flex items-center justify-between p-1.5 rounded-lg border bg-white border-slate-200">
                         <span className="truncate text-slate-700 font-medium">{perm.name}</span>
