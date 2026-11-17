@@ -807,12 +807,12 @@ export function RolesPermissions() {
     setIsSavingPermissions(true);
     try {
       const permsToSave = { ...rolePermissions };
-      // Keep parent master-data in sync: has View if at least one master entity has View
-      const hasAnyMasterView = MASTER_DATA_ENTITIES.some(e => {
+      // Keep parent master-data in sync: has access if at least one master entity has any action
+      const hasAnyMasterAction = MASTER_DATA_ENTITIES.some(e => {
         const eActs = permsToSave[`master_data_${e.key}`] || [];
-        return eActs.includes('View');
+        return eActs.length > 0;
       });
-      if (hasAnyMasterView) {
+      if (hasAnyMasterAction) {
         permsToSave['master-data'] = ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'];
       } else {
         permsToSave['master-data'] = [];
@@ -888,24 +888,16 @@ export function RolesPermissions() {
   const toggleMasterEntityPermission = (entityKey, action) => {
     const permKey = `master_data_${entityKey}`;
     const currentActions = rolePermissions[permKey] || [];
-    let updated;
-    if (currentActions.includes(action)) {
-      updated = currentActions.filter((a) => a !== action);
-    } else {
-      // If adding Create, Edit, or Delete, also ensure View is enabled
-      if (['Create', 'Edit', 'Delete', 'Import', 'Export'].includes(action) && !currentActions.includes('View')) {
-        updated = [...currentActions, 'View', action];
-      } else {
-        updated = [...currentActions, action];
-      }
-    }
+    const updated = currentActions.includes(action)
+      ? currentActions.filter((a) => a !== action)
+      : [...currentActions, action];
 
     const nextPerms = { ...rolePermissions, [permKey]: updated };
-    const hasAnyMasterView = MASTER_DATA_ENTITIES.some(e => {
+    const hasAnyMasterAction = MASTER_DATA_ENTITIES.some(e => {
       const eActions = (e.key === entityKey ? updated : (nextPerms[`master_data_${e.key}`] || []));
-      return eActions.includes('View');
+      return eActions.length > 0;
     });
-    nextPerms['master-data'] = hasAnyMasterView ? ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] : [];
+    nextPerms['master-data'] = hasAnyMasterAction ? ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] : [];
     setRolePermissions(nextPerms);
   };
 
@@ -916,11 +908,11 @@ export function RolesPermissions() {
     const updated = isAll ? [] : [...entity.actions];
 
     const nextPerms = { ...rolePermissions, [permKey]: updated };
-    const hasAnyMasterView = MASTER_DATA_ENTITIES.some(e => {
+    const hasAnyMasterAction = MASTER_DATA_ENTITIES.some(e => {
       const eActions = (e.key === entity.key ? updated : (nextPerms[`master_data_${e.key}`] || []));
-      return eActions.includes('View');
+      return eActions.length > 0;
     });
-    nextPerms['master-data'] = hasAnyMasterView ? ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] : [];
+    nextPerms['master-data'] = hasAnyMasterAction ? ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] : [];
     setRolePermissions(nextPerms);
   };
 
