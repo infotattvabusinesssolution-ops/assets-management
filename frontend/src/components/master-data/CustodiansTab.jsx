@@ -414,8 +414,8 @@ export function CustodiansTab({
         departmentId: formState.departmentId || undefined,
         department: selectedDept ? { name: selectedDept.name } : undefined,
         costCenterId: formState.costCenterId || matchedSec?.id || undefined,
-        section: formState.section.trim(),
-        location: formState.location.trim(),
+        section: (formState.section || '').trim(),
+        location: (formState.location || '').trim(),
         organization: formState.custodianType === 'External' ? formState.organization.trim() : '',
         active: formState.status === 'Active'
       };
@@ -1075,43 +1075,20 @@ export function CustodiansTab({
                   </select>
                 </div>
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Assigned Location</label>
+                  <label className="block font-semibold text-slate-700 mb-1">Status</label>
                   <select
-                    value={formState.location}
-                    onChange={(e) => setFormState({ ...formState, location: e.target.value })}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs font-semibold text-slate-800 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-                  >
-                    <option value="">-- Select Location --</option>
-                    {uniqueLocations.map(l => {
-                      const val = l.name || l.code;
-                      const label = l.name ? `${l.name}${l.code ? ` (${l.code})` : ''}` : l.code;
-                      return (
-                        <option key={l.id || l.code} value={val}>
-                          {label}
-                        </option>
-                      );
+                    value={formState.status || (formState.active !== false ? 'Active' : 'Inactive')}
+                    onChange={(e) => setFormState({
+                      ...formState,
+                      status: e.target.value,
+                      active: e.target.value === 'Active'
                     })}
-                    {formState.location && !uniqueLocations.some(l => (l.name || l.code) === formState.location) && (
-                      <option value={formState.location}>{formState.location}</option>
-                    )}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-semibold text-slate-800"
+                  >
+                    <option value="Active">Active</option>
+                    <option value="Inactive">Inactive</option>
                   </select>
                 </div>
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Status</label>
-                <select
-                  value={formState.status || (formState.active !== false ? 'Active' : 'Inactive')}
-                  onChange={(e) => setFormState({
-                    ...formState,
-                    status: e.target.value,
-                    active: e.target.value === 'Active'
-                  })}
-                  className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-semibold text-slate-800"
-                >
-                  <option value="Active">Active</option>
-                  <option value="Inactive">Inactive</option>
-                </select>
               </div>
 
               <div className="flex items-center justify-end gap-2.5 pt-4 border-t border-slate-100">
