@@ -2144,6 +2144,7 @@ async function ensureSubCategoriesTable() {
         active BIT DEFAULT 1,
         lifeInMonths INT NULL DEFAULT 60,
         prefix NVARCHAR(50) NULL,
+        minCapitalizationValue FLOAT NULL DEFAULT 0,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
@@ -2153,6 +2154,9 @@ async function ensureSubCategoriesTable() {
 
       IF NOT EXISTS (SELECT * FROM syscolumns WHERE id=object_id('sub_categories') AND name='prefix')
       ALTER TABLE sub_categories ADD prefix NVARCHAR(50) NULL;
+
+      IF NOT EXISTS (SELECT * FROM syscolumns WHERE id=object_id('sub_categories') AND name='minCapitalizationValue')
+      ALTER TABLE sub_categories ADD minCapitalizationValue FLOAT NULL DEFAULT 0;
     `);
     subCategoriesTableEnsured = true;
   } catch (err) {
@@ -2718,6 +2722,9 @@ export async function getSubCategories(req, res, next) {
             totalAssets: r.totalAssets || 0,
             active: Boolean(r.active),
             status: r.active ? 'Active' : 'Inactive',
+            lifeInMonths: r.lifeInMonths !== undefined && r.lifeInMonths !== null ? Number(r.lifeInMonths) : 60,
+            prefix: r.prefix || '',
+            minCapitalizationValue: r.minCapitalizationValue !== undefined && r.minCapitalizationValue !== null ? Number(r.minCapitalizationValue) : 0,
             createdAt: r.createdAt,
             updatedAt: r.updatedAt
           };
@@ -2737,7 +2744,7 @@ export async function getSubCategories(req, res, next) {
 export async function createSubCategory(req, res, next) {
   try {
     await ensureSubCategoriesTable();
-    const { code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, className, assetGroupId, assetGroupName, groupName, description, active, status, lifeInMonths, prefix } = req.body;
+    const { code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, className, assetGroupId, assetGroupName, groupName, description, active, status, lifeInMonths, prefix, minCapitalizationValue } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Sub Category Name is required.' });
     }
@@ -2752,6 +2759,9 @@ export async function createSubCategory(req, res, next) {
       ? Number(lifeInMonths)
       : 60;
     const cleanPrefix = (prefix || '').trim().toUpperCase();
+    const cleanMinCap = (minCapitalizationValue !== undefined && minCapitalizationValue !== null && minCapitalizationValue !== '')
+      ? Number(minCapitalizationValue)
+      : 0;
 
     // Auto-resolve missing categoryName / subGroup / group from Category if possible
     if ((!resolvedCatName || resolvedCatName === '-') && categoryId && isDbConnected()) {
@@ -2792,6 +2802,7 @@ export async function createSubCategory(req, res, next) {
       status: isAct ? 'Active' : 'Inactive',
       lifeInMonths: cleanLifeInMonths,
       prefix: cleanPrefix,
+      minCapitalizationValue: cleanMinCap,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString()
     };
@@ -2811,7 +2822,7 @@ export async function createSubCategory(req, res, next) {
           return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
         await prisma.$executeRawUnsafe(`
-          INSERT INTO sub_categories (id, code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, assetGroupId, assetGroupName, description, totalAssets, active, lifeInMonths, prefix, createdAt, updatedAt)
+          INSERT INTO sub_categories (id, code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, assetGroupId, assetGroupName, description, totalAssets, active, lifeInMonths, prefix, minCapitalizationValue, createdAt, updatedAt)
           VALUES (
             '${newSubCat.id}',
             '${cleanCode.replace(/'/g, "''")}',
@@ -2827,6 +2838,7 @@ export async function createSubCategory(req, res, next) {
             ${isAct ? 1 : 0},
             ${cleanLifeInMonths},
             ${cleanPrefix ? `'${cleanPrefix.replace(/'/g, "''")}'` : 'NULL'},
+            ${cleanMinCap},
             CURRENT_TIMESTAMP,
             CURRENT_TIMESTAMP
           )
@@ -2948,6 +2960,9 @@ export async function updateSubCategory(req, res, next) {
       ? Number(req.body.lifeInMonths)
       : undefined;
     const cleanPrefix = req.body.prefix !== undefined ? (req.body.prefix || '').trim().toUpperCase() : undefined;
+    const cleanMinCap = (req.body.minCapitalizationValue !== undefined && req.body.minCapitalizationValue !== null && req.body.minCapitalizationValue !== '')
+      ? Number(req.body.minCapitalizationValue)
+      : undefined;
 
     if (isDbConnected()) {
       try {
@@ -2964,6 +2979,7 @@ export async function updateSubCategory(req, res, next) {
         if (isAct !== undefined) sets.push(`active = ${isAct ? 1 : 0}`);
         if (cleanLifeInMonths !== undefined) sets.push(`lifeInMonths = ${cleanLifeInMonths}`);
         if (cleanPrefix !== undefined) sets.push(`prefix = ${cleanPrefix ? `'${cleanPrefix.replace(/'/g, "''")}'` : 'NULL'}`);
+        if (cleanMinCap !== undefined) sets.push(`minCapitalizationValue = ${cleanMinCap}`);
         sets.push(`updatedAt = CURRENT_TIMESTAMP`);
 
         await prisma.$executeRawUnsafe(`
@@ -2987,6 +3003,7 @@ export async function updateSubCategory(req, res, next) {
         ...(isAct !== undefined ? { active: isAct, status: isAct ? 'Active' : 'Inactive' } : {}),
         ...(cleanLifeInMonths !== undefined ? { lifeInMonths: cleanLifeInMonths } : {}),
         ...(cleanPrefix !== undefined ? { prefix: cleanPrefix } : {}),
+        ...(cleanMinCap !== undefined ? { minCapitalizationValue: cleanMinCap } : {}),
         updatedAt: new Date().toISOString()
       };
       writeSubCategoriesToFile(current);
@@ -3179,7 +3196,7 @@ export async function getDepreciationPolicies(req, res, next) {
       try {
         await ensureSubCategoriesTable();
         subCategories = await prisma.$queryRawUnsafe(`
-          SELECT id, code, name, categoryId, categoryName, lifeInMonths, prefix, active
+          SELECT id, code, name, categoryId, categoryName, lifeInMonths, prefix, minCapitalizationValue, active
           FROM sub_categories
         `);
       } catch (_) {}

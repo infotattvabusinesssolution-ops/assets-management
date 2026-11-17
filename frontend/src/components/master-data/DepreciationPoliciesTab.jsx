@@ -1,6 +1,5 @@
 import React, { useEffect, useState, useMemo } from 'react';
 import {
-  Lock,
   Search,
   CheckCircle2,
   AlertCircle,
@@ -92,12 +91,15 @@ export function DepreciationPoliciesTab() {
       setSelectedSubCatId(matchedSub.id);
       const months = matchedSub.lifeInMonths !== undefined && matchedSub.lifeInMonths !== null ? Number(matchedSub.lifeInMonths) : 60;
       setLifeInMonths(months);
+      const minCap = matchedSub.minCapitalizationValue !== undefined && matchedSub.minCapitalizationValue !== null ? Number(matchedSub.minCapitalizationValue) : 0;
+      setMinCapitalizationValue(minCap ? String(minCap) : '0');
       if (!selectedCategory.annualDepreciationRatePercent && months > 0) {
         setRate((1200 / months).toFixed(2));
       }
     } else {
       setSelectedSubCatId('');
       setLifeInMonths(selectedCategory.defaultUsefulLifeMonths || 60);
+      setMinCapitalizationValue(selectedCategory.minCapitalizationValue ? String(selectedCategory.minCapitalizationValue) : '0');
     }
   }, [selectedId, categories, subCategories]);
 
@@ -107,9 +109,13 @@ export function DepreciationPoliciesTab() {
     if (found) {
       const months = found.lifeInMonths !== undefined && found.lifeInMonths !== null ? Number(found.lifeInMonths) : 60;
       setLifeInMonths(months);
+      const minCap = found.minCapitalizationValue !== undefined && found.minCapitalizationValue !== null ? Number(found.minCapitalizationValue) : 0;
+      setMinCapitalizationValue(minCap ? String(minCap) : '0');
       if (months > 0) {
         setRate((1200 / months).toFixed(2));
       }
+    } else {
+      setMinCapitalizationValue('0');
     }
   };
 
@@ -260,15 +266,9 @@ export function DepreciationPoliciesTab() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-700 flex items-center gap-1.5">
-                    <Lock className="w-3.5 h-3.5 text-amber-600" />
-                    Life in Months (Useful Life) *
-                  </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-amber-50 text-amber-700 border border-amber-200">
-                    🔒 Sub Category (Read-Only)
-                  </span>
-                </div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Life in Months (Useful Life) *
+                </label>
                 <div className="relative">
                   <input
                     type="number"
@@ -360,28 +360,22 @@ export function DepreciationPoliciesTab() {
               </div>
 
               <div>
-                <div className="flex items-center justify-between mb-1">
-                  <label className="font-bold text-slate-700">
-                    Minimum Capitalization Value
-                  </label>
-                  <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-purple-50 text-[#6C2BD9] border border-purple-200">
-                    Upcoming Phase
-                  </span>
-                </div>
+                <label className="block font-bold text-slate-700 mb-1">
+                  Minimum Capitalization Value
+                </label>
                 <div className="relative">
                   <span className="absolute left-3 top-2.5 text-xs font-bold text-slate-400">Amt</span>
                   <input
                     type="number"
-                    min="0"
-                    step="0.01"
-                    placeholder="0.00 (e.g. 5000)"
+                    readOnly
+                    disabled
+                    placeholder="0.00"
                     value={minCapitalizationValue}
-                    onChange={event => setMinCapitalizationValue(event.target.value)}
-                    className="w-full pl-11 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-50 font-bold text-slate-800 text-xs focus:border-[#6C2BD9] focus:outline-none"
+                    className="w-full pl-11 pr-3.5 py-2.5 rounded-xl border border-slate-200 bg-slate-100/80 font-bold text-slate-700 text-xs cursor-not-allowed select-none focus:outline-none"
                   />
                 </div>
                 <p className="text-[11px] text-slate-400 mt-1">
-                  Threshold below which asset purchases are expensed immediately rather than capitalized.
+                  Predefined from Sub Category Master. Cannot be directly edited here.
                 </p>
               </div>
             </div>

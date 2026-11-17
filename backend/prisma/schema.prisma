@@ -377,6 +377,7 @@ model SubCategory {
   active            Boolean?  @default(true)
   lifeInMonths      Int?      @default(60)
   prefix            String?
+  minCapitalizationValue Float? @default(0)
   createdAt         DateTime? @default(now())
   updatedAt         DateTime? @updatedAt
 

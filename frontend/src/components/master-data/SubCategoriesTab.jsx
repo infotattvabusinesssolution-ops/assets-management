@@ -111,6 +111,7 @@ export function SubCategoriesTab({
             name: ac.name,
             prefix: ac.prefix || '',
             lifeInMonths: ac.lifeInMonths !== undefined && ac.lifeInMonths !== null ? Number(ac.lifeInMonths) : 60,
+            minCapitalizationValue: ac.minCapitalizationValue !== undefined && ac.minCapitalizationValue !== null ? Number(ac.minCapitalizationValue) : 0,
             categoryId: ac.categoryId,
             categoryName: resolvedCategoryName,
             className: classMatch ? classMatch[1] : (ac.className && ac.className !== '-' ? ac.className : (matchedCat?.className || '-')),
@@ -246,7 +247,8 @@ export function SubCategoriesTab({
     description: '',
     status: 'Active',
     lifeInMonths: 60,
-    prefix: ''
+    prefix: '',
+    minCapitalizationValue: 0
   });
 
   const filteredSubCategories = useMemo(() => {
@@ -313,7 +315,8 @@ export function SubCategoriesTab({
         description: scToEdit.description,
         status: scToEdit.status,
         lifeInMonths: scToEdit.lifeInMonths !== undefined && scToEdit.lifeInMonths !== null ? scToEdit.lifeInMonths : 60,
-        prefix: scToEdit.prefix || ''
+        prefix: scToEdit.prefix || '',
+        minCapitalizationValue: scToEdit.minCapitalizationValue !== undefined && scToEdit.minCapitalizationValue !== null ? scToEdit.minCapitalizationValue : 0
       });
     } else {
       setEditingSubCategory(null);
@@ -327,7 +330,8 @@ export function SubCategoriesTab({
         description: '',
         status: 'Active',
         lifeInMonths: 60,
-        prefix: ''
+        prefix: '',
+        minCapitalizationValue: 0
       });
     }
     setShowAddSubCatModal(true);
@@ -403,7 +407,8 @@ export function SubCategoriesTab({
       description: taggedDesc,
       status: subCatFormState.status,
       lifeInMonths: Number(subCatFormState.lifeInMonths) || 60,
-      prefix: (subCatFormState.prefix || '').trim().toUpperCase()
+      prefix: (subCatFormState.prefix || '').trim().toUpperCase(),
+      minCapitalizationValue: Number(subCatFormState.minCapitalizationValue) || 0
     };
     if (cleanCode) payload.code = cleanCode;
 
@@ -914,6 +919,13 @@ export function SubCategoriesTab({
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
+                <span className="text-slate-500 font-medium">Min Capitalization</span>
+                <span className="col-span-2 font-bold text-slate-800">
+                  {selectedSubCategory.minCapitalizationValue ? Number(selectedSubCategory.minCapitalizationValue).toLocaleString() : '0.00'}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Asset Sub Group</span>
                 <span className="col-span-2 font-semibold text-slate-800">{selectedSubCategory.className}</span>
               </div>
@@ -1046,7 +1058,7 @@ export function SubCategoriesTab({
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-3 gap-3">
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
                     Tag / Serial Prefix
@@ -1059,12 +1071,12 @@ export function SubCategoriesTab({
                     maxLength={10}
                     className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-mono font-bold uppercase focus:border-[#6C2BD9] focus:outline-none"
                   />
-                  <p className="text-[10px] text-slate-400 mt-0.5">Prefix for auto-generated Tag IDs / Serial numbers.</p>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Prefix for Tag / Serial.</p>
                 </div>
 
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">
-                    Life in Months (Useful Life) *
+                    Life in Months *
                   </label>
                   <div className="relative">
                     <input
@@ -1081,8 +1093,26 @@ export function SubCategoriesTab({
                     <span className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 text-xs font-medium">mos</span>
                   </div>
                   <p className="text-[10px] text-slate-400 mt-0.5">
-                    {subCatFormState.lifeInMonths ? `${subCatFormState.lifeInMonths} mos (${(Number(subCatFormState.lifeInMonths) / 12).toFixed(1)} yrs)` : 'Useful life in months.'}
+                    {subCatFormState.lifeInMonths ? `${subCatFormState.lifeInMonths} mos (${(Number(subCatFormState.lifeInMonths) / 12).toFixed(1)} yrs)` : 'Useful life.'}
                   </p>
+                </div>
+
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Min Capitalization
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="number"
+                      min="0"
+                      step="0.01"
+                      value={subCatFormState.minCapitalizationValue}
+                      onChange={(e) => setSubCatFormState({ ...subCatFormState, minCapitalizationValue: e.target.value === '' ? '' : Math.max(0, parseFloat(e.target.value) || 0) })}
+                      placeholder="e.g. 5000"
+                      className="w-full border border-slate-200 rounded-xl px-3.5 py-2 text-xs font-bold focus:border-[#6C2BD9] focus:outline-none"
+                    />
+                  </div>
+                  <p className="text-[10px] text-slate-400 mt-0.5">Capitalization threshold.</p>
                 </div>
               </div>
 
