@@ -1122,6 +1122,7 @@ export async function getCostCentersList(req, res) {
       location: '-',
       costCenterType: 'Operational',
       currency: c.company?.currency || 'USD',
+      active: c.active !== false,
       status: c.active ? 'Active' : 'Inactive',
       createdOn: new Date(c.createdAt).toLocaleDateString('en-GB')
     }));

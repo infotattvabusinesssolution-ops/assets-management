@@ -154,7 +154,7 @@ export function UserManagement() {
         api.get('/master-data/companies?includeInactive=false').catch(() => null),
         api.get('/admin/roles').catch(() => null),
         api.get('/master-data/custodians').catch(() => null),
-        api.get('/master-data/cost-centers?includeInactive=false').catch(() => null)
+        api.get('/master-data/cost-centers?includeInactive=true').catch(() => null)
       ]);
 
       const serverCustodians = custRes?.custodians || custRes?.employees || (Array.isArray(custRes) ? custRes : []);
@@ -238,7 +238,7 @@ export function UserManagement() {
       const isRecordActive = (item) => {
         if (!item) return false;
         if (item.active === false || item.active === 'false' || item.active === 0) return false;
-        if (typeof item.status === 'string' && item.status.toLowerCase() === 'inactive') return false;
+        if (typeof item.status === 'string' && (item.status.toLowerCase() === 'inactive' || item.status.toLowerCase() === 'deactivated')) return false;
         return true;
       };
 
@@ -268,23 +268,29 @@ export function UserManagement() {
             mergedSections.push(s);
           }
         }
-        setSectionsList(mergedSections.filter(isRecordActive).map(s => ({
-          ...s,
-          name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
-          code: typeof s.code === 'string' ? s.code : String(s.code || ''),
-          active: true,
-          status: 'Active'
-        })));
+        setSectionsList(mergedSections.map(s => {
+          const active = isRecordActive(s);
+          return {
+            ...s,
+            name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
+            code: typeof s.code === 'string' ? s.code : String(s.code || ''),
+            active,
+            status: active ? 'Active' : 'Inactive'
+          };
+        }));
       } else {
         let customCostCenters = [];
         try { customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
-        setSectionsList(customCostCenters.filter(isRecordActive).map(s => ({
-          ...s,
-          name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
-          code: typeof s.code === 'string' ? s.code : String(s.code || ''),
-          active: true,
-          status: 'Active'
-        })));
+        setSectionsList(customCostCenters.map(s => {
+          const active = isRecordActive(s);
+          return {
+            ...s,
+            name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
+            code: typeof s.code === 'string' ? s.code : String(s.code || ''),
+            active,
+            status: active ? 'Active' : 'Inactive'
+          };
+        }));
       }
       const fetchedRoles = rolesRes?.roles || (Array.isArray(rolesRes) ? rolesRes : []);
       if (fetchedRoles.length > 0) {
@@ -2147,19 +2153,29 @@ export function UserManagement() {
                     }`}
                   >
                     <option value="">Select Section...</option>
-                    {sectionsList
-                      .filter(s => s.active !== false && String(s.status || '').toLowerCase() !== 'inactive')
-                      .map(s => {
-                        const val = s.name || s.code;
-                        const label = s.name ? `${s.name}${s.code ? ` (${s.code})` : ''}` : s.code;
-                        return (
-                          <option key={s.id || s.code || s.name} value={val}>
-                            {label}
-                          </option>
-                        );
-                      })}
+                    {sectionsList.map(s => {
+                      const val = s.name || s.code;
+                      const isInactive = s.active === false || String(s.status || '').toLowerCase() === 'inactive' || String(s.status || '').toLowerCase() === 'deactivated';
+                      const label = s.name ? `${s.name}${s.code ? ` (${s.code})` : ''}` : s.code;
+                      return (
+                        <option
+                          key={s.id || s.code || s.name}
+                          value={val}
+                          disabled={isInactive}
+                          className={isInactive ? "text-slate-400 bg-slate-100 italic" : "text-slate-800 font-medium"}
+                          style={isInactive ? { color: '#94a3b8' } : undefined}
+                        >
+                          {label}{isInactive ? ' (Deactivated)' : ''}
+                        </option>
+                      );
+                    })}
                     {showEditModal && (userFormData.section || userFormData.costCenter) && !sectionsList.some(s => (s.name || s.code) === (userFormData.section || userFormData.costCenter)) && (
-                      <option value={userFormData.section || userFormData.costCenter} disabled>
+                      <option
+                        value={userFormData.section || userFormData.costCenter}
+                        disabled
+                        className="text-slate-400 bg-slate-100 italic"
+                        style={{ color: '#94a3b8' }}
+                      >
                         {userFormData.section || userFormData.costCenter} (Deactivated)
                       </option>
                     )}
