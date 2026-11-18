@@ -57,7 +57,8 @@ export async function savePasswordPolicy(req, res) {
       requireLowercase,
       requireNumber,
       requireSpecialChar,
-      preventSpaces
+      preventSpaces,
+      emailEnabled
     } = req.body;
 
     // Multi-tenant security check
@@ -94,7 +95,8 @@ export async function savePasswordPolicy(req, res) {
       requireLowercase: Boolean(requireLowercase !== false),
       requireNumber: Boolean(requireNumber !== false),
       requireSpecialChar: Boolean(requireSpecialChar !== false),
-      preventSpaces: Boolean(preventSpaces !== false)
+      preventSpaces: Boolean(preventSpaces !== false),
+      emailEnabled: Boolean(emailEnabled === true)
     });
 
     return res.json({

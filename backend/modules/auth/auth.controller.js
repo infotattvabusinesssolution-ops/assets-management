@@ -220,6 +220,16 @@ export async function login(req, res, next) {
             return res.status(401).json({ success: false, message: 'Invalid username or password' });
           }
 
+          // Check if temporary password has expired (24 hours limit)
+          if (user.temporaryPasswordExpiresAt && (user.forcePasswordChange || user.mustChangePassword)) {
+            if (new Date() > new Date(user.temporaryPasswordExpiresAt)) {
+              return res.status(401).json({
+                success: false,
+                message: 'Temporary password has expired (24-hour limit). Please request a new temporary password from your administrator.'
+              });
+            }
+          }
+
           try {
             await prisma.user.update({
               where: { id: user.id },
@@ -287,6 +297,16 @@ export async function login(req, res, next) {
 
     if (!isValidPass) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
+    }
+
+    // Check if temporary password has expired (24 hours limit)
+    if (user.temporaryPasswordExpiresAt && (user.forcePasswordChange || user.mustChangePassword)) {
+      if (new Date() > new Date(user.temporaryPasswordExpiresAt)) {
+        return res.status(401).json({
+          success: false,
+          message: 'Temporary password has expired (24-hour limit). Please request a new temporary password from your administrator.'
+        });
+      }
     }
 
     user.lastLogin = new Date();
@@ -661,6 +681,7 @@ export async function resetUserPassword(req, res, next) {
     }
 
     const passwordHash = await bcrypt.hash(effectivePassword, 10);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     if (isSqlServerConnected) {
       try {
@@ -668,6 +689,28 @@ export async function resetUserPassword(req, res, next) {
           where: { id },
           data: { passwordHash, forcePasswordChange: true }
         });
+        await prisma.$executeRawUnsafe(`
+          UPDATE users 
+          SET temporary_password_expires_at = '${expiresAt.toISOString()}',
+              must_change_password = 1 
+          WHERE id = '${id}'
+        `).catch(() => null);
+
+        // Record Audit Log for administrator reset
+        if (prisma.auditEvent) {
+          await prisma.auditEvent.create({
+            data: {
+              userId: req.user?.id || null,
+              action: 'RESET_PASSWORD',
+              entityType: 'User',
+              entityId: id,
+              beforeState: JSON.stringify({ username: targetUser.username, email: targetUser.email }),
+              afterState: JSON.stringify({ forcePasswordChange: true, temporaryPasswordExpiresAt: expiresAt.toISOString() }),
+              ipAddress: req.ip || null,
+              userAgent: req.headers ? req.headers['user-agent'] : null
+            }
+          }).catch(() => null);
+        }
       } catch (dbErr) {
         console.warn('Prisma resetUserPassword error:', dbErr.message);
       }
@@ -677,13 +720,18 @@ export async function resetUserPassword(req, res, next) {
     if (inMemUser) {
       inMemUser.passwordHash = passwordHash;
       inMemUser.forcePasswordChange = true;
+      inMemUser.mustChangePassword = true;
+      inMemUser.temporaryPasswordExpiresAt = expiresAt;
     }
 
     return res.json({
       success: true,
       message: `Password for ${targetUser.username || targetUser.fullName || 'user'} has been reset successfully. User must change password on next login.`,
       tempPassword: effectivePassword,
-      instructions: 'A temporary password has been set. The user will be prompted to change it upon next login.'
+      temporaryPasswordExpiresAt: expiresAt.toISOString(),
+      expiresInHours: 24,
+      mustChangePassword: true,
+      instructions: 'A one-time temporary password has been set, valid for 24 hours. The user must create a new permanent password on next login.'
     });
   } catch (err) {
     next(err);
@@ -736,6 +784,14 @@ export async function changePassword(req, res, next) {
             }
           });
 
+          await prisma.$executeRawUnsafe(`
+            UPDATE users 
+            SET temporary_password_expires_at = NULL,
+                password_changed_at = CURRENT_TIMESTAMP,
+                must_change_password = 0 
+            WHERE id = '${userId}'
+          `).catch(() => null);
+
           return res.json({
             success: true,
             message: 'Password updated successfully! Welcome to Asset 360.'
@@ -756,6 +812,9 @@ export async function changePassword(req, res, next) {
       }
       inMemUser.passwordHash = await bcrypt.hash(newPassword, 10);
       inMemUser.forcePasswordChange = false;
+      inMemUser.mustChangePassword = false;
+      inMemUser.temporaryPasswordExpiresAt = null;
+      inMemUser.passwordChangedAt = new Date();
       return res.json({ success: true, message: 'Password updated successfully! Welcome to Asset 360.' });
     }
 

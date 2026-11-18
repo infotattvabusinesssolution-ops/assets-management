@@ -13,7 +13,8 @@ export const DEFAULT_PASSWORD_POLICY = {
   requireLowercase: true,
   requireNumber: true,
   requireSpecialChar: true,
-  preventSpaces: true
+  preventSpaces: true,
+  emailEnabled: false
 };
 
 // Resilient in-memory store for company policies
@@ -41,9 +42,26 @@ export async function ensurePasswordPoliciesTable() {
           require_number BIT DEFAULT 1,
           require_special_char BIT DEFAULT 1,
           prevent_spaces BIT DEFAULT 1,
+          email_enabled BIT DEFAULT 0,
           created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
           updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
         );
+      END
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('company_password_policies') AND name = 'email_enabled')
+      BEGIN
+        ALTER TABLE company_password_policies ADD email_enabled BIT DEFAULT 0;
+      END
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('users') AND name = 'temporary_password_expires_at')
+      BEGIN
+        ALTER TABLE users ADD temporary_password_expires_at DATETIME2 NULL;
+      END
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('users') AND name = 'password_changed_at')
+      BEGIN
+        ALTER TABLE users ADD password_changed_at DATETIME2 NULL;
+      END
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('users') AND name = 'must_change_password')
+      BEGIN
+        ALTER TABLE users ADD must_change_password BIT DEFAULT 1;
       END
     `);
     tableEnsured = true;
@@ -274,6 +292,7 @@ export async function savePolicyForCompany(companyId, data) {
   const requireNumber = Boolean(data.requireNumber !== false);
   const requireSpecialChar = Boolean(data.requireSpecialChar !== false);
   const preventSpaces = Boolean(data.preventSpaces !== false);
+  const emailEnabled = Boolean(data.emailEnabled === true);
 
   const key = companyId && companyId !== 'DEFAULT' && companyId !== '__DEFAULT__' ? companyId : null;
   const policyId = `POL-${key ? key.substring(0, 8) : 'DEFAULT'}-${Date.now()}`;
@@ -288,6 +307,7 @@ export async function savePolicyForCompany(companyId, data) {
     requireNumber,
     requireSpecialChar,
     preventSpaces,
+    emailEnabled,
     updatedAt: new Date().toISOString()
   };
 
@@ -314,6 +334,7 @@ export async function savePolicyForCompany(companyId, data) {
               require_number = ${requireNumber ? 1 : 0},
               require_special_char = ${requireSpecialChar ? 1 : 0},
               prevent_spaces = ${preventSpaces ? 1 : 0},
+              email_enabled = ${emailEnabled ? 1 : 0},
               updated_at = CURRENT_TIMESTAMP
           WHERE id = '${existing[0].id}'
         `);
@@ -322,11 +343,11 @@ export async function savePolicyForCompany(companyId, data) {
           INSERT INTO company_password_policies (
             id, company_id, min_length, max_length,
             require_uppercase, require_lowercase, require_number,
-            require_special_char, prevent_spaces, created_at, updated_at
+            require_special_char, prevent_spaces, email_enabled, created_at, updated_at
           ) VALUES (
             '${policyId}', ${companyVal}, ${minLength}, ${maxLength},
             ${requireUppercase ? 1 : 0}, ${requireLowercase ? 1 : 0}, ${requireNumber ? 1 : 0},
-            ${requireSpecialChar ? 1 : 0}, ${preventSpaces ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+            ${requireSpecialChar ? 1 : 0}, ${preventSpaces ? 1 : 0}, ${emailEnabled ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
           )
         `);
       }
@@ -395,6 +416,7 @@ function mapDbRowToPolicy(row) {
     requireNumber: Boolean(row.require_number ?? row.requireNumber),
     requireSpecialChar: Boolean(row.require_special_char ?? row.requireSpecialChar),
     preventSpaces: Boolean(row.prevent_spaces ?? row.preventSpaces),
+    emailEnabled: Boolean(row.email_enabled ?? row.emailEnabled),
     createdAt: row.created_at || row.createdAt,
     updatedAt: row.updated_at || row.updatedAt
   };

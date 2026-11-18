@@ -639,6 +639,7 @@ export async function resetAdminUserPassword(req, res) {
     }
 
     const passwordHash = await bcrypt.hash(effectivePassword, 10);
+    const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
 
     if (prisma && prisma.user) {
       await prisma.user.update({
@@ -648,18 +649,46 @@ export async function resetAdminUserPassword(req, res) {
           forcePasswordChange: true
         }
       }).catch(() => null);
+
+      await prisma.$executeRawUnsafe(`
+        UPDATE users 
+        SET temporary_password_expires_at = '${expiresAt.toISOString()}',
+            must_change_password = 1 
+        WHERE id = '${id}'
+      `).catch(() => null);
+
+      // Record Audit Log for administrator reset
+      if (prisma.auditEvent) {
+        await prisma.auditEvent.create({
+          data: {
+            userId: req.user?.id || null,
+            action: 'RESET_PASSWORD',
+            entityType: 'User',
+            entityId: id,
+            beforeState: JSON.stringify({ username: target.username, email: target.email }),
+            afterState: JSON.stringify({ forcePasswordChange: true, temporaryPasswordExpiresAt: expiresAt.toISOString() }),
+            ipAddress: req.ip || null,
+            userAgent: req.headers ? req.headers['user-agent'] : null
+          }
+        }).catch(() => null);
+      }
     }
 
     if (user) {
       user.passwordHash = passwordHash;
       user.forcePasswordChange = true;
+      user.mustChangePassword = true;
+      user.temporaryPasswordExpiresAt = expiresAt;
     }
 
     res.json({
       success: true,
       message: `Password reset successfully for ${target.name || target.fullName || target.username || 'User'}`,
       tempPassword: effectivePassword,
-      instructions: 'A temporary password has been generated. The user will be prompted to change it upon next login.'
+      temporaryPasswordExpiresAt: expiresAt.toISOString(),
+      expiresInHours: 24,
+      mustChangePassword: true,
+      instructions: 'A one-time temporary password has been generated, valid for 24 hours. The user must create a new permanent password on next login.'
     });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });

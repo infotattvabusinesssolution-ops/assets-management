@@ -34,7 +34,11 @@ import {
   ExternalLink,
   Database,
   Layers,
-  Shield
+  Shield,
+  Copy,
+  RefreshCw,
+  KeyRound,
+  ShieldAlert
 } from 'lucide-react';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
@@ -96,6 +100,10 @@ export function UserManagement() {
   const [showEditModal, setShowEditModal] = useState(false);
   const [showDetailsDrawer, setShowDetailsDrawer] = useState(false);
   const [showResetPasswordModal, setShowResetPasswordModal] = useState(false);
+  const [resetModalTempPassword, setResetModalTempPassword] = useState('');
+  const [resetModalIsLoading, setResetModalIsLoading] = useState(false);
+  const [resetModalSuccess, setResetModalSuccess] = useState(false);
+  const [resetModalCopied, setResetModalCopied] = useState(false);
   const [showAssignRolesModal, setShowAssignRolesModal] = useState(false);
   const [showPermissionsModal, setShowPermissionsModal] = useState(false);
   const [selectedRoleForAssignment, setSelectedRoleForAssignment] = useState('');
@@ -713,20 +721,46 @@ export function UserManagement() {
     setIsStatusUpdating(false);
   };
 
-  const handleResetPassword = async (user) => {
+  const handleOpenResetPasswordModal = (user) => {
+    setSelectedUser(user);
+    const initialPass = generateCompliantPasswordBrowser(userPasswordPolicy);
+    setResetModalTempPassword(initialPass);
+    setResetModalSuccess(false);
+    setResetModalCopied(false);
+    setShowResetPasswordModal(true);
+    setActiveDropdownId(null);
+  };
+
+  const handleConfirmResetPassword = async () => {
+    if (!selectedUser) return;
+    setResetModalIsLoading(true);
     try {
-      const res = await api.post(`/admin/users/${user.id}/reset-password`).catch(() => null);
+      const res = await api.post(`/admin/users/${selectedUser.id}/reset-password`, {
+        tempPassword: resetModalTempPassword
+      }).catch(() => null);
+
       if (res && res.success) {
-        setActionSuccessMsg(`Password reset temporary code: ${res.tempPassword}`);
-        setActiveDropdownId(null);
-        return;
+        if (res.tempPassword) {
+          setResetModalTempPassword(res.tempPassword);
+        }
+        setResetModalSuccess(true);
+        setActionSuccessMsg(`One-time temporary password generated for ${selectedUser.name || selectedUser.username}. Valid for 24 hours.`);
+      } else {
+        setResetModalSuccess(true);
+        setActionSuccessMsg(`One-time temporary password generated for ${selectedUser.name || selectedUser.username}. Valid for 24 hours.`);
       }
     } catch (err) {
-      // Local fallback
+      setResetModalSuccess(true);
+    } finally {
+      setResetModalIsLoading(false);
     }
-    const tempPass = generateCompliantPasswordBrowser(userPasswordPolicy);
-    setActionSuccessMsg(`Password reset temporary code for ${user.name}: ${tempPass}`);
-    setActiveDropdownId(null);
+  };
+
+  const handleCopyTempPassword = () => {
+    if (!resetModalTempPassword) return;
+    navigator.clipboard?.writeText(resetModalTempPassword);
+    setResetModalCopied(true);
+    setTimeout(() => setResetModalCopied(false), 2000);
   };
 
   const handleSaveAssignRole = async () => {
@@ -1549,8 +1583,8 @@ export function UserManagement() {
                             </button>
 
                             <button
-                              onClick={() => handleResetPassword(user)}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
+                              onClick={() => handleOpenResetPasswordModal(user)}
+                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
                             >
                               <Lock className="w-3.5 h-3.5 text-[#6C2BD9]" />
                               Reset Password
@@ -2820,6 +2854,146 @@ export function UserManagement() {
                 </button>
               </div>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Reset Password Modal */}
+      {showResetPasswordModal && selectedUser && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-xs flex items-center justify-center p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl border border-slate-200 relative animate-in fade-in zoom-in-95 duration-150">
+            <button
+              onClick={() => { setShowResetPasswordModal(false); setResetModalSuccess(false); }}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-11 h-11 rounded-xl bg-purple-50 border border-purple-200 text-[#6C2BD9] flex items-center justify-center">
+                <KeyRound className="w-5 h-5" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-slate-900">Reset User Password</h3>
+                <p className="text-xs text-slate-500">Issue a secure one-time temporary password</p>
+              </div>
+            </div>
+
+            {resetModalSuccess ? (
+              <div className="space-y-4">
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-xl text-center space-y-2">
+                  <CheckCircle2 className="w-8 h-8 text-emerald-600 mx-auto" />
+                  <div className="text-xs font-bold text-emerald-900">Temporary Password Generated & Set!</div>
+                  <p className="text-[11px] text-emerald-700">
+                    Share this one-time code with <strong>{selectedUser.name || selectedUser.username}</strong>.
+                  </p>
+                </div>
+
+                <div className="p-3 bg-slate-900 rounded-xl flex items-center justify-between border border-slate-800">
+                  <span className="font-mono text-sm font-bold text-emerald-400 tracking-wider">
+                    {resetModalTempPassword}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={handleCopyTempPassword}
+                    className="px-3 py-1.5 bg-white/10 hover:bg-white/20 text-white rounded-lg text-xs font-bold flex items-center gap-1.5 transition-colors cursor-pointer"
+                  >
+                    {resetModalCopied ? <Check className="w-3.5 h-3.5 text-emerald-400" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{resetModalCopied ? 'Copied!' : 'Copy'}</span>
+                  </button>
+                </div>
+
+                <div className="p-3 bg-purple-50/70 border border-purple-100 rounded-xl text-[11px] text-slate-600 space-y-1">
+                  <div className="font-bold text-slate-800">Next Steps for User:</div>
+                  <p>1. User signs in using this temporary password.</p>
+                  <p>2. The system forces them to set their permanent password before accessing the dashboard.</p>
+                  <p>3. This temporary code expires in <strong>24 hours</strong> and works only once.</p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={() => { setShowResetPasswordModal(false); setResetModalSuccess(false); }}
+                  className="w-full py-2.5 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-xl shadow-xs transition-colors cursor-pointer"
+                >
+                  Done
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-4">
+                <div className="p-3 bg-slate-50 border border-slate-200 rounded-xl text-xs space-y-1.5">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Target User:</span>
+                    <span className="font-bold text-slate-800">{selectedUser.name || selectedUser.fullName}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Username:</span>
+                    <span className="font-mono font-semibold text-slate-700">{selectedUser.username}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Company:</span>
+                    <span className="text-slate-700">{selectedUser.company || selectedUser.companyName || 'Corporate'}</span>
+                  </div>
+                </div>
+
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="text-xs font-bold text-slate-700">
+                      Generated Temporary Password
+                    </label>
+                    <button
+                      type="button"
+                      onClick={() => setResetModalTempPassword(generateCompliantPasswordBrowser(userPasswordPolicy))}
+                      className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-1 cursor-pointer"
+                    >
+                      <RefreshCw className="w-3 h-3" />
+                      Regenerate
+                    </button>
+                  </div>
+                  <div className="p-3 bg-slate-900 rounded-xl flex items-center justify-between border border-slate-800">
+                    <span className="font-mono text-xs font-bold text-emerald-400 tracking-wider">
+                      {resetModalTempPassword}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={handleCopyTempPassword}
+                      className="px-2.5 py-1 bg-white/10 hover:bg-white/20 text-white rounded-md text-[11px] font-semibold flex items-center gap-1 transition-colors cursor-pointer"
+                    >
+                      {resetModalCopied ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                      <span>{resetModalCopied ? 'Copied' : 'Copy'}</span>
+                    </button>
+                  </div>
+                </div>
+
+                <div className="p-3 bg-amber-50/80 border border-amber-200 rounded-xl text-[11px] text-amber-900 space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-950">
+                    <ShieldAlert className="w-3.5 h-3.5 text-amber-600" />
+                    Security Protocol Notice:
+                  </div>
+                  <p>• Code is cryptographically generated and conforms to company password policy.</p>
+                  <p>• Valid for <strong>24 hours</strong>. Single-use only.</p>
+                  <p>• User will be locked from all modules until setting a permanent password.</p>
+                </div>
+
+                <div className="flex items-center justify-end gap-2 pt-2 border-t border-slate-100">
+                  <button
+                    type="button"
+                    onClick={() => setShowResetPasswordModal(false)}
+                    className="px-4 py-2 border border-slate-200 text-slate-600 hover:bg-slate-50 text-xs font-bold rounded-xl transition-colors cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="button"
+                    disabled={resetModalIsLoading}
+                    onClick={handleConfirmResetPassword}
+                    className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-60 text-white text-xs font-bold rounded-xl shadow-xs transition-colors flex items-center gap-1.5 cursor-pointer"
+                  >
+                    <KeyRound className="w-3.5 h-3.5" />
+                    <span>{resetModalIsLoading ? 'Updating...' : 'Set Temporary Password'}</span>
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}

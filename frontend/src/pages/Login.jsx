@@ -23,7 +23,8 @@ import {
   HelpCircle,
   X,
   Send,
-  Wrench
+  Wrench,
+  ShieldAlert
 } from 'lucide-react';
 
 const LANGUAGES = [
@@ -271,6 +272,17 @@ export function Login() {
   const [forcePassSuccess, setForcePassSuccess] = useState(false);
   const [forcePassPolicy, setForcePassPolicy] = useState(DEFAULT_FRONTEND_POLICY);
   const [isForcePassValid, setIsForcePassValid] = useState(false);
+  const [loginCompanyPolicy, setLoginCompanyPolicy] = useState(DEFAULT_FRONTEND_POLICY);
+
+  useEffect(() => {
+    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+    fetch(`${apiBase}/api/v1/auth/password-policy`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.policy) setLoginCompanyPolicy(data.policy);
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     if (showForcePassModal && forcePassUser) {
@@ -846,33 +858,61 @@ export function Login() {
               </div>
             </div>
 
-            {resetSuccess ? (
-              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-semibold flex items-center gap-2">
-                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                Password recovery instructions have been sent to your email.
-              </div>
-            ) : (
-              <form onSubmit={handleForgotSubmit} className="space-y-4">
-                <div>
-                  <label className="text-xs font-bold text-slate-700 block mb-1">
-                    Organizational Email or Username
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={resetEmail}
-                    onChange={(e) => setResetEmail(e.target.value)}
-                    placeholder="name@organization.com"
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15"
-                  />
+            {loginCompanyPolicy.emailEnabled ? (
+              resetSuccess ? (
+                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                  Password recovery instructions / OTP have been sent to your email.
                 </div>
+              ) : (
+                <form onSubmit={handleForgotSubmit} className="space-y-4">
+                  <div>
+                    <label className="text-xs font-bold text-slate-700 block mb-1">
+                      Organizational Email or Username
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      value={resetEmail}
+                      onChange={(e) => setResetEmail(e.target.value)}
+                      placeholder="name@organization.com"
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15"
+                    />
+                  </div>
+                  <button
+                    type="submit"
+                    className="w-full bg-[#6C2BD9] text-white font-bold text-xs py-3 rounded-xl shadow-md hover:bg-[#5b21b6] transition-all cursor-pointer"
+                  >
+                    Send Recovery Link
+                  </button>
+                </form>
+              )
+            ) : (
+              <div className="space-y-4">
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-amber-900 text-xs space-y-2">
+                  <div className="flex items-center gap-2 font-bold text-amber-950">
+                    <ShieldAlert className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Self-Service Email Recovery Disabled</span>
+                  </div>
+                  <p className="leading-relaxed text-amber-800">
+                    Email recovery is disabled for your organization. To recover access, please contact your system administrator to receive a secure one-time temporary password from User Management.
+                  </p>
+                </div>
+
+                <div className="p-3.5 bg-slate-50 border border-slate-200 rounded-2xl text-xs space-y-1">
+                  <div className="font-bold text-slate-800">System Administrator Contact:</div>
+                  <div className="text-slate-600 font-mono text-[11px]">Email: support@infotatwaa.com</div>
+                  <div className="text-slate-600 font-mono text-[11px]">Phone: +1 (800) 360-ASSET</div>
+                </div>
+
                 <button
-                  type="submit"
-                  className="w-full bg-[#6C2BD9] text-white font-bold text-xs py-3 rounded-xl shadow-md hover:bg-[#5b21b6] transition-all"
+                  type="button"
+                  onClick={() => setShowForgotModal(false)}
+                  className="w-full bg-[#6C2BD9] text-white font-bold text-xs py-3 rounded-xl shadow-md hover:bg-[#5b21b6] transition-all cursor-pointer"
                 >
-                  Send Recovery Link
+                  Back to Sign In
                 </button>
-              </form>
+              </div>
             )}
           </div>
         </div>
