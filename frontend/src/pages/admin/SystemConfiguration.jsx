@@ -599,19 +599,6 @@ export function SystemConfiguration() {
     }
   };
 
-  const dynamicRegexPreview = useMemo(() => {
-    const min = Math.max(Number(passwordPolicy.minLength) || 8, 4);
-    const max = passwordPolicy.maxLength ? Number(passwordPolicy.maxLength) : '';
-    let lookaheads = '';
-    if (passwordPolicy.requireUppercase) lookaheads += '(?=.*[A-Z])';
-    if (passwordPolicy.requireLowercase) lookaheads += '(?=.*[a-z])';
-    if (passwordPolicy.requireNumber) lookaheads += '(?=.*\\d)';
-    if (passwordPolicy.requireSpecialChar) lookaheads += '(?=.*[!@#$%^&*])';
-    if (passwordPolicy.preventSpaces) lookaheads += '(?!.*\\s)';
-    const lengthRange = max ? `{${min},${max}}` : `{${min},}`;
-    return `^${lookaheads}.${lengthRange}$`;
-  }, [passwordPolicy]);
-
   const handleGenerateSamplePassword = () => {
     const pass = generateCompliantPasswordBrowser(passwordPolicy);
     setSimPassword(pass);
@@ -2361,41 +2348,8 @@ export function SystemConfiguration() {
                 </div>
               </div>
 
-              {/* Right Column: Dynamic Regex & Interactive Tester (5 Cols) */}
+              {/* Right Column: Interactive Tester (5 Cols) */}
               <div className="lg:col-span-5 space-y-4">
-                {/* Dynamic Regex Preview Card */}
-                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3">
-                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
-                    <div className="flex items-center gap-2">
-                      <Code className="w-4 h-4 text-[#6C2BD9]" />
-                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Dynamic Regex Generator</h3>
-                    </div>
-                    <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-md border border-purple-200">
-                      Auto-Generated
-                    </span>
-                  </div>
-
-                  <p className="text-xs text-slate-500 leading-relaxed">
-                    The backend converts your active policy checkboxes into a strict, secure regular expression automatically:
-                  </p>
-
-                  <div className="p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-lg break-all select-all border border-slate-800 shadow-inner">
-                    {dynamicRegexPreview}
-                  </div>
-
-                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 space-y-1">
-                    <div className="font-semibold text-slate-700">How validation works:</div>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">
-                      1. Stored in database per company (<span className="font-mono text-slate-700">company_password_policies</span>).
-                    </p>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">
-                      2. Dynamically evaluated by backend APIs during user creation and password changes.
-                    </p>
-                    <p className="text-[10px] text-slate-500 leading-relaxed">
-                      3. Never silences or invalidates past passwords; strictly applied to future creations/updates.
-                    </p>
-                  </div>
-                </div>
 
                 {/* Interactive Simulator / Live Policy Tester Card */}
                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3">
