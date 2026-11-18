@@ -339,6 +339,7 @@ export async function savePolicyForCompany(companyId, data) {
   return {
     ...policyObject,
     isDefault: !key,
+    persistedToDatabase: isDbConnected(),
     regexPattern: buildPasswordRegex(policyObject)
   };
 }

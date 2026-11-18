@@ -228,7 +228,12 @@ export async function login(req, res, next) {
           } catch (ignore) {}
 
           const token = jwt.sign(
-            { id: user.id, username: user.username, role: user.role ? user.role.code : 'USER' },
+            {
+              id: user.id,
+              username: user.username,
+              role: user.role ? user.role.code : 'USER',
+              companyId: user.companyId || (user.company ? user.company.id : null)
+            },
             config.jwt.secret,
             { expiresIn: config.jwt.accessExpiry || '24h' }
           );
@@ -287,7 +292,12 @@ export async function login(req, res, next) {
     user.lastLogin = new Date();
 
     const token = jwt.sign(
-      { id: user.id, username: user.username, role: user.role ? user.role.code : 'SYS_ADMIN' },
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role ? user.role.code : 'SYS_ADMIN',
+        companyId: user.companyId || (user.company ? user.company.id : null)
+      },
       config.jwt.secret,
       { expiresIn: config.jwt.accessExpiry || '24h' }
     );
@@ -709,30 +719,28 @@ export async function changePassword(req, res, next) {
     if (isSqlServerConnected) {
       try {
         const user = await prisma.user.findUnique({ where: { id: userId } });
-        if (!user) {
-          return res.status(404).json({ success: false, message: 'User not found' });
-        }
-
-        if (oldPassword && user.passwordHash) {
-          const isMatch = await bcrypt.compare(oldPassword, user.passwordHash).catch(() => false);
-          if (!isMatch && oldPassword !== 'Password@123' && oldPassword !== 'Admin@123' && oldPassword !== 'admin') {
-            return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+        if (user) {
+          if (oldPassword && user.passwordHash) {
+            const isMatch = await bcrypt.compare(oldPassword, user.passwordHash).catch(() => false);
+            if (!isMatch && oldPassword !== 'Password@123' && oldPassword !== 'Admin@123' && oldPassword !== 'admin') {
+              return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+            }
           }
+
+          const passwordHash = await bcrypt.hash(newPassword, 10);
+          await prisma.user.update({
+            where: { id: userId },
+            data: {
+              passwordHash,
+              forcePasswordChange: false
+            }
+          });
+
+          return res.json({
+            success: true,
+            message: 'Password updated successfully! Welcome to Asset 360.'
+          });
         }
-
-        const passwordHash = await bcrypt.hash(newPassword, 10);
-        await prisma.user.update({
-          where: { id: userId },
-          data: {
-            passwordHash,
-            forcePasswordChange: false
-          }
-        });
-
-        return res.json({
-          success: true,
-          message: 'Password updated successfully! Welcome to Asset 360.'
-        });
       } catch (dbErr) {
         console.warn('Prisma changePassword error:', dbErr.message);
       }
@@ -740,12 +748,18 @@ export async function changePassword(req, res, next) {
 
     const inMemUser = FALLBACK_USERS.find(u => u.id === userId || u.username === req.user?.username);
     if (inMemUser) {
+      if (oldPassword && inMemUser.passwordHash) {
+        const isMatch = await bcrypt.compare(oldPassword, inMemUser.passwordHash).catch(() => false);
+        if (!isMatch && oldPassword !== 'Password@123' && oldPassword !== 'Admin@123' && oldPassword !== 'admin') {
+          return res.status(400).json({ success: false, message: 'Current password is incorrect' });
+        }
+      }
       inMemUser.passwordHash = await bcrypt.hash(newPassword, 10);
       inMemUser.forcePasswordChange = false;
       return res.json({ success: true, message: 'Password updated successfully! Welcome to Asset 360.' });
     }
 
-    res.json({ success: true, message: 'Password updated successfully!' });
+    return res.status(404).json({ success: false, message: 'User not found' });
   } catch (err) {
     next(err);
   }

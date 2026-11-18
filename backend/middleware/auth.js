@@ -9,11 +9,7 @@ export async function authenticateToken(req, res, next) {
     let token = authHeader && authHeader.split(' ')[1];
 
     if (!token) {
-      if (process.env.NODE_ENV !== 'production') {
-        token = 'demo-admin-token';
-      } else {
-        return res.status(401).json({ success: false, message: 'Authentication token required' });
-      }
+      return res.status(401).json({ success: false, message: 'Authentication token required' });
     }
 
     let decoded;
@@ -22,7 +18,8 @@ export async function authenticateToken(req, res, next) {
         id: 'usr-admin-01',
         username: 'admin',
         fullName: 'John Doe',
-        role: { code: 'SYS_ADMIN', name: 'System Administrator' }
+        role: { code: 'SYS_ADMIN', name: 'System Administrator' },
+        companyId: null
       };
     } else {
       decoded = jwt.verify(token, config.jwt.secret);
@@ -39,7 +36,8 @@ export async function authenticateToken(req, res, next) {
           },
           include: {
             role: true,
-            dataScopes: true
+            dataScopes: true,
+            company: true
           }
         });
       } catch (e) {
@@ -53,8 +51,13 @@ export async function authenticateToken(req, res, next) {
         username: decoded.username || 'admin',
         fullName: decoded.fullName || 'System Administrator',
         role: decoded.role || { code: 'SYS_ADMIN', name: 'System Administrator' },
+        companyId: decoded.companyId || null,
         active: true
       };
+    } else {
+      if (!user.companyId && decoded.companyId) {
+        user.companyId = decoded.companyId;
+      }
     }
 
     if (!user.active) {

@@ -12,7 +12,7 @@ export function isUserSysAdmin(user) {
   if (!user) return false;
   const role = user.role || user.roleId;
   const roleCode = typeof role === 'string' ? role : (role?.code || role?.name);
-  return roleCode === 'SYS_ADMIN' || roleCode === 'System Administrator' || role?.isSystem === true || !user.companyId;
+  return roleCode === 'SYS_ADMIN' || roleCode === 'System Administrator' || role?.isSystem === true;
 }
 
 export async function getPasswordPolicy(req, res) {
@@ -101,7 +101,10 @@ export async function savePasswordPolicy(req, res) {
       success: true,
       policy: saved,
       regexPattern: saved.regexPattern,
-      message: 'Password Policy Configuration saved successfully.'
+      persistedToDatabase: saved.persistedToDatabase,
+      message: saved.persistedToDatabase
+        ? 'Password Policy Configuration saved successfully to database.'
+        : 'Password Policy Configuration saved to session memory (Database offline).'
     });
   } catch (err) {
     logger.error('Error in savePasswordPolicy:', err);
