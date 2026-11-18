@@ -41,7 +41,8 @@ import {
   Key,
   Eye,
   EyeOff,
-  Code
+  Code,
+  Mail
 } from 'lucide-react';
 import { api } from '../../services/api';
 import { useAuth } from '../../context/AuthContext';
