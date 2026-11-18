@@ -39,7 +39,7 @@ import {
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
 import { MODULE_STRUCTURE, MASTER_DATA_ENTITIES } from './RolesPermissions';
-import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY } from '../../components/common/PasswordRequirementsTracker';
+import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY, generateCompliantPasswordBrowser } from '../../components/common/PasswordRequirementsTracker';
 
 export const INITIAL_USERS = [];
 
@@ -504,27 +504,7 @@ export function UserManagement() {
   };
 
   const handleGeneratePassword = () => {
-    const min = Math.max(Number(userPasswordPolicy.minLength) || 8, 8);
-    const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lowers = 'abcdefghjkmnpqrstuvwxyz';
-    const numbers = '23456789';
-    const specials = '!@#$%&*';
-    let chars = '';
-    const req = [];
-    if (userPasswordPolicy.requireUppercase) { chars += uppers; req.push(uppers[Math.floor(Math.random() * uppers.length)]); }
-    if (userPasswordPolicy.requireLowercase) { chars += lowers; req.push(lowers[Math.floor(Math.random() * lowers.length)]); }
-    if (userPasswordPolicy.requireNumber) { chars += numbers; req.push(numbers[Math.floor(Math.random() * numbers.length)]); }
-    if (userPasswordPolicy.requireSpecialChar) { chars += specials; req.push(specials[Math.floor(Math.random() * specials.length)]); }
-    if (!chars) chars = uppers + lowers + numbers;
-    const targetLen = Math.max(min, req.length + 4);
-    while (req.length < targetLen) {
-      req.push(chars[Math.floor(Math.random() * chars.length)]);
-    }
-    for (let i = req.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [req[i], req[j]] = [req[j], req[i]];
-    }
-    const pass = req.join('');
+    const pass = generateCompliantPasswordBrowser(userPasswordPolicy);
     setUserFormData((prev) => ({ ...prev, password: pass }));
   };
 
@@ -744,7 +724,7 @@ export function UserManagement() {
     } catch (err) {
       // Local fallback
     }
-    const tempPass = 'Pass#' + Math.floor(100000 + Math.random() * 900000);
+    const tempPass = generateCompliantPasswordBrowser(userPasswordPolicy);
     setActionSuccessMsg(`Password reset temporary code for ${user.name}: ${tempPass}`);
     setActiveDropdownId(null);
   };

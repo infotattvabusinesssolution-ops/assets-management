@@ -3,7 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { config } from '../../config/index.js';
-import { getPolicyForCompany, validatePasswordAgainstPolicy } from '../admin/passwordPolicy.service.js';
+import { getPolicyForCompany, validatePasswordAgainstPolicy, generateCompliantPassword } from '../admin/passwordPolicy.service.js';
 
 // Helper to safely format and parse role permissions
 export function formatUserRole(role) {
@@ -425,6 +425,17 @@ export async function createUser(req, res, next) {
       return res.status(400).json({ success: false, message: 'Required fields missing: username, email, password, fullName, roleId' });
     }
 
+    // Dynamic Company Password Policy Validation
+    const policy = await getPolicyForCompany(companyId || null);
+    const validation = validatePasswordAgainstPolicy(password, policy);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: `Password does not meet company requirements: ${validation.errors.join(' ')}`,
+        errors: validation.errors
+      });
+    }
+
     const cleanUsername = username.trim();
     const cleanEmail = email.trim().toLowerCase();
 
@@ -611,20 +622,42 @@ export async function updateUser(req, res, next) {
 export async function resetUserPassword(req, res, next) {
   try {
     const { id } = req.params;
-    const { newPassword } = req.body;
+    let targetUser = null;
 
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long' });
+    if (isSqlServerConnected) {
+      targetUser = await prisma.user.findUnique({ where: { id } }).catch(() => null);
     }
+    if (!targetUser) {
+      targetUser = FALLBACK_USERS.find(u => u.id === id);
+    }
+    if (!targetUser) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    const policy = await getPolicyForCompany(targetUser.companyId || null);
+    let effectivePassword = (req.body.newPassword || req.body.password || req.body.tempPassword || '').trim();
+
+    if (effectivePassword) {
+      const validation = validatePasswordAgainstPolicy(effectivePassword, policy);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          message: `Password does not meet company requirements: ${validation.errors.join(' ')}`,
+          errors: validation.errors
+        });
+      }
+    } else {
+      effectivePassword = generateCompliantPassword(policy);
+    }
+
+    const passwordHash = await bcrypt.hash(effectivePassword, 10);
 
     if (isSqlServerConnected) {
       try {
-        const passwordHash = await bcrypt.hash(newPassword, 10);
-        const user = await prisma.user.update({
+        await prisma.user.update({
           where: { id },
           data: { passwordHash, forcePasswordChange: true }
         });
-        return res.json({ success: true, message: `Password for ${user.username} has been reset successfully. User must change password on next login.` });
       } catch (dbErr) {
         console.warn('Prisma resetUserPassword error:', dbErr.message);
       }
@@ -632,12 +665,16 @@ export async function resetUserPassword(req, res, next) {
 
     const inMemUser = FALLBACK_USERS.find(u => u.id === id);
     if (inMemUser) {
-      inMemUser.passwordHash = await bcrypt.hash(newPassword, 10);
+      inMemUser.passwordHash = passwordHash;
       inMemUser.forcePasswordChange = true;
-      return res.json({ success: true, message: `Password for ${inMemUser.username} has been reset successfully. User must change password on next login.` });
     }
 
-    return res.status(404).json({ success: false, message: 'User not found' });
+    return res.json({
+      success: true,
+      message: `Password for ${targetUser.username || targetUser.fullName || 'user'} has been reset successfully. User must change password on next login.`,
+      tempPassword: effectivePassword,
+      instructions: 'A temporary password has been set. The user will be prompted to change it upon next login.'
+    });
   } catch (err) {
     next(err);
   }

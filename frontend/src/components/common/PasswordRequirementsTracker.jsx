@@ -11,6 +11,66 @@ export const DEFAULT_FRONTEND_POLICY = {
   preventSpaces: true
 };
 
+/**
+ * Cryptographically secure compliant password generator for the browser
+ */
+export function generateCompliantPasswordBrowser(policy = DEFAULT_FRONTEND_POLICY) {
+  const min = Math.max(Number(policy.minLength) || 8, 8);
+  const max = policy.maxLength ? Math.max(Number(policy.maxLength), min) : 32;
+  const targetLength = Math.min(Math.max(min, 10), max);
+
+  const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+  const lowers = 'abcdefghjkmnpqrstuvwxyz';
+  const numbers = '23456789';
+  const specials = '!@#$%&*';
+
+  const getRandomInt = (maxVal) => {
+    if (typeof window !== 'undefined' && window.crypto && window.crypto.getRandomValues) {
+      const arr = new Uint32Array(1);
+      window.crypto.getRandomValues(arr);
+      return arr[0] % maxVal;
+    }
+    return Math.floor(Math.random() * maxVal);
+  };
+
+  let chars = '';
+  const requiredChars = [];
+
+  if (policy.requireUppercase) {
+    chars += uppers;
+    requiredChars.push(uppers[getRandomInt(uppers.length)]);
+  }
+  if (policy.requireLowercase) {
+    chars += lowers;
+    requiredChars.push(lowers[getRandomInt(lowers.length)]);
+  }
+  if (policy.requireNumber) {
+    chars += numbers;
+    requiredChars.push(numbers[getRandomInt(numbers.length)]);
+  }
+  if (policy.requireSpecialChar) {
+    chars += specials;
+    requiredChars.push(specials[getRandomInt(specials.length)]);
+  }
+
+  if (chars.length === 0) {
+    chars = uppers + lowers + numbers;
+  }
+
+  const remaining = targetLength - requiredChars.length;
+  for (let i = 0; i < remaining; i++) {
+    requiredChars.push(chars[getRandomInt(chars.length)]);
+  }
+
+  // Fisher-Yates CSPRNG shuffle
+  for (let i = requiredChars.length - 1; i > 0; i--) {
+    const j = getRandomInt(i + 1);
+    [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
+  }
+
+  return requiredChars.join('');
+}
+
 export function PasswordRequirementsTracker({
   password = '',
   policy = DEFAULT_FRONTEND_POLICY,

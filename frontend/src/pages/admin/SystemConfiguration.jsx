@@ -44,7 +44,8 @@ import {
   Code
 } from 'lucide-react';
 import { api } from '../../services/api';
-import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY } from '../../components/common/PasswordRequirementsTracker';
+import { useAuth } from '../../context/AuthContext';
+import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY, generateCompliantPasswordBrowser } from '../../components/common/PasswordRequirementsTracker';
 
 // =========================================================================
 // 1. PRE-SEEDED 24 SYSTEM CONFIGURATION PARAMETERS (Screenshot 1)
@@ -378,6 +379,14 @@ const INITIAL_LOOKUPS = [
 export function SystemConfiguration() {
   const navigate = useNavigate();
   const [searchParams, setSearchParams] = useSearchParams();
+  const { user } = useAuth();
+
+  const isSysAdmin = useMemo(() => {
+    if (!user) return true;
+    const role = user.role || user.roleId;
+    const roleCode = typeof role === 'string' ? role : (role?.code || role?.name);
+    return roleCode === 'SYS_ADMIN' || roleCode === 'System Administrator' || role?.isSystem === true || !user.companyId;
+  }, [user]);
 
   // 7 Top Tabs
   // 'General Settings' | 'Asset Settings' | 'Inventory Settings' | 'Maintenance Settings' | 'Workflow & Approvals' | 'Numbering & Codes' | 'Lookups & Lists'
@@ -536,7 +545,11 @@ export function SystemConfiguration() {
         if (compRes.status === 'fulfilled' && compRes.value?.companies) {
           setPwCompaniesList(compRes.value.companies);
         }
-        if (polRes.status === 'fulfilled' && polRes.value?.policy) {
+        if (!isSysAdmin && user?.companyId) {
+          setSelectedPwCompany(user.companyId);
+          const p = await api.get(`/admin/config/password-policy?companyId=${encodeURIComponent(user.companyId)}`).catch(() => null);
+          if (p?.policy) setPasswordPolicy(p.policy);
+        } else if (polRes.status === 'fulfilled' && polRes.value?.policy) {
           setPasswordPolicy(polRes.value.policy);
         }
       } catch (err) {
@@ -600,27 +613,8 @@ export function SystemConfiguration() {
   }, [passwordPolicy]);
 
   const handleGenerateSamplePassword = () => {
-    const min = Math.max(Number(passwordPolicy.minLength) || 8, 8);
-    const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
-    const lowers = 'abcdefghjkmnpqrstuvwxyz';
-    const numbers = '23456789';
-    const specials = '!@#$%&*';
-    let chars = '';
-    const req = [];
-    if (passwordPolicy.requireUppercase) { chars += uppers; req.push(uppers[Math.floor(Math.random() * uppers.length)]); }
-    if (passwordPolicy.requireLowercase) { chars += lowers; req.push(lowers[Math.floor(Math.random() * lowers.length)]); }
-    if (passwordPolicy.requireNumber) { chars += numbers; req.push(numbers[Math.floor(Math.random() * numbers.length)]); }
-    if (passwordPolicy.requireSpecialChar) { chars += specials; req.push(specials[Math.floor(Math.random() * specials.length)]); }
-    if (!chars) chars = uppers + lowers + numbers;
-    const targetLen = Math.max(min, req.length + 4);
-    while (req.length < targetLen) {
-      req.push(chars[Math.floor(Math.random() * chars.length)]);
-    }
-    for (let i = req.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [req[i], req[j]] = [req[j], req[i]];
-    }
-    setSimPassword(req.join(''));
+    const pass = generateCompliantPasswordBrowser(passwordPolicy);
+    setSimPassword(pass);
   };
 
   // Top 8 Tab Items
@@ -2177,15 +2171,22 @@ export function SystemConfiguration() {
                     </label>
                     <select
                       value={selectedPwCompany}
+                      disabled={!isSysAdmin}
                       onChange={(e) => handleSelectPwCompany(e.target.value)}
-                      className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium bg-white text-slate-800 focus:outline-none focus:border-[#6C2BD9] shadow-2xs"
+                      className={`px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium bg-white text-slate-800 focus:outline-none focus:border-[#6C2BD9] shadow-2xs ${
+                        !isSysAdmin ? 'bg-slate-100 cursor-not-allowed text-slate-600' : ''
+                      }`}
                     >
-                      <option value="DEFAULT">All Companies (System Global Default)</option>
-                      {pwCompaniesList.map((c) => (
-                        <option key={c.id || c.code} value={c.id || c.code}>
-                          {c.name} {c.code ? `(${c.code})` : ''}
-                        </option>
-                      ))}
+                      {isSysAdmin && (
+                        <option value="DEFAULT">All Companies (System Global Default)</option>
+                      )}
+                      {pwCompaniesList
+                        .filter(c => isSysAdmin || c.id === user?.companyId || c.code === user?.companyId)
+                        .map((c) => (
+                          <option key={c.id || c.code} value={c.id || c.code}>
+                            {c.name} {c.code ? `(${c.code})` : ''}
+                          </option>
+                        ))}
                     </select>
                   </div>
 

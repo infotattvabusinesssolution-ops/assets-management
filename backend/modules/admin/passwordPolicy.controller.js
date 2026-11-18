@@ -8,9 +8,29 @@ import {
 } from './passwordPolicy.service.js';
 import { logger } from '../../config/logger.js';
 
+export function isUserSysAdmin(user) {
+  if (!user) return false;
+  const role = user.role || user.roleId;
+  const roleCode = typeof role === 'string' ? role : (role?.code || role?.name);
+  return roleCode === 'SYS_ADMIN' || roleCode === 'System Administrator' || role?.isSystem === true || !user.companyId;
+}
+
 export async function getPasswordPolicy(req, res) {
   try {
-    const companyId = req.query.companyId || req.user?.companyId || null;
+    const user = req.user;
+    let companyId = req.query.companyId || user?.companyId || null;
+
+    // Multi-tenant check: Company Admins cannot peek at other companies' policies
+    if (user && !isUserSysAdmin(user)) {
+      if (req.query.companyId && user.companyId && req.query.companyId !== user.companyId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: You are not authorized to view another company password policy.'
+        });
+      }
+      companyId = user.companyId;
+    }
+
     const policy = await getPolicyForCompany(companyId);
     const regexPattern = buildPasswordRegex(policy);
 
@@ -28,6 +48,7 @@ export async function getPasswordPolicy(req, res) {
 
 export async function savePasswordPolicy(req, res) {
   try {
+    const user = req.user;
     const {
       companyId,
       minLength,
@@ -38,6 +59,22 @@ export async function savePasswordPolicy(req, res) {
       requireSpecialChar,
       preventSpaces
     } = req.body;
+
+    // Multi-tenant security check
+    if (user && !isUserSysAdmin(user)) {
+      if (!companyId || companyId === 'DEFAULT' || companyId === '__DEFAULT__') {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: Only System Administrators can configure the global default password policy.'
+        });
+      }
+      if (user.companyId && companyId !== user.companyId) {
+        return res.status(403).json({
+          success: false,
+          message: 'Access Denied: You are only authorized to configure password policies for your own company.'
+        });
+      }
+    }
 
     // Minimum sanity checks
     const min = Number(minLength) || 8;
@@ -68,13 +105,18 @@ export async function savePasswordPolicy(req, res) {
     });
   } catch (err) {
     logger.error('Error in savePasswordPolicy:', err);
-    return res.status(500).json({ success: false, message: 'Failed to save password policy' });
+    return res.status(500).json({ success: false, message: err.message || 'Failed to save password policy' });
   }
 }
 
 export async function getAllPasswordPolicies(req, res) {
   try {
     const policies = await getAllCompanyPolicies();
+    if (req.user && !isUserSysAdmin(req.user)) {
+      const userCompId = req.user.companyId;
+      const filtered = policies.filter(p => !p.companyId || p.companyId === userCompId);
+      return res.json({ success: true, policies: filtered });
+    }
     return res.json({ success: true, policies });
   } catch (err) {
     logger.error('Error in getAllPasswordPolicies:', err);

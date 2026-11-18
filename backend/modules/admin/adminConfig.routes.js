@@ -25,6 +25,7 @@ import {
   generateCompliantPasswordEndpoint,
   testPasswordSimulation
 } from './passwordPolicy.controller.js';
+import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
 
@@ -72,12 +73,12 @@ router.post('/lookups', createLookup);
 router.patch('/lookups/:id/toggle', toggleLookupStatus);
 
 // =========================================================================
-// 5. PASSWORD POLICY CONFIGURATION
+// 5. PASSWORD POLICY CONFIGURATION (Authenticated Admin Only)
 // =========================================================================
-router.get('/password-policy', getPasswordPolicy);
-router.post('/password-policy', savePasswordPolicy);
-router.get('/password-policies', getAllPasswordPolicies);
-router.post('/password-policy/generate', generateCompliantPasswordEndpoint);
-router.post('/password-policy/validate', testPasswordSimulation);
+router.get('/password-policy', authenticateToken, getPasswordPolicy);
+router.post('/password-policy', authenticateToken, savePasswordPolicy);
+router.get('/password-policies', authenticateToken, getAllPasswordPolicies);
+router.post('/password-policy/generate', authenticateToken, generateCompliantPasswordEndpoint);
+router.post('/password-policy/validate', authenticateToken, testPasswordSimulation);
 
 export default router;

@@ -2,7 +2,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { generateAutoCode } from '../master-data/masterData.controller.js';
-import { getPolicyForCompany, validatePasswordAgainstPolicy } from './passwordPolicy.service.js';
+import { getPolicyForCompany, validatePasswordAgainstPolicy, generateCompliantPassword } from './passwordPolicy.service.js';
 
 // ==========================================
 // SEED DATA PRE-LOADED WITH SCREENSHOT MATCH
@@ -605,11 +605,60 @@ export async function resetAdminUserPassword(req, res) {
   try {
     const { id } = req.params;
     let user = memoryUsers.find(u => u.id === id);
-    const tempPassword = `Pass@${Math.floor(100000 + Math.random() * 900000)}`;
+    let dbUser = null;
+    if (prisma && prisma.user) {
+      dbUser = await prisma.user.findUnique({ where: { id } }).catch(() => null);
+    }
+    const target = dbUser || user;
+    if (!target) {
+      return res.status(404).json({ success: false, error: 'User not found' });
+    }
+
+    let companyId = target.companyId || null;
+    if (!companyId && target.company) {
+      const comp = await prisma.company.findFirst({
+        where: { OR: [{ id: target.company }, { name: target.company }, { code: target.company }] }
+      }).catch(() => null);
+      if (comp) companyId = comp.id;
+    }
+    const policy = await getPolicyForCompany(companyId);
+
+    let effectivePassword = (req.body?.password || req.body?.tempPassword || req.body?.newPassword || '').trim();
+
+    if (effectivePassword) {
+      const validation = validatePasswordAgainstPolicy(effectivePassword, policy);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          error: `Password does not meet company requirements: ${validation.errors.join(' ')}`,
+          errors: validation.errors
+        });
+      }
+    } else {
+      effectivePassword = generateCompliantPassword(policy);
+    }
+
+    const passwordHash = await bcrypt.hash(effectivePassword, 10);
+
+    if (prisma && prisma.user) {
+      await prisma.user.update({
+        where: { id },
+        data: {
+          passwordHash,
+          forcePasswordChange: true
+        }
+      }).catch(() => null);
+    }
+
+    if (user) {
+      user.passwordHash = passwordHash;
+      user.forcePasswordChange = true;
+    }
+
     res.json({
       success: true,
-      message: `Password reset successfully for ${user?.name || 'User'}`,
-      tempPassword,
+      message: `Password reset successfully for ${target.name || target.fullName || target.username || 'User'}`,
+      tempPassword: effectivePassword,
       instructions: 'A temporary password has been generated. The user will be prompted to change it upon next login.'
     });
   } catch (err) {

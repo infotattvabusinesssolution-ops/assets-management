@@ -1,3 +1,4 @@
+import crypto from 'crypto';
 import { prisma } from '../../config/prisma.js';
 import { isDbConnected } from '../../config/db.js';
 import { logger } from '../../config/logger.js';
@@ -147,52 +148,66 @@ export function validatePasswordAgainstPolicy(password, policy = DEFAULT_PASSWOR
 }
 
 /**
- * Generates a random password that strictly complies with the policy requirements
+ * Generates a random password using cryptographically secure random generation (CSPRNG)
+ * that strictly complies with every active policy requirement.
  */
 export function generateCompliantPassword(policy = DEFAULT_PASSWORD_POLICY) {
   const min = Math.max(Number(policy.minLength) || 8, 8);
+  const max = policy.maxLength ? Math.max(Number(policy.maxLength), min) : 32;
+  const targetLength = Math.min(Math.max(min, 10), max);
+
   const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
   const lowers = 'abcdefghjkmnpqrstuvwxyz';
   const numbers = '23456789';
   const specials = '!@#$%&*';
+
+  const getSecureRandomInt = (maxVal) => {
+    return crypto.randomInt(0, maxVal);
+  };
 
   let chars = '';
   const requiredChars = [];
 
   if (policy.requireUppercase) {
     chars += uppers;
-    requiredChars.push(uppers[Math.floor(Math.random() * uppers.length)]);
+    requiredChars.push(uppers[getSecureRandomInt(uppers.length)]);
   }
   if (policy.requireLowercase) {
     chars += lowers;
-    requiredChars.push(lowers[Math.floor(Math.random() * lowers.length)]);
+    requiredChars.push(lowers[getSecureRandomInt(lowers.length)]);
   }
   if (policy.requireNumber) {
     chars += numbers;
-    requiredChars.push(numbers[Math.floor(Math.random() * numbers.length)]);
+    requiredChars.push(numbers[getSecureRandomInt(numbers.length)]);
   }
   if (policy.requireSpecialChar) {
     chars += specials;
-    requiredChars.push(specials[Math.floor(Math.random() * specials.length)]);
+    requiredChars.push(specials[getSecureRandomInt(specials.length)]);
   }
 
   if (chars.length === 0) {
     chars = uppers + lowers + numbers;
   }
 
-  const targetLength = Math.max(min, requiredChars.length + 4);
   const remaining = targetLength - requiredChars.length;
   for (let i = 0; i < remaining; i++) {
-    requiredChars.push(chars[Math.floor(Math.random() * chars.length)]);
+    requiredChars.push(chars[getSecureRandomInt(chars.length)]);
   }
 
-  // Shuffle Fisher-Yates
+  // Fisher-Yates CSPRNG shuffle
   for (let i = requiredChars.length - 1; i > 0; i--) {
-    const j = Math.floor(Math.random() * (i + 1));
+    const j = getSecureRandomInt(i + 1);
     [requiredChars[i], requiredChars[j]] = [requiredChars[j], requiredChars[i]];
   }
 
-  return requiredChars.join('');
+  const generated = requiredChars.join('');
+  // Self-verification safety check
+  const check = validatePasswordAgainstPolicy(generated, policy);
+  if (!check.isValid) {
+    return generateCompliantPassword(policy);
+  }
+
+  return generated;
 }
 
 /**
@@ -210,7 +225,10 @@ export async function getPolicyForCompany(companyId = null) {
           WHERE company_id = '${companyId.replace(/'/g, "''")}'
         `);
         if (rows && rows.length > 0) {
-          return mapDbRowToPolicy(rows[0]);
+          const mapped = mapDbRowToPolicy(rows[0]);
+          mapped.isDefault = false;
+          memoryPasswordPolicies.set(companyId, mapped);
+          return mapped;
         }
       }
 
@@ -220,7 +238,10 @@ export async function getPolicyForCompany(companyId = null) {
         WHERE company_id IS NULL OR company_id = 'DEFAULT' OR company_id = '__DEFAULT__'
       `);
       if (defaultRows && defaultRows.length > 0) {
-        return mapDbRowToPolicy(defaultRows[0]);
+        const mapped = mapDbRowToPolicy(defaultRows[0]);
+        mapped.isDefault = !companyId;
+        memoryPasswordPolicies.set('__DEFAULT__', mapped);
+        return mapped;
       }
     } catch (err) {
       logger.warn('Failed querying DB for password policy, using memory store: ' + err.message);
@@ -229,13 +250,15 @@ export async function getPolicyForCompany(companyId = null) {
 
   // Fallback to memory store
   if (companyId && memoryPasswordPolicies.has(companyId)) {
-    return memoryPasswordPolicies.get(companyId);
+    const p = memoryPasswordPolicies.get(companyId);
+    return { ...p, isDefault: false };
   }
   if (memoryPasswordPolicies.has('__DEFAULT__')) {
-    return memoryPasswordPolicies.get('__DEFAULT__');
+    const p = memoryPasswordPolicies.get('__DEFAULT__');
+    return { ...p, isDefault: true };
   }
 
-  return { ...DEFAULT_PASSWORD_POLICY };
+  return { ...DEFAULT_PASSWORD_POLICY, isDefault: true };
 }
 
 /**
@@ -308,12 +331,14 @@ export async function savePolicyForCompany(companyId, data) {
         `);
       }
     } catch (err) {
-      logger.warn('Failed to persist password policy to DB (saved to memory): ' + err.message);
+      logger.error('Failed to persist password policy to SQL Server: ' + err.message);
+      throw new Error('Database persistence failed: ' + err.message);
     }
   }
 
   return {
     ...policyObject,
+    isDefault: !key,
     regexPattern: buildPasswordRegex(policyObject)
   };
 }

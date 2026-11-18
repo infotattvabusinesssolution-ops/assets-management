@@ -1101,7 +1101,7 @@ export function Login() {
                 <div className="pt-2 flex flex-col gap-2">
                   <button
                     type="submit"
-                    disabled={forcePassSubmitting || !newPassword || newPassword !== confirmPassword || newPassword.length < 6}
+                    disabled={forcePassSubmitting || !newPassword || newPassword !== confirmPassword || !isForcePassValid}
                     className="w-full py-3 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {forcePassSubmitting ? (
