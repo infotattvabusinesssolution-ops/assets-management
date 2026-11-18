@@ -18,6 +18,13 @@ import {
   toggleWorkflowStatus,
   testWorkflowSimulation
 } from './adminConfig.controller.js';
+import {
+  getPasswordPolicy,
+  savePasswordPolicy,
+  getAllPasswordPolicies,
+  generateCompliantPasswordEndpoint,
+  testPasswordSimulation
+} from './passwordPolicy.controller.js';
 
 const router = Router();
 
@@ -63,5 +70,14 @@ router.put('/numbering/:id', updateNumberingScheme);
 router.get('/lookups', getLookups);
 router.post('/lookups', createLookup);
 router.patch('/lookups/:id/toggle', toggleLookupStatus);
+
+// =========================================================================
+// 5. PASSWORD POLICY CONFIGURATION
+// =========================================================================
+router.get('/password-policy', getPasswordPolicy);
+router.post('/password-policy', savePasswordPolicy);
+router.get('/password-policies', getAllPasswordPolicies);
+router.post('/password-policy/generate', generateCompliantPasswordEndpoint);
+router.post('/password-policy/validate', testPasswordSimulation);
 
 export default router;

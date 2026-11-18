@@ -39,6 +39,7 @@ import {
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
 import { MODULE_STRUCTURE, MASTER_DATA_ENTITIES } from './RolesPermissions';
+import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY } from '../../components/common/PasswordRequirementsTracker';
 
 export const INITIAL_USERS = [];
 
@@ -101,6 +102,9 @@ export function UserManagement() {
   const [isAssigningRole, setIsAssigningRole] = useState(false);
   const [showSendEmailModal, setShowSendEmailModal] = useState(false);
   const [actionSuccessMsg, setActionSuccessMsg] = useState('');
+  const [actionErrorMsg, setActionErrorMsg] = useState('');
+  const [userPasswordPolicy, setUserPasswordPolicy] = useState(DEFAULT_FRONTEND_POLICY);
+  const [isUserPassValid, setIsUserPassValid] = useState(true);
 
   // Permissions Modal Filter & View States
   const [permModalSearch, setPermModalSearch] = useState('');
@@ -489,16 +493,43 @@ export function UserManagement() {
     }));
   };
 
+  const fetchPasswordPolicyForUser = async (companyVal) => {
+    try {
+      const query = companyVal ? `?companyId=${encodeURIComponent(companyVal)}` : '';
+      const res = await api.get(`/admin/config/password-policy${query}`).catch(() => null);
+      if (res?.policy) {
+        setUserPasswordPolicy(res.policy);
+      }
+    } catch (_) {}
+  };
+
   const handleGeneratePassword = () => {
-    const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnpqrstuvwxyz23456789!@#$%';
-    let pass = 'Pass#';
-    for (let i = 0; i < 8; i++) {
-      pass += chars.charAt(Math.floor(Math.random() * chars.length));
+    const min = Math.max(Number(userPasswordPolicy.minLength) || 8, 8);
+    const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowers = 'abcdefghjkmnpqrstuvwxyz';
+    const numbers = '23456789';
+    const specials = '!@#$%&*';
+    let chars = '';
+    const req = [];
+    if (userPasswordPolicy.requireUppercase) { chars += uppers; req.push(uppers[Math.floor(Math.random() * uppers.length)]); }
+    if (userPasswordPolicy.requireLowercase) { chars += lowers; req.push(lowers[Math.floor(Math.random() * lowers.length)]); }
+    if (userPasswordPolicy.requireNumber) { chars += numbers; req.push(numbers[Math.floor(Math.random() * numbers.length)]); }
+    if (userPasswordPolicy.requireSpecialChar) { chars += specials; req.push(specials[Math.floor(Math.random() * specials.length)]); }
+    if (!chars) chars = uppers + lowers + numbers;
+    const targetLen = Math.max(min, req.length + 4);
+    while (req.length < targetLen) {
+      req.push(chars[Math.floor(Math.random() * chars.length)]);
     }
+    for (let i = req.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [req[i], req[j]] = [req[j], req[i]];
+    }
+    const pass = req.join('');
     setUserFormData((prev) => ({ ...prev, password: pass }));
   };
 
   const openAddUserModal = () => {
+    fetchPasswordPolicyForUser('');
     setUserFormData({
       name: '',
       username: '',
@@ -812,6 +843,11 @@ export function UserManagement() {
 
   const handleSaveUser = async (e) => {
     e.preventDefault();
+    setActionErrorMsg('');
+    if (userFormData.password && !isUserPassValid) {
+      setActionErrorMsg('Please ensure the entered password satisfies all company password requirements.');
+      return;
+    }
     let savedUser = null;
     try {
       const res = showEditModal
@@ -1512,6 +1548,7 @@ export function UserManagement() {
                               onClick={() => {
                                 setSelectedUser(user);
                                 setUserFormData({ ...user });
+                                fetchPasswordPolicyForUser(user.company);
                                 setEmployeeLookupCode(user.employeeId || '');
                                 setEmployeeLookupStatus(null);
                                 setCustodianLinkedFields({
@@ -2221,7 +2258,23 @@ export function UserManagement() {
                     </label>
                   </div>
                 </div>
+
+                {userFormData.password && (
+                  <PasswordRequirementsTracker
+                    password={userFormData.password}
+                    policy={userPasswordPolicy}
+                    onValidityChange={setIsUserPassValid}
+                    showSummaryBadge={true}
+                  />
+                )}
               </div>
+
+              {actionErrorMsg && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2 animate-in fade-in">
+                  <AlertTriangle className="w-4 h-4 text-rose-500 shrink-0" />
+                  <span>{actionErrorMsg}</span>
+                </div>
+              )}
 
               <div className="flex items-center gap-2 pt-1">
                 <input

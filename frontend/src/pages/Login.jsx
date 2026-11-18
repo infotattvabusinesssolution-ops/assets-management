@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY } from '../components/common/PasswordRequirementsTracker';
 import {
   ShieldCheck,
   Lock,
@@ -268,6 +269,21 @@ export function Login() {
   const [forcePassError, setForcePassError] = useState('');
   const [forcePassSubmitting, setForcePassSubmitting] = useState(false);
   const [forcePassSuccess, setForcePassSuccess] = useState(false);
+  const [forcePassPolicy, setForcePassPolicy] = useState(DEFAULT_FRONTEND_POLICY);
+  const [isForcePassValid, setIsForcePassValid] = useState(false);
+
+  useEffect(() => {
+    if (showForcePassModal && forcePassUser) {
+      const companyId = forcePassUser.companyId || forcePassUser.company || '';
+      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
+      fetch(`${apiBase}/api/v1/auth/password-policy?companyId=${encodeURIComponent(companyId)}`)
+        .then((res) => res.json())
+        .then((data) => {
+          if (data?.policy) setForcePassPolicy(data.policy);
+        })
+        .catch(() => {});
+    }
+  }, [showForcePassModal, forcePassUser]);
 
   const langRef = useRef(null);
 
@@ -376,8 +392,12 @@ export function Login() {
     e.preventDefault();
     setForcePassError('');
 
-    if (!newPassword || newPassword.length < 6) {
-      setForcePassError('New password must be at least 6 characters long.');
+    if (!newPassword) {
+      setForcePassError('Please enter a new password.');
+      return;
+    }
+    if (!isForcePassValid) {
+      setForcePassError('Please ensure your password satisfies all company security requirements.');
       return;
     }
     if (newPassword !== confirmPassword) {
@@ -1033,10 +1053,12 @@ export function Login() {
                       {showNewPass ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                     </button>
                   </div>
-                  <div className="text-[11px] text-slate-400 mt-1 flex items-center gap-1">
-                    <span className={`w-1.5 h-1.5 rounded-full ${newPassword.length >= 6 ? 'bg-emerald-500' : 'bg-slate-300'}`}></span>
-                    Minimum 6 characters
-                  </div>
+                  <PasswordRequirementsTracker
+                    password={newPassword}
+                    policy={forcePassPolicy}
+                    onValidityChange={setIsForcePassValid}
+                    showSummaryBadge={true}
+                  />
                 </div>
 
                 <div>

@@ -3,6 +3,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { config } from '../../config/index.js';
+import { getPolicyForCompany, validatePasswordAgainstPolicy } from '../admin/passwordPolicy.service.js';
 
 // Helper to safely format and parse role permissions
 export function formatUserRole(role) {
@@ -651,8 +652,21 @@ export async function changePassword(req, res, next) {
       return res.status(401).json({ success: false, message: 'Authentication required' });
     }
 
-    if (!newPassword || newPassword.length < 6) {
-      return res.status(400).json({ success: false, message: 'New password must be at least 6 characters long' });
+    if (!newPassword) {
+      return res.status(400).json({ success: false, message: 'New password is required.' });
+    }
+
+    // Dynamic Company Password Policy Validation
+    const companyId = req.user?.companyId || null;
+    const policy = await getPolicyForCompany(companyId);
+    const validation = validatePasswordAgainstPolicy(newPassword, policy);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: `Password does not meet company requirements: ${validation.errors.join(' ')}`,
+        errors: validation.errors,
+        ruleResults: validation.ruleResults
+      });
     }
 
     if (isSqlServerConnected) {

@@ -36,9 +36,15 @@ import {
   ArrowRight,
   SlidersHorizontal,
   FileText,
-  Sliders
+  Sliders,
+  Lock,
+  Key,
+  Eye,
+  EyeOff,
+  Code
 } from 'lucide-react';
 import { api } from '../../services/api';
+import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY } from '../../components/common/PasswordRequirementsTracker';
 
 // =========================================================================
 // 1. PRE-SEEDED 24 SYSTEM CONFIGURATION PARAMETERS (Screenshot 1)
@@ -383,6 +389,7 @@ export function SystemConfiguration() {
     if (tabParam === 'maintenance' || tabParam === 'Maintenance Settings') return 'Maintenance Settings';
     if (tabParam === 'numbering' || tabParam === 'Numbering & Codes') return 'Numbering & Codes';
     if (tabParam === 'lookups' || tabParam === 'Lookups & Lists') return 'Lookups & Lists';
+    if (tabParam === 'password-policy' || tabParam === 'Password Policy') return 'Password Policy';
     return 'General Settings';
   };
 
@@ -471,6 +478,23 @@ export function SystemConfiguration() {
     setTimeout(() => setToast(null), 3800);
   };
 
+  // Password Policy State
+  const [pwCompaniesList, setPwCompaniesList] = useState([]);
+  const [selectedPwCompany, setSelectedPwCompany] = useState('DEFAULT');
+  const [passwordPolicy, setPasswordPolicy] = useState({
+    minLength: 8,
+    maxLength: 32,
+    requireUppercase: true,
+    requireLowercase: true,
+    requireNumber: true,
+    requireSpecialChar: true,
+    preventSpaces: true
+  });
+  const [simPassword, setSimPassword] = useState('');
+  const [showSimPassword, setShowSimPassword] = useState(false);
+  const [isSavingPolicy, setIsSavingPolicy] = useState(false);
+  const [policySavedSuccess, setPolicySavedSuccess] = useState(false);
+
   // Sync tab with URL
   const handleTabChange = (tab) => {
     setActiveTab(tab);
@@ -481,6 +505,7 @@ export function SystemConfiguration() {
     else if (tab === 'Workflow & Approvals') paramVal = 'workflows';
     else if (tab === 'Numbering & Codes') paramVal = 'numbering';
     else if (tab === 'Lookups & Lists') paramVal = 'lookups';
+    else if (tab === 'Password Policy') paramVal = 'password-policy';
     setSearchParams({ tab: paramVal });
   };
 
@@ -488,11 +513,13 @@ export function SystemConfiguration() {
   useEffect(() => {
     async function loadData() {
       try {
-        const [pRes, wfRes, numRes, lkpRes] = await Promise.allSettled([
+        const [pRes, wfRes, numRes, lkpRes, compRes, polRes] = await Promise.allSettled([
           api.get('/admin/config/parameters'),
           api.get('/admin/config/workflows'),
           api.get('/admin/config/numbering'),
-          api.get('/admin/config/lookups')
+          api.get('/admin/config/lookups'),
+          api.get('/master-data/companies?includeInactive=false'),
+          api.get('/admin/config/password-policy')
         ]);
         if (pRes.status === 'fulfilled' && pRes.value?.parameters) {
           setParameters(pRes.value.parameters);
@@ -506,6 +533,12 @@ export function SystemConfiguration() {
         if (lkpRes.status === 'fulfilled' && lkpRes.value?.lookups) {
           setLookups(lkpRes.value.lookups);
         }
+        if (compRes.status === 'fulfilled' && compRes.value?.companies) {
+          setPwCompaniesList(compRes.value.companies);
+        }
+        if (polRes.status === 'fulfilled' && polRes.value?.policy) {
+          setPasswordPolicy(polRes.value.policy);
+        }
       } catch (err) {
         console.warn('Loaded with local pre-seeded baseline:', err);
       }
@@ -513,7 +546,84 @@ export function SystemConfiguration() {
     loadData();
   }, []);
 
-  // Top 7 Tab Items
+  const handleSelectPwCompany = async (compVal) => {
+    setSelectedPwCompany(compVal);
+    const query = compVal === 'DEFAULT' ? '' : `?companyId=${encodeURIComponent(compVal)}`;
+    const res = await api.get(`/admin/config/password-policy${query}`).catch(() => null);
+    if (res?.policy) {
+      setPasswordPolicy({
+        minLength: res.policy.minLength || 8,
+        maxLength: res.policy.maxLength || 32,
+        requireUppercase: res.policy.requireUppercase !== false,
+        requireLowercase: res.policy.requireLowercase !== false,
+        requireNumber: res.policy.requireNumber !== false,
+        requireSpecialChar: res.policy.requireSpecialChar !== false,
+        preventSpaces: res.policy.preventSpaces !== false
+      });
+    }
+  };
+
+  const handleSavePasswordPolicy = async () => {
+    setIsSavingPolicy(true);
+    setPolicySavedSuccess(false);
+    try {
+      const payload = {
+        companyId: selectedPwCompany === 'DEFAULT' ? null : selectedPwCompany,
+        ...passwordPolicy
+      };
+      const res = await api.post('/admin/config/password-policy', payload);
+      if (res?.success) {
+        showNotification('success', 'Password Policy Configuration saved successfully!');
+        setPolicySavedSuccess(true);
+        setTimeout(() => setPolicySavedSuccess(false), 3000);
+      } else {
+        showNotification('error', res?.message || 'Failed to save password policy');
+      }
+    } catch (err) {
+      showNotification('error', err.message || 'Failed to save password policy');
+    } finally {
+      setIsSavingPolicy(false);
+    }
+  };
+
+  const dynamicRegexPreview = useMemo(() => {
+    const min = Math.max(Number(passwordPolicy.minLength) || 8, 4);
+    const max = passwordPolicy.maxLength ? Number(passwordPolicy.maxLength) : '';
+    let lookaheads = '';
+    if (passwordPolicy.requireUppercase) lookaheads += '(?=.*[A-Z])';
+    if (passwordPolicy.requireLowercase) lookaheads += '(?=.*[a-z])';
+    if (passwordPolicy.requireNumber) lookaheads += '(?=.*\\d)';
+    if (passwordPolicy.requireSpecialChar) lookaheads += '(?=.*[!@#$%^&*])';
+    if (passwordPolicy.preventSpaces) lookaheads += '(?!.*\\s)';
+    const lengthRange = max ? `{${min},${max}}` : `{${min},}`;
+    return `^${lookaheads}.${lengthRange}$`;
+  }, [passwordPolicy]);
+
+  const handleGenerateSamplePassword = () => {
+    const min = Math.max(Number(passwordPolicy.minLength) || 8, 8);
+    const uppers = 'ABCDEFGHJKLMNPQRSTUVWXYZ';
+    const lowers = 'abcdefghjkmnpqrstuvwxyz';
+    const numbers = '23456789';
+    const specials = '!@#$%&*';
+    let chars = '';
+    const req = [];
+    if (passwordPolicy.requireUppercase) { chars += uppers; req.push(uppers[Math.floor(Math.random() * uppers.length)]); }
+    if (passwordPolicy.requireLowercase) { chars += lowers; req.push(lowers[Math.floor(Math.random() * lowers.length)]); }
+    if (passwordPolicy.requireNumber) { chars += numbers; req.push(numbers[Math.floor(Math.random() * numbers.length)]); }
+    if (passwordPolicy.requireSpecialChar) { chars += specials; req.push(specials[Math.floor(Math.random() * specials.length)]); }
+    if (!chars) chars = uppers + lowers + numbers;
+    const targetLen = Math.max(min, req.length + 4);
+    while (req.length < targetLen) {
+      req.push(chars[Math.floor(Math.random() * chars.length)]);
+    }
+    for (let i = req.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [req[i], req[j]] = [req[j], req[i]];
+    }
+    setSimPassword(req.join(''));
+  };
+
+  // Top 8 Tab Items
   const topTabs = [
     { id: 'General Settings', label: 'General Settings', icon: Settings },
     { id: 'Asset Settings', label: 'Asset Settings', icon: Box },
@@ -521,7 +631,8 @@ export function SystemConfiguration() {
     { id: 'Maintenance Settings', label: 'Maintenance Settings', icon: Wrench },
     { id: 'Workflow & Approvals', label: 'Workflow & Approvals', icon: GitFork },
     { id: 'Numbering & Codes', label: 'Numbering & Codes', icon: Hash },
-    { id: 'Lookups & Lists', label: 'Lookups & Lists', icon: ListOrdered }
+    { id: 'Lookups & Lists', label: 'Lookups & Lists', icon: ListOrdered },
+    { id: 'Password Policy', label: 'Password Policy', icon: ShieldCheck }
   ];
 
   // =========================================================================
@@ -2036,6 +2147,300 @@ export function SystemConfiguration() {
             <div className="p-3 bg-white border-t border-slate-100 flex items-center justify-between text-xs text-slate-500">
               <span className="font-medium text-slate-600">Showing {lookups.filter(l => selectedLookupCategory === 'All Categories' || l.category === selectedLookupCategory).length} records</span>
               <span className="text-slate-400">Scroll down to view all records</span>
+            </div>
+          </div>
+        )}
+
+        {/* ========================================================================= */}
+        {/* VIEW 5: PASSWORD POLICY CONFIGURATION                                     */}
+        {/* ========================================================================= */}
+        {activeTab === 'Password Policy' && (
+          <div className="space-y-4">
+            {/* Top Overview & Company Scope Bar */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 text-[#6C2BD9] flex items-center justify-center">
+                    <ShieldCheck className="w-5 h-5 text-[#6C2BD9]" />
+                  </div>
+                  <div>
+                    <h2 className="text-base font-bold text-slate-900">Password Policy Configuration</h2>
+                    <p className="text-xs text-slate-500">Configure password requirements and complexity rules for your company.</p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
+                    <label className="text-xs font-semibold text-slate-600 whitespace-nowrap flex items-center gap-1.5">
+                      <Building className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                      <span>Company Scope:</span>
+                    </label>
+                    <select
+                      value={selectedPwCompany}
+                      onChange={(e) => handleSelectPwCompany(e.target.value)}
+                      className="px-3 py-1.5 border border-slate-200 rounded-lg text-xs font-medium bg-white text-slate-800 focus:outline-none focus:border-[#6C2BD9] shadow-2xs"
+                    >
+                      <option value="DEFAULT">All Companies (System Global Default)</option>
+                      {pwCompaniesList.map((c) => (
+                        <option key={c.id || c.code} value={c.id || c.code}>
+                          {c.name} {c.code ? `(${c.code})` : ''}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <button
+                    onClick={handleSavePasswordPolicy}
+                    disabled={isSavingPolicy}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-60 text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer transition-colors"
+                  >
+                    <Save className="w-3.5 h-3.5" />
+                    <span>{isSavingPolicy ? 'Saving...' : 'Save Configuration'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {policySavedSuccess && (
+                <div className="mt-3 p-3 bg-emerald-50 border border-emerald-200 rounded-xl text-emerald-800 text-xs font-semibold flex items-center gap-2 animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  <span>Password policy configuration saved successfully and will be dynamically enforced!</span>
+                </div>
+              )}
+            </div>
+
+            {/* 2-Column Main Workspace */}
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-5">
+              {/* Left Column: Policy Configuration Controls (7 Cols) */}
+              <div className="lg:col-span-7 space-y-4">
+                {/* Length Requirements Card */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+                    <Hash className="w-4 h-4 text-[#6C2BD9]" />
+                    <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Length Requirements</h3>
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                        Minimum Password Length *
+                      </label>
+                      <input
+                        type="number"
+                        min={4}
+                        max={64}
+                        value={passwordPolicy.minLength}
+                        onChange={(e) => setPasswordPolicy({ ...passwordPolicy, minLength: Math.max(4, parseInt(e.target.value) || 4) })}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 bg-white focus:outline-none focus:border-[#6C2BD9]"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">Recommended: 8 characters or more for secure accounts.</p>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 mb-1.5">
+                        Maximum Password Length
+                      </label>
+                      <input
+                        type="number"
+                        min={passwordPolicy.minLength || 8}
+                        max={128}
+                        value={passwordPolicy.maxLength || 32}
+                        onChange={(e) => setPasswordPolicy({ ...passwordPolicy, maxLength: Math.max(passwordPolicy.minLength || 8, parseInt(e.target.value) || 32) })}
+                        className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono font-bold text-slate-800 bg-white focus:outline-none focus:border-[#6C2BD9]"
+                      />
+                      <p className="text-[10px] text-slate-400 mt-1">Leave at 32-128 characters to protect against buffer issues.</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Password Requirements Checklist Card */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
+                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
+                    <Lock className="w-4 h-4 text-[#6C2BD9]" />
+                    <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Password Requirements</h3>
+                  </div>
+
+                  <div className="space-y-3 pt-1">
+                    <label className="flex items-start gap-3 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50/80 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={passwordPolicy.requireUppercase}
+                        onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireUppercase: e.target.checked })}
+                        className="mt-0.5 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Require uppercase letters (A–Z)</span>
+                        <span className="text-[11px] text-slate-500">Requires at least one capitalized letter (A, B, C...).</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50/80 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={passwordPolicy.requireLowercase}
+                        onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireLowercase: e.target.checked })}
+                        className="mt-0.5 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Require lowercase letters (a–z)</span>
+                        <span className="text-[11px] text-slate-500">Requires at least one lowercase alphabetical letter (a, b, c...).</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50/80 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={passwordPolicy.requireNumber}
+                        onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireNumber: e.target.checked })}
+                        className="mt-0.5 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Require numbers (0–9)</span>
+                        <span className="text-[11px] text-slate-500">Requires at least one numerical digit (0, 1, 2...).</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50/80 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={passwordPolicy.requireSpecialChar}
+                        onChange={(e) => setPasswordPolicy({ ...passwordPolicy, requireSpecialChar: e.target.checked })}
+                        className="mt-0.5 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Require special characters (!@#$%)</span>
+                        <span className="text-[11px] text-slate-500">Requires at least one punctuation or symbol (!, @, #, $, %, ^, &, *).</span>
+                      </div>
+                    </label>
+
+                    <label className="flex items-start gap-3 p-2.5 rounded-lg border border-slate-100 hover:bg-slate-50/80 cursor-pointer transition-colors">
+                      <input
+                        type="checkbox"
+                        checked={passwordPolicy.preventSpaces}
+                        onChange={(e) => setPasswordPolicy({ ...passwordPolicy, preventSpaces: e.target.checked })}
+                        className="mt-0.5 rounded border-slate-300 text-[#6C2BD9] focus:ring-[#6C2BD9]"
+                      />
+                      <div>
+                        <span className="text-xs font-bold text-slate-800 block">Prevent spaces</span>
+                        <span className="text-[11px] text-slate-500">Disallows whitespace characters inside passwords.</span>
+                      </div>
+                    </label>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-3 border-t border-slate-100">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setPasswordPolicy({
+                          minLength: 8,
+                          maxLength: 32,
+                          requireUppercase: true,
+                          requireLowercase: true,
+                          requireNumber: true,
+                          requireSpecialChar: true,
+                          preventSpaces: true
+                        });
+                        showNotification('info', 'Reset form to factory standard policy settings');
+                      }}
+                      className="text-xs text-slate-500 hover:text-slate-800 flex items-center gap-1.5 cursor-pointer font-medium"
+                    >
+                      <RotateCcw className="w-3.5 h-3.5" />
+                      <span>Reset to Recommended Standards</span>
+                    </button>
+
+                    <button
+                      type="button"
+                      onClick={handleSavePasswordPolicy}
+                      disabled={isSavingPolicy}
+                      className="flex items-center gap-1.5 px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-60 text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer transition-colors"
+                    >
+                      <Save className="w-3.5 h-3.5" />
+                      <span>{isSavingPolicy ? 'Saving...' : 'Save Configuration'}</span>
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Right Column: Dynamic Regex & Interactive Tester (5 Cols) */}
+              <div className="lg:col-span-5 space-y-4">
+                {/* Dynamic Regex Preview Card */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Code className="w-4 h-4 text-[#6C2BD9]" />
+                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Dynamic Regex Generator</h3>
+                    </div>
+                    <span className="px-2 py-0.5 bg-purple-50 text-[#6C2BD9] text-[10px] font-bold rounded-md border border-purple-200">
+                      Auto-Generated
+                    </span>
+                  </div>
+
+                  <p className="text-xs text-slate-500 leading-relaxed">
+                    The backend converts your active policy checkboxes into a strict, secure regular expression automatically:
+                  </p>
+
+                  <div className="p-3 bg-slate-900 text-emerald-400 font-mono text-[11px] rounded-lg break-all select-all border border-slate-800 shadow-inner">
+                    {dynamicRegexPreview}
+                  </div>
+
+                  <div className="p-2.5 bg-slate-50 border border-slate-200 rounded-lg text-[11px] text-slate-600 space-y-1">
+                    <div className="font-semibold text-slate-700">How validation works:</div>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      1. Stored in database per company (<span className="font-mono text-slate-700">company_password_policies</span>).
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      2. Dynamically evaluated by backend APIs during user creation and password changes.
+                    </p>
+                    <p className="text-[10px] text-slate-500 leading-relaxed">
+                      3. Never silences or invalidates past passwords; strictly applied to future creations/updates.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Interactive Simulator / Live Policy Tester Card */}
+                <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3">
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Sparkles className="w-4 h-4 text-[#6C2BD9]" />
+                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Interactive Policy Simulator</h3>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={handleGenerateSamplePassword}
+                      className="text-[11px] font-bold text-[#6C2BD9] hover:underline cursor-pointer"
+                    >
+                      + Test Sample
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-slate-500">
+                    Type a sample password below to test how your configured requirements react in real time:
+                  </p>
+
+                  <div className="relative">
+                    <input
+                      type={showSimPassword ? 'text' : 'password'}
+                      value={simPassword}
+                      onChange={(e) => setSimPassword(e.target.value)}
+                      placeholder="Type a password to test rules..."
+                      className="w-full px-3 py-2 pr-10 border border-slate-200 rounded-lg text-xs font-mono bg-slate-50 focus:bg-white focus:outline-none focus:border-[#6C2BD9]"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowSimPassword(!showSimPassword)}
+                      className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600 cursor-pointer"
+                    >
+                      {showSimPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                    </button>
+                  </div>
+
+                  {/* Real-time requirements checklist */}
+                  <PasswordRequirementsTracker
+                    password={simPassword}
+                    policy={passwordPolicy}
+                    showSummaryBadge={true}
+                  />
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -2,6 +2,7 @@ import bcrypt from 'bcryptjs';
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { generateAutoCode } from '../master-data/masterData.controller.js';
+import { getPolicyForCompany, validatePasswordAgainstPolicy } from './passwordPolicy.service.js';
 
 // ==========================================
 // SEED DATA PRE-LOADED WITH SCREENSHOT MATCH
@@ -354,6 +355,26 @@ export async function createAdminUser(req, res) {
       return res.status(400).json({ success: false, error: 'Name, username, and email are required fields.' });
     }
 
+    // Dynamic Company Password Policy Validation
+    if (data.password && data.password.trim()) {
+      let companyId = data.companyId || null;
+      if (!companyId && data.company) {
+        const comp = await prisma.company.findFirst({
+          where: { OR: [{ id: data.company }, { name: data.company }, { code: data.company }] }
+        }).catch(() => null);
+        if (comp) companyId = comp.id;
+      }
+      const policy = await getPolicyForCompany(companyId);
+      const validation = validatePasswordAgainstPolicy(data.password, policy);
+      if (!validation.isValid) {
+        return res.status(400).json({
+          success: false,
+          error: `Password does not meet company requirements: ${validation.errors.join(' ')}`,
+          errors: validation.errors
+        });
+      }
+    }
+
     let createdId = `USR-${String(Date.now()).slice(-6)}`;
     try {
       if (prisma && prisma.user) {
@@ -511,6 +532,22 @@ export async function updateAdminUser(req, res) {
       if (deptRecord) updateData.departmentId = deptRecord.id;
       if (compRecord) updateData.companyId = compRecord.id;
       if (costCenterRecord) updateData.costCenterId = costCenterRecord.id;
+
+      if (req.body.password && req.body.password.trim()) {
+        const policy = await getPolicyForCompany(compRecord ? compRecord.id : (req.body.companyId || null));
+        const validation = validatePasswordAgainstPolicy(req.body.password, policy);
+        if (!validation.isValid) {
+          return res.status(400).json({
+            success: false,
+            error: `Password does not meet company requirements: ${validation.errors.join(' ')}`,
+            errors: validation.errors
+          });
+        }
+        updateData.passwordHash = await bcrypt.hash(req.body.password, 10);
+        if (req.body.forcePasswordChange !== undefined) {
+          updateData.forcePasswordChange = Boolean(req.body.forcePasswordChange);
+        }
+      }
 
       await prisma.user.update({
         where: { id },
