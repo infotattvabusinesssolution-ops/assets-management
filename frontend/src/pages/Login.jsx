@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY } from '../components/common/PasswordRequirementsTracker';
+import { API_BASE_URL } from '../services/api';
 import {
   ShieldCheck,
   Lock,
@@ -275,8 +276,7 @@ export function Login() {
   const [loginCompanyPolicy, setLoginCompanyPolicy] = useState(DEFAULT_FRONTEND_POLICY);
 
   useEffect(() => {
-    const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-    fetch(`${apiBase}/api/v1/auth/password-policy`)
+    fetch(`${API_BASE_URL}/auth/password-policy`)
       .then((res) => res.json())
       .then((data) => {
         if (data?.policy) setLoginCompanyPolicy(data.policy);
@@ -287,8 +287,7 @@ export function Login() {
   useEffect(() => {
     if (showForcePassModal && forcePassUser) {
       const companyId = forcePassUser.companyId || forcePassUser.company || '';
-      const apiBase = import.meta.env.VITE_API_BASE_URL || 'http://localhost:5000';
-      fetch(`${apiBase}/api/v1/auth/password-policy?companyId=${encodeURIComponent(companyId)}`)
+      fetch(`${API_BASE_URL}/auth/password-policy?companyId=${encodeURIComponent(companyId)}`)
         .then((res) => res.json())
         .then((data) => {
           if (data?.policy) setForcePassPolicy(data.policy);
