@@ -5,6 +5,7 @@ import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { config } from '../../config/index.js';
 import { getPolicyForCompany, validatePasswordAgainstPolicy, generateCompliantPassword } from '../admin/passwordPolicy.service.js';
+import { validateCanAddUser } from '../admin/license.service.js';
 import { sendPasswordResetEmail } from '../../config/mailer.js';
 
 // In-memory token store for password recovery requests
@@ -399,9 +400,22 @@ export async function getProfile(req, res, next) {
 
 export async function getUsers(req, res, next) {
   try {
+    const user = req.user;
+    const role = user?.role || user?.roleId;
+    const roleCode = typeof role === 'string' ? role : role?.code;
+
+    // Multi-tenant company scoping: if not global SYS_ADMIN, restrict to user's company
+    const where = {};
+    if (user && roleCode !== 'SYS_ADMIN' && user.companyId) {
+      where.companyId = user.companyId;
+    } else if (req.query?.companyId) {
+      where.companyId = req.query.companyId;
+    }
+
     if (isSqlServerConnected) {
       try {
         const users = await prisma.user.findMany({
+          where,
           include: {
             role: true,
             company: true,
@@ -454,6 +468,16 @@ export async function getRoles(req, res, next) {
 
 export async function createUser(req, res, next) {
   try {
+    // 1. Enterprise User Licensing Cap Validation
+    const licenseCheck = await validateCanAddUser();
+    if (!licenseCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: licenseCheck.code,
+        message: licenseCheck.message
+      });
+    }
+
     const { username, email, password, fullName, phone, roleId, companyId, siteId, departmentId, costCenterId, active } = req.body;
 
     if (!username || !email || !password || !fullName || !roleId) {

@@ -4,6 +4,7 @@ import { fileURLToPath } from 'url';
 import crypto from 'crypto';
 import prisma from '../../config/prisma.js';
 import { isDbConnected } from '../../config/db.js';
+import { validateCanAddCompany } from '../admin/license.service.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -762,6 +763,16 @@ export async function getCompanies(req, res, next) {
 
 export async function createCompany(req, res, next) {
   try {
+    // License Enforcement: Validate single vs multi-company allowance
+    const licenseCheck = await validateCanAddCompany();
+    if (!licenseCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: licenseCheck.code,
+        message: licenseCheck.message
+      });
+    }
+
     const { code, name } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Company Name is required.' });
@@ -871,6 +882,15 @@ export async function deleteCompany(req, res, next) {
     const deactivateOnly = action === 'deactivate';
 
     if (isDbConnected()) {
+      // Primary licensed company protection
+      const activeCount = await prisma.company.count({ where: { active: true } }).catch(() => 1);
+      if (activeCount <= 1 && !deactivateOnly) {
+        return res.status(403).json({
+          success: false,
+          message: 'The primary licensed company entity cannot be deleted. The enterprise system requires at least one active licensed company.'
+        });
+      }
+
       // Count dependent references
       const [assetsCount, sitesCount, deptsCount, employeesCount, costCentersCount, usersCount] = await Promise.all([
         prisma.asset.count({ where: { companyId: id } }).catch(() => 0),

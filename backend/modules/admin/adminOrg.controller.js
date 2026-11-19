@@ -3,6 +3,7 @@ import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { generateAutoCode } from '../master-data/masterData.controller.js';
 import { getPolicyForCompany, validatePasswordAgainstPolicy, generateCompliantPassword } from './passwordPolicy.service.js';
+import { validateCanAddCompany } from './license.service.js';
 
 // ==========================================
 // SEED DATA PRE-LOADED WITH SCREENSHOT MATCH
@@ -1249,6 +1250,17 @@ export async function getCostCentersList(req, res) {
 
 export async function createCompany(req, res) {
   try {
+    // Enterprise Licensing Gate: Validate Single vs Multi-Company Allowance
+    const licenseCheck = await validateCanAddCompany();
+    if (!licenseCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: licenseCheck.code,
+        error: licenseCheck.message,
+        message: licenseCheck.message
+      });
+    }
+
     const data = req.body;
     if (!data.name) return res.status(400).json({ success: false, error: 'Company Name is required' });
     if (!data.code || !data.code.trim()) {

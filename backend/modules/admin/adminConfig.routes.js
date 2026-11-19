@@ -25,6 +25,13 @@ import {
   generateCompliantPasswordEndpoint,
   testPasswordSimulation
 } from './passwordPolicy.controller.js';
+import {
+  getLicense,
+  applyLicense,
+  getConfiguredCompanies,
+  getCompanyEnumeration,
+  createConfiguredCompany
+} from './license.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
@@ -80,5 +87,18 @@ router.post('/password-policy', authenticateToken, savePasswordPolicy);
 router.get('/password-policies', authenticateToken, getAllPasswordPolicies);
 router.post('/password-policy/generate', authenticateToken, generateCompliantPasswordEndpoint);
 router.post('/password-policy/validate', authenticateToken, testPasswordSimulation);
+
+// =========================================================================
+// 6. ENTERPRISE LICENSE & SUBSCRIPTION POLICY
+// =========================================================================
+router.get('/license', authenticateToken, getLicense);
+router.post('/license/apply', authenticateToken, applyLicense);
+
+// =========================================================================
+// 7. LICENSED COMPANIES CONFIGURATION & READ-ONLY ENUMERATION
+// =========================================================================
+router.get('/companies', authenticateToken, getConfiguredCompanies);
+router.get('/companies/enum', getCompanyEnumeration);
+router.post('/companies', authenticateToken, createConfiguredCompany);
 
 export default router;
