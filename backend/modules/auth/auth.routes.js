@@ -1,5 +1,17 @@
 import { Router } from 'express';
-import { login, getProfile, getUsers, getRoles, createUser, updateUser, resetUserPassword, changePassword, deleteUser } from './auth.controller.js';
+import {
+  login,
+  getProfile,
+  getUsers,
+  getRoles,
+  createUser,
+  updateUser,
+  resetUserPassword,
+  changePassword,
+  deleteUser,
+  forgotPassword,
+  resetPasswordWithToken
+} from './auth.controller.js';
 import { getPasswordPolicy } from '../admin/passwordPolicy.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 import { requirePermission } from '../../middleware/rbac.js';
@@ -7,6 +19,8 @@ import { requirePermission } from '../../middleware/rbac.js';
 const router = Router();
 
 router.post('/login', login);
+router.post('/forgot-password', forgotPassword);
+router.post('/reset-password-with-token', resetPasswordWithToken);
 router.get('/password-policy', getPasswordPolicy);
 router.post('/change-password', authenticateToken, changePassword);
 router.get('/profile', authenticateToken, getProfile);

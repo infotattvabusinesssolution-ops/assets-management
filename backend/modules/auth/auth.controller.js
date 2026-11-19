@@ -1,9 +1,14 @@
 import jwt from 'jsonwebtoken';
 import bcrypt from 'bcryptjs';
+import crypto from 'crypto';
 import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { config } from '../../config/index.js';
 import { getPolicyForCompany, validatePasswordAgainstPolicy, generateCompliantPassword } from '../admin/passwordPolicy.service.js';
+import { sendPasswordResetEmail } from '../../config/mailer.js';
+
+// In-memory token store for password recovery requests
+export const passwordResetTokens = new Map();
 
 // Helper to safely format and parse role permissions
 export function formatUserRole(role) {
@@ -824,30 +829,232 @@ export async function changePassword(req, res, next) {
   }
 }
 
-export async function deleteUser(req, res, next) {
+/**
+ * Initiates self-service password recovery by generating a reset token + OTP and sending email
+ */
+export async function forgotPassword(req, res, next) {
   try {
-    const { id } = req.params;
+    const rawInput = (req.body.email || req.body.username || '').trim();
+    if (!rawInput) {
+      return res.status(400).json({ success: false, message: 'Please provide your registered email address or username.' });
+    }
+
+    const cleanInput = rawInput.toLowerCase();
+    let user = null;
 
     if (isSqlServerConnected) {
       try {
-        const user = await prisma.user.update({
-          where: { id },
-          data: { active: false }
+        user = await prisma.user.findFirst({
+          where: {
+            OR: [
+              { email: cleanInput },
+              { username: cleanInput }
+            ]
+          },
+          include: { company: true }
         });
-        return res.json({ success: true, message: `User ${user.username} has been deactivated` });
       } catch (dbErr) {
-        console.warn('Prisma deleteUser error:', dbErr.message);
+        console.warn('Prisma query in forgotPassword fallback:', dbErr.message);
       }
     }
 
-    const inMemUser = FALLBACK_USERS.find(u => u.id === id);
-    if (inMemUser) {
-      inMemUser.active = false;
-      return res.json({ success: true, message: `User ${inMemUser.username} has been deactivated` });
+    if (!user) {
+      user = FALLBACK_USERS.find(
+        u => u.email.toLowerCase() === cleanInput || u.username.toLowerCase() === cleanInput
+      );
     }
 
-    return res.status(404).json({ success: false, message: 'User not found' });
+    if (!user || !user.active) {
+      // Safe enumeration protection: return success message even if not found
+      return res.json({
+        success: true,
+        message: 'If an account exists with that identifier, a password recovery email has been sent.'
+      });
+    }
+
+    // Check company password policy to ensure email_enabled is active
+    const policy = await getPolicyForCompany(user.companyId || (user.company ? user.company.id : null));
+    if (!policy.emailEnabled) {
+      return res.status(403).json({
+        success: false,
+        emailDisabled: true,
+        message: 'Self-service email recovery is disabled for your organization. Please contact your system administrator.'
+      });
+    }
+
+    // Generate cryptographically secure random token (32 bytes) and 6-digit OTP
+    const resetToken = crypto.randomBytes(32).toString('hex');
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+    const expiresAt = new Date(Date.now() + 15 * 60 * 1000); // 15 minutes expiration
+
+    // Store in memory map
+    passwordResetTokens.set(resetToken, {
+      userId: user.id,
+      email: user.email,
+      otp: otpCode,
+      expiresAt
+    });
+    passwordResetTokens.set(`OTP_${otpCode}_${user.email.toLowerCase()}`, {
+      token: resetToken,
+      userId: user.id,
+      email: user.email,
+      expiresAt
+    });
+
+    // Store in SQL database
+    if (isSqlServerConnected) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE users
+          SET reset_token = '${resetToken}',
+              reset_otp = '${otpCode}',
+              reset_expires_at = '${expiresAt.toISOString()}'
+          WHERE id = '${user.id}'
+        `).catch(() => null);
+      } catch (_) {}
+    }
+
+    // Dispatch email via Asset360 Gmail SMTP
+    const appUrl = req.headers.origin || process.env.FRONTEND_URL || 'http://localhost:3000';
+    await sendPasswordResetEmail({
+      to: user.email,
+      userName: user.fullName || user.username,
+      resetToken,
+      otpCode,
+      appUrl
+    });
+
+    return res.json({
+      success: true,
+      message: `A password recovery link has been sent to ${user.email}. Please check your inbox.`
+    });
   } catch (err) {
-    next(err);
+    console.error('Error in forgotPassword:', err);
+    return res.status(500).json({ success: false, message: 'Failed to send recovery email: ' + err.message });
   }
 }
+
+/**
+ * Resets user password using a verified token or 6-digit OTP code
+ */
+export async function resetPasswordWithToken(req, res, next) {
+  try {
+    const { token, otp, email, newPassword } = req.body;
+    if (!newPassword) {
+      return res.status(400).json({ success: false, message: 'Please provide your new password.' });
+    }
+
+    let record = null;
+    let targetUserId = null;
+
+    // 1. Check in-memory store
+    if (token && passwordResetTokens.has(token)) {
+      record = passwordResetTokens.get(token);
+      targetUserId = record.userId;
+    } else if (otp && email) {
+      const otpKey = `OTP_${otp}_${email.trim().toLowerCase()}`;
+      if (passwordResetTokens.has(otpKey)) {
+        record = passwordResetTokens.get(otpKey);
+        targetUserId = record.userId;
+      }
+    }
+
+    // 2. Check Database fallback
+    if (!targetUserId && isSqlServerConnected) {
+      try {
+        const whereClause = token
+          ? `reset_token = '${token.replace(/'/g, "''")}'`
+          : `reset_otp = '${otp.replace(/'/g, "''")}' AND email = '${email.trim().toLowerCase().replace(/'/g, "''")}'`;
+
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 id, email, reset_expires_at, company_id FROM users
+          WHERE ${whereClause}
+        `);
+        if (rows && rows.length > 0) {
+          const r = rows[0];
+          if (r.reset_expires_at && new Date() <= new Date(r.reset_expires_at)) {
+            targetUserId = r.id;
+            record = { userId: r.id, email: r.email, expiresAt: r.reset_expires_at, companyId: r.company_id };
+          }
+        }
+      } catch (dbErr) {
+        console.warn('DB check failed in resetPasswordWithToken:', dbErr.message);
+      }
+    }
+
+    if (!record || !targetUserId) {
+      return res.status(400).json({ success: false, message: 'Invalid or expired password reset link/code. Please request a new one.' });
+    }
+
+    if (new Date() > new Date(record.expiresAt)) {
+      return res.status(400).json({ success: false, message: 'Password recovery link has expired. Please request a new one.' });
+    }
+
+    // Find the user
+    let user = null;
+    if (isSqlServerConnected) {
+      user = await prisma.user.findUnique({ where: { id: targetUserId } }).catch(() => null);
+    }
+    if (!user) {
+      user = FALLBACK_USERS.find(u => u.id === targetUserId);
+    }
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User account not found.' });
+    }
+
+    // Validate password against company password policy
+    const policy = await getPolicyForCompany(user.companyId || record.companyId || null);
+    const validation = validatePasswordAgainstPolicy(newPassword, policy);
+    if (!validation.isValid) {
+      return res.status(400).json({
+        success: false,
+        message: `Password does not meet company requirements: ${validation.errors.join(' ')}`,
+        errors: validation.errors
+      });
+    }
+
+    const passwordHash = await bcrypt.hash(newPassword, 10);
+
+    // Update database
+    if (isSqlServerConnected) {
+      try {
+        await prisma.user.update({
+          where: { id: user.id },
+          data: { passwordHash, forcePasswordChange: false }
+        });
+        await prisma.$executeRawUnsafe(`
+          UPDATE users
+          SET reset_token = NULL,
+              reset_otp = NULL,
+              reset_expires_at = NULL,
+              must_change_password = 0,
+              password_changed_at = CURRENT_TIMESTAMP
+          WHERE id = '${user.id}'
+        `).catch(() => null);
+      } catch (dbErr) {
+        console.warn('DB update failed in resetPasswordWithToken:', dbErr.message);
+      }
+    }
+
+    // Update in-memory fallback
+    const inMemUser = FALLBACK_USERS.find(u => u.id === user.id);
+    if (inMemUser) {
+      inMemUser.passwordHash = passwordHash;
+      inMemUser.forcePasswordChange = false;
+      inMemUser.mustChangePassword = false;
+    }
+
+    // Clear reset tokens
+    if (token) passwordResetTokens.delete(token);
+
+    return res.json({
+      success: true,
+      message: 'Your password has been reset successfully. You can now log in with your new password.'
+    });
+  } catch (err) {
+    console.error('Error in resetPasswordWithToken:', err);
+    return res.status(500).json({ success: false, message: 'Failed to reset password: ' + err.message });
+  }
+}
+
+

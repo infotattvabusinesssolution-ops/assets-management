@@ -258,6 +258,25 @@ export function Login() {
   // Sub-Form States
   const [resetEmail, setResetEmail] = useState('');
   const [resetSuccess, setResetSuccess] = useState(false);
+  const [forgotLoading, setForgotLoading] = useState(false);
+  const [forgotError, setForgotError] = useState('');
+  const [forgotMessage, setForgotMessage] = useState('');
+  const [showOtpFields, setShowOtpFields] = useState(false);
+  const [enteredOtp, setEnteredOtp] = useState('');
+  const [otpNewPass, setOtpNewPass] = useState('');
+  const [otpConfirmPass, setOtpConfirmPass] = useState('');
+  const [otpSubmitting, setOtpSubmitting] = useState(false);
+
+  // Email Direct Token Link States (when opened from email)
+  const [showTokenResetModal, setShowTokenResetModal] = useState(false);
+  const [tokenParam, setTokenParam] = useState('');
+  const [tokenEmailParam, setTokenEmailParam] = useState('');
+  const [tokenNewPass, setTokenNewPass] = useState('');
+  const [tokenConfirmPass, setTokenConfirmPass] = useState('');
+  const [tokenResetLoading, setTokenResetLoading] = useState(false);
+  const [tokenResetError, setTokenResetError] = useState('');
+  const [tokenResetSuccess, setTokenResetSuccess] = useState(false);
+
   const [supportMessage, setSupportMessage] = useState('');
   const [supportSent, setSupportSent] = useState(false);
 
@@ -321,6 +340,18 @@ export function Login() {
       }, 100);
     }
   }, [location.search, location.state]);
+
+  // Handle direct password reset link clicked from email (?resetToken=...)
+  useEffect(() => {
+    const params = new URLSearchParams(location.search);
+    const token = params.get('resetToken');
+    const email = params.get('email');
+    if (token) {
+      setTokenParam(token);
+      setTokenEmailParam(email || '');
+      setShowTokenResetModal(true);
+    }
+  }, [location.search]);
 
   useEffect(() => {
     function handleClickOutside(event) {
@@ -461,15 +492,107 @@ export function Login() {
     }
   };
 
-  const handleForgotSubmit = (e) => {
+  const handleForgotSubmit = async (e) => {
     e.preventDefault();
     if (!resetEmail) return;
-    setResetSuccess(true);
-    setTimeout(() => {
-      setResetSuccess(false);
-      setShowForgotModal(false);
-      setResetEmail('');
-    }, 2000);
+    setForgotLoading(true);
+    setForgotError('');
+    setForgotMessage('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/forgot-password`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: resetEmail.trim() })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setResetSuccess(true);
+        setForgotMessage(data.message || `Password recovery email has been sent to ${resetEmail}.`);
+      } else {
+        setForgotError(data.message || 'Failed to send recovery email. Please verify the email or username.');
+      }
+    } catch (err) {
+      setForgotError(err.message || 'Network error connecting to recovery service.');
+    } finally {
+      setForgotLoading(false);
+    }
+  };
+
+  const handleOtpResetSubmit = async (e) => {
+    e.preventDefault();
+    if (!enteredOtp || !otpNewPass) return;
+    if (otpNewPass !== otpConfirmPass) {
+      setForgotError('New passwords do not match.');
+      return;
+    }
+    setOtpSubmitting(true);
+    setForgotError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password-with-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          otp: enteredOtp.trim(),
+          email: resetEmail.trim(),
+          newPassword: otpNewPass
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setForgotMessage('Password reset successfully! Redirecting to sign in...');
+        setTimeout(() => {
+          setShowForgotModal(false);
+          setResetSuccess(false);
+          setShowOtpFields(false);
+          setResetEmail('');
+          setEnteredOtp('');
+          setOtpNewPass('');
+          setOtpConfirmPass('');
+        }, 2000);
+      } else {
+        setForgotError(data.message || 'Failed to reset password.');
+      }
+    } catch (err) {
+      setForgotError(err.message || 'Error communicating with server.');
+    } finally {
+      setOtpSubmitting(false);
+    }
+  };
+
+  const handleTokenDirectResetSubmit = async (e) => {
+    e.preventDefault();
+    if (!tokenNewPass) return;
+    if (tokenNewPass !== tokenConfirmPass) {
+      setTokenResetError('New passwords do not match.');
+      return;
+    }
+    setTokenResetLoading(true);
+    setTokenResetError('');
+    try {
+      const res = await fetch(`${API_BASE_URL}/auth/reset-password-with-token`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: tokenParam,
+          email: tokenEmailParam,
+          newPassword: tokenNewPass
+        })
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setTokenResetSuccess(true);
+        setTimeout(() => {
+          setShowTokenResetModal(false);
+          navigate('/login', { replace: true });
+        }, 2000);
+      } else {
+        setTokenResetError(data.message || 'Failed to reset password.');
+      }
+    } catch (err) {
+      setTokenResetError(err.message || 'Error communicating with server.');
+    } finally {
+      setTokenResetLoading(false);
+    }
   };
 
   const handleSupportSubmit = (e) => {
@@ -859,9 +982,97 @@ export function Login() {
 
             {loginCompanyPolicy.emailEnabled ? (
               resetSuccess ? (
-                <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-semibold flex items-center gap-2">
-                  <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
-                  Password recovery instructions / OTP have been sent to your email.
+                <div className="space-y-4">
+                  <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-semibold space-y-1.5">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                      <span>Email Dispatched Successfully!</span>
+                    </div>
+                    <p className="text-[11px] font-normal text-emerald-700 leading-relaxed pl-7">
+                      {forgotMessage || `A password recovery link and 6-digit OTP have been sent to ${resetEmail}. Please check your inbox and spam folder.`}
+                    </p>
+                  </div>
+
+                  {!showOtpFields ? (
+                    <div className="space-y-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowOtpFields(true)}
+                        className="w-full py-2.5 px-4 bg-purple-50 text-[#6C2BD9] hover:bg-purple-100 font-bold text-xs rounded-xl border border-purple-200 transition-all cursor-pointer"
+                      >
+                        Enter 6-Digit OTP Code Directly
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setShowForgotModal(false);
+                          setResetSuccess(false);
+                        }}
+                        className="w-full py-2.5 px-4 bg-slate-100 hover:bg-slate-200 text-slate-700 font-bold text-xs rounded-xl transition-all cursor-pointer"
+                      >
+                        Done / Back to Sign In
+                      </button>
+                    </div>
+                  ) : (
+                    <form onSubmit={handleOtpResetSubmit} className="space-y-3 pt-2">
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">
+                          6-Digit OTP Code from Email
+                        </label>
+                        <input
+                          type="text"
+                          required
+                          maxLength={6}
+                          value={enteredOtp}
+                          onChange={(e) => setEnteredOtp(e.target.value.replace(/\D/g, ''))}
+                          placeholder="e.g. 123456"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-center text-lg font-mono tracking-widest text-[#6C2BD9] font-bold focus:bg-white focus:border-[#6C2BD9]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">
+                          New Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={otpNewPass}
+                          onChange={(e) => setOtpNewPass(e.target.value)}
+                          placeholder="Enter your new password"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:bg-white focus:border-[#6C2BD9]"
+                        />
+                      </div>
+
+                      <div>
+                        <label className="text-xs font-bold text-slate-700 block mb-1">
+                          Confirm New Password
+                        </label>
+                        <input
+                          type="password"
+                          required
+                          value={otpConfirmPass}
+                          onChange={(e) => setOtpConfirmPass(e.target.value)}
+                          placeholder="Confirm your new password"
+                          className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs text-slate-900 focus:bg-white focus:border-[#6C2BD9]"
+                        />
+                      </div>
+
+                      {forgotError && (
+                        <div className="p-2.5 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium">
+                          {forgotError}
+                        </div>
+                      )}
+
+                      <button
+                        type="submit"
+                        disabled={otpSubmitting}
+                        className="w-full bg-[#6C2BD9] text-white font-bold text-xs py-2.5 rounded-xl shadow-md hover:bg-[#5b21b6] disabled:opacity-60 transition-all cursor-pointer"
+                      >
+                        {otpSubmitting ? 'Verifying & Updating...' : 'Set New Password'}
+                      </button>
+                    </form>
+                  )}
                 </div>
               ) : (
                 <form onSubmit={handleForgotSubmit} className="space-y-4">
@@ -878,11 +1089,26 @@ export function Login() {
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15"
                     />
                   </div>
+
+                  {forgotError && (
+                    <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium">
+                      {forgotError}
+                    </div>
+                  )}
+
                   <button
                     type="submit"
-                    className="w-full bg-[#6C2BD9] text-white font-bold text-xs py-3 rounded-xl shadow-md hover:bg-[#5b21b6] transition-all cursor-pointer"
+                    disabled={forgotLoading}
+                    className="w-full bg-[#6C2BD9] text-white font-bold text-xs py-3 rounded-xl shadow-md hover:bg-[#5b21b6] disabled:opacity-60 transition-all cursor-pointer flex items-center justify-center gap-2"
                   >
-                    Send Recovery Link
+                    {forgotLoading ? (
+                      <>
+                        <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                        <span>Sending Recovery Email...</span>
+                      </>
+                    ) : (
+                      <span>Send Recovery Link</span>
+                    )}
                   </button>
                 </form>
               )
@@ -912,6 +1138,92 @@ export function Login() {
                   Back to Sign In
                 </button>
               </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* 1.5 Token Password Reset Modal (opened from email link) */}
+      {showTokenResetModal && (
+        <div className="fixed inset-0 z-50 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 relative border border-slate-200">
+            <button
+              onClick={() => setShowTokenResetModal(false)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 p-1 rounded-full hover:bg-slate-100"
+            >
+              <X className="w-5 h-5" />
+            </button>
+
+            <div className="flex items-center gap-3">
+              <div className="p-3 rounded-2xl bg-purple-100 text-[#6C2BD9]">
+                <LockKeyhole className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-lg font-extrabold text-slate-900">Create New Password</h3>
+                <p className="text-xs text-slate-500">
+                  {tokenEmailParam ? `Resetting password for ${tokenEmailParam}` : 'Enter your new password below'}
+                </p>
+              </div>
+            </div>
+
+            {tokenResetSuccess ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-semibold flex items-center gap-2">
+                <CheckCircle2 className="w-5 h-5 text-emerald-600 flex-shrink-0" />
+                <span>Password updated successfully! Redirecting to login...</span>
+              </div>
+            ) : (
+              <form onSubmit={handleTokenDirectResetSubmit} className="space-y-4">
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    New Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={tokenNewPass}
+                    onChange={(e) => setTokenNewPass(e.target.value)}
+                    placeholder="Enter your new password"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-xs font-bold text-slate-700 block mb-1">
+                    Confirm New Password
+                  </label>
+                  <input
+                    type="password"
+                    required
+                    value={tokenConfirmPass}
+                    onChange={(e) => setTokenConfirmPass(e.target.value)}
+                    placeholder="Confirm your new password"
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 focus:bg-white focus:border-[#6C2BD9] focus:ring-2 focus:ring-[#6C2BD9]/15"
+                  />
+                </div>
+
+                <PasswordRequirementsTracker password={tokenNewPass} policy={loginCompanyPolicy} />
+
+                {tokenResetError && (
+                  <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-medium">
+                    {tokenResetError}
+                  </div>
+                )}
+
+                <button
+                  type="submit"
+                  disabled={tokenResetLoading}
+                  className="w-full bg-[#6C2BD9] text-white font-bold text-xs py-3 rounded-xl shadow-md hover:bg-[#5b21b6] disabled:opacity-60 transition-all cursor-pointer flex items-center justify-center gap-2"
+                >
+                  {tokenResetLoading ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>Updating Password...</span>
+                    </>
+                  ) : (
+                    <span>Update Password & Sign In</span>
+                  )}
+                </button>
+              </form>
             )}
           </div>
         </div>
