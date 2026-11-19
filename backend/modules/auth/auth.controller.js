@@ -829,6 +829,34 @@ export async function changePassword(req, res, next) {
   }
 }
 
+export async function deleteUser(req, res, next) {
+  try {
+    const { id } = req.params;
+
+    if (isSqlServerConnected) {
+      try {
+        const user = await prisma.user.update({
+          where: { id },
+          data: { active: false }
+        });
+        return res.json({ success: true, message: `User ${user.username} has been deactivated` });
+      } catch (dbErr) {
+        console.warn('Prisma deleteUser error:', dbErr.message);
+      }
+    }
+
+    const inMemUser = FALLBACK_USERS.find(u => u.id === id);
+    if (inMemUser) {
+      inMemUser.active = false;
+      return res.json({ success: true, message: `User ${inMemUser.username} has been deactivated` });
+    }
+
+    return res.status(404).json({ success: false, message: 'User not found' });
+  } catch (err) {
+    next(err);
+  }
+}
+
 /**
  * Initiates self-service password recovery by generating a reset token + OTP and sending email
  */
