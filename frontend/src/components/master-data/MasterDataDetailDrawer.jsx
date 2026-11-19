@@ -22,7 +22,7 @@ import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { StatusConfirmModal } from './StatusConfirmModal';
 
 const ENTITY_TYPE_MAP = {
-  org: 'company',
+  org: 'department',
   locations: 'site',
   classification: 'category',
   item_master: 'model',

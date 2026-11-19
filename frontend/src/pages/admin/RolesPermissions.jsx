@@ -40,7 +40,6 @@ export const MASTER_DATA_ENTITIES = [
   { key: 'sub-groups', name: 'Asset Sub Groups', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
   { key: 'categories', name: 'Categories', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
   { key: 'subcategories', name: 'Sub Categories', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
-  { key: 'companies', name: 'Companies', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
   { key: 'custodians', name: 'Custodians', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
   { key: 'locations', name: 'Locations', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
   { key: 'location-levels', name: 'Location Levels', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },

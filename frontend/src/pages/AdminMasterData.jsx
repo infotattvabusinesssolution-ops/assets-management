@@ -38,7 +38,6 @@ import {
   Sparkles
 } from 'lucide-react';
 import { AddCategoryModal } from '../components/modals/AddCategoryModal';
-import { AddCompanyModal } from '../components/modals/AddCompanyModal';
 import { AddSiteModal } from '../components/modals/AddSiteModal';
 import { AddGenericMasterRecordModal } from '../components/modals/AddGenericMasterRecordModal';
 import { CodePrefixSettingsModal } from '../components/modals/CodePrefixSettingsModal';
@@ -47,10 +46,10 @@ import { MasterDataDetailDrawer } from '../components/master-data/MasterDataDeta
 const MASTER_DATA_CARDS = [
   {
     id: 'org',
-    title: 'Organization Management',
-    desc: 'Manage companies, legal entities, business units, departments and sections.',
+    title: 'Organization Structure',
+    desc: 'Manage divisions, departments, sections and cost centers under your licensed company.',
     icon: Building2,
-    modal: 'company'
+    modal: 'department'
   },
   {
     id: 'locations',
@@ -214,7 +213,6 @@ export function AdminMasterData() {
 
   // Modal states
   const [showAddCatModal, setShowAddCatModal] = useState(false);
-  const [showAddCmpModal, setShowAddCmpModal] = useState(false);
   const [showAddSiteModal, setShowAddSiteModal] = useState(false);
   const [showCodePrefixModal, setShowCodePrefixModal] = useState(false);
 
@@ -255,13 +253,6 @@ export function AdminMasterData() {
     loadMasterDataOverview();
   };
 
-  const handleCompanyAdded = (newCmp) => {
-    setCompanies(prev => [...prev, newCmp]);
-    setSuccessMsg(`Organization Entity "${newCmp.name || newCmp.code}" created successfully!`);
-    setTimeout(() => setSuccessMsg(''), 5000);
-    loadMasterDataOverview();
-  };
-
   const handleSiteAdded = (newSite) => {
     setSites(prev => [...prev, newSite]);
     setSuccessMsg(`Site Campus "${newSite.name || newSite.code}" created successfully!`);
@@ -286,8 +277,9 @@ export function AdminMasterData() {
 
   const handleOpenAddForCard = () => {
     if (!selectedCard) return;
-    if (selectedCard.id === 'org') setShowAddCmpModal(true);
-    else if (selectedCard.id === 'locations') setShowAddSiteModal(true);
+    if (selectedCard.id === 'org') {
+      setGenericModalConfig({ isOpen: true, entityType: 'department', entityTitle: 'Department / Division' });
+    } else if (selectedCard.id === 'locations') setShowAddSiteModal(true);
     else if (selectedCard.id === 'classification') setShowAddCatModal(true);
     else {
       const typeMap = {
@@ -363,11 +355,11 @@ export function AdminMasterData() {
                   Supported Master Records
                 </div>
                 <button
-                  onClick={() => { setShowAddCmpModal(true); setShowQuickAddMenu(false); }}
+                  onClick={() => { setGenericModalConfig({ isOpen: true, entityType: 'department', entityTitle: 'Department / Division' }); setShowQuickAddMenu(false); }}
                   className="w-full text-left px-3 py-2 rounded-xl text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6c2bd9] transition-all flex items-center gap-2.5"
                 >
                   <Building2 className="w-4 h-4 text-[#6c2bd9]" />
-                  <span>New Organization Entity</span>
+                  <span>New Department / Division</span>
                 </button>
                 <button
                   onClick={() => { setShowAddSiteModal(true); setShowQuickAddMenu(false); }}
@@ -561,12 +553,6 @@ export function AdminMasterData() {
         isOpen={showAddCatModal}
         onClose={() => setShowAddCatModal(false)}
         onSuccess={handleCategoryAdded}
-      />
-
-      <AddCompanyModal
-        isOpen={showAddCmpModal}
-        onClose={() => setShowAddCmpModal(false)}
-        onSuccess={handleCompanyAdded}
       />
 
       <AddSiteModal

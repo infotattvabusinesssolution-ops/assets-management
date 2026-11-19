@@ -215,12 +215,14 @@ export function CompaniesTab({ triggerToast, onSwitchTab, openAddModalTrigger })
           code: companyForm.code.toUpperCase(),
           description: companyForm.description,
           active: companyForm.status === 'Active'
-        }).catch(() => null);
+        });
         if (res && res.company && res.company.id) {
           createdId = res.company.id;
         }
       } catch (err) {
-        console.error('Failed to Add company on backend:', err);
+        const errMsg = err.response?.data?.message || err.response?.data?.error || err.message || 'Failed to add company.';
+        triggerToast && triggerToast(errMsg);
+        return;
       }
 
       const newCompany = {

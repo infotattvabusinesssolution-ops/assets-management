@@ -2174,7 +2174,7 @@ export function UserManagement() {
                         : 'bg-white border-slate-200 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]'
                     }`}
                   >
-                    <option value="">Select Master Company...</option>
+                    <option value="">Select Licensed Company...</option>
                     {companiesList.map(c => (
                       <option key={c.id || c.name} value={c.name}>{c.name}</option>
                     ))}

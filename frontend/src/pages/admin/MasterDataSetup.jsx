@@ -51,7 +51,6 @@ import CodePrefixSettingsModal from '../../components/modals/CodePrefixSettingsM
 
 // Modular Tab Components
 import { ItemMasterTab } from '../../components/master-data/ItemMasterTab';
-import { CompaniesTab } from '../../components/master-data/CompaniesTab';
 import { CustodiansTab } from '../../components/master-data/CustodiansTab';
 import { AssetGroupsTab, INITIAL_ASSET_GROUPS } from '../../components/master-data/AssetGroupsTab';
 import { ClassesTab, INITIAL_CLASSES } from '../../components/master-data/ClassesTab';
@@ -235,26 +234,6 @@ const MASTER_CONFIGS = {
       categoryName: r.categoryName || r['category'] || '',
       groupName: r.groupName || r['sub group'] || '',
       description: r.description || r['description'] || '',
-      status: r.status || r['status'] || 'Active'
-    })
-  },
-  'companies': {
-    name: 'Companies',
-    endpoint: '/master-data/companies?includeInactive=true',
-    postEndpoint: '/master-data/companies',
-    dataKey: 'companies',
-    headers: ['Company Code', 'Company Name', 'Currency', 'Registration Number', 'Country', 'Status'],
-    fields: ['code', 'name', 'currency', 'registrationNumber', 'country', 'status'],
-    sampleRows: [
-      ['COMP-HQ', 'Global Tech Enterprises FZE', 'USD', 'REG-2023-8891', 'United Arab Emirates', 'Active'],
-      ['COMP-UK', 'Global Tech Services UK Ltd', 'GBP', 'GB-8829102', 'United Kingdom', 'Active']
-    ],
-    mapRow: (r) => ({
-      code: r.code || r['company code'] || '',
-      name: r.name || r['company name'] || '',
-      currency: r.currency || r['currency'] || 'USD',
-      registrationNumber: r.registrationNumber || r['registration number'] || '',
-      country: r.country || r['country'] || '',
       status: r.status || r['status'] || 'Active'
     })
   },
@@ -639,7 +618,6 @@ const TABS = [
   { id: 'sub-groups', aliasId: 'classes', name: 'Asset Sub Groups', icon: Layers, desc: 'Define and manage asset sub groups within each asset group for classification and lifecycle control.' },
   { id: 'categories', name: 'Categories', icon: Tag, desc: 'Define and manage asset categories within each class.' },
   { id: 'subcategories', name: 'Sub Categories', icon: FolderTree, desc: 'Define and manage granular asset sub categories within each category.' },
-  { id: 'companies', name: 'Companies', icon: Building2, desc: 'Define legal entities and corporate operating units for asset ownership and financial reporting.' },
   { id: 'custodians', name: 'Custodians', icon: UserCheck, desc: 'Manage internal employees and external custodians responsible for asset care, custody, and physical tracking.' },
   { id: 'locations', name: 'Locations', icon: MapPin, desc: 'Define and manage physical sites, campuses, buildings, and rooms where assets are deployed.' },
   { id: 'location-level-1', name: 'Location Level 1', icon: MapPin, desc: 'Define and manage Location Level 1 records.' },
@@ -1458,17 +1436,6 @@ export function MasterDataSetup() {
           setActiveRowMenuId={setActiveRowMenuId}
           setShowAuditHistoryModal={setShowAuditHistoryModal}
           externalShowAddModal={activeAddModalTab === 'subcategories'}
-          setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
-        />
-      )}
-
-      {activeTab === 'companies' && (
-        <CompaniesTab
-          key={`companies-${groupReloadTrigger}`}
-          triggerToast={triggerToast}
-          activeRowMenuId={activeRowMenuId}
-          setActiveRowMenuId={setActiveRowMenuId}
-          externalShowAddModal={activeAddModalTab === 'companies'}
           setExternalShowAddModal={(val) => !val && setActiveAddModalTab(null)}
         />
       )}

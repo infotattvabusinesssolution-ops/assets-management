@@ -400,10 +400,27 @@ export function SystemConfiguration() {
     if (tabParam === 'numbering' || tabParam === 'Numbering & Codes') return 'Numbering & Codes';
     if (tabParam === 'lookups' || tabParam === 'Lookups & Lists') return 'Lookups & Lists';
     if (tabParam === 'password-policy' || tabParam === 'Password Policy') return 'Password Policy';
+    if (tabParam === 'license' || tabParam === 'License & Companies') return 'License & Companies';
     return 'General Settings';
   };
 
   const [activeTab, setActiveTab] = useState(getInitialTab);
+
+  // License & Companies State
+  const [licenseData, setLicenseData] = useState(null);
+  const [licenseLoading, setLicenseLoading] = useState(false);
+  const [configuredCompanies, setConfiguredCompanies] = useState([]);
+  const [newLicenseKeyInput, setNewLicenseKeyInput] = useState('');
+  const [isApplyingLicense, setIsApplyingLicense] = useState(false);
+  const [licenseActionMsg, setLicenseActionMsg] = useState(null);
+  const [showAddCompanyModal, setShowAddCompanyModal] = useState(false);
+  const [newCompanyForm, setNewCompanyForm] = useState({
+    name: '',
+    code: '',
+    currency: 'AED',
+    timezone: 'Asia/Dubai (GMT+04:00)'
+  });
+  const [companyCreateError, setCompanyCreateError] = useState('');
 
   // Data States
   const [parameters, setParameters] = useState(PRESEEDED_PARAMETERS);
@@ -516,6 +533,10 @@ export function SystemConfiguration() {
     else if (tab === 'Numbering & Codes') paramVal = 'numbering';
     else if (tab === 'Lookups & Lists') paramVal = 'lookups';
     else if (tab === 'Password Policy') paramVal = 'password-policy';
+    else if (tab === 'License & Companies') {
+      paramVal = 'license';
+      loadLicenseAndCompanies();
+    }
     setSearchParams({ tab: paramVal });
   };
 
@@ -558,6 +579,7 @@ export function SystemConfiguration() {
       }
     }
     loadData();
+    loadLicenseAndCompanies();
   }, []);
 
   const handleSelectPwCompany = async (compVal) => {
@@ -607,7 +629,60 @@ export function SystemConfiguration() {
     setSimPassword(pass);
   };
 
-  // Top 8 Tab Items
+  const loadLicenseAndCompanies = async () => {
+    setLicenseLoading(true);
+    try {
+      const [licRes, cmpRes] = await Promise.all([
+        api.get('/admin/config/license').catch(() => null),
+        api.get('/admin/config/companies').catch(() => null)
+      ]);
+      if (licRes?.license) setLicenseData(licRes.license);
+      if (cmpRes?.companies) setConfiguredCompanies(cmpRes.companies);
+    } catch (e) {
+      console.warn('Failed loading license details:', e);
+    } finally {
+      setLicenseLoading(false);
+    }
+  };
+
+  const handleApplyLicense = async () => {
+    if (!newLicenseKeyInput.trim()) return;
+    setIsApplyingLicense(true);
+    setLicenseActionMsg(null);
+    try {
+      const res = await api.post('/admin/config/license/apply', { licenseKey: newLicenseKeyInput.trim() });
+      if (res?.success) {
+        setLicenseData(res.license);
+        setLicenseActionMsg({ type: 'success', text: res.message || 'License key applied successfully!' });
+        setNewLicenseKeyInput('');
+        loadLicenseAndCompanies();
+      } else {
+        setLicenseActionMsg({ type: 'error', text: res?.message || 'Failed to apply license key.' });
+      }
+    } catch (err) {
+      setLicenseActionMsg({ type: 'error', text: err.response?.data?.message || err.message || 'Failed to apply license key.' });
+    } finally {
+      setIsApplyingLicense(false);
+    }
+  };
+
+  const handleCreateCompanyInConfig = async (e) => {
+    e.preventDefault();
+    setCompanyCreateError('');
+    try {
+      const res = await api.post('/admin/config/companies', newCompanyForm);
+      if (res?.success) {
+        setShowAddCompanyModal(false);
+        setNewCompanyForm({ name: '', code: '', currency: 'AED', timezone: 'Asia/Dubai (GMT+04:00)' });
+        loadLicenseAndCompanies();
+        showNotification('success', res.message || 'Licensed Company activated successfully.');
+      }
+    } catch (err) {
+      setCompanyCreateError(err.response?.data?.message || err.message || 'Error creating company.');
+    }
+  };
+
+  // Top 9 Tab Items
   const topTabs = [
     { id: 'General Settings', label: 'General Settings', icon: Settings },
     { id: 'Asset Settings', label: 'Asset Settings', icon: Box },
@@ -616,7 +691,8 @@ export function SystemConfiguration() {
     { id: 'Workflow & Approvals', label: 'Workflow & Approvals', icon: GitFork },
     { id: 'Numbering & Codes', label: 'Numbering & Codes', icon: Hash },
     { id: 'Lookups & Lists', label: 'Lookups & Lists', icon: ListOrdered },
-    { id: 'Password Policy', label: 'Password Policy', icon: ShieldCheck }
+    { id: 'Password Policy', label: 'Password Policy', icon: ShieldCheck },
+    { id: 'License & Companies', label: 'License & Companies', icon: Building }
   ];
 
   // =========================================================================
@@ -2436,6 +2512,239 @@ export function SystemConfiguration() {
             </div>
           </div>
         )}
+
+        {/* ========================================================================= */}
+        {/* 9. ENTERPRISE LICENSE & LICENSED COMPANIES ENUMERATION TAB                */}
+        {/* ========================================================================= */}
+        {activeTab === 'License & Companies' && (
+          <div className="space-y-4">
+            {/* Top Overview & Action Bar */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-slate-100 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-purple-50 border border-purple-200 text-[#6C2BD9] flex items-center justify-center">
+                    <Building className="w-5 h-5 text-[#6C2BD9]" />
+                  </div>
+                  <div>
+                    <div className="flex items-center gap-2">
+                      <h2 className="text-base font-bold text-slate-900">Enterprise Licensing & Operating Entities</h2>
+                      <span className="text-[10px] bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-full font-bold uppercase tracking-wider">
+                        {licenseData?.status || 'Active License'}
+                      </span>
+                    </div>
+                    <p className="text-xs text-slate-500">
+                      Governs enterprise license key entitlements, user seat capacity, and backend company enumeration.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={loadLicenseAndCompanies}
+                    disabled={licenseLoading}
+                    className="flex items-center gap-1.5 px-3 py-1.5 bg-white hover:bg-slate-50 text-slate-700 border border-slate-200 text-xs font-semibold rounded-lg shadow-2xs cursor-pointer transition-colors"
+                  >
+                    <RefreshCw className={`w-3.5 h-3.5 ${licenseLoading ? 'animate-spin text-[#6C2BD9]' : ''}`} />
+                    <span>Refresh Status</span>
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setCompanyCreateError('');
+                      setShowAddCompanyModal(true);
+                    }}
+                    className="flex items-center gap-1.5 px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white text-xs font-bold rounded-lg shadow-2xs cursor-pointer transition-colors"
+                  >
+                    <Plus className="w-3.5 h-3.5" />
+                    <span>+ Activate Company</span>
+                  </button>
+                </div>
+              </div>
+
+              {licenseActionMsg && (
+                <div className={`mt-3 p-3 rounded-xl text-xs font-semibold flex items-center gap-2 animate-in fade-in ${
+                  licenseActionMsg.type === 'success' ? 'bg-emerald-50 border border-emerald-200 text-emerald-800' : 'bg-rose-50 border border-rose-200 text-rose-800'
+                }`}>
+                  {licenseActionMsg.type === 'success' ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  )}
+                  <span>{licenseActionMsg.text}</span>
+                </div>
+              )}
+            </div>
+
+            {/* 3 Core Entitlement Metrics Cards */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              {/* Card 1: License Entitlement */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">License Entitlement</span>
+                  <span className="p-1 rounded-md bg-purple-50 text-[#6C2BD9]">
+                    <Key className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">{licenseData?.licenseTier || 'Enterprise Head Office Edition'}</h3>
+                  <p className="text-xs text-slate-500 truncate mt-0.5">{licenseData?.licensedTo || 'Dubai HQ Holding & Enterprise'}</p>
+                </div>
+                <div className="pt-2 border-t border-slate-100 flex items-center justify-between text-xs">
+                  <span className="text-slate-400">Valid Until:</span>
+                  <span className="font-semibold text-slate-700">
+                    {licenseData?.expiryDate ? new Date(licenseData.expiryDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : 'Dec 31, 2027'}
+                  </span>
+                </div>
+              </div>
+
+              {/* Card 2: Company Multi-Tenancy Cap */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Licensed Companies</span>
+                  <span className="p-1 rounded-md bg-blue-50 text-blue-600">
+                    <Building className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black text-slate-900">{licenseData?.metrics?.activeCompanies || configuredCompanies.length || 1}</span>
+                    <span className="text-xs font-semibold text-slate-400">/ {licenseData?.metrics?.maxCompanies || 1} Allowed</span>
+                  </div>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    {licenseData?.metrics?.isMultiCompanyAllowed ? 'Multi-Company Enterprise Activated' : 'Single-Company License (Head Office)'}
+                  </p>
+                </div>
+                <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center gap-1.5">
+                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>Unlimited divisions, departments, & sections</span>
+                </div>
+              </div>
+
+              {/* Card 3: User Seat Capacity */}
+              <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-[10px] font-extrabold uppercase tracking-wider text-slate-400">Active User Seats</span>
+                  <span className="p-1 rounded-md bg-emerald-50 text-emerald-600">
+                    <Users className="w-3.5 h-3.5" />
+                  </span>
+                </div>
+                <div>
+                  <div className="flex items-baseline gap-1.5">
+                    <span className="text-2xl font-black text-slate-900">{licenseData?.metrics?.activeUsers || 4}</span>
+                    <span className="text-xs font-semibold text-slate-400">/ {licenseData?.metrics?.maxUsers || 50} Seats</span>
+                  </div>
+                  <div className="w-full bg-slate-100 rounded-full h-1.5 mt-2 overflow-hidden">
+                    <div
+                      className="bg-[#6C2BD9] h-1.5 rounded-full transition-all"
+                      style={{
+                        width: `${Math.min(100, (((licenseData?.metrics?.activeUsers || 4) / (licenseData?.metrics?.maxUsers || 50)) * 100))}%`
+                      }}
+                    />
+                  </div>
+                </div>
+                <div className="pt-2 border-t border-slate-100 text-[11px] text-slate-500 flex items-center justify-between">
+                  <span className="text-slate-400">Available:</span>
+                  <span className="font-semibold text-emerald-700">
+                    {licenseData?.metrics?.availableUsers !== undefined ? licenseData.metrics.availableUsers : 46} seats remaining
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* License Key Activation Banner */}
+            <div className="bg-gradient-to-r from-purple-50/80 via-white to-slate-50 border border-purple-200/70 rounded-xl p-4 shadow-2xs">
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2">
+                    <Key className="w-4 h-4 text-[#6C2BD9]" />
+                    <h4 className="text-xs font-bold text-slate-900 uppercase tracking-wider">Apply / Upgrade Enterprise License Key</h4>
+                  </div>
+                  <p className="text-xs text-slate-600 max-w-2xl">
+                    Need additional user seats or multi-company subsidiary licensing? Enter your authorized enterprise license key string below to instantly apply your new capacity caps.
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2 w-full lg:w-auto">
+                  <input
+                    type="text"
+                    value={newLicenseKeyInput}
+                    onChange={(e) => setNewLicenseKeyInput(e.target.value)}
+                    placeholder="Enter License Key (e.g. MULTI-CMP-5-ENTERPRISE)..."
+                    className="px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono bg-white focus:outline-none focus:border-[#6C2BD9] w-full lg:w-80 shadow-2xs"
+                  />
+                  <button
+                    onClick={handleApplyLicense}
+                    disabled={isApplyingLicense || !newLicenseKeyInput.trim()}
+                    className="px-4 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 text-white text-xs font-bold rounded-lg shadow-2xs shrink-0 cursor-pointer transition-colors"
+                  >
+                    {isApplyingLicense ? 'Applying...' : 'Apply Key'}
+                  </button>
+                </div>
+              </div>
+            </div>
+
+            {/* Licensed Corporate Entities Table (Backend Enumeration) */}
+            <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-100 pb-3">
+                <div>
+                  <h3 className="text-sm font-bold text-slate-900">Licensed Corporate Entities (Backend Configuration)</h3>
+                  <p className="text-xs text-slate-500 mt-0.5">
+                    This table acts as the backend configuration enumeration loaded into dropdowns across User Management and Asset operations.
+                  </p>
+                </div>
+                <div className="flex items-center gap-2 text-[11px] font-semibold text-purple-700 bg-purple-50 px-2.5 py-1 rounded-lg border border-purple-200/60">
+                  <Lock className="w-3 h-3" />
+                  <span>Protected Backend Enumeration</span>
+                </div>
+              </div>
+
+              <div className="overflow-x-auto rounded-lg border border-slate-200">
+                <table className="w-full text-left text-xs border-collapse">
+                  <thead>
+                    <tr className="bg-slate-50 border-b border-slate-200 text-slate-600 font-semibold uppercase text-[10px] tracking-wider">
+                      <th className="p-3">Company Code</th>
+                      <th className="p-3">Company Name</th>
+                      <th className="p-3">License Role</th>
+                      <th className="p-3">Currency</th>
+                      <th className="p-3">Timezone</th>
+                      <th className="p-3 text-center">Divisions / Depts</th>
+                      <th className="p-3 text-center">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {configuredCompanies.map((c, idx) => (
+                      <tr key={c.id || c.code} className="hover:bg-slate-50/80 transition-colors">
+                        <td className="p-3 font-mono font-bold text-[#6C2BD9]">{c.code || `CMP-00${idx + 1}`}</td>
+                        <td className="p-3 font-bold text-slate-800">
+                          <div className="flex items-center gap-2">
+                            <Building className="w-3.5 h-3.5 text-slate-400" />
+                            <span>{c.name}</span>
+                          </div>
+                        </td>
+                        <td className="p-3">
+                          <span className="text-[11px] font-semibold text-slate-600 bg-slate-100 px-2 py-0.5 rounded">
+                            {idx === 0 || c.isHeadOffice ? 'Primary Head Office' : 'Licensed Operating Subsidiary'}
+                          </span>
+                        </td>
+                        <td className="p-3 font-semibold text-slate-700">{c.currency || 'AED'}</td>
+                        <td className="p-3 text-slate-500 text-[11px]">{c.timezone || 'Asia/Dubai'}</td>
+                        <td className="p-3 text-center font-bold text-slate-700">
+                          {c._count?.departments !== undefined ? c._count.departments : 6}
+                        </td>
+                        <td className="p-3 text-center">
+                          <span className="inline-flex items-center gap-1 text-[11px] font-bold text-emerald-700 bg-emerald-50 border border-emerald-200 px-2 py-0.5 rounded-full">
+                            <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                            <span>Active</span>
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ========================================================================= */}
@@ -2933,6 +3242,121 @@ export function SystemConfiguration() {
                 Add Value
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* ========================================================================= */}
+      {/* MODAL: ACTIVATE LICENSED OPERATING COMPANY (Gated by Licensing)           */}
+      {/* ========================================================================= */}
+      {showAddCompanyModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 backdrop-blur-xs p-4">
+          <div className="bg-white rounded-2xl max-w-lg w-full shadow-2xl border border-slate-200 overflow-hidden animate-in fade-in zoom-in-95 duration-150">
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-100">
+              <div className="flex items-center gap-2.5">
+                <div className="p-2 bg-purple-50 rounded-lg text-[#6C2BD9]">
+                  <Building className="w-5 h-5 text-[#6C2BD9]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-sm">Activate Operating Company Entity</h3>
+                  <p className="text-[11px] text-slate-500">Backend Corporate Entity Enumeration</p>
+                </div>
+              </div>
+              <button
+                onClick={() => setShowAddCompanyModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:text-slate-700"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            </div>
+
+            <form onSubmit={handleCreateCompanyInConfig} className="p-6 space-y-4 text-xs">
+              {/* License Warning if Single-Company License */}
+              {!licenseData?.metrics?.isMultiCompanyAllowed && (
+                <div className="p-3.5 bg-amber-50 border border-amber-200 rounded-xl text-amber-900 space-y-1.5">
+                  <div className="flex items-center gap-2 font-bold text-xs text-amber-800">
+                    <AlertTriangle className="w-4 h-4 text-amber-600 shrink-0" />
+                    <span>Single-Company License Enforced (Head Office)</span>
+                  </div>
+                  <p className="text-[11px] text-amber-700 leading-relaxed">
+                    Your organization is licensed for <strong>1 Head Office Company</strong> ({licenseData?.licensedTo || 'Primary Corporate'}). You can create unlimited divisions, departments, sections, and cost centers under this company. Activating additional legal operating companies requires an authorized <strong>Multi-Company Enterprise License Key</strong>.
+                  </p>
+                </div>
+              )}
+
+              {companyCreateError && (
+                <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-800 text-[11px] font-semibold flex items-center gap-2">
+                  <AlertTriangle className="w-4 h-4 text-rose-600 shrink-0" />
+                  <span>{companyCreateError}</span>
+                </div>
+              )}
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Company Legal / Entity Name *</label>
+                <input
+                  type="text"
+                  required
+                  value={newCompanyForm.name}
+                  onChange={(e) => setNewCompanyForm({ ...newCompanyForm, name: e.target.value })}
+                  placeholder="e.g. Dubai Commercial Assets LLC"
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold focus:outline-none focus:border-[#6C2BD9]"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Company Code</label>
+                  <input
+                    type="text"
+                    value={newCompanyForm.code}
+                    onChange={(e) => setNewCompanyForm({ ...newCompanyForm, code: e.target.value })}
+                    placeholder="e.g. CMP-002"
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-mono focus:outline-none focus:border-[#6C2BD9]"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Operating Currency</label>
+                  <select
+                    value={newCompanyForm.currency}
+                    onChange={(e) => setNewCompanyForm({ ...newCompanyForm, currency: e.target.value })}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs font-semibold bg-white"
+                  >
+                    <option value="AED">AED - UAE Dirham</option>
+                    <option value="USD">USD - US Dollar</option>
+                    <option value="SAR">SAR - Saudi Riyal</option>
+                    <option value="EUR">EUR - Euro</option>
+                    <option value="GBP">GBP - British Pound</option>
+                    <option value="INR">INR - Indian Rupee</option>
+                  </select>
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Operating Timezone</label>
+                <input
+                  type="text"
+                  value={newCompanyForm.timezone}
+                  onChange={(e) => setNewCompanyForm({ ...newCompanyForm, timezone: e.target.value })}
+                  className="w-full px-3 py-2 border border-slate-200 rounded-lg text-xs text-slate-600 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-2.5 pt-3 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={() => setShowAddCompanyModal(false)}
+                  className="px-4 py-2 border border-slate-200 text-slate-700 hover:bg-slate-50 font-semibold rounded-lg cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white font-bold rounded-lg shadow-xs cursor-pointer transition-colors"
+                >
+                  Activate Company
+                </button>
+              </div>
+            </form>
           </div>
         </div>
       )}
