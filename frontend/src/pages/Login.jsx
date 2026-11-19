@@ -492,6 +492,21 @@ export function Login() {
     }
   };
 
+  const handleOpenForgotModal = () => {
+    setShowForgotModal(true);
+    setForgotError('');
+    setForgotMessage('');
+    if (username && !resetEmail) {
+      setResetEmail(username.trim());
+    }
+    fetch(`${API_BASE_URL}/auth/password-policy`)
+      .then((res) => res.json())
+      .then((data) => {
+        if (data?.policy) setLoginCompanyPolicy(data.policy);
+      })
+      .catch(() => {});
+  };
+
   const handleForgotSubmit = async (e) => {
     e.preventDefault();
     if (!resetEmail) return;
@@ -881,7 +896,7 @@ export function Login() {
                 </label>
                 <button
                   type="button"
-                  onClick={() => setShowForgotModal(true)}
+                  onClick={handleOpenForgotModal}
                   className="text-xs font-bold text-[#6C2BD9] hover:underline cursor-pointer"
                 >
                   {t.forgotPassword}
