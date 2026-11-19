@@ -109,9 +109,16 @@ export async function sendPasswordResetEmail({ to, userName, resetToken, otpCode
 
   const info = await transporter.sendMail({
     from: `"${fromName}" <${fromEmail}>`,
+    replyTo: fromEmail,
     to,
-    subject: `Password Recovery Request - ${fromName}`,
-    html
+    subject: `Your ${fromName} Password Reset Code: ${otpCode || 'Verification'}`,
+    text: `Hello ${userName || 'User'},\n\nWe received a request to recover the password for your ${fromName} account (${to}).\n\nYour 6-Digit One-Time Verification Code is: ${otpCode || 'N/A'}\n\nOr reset directly using this link:\n${resetLink}\n\nThis recovery link and code will expire in 15 minutes. If you did not make this request, please safely disregard this email.\n\n--\n${fromName} Automated Notification`,
+    html,
+    headers: {
+      'X-Priority': '1',
+      'X-MSMail-Priority': 'High',
+      'Importance': 'high'
+    }
   });
 
   return info;
