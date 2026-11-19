@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
@@ -39,6 +40,15 @@ export function DepartmentsTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
+  const { getMasterPermissions } = useAuth();
+  const {
+    canCreate,
+    canEdit,
+    canDelete,
+    canDuplicate,
+    canActivate
+  } = getMasterPermissions ? getMasterPermissions('departments') : { canCreate: true, canEdit: true, canDelete: true, canDuplicate: true, canActivate: true };
+
   const [departmentsList, setDepartmentsList] = useState([]);
   const [costCenters, setCostCenters] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
@@ -700,61 +710,76 @@ export function DepartmentsTab({
                       </td>
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleOpenAddDeptModal(dept)}
-                            title="Edit Department"
-                            className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleOpenAddDeptModal(dept)}
+                              title="Edit Department"
+                              className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <RowActionsMenu
                             isOpen={isMenuOpen}
                             onToggle={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `dept-${dept.id}`)}
                             onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
                             className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors cursor-pointer"
                           >
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleOpenAddDeptModal(dept);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                              <span>Edit Department</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleDuplicateDepartment(dept);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Duplicate</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleToggleDepartmentStatus(dept);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>{dept.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
-                            </button>
-                            <div className="h-px bg-slate-100 my-1" />
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleDeleteDepartment(dept);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete</span>
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleOpenAddDeptModal(dept);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Edit Department</span>
+                              </button>
+                            )}
+                            {canDuplicate && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleDuplicateDepartment(dept);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Duplicate</span>
+                              </button>
+                            )}
+                            {canActivate && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleToggleDepartmentStatus(dept);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>{dept.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                              </button>
+                            )}
+                            {canDelete && (
+                              <>
+                                {(canEdit || canDuplicate || canActivate) && <div className="h-px bg-slate-100 my-1" />}
+                                <button
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleDeleteDepartment(dept);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              </>
+                            )}
                           </RowActionsMenu>
+                          {!canEdit && !canDuplicate && !canActivate && !canDelete && (
+                            <span className="text-slate-300 font-mono text-[11px]">-</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -778,13 +803,15 @@ export function DepartmentsTab({
           <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Department Details</h3>
-            <button
-              onClick={() => handleOpenAddDeptModal(selectedDepartment)}
-              className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>Edit</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => handleOpenAddDeptModal(selectedDepartment)}
+                className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
+            )}
           </div>
 
           {!selectedDepartment ? (

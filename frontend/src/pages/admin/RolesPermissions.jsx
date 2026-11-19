@@ -32,26 +32,28 @@ import clsx from 'clsx';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
 
+export const MASTER_DATA_DEFAULT_ACTIONS = ['View', 'Create', 'Edit', 'Delete', 'Duplicate', 'Activate/Deactivate', 'Import', 'Export'];
+
 export const MASTER_DATA_ENTITIES = [
-  { key: 'item-master', name: 'Item Master', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'asset-groups', name: 'Asset Groups', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'sub-groups', name: 'Asset Sub Groups', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'categories', name: 'Categories', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'subcategories', name: 'Sub Categories', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'companies', name: 'Companies', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'custodians', name: 'Custodians', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'locations', name: 'Locations', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'location-levels', name: 'Location Levels', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'departments', name: 'Departments', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'cost-centers', name: 'Sections', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'suppliers', name: 'Suppliers', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'manufacturers', name: 'Manufacturers', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'brands', name: 'Brands', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'uom', name: 'UOM', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'status-codes', name: 'Status Codes', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'disposal-statuses', name: 'Disposal Statuses', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'conditions', name: 'Conditions', actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] },
-  { key: 'depreciation', name: 'Depreciation Policies', actions: ['View', 'Create', 'Edit'] }
+  { key: 'item-master', name: 'Item Master', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'asset-groups', name: 'Asset Groups', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'sub-groups', name: 'Asset Sub Groups', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'categories', name: 'Categories', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'subcategories', name: 'Sub Categories', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'companies', name: 'Companies', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'custodians', name: 'Custodians', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'locations', name: 'Locations', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'location-levels', name: 'Location Levels', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'departments', name: 'Departments', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'cost-centers', name: 'Sections', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'suppliers', name: 'Suppliers', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'manufacturers', name: 'Manufacturers', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'brands', name: 'Brands', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'uom', name: 'UOM', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'status-codes', name: 'Status Codes', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'disposal-statuses', name: 'Disposal Statuses', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'conditions', name: 'Conditions', actions: [...MASTER_DATA_DEFAULT_ACTIONS] },
+  { key: 'depreciation', name: 'Depreciation Policies', actions: ['View', 'Create', 'Edit', 'Delete', 'Duplicate', 'Activate/Deactivate', 'Export'] }
 ];
 
 export const MODULE_STRUCTURE = [
@@ -119,7 +121,7 @@ export const MODULE_STRUCTURE = [
     key: 'master-data',
     name: 'Master Data Hub',
     screens: MASTER_DATA_ENTITIES.map(e => e.name),
-    actions: ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export']
+    actions: [...MASTER_DATA_DEFAULT_ACTIONS]
   },
   {
     key: 'administration',
@@ -813,7 +815,7 @@ export function RolesPermissions() {
         return eActs.length > 0;
       });
       if (hasAnyMasterAction) {
-        permsToSave['master-data'] = ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'];
+        permsToSave['master-data'] = [...MASTER_DATA_DEFAULT_ACTIONS];
       } else {
         permsToSave['master-data'] = [];
       }
@@ -897,7 +899,7 @@ export function RolesPermissions() {
       const eActions = (e.key === entityKey ? updated : (nextPerms[`master_data_${e.key}`] || []));
       return eActions.length > 0;
     });
-    nextPerms['master-data'] = hasAnyMasterAction ? ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] : [];
+    nextPerms['master-data'] = hasAnyMasterAction ? [...MASTER_DATA_DEFAULT_ACTIONS] : [];
     setRolePermissions(nextPerms);
   };
 
@@ -912,7 +914,7 @@ export function RolesPermissions() {
       const eActions = (e.key === entity.key ? updated : (nextPerms[`master_data_${e.key}`] || []));
       return eActions.length > 0;
     });
-    nextPerms['master-data'] = hasAnyMasterAction ? ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'] : [];
+    nextPerms['master-data'] = hasAnyMasterAction ? [...MASTER_DATA_DEFAULT_ACTIONS] : [];
     setRolePermissions(nextPerms);
   };
 
@@ -934,7 +936,7 @@ export function RolesPermissions() {
       MASTER_DATA_ENTITIES.forEach(e => {
         nextPerms[`master_data_${e.key}`] = [...e.actions];
       });
-      nextPerms['master-data'] = ['View', 'Create', 'Edit', 'Delete', 'Import', 'Export'];
+      nextPerms['master-data'] = [...MASTER_DATA_DEFAULT_ACTIONS];
     }
     setRolePermissions(nextPerms);
   };

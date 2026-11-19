@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { INITIAL_ASSET_GROUPS } from './AssetGroupsTab';
 import { INITIAL_CLASSES } from './ClassesTab';
 import { SmartDeleteModal } from './SmartDeleteModal';
@@ -42,6 +43,15 @@ export function CategoriesTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
+  const { getMasterPermissions } = useAuth();
+  const {
+    canCreate,
+    canEdit,
+    canDelete,
+    canDuplicate,
+    canActivate
+  } = getMasterPermissions ? getMasterPermissions('categories') : { canCreate: true, canEdit: true, canDelete: true, canDuplicate: true, canActivate: true };
+
   const [categoriesList, setCategoriesList] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -759,13 +769,15 @@ export function CategoriesTab({
 
                       <td className="py-3.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1 text-slate-400">
-                          <button
-                            onClick={() => handleOpenAddCatModal(cat)}
-                            className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9]"
-                            title="Edit Category"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleOpenAddCatModal(cat)}
+                              className="p-1 hover:bg-purple-100 rounded text-slate-500 hover:text-[#6C2BD9]"
+                              title="Edit Category"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
 
                           <RowActionsMenu
                             isOpen={isMenuOpen}
@@ -776,52 +788,64 @@ export function CategoriesTab({
                               isMenuOpen ? 'bg-purple-100 text-[#6C2BD9]' : 'hover:bg-slate-100 text-slate-500 hover:text-[#6C2BD9]'
                             )}
                           >
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleOpenAddCatModal(cat);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>Edit Category</span>
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleOpenAddCatModal(cat);
+                                }}
+                                className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                                <span>Edit Category</span>
+                              </button>
+                            )}
 
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleDuplicateCategory(cat);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <Copy className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>Duplicate</span>
-                            </button>
+                            {canDuplicate && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleDuplicateCategory(cat);
+                                }}
+                                className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
+                              >
+                                <Copy className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                                <span>Duplicate</span>
+                              </button>
+                            )}
 
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleToggleCategoryStatus(cat);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              <span>{cat.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
-                            </button>
+                            {canActivate && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleToggleCategoryStatus(cat);
+                                }}
+                                className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] transition-colors flex items-center gap-2.5 cursor-pointer"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                                <span>{cat.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                              </button>
+                            )}
 
-                            <div className="my-1 border-t border-slate-100" />
-
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleInitiateDeleteCategory(cat);
-                              }}
-                              className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2.5 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-600" />
-                              <span>Delete</span>
-                            </button>
+                            {canDelete && (
+                              <>
+                                {(canEdit || canDuplicate || canActivate) && <div className="my-1 border-t border-slate-100" />}
+                                <button
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleInitiateDeleteCategory(cat);
+                                  }}
+                                  className="w-full text-left px-3 py-1.5 rounded-lg text-xs font-semibold text-rose-600 hover:bg-rose-50 transition-colors flex items-center gap-2.5 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5 text-rose-600" />
+                                  <span>Delete</span>
+                                </button>
+                              </>
+                            )}
                           </RowActionsMenu>
+                          {!canEdit && !canDuplicate && !canActivate && !canDelete && (
+                            <span className="text-slate-300 font-mono text-[11px]">-</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -845,13 +869,15 @@ export function CategoriesTab({
           <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Category Details</h3>
-            <button
-              onClick={() => handleOpenAddCatModal(selectedCategory)}
-              className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>Edit</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => handleOpenAddCatModal(selectedCategory)}
+                className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
+            )}
           </div>
 
           {selectedCategory && (

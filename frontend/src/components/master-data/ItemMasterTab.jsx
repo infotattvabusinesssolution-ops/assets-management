@@ -27,6 +27,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { RowActionsMenu } from './RowActionsMenu';
 import MasterCodeInput from './MasterCodeInput';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
@@ -47,6 +48,15 @@ export function ItemMasterTab({
   const [localActiveRowMenuId, setLocalActiveRowMenuId] = useState(null);
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
+
+  const { getMasterPermissions } = useAuth();
+  const {
+    canCreate,
+    canEdit,
+    canDelete,
+    canDuplicate,
+    canActivate
+  } = getMasterPermissions ? getMasterPermissions('item-master') : { canCreate: true, canEdit: true, canDelete: true, canDuplicate: true, canActivate: true };
 
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -806,63 +816,78 @@ export function ItemMasterTab({
                         </td>
                         <td className="py-3 px-4 text-center" onClick={(e) => e.stopPropagation()}>
                           <div className="flex items-center justify-center gap-1 text-slate-400">
-                            <button
-                              type="button"
-                              onClick={() => handleOpenAddModal(item)}
-                              title="Edit Item Master"
-                              className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                            </button>
+                            {canEdit && (
+                              <button
+                                type="button"
+                                onClick={() => handleOpenAddModal(item)}
+                                title="Edit Item Master"
+                                className="p-1 rounded-lg text-slate-400 hover:text-[#6C2BD9] hover:bg-purple-100/60 transition-colors cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                              </button>
+                            )}
                             <RowActionsMenu
                               isOpen={activeRowMenuId === `item-${item.id}`}
                               onToggle={() => setActiveRowMenuId && setActiveRowMenuId(activeRowMenuId === `item-${item.id}` ? null : `item-${item.id}`)}
                               onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
                             >
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveRowMenuId && setActiveRowMenuId(null);
-                                  handleOpenAddModal(item);
-                                }}
-                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                              >
-                                <Edit className="w-3.5 h-3.5" />
-                                <span>Edit Item Master</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={() => handleDuplicateItem(item)}
-                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                              >
-                                <Copy className="w-3.5 h-3.5" />
-                                <span>Duplicate</span>
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  setActiveRowMenuId && setActiveRowMenuId(null);
-                                  handleToggleStatus(item, e);
-                                }}
-                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                              >
-                                <RefreshCw className="w-3.5 h-3.5" />
-                                <span>{item.active !== false ? 'Deactivate' : 'Activate'}</span>
-                              </button>
-                              <div className="h-px bg-slate-100 my-1" />
-                              <button
-                                type="button"
-                                onClick={() => {
-                                  setActiveRowMenuId && setActiveRowMenuId(null);
-                                  setItemToDelete(item);
-                                  setShowDeleteConfirmModal(true);
-                                }}
-                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
-                              >
-                                <Trash2 className="w-3.5 h-3.5" />
-                                <span>Delete</span>
-                              </button>
+                              {canEdit && (
+                                <button
+                                  type="button"
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleOpenAddModal(item);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Edit className="w-3.5 h-3.5" />
+                                  <span>Edit Item Master</span>
+                                </button>
+                              )}
+                              {canDuplicate && (
+                                <button
+                                  type="button"
+                                  onClick={() => handleDuplicateItem(item)}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Copy className="w-3.5 h-3.5" />
+                                  <span>Duplicate</span>
+                                </button>
+                              )}
+                              {canActivate && (
+                                <button
+                                  type="button"
+                                  onClick={(e) => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleToggleStatus(item, e);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <RefreshCw className="w-3.5 h-3.5" />
+                                  <span>{item.active !== false ? 'Deactivate' : 'Activate'}</span>
+                                </button>
+                              )}
+                              {canDelete && (
+                                <>
+                                  {(canEdit || canDuplicate || canActivate) && <div className="h-px bg-slate-100 my-1" />}
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveRowMenuId && setActiveRowMenuId(null);
+                                      setItemToDelete(item);
+                                      setShowDeleteConfirmModal(true);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Trash2 className="w-3.5 h-3.5" />
+                                    <span>Delete</span>
+                                  </button>
+                                </>
+                              )}
                             </RowActionsMenu>
+                            {!canEdit && !canDuplicate && !canActivate && !canDelete && (
+                              <span className="text-slate-300 font-mono text-[11px]">-</span>
+                            )}
                           </div>
                         </td>
                       </tr>
@@ -894,13 +919,15 @@ export function ItemMasterTab({
                   </span>
                   <h3 className="text-sm font-bold text-slate-900 leading-snug">{selectedItem.itemName}</h3>
                 </div>
-                <button
-                  onClick={() => handleOpenAddModal(selectedItem)}
-                  className="px-2.5 py-1 text-xs font-semibold text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1"
-                >
-                  <Edit className="w-3 h-3" />
-                  <span>Edit</span>
-                </button>
+                {canEdit && (
+                  <button
+                    onClick={() => handleOpenAddModal(selectedItem)}
+                    className="px-2.5 py-1 text-xs font-semibold text-[#6C2BD9] bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors flex items-center gap-1"
+                  >
+                    <Edit className="w-3 h-3" />
+                    <span>Edit</span>
+                  </button>
+                )}
               </div>
 
               {/* Description */}

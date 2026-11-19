@@ -1015,20 +1015,48 @@ export function UserManagement() {
     const perms = effectiveRoleData.perms;
     if (!perms) return false;
 
+    const checkMatch = (grantedList, targetAct) => {
+      if (!Array.isArray(grantedList)) return false;
+      if (grantedList.includes('*')) return true;
+      if (grantedList.includes(targetAct)) return true;
+      const tLower = (targetAct || '').toLowerCase();
+      return grantedList.some(a => {
+        if (typeof a !== 'string') return false;
+        const aLower = a.toLowerCase();
+        if (aLower === tLower || a === '*') return true;
+        if ((tLower === 'activate' || tLower === 'deactivate' || tLower === 'status' || tLower === 'activate/deactivate') &&
+            (aLower.includes('activate') || aLower.includes('deactivate'))) {
+          return true;
+        }
+        if (tLower === 'duplicate' && aLower.includes('duplicate')) return true;
+        return false;
+      });
+    };
+
     if (Array.isArray(perms)) {
-      return perms.includes('*') || perms.includes(action);
+      return checkMatch(perms, action);
     }
 
-    // Direct match: master_data_${catalogKey} or master-data:${catalogKey}
-    const direct = perms[`master_data_${catalogKey}`] || perms[`master-data:${catalogKey}`];
+    // Direct match: master_data_${catalogKey} or master-data:${catalogKey} (supporting both hyphen and underscore)
+    const baseKey = catalogKey === 'classes' ? 'sub-groups' : (catalogKey === 'asset-conditions' ? 'conditions' : catalogKey);
+    const hyphenKey = baseKey.replace(/_/g, '-');
+    const underscoreKey = baseKey.replace(/-/g, '_');
+
+    const direct = perms[`master_data_${hyphenKey}`] ||
+                   perms[`master_data_${underscoreKey}`] ||
+                   perms[`master_${hyphenKey}`] ||
+                   perms[`master_${underscoreKey}`] ||
+                   perms[`master-data:${hyphenKey}`] ||
+                   perms[`master-data:${underscoreKey}`];
+
     if (Array.isArray(direct)) {
-      return direct.includes(action) || direct.includes('*');
+      return checkMatch(direct, action);
     }
 
     // Fall back to parent master-data if granular key is not explicitly set
     const parent = perms['master-data'] || perms['master_data'];
     if (Array.isArray(parent)) {
-      return parent.includes(action) || parent.includes('*');
+      return checkMatch(parent, action);
     }
     return false;
   };

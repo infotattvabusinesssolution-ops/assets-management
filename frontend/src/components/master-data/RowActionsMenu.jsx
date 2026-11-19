@@ -46,6 +46,21 @@ export function RowActionsMenu({
     }
   }, [isOpen, onClose]);
 
+  // Count valid rendered action children (ignoring null, undefined, false, and standalone dividers)
+  const childArray = React.Children.toArray(children).filter(Boolean);
+  const actionChildren = childArray.filter((child) => {
+    if (React.isValidElement(child)) {
+      const cls = child.props?.className || '';
+      if (cls.includes('h-px') || cls.includes('border-t')) return false;
+      return true;
+    }
+    return Boolean(child);
+  });
+
+  if (actionChildren.length === 0) {
+    return null;
+  }
+
   return (
     <>
       <button

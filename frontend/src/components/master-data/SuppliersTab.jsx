@@ -24,6 +24,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { DEFAULT_COUNTRIES } from './LocationsTab';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
@@ -43,6 +44,15 @@ export function SuppliersTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
+  const { getMasterPermissions } = useAuth();
+  const {
+    canCreate,
+    canEdit,
+    canDelete,
+    canDuplicate,
+    canActivate
+  } = getMasterPermissions ? getMasterPermissions('suppliers') : { canCreate: true, canEdit: true, canDelete: true, canDuplicate: true, canActivate: true };
+
   const [suppliersList, setSuppliersList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
   const [countriesList, setCountriesList] = useState(DEFAULT_COUNTRIES);
@@ -632,61 +642,76 @@ export function SuppliersTab({
                       </td>
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleOpenAddSupModalInternal(sup)}
-                            title="Edit Supplier"
-                            className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleOpenAddSupModalInternal(sup)}
+                              title="Edit Supplier"
+                              className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <RowActionsMenu
                             isOpen={isMenuOpen}
                             onToggle={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `sup-${sup.id}`)}
                             onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
                             className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors cursor-pointer"
                           >
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleOpenAddSupModalInternal(sup);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                              <span>Edit Supplier</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleDuplicateSupplier(sup);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Duplicate</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleToggleSupStatus(sup);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>{sup.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
-                            </button>
-                            <div className="h-px bg-slate-100 my-1" />
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleDeleteSupplier(sup);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete</span>
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleOpenAddSupModalInternal(sup);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Edit Supplier</span>
+                              </button>
+                            )}
+                            {canDuplicate && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleDuplicateSupplier(sup);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Duplicate</span>
+                              </button>
+                            )}
+                            {canActivate && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleToggleSupStatus(sup);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>{sup.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                              </button>
+                            )}
+                            {canDelete && (
+                              <>
+                                {(canEdit || canDuplicate || canActivate) && <div className="h-px bg-slate-100 my-1" />}
+                                <button
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleDeleteSupplier(sup);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              </>
+                            )}
                           </RowActionsMenu>
+                          {!canEdit && !canDuplicate && !canActivate && !canDelete && (
+                            <span className="text-slate-300 font-mono text-[11px]">-</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -713,13 +738,15 @@ export function SuppliersTab({
               <Truck className="w-4 h-4 text-[#6C2BD9]" />
               <span>Supplier Details</span>
             </h3>
-            <button
-              onClick={() => handleOpenAddSupModalInternal(selectedSupplier)}
-              className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>Edit</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => handleOpenAddSupModalInternal(selectedSupplier)}
+                className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
+            )}
           </div>
 
           {!selectedSupplier ? (

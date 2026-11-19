@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
@@ -37,6 +38,15 @@ export function LocationLevelTab({
   const [localActiveRowMenuId, setLocalActiveRowMenuId] = useState(null);
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
+
+  const { getMasterPermissions } = useAuth();
+  const {
+    canCreate,
+    canEdit,
+    canDelete,
+    canDuplicate,
+    canActivate
+  } = getMasterPermissions ? getMasterPermissions('location-levels') : { canCreate: true, canEdit: true, canDelete: true, canDuplicate: true, canActivate: true };
 
   const [items, setItems] = useState([]);
   const [selectedItem, setSelectedItem] = useState(null);
@@ -491,52 +501,65 @@ export function LocationLevelTab({
                                 onClose={() => setActiveRowMenuId(null)}
                                 className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors cursor-pointer"
                               >
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveRowMenuId(null);
-                                    handleOpenEditModal(item);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Edit className="w-3.5 h-3.5" />
-                                  <span>Edit Record</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveRowMenuId(null);
-                                    handleDuplicate(item);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Copy className="w-3.5 h-3.5" />
-                                  <span>Duplicate</span>
-                                </button>
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveRowMenuId(null);
-                                    handleToggleStatus(item);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                                >
-                                  <RefreshCw className="w-3.5 h-3.5" />
-                                  <span>{item.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
-                                </button>
-                                <div className="h-px bg-slate-100 my-1" />
-                                <button
-                                  type="button"
-                                  onClick={() => {
-                                    setActiveRowMenuId(null);
-                                    handleInitiateDelete(item);
-                                  }}
-                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
-                                >
-                                  <Trash2 className="w-3.5 h-3.5" />
-                                  <span>Delete</span>
-                                </button>
+                                {canEdit && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveRowMenuId(null);
+                                      handleOpenEditModal(item);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Edit className="w-3.5 h-3.5" />
+                                    <span>Edit Record</span>
+                                  </button>
+                                )}
+                                {canDuplicate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveRowMenuId(null);
+                                      handleDuplicate(item);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <Copy className="w-3.5 h-3.5" />
+                                    <span>Duplicate</span>
+                                  </button>
+                                )}
+                                {canActivate && (
+                                  <button
+                                    type="button"
+                                    onClick={() => {
+                                      setActiveRowMenuId(null);
+                                      handleToggleStatus(item);
+                                    }}
+                                    className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                                  >
+                                    <RefreshCw className="w-3.5 h-3.5" />
+                                    <span>{item.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                                  </button>
+                                )}
+                                {canDelete && (
+                                  <>
+                                    {(canEdit || canDuplicate || canActivate) && <div className="h-px bg-slate-100 my-1" />}
+                                    <button
+                                      type="button"
+                                      onClick={() => {
+                                        setActiveRowMenuId(null);
+                                        handleInitiateDelete(item);
+                                      }}
+                                      className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                    >
+                                      <Trash2 className="w-3.5 h-3.5" />
+                                      <span>Delete</span>
+                                    </button>
+                                  </>
+                                )}
                               </RowActionsMenu>
+                              {!canEdit && !canDuplicate && !canActivate && !canDelete && (
+                                <span className="text-slate-300 font-mono text-[11px]">-</span>
+                              )}
                             </div>
                           </td>
                         </tr>
@@ -624,24 +647,30 @@ export function LocationLevelTab({
                   </div>
                 </div>
 
-                <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => handleOpenEditModal(selectedItem)}
-                    className="flex-1 py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
-                  >
-                    <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                    <span>Edit Record</span>
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => handleToggleStatus(selectedItem)}
-                    className="py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold flex items-center justify-center gap-1 cursor-pointer"
-                    title={selectedItem.status === 'Active' ? 'Deactivate' : 'Activate'}
-                  >
-                    <span>{selectedItem.status === 'Active' ? 'Make Inactive' : 'Activate'}</span>
-                  </button>
-                </div>
+                {(canEdit || canActivate) && (
+                  <div className="pt-3 border-t border-slate-100 flex items-center gap-2">
+                    {canEdit && (
+                      <button
+                        type="button"
+                        onClick={() => handleOpenEditModal(selectedItem)}
+                        className="flex-1 py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-700 font-bold flex items-center justify-center gap-1.5 cursor-pointer"
+                      >
+                        <Edit className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                        <span>Edit Record</span>
+                      </button>
+                    )}
+                    {canActivate && (
+                      <button
+                        type="button"
+                        onClick={() => handleToggleStatus(selectedItem)}
+                        className="py-2 px-3 rounded-xl border border-slate-200 hover:bg-slate-50 text-slate-600 font-bold flex items-center justify-center gap-1 cursor-pointer"
+                        title={selectedItem.status === 'Active' ? 'Deactivate' : 'Activate'}
+                      >
+                        <span>{selectedItem.status === 'Active' ? 'Make Inactive' : 'Activate'}</span>
+                      </button>
+                    )}
+                  </div>
+                )}
               </div>
             ) : (
               <div className="py-8 text-center text-slate-400 text-xs">

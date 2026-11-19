@@ -282,6 +282,24 @@ export function AuthProvider({ children }) {
     return false;
   };
 
+  const checkActionMatch = (grantedAction, requiredAction) => {
+    if (typeof grantedAction !== 'string') return false;
+    if (grantedAction === '*') return true;
+    const gLower = grantedAction.toLowerCase();
+    const rLower = (requiredAction || '').toLowerCase();
+    if (gLower === rLower) return true;
+    // Flexible matching for Activate / Deactivate / Status
+    if ((rLower === 'activate' || rLower === 'deactivate' || rLower === 'status' || rLower === 'activate/deactivate') &&
+        (gLower.includes('activate') || gLower.includes('deactivate'))) {
+      return true;
+    }
+    // Flexible matching for Duplicate
+    if (rLower === 'duplicate' && gLower.includes('duplicate')) {
+      return true;
+    }
+    return false;
+  };
+
   const hasMasterPermission = (masterKey, action = 'View') => {
     if (!user?.role) return false;
     if (user.role.code === 'SYS_ADMIN') return true;
@@ -293,30 +311,49 @@ export function AuthProvider({ children }) {
     if (!perms) return false;
     if (Array.isArray(perms) && perms.includes('*')) return true;
 
-    // Normalize masterKey
-    const normalizedKey = masterKey === 'classes' ? 'sub-groups' : (masterKey === 'asset-conditions' ? 'conditions' : masterKey);
+    // Normalize masterKey to cover classes, sub-groups, conditions, and both hyphen and underscore formats
+    const baseKey = masterKey === 'classes' ? 'sub-groups' : (masterKey === 'asset-conditions' ? 'conditions' : masterKey);
+    const hyphenKey = baseKey.replace(/_/g, '-');
+    const underscoreKey = baseKey.replace(/-/g, '_');
 
-    // 1. Check granular master permission: e.g. perms['master_data_companies']
+    // 1. Check granular master permission: e.g. perms['master_data_asset-groups'] or perms['master_data_asset_groups']
     if (typeof perms === 'object' && !Array.isArray(perms)) {
-      const granular = perms[`master_data_${normalizedKey}`] || perms[`master_${normalizedKey}`];
+      const granular = perms[`master_data_${hyphenKey}`] ||
+                       perms[`master_data_${underscoreKey}`] ||
+                       perms[`master_${hyphenKey}`] ||
+                       perms[`master_${underscoreKey}`] ||
+                       perms[`master-data:${hyphenKey}`] ||
+                       perms[`master-data:${underscoreKey}`];
+
       if (Array.isArray(granular)) {
         if (!action) return granular.length > 0;
-        const actLower = action.toLowerCase();
-        return granular.some(a => typeof a === 'string' && (a.toLowerCase() === actLower || a === '*'));
+        return granular.some(a => checkActionMatch(a, action));
       }
 
       // 2. Fallback to parent master-data permission if granular key is not explicitly set
       const parentActions = perms['master-data'] || perms['master_data'];
       if (Array.isArray(parentActions)) {
         if (!action) return parentActions.length > 0;
-        const actLower = action.toLowerCase();
-        return parentActions.some(a => typeof a === 'string' && (a.toLowerCase() === actLower || a === '*'));
+        return parentActions.some(a => checkActionMatch(a, action));
       }
     }
 
     // 3. Fallback for admin roles
     if (user.role.code === 'ASSET_ADMIN' || user.role.code === 'ADMIN') return true;
     return false;
+  };
+
+  const getMasterPermissions = (masterKey) => {
+    return {
+      canView: hasMasterPermission(masterKey, 'View'),
+      canCreate: hasMasterPermission(masterKey, 'Create'),
+      canEdit: hasMasterPermission(masterKey, 'Edit'),
+      canDelete: hasMasterPermission(masterKey, 'Delete'),
+      canDuplicate: hasMasterPermission(masterKey, 'Duplicate'),
+      canActivate: hasMasterPermission(masterKey, 'Activate/Deactivate') || hasMasterPermission(masterKey, 'Activate'),
+      canImport: hasMasterPermission(masterKey, 'Import'),
+      canExport: hasMasterPermission(masterKey, 'Export')
+    };
   };
 
   const hasPermission = (moduleOrCode, action) => {
@@ -328,7 +365,7 @@ export function AuthProvider({ children }) {
   return (
     <AuthContext.Provider value={{
       user, token, isAuthenticated: !!user, loading, login, logout, changePassword,
-      switchRole: () => false, can, hasPermission, hasMasterPermission, hasRole
+      switchRole: () => false, can, hasPermission, hasMasterPermission, getMasterPermissions, hasRole
     }}>
       {children}
     </AuthContext.Provider>

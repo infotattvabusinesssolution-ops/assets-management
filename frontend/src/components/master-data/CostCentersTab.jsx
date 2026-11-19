@@ -22,6 +22,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import { RowActionsMenu } from './RowActionsMenu';
 import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterCodeInput from './MasterCodeInput';
@@ -40,6 +41,15 @@ export function CostCentersTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
+  const { getMasterPermissions } = useAuth();
+  const {
+    canCreate,
+    canEdit,
+    canDelete,
+    canDuplicate,
+    canActivate
+  } = getMasterPermissions ? getMasterPermissions('cost-centers') : { canCreate: true, canEdit: true, canDelete: true, canDuplicate: true, canActivate: true };
+
   const [costCentersList, setCostCentersList] = useState([]);
   const [companiesList, setCompaniesList] = useState([]);
   const [departmentsList, setDepartmentsList] = useState([]);
@@ -653,61 +663,76 @@ export function CostCentersTab({
                       </td>
                       <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-center gap-1">
-                          <button
-                            onClick={() => handleOpenAddCCModal(cc)}
-                            title="Edit Section"
-                            className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
-                          >
-                            <Edit className="w-3.5 h-3.5" />
-                          </button>
+                          {canEdit && (
+                            <button
+                              onClick={() => handleOpenAddCCModal(cc)}
+                              title="Edit Section"
+                              className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 hover:text-[#6C2BD9] transition-colors cursor-pointer"
+                            >
+                              <Edit className="w-3.5 h-3.5" />
+                            </button>
+                          )}
                           <RowActionsMenu
                             isOpen={isMenuOpen}
                             onToggle={() => setActiveRowMenuId && setActiveRowMenuId(isMenuOpen ? null : `cc-${cc.id}`)}
                             onClose={() => setActiveRowMenuId && setActiveRowMenuId(null)}
                             className="p-1 hover:bg-slate-200/60 rounded-lg text-slate-500 transition-colors cursor-pointer"
                           >
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleOpenAddCCModal(cc);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Edit className="w-3.5 h-3.5" />
-                              <span>Edit Section</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleDuplicateCostCenter(cc);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Copy className="w-3.5 h-3.5" />
-                              <span>Duplicate</span>
-                            </button>
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleToggleCCStatus(cc);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <RefreshCw className="w-3.5 h-3.5" />
-                              <span>{cc.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
-                            </button>
-                            <div className="h-px bg-slate-100 my-1" />
-                            <button
-                              onClick={() => {
-                                setActiveRowMenuId && setActiveRowMenuId(null);
-                                handleDeleteCostCenter(cc);
-                              }}
-                              className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
-                            >
-                              <Trash2 className="w-3.5 h-3.5" />
-                              <span>Delete</span>
-                            </button>
+                            {canEdit && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleOpenAddCCModal(cc);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Edit className="w-3.5 h-3.5" />
+                                <span>Edit Section</span>
+                              </button>
+                            )}
+                            {canDuplicate && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleDuplicateCostCenter(cc);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Duplicate</span>
+                              </button>
+                            )}
+                            {canActivate && (
+                              <button
+                                onClick={() => {
+                                  setActiveRowMenuId && setActiveRowMenuId(null);
+                                  handleToggleCCStatus(cc);
+                                }}
+                                className="w-full px-2.5 py-1.5 text-xs font-semibold text-slate-700 hover:bg-purple-50 hover:text-[#6C2BD9] rounded-lg flex items-center gap-2 cursor-pointer"
+                              >
+                                <RefreshCw className="w-3.5 h-3.5" />
+                                <span>{cc.status === 'Active' ? 'Deactivate' : 'Activate'}</span>
+                              </button>
+                            )}
+                            {canDelete && (
+                              <>
+                                {(canEdit || canDuplicate || canActivate) && <div className="h-px bg-slate-100 my-1" />}
+                                <button
+                                  onClick={() => {
+                                    setActiveRowMenuId && setActiveRowMenuId(null);
+                                    handleDeleteCostCenter(cc);
+                                  }}
+                                  className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
+                                >
+                                  <Trash2 className="w-3.5 h-3.5" />
+                                  <span>Delete</span>
+                                </button>
+                              </>
+                            )}
                           </RowActionsMenu>
+                          {!canEdit && !canDuplicate && !canActivate && !canDelete && (
+                            <span className="text-slate-300 font-mono text-[11px]">-</span>
+                          )}
                         </div>
                       </td>
                     </tr>
@@ -731,13 +756,15 @@ export function CostCentersTab({
           <div className="lg:col-span-4 bg-white rounded-2xl border border-slate-200/90 shadow-2xs p-5 space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-3">
             <h3 className="text-sm font-bold text-slate-900">Section Details</h3>
-            <button
-              onClick={() => handleOpenAddCCModal(selectedCostCenter)}
-              className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
-            >
-              <Edit className="w-3.5 h-3.5" />
-              <span>Edit</span>
-            </button>
+            {canEdit && (
+              <button
+                onClick={() => handleOpenAddCCModal(selectedCostCenter)}
+                className="px-3 py-1 rounded-xl border border-slate-200 hover:bg-slate-50 text-[#6C2BD9] text-xs font-bold flex items-center gap-1.5 cursor-pointer"
+              >
+                <Edit className="w-3.5 h-3.5" />
+                <span>Edit</span>
+              </button>
+            )}
           </div>
 
           {!selectedCostCenter ? (
