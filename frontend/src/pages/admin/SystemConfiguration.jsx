@@ -572,7 +572,8 @@ export function SystemConfiguration() {
         requireLowercase: res.policy.requireLowercase !== false,
         requireNumber: res.policy.requireNumber !== false,
         requireSpecialChar: res.policy.requireSpecialChar !== false,
-        preventSpaces: res.policy.preventSpaces !== false
+        preventSpaces: res.policy.preventSpaces !== false,
+        emailEnabled: Boolean(res.policy.emailEnabled)
       });
     }
   };
@@ -581,9 +582,10 @@ export function SystemConfiguration() {
     setIsSavingPolicy(true);
     setPolicySavedSuccess(false);
     try {
+      const { emailEnabled, ...policyRules } = passwordPolicy;
       const payload = {
         companyId: selectedPwCompany === 'DEFAULT' ? null : selectedPwCompany,
-        ...passwordPolicy
+        ...policyRules
       };
       const res = await api.post('/admin/config/password-policy', payload);
       if (res?.success) {
@@ -2348,51 +2350,36 @@ export function SystemConfiguration() {
                   </div>
                 </div>
 
-                {/* Email Configuration Card */}
+                {/* Email Configuration (Database-Controlled) */}
                 <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
-                  <div className="flex items-center gap-2 border-b border-slate-100 pb-2.5">
-                    <Mail className="w-4 h-4 text-[#6C2BD9]" />
-                    <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Email Configuration</h3>
+                  <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
+                    <div className="flex items-center gap-2">
+                      <Mail className="w-4 h-4 text-[#6C2BD9]" />
+                      <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">Email Configuration</h3>
+                    </div>
+                    <span className="text-[10px] font-semibold text-slate-500 bg-slate-100 border border-slate-200 px-2 py-0.5 rounded flex items-center gap-1">
+                      <Lock className="w-3 h-3 text-slate-400" />
+                      Database Controlled
+                    </span>
                   </div>
 
                   <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-3.5 rounded-xl border border-slate-100 bg-slate-50/60">
                     <div className="space-y-1">
                       <div className="flex items-center gap-2">
-                        <span className="text-xs font-bold text-slate-800">Email Enabled</span>
+                        <span className="text-xs font-bold text-slate-800">Email Status</span>
                         <span className={`px-2 py-0.5 text-[10px] font-bold rounded-md ${passwordPolicy.emailEnabled ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' : 'bg-slate-100 text-slate-600 border border-slate-200'}`}>
-                          {passwordPolicy.emailEnabled ? 'YES' : 'NO'}
+                          {passwordPolicy.emailEnabled ? 'YES (ENABLED IN DB)' : 'NO (DISABLED IN DB)'}
                         </span>
                       </div>
                       <p className="text-[11px] text-slate-500 leading-relaxed max-w-md">
                         {passwordPolicy.emailEnabled
-                          ? 'Email is enabled. Users can self-service reset passwords using Forgot Password on the login screen. Administrators also retain manual reset capability.'
-                          : 'Email is disabled for this organization. Users cannot self-service reset; administrators must generate a 24h temporary password from User Management.'}
+                          ? 'Email service is enabled in the database. Users can self-service reset passwords using Forgot Password on the login screen.'
+                          : 'Email service is disabled in the database. Users cannot self-service reset; administrators manually generate a 24h temporary password from User Management.'}
                       </p>
                     </div>
 
-                    <div className="flex items-center gap-1.5 shrink-0 bg-white p-1 rounded-xl border border-slate-200">
-                      <button
-                        type="button"
-                        onClick={() => setPasswordPolicy({ ...passwordPolicy, emailEnabled: false })}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          !passwordPolicy.emailEnabled
-                            ? 'bg-slate-900 text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        No
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => setPasswordPolicy({ ...passwordPolicy, emailEnabled: true })}
-                        className={`px-3.5 py-1.5 rounded-lg text-xs font-bold transition-all cursor-pointer ${
-                          passwordPolicy.emailEnabled
-                            ? 'bg-[#6C2BD9] text-white shadow-2xs'
-                            : 'text-slate-600 hover:text-slate-900'
-                        }`}
-                      >
-                        Yes
-                      </button>
+                    <div className="text-[11px] font-medium text-slate-500 bg-white border border-slate-200 px-3 py-2 rounded-lg shrink-0">
+                      Managed in database: <code className="text-[#6C2BD9] font-bold text-[10px]">email_enabled</code>
                     </div>
                   </div>
                 </div>

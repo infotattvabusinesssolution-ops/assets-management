@@ -78,7 +78,7 @@ export async function ensurePasswordPoliciesTable() {
 export function buildPasswordRegex(policy = DEFAULT_PASSWORD_POLICY) {
   const min = Math.max(Number(policy.minLength) || 8, 4);
   const max = policy.maxLength ? Number(policy.maxLength) : '';
-  
+
   let lookaheads = '';
   if (policy.requireUppercase) {
     lookaheads += '(?=.*[A-Z])';
@@ -292,10 +292,20 @@ export async function savePolicyForCompany(companyId, data) {
   const requireNumber = Boolean(data.requireNumber !== false);
   const requireSpecialChar = Boolean(data.requireSpecialChar !== false);
   const preventSpaces = Boolean(data.preventSpaces !== false);
-  const emailEnabled = Boolean(data.emailEnabled === true);
 
   const key = companyId && companyId !== 'DEFAULT' && companyId !== '__DEFAULT__' ? companyId : null;
   const policyId = `POL-${key ? key.substring(0, 8) : 'DEFAULT'}-${Date.now()}`;
+
+  // Preserve emailEnabled from database or memory if not explicitly provided
+  let emailEnabled = false;
+  if (data.emailEnabled !== undefined) {
+    emailEnabled = Boolean(data.emailEnabled === true);
+  } else {
+    const existingMem = memoryPasswordPolicies.get(key || '__DEFAULT__');
+    if (existingMem && existingMem.emailEnabled !== undefined) {
+      emailEnabled = Boolean(existingMem.emailEnabled);
+    }
+  }
 
   const policyObject = {
     id: policyId,
@@ -321,10 +331,16 @@ export async function savePolicyForCompany(companyId, data) {
       const whereClause = key ? `company_id = '${key.replace(/'/g, "''")}'` : `company_id IS NULL OR company_id = 'DEFAULT'`;
 
       const existing = await prisma.$queryRawUnsafe(`
-        SELECT TOP 1 id FROM company_password_policies WHERE ${whereClause}
+        SELECT TOP 1 id, email_enabled FROM company_password_policies WHERE ${whereClause}
       `);
 
       if (existing && existing.length > 0) {
+        if (data.emailEnabled === undefined && existing[0].email_enabled !== undefined && existing[0].email_enabled !== null) {
+          emailEnabled = Boolean(existing[0].email_enabled);
+          policyObject.emailEnabled = emailEnabled;
+          memoryPasswordPolicies.set(key || '__DEFAULT__', policyObject);
+        }
+
         await prisma.$executeRawUnsafe(`
           UPDATE company_password_policies
           SET min_length = ${minLength},

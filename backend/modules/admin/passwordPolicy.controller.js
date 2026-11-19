@@ -88,16 +88,20 @@ export async function savePasswordPolicy(req, res) {
       return res.status(400).json({ success: false, message: 'Maximum password length cannot be less than minimum length.' });
     }
 
-    const saved = await savePolicyForCompany(companyId || null, {
+    const policyPayload = {
       minLength: min,
       maxLength: max,
       requireUppercase: Boolean(requireUppercase !== false),
       requireLowercase: Boolean(requireLowercase !== false),
       requireNumber: Boolean(requireNumber !== false),
       requireSpecialChar: Boolean(requireSpecialChar !== false),
-      preventSpaces: Boolean(preventSpaces !== false),
-      emailEnabled: Boolean(emailEnabled === true)
-    });
+      preventSpaces: Boolean(preventSpaces !== false)
+    };
+    if (emailEnabled !== undefined) {
+      policyPayload.emailEnabled = Boolean(emailEnabled === true);
+    }
+
+    const saved = await savePolicyForCompany(companyId || null, policyPayload);
 
     return res.json({
       success: true,
