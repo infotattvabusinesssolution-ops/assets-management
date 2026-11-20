@@ -30,6 +30,7 @@ import MasterEmptyState from './MasterEmptyState';
 import { deduplicateCustodians } from './custodianUtils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { StatusConfirmModal } from './StatusConfirmModal';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const INITIAL_COST_CENTERS = [];
 
@@ -60,6 +61,7 @@ export function CostCentersTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [ccToToggleStatus, setCcToToggleStatus] = useState(null);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Load live cost centers from database
   const loadCostCenters = async () => {
@@ -442,20 +444,58 @@ export function CostCentersTab({
 
   const handleConfirmDeleteCostCenter = async () => {
     if (!ccToDelete) return;
+    const cc = ccToDelete;
     setIsDeleting(true);
     try {
-      await api.delete(`/master-data/cost-centers/${ccToDelete.id}`);
+      const res = await api.delete(`/master-data/cost-centers/${cc.id}`);
+      if (res?.requiresConfirmation) {
+        setCcToDelete(null);
+        setSmartDeleteState({
+          isOpen: true,
+          item: cc,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      setCcToDelete(null);
       await loadCostCenters();
-      triggerToast && triggerToast(`Section "${ccToDelete.code}" deleted successfully.`);
+      triggerToast && triggerToast(res?.message || `Section "${cc.name || cc.code}" deleted successfully.`);
     } catch (err) {
+      const data = err?.response?.data;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
+        setCcToDelete(null);
+        const match = (data?.message || '').match(/referenced by (\d+) asset/);
+        const assetsCount = match ? parseInt(match[1], 10) : (data?.details?.assetsCount || 1);
+        setSmartDeleteState({
+          isOpen: true,
+          item: cc,
+          linkedCount: data?.linkedCount || assetsCount,
+          details: data?.details || { assetsCount },
+          isProcessing: false
+        });
+        return;
+      }
+      setCcToDelete(null);
       console.warn('Delete cost center error:', err);
-      const remaining = costCentersList.filter((c) => c.id !== ccToDelete.id);
-      setCostCentersList(remaining);
-      if (remaining.length > 0) setSelectedCostCenter(remaining[0]);
-      triggerToast && triggerToast(`Section "${ccToDelete.code}" deleted successfully.`);
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete section.');
     } finally {
       setIsDeleting(false);
-      setCcToDelete(null);
+    }
+  };
+
+  const handleSmartDeactivateCC = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/cost-centers/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Section marked Inactive.');
+      await loadCostCenters();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate section.');
     }
   };
 
@@ -1257,6 +1297,18 @@ export function CostCentersTab({
         itemCode={ccToToggleStatus?.code}
         currentStatus={ccToToggleStatus?.status}
         isLoading={isStatusUpdating}
+      />
+
+      {/* Smart Delete Modal (Dependency-Aware) */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Section"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateCC}
+        isProcessing={smartDeleteState.isProcessing}
       />
     </div>
   );

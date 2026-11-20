@@ -29,6 +29,7 @@ import MasterEmptyState from './MasterEmptyState';
 import { deduplicateCustodians } from './custodianUtils';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { StatusConfirmModal } from './StatusConfirmModal';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const INITIAL_DEPARTMENTS = [];
 
@@ -60,6 +61,7 @@ export function DepartmentsTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [deptToToggleStatus, setDeptToToggleStatus] = useState(null);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
 
   // Load live departments from database
   const loadDepartments = async () => {
@@ -504,20 +506,58 @@ export function DepartmentsTab({
 
   const handleConfirmDeleteDepartment = async () => {
     if (!deptToDelete) return;
+    const dept = deptToDelete;
     setIsDeleting(true);
     try {
-      await api.delete(`/master-data/departments/${deptToDelete.id}`);
+      const res = await api.delete(`/master-data/departments/${dept.id}`);
+      if (res?.requiresConfirmation) {
+        setDeptToDelete(null);
+        setSmartDeleteState({
+          isOpen: true,
+          item: dept,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      setDeptToDelete(null);
       await loadDepartments();
-      triggerToast && triggerToast(`Department "${deptToDelete.code}" deleted successfully.`);
+      triggerToast && triggerToast(res?.message || `Department "${dept.name || dept.code}" deleted successfully.`);
     } catch (err) {
+      const data = err?.response?.data;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
+        setDeptToDelete(null);
+        const match = (data?.message || '').match(/referenced by (\d+) asset/);
+        const assetsCount = match ? parseInt(match[1], 10) : (data?.details?.assetsCount || 1);
+        setSmartDeleteState({
+          isOpen: true,
+          item: dept,
+          linkedCount: data?.linkedCount || assetsCount,
+          details: data?.details || { assetsCount },
+          isProcessing: false
+        });
+        return;
+      }
+      setDeptToDelete(null);
       console.warn('Delete department error:', err);
-      const remaining = departmentsList.filter((d) => d.id !== deptToDelete.id);
-      setDepartmentsList(remaining);
-      if (remaining.length > 0) setSelectedDepartment(remaining[0]);
-      triggerToast && triggerToast(`Department "${deptToDelete.code}" deleted successfully.`);
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete department.');
     } finally {
       setIsDeleting(false);
-      setDeptToDelete(null);
+    }
+  };
+
+  const handleSmartDeactivateDepartment = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/departments/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Department marked Inactive.');
+      await loadDepartments();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate department.');
     }
   };
 
@@ -1287,6 +1327,18 @@ export function DepartmentsTab({
         currentStatus={deptToToggleStatus?.status}
         warningNote="Deactivating this Department will also deactivate its linked Sections."
         isLoading={isStatusUpdating}
+      />
+
+      {/* Smart Delete Modal (Dependency-Aware) */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Department"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateDepartment}
+        isProcessing={smartDeleteState.isProcessing}
       />
     </div>
   );

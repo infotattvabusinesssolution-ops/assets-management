@@ -330,7 +330,7 @@ export function SubCategoriesTab({
       });
     } else {
       setEditingSubCategory(null);
-      const activeCategories = categoriesList.filter(c => c.active !== false && c.status !== 'Inactive');
+      const activeCategories = (categories || []).filter(c => !isCategoryInactive(c));
       const defaultCat = activeCategories.length === 1 ? activeCategories[0] : null;
       setSubCatFormState({
         code: '',
@@ -352,7 +352,7 @@ export function SubCategoriesTab({
   // Auto-default single category in Add Subcategory modal
   useEffect(() => {
     if (showAddSubCatModal && !editingSubCategory && !subCatFormState.categoryId) {
-      const activeCategories = categoriesList.filter(c => c.active !== false && c.status !== 'Inactive');
+      const activeCategories = (categories || []).filter(c => !isCategoryInactive(c));
       if (activeCategories.length === 1) {
         const cat = activeCategories[0];
         setSubCatFormState(prev => ({
@@ -364,7 +364,7 @@ export function SubCategoriesTab({
         }));
       }
     }
-  }, [showAddSubCatModal, editingSubCategory, subCatFormState.categoryId, categoriesList]);
+  }, [showAddSubCatModal, editingSubCategory, subCatFormState.categoryId, categories]);
 
   useEffect(() => {
     if (externalShowAddModal) {
