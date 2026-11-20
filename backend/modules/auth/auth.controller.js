@@ -6,7 +6,7 @@ import { isSqlServerConnected } from '../../config/db.js';
 import { config } from '../../config/index.js';
 import { getPolicyForCompany, validatePasswordAgainstPolicy, generateCompliantPassword } from '../admin/passwordPolicy.service.js';
 import { validateCanAddUser } from '../admin/license.service.js';
-import { sendPasswordResetEmail } from '../../config/mailer.js';
+import { sendPasswordResetEmail, sendNewUserWelcomeEmail } from '../../config/mailer.js';
 
 // In-memory token store for password recovery requests
 export const passwordResetTokens = new Map();
@@ -226,12 +226,12 @@ export async function login(req, res, next) {
             return res.status(401).json({ success: false, message: 'Invalid username or password' });
           }
 
-          // Check if temporary password has expired (24 hours limit)
+          // Check if temporary password has expired (20-minute limit)
           if (user.temporaryPasswordExpiresAt && (user.forcePasswordChange || user.mustChangePassword)) {
             if (new Date() > new Date(user.temporaryPasswordExpiresAt)) {
               return res.status(401).json({
                 success: false,
-                message: 'Temporary password has expired (24-hour limit). Please request a new temporary password from your administrator.'
+                message: 'Temporary password has expired (20-minute limit). Please request a new temporary password from your administrator.'
               });
             }
           }
@@ -305,12 +305,12 @@ export async function login(req, res, next) {
       return res.status(401).json({ success: false, message: 'Invalid credentials' });
     }
 
-    // Check if temporary password has expired (24 hours limit)
+    // Check if temporary password has expired (20-minute limit)
     if (user.temporaryPasswordExpiresAt && (user.forcePasswordChange || user.mustChangePassword)) {
       if (new Date() > new Date(user.temporaryPasswordExpiresAt)) {
         return res.status(401).json({
           success: false,
-          message: 'Temporary password has expired (24-hour limit). Please request a new temporary password from your administrator.'
+          message: 'Temporary password has expired (20-minute limit). Please request a new temporary password from your administrator.'
         });
       }
     }
@@ -531,6 +531,8 @@ export async function createUser(req, res, next) {
 
         const forcePasswordChange = req.body.forcePasswordChange !== undefined ? Boolean(req.body.forcePasswordChange) : true;
 
+        const expiresAt = new Date(Date.now() + 20 * 60 * 1000); // 20 minutes expiration
+
         const newUser = await prisma.user.create({
           data: {
             username: cleanUsername,
@@ -555,7 +557,42 @@ export async function createUser(req, res, next) {
           }
         });
 
-        return res.status(201).json({ success: true, message: 'User created successfully', user: newUser });
+        // Set 20-minute temporary password expiration in database
+        await prisma.$executeRawUnsafe(`
+          UPDATE users 
+          SET temporary_password_expires_at = '${expiresAt.toISOString()}',
+              must_change_password = 1 
+          WHERE id = '${newUser.id}'
+        `).catch(() => null);
+
+        // Send welcome email with Username & Temporary Password (valid for 20 mins)
+        let emailSent = false;
+        if (cleanEmail && password) {
+          try {
+            await sendNewUserWelcomeEmail({
+              to: cleanEmail,
+              fullName: fullName.trim(),
+              username: cleanUsername,
+              initialPassword: password,
+              expiresAt,
+              expiresInMinutes: 20
+            });
+            emailSent = true;
+          } catch (mailErr) {
+            console.warn('[MAILER] Failed sending credentials email to ' + cleanEmail + ':', mailErr.message);
+          }
+        }
+
+        return res.status(201).json({
+          success: true,
+          message: emailSent
+            ? `User created successfully! Temporary credentials valid for 20 minutes have been sent to ${cleanEmail}.`
+            : 'User created successfully',
+          user: newUser,
+          emailSent,
+          temporaryPasswordExpiresAt: expiresAt.toISOString(),
+          expiresInMinutes: 20
+        });
       } catch (dbErr) {
         console.warn('Prisma createUser error, using in-memory store:', dbErr.message);
       }
@@ -569,6 +606,7 @@ export async function createUser(req, res, next) {
       return res.status(400).json({ success: false, message: 'Username or Email is already registered' });
     }
 
+    const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
     const matchedRole = FALLBACK_ROLES.find(r => r.id === roleId || r.code === roleId) || FALLBACK_ROLES[0];
     const newUser = {
       id: `user-${String(FALLBACK_USERS.length + 1).padStart(3, '0')}`,
@@ -582,11 +620,43 @@ export async function createUser(req, res, next) {
       site: defaultSite,
       department: null,
       active: active !== undefined ? Boolean(active) : true,
-      lastLogin: null
+      lastLogin: null,
+      temporaryPasswordExpiresAt: expiresAt,
+      expiresInMinutes: 20,
+      mustChangePassword: true,
+      forcePasswordChange: true
     };
 
     FALLBACK_USERS.unshift(newUser);
-    return res.status(201).json({ success: true, message: 'User created successfully', user: newUser });
+
+    // Send credentials email
+    let emailSent = false;
+    if (cleanEmail && password) {
+      try {
+        await sendNewUserWelcomeEmail({
+          to: cleanEmail,
+          fullName: fullName.trim(),
+          username: cleanUsername,
+          initialPassword: password,
+          expiresAt,
+          expiresInMinutes: 20
+        });
+        emailSent = true;
+      } catch (mailErr) {
+        console.warn('[MAILER] Failed sending credentials email to ' + cleanEmail + ':', mailErr.message);
+      }
+    }
+
+    return res.status(201).json({
+      success: true,
+      message: emailSent
+        ? `User created successfully! Temporary credentials valid for 20 minutes have been sent to ${cleanEmail}.`
+        : 'User created successfully',
+      user: newUser,
+      emailSent,
+      temporaryPasswordExpiresAt: expiresAt.toISOString(),
+      expiresInMinutes: 20
+    });
   } catch (err) {
     next(err);
   }
@@ -780,6 +850,14 @@ export async function changePassword(req, res, next) {
       return res.status(400).json({ success: false, message: 'New password is required.' });
     }
 
+    // Security check: New password cannot be identical to provided current/temporary password
+    if (oldPassword && String(oldPassword).trim() === String(newPassword).trim()) {
+      return res.status(400).json({
+        success: false,
+        message: 'Security Policy Violation: Your new password cannot be the same as your temporary password. Please choose a new, unique password.'
+      });
+    }
+
     // Dynamic Company Password Policy Validation
     const companyId = req.user?.companyId || null;
     const policy = await getPolicyForCompany(companyId);
@@ -797,6 +875,17 @@ export async function changePassword(req, res, next) {
       try {
         const user = await prisma.user.findUnique({ where: { id: userId } });
         if (user) {
+          // Prevent setting new password to the exact same hash as current/temporary password
+          if (user.passwordHash) {
+            const isSameAsCurrent = await bcrypt.compare(newPassword, user.passwordHash).catch(() => false);
+            if (isSameAsCurrent) {
+              return res.status(400).json({
+                success: false,
+                message: 'Security Policy Violation: Your new password cannot be the same as your temporary password. Please choose a new, unique password.'
+              });
+            }
+          }
+
           if (oldPassword && user.passwordHash) {
             const isMatch = await bcrypt.compare(oldPassword, user.passwordHash).catch(() => false);
             if (!isMatch && oldPassword !== 'Password@123' && oldPassword !== 'Admin@123' && oldPassword !== 'admin') {
@@ -833,6 +922,17 @@ export async function changePassword(req, res, next) {
 
     const inMemUser = FALLBACK_USERS.find(u => u.id === userId || u.username === req.user?.username);
     if (inMemUser) {
+      // Prevent setting new password to the exact same hash as current/temporary password
+      if (inMemUser.passwordHash) {
+        const isSameAsCurrent = await bcrypt.compare(newPassword, inMemUser.passwordHash).catch(() => false);
+        if (isSameAsCurrent) {
+          return res.status(400).json({
+            success: false,
+            message: 'Security Policy Violation: Your new password cannot be the same as your temporary password. Please choose a new, unique password.'
+          });
+        }
+      }
+
       if (oldPassword && inMemUser.passwordHash) {
         const isMatch = await bcrypt.compare(oldPassword, inMemUser.passwordHash).catch(() => false);
         if (!isMatch && oldPassword !== 'Password@123' && oldPassword !== 'Admin@123' && oldPassword !== 'admin') {
@@ -1063,6 +1163,17 @@ export async function resetPasswordWithToken(req, res, next) {
         message: `Password does not meet company requirements: ${validation.errors.join(' ')}`,
         errors: validation.errors
       });
+    }
+
+    // Security check: cannot be identical to current password
+    if (user.passwordHash) {
+      const isSameAsCurrent = await bcrypt.compare(newPassword, user.passwordHash).catch(() => false);
+      if (isSameAsCurrent) {
+        return res.status(400).json({
+          success: false,
+          message: 'Security Policy Violation: Your new password cannot be the same as your previous password. Please choose a different password.'
+        });
+      }
     }
 
     const passwordHash = await bcrypt.hash(newPassword, 10);

@@ -3,7 +3,8 @@ import prisma from '../../config/prisma.js';
 import { isSqlServerConnected } from '../../config/db.js';
 import { generateAutoCode } from '../master-data/masterData.controller.js';
 import { getPolicyForCompany, validatePasswordAgainstPolicy, generateCompliantPassword } from './passwordPolicy.service.js';
-import { validateCanAddCompany } from './license.service.js';
+import { validateCanAddCompany, validateCanAddUser } from './license.service.js';
+import { sendNewUserWelcomeEmail } from '../../config/mailer.js';
 
 // ==========================================
 // SEED DATA PRE-LOADED WITH SCREENSHOT MATCH
@@ -351,21 +352,35 @@ export async function getAdminUsers(req, res) {
 
 export async function createAdminUser(req, res) {
   try {
+    // Enterprise User Licensing Gate
+    const licenseCheck = await validateCanAddUser();
+    if (!licenseCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: licenseCheck.code,
+        error: licenseCheck.message,
+        message: licenseCheck.message
+      });
+    }
+
     const data = req.body;
     if (!data.name || !data.email || !data.username) {
       return res.status(400).json({ success: false, error: 'Name, username, and email are required fields.' });
     }
 
-    // Dynamic Company Password Policy Validation
-    if (data.password && data.password.trim()) {
-      let companyId = data.companyId || null;
-      if (!companyId && data.company) {
-        const comp = await prisma.company.findFirst({
-          where: { OR: [{ id: data.company }, { name: data.company }, { code: data.company }] }
-        }).catch(() => null);
-        if (comp) companyId = comp.id;
-      }
-      const policy = await getPolicyForCompany(companyId);
+    // Dynamic Company Password Policy Validation & Auto-generation if empty
+    let companyId = data.companyId || null;
+    if (!companyId && data.company) {
+      const comp = await prisma.company.findFirst({
+        where: { OR: [{ id: data.company }, { name: data.company }, { code: data.company }] }
+      }).catch(() => null);
+      if (comp) companyId = comp.id;
+    }
+    const policy = await getPolicyForCompany(companyId);
+
+    if (!data.password || !data.password.trim()) {
+      data.password = generateCompliantPassword(policy);
+    } else {
       const validation = validatePasswordAgainstPolicy(data.password, policy);
       if (!validation.isValid) {
         return res.status(400).json({
@@ -440,11 +455,38 @@ export async function createAdminUser(req, res) {
           });
           if (dbCreated) {
             createdId = dbCreated.id;
+            const expiresAt = new Date(Date.now() + 20 * 60 * 1000);
+            await prisma.$executeRawUnsafe(`
+              UPDATE users 
+              SET temporary_password_expires_at = '${expiresAt.toISOString()}',
+                  must_change_password = 1 
+              WHERE id = '${createdId}'
+            `).catch(() => null);
           }
         }
       }
     } catch (dbErr) {
       console.warn('Failed to insert user into DB, continuing with memory persistence:', dbErr.message);
+    }
+
+    const expiresAt = new Date(Date.now() + 20 * 60 * 1000); // 20 minutes expiration
+
+    // Dispatch Welcome Email containing Username & Temporary Password (20 minutes validity)
+    let emailSent = false;
+    if (data.email && data.password) {
+      try {
+        await sendNewUserWelcomeEmail({
+          to: data.email.trim(),
+          fullName: data.name ? data.name.trim() : data.username,
+          username: data.username.trim(),
+          initialPassword: data.password,
+          expiresAt,
+          expiresInMinutes: 20
+        });
+        emailSent = true;
+      } catch (mailErr) {
+        console.warn('[MAILER] Failed to send credentials email to ' + data.email + ':', mailErr.message);
+      }
     }
 
     const newUser = {
@@ -468,12 +510,24 @@ export async function createAdminUser(req, res) {
       mfaEnabled: Boolean(data.mfaEnabled),
       lastLogin: 'Never',
       createdDate: new Date().toISOString().split('T')[0],
+      temporaryPasswordExpiresAt: expiresAt.toISOString(),
+      expiresInMinutes: 20,
+      mustChangePassword: true,
       assignedLocations: data.assignedLocations || [data.location].filter(Boolean),
       assignedCompanies: data.assignedCompanies || [data.company].filter(Boolean)
     };
 
     memoryUsers.unshift(newUser);
-    res.status(201).json({ success: true, user: newUser, message: 'User created successfully' });
+    res.status(201).json({
+      success: true,
+      user: newUser,
+      emailSent,
+      temporaryPasswordExpiresAt: expiresAt.toISOString(),
+      expiresInMinutes: 20,
+      message: emailSent
+        ? `User created successfully! Temporary credentials valid for 20 minutes have been sent to ${data.email}.`
+        : 'User created successfully'
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
