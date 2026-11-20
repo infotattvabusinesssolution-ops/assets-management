@@ -303,18 +303,36 @@ export function CategoriesTab({
       });
     } else {
       setEditingCategory(null);
+      const activeClasses = availableAssetClasses.filter(c => !isClassInactive(c));
+      const defaultClass = activeClasses.length === 1 ? activeClasses[0] : null;
       setCatFormState({
         code: '',
         name: '',
-        assetSubGroupId: '',
-        className: '',
-        groupName: '',
+        assetSubGroupId: defaultClass ? defaultClass.id : '',
+        className: defaultClass ? (defaultClass.name || defaultClass.code) : '',
+        groupName: defaultClass ? (defaultClass.groupName || '') : '',
         description: '',
         status: 'Active'
       });
     }
     setShowAddCatModal(true);
   };
+
+  // Auto-default single sub-group/class in Add Category modal
+  useEffect(() => {
+    if (showAddCatModal && !editingCategory && !catFormState.assetSubGroupId) {
+      const activeClasses = availableAssetClasses.filter(c => !isClassInactive(c));
+      if (activeClasses.length === 1) {
+        const cls = activeClasses[0];
+        setCatFormState(prev => ({
+          ...prev,
+          assetSubGroupId: cls.id,
+          className: cls.name || cls.code,
+          groupName: cls.groupName || prev.groupName
+        }));
+      }
+    }
+  }, [showAddCatModal, editingCategory, catFormState.assetSubGroupId, availableAssetClasses]);
 
   useEffect(() => {
     if (externalShowAddModal) {

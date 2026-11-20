@@ -22,18 +22,69 @@
   /* Global input layout reset & Light theme popup enforcement */
   input, select, textarea, datalist {
     color-scheme: light !important;
-    @apply bg-white text-slate-900 outline-none transition-all;
+    outline: none;
+    transition: all 0.15s ease;
+  }
+
+  input:not(:read-only):not(:disabled),
+  select:not(:disabled),
+  textarea:not(:read-only):not(:disabled),
+  datalist {
     background-color: #ffffff !important;
     color: #0f172a !important;
   }
 
   select, option, optgroup {
     color-scheme: light !important;
-    background-color: #ffffff !important;
-    color: #0f172a !important;
   }
 
-  input:focus, select:focus, textarea:focus {
+  /* Universal Read-Only & Disabled Input Enforcement Across the Whole Website */
+  input:read-only,
+  textarea:read-only,
+  input[readonly],
+  textarea[readonly],
+  input:disabled,
+  select:disabled,
+  textarea:disabled,
+  input[disabled],
+  select[disabled],
+  textarea[disabled] {
+    background-color: #f1f5f9 !important; /* Soft distinct light grey */
+    color: #64748b !important;            /* Muted slate-grey text (never pitch black) */
+    -webkit-text-fill-color: #64748b !important; /* WebKit/Chromium enforcement */
+    border-color: #cbd5e1 !important;      /* Subtle border */
+    cursor: not-allowed !important;
+    user-select: none !important;
+    box-shadow: none !important;
+  }
+
+  input:read-only::placeholder,
+  textarea:read-only::placeholder,
+  input[readonly]::placeholder,
+  textarea[readonly]::placeholder,
+  input:disabled::placeholder,
+  textarea:disabled::placeholder {
+    color: #94a3b8 !important;
+    -webkit-text-fill-color: #94a3b8 !important;
+  }
+
+  /* Prevent purple focus halo on read-only / disabled inputs */
+  input:read-only:focus,
+  textarea:read-only:focus,
+  input[readonly]:focus,
+  textarea[readonly]:focus,
+  input:disabled:focus,
+  select:disabled:focus,
+  textarea:disabled:focus {
+    outline: none !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+  }
+
+  /* Editable inputs focus outline */
+  input:not(:read-only):not(:disabled):focus, 
+  select:not(:disabled):focus, 
+  textarea:not(:read-only):not(:disabled):focus {
     outline: none !important;
     border-color: #6E11E4 !important;
     box-shadow: 0 0 0 3px rgba(110, 17, 228, 0.15) !important;
@@ -112,8 +163,8 @@
   }
 }
 
-.input-field,
-.input-primary {
+.input-field:not(:read-only):not(:disabled),
+.input-primary:not(:read-only):not(:disabled) {
   @apply w-full bg-white border border-slate-300 rounded-xl px-3.5 py-2.5 text-xs text-black placeholder-slate-400 focus:outline-none focus:border-[#6E11E4] focus:ring-2 focus:ring-[#6E11E4]/20 transition-all shadow-sm;
   background-color: #ffffff !important;
   color: #000000 !important;

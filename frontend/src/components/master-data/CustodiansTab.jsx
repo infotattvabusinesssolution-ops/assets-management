@@ -331,16 +331,25 @@ export function CustodiansTab({
       });
     } else {
       setEditingCustodian(null);
+      const activeCompanies = uniqueCompanies.filter(c => c.active !== false && c.status !== 'Inactive');
+      const defaultComp = activeCompanies.length === 1 ? activeCompanies[0] : null;
+
+      const activeDepts = uniqueDepartments.filter(d => d.active !== false && d.status !== 'Inactive');
+      const defaultDept = activeDepts.length === 1 ? activeDepts[0] : null;
+
+      const activeSecs = uniqueSections.filter(s => s.active !== false && s.status !== 'Inactive');
+      const defaultSec = activeSecs.length === 1 ? activeSecs[0] : null;
+
       setFormState({
         custodianType: 'Internal',
         employeeCode: `EMP-${1000 + custodians.length + 1}`,
         fullName: '',
         email: '',
         phone: '',
-        companyId: '',
-        departmentId: '',
-        section: '',
-        costCenterId: '',
+        companyId: defaultComp ? defaultComp.id : '',
+        departmentId: defaultDept ? defaultDept.id : '',
+        section: defaultSec ? (defaultSec.name || defaultSec.code) : '',
+        costCenterId: defaultSec ? defaultSec.id : '',
         location: '',
         organization: '',
         status: 'Active'
@@ -348,6 +357,30 @@ export function CustodiansTab({
     }
     setShowAddModal(true);
   };
+
+  // Auto-default single company, department, section in Add Custodian modal
+  useEffect(() => {
+    if (!showAddModal || editingCustodian) return;
+
+    const activeCompanies = uniqueCompanies.filter(c => c.active !== false && c.status !== 'Inactive');
+    if (!formState.companyId && activeCompanies.length === 1) {
+      setFormState(prev => ({ ...prev, companyId: activeCompanies[0].id }));
+    }
+
+    const activeDepts = uniqueDepartments.filter(d => d.active !== false && d.status !== 'Inactive');
+    if (!formState.departmentId && activeDepts.length === 1) {
+      setFormState(prev => ({ ...prev, departmentId: activeDepts[0].id }));
+    }
+
+    const activeSecs = uniqueSections.filter(s => s.active !== false && s.status !== 'Inactive');
+    if (!formState.section && activeSecs.length === 1) {
+      setFormState(prev => ({
+        ...prev,
+        section: activeSecs[0].name || activeSecs[0].code,
+        costCenterId: activeSecs[0].id || ''
+      }));
+    }
+  }, [showAddModal, editingCustodian, formState.companyId, formState.departmentId, formState.section, uniqueCompanies, uniqueDepartments, uniqueSections]);
 
   const handleDuplicateCustodian = (c) => {
     setActiveRowMenuId && setActiveRowMenuId(null);

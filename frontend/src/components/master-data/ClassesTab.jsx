@@ -283,9 +283,7 @@ export function ClassesTab({
     } else {
       setEditingClass(null);
       const activeGroups = availableAssetGroups.filter(g => g.active !== false && g.status !== 'Inactive');
-      const defaultGrp = activeGroups.find(g => (g.name || g.code) === 'Information Technology')
-        || activeGroups[0]
-        || availableAssetGroups[0];
+      const defaultGrp = activeGroups.length === 1 ? activeGroups[0] : null;
       setClsFormState({
         code: '',
         name: '',
@@ -298,6 +296,21 @@ export function ClassesTab({
     }
     setShowAddClsModal(true);
   };
+
+  // Auto-default single parent asset group in Add Sub Group modal
+  useEffect(() => {
+    if (showAddClsModal && !editingClass && !clsFormState.assetGroupId) {
+      const activeGroups = availableAssetGroups.filter(g => g.active !== false && g.status !== 'Inactive');
+      if (activeGroups.length === 1) {
+        const grp = activeGroups[0];
+        setClsFormState(prev => ({
+          ...prev,
+          assetGroupId: grp.id,
+          groupName: grp.name || grp.code
+        }));
+      }
+    }
+  }, [showAddClsModal, editingClass, clsFormState.assetGroupId, availableAssetGroups]);
 
   useEffect(() => {
     if (externalShowAddModal) {

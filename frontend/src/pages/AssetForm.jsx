@@ -828,6 +828,108 @@ export function AssetForm() {
     businessApplication: '',
     remarks: ''
   });
+
+  // Auto-default single master value in dropdowns across Asset Registration
+  useEffect(() => {
+    setFormData(prev => {
+      let updated = { ...prev };
+      let changed = false;
+
+      // 1. Single Company
+      if (!updated.companyId && !updated.company && companies.length === 1) {
+        const cmp = companies[0];
+        updated.companyId = cmp.id;
+        updated.company = cmp.name || cmp.code;
+        changed = true;
+      }
+
+      // 2. Single Site / Location
+      if (!updated.siteId && !updated.location && sites.length === 1) {
+        const st = sites[0];
+        updated.siteId = st.id;
+        updated.location = st.name || st.code;
+        updated.site = st.name || st.code;
+        changed = true;
+      }
+
+      // 3. Single Building under selected Site
+      const currentSiteId = updated.siteId;
+      const availableBuildings = currentSiteId ? buildings.filter(b => !b.siteId || b.siteId === currentSiteId) : buildings;
+      if (!updated.buildingId && !updated.building && availableBuildings.length === 1) {
+        const bld = availableBuildings[0];
+        updated.buildingId = bld.id;
+        updated.building = bld.name || bld.code;
+        changed = true;
+      }
+
+      // 4. Single Department
+      const currentCompId = updated.companyId;
+      const availableDepts = currentCompId ? departments.filter(d => !d.companyId || d.companyId === currentCompId) : departments;
+      if (!updated.departmentId && !updated.department && availableDepts.length === 1) {
+        const dept = availableDepts[0];
+        updated.departmentId = dept.id;
+        updated.department = dept.name || dept.code;
+        changed = true;
+      }
+
+      // 5. Single Cost Center / Section
+      const currentDeptId = updated.departmentId;
+      const availableCCs = currentDeptId ? costCenters.filter(c => !c.departmentId || c.departmentId === currentDeptId) : costCenters;
+      if (!updated.costCenterId && !updated.costCenter && availableCCs.length === 1) {
+        const cc = availableCCs[0];
+        updated.costCenterId = cc.id;
+        updated.costCenter = cc.name || cc.code;
+        updated.section = cc.name || cc.code;
+        changed = true;
+      }
+
+      // 6. Single Asset Group
+      if (!updated.assetGroup && assetGroups && assetGroups.length === 1) {
+        const grp = assetGroups[0];
+        updated.assetGroup = grp.name || grp.code;
+        changed = true;
+      }
+
+      // 7. Single Category
+      if (!updated.category && !updated.categoryId && categories && categories.length === 1) {
+        const cat = categories[0];
+        updated.categoryId = cat.id;
+        updated.category = cat.name || cat.code;
+        changed = true;
+      }
+
+      // 8. Single Condition
+      if (!updated.condition && assetConditions && assetConditions.length === 1) {
+        const cond = assetConditions[0];
+        updated.condition = cond.name || cond.code;
+        changed = true;
+      }
+
+      // 9. Single Supplier / Vendor
+      if (!updated.supplier && !updated.vendorSupplier && suppliers && suppliers.length === 1) {
+        const sup = suppliers[0];
+        updated.supplier = sup.name || sup.id;
+        updated.vendorSupplier = sup.name || sup.id;
+        changed = true;
+      }
+
+      // 10. Single Manufacturer
+      if (!updated.manufacturer && manufacturers && manufacturers.length === 1) {
+        const mfr = manufacturers[0];
+        updated.manufacturer = mfr.name || mfr.code;
+        changed = true;
+      }
+
+      // 11. Single Brand
+      if (!updated.brand && brands && brands.length === 1) {
+        const brd = brands[0];
+        updated.brand = brd.name || brd.code;
+        changed = true;
+      }
+
+      return changed ? updated : prev;
+    });
+  }, [companies, sites, buildings, departments, costCenters, assetGroups, categories, assetConditions, suppliers, manufacturers, brands]);
   const [serialNumbers, setSerialNumbers] = useState(['']);
   const [discoveryItems, setDiscoveryItems] = useState([{}]);
   const [assetItems, setAssetItems] = useState([{}]);
@@ -2399,7 +2501,7 @@ export function AssetForm() {
               setFormData({ ...formData, assetName: e.target.value });
               if (e.target.value.trim()) clearFieldError('assetName');
             }}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-700' : 'bg-slate-50'
+            className={`w-full border rounded-xl p-2 font-semibold outline-none transition-colors ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-500' : 'bg-white text-slate-900'
               } ${fieldErrors.assetName
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
@@ -2922,7 +3024,7 @@ export function AssetForm() {
                 : total.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             })()}
             placeholder="e.g. 20"
-            className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-900 font-mono font-bold outline-none cursor-not-allowed"
+            className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-500 font-mono font-bold outline-none cursor-not-allowed"
           />
           <p className="text-[10px] text-slate-400 mt-0.5">Total amount (Qty &times; Unit Price).</p>
         </div>
@@ -4504,7 +4606,7 @@ export function AssetForm() {
                     readOnly={Boolean(selectedItemMasterId)}
                     value={formData.assetName}
                     onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
-                    className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
+                    className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
                   />
                 </div>
 
@@ -4604,7 +4706,7 @@ export function AssetForm() {
                     value={formData.assetGroup}
                     disabled={Boolean(selectedItemMasterId)}
                     onChange={(e) => handleAssetGroupChange(e.target.value)}
-                    className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
+                    className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
                   >
                     <option value="">-- Select Asset Group --</option>
                     {assetGroups.map((g) => {
@@ -4620,7 +4722,7 @@ export function AssetForm() {
                     value={formData.assetClass}
                     disabled={Boolean(selectedItemMasterId)}
                     onChange={(e) => handleAssetClassChange(e.target.value)}
-                    className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
+                    className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
                   >
                     <option value="">-- Select Sub Group --</option>
                     {availableAssetClassesDropdown.map((cls) => {
@@ -4730,7 +4832,7 @@ export function AssetForm() {
                       });
                     }}
                     disabled={Boolean(selectedItemMasterId)}
-                    className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
+                    className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
                   >
                     <option value="">-- Select Manufacturer --</option>
                     {availableManufacturers && availableManufacturers.length > 0 ? (
@@ -4765,7 +4867,7 @@ export function AssetForm() {
                         }));
                       }}
                       disabled={Boolean(selectedItemMasterId)}
-                      className={`w-full border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-600' : 'bg-slate-50'}`}
+                      className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
                     >
                       <option value="">-- Select Brand --</option>
                       {availableBrands && availableBrands.length > 0 ? (

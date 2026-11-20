@@ -314,11 +314,12 @@ export function DepartmentsTab({
     } else {
       setEditingDepartment(null);
       const activeCompanies = companiesList.filter(c => c.active !== false && c.status !== 'Inactive');
+      const activeLocations = locationsList.filter(l => l.active !== false && l.status !== 'Inactive');
       setDeptFormState({
         code: '',
         name: '',
-        location: '',
-        company: activeCompanies[0]?.name || '',
+        location: activeLocations.length === 1 ? (activeLocations[0]?.name || activeLocations[0]?.code || '') : '',
+        company: activeCompanies.length === 1 ? (activeCompanies[0]?.name || '') : '',
         manager: '',
         email: '',
         phone: '',
@@ -328,6 +329,27 @@ export function DepartmentsTab({
     }
     setShowAddDeptModal(true);
   };
+
+  // Auto-default single company or location in Add Department modal
+  useEffect(() => {
+    if (showAddDeptModal && !editingDepartment) {
+      const activeCompanies = companiesList.filter(c => c.active !== false && c.status !== 'Inactive');
+      const activeLocations = locationsList.filter(l => l.active !== false && l.status !== 'Inactive');
+      setDeptFormState(prev => {
+        let updated = { ...prev };
+        let changed = false;
+        if (!updated.company && activeCompanies.length === 1) {
+          updated.company = activeCompanies[0]?.name || '';
+          changed = true;
+        }
+        if (!updated.location && activeLocations.length === 1) {
+          updated.location = activeLocations[0]?.name || activeLocations[0]?.code || '';
+          changed = true;
+        }
+        return changed ? updated : prev;
+      });
+    }
+  }, [showAddDeptModal, editingDepartment, companiesList, locationsList]);
 
   useEffect(() => {
     if (externalShowAddModal) {

@@ -330,13 +330,15 @@ export function SubCategoriesTab({
       });
     } else {
       setEditingSubCategory(null);
+      const activeCategories = categoriesList.filter(c => c.active !== false && c.status !== 'Inactive');
+      const defaultCat = activeCategories.length === 1 ? activeCategories[0] : null;
       setSubCatFormState({
         code: '',
         name: '',
-        categoryId: '',
-        categoryName: '',
-        className: '',
-        groupName: '',
+        categoryId: defaultCat ? defaultCat.id : '',
+        categoryName: defaultCat ? defaultCat.name : '',
+        className: defaultCat ? (defaultCat.className || '') : '',
+        groupName: defaultCat ? (defaultCat.groupName || '') : '',
         description: '',
         status: 'Active',
         lifeInMonths: 60,
@@ -346,6 +348,23 @@ export function SubCategoriesTab({
     }
     setShowAddSubCatModal(true);
   };
+
+  // Auto-default single category in Add Subcategory modal
+  useEffect(() => {
+    if (showAddSubCatModal && !editingSubCategory && !subCatFormState.categoryId) {
+      const activeCategories = categoriesList.filter(c => c.active !== false && c.status !== 'Inactive');
+      if (activeCategories.length === 1) {
+        const cat = activeCategories[0];
+        setSubCatFormState(prev => ({
+          ...prev,
+          categoryId: cat.id,
+          categoryName: cat.name,
+          className: cat.className || prev.className,
+          groupName: cat.groupName || prev.groupName
+        }));
+      }
+    }
+  }, [showAddSubCatModal, editingSubCategory, subCatFormState.categoryId, categoriesList]);
 
   useEffect(() => {
     if (externalShowAddModal) {

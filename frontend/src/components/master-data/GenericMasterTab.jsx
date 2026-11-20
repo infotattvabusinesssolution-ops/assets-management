@@ -435,11 +435,14 @@ export function GenericMasterTab({
       });
     } else {
       setEditingItem(null);
+      const activeMfrs = sortedManufacturers.filter(m => !isMfrInactive(m));
+      const defaultMfr = (activeTab === 'brands' && activeMfrs.length === 1) ? activeMfrs[0] : null;
+
       setFormState({
         code: '',
         name: '',
-        manufacturerId: '',
-        manufacturerName: '',
+        manufacturerId: defaultMfr ? (defaultMfr.id || '') : '',
+        manufacturerName: defaultMfr ? (defaultMfr.name || defaultMfr.code || '') : '',
         website: '',
         supportContact: '',
         symbol: '',
@@ -452,6 +455,21 @@ export function GenericMasterTab({
     }
     setShowAddModal(true);
   };
+
+  // Auto-default single manufacturer in Add Brand modal
+  useEffect(() => {
+    if (showAddModal && !editingItem && activeTab === 'brands' && !formState.manufacturerId && !formState.manufacturerName) {
+      const activeMfrs = sortedManufacturers.filter(m => !isMfrInactive(m));
+      if (activeMfrs.length === 1) {
+        const m = activeMfrs[0];
+        setFormState(prev => ({
+          ...prev,
+          manufacturerId: m.id || '',
+          manufacturerName: m.name || m.code || ''
+        }));
+      }
+    }
+  }, [showAddModal, editingItem, activeTab, formState.manufacturerId, formState.manufacturerName, sortedManufacturers]);
 
   const handleDuplicateItem = (item) => {
     setActiveRowMenuId && setActiveRowMenuId(null);

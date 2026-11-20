@@ -111,6 +111,18 @@ export function PreventiveMaintenance() {
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', closeOnEscape); };
   }, [creating, busy]);
 
+  // Auto-default single master value in PM creation modal
+  useEffect(() => {
+    if (creating) {
+      if (!form.categoryId && categories.length === 1) {
+        update('categoryId', categories[0].id);
+      }
+      if (!form.assetId && availableAssets.length === 1) {
+        update('assetId', availableAssets[0].id);
+      }
+    }
+  }, [creating, categories, availableAssets, form.categoryId, form.assetId]);
+
   function update(key, value) { setForm(previous => ({ ...previous, [key]: value })); }
   function select(id) { setSelectedId(id); setCreating(false); setMenuId(null); setError(''); setMessage(''); }
   async function create() {

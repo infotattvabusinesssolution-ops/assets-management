@@ -29,10 +29,12 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
         .then(res => {
           if (res?.sites?.length) {
             setSitesList(res.sites);
-            setFormData(prev => ({
-              ...prev,
-              destinationSite: prev.destinationSite || res.sites[0].name
-            }));
+            if (res.sites.length === 1) {
+              setFormData(prev => ({
+                ...prev,
+                destinationSite: res.sites[0].name
+              }));
+            }
           }
         })
         .catch(err => console.warn('Hierarchy fetch in TransferAssetModal:', err));
@@ -41,6 +43,12 @@ export function TransferAssetModal({ isOpen, onClose, asset, onTransferCompleted
         .then(res => {
           if (res?.custodians?.length) {
             setCustodiansList(res.custodians);
+            if (res.custodians.length === 1) {
+              setFormData(prev => ({
+                ...prev,
+                newCustodian: prev.newCustodian || res.custodians[0].name
+              }));
+            }
           }
         })
         .catch(err => console.warn('Master references in TransferAssetModal:', err));

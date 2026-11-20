@@ -54,12 +54,42 @@ export function BulkTransferModal({ isOpen, onClose, selectedAssets = [], onTran
         }
       }
       if (rRes.status === 'fulfilled' && rRes.value?.success) {
-        setCustodians(rRes.value.custodians || []);
+        const custs = rRes.value.custodians || [];
+        setCustodians(custs);
+        if (custs.length === 1) {
+          setFormData(prev => ({
+            ...prev,
+            newCustodian: custs[0].name || custs[0].fullName || custs[0].code || ''
+          }));
+        }
       }
     }).catch(err => console.warn('Bulk transfer options fetch note:', err));
 
     return () => { isMounted = false; };
   }, [isOpen]);
+
+  // Reactive single-value defaulting for cascaded hierarchy
+  useEffect(() => {
+    if (!isOpen) return;
+    if (filteredBuildings.length === 1 && !formData.destinationBuildingId) {
+      setFormData(prev => ({
+        ...prev,
+        destinationBuildingId: filteredBuildings[0].id,
+        destinationBuilding: filteredBuildings[0].name
+      }));
+    }
+  }, [isOpen, filteredBuildings, formData.destinationBuildingId]);
+
+  useEffect(() => {
+    if (!isOpen) return;
+    if (filteredFloors.length === 1 && !formData.destinationFloorId) {
+      setFormData(prev => ({
+        ...prev,
+        destinationFloorId: filteredFloors[0].id,
+        destinationFloor: filteredFloors[0].name
+      }));
+    }
+  }, [isOpen, filteredFloors, formData.destinationFloorId]);
 
   if (!isOpen) return null;
 

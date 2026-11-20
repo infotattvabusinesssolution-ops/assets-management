@@ -91,6 +91,18 @@ export function MaintenancePlans() {
     return () => { document.body.style.overflow = previousOverflow; window.removeEventListener('keydown', closeOnEscape); };
   }, [creating, busy]);
 
+  // Auto-default single master value in Plan creation modal
+  useEffect(() => {
+    if (creating) {
+      if (!form.categoryId && categories.length === 1) {
+        update('categoryId', categories[0].id);
+      }
+      if (!form.siteId && sites.length === 1) {
+        update('siteId', sites[0].id);
+      }
+    }
+  }, [creating, categories, sites, form.categoryId, form.siteId]);
+
   function update(key, value) { setForm(previous => ({ ...previous, [key]: value })); }
   function select(id) { setCreating(false); setSelectedId(id); setDetail(null); setTab(tabs[0]); setMessage(''); setError(''); }
   function create() { setCreating(true); setForm(blank()); setMessage(''); setError(''); }

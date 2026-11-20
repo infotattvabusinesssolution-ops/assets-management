@@ -414,23 +414,32 @@ export function ItemMasterTab({
       });
     } else {
       setEditingItem(null);
+      const activeGroups = assetGroups.filter(g => g.active !== false && g.status !== 'Inactive');
+      const defaultGrp = activeGroups.length === 1 ? activeGroups[0] : null;
+
+      const activeMfrs = manufacturers.filter(m => m.active !== false && m.status !== 'Inactive');
+      const defaultMfr = activeMfrs.length === 1 ? activeMfrs[0] : null;
+
+      const activeBrands = brands.filter(b => b.active !== false && b.status !== 'Inactive');
+      const defaultBrand = activeBrands.length === 1 ? activeBrands[0] : null;
+
       setFormState({
         itemCode: '',
         itemName: '',
         supplierBarcode: '',
         description: '',
-        assetGroupId: '',
-        assetGroupName: '',
+        assetGroupId: defaultGrp ? defaultGrp.id : '',
+        assetGroupName: defaultGrp ? (defaultGrp.name || defaultGrp.code) : '',
         assetSubGroupId: '',
         assetSubGroupName: '',
         categoryId: '',
         categoryName: '',
         subCategoryId: '',
         subCategoryName: '',
-        manufacturerId: '',
-        manufacturerName: '',
-        brandId: '',
-        brandName: '',
+        manufacturerId: defaultMfr ? defaultMfr.id : '',
+        manufacturerName: defaultMfr ? (defaultMfr.name || defaultMfr.code) : '',
+        brandId: defaultBrand ? defaultBrand.id : '',
+        brandName: defaultBrand ? (defaultBrand.name || defaultBrand.code) : '',
         model: '',
         uom: 'Each',
         specifications: '',
@@ -439,6 +448,86 @@ export function ItemMasterTab({
     }
     setShowAddModal(true);
   };
+
+  // Auto-default single master options in Add Item modal
+  useEffect(() => {
+    if (!showAddModal || editingItem) return;
+
+    // 1. Asset Group
+    const activeGroups = assetGroups.filter(g => g.active !== false && g.status !== 'Inactive');
+    if (!formState.assetGroupId && activeGroups.length === 1) {
+      setFormState(prev => ({
+        ...prev,
+        assetGroupId: activeGroups[0].id,
+        assetGroupName: activeGroups[0].name || activeGroups[0].code
+      }));
+    }
+
+    // 2. Asset Sub Group / Class (cascaded by group)
+    const activeSubGroups = availableModalSubGroups.filter(sg => sg.active !== false && sg.status !== 'Inactive');
+    if (!formState.assetSubGroupId && activeSubGroups.length === 1) {
+      setFormState(prev => ({
+        ...prev,
+        assetSubGroupId: activeSubGroups[0].id,
+        assetSubGroupName: activeSubGroups[0].name || activeSubGroups[0].code
+      }));
+    }
+
+    // 3. Category (cascaded by subgroup/group)
+    const activeCats = availableModalCategories.filter(c => c.active !== false && c.status !== 'Inactive');
+    if (!formState.categoryId && activeCats.length === 1) {
+      setFormState(prev => ({
+        ...prev,
+        categoryId: activeCats[0].id,
+        categoryName: activeCats[0].name || activeCats[0].code
+      }));
+    }
+
+    // 4. Sub Category (cascaded by category)
+    const activeSubCats = availableModalSubCategories.filter(sc => sc.active !== false && sc.status !== 'Inactive');
+    if (!formState.subCategoryId && activeSubCats.length === 1) {
+      setFormState(prev => ({
+        ...prev,
+        subCategoryId: activeSubCats[0].id,
+        subCategoryName: activeSubCats[0].name || activeSubCats[0].code
+      }));
+    }
+
+    // 5. Manufacturer
+    const activeMfrs = manufacturers.filter(m => m.active !== false && m.status !== 'Inactive');
+    if (!formState.manufacturerId && activeMfrs.length === 1) {
+      setFormState(prev => ({
+        ...prev,
+        manufacturerId: activeMfrs[0].id,
+        manufacturerName: activeMfrs[0].name || activeMfrs[0].code
+      }));
+    }
+
+    // 6. Brand (cascaded by manufacturer)
+    const activeBrands = availableModalBrands.filter(b => b.active !== false && b.status !== 'Inactive');
+    if (!formState.brandId && activeBrands.length === 1) {
+      setFormState(prev => ({
+        ...prev,
+        brandId: activeBrands[0].id,
+        brandName: activeBrands[0].name || activeBrands[0].code
+      }));
+    }
+  }, [
+    showAddModal,
+    editingItem,
+    formState.assetGroupId,
+    formState.assetSubGroupId,
+    formState.categoryId,
+    formState.subCategoryId,
+    formState.manufacturerId,
+    formState.brandId,
+    assetGroups,
+    availableModalSubGroups,
+    availableModalCategories,
+    availableModalSubCategories,
+    manufacturers,
+    availableModalBrands
+  ]);
 
   const handleDuplicateItem = (item) => {
     setActiveRowMenuId && setActiveRowMenuId(null);

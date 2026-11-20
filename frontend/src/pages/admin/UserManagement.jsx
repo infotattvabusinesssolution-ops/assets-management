@@ -518,18 +518,29 @@ export function UserManagement() {
 
   const openAddUserModal = () => {
     fetchPasswordPolicyForUser('');
+    const defaultCompany = companiesList.length === 1 ? companiesList[0].name : '';
+    const filteredDepts = defaultCompany
+      ? departmentsList.filter(d => !d.companyId || d.company === defaultCompany || d.companyName === defaultCompany)
+      : departmentsList;
+    const defaultDept = filteredDepts.length === 1 ? filteredDepts[0].name : '';
+    const filteredSecs = defaultDept
+      ? sectionsList.filter(s => !s.departmentId || s.department === defaultDept || s.departmentName === defaultDept)
+      : sectionsList;
+    const defaultSec = filteredSecs.length === 1 ? (filteredSecs[0].name || filteredSecs[0].code) : '';
+    const defaultRole = rolesList.length === 1 ? rolesList[0].name : (rolesList.find(r => r.name === 'Standard User')?.name || rolesList[0]?.name || 'Standard User');
+
     setUserFormData({
       name: '',
       username: '',
       email: '',
       phone: '',
       employeeId: '',
-      role: rolesList.length > 0 ? rolesList[0].name : 'Standard User',
-      department: '',
-      section: '',
-      costCenter: '',
+      role: defaultRole,
+      department: defaultDept,
+      section: defaultSec,
+      costCenter: defaultSec,
       location: '',
-      company: '',
+      company: defaultCompany,
       businessUnit: 'Corporate Operations',
       password: '',
       passwordOption: 'custom',
@@ -552,6 +563,48 @@ export function UserManagement() {
     setEmployeeLookupStatus(null);
     setShowAddModal(true);
   };
+
+  // Auto-default single master value in Add User Modal if only one option exists
+  useEffect(() => {
+    if (showAddModal && !showEditModal) {
+      setUserFormData(prev => {
+        let updated = { ...prev };
+        let changed = false;
+
+        if (!updated.company && companiesList.length === 1) {
+          updated.company = companiesList[0].name;
+          changed = true;
+        }
+
+        const compName = updated.company;
+        const availableDepts = compName
+          ? departmentsList.filter(d => !d.companyId || d.company === compName || d.companyName === compName)
+          : departmentsList;
+        if (!updated.department && availableDepts.length === 1) {
+          updated.department = availableDepts[0].name;
+          changed = true;
+        }
+
+        const deptName = updated.department;
+        const availableSecs = deptName
+          ? sectionsList.filter(s => !s.departmentId || s.department === deptName || s.departmentName === deptName)
+          : sectionsList;
+        if (!updated.section && !updated.costCenter && availableSecs.length === 1) {
+          const val = availableSecs[0].name || availableSecs[0].code;
+          updated.section = val;
+          updated.costCenter = val;
+          changed = true;
+        }
+
+        if (!updated.role && rolesList.length === 1) {
+          updated.role = rolesList[0].name;
+          changed = true;
+        }
+
+        return changed ? updated : prev;
+      });
+    }
+  }, [showAddModal, showEditModal, companiesList, departmentsList, sectionsList, rolesList]);
 
   const fetchUsers = async () => {
     setLoading(true);

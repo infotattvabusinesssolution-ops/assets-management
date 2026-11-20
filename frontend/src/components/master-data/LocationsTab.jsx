@@ -379,16 +379,43 @@ export function LocationsTab({
         code: '',
         name: '',
         type: allLocationTypes[0] || 'Internal',
-        locationLevel1: '',
-        locationLevel2: '',
-        locationLevel3: '',
-        locationLevel4: '',
+        locationLevel1: level1List.length === 1 ? (level1List[0]?.code || '') : '',
+        locationLevel2: level2List.length === 1 ? (level2List[0]?.code || '') : '',
+        locationLevel3: level3List.length === 1 ? (level3List[0]?.code || '') : '',
+        locationLevel4: level4List.length === 1 ? (level4List[0]?.code || '') : '',
         address: '',
         status: 'Active'
       });
     }
     setShowAddLocModal(true);
   };
+
+  // Auto-default single location levels in Add Location modal
+  useEffect(() => {
+    if (showAddLocModal && !editingLocation) {
+      setLocFormState(prev => {
+        let updated = { ...prev };
+        let changed = false;
+        if (!updated.locationLevel1 && level1List.length === 1) {
+          updated.locationLevel1 = level1List[0]?.code || '';
+          changed = true;
+        }
+        if (!updated.locationLevel2 && level2List.length === 1) {
+          updated.locationLevel2 = level2List[0]?.code || '';
+          changed = true;
+        }
+        if (!updated.locationLevel3 && level3List.length === 1) {
+          updated.locationLevel3 = level3List[0]?.code || '';
+          changed = true;
+        }
+        if (!updated.locationLevel4 && level4List.length === 1) {
+          updated.locationLevel4 = level4List[0]?.code || '';
+          changed = true;
+        }
+        return changed ? updated : prev;
+      });
+    }
+  }, [showAddLocModal, editingLocation, level1List, level2List, level3List, level4List]);
 
   useEffect(() => {
     if (externalShowAddModal) {

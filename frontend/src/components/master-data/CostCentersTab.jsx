@@ -257,11 +257,13 @@ export function CostCentersTab({
       });
     } else {
       setEditingCostCenter(null);
+      const activeCompanies = companiesList.filter(c => c.active !== false && c.status !== 'Inactive');
+      const activeDepts = departmentsList.filter(d => d.active !== false && d.status !== 'Inactive');
       setCcFormState({
         code: '',
         name: '',
-        company: companiesList[0]?.name || '',
-        departmentId: '',
+        company: activeCompanies.length === 1 ? (activeCompanies[0]?.name || '') : (companiesList[0]?.name || ''),
+        departmentId: activeDepts.length === 1 ? (activeDepts[0]?.id || '') : '',
         manager: '',
         email: '',
         phone: '',
@@ -271,6 +273,27 @@ export function CostCentersTab({
     }
     setShowAddCCModal(true);
   };
+
+  // Auto-default single company or department in Add Section modal
+  useEffect(() => {
+    if (showAddCCModal && !editingCostCenter) {
+      const activeCompanies = companiesList.filter(c => c.active !== false && c.status !== 'Inactive');
+      const activeDepts = departmentsList.filter(d => d.active !== false && d.status !== 'Inactive');
+      setCcFormState(prev => {
+        let updated = { ...prev };
+        let changed = false;
+        if (!updated.company && activeCompanies.length === 1) {
+          updated.company = activeCompanies[0]?.name || '';
+          changed = true;
+        }
+        if (!updated.departmentId && activeDepts.length === 1) {
+          updated.departmentId = activeDepts[0]?.id || '';
+          changed = true;
+        }
+        return changed ? updated : prev;
+      });
+    }
+  }, [showAddCCModal, editingCostCenter, companiesList, departmentsList]);
 
   useEffect(() => {
     if (externalShowAddModal) {
