@@ -863,12 +863,14 @@ export function UserManagement() {
       return;
     }
     let savedUser = null;
+    let createRes = null;
     try {
       const res = showEditModal
         ? await api.put(`/admin/users/${selectedUser.id}`, userFormData).catch(() => null)
         : await api.post('/admin/users', userFormData).catch(() => null);
       if (res && res.user) {
         savedUser = res.user;
+        createRes = res;
       }
     } catch (err) {}
 
@@ -897,7 +899,11 @@ export function UserManagement() {
       setUserList(prev => [targetUser, ...prev]);
       setUsers(prev => [targetUser, ...prev]);
       setTotalUsers(prev => prev + 1);
-      setActionSuccessMsg('User created successfully');
+      const successMessage = createRes?.message 
+        || (targetUser.email 
+          ? `User ${targetUser.name || targetUser.username} created! Login credentials valid for 20 minutes have been sent to ${targetUser.email}.`
+          : 'User created successfully');
+      setActionSuccessMsg(successMessage);
     }
 
     setShowAddModal(false);
@@ -2300,6 +2306,13 @@ export function UserManagement() {
                     </label>
                   </div>
                 </div>
+
+                {!showEditModal && (
+                  <div className="flex items-center gap-2 px-2.5 py-1.5 bg-amber-50 border border-amber-200/70 rounded-lg text-amber-800 text-[11px]">
+                    <span className="shrink-0 font-bold">⏱️ 20-Min Expiry:</span>
+                    <span>Username and initial password will be emailed to the user and will expire in <strong>20 minutes</strong>.</span>
+                  </div>
+                )}
 
                 {userFormData.password && (
                   <PasswordRequirementsTracker

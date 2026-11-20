@@ -438,6 +438,11 @@ export function Login() {
       setForcePassError('Please enter a new password.');
       return;
     }
+    // Security check: New permanent password cannot match temporary password
+    if (password && newPassword.trim() === password.trim()) {
+      setForcePassError('Security Policy: Your new permanent password cannot be the same as your temporary password. Please choose a new, unique password.');
+      return;
+    }
     if (!isForcePassValid) {
       setForcePassError('Please ensure your password satisfies all company security requirements.');
       return;
@@ -449,7 +454,7 @@ export function Login() {
 
     setForcePassSubmitting(true);
     try {
-      const res = await changePassword(newPassword);
+      const res = await changePassword(newPassword, password);
       if (res?.success) {
         setForcePassSuccess(true);
         setTimeout(() => {
@@ -1425,6 +1430,12 @@ export function Login() {
                     onValidityChange={setIsForcePassValid}
                     showSummaryBadge={true}
                   />
+                  {password && newPassword && newPassword.trim() === password.trim() && (
+                    <div className="mt-2.5 p-2 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+                      <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                      <span>Security Policy: New password cannot be the same as your temporary password.</span>
+                    </div>
+                  )}
                 </div>
 
                 <div>
@@ -1467,7 +1478,7 @@ export function Login() {
                 <div className="pt-2 flex flex-col gap-2">
                   <button
                     type="submit"
-                    disabled={forcePassSubmitting || !newPassword || newPassword !== confirmPassword || !isForcePassValid}
+                    disabled={forcePassSubmitting || !newPassword || newPassword !== confirmPassword || !isForcePassValid || (password && newPassword.trim() === password.trim())}
                     className="w-full py-3 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
                   >
                     {forcePassSubmitting ? (
