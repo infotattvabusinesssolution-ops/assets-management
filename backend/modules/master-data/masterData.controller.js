@@ -5539,12 +5539,20 @@ function readItemMastersFromFile() {
 }
 
 function writeItemMastersToFile(list) {
-  try {
-    const dir = path.dirname(ITEM_MASTERS_FILE);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(ITEM_MASTERS_FILE, JSON.stringify(list, null, 2), 'utf8');
-  } catch (e) {
-    console.warn('Failed to write item_masters.json:', e.message);
+  const candidates = [
+    ITEM_MASTERS_FILE,
+    path.resolve(__dirname, '../../data', 'item_masters.json'),
+    path.join(process.cwd(), 'data', 'item_masters.json'),
+    path.join(process.cwd(), 'assets-management', 'backend', 'data', 'item_masters.json')
+  ];
+  for (const p of new Set(candidates)) {
+    try {
+      const dir = path.dirname(p);
+      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+      fs.writeFileSync(p, JSON.stringify(list, null, 2), 'utf8');
+    } catch (e) {
+      console.warn(`Failed to write item_masters to ${p}:`, e.message);
+    }
   }
 }
 
@@ -5758,6 +5766,7 @@ function writeUomsToFile(list) {
 }
 
 let inMemoryItemMasters = readItemMastersFromFile();
+let itemMastersLoaded = true;
 let inMemoryUoms = readUomsFromFile();
 let itemMastersTableEnsured = false;
 let uomsTableEnsured = false;
@@ -5931,8 +5940,9 @@ export async function getItemMasters(req, res, next) {
         console.warn('DB getItemMasters query skipped, using persistent store:', dbErr.message);
       }
     }
-    if (inMemoryItemMasters.length === 0) {
+    if (!itemMastersLoaded) {
       inMemoryItemMasters = readItemMastersFromFile();
+      itemMastersLoaded = true;
     }
     const list = includeInactive
       ? inMemoryItemMasters
@@ -6401,7 +6411,12 @@ export async function deleteItemMaster(req, res, next) {
       } catch (_) {}
     }
 
-    inMemoryItemMasters = inMemoryItemMasters.filter(i => i.id !== id && i.itemCode !== id && (!targetCode || i.itemCode !== targetCode));
+    inMemoryItemMasters = inMemoryItemMasters.filter(i => 
+      i.id !== id && 
+      i.id !== targetId && 
+      i.itemCode !== id && 
+      (!targetCode || i.itemCode !== targetCode)
+    );
 
     await ensureItemMastersTable();
     if (isDbConnected()) {

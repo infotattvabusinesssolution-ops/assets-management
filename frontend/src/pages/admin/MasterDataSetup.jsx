@@ -758,9 +758,13 @@ export function MasterDataSetup() {
 
   const triggerToast = (msg, type = 'success') => {
     if (!msg) return;
-    const isError = type === 'error' || /cannot|failed|unable|error|not allowed|referenced by/i.test(String(msg));
+    const text = typeof msg === 'string' ? msg : (msg?.message || msg?.error || 'Action completed');
+    const isError = type === 'error' || 
+      Boolean(msg && msg.success === false) ||
+      Boolean(msg && msg.requiresConfirmation) ||
+      /cannot|failed|unable|error|not allowed|referenced by|blocked/i.test(String(text));
     setToastMessage({
-      text: typeof msg === 'string' ? msg : (msg?.message || 'Action completed'),
+      text: String(text),
       isError
     });
     setTimeout(() => setToastMessage(null), 3500);

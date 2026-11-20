@@ -151,10 +151,8 @@ export function ItemMasterTab({
           seenItemCodes.add(c);
           return true;
         });
-      if (mergedItems.length > 0) {
-        setItems(mergedItems);
-        setSelectedItem(mergedItems[0] || null);
-      }
+      setItems(mergedItems);
+      setSelectedItem(prev => (mergedItems.some(i => i.id === prev?.id) ? prev : (mergedItems[0] || null)));
 
       // Merge Asset Groups: Server + Local Custom
       const localGroups = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
@@ -702,7 +700,15 @@ export function ItemMasterTab({
       // Purge from local storage custom items
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
-        localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.filter(i => i.id !== itemToDelete.id)));
+        localStorage.setItem(
+          'fams_custom_item_masters',
+          JSON.stringify(custom.filter(i => 
+            i.id !== itemToDelete.id &&
+            i.itemCode !== itemToDelete.itemCode &&
+            (!itemToDelete.code || i.code !== itemToDelete.code) &&
+            (!itemToDelete.supplierBarcode || i.supplierBarcode !== itemToDelete.supplierBarcode)
+          ))
+        );
       } catch (_) { }
 
       const updated = items.filter(i => i.id !== itemToDelete.id);
@@ -727,7 +733,15 @@ export function ItemMasterTab({
       if (err?.response?.status === 404 || err?.status === 404) {
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
-          localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.filter(i => i.id !== itemToDelete.id)));
+          localStorage.setItem(
+            'fams_custom_item_masters',
+            JSON.stringify(custom.filter(i => 
+              i.id !== itemToDelete.id &&
+              i.itemCode !== itemToDelete.itemCode &&
+              (!itemToDelete.code || i.code !== itemToDelete.code) &&
+              (!itemToDelete.supplierBarcode || i.supplierBarcode !== itemToDelete.supplierBarcode)
+            ))
+          );
         } catch (_) { }
         const updated = items.filter(i => i.id !== itemToDelete.id);
         setItems(updated);
