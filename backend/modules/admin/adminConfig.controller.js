@@ -19,7 +19,7 @@ export let memoryConfig = {
     codePrefix: 'AST',
     codeFormat: '{PREFIX}-{YYYY}-{SEQ:6}',
     startingSequence: 100001,
-    mandatoryFields: ['Asset Name', 'Category', 'Location', 'Purchase Date', 'Cost Center'],
+    mandatoryFields: ['Asset Name', 'Category', 'Location', 'Purchase Date', 'Section'],
     enableImages: true,
     maxImages: 5,
     defaultWarrantyMonths: 12,

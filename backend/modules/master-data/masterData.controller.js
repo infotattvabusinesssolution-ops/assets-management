@@ -1051,27 +1051,68 @@ export async function getSites(req, res, next) {
           : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites WHERE active = 1 ORDER BY name ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
         if (Array.isArray(rows) && rows.length > 0) {
-          const raw = rows.map(r => ({
-            id: r.id,
-            code: r.code,
-            name: r.name,
-            city: r.city || '',
-            country: r.country || '',
-            companyId: r.companyId,
-            type: r.type === 'External' ? 'External' : 'Internal',
-            level: ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(r.level) ? r.level : 'Level 1',
-            parentLocation: r.parentLocation || '-',
-            fullPath: r.fullPath || '',
-            locationLevel1: r.locationLevel1 || '',
-            locationLevel2: r.locationLevel2 || '',
-            locationLevel3: r.locationLevel3 || '',
-            locationLevel4: r.locationLevel4 || '',
-            address: r.address || '',
-            active: Boolean(r.active),
-            status: Boolean(r.active) ? 'Active' : 'Inactive',
-            createdAt: r.createdAt,
-            updatedAt: r.updatedAt
-          }));
+          // Pre-fetch relation counts for all sites in bulk
+          const siteAssetCounts = {};
+          const siteChildCounts = {};
+          const siteBuildingCounts = {};
+          const siteDeptCounts = {};
+
+          try {
+            const [assetRows, childRows, bldgRows, deptRows] = await Promise.all([
+              prisma.$queryRawUnsafe(`SELECT siteId, COUNT(*) as cnt FROM assets WHERE siteId IS NOT NULL GROUP BY siteId`).catch(() => []),
+              prisma.$queryRawUnsafe(`SELECT parentLocation, COUNT(*) as cnt FROM sites WHERE parentLocation IS NOT NULL AND parentLocation != '-' GROUP BY parentLocation`).catch(() => []),
+              prisma.$queryRawUnsafe(`SELECT siteId, COUNT(*) as cnt FROM buildings WHERE siteId IS NOT NULL GROUP BY siteId`).catch(() => []),
+              prisma.$queryRawUnsafe(`SELECT location, COUNT(*) as cnt FROM departments WHERE location IS NOT NULL GROUP BY location`).catch(() => [])
+            ]);
+
+            if (Array.isArray(assetRows)) {
+              assetRows.forEach(r => { if (r.siteId) siteAssetCounts[r.siteId] = Number(r.cnt || 0); });
+            }
+            if (Array.isArray(childRows)) {
+              childRows.forEach(r => { if (r.parentLocation) siteChildCounts[r.parentLocation] = Number(r.cnt || 0); });
+            }
+            if (Array.isArray(bldgRows)) {
+              bldgRows.forEach(r => { if (r.siteId) siteBuildingCounts[r.siteId] = Number(r.cnt || 0); });
+            }
+            if (Array.isArray(deptRows)) {
+              deptRows.forEach(r => { if (r.location) siteDeptCounts[r.location] = Number(r.cnt || 0); });
+            }
+          } catch (cntErr) {
+            console.warn('Relation counts bulk query warning in getSites:', cntErr.message);
+          }
+
+          const raw = rows.map(r => {
+            const directAssets = (siteAssetCounts[r.id] || 0) + (siteAssetCounts[r.code] || 0);
+            const childLocs = (siteChildCounts[r.id] || 0) + (siteChildCounts[r.code] || 0) + (r.name ? (siteChildCounts[r.name] || 0) : 0);
+            const bldgs = (siteBuildingCounts[r.id] || 0) + (siteBuildingCounts[r.code] || 0);
+            const depts = (siteDeptCounts[r.id] || 0) + (siteDeptCounts[r.code] || 0) + (r.name ? (siteDeptCounts[r.name] || 0) : 0);
+
+            return {
+              id: r.id,
+              code: r.code,
+              name: r.name,
+              city: r.city || '',
+              country: r.country || '',
+              companyId: r.companyId,
+              type: r.type === 'External' ? 'External' : 'Internal',
+              level: ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(r.level) ? r.level : 'Level 1',
+              parentLocation: r.parentLocation || '-',
+              fullPath: r.fullPath || '',
+              locationLevel1: r.locationLevel1 || '',
+              locationLevel2: r.locationLevel2 || '',
+              locationLevel3: r.locationLevel3 || '',
+              locationLevel4: r.locationLevel4 || '',
+              address: r.address || '',
+              active: Boolean(r.active),
+              status: Boolean(r.active) ? 'Active' : 'Inactive',
+              totalAssets: directAssets,
+              childCount: childLocs,
+              buildingsCount: bldgs,
+              departmentsCount: depts,
+              createdAt: r.createdAt,
+              updatedAt: r.updatedAt
+            };
+          });
 
           const resolved = raw.map(loc => ({
             ...loc,
@@ -1400,67 +1441,145 @@ export async function deleteSite(req, res, next) {
     const force = req.query.force === 'true' || action === 'force_delete';
     const deactivateOnly = action === 'deactivate';
 
-    const targetLoc = inMemoryLocations.find(l => l.id === id || l.code === id);
-    const targetCode = targetLoc ? targetLoc.code : id;
+    let targetLoc = inMemoryLocations.find(l => l.id === id || l.code === id);
+    let dbSite = null;
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT TOP 1 * FROM sites WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+        if (rows && rows.length > 0) dbSite = rows[0];
+      } catch (_) {}
+    }
+
+    const targetId = dbSite?.id || targetLoc?.id || id;
+    const targetCode = (dbSite?.code || targetLoc?.code || id).trim();
+    const targetName = (dbSite?.name || targetLoc?.name || '').trim();
 
     // Check if any child location references this location as parent
-    const childCount = inMemoryLocations.filter(l => l.parentLocation === id || l.parentLocation === targetCode).length;
+    let childCount = inMemoryLocations.filter(l => 
+      (l.parentLocation && (l.parentLocation === targetId || l.parentLocation === targetCode || (targetName && l.parentLocation === targetName)))
+    ).length;
+
+    let dbChildCount = 0;
+    if (isDbConnected()) {
+      try {
+        const dbChildren = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM sites 
+          WHERE id != '${targetId.replace(/'/g, "''")}' AND (
+            parentLocation = '${targetId.replace(/'/g, "''")}' OR 
+            parentLocation = '${targetCode.replace(/'/g, "''")}' OR 
+            (parentLocation IS NOT NULL AND parentLocation = '${targetName.replace(/'/g, "''")}') OR
+            locationLevel1 = '${targetCode.replace(/'/g, "''")}' OR locationLevel1 = '${targetName.replace(/'/g, "''")}' OR
+            locationLevel2 = '${targetCode.replace(/'/g, "''")}' OR locationLevel2 = '${targetName.replace(/'/g, "''")}' OR
+            locationLevel3 = '${targetCode.replace(/'/g, "''")}' OR locationLevel3 = '${targetName.replace(/'/g, "''")}' OR
+            locationLevel4 = '${targetCode.replace(/'/g, "''")}' OR locationLevel4 = '${targetName.replace(/'/g, "''")}'
+          )
+        `);
+        dbChildCount = Number(dbChildren?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+    childCount = Math.max(childCount, dbChildCount);
+
     let siteAssets = 0;
     let buildingAssets = 0;
     let receiptCount = 0;
     let siteBuildings = [];
+    let deptsCount = 0;
+    let usersCount = 0;
 
     if (isDbConnected()) {
       try {
-        const [directAssets, bldgs, receipts] = await Promise.all([
-          prisma.asset.count({ where: { siteId: id } }).catch(() => 0),
-          prisma.building.findMany({ where: { siteId: id }, select: { id: true, code: true, name: true } }).catch(() => []),
-          prisma.receipt.count({ where: { siteId: id } }).catch(() => 0)
-        ]);
-        siteAssets = directAssets;
-        siteBuildings = bldgs || [];
-        receiptCount = receipts;
+        // Find buildings
+        siteBuildings = await prisma.building.findMany({
+          where: { OR: [{ siteId: targetId }, { siteId: targetCode }] },
+          select: { id: true, code: true, name: true }
+        }).catch(() => []);
 
-        if (siteBuildings.length > 0) {
-          const bldgIds = siteBuildings.map(b => b.id);
-          buildingAssets = await prisma.asset.count({ where: { buildingId: { in: bldgIds } } }).catch(() => 0);
+        const bldgIds = siteBuildings.map(b => b.id);
+
+        const [directAssets, bldgAssetCount, receipts, depts, users] = await Promise.all([
+          prisma.asset.count({ where: { OR: [{ siteId: targetId }, { siteId: targetCode }] } }).catch(() => 0),
+          bldgIds.length > 0 ? prisma.asset.count({ where: { buildingId: { in: bldgIds } } }).catch(() => 0) : 0,
+          prisma.receipt.count({ where: { OR: [{ siteId: targetId }, { siteId: targetCode }] } }).catch(() => 0),
+          prisma.department.count({ where: { OR: [{ location: targetId }, { location: targetCode }, ...(targetName ? [{ location: targetName }] : [])] } }).catch(() => 0),
+          prisma.user.count({ where: { OR: [{ siteId: targetId }, { siteId: targetCode }] } }).catch(() => 0)
+        ]);
+
+        siteAssets = directAssets;
+        buildingAssets = bldgAssetCount;
+        receiptCount = receipts;
+        deptsCount = depts;
+        usersCount = users;
+
+        // Double check raw SQL for assets
+        try {
+          const rawDirectAssets = await prisma.$queryRawUnsafe(`
+            SELECT COUNT(*) as cnt FROM assets 
+            WHERE siteId = '${targetId.replace(/'/g, "''")}' OR siteId = '${targetCode.replace(/'/g, "''")}'
+          `);
+          const rawDirectCount = Number(rawDirectAssets?.[0]?.cnt || 0);
+          if (rawDirectCount > siteAssets) siteAssets = rawDirectCount;
+        } catch (_) {}
+
+        if (bldgIds.length > 0) {
+          try {
+            const rawBldgAssets = await prisma.$queryRawUnsafe(`
+              SELECT COUNT(*) as cnt FROM assets 
+              WHERE buildingId IN (${bldgIds.map(b => `'${b.replace(/'/g, "''")}'`).join(',')})
+            `);
+            const rawBldgCount = Number(rawBldgAssets?.[0]?.cnt || 0);
+            if (rawBldgCount > buildingAssets) buildingAssets = rawBldgCount;
+          } catch (_) {}
         }
       } catch (_) {}
     }
 
     const totalAssets = siteAssets + buildingAssets;
-    // Hard blocking connections: assets, purchase receipts, or direct child sub-locations in the hierarchy
-    const totalBlocking = childCount + totalAssets + receiptCount;
+    const buildingsCount = siteBuildings.length;
+
+    // Hard blocking connections: assets, child sub-locations, buildings, purchase receipts, departments, users
+    const totalBlocking = childCount + totalAssets + buildingsCount + receiptCount + deptsCount + usersCount;
 
     if (totalBlocking > 0 && !force && !deactivateOnly) {
-      return res.json({
+      return res.status(400).json({
         success: false,
         requiresConfirmation: true,
         linkedCount: totalBlocking,
         entityName: 'Location',
         details: {
           assetsCount: totalAssets,
-          receiptsCount: receiptCount,
+          buildingsCount,
           childCount,
-          buildingsCount: siteBuildings.length
+          receiptsCount: receiptCount,
+          deptsCount,
+          usersCount
         },
-        message: `This Location cannot be deleted because it is referenced by active records (${totalAssets} assets, ${receiptCount} receipts, ${childCount} child locations).`
+        message: `This Location cannot be deleted because it is referenced by active records (${[
+          totalAssets > 0 ? `${totalAssets} asset(s)` : '',
+          buildingsCount > 0 ? `${buildingsCount} building(s)` : '',
+          childCount > 0 ? `${childCount} sub-location(s)` : '',
+          receiptCount > 0 ? `${receiptCount} receipt(s)` : '',
+          deptsCount > 0 ? `${deptsCount} department(s)` : '',
+          usersCount > 0 ? `${usersCount} user(s)` : ''
+        ].filter(Boolean).join(', ')}).`
       });
     }
 
     if (deactivateOnly) {
-      if (targetLoc) targetLoc.active = false;
+      if (targetLoc) {
+        targetLoc.active = false;
+        targetLoc.status = 'Inactive';
+      }
       writeLocationsToFile(inMemoryLocations);
       if (isDbConnected()) {
         try {
-          await prisma.$executeRawUnsafe(`UPDATE sites SET active = 0 WHERE id = '${id.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
+          await prisma.$executeRawUnsafe(`UPDATE sites SET active = 0 WHERE id = '${targetId.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
         } catch (_) {}
       }
       return res.json({ success: true, deactivated: true, message: `Location deactivated successfully (${totalBlocking} linked records preserved).` });
     }
 
     // Hard delete:
-    // If no real assets/receipts exist (or if forced), cascade-delete empty child buildings, floors, and rooms first
+    // If forced, unlink or cascade
     if (isDbConnected()) {
       try {
         const bldgIds = siteBuildings.map(b => b.id);
@@ -1471,17 +1590,17 @@ export async function deleteSite(req, res, next) {
             await prisma.room.deleteMany({ where: { floorId: { in: floorIds } } }).catch(() => {});
           }
           await prisma.floor.deleteMany({ where: { buildingId: { in: bldgIds } } }).catch(() => {});
-          await prisma.building.deleteMany({ where: { siteId: id } }).catch(() => {});
+          await prisma.building.deleteMany({ where: { siteId: targetId } }).catch(() => {});
         }
 
         if (force) {
-          await prisma.user.updateMany({ where: { siteId: id }, data: { siteId: null } }).catch(() => {});
-          await prisma.receipt.deleteMany({ where: { siteId: id } }).catch(() => {});
-          await prisma.asset.deleteMany({ where: { siteId: id } }).catch(() => {});
+          await prisma.user.updateMany({ where: { siteId: targetId }, data: { siteId: null } }).catch(() => {});
+          await prisma.receipt.deleteMany({ where: { siteId: targetId } }).catch(() => {});
+          await prisma.asset.deleteMany({ where: { siteId: targetId } }).catch(() => {});
         }
 
         await ensureSitesTable();
-        await prisma.$executeRawUnsafe(`DELETE FROM sites WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
+        await prisma.$executeRawUnsafe(`DELETE FROM sites WHERE id = '${targetId.replace(/'/g, "''")}' OR code = '${(targetCode || '').replace(/'/g, "''")}'`);
       } catch (dbErr) {
         console.warn('DB delete sites error:', dbErr.message);
       }
@@ -3484,6 +3603,10 @@ export async function updateManufacturer(req, res, next) {
 export async function deleteManufacturer(req, res, next) {
   try {
     const { id } = req.params;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
+
     let mfr = inMemoryManufacturers.find(m => m.id === id || m.code === id);
 
     let dbMfr = null;
@@ -3508,6 +3631,60 @@ export async function deleteManufacturer(req, res, next) {
     const targetName = dbMfr?.name || mfr?.name;
     const targetCode = mfr?.code;
 
+    // Check dependencies: assets, models, brands
+    let assetsCount = 0;
+    let modelCount = 0;
+    let brandsCount = 0;
+
+    if (isDbConnected()) {
+      try {
+        const [aCnt, mCnt, bCnt] = await Promise.all([
+          prisma.asset.count({ where: { manufacturerId: targetId } }).catch(() => 0),
+          prisma.assetModel.count({ where: { manufacturerId: targetId } }).catch(() => 0),
+          prisma.brand.count({ where: { manufacturerId: targetId } }).catch(() => 0)
+        ]);
+        assetsCount = aCnt;
+        modelCount = mCnt;
+        brandsCount = bCnt;
+      } catch (_) {}
+    }
+
+    const totalLinked = assetsCount + modelCount + brandsCount;
+
+    if (totalLinked > 0 && !force && !deactivateOnly) {
+      return res.status(400).json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        entityName: 'Manufacturer',
+        details: {
+          assetsCount,
+          modelCount,
+          brandsCount
+        },
+        message: `This Manufacturer cannot be deleted because it is referenced by active records (${[
+          assetsCount > 0 ? `${assetsCount} asset(s)` : '',
+          modelCount > 0 ? `${modelCount} model(s)` : '',
+          brandsCount > 0 ? `${brandsCount} brand(s)` : ''
+        ].filter(Boolean).join(', ')}).`
+      });
+    }
+
+    if (deactivateOnly) {
+      if (mfr) {
+        mfr.active = false;
+        mfr.status = 'Inactive';
+        writeManufacturersToFile(inMemoryManufacturers);
+      }
+      if (isDbConnected() && dbMfr) {
+        await prisma.manufacturer.update({
+          where: { id: dbMfr.id },
+          data: { active: false }
+        }).catch(() => null);
+      }
+      return res.json({ success: true, deactivated: true, message: `Manufacturer deactivated successfully (${totalLinked} linked records preserved).` });
+    }
+
     inMemoryManufacturers = inMemoryManufacturers.filter(m =>
       m.id !== targetId &&
       m.id !== id &&
@@ -3517,43 +3694,35 @@ export async function deleteManufacturer(req, res, next) {
 
     if (isDbConnected() && dbMfr) {
       try {
-        // 1. Unlink any assets referencing this manufacturer
-        await prisma.asset.updateMany({
-          where: { manufacturerId: dbMfr.id },
-          data: { manufacturerId: null }
-        }).catch(err => console.warn('Unlink assets manufacturerId warning:', err.message));
-
-        // 2. Unlink assets referencing asset_models of this manufacturer, then delete asset_models
-        const relatedModels = await prisma.assetModel.findMany({
-          where: { manufacturerId: dbMfr.id },
-          select: { id: true }
-        }).catch(() => []);
-
-        if (relatedModels.length > 0) {
-          const modelIds = relatedModels.map(rm => rm.id);
+        if (force) {
           await prisma.asset.updateMany({
-            where: { modelId: { in: modelIds } },
-            data: { modelId: null }
-          }).catch(err => console.warn('Unlink assets modelId warning:', err.message));
+            where: { manufacturerId: dbMfr.id },
+            data: { manufacturerId: null }
+          }).catch(() => null);
 
-          await prisma.assetModel.deleteMany({
-            where: { manufacturerId: dbMfr.id }
-          }).catch(err => console.warn('Delete related asset_models warning:', err.message));
+          const relatedModels = await prisma.assetModel.findMany({
+            where: { manufacturerId: dbMfr.id },
+            select: { id: true }
+          }).catch(() => []);
+
+          if (relatedModels.length > 0) {
+            const modelIds = relatedModels.map(rm => rm.id);
+            await prisma.asset.updateMany({
+              where: { modelId: { in: modelIds } },
+              data: { modelId: null }
+            }).catch(() => null);
+
+            await prisma.assetModel.deleteMany({
+              where: { manufacturerId: dbMfr.id }
+            }).catch(() => null);
+          }
         }
 
-        // 3. Delete manufacturer from DB
         await prisma.manufacturer.delete({
           where: { id: dbMfr.id }
         });
-        console.log(`✅ [Database]: Deleted manufacturer ${dbMfr.name} (${dbMfr.id})`);
       } catch (dbErr) {
-        console.error('❌ DB delete manufacturer failed:', dbErr.message);
-        try {
-          await prisma.manufacturer.update({
-            where: { id: dbMfr.id },
-            data: { active: false }
-          });
-        } catch (_) {}
+        console.error('DB delete manufacturer failed:', dbErr.message);
       }
     }
 
@@ -3906,6 +4075,11 @@ export async function deleteDepartment(req, res, next) {
     const totalLinked = assetCount + costCenterCount + userCount;
 
     if (totalLinked > 0 && !force) {
+      const parts = [];
+      if (assetCount > 0) parts.push(`${assetCount} asset(s)`);
+      if (costCenterCount > 0) parts.push(`${costCenterCount} section(s)`);
+      if (userCount > 0) parts.push(`${userCount} user(s)`);
+      const refStr = parts.length > 0 ? parts.join(', ') : `${totalLinked} record(s)`;
       return res.status(400).json({
         success: false,
         requiresConfirmation: true,
@@ -3915,7 +4089,7 @@ export async function deleteDepartment(req, res, next) {
           costCentersCount: costCenterCount,
           usersCount: userCount
         },
-        message: `This department is currently referenced by ${assetCount} asset(s)${costCenterCount > 0 ? `, ${costCenterCount} section(s)` : ''}${userCount > 0 ? `, ${userCount} user(s)` : ''} and cannot be deleted.`
+        message: `This department is currently referenced by ${refStr} and cannot be deleted.`
       });
     }
     if (assetCount > 0 && force) {
@@ -3967,7 +4141,7 @@ export async function createCostCenter(req, res, next) {
   try {
     const { code, name, active, status, companyId, departmentId, type, manager, description } = req.body;
     if (!name || !name.trim()) {
-      return res.status(400).json({ success: false, message: 'Cost Center Name is required.' });
+      return res.status(400).json({ success: false, message: 'Section Name is required.' });
     }
     const cleanName = name.trim();
     const cleanCode = (code && code.trim())
@@ -3985,7 +4159,7 @@ export async function createCostCenter(req, res, next) {
           }
         });
         if (existing) {
-          return res.status(409).json({ success: false, message: `Cost Center with code "${cleanCode}" or name "${cleanName}" already exists.` });
+          return res.status(409).json({ success: false, message: `Section with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
       } catch (dbErr) {
         console.warn('DB check duplicate cost center skipped:', dbErr.message);
@@ -4040,7 +4214,7 @@ export async function updateCostCenter(req, res, next) {
           }
         });
         if (existing) {
-          return res.status(409).json({ success: false, message: `Another Cost Center with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+          return res.status(409).json({ success: false, message: `Another Section with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
         }
       } catch (dbErr) {
         console.warn('DB check duplicate cost center skipped:', dbErr.message);
@@ -4070,7 +4244,7 @@ export async function updateCostCenter(req, res, next) {
         if (comp && (comp.active === false || comp.status === 'Inactive')) {
           return res.status(400).json({
             success: false,
-            message: `Cannot activate Section / Cost Center because parent Company "${comp.name}" is inactive.`
+            message: `Cannot activate Section because parent Company "${comp.name}" is inactive.`
           });
         }
       }
@@ -4081,7 +4255,7 @@ export async function updateCostCenter(req, res, next) {
         if (dept && (dept.active === false || dept.status === 'Inactive')) {
           return res.status(400).json({
             success: false,
-            message: `Cannot activate Section / Cost Center because parent Department "${dept.name}" is inactive.`
+            message: `Cannot activate Section because parent Department "${dept.name}" is inactive.`
           });
         }
       }
@@ -4112,6 +4286,10 @@ export async function deleteCostCenter(req, res, next) {
     const totalLinked = assetCount + userCount;
 
     if (totalLinked > 0 && !force) {
+      const parts = [];
+      if (assetCount > 0) parts.push(`${assetCount} asset(s)`);
+      if (userCount > 0) parts.push(`${userCount} user(s)`);
+      const refStr = parts.length > 0 ? parts.join(', ') : `${totalLinked} record(s)`;
       return res.status(400).json({
         success: false,
         requiresConfirmation: true,
@@ -4120,20 +4298,20 @@ export async function deleteCostCenter(req, res, next) {
           assetsCount: assetCount,
           usersCount: userCount
         },
-        message: `This section is currently referenced by ${assetCount} asset(s)${userCount > 0 ? `, ${userCount} user(s)` : ''} and cannot be deleted.`
+        message: `This section is currently referenced by ${refStr} and cannot be deleted.`
       });
     }
     if (assetCount > 0 && force) {
       await prisma.asset.updateMany({ where: { costCenterId: id }, data: { costCenterId: null } }).catch(() => null);
     }
     await prisma.costCenter.delete({ where: { id } });
-    res.json({ success: true, message: 'Cost center deleted successfully.' });
+    res.json({ success: true, message: 'Section deleted successfully.' });
   } catch (err) {
     try {
       await prisma.costCenter.update({ where: { id: req.params.id }, data: { active: false } }).catch(() => null);
-      return res.json({ success: true, message: 'Cost center deactivated successfully.' });
+      return res.json({ success: true, message: 'Section deactivated successfully.' });
     } catch (_) {}
-    res.json({ success: true, message: 'Cost center removed from view.' });
+    res.json({ success: true, message: 'Section removed from view.' });
   }
 }
 
@@ -4538,7 +4716,7 @@ export async function toggleMasterEntityStatus(req, res, next) {
         if (comp && (comp.active === false || comp.status === 'Inactive')) {
           return res.status(400).json({
             success: false,
-            message: `Cannot activate Cost Center because parent Company "${comp.name}" is inactive.`
+            message: `Cannot activate Section because parent Company "${comp.name}" is inactive.`
           });
         }
       }
@@ -4547,7 +4725,7 @@ export async function toggleMasterEntityStatus(req, res, next) {
         if (dept && (dept.active === false || dept.status === 'Inactive')) {
           return res.status(400).json({
             success: false,
-            message: `Cannot activate Cost Center because parent Department "${dept.name}" is inactive.`
+            message: `Cannot activate Section because parent Department "${dept.name}" is inactive.`
           });
         }
       }
@@ -4682,11 +4860,26 @@ export async function deleteMasterEntity(req, res, next) {
         });
       }
     } else if (entityType === 'department') {
-      const assetCount = await prisma.asset.count({ where: { departmentId: id } });
-      if (assetCount > 0) {
+      const assetCount = await prisma.asset.count({ where: { departmentId: id } }).catch(() => 0);
+      const costCenterCount = await prisma.costCenter.count({ where: { departmentId: id } }).catch(() => 0);
+      const userCount = await prisma.user.count({ where: { departmentId: id } }).catch(() => 0);
+      const totalLinked = assetCount + costCenterCount + userCount;
+      if (totalLinked > 0) {
+        const parts = [];
+        if (assetCount > 0) parts.push(`${assetCount} asset(s)`);
+        if (costCenterCount > 0) parts.push(`${costCenterCount} section(s)`);
+        if (userCount > 0) parts.push(`${userCount} user(s)`);
+        const refStr = parts.length > 0 ? parts.join(', ') : `${totalLinked} record(s)`;
         return res.status(400).json({
           success: false,
-          message: `This department is currently referenced by ${assetCount} asset(s) and cannot be deleted.`
+          requiresConfirmation: true,
+          linkedCount: totalLinked,
+          details: {
+            assetsCount: assetCount,
+            costCentersCount: costCenterCount,
+            usersCount: userCount
+          },
+          message: `This department is currently referenced by ${refStr} and cannot be deleted.`
         });
       }
     } else if (entityType === 'employee') {
@@ -6129,22 +6322,92 @@ export async function updateItemMaster(req, res, next) {
 export async function deleteItemMaster(req, res, next) {
   try {
     const { id } = req.params;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
+
     let item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id);
     if (!item) {
       inMemoryItemMasters = readItemMastersFromFile();
       item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id);
     }
-    if (!item) {
+    let dbItem = null;
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT TOP 1 * FROM item_masters WHERE id = '${id.replace(/'/g, "''")}' OR itemCode = '${id.replace(/'/g, "''")}'`);
+        if (rows && rows.length > 0) dbItem = rows[0];
+      } catch (_) {}
+    }
+
+    if (!item && !dbItem) {
       return res.json({ success: true, message: 'Item deleted or already removed' });
     }
 
-    inMemoryItemMasters = inMemoryItemMasters.filter(i => i.id !== id && i.itemCode !== id);
+    const targetId = dbItem?.id || item?.id || id;
+    const targetCode = (dbItem?.itemCode || item?.itemCode || id).trim();
+    const targetName = (dbItem?.itemName || item?.itemName || '').trim();
+
+    // Check if any assets reference this item
+    let assetsCount = 0;
+    if (isDbConnected()) {
+      try {
+        const assetRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM assets 
+          WHERE modelId = '${targetId.replace(/'/g, "''")}' 
+             OR modelId = '${targetCode.replace(/'/g, "''")}'
+             OR (${targetName ? `description LIKE '%${targetName.replace(/'/g, "''")}%'` : '1=0'})
+        `);
+        assetsCount = Number(assetRows?.[0]?.cnt || 0);
+      } catch (e) {
+        console.warn('DB check item references in assets failed:', e.message);
+      }
+    }
+
+    if (assetsCount > 0 && !force && !deactivateOnly) {
+      return res.status(400).json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: assetsCount,
+        entityName: 'Item Master',
+        details: { assetsCount },
+        message: `This Item Master cannot be deleted because it is referenced by ${assetsCount} active asset(s).`
+      });
+    }
+
+    if (deactivateOnly) {
+      if (item) {
+        item.active = false;
+        item.status = 'Inactive';
+        writeItemMastersToFile(inMemoryItemMasters);
+      }
+      if (isDbConnected()) {
+        try {
+          await prisma.$executeRawUnsafe(`
+            UPDATE item_masters 
+            SET active = 0, status = 'Inactive', updatedAt = CURRENT_TIMESTAMP
+            WHERE id = '${targetId.replace(/'/g, "''")}' OR itemCode = '${targetCode.replace(/'/g, "''")}'
+          `);
+        } catch (_) {}
+      }
+      return res.json({ success: true, deactivated: true, message: `Item Master deactivated successfully (${assetsCount} linked assets preserved).` });
+    }
+
+    if (force && isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE assets SET modelId = NULL 
+          WHERE modelId = '${targetId.replace(/'/g, "''")}' OR modelId = '${targetCode.replace(/'/g, "''")}'
+        `);
+      } catch (_) {}
+    }
+
+    inMemoryItemMasters = inMemoryItemMasters.filter(i => i.id !== id && i.itemCode !== id && (!targetCode || i.itemCode !== targetCode));
 
     await ensureItemMastersTable();
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
-          DELETE FROM item_masters WHERE id = '${item.id.replace(/'/g, "''")}' OR itemCode = '${item.itemCode.replace(/'/g, "''")}'
+          DELETE FROM item_masters WHERE id = '${targetId.replace(/'/g, "''")}' OR itemCode = '${targetCode.replace(/'/g, "''")}'
         `);
       } catch (dbErr) {
         console.warn('DB delete item_masters skipped:', dbErr.message);
@@ -6841,6 +7104,10 @@ export async function updateBrand(req, res, next) {
 export async function deleteBrand(req, res, next) {
   try {
     const { id } = req.params;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
+
     let brand = inMemoryBrands.find(b => b.id === id || b.code === id);
 
     await ensureBrandsTable();
@@ -6859,11 +7126,59 @@ export async function deleteBrand(req, res, next) {
 
     const targetId = dbBrand?.id || brand?.id || id;
     const targetCode = dbBrand?.code || brand?.code;
+    const targetName = dbBrand?.name || brand?.name;
+
+    // Check dependencies: assets, item_masters
+    let assetsCount = 0;
+    let itemsCount = 0;
+    if (isDbConnected()) {
+      try {
+        const [aRows, iRows] = await Promise.all([
+          prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM assets WHERE brandId = '${targetId.replace(/'/g, "''")}' OR brandId = '${(targetCode || '').replace(/'/g, "''")}'`).catch(() => []),
+          prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM item_masters WHERE brandId = '${targetId.replace(/'/g, "''")}' OR brandName = '${(targetName || '').replace(/'/g, "''")}'`).catch(() => [])
+        ]);
+        assetsCount = Number(aRows?.[0]?.cnt || 0);
+        itemsCount = Number(iRows?.[0]?.cnt || 0);
+      } catch (_) {}
+    }
+    const totalLinked = assetsCount + itemsCount;
+
+    if (totalLinked > 0 && !force && !deactivateOnly) {
+      return res.status(400).json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        entityName: 'Brand',
+        details: { assetsCount, itemsCount },
+        message: `This Brand cannot be deleted because it is referenced by active records (${[
+          assetsCount > 0 ? `${assetsCount} asset(s)` : '',
+          itemsCount > 0 ? `${itemsCount} item(s)` : ''
+        ].filter(Boolean).join(', ')}).`
+      });
+    }
+
+    if (deactivateOnly) {
+      if (brand) {
+        brand.active = false;
+        brand.status = 'Inactive';
+        writeBrandsToFile(inMemoryBrands);
+      }
+      if (isDbConnected() && dbBrand) {
+        await prisma.brand.update({
+          where: { id: dbBrand.id },
+          data: { active: false }
+        }).catch(() => null);
+      }
+      return res.json({ success: true, deactivated: true, message: `Brand deactivated successfully (${totalLinked} linked records preserved).` });
+    }
 
     inMemoryBrands = inMemoryBrands.filter(b => b.id !== targetId && b.id !== id && (!targetCode || b.code !== targetCode));
 
     if (isDbConnected()) {
       try {
+        if (force) {
+          await prisma.$executeRawUnsafe(`UPDATE assets SET brandId = NULL WHERE brandId = '${targetId.replace(/'/g, "''")}'`).catch(() => null);
+        }
         await prisma.brand.delete({ where: { id: targetId } });
       } catch (dbErr) {
         console.warn('DB delete brands skipped:', dbErr.message);
@@ -7341,9 +7656,41 @@ export async function deleteLocationLevel(req, res, next) {
     const level = parseInt(req.params.level, 10) || 1;
     const tableName = `location_level_${level}`;
     const { id } = req.params;
-    const { deactivateOnly } = req.body || {};
+    const action = req.query.action || req.body?.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = req.body?.deactivateOnly || action === 'deactivate';
     let list = readLocationLevelsFromFile(level);
-    const idx = list.findIndex(item => item.id === id || item.code === id);
+    const item = list.find(it => it.id === id || it.code === id);
+    const itemCode = (item ? item.code : id).trim();
+    const itemName = (item ? item.name : '').trim();
+
+    // Check if any sites reference this level value in locationLevel1, locationLevel2, etc.
+    let sitesCount = 0;
+    if (isDbConnected()) {
+      try {
+        const colName = `locationLevel${level}`;
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM sites 
+          WHERE ${colName} = '${id.replace(/'/g, "''")}' 
+             OR ${colName} = '${itemCode.replace(/'/g, "''")}' 
+             OR (${itemName ? `${colName} = '${itemName.replace(/'/g, "''")}'` : '1=0'})
+        `);
+        sitesCount = Number(rows?.[0]?.cnt || 0);
+      } catch (e) {
+        console.warn(`DB check ${tableName} in sites failed:`, e.message);
+      }
+    }
+
+    if (sitesCount > 0 && !force && !deactivateOnly) {
+      return res.status(400).json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: sitesCount,
+        entityName: `Location Level ${level}`,
+        details: { sitesCount },
+        message: `This Location Level ${level} record cannot be deleted because it is referenced by ${sitesCount} location(s) in the hierarchy.`
+      });
+    }
 
     if (deactivateOnly) {
       if (isDbConnected()) {
@@ -7355,12 +7702,13 @@ export async function deleteLocationLevel(req, res, next) {
           `);
         } catch (_) {}
       }
+      const idx = list.findIndex(it => it.id === id || it.code === id);
       if (idx !== -1) {
         list[idx].active = false;
         list[idx].status = 'Inactive';
         list[idx].updatedAt = new Date().toISOString();
         writeLocationLevelsToFile(level, list);
-        return res.json({ success: true, locationLevel: list[idx], message: `Location Level ${level} record deactivated.` });
+        return res.json({ success: true, locationLevel: list[idx], message: `Location Level ${level} record deactivated (${sitesCount} linked locations preserved).` });
       }
       return res.json({ success: true, message: `Location Level ${level} record deactivated.` });
     }

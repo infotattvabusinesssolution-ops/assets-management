@@ -1483,6 +1483,47 @@ export async function updateDepartment(req, res) {
 export async function deleteDepartment(req, res) {
   try {
     const { id } = req.params;
+    const force = req.query.force === 'true';
+    const action = req.query.action;
+
+    if (action === 'deactivate') {
+      await prisma.department.update({ where: { id }, data: { active: false } }).catch(() => null);
+      const index = memoryDepartments.findIndex(d => d.id === id);
+      if (index !== -1) memoryDepartments[index].status = 'Inactive';
+      return res.json({ success: true, message: 'Department marked Inactive.' });
+    }
+
+    const assetCount = await prisma.asset.count({ where: { departmentId: id } }).catch(() => 0);
+    const costCenterCount = await prisma.costCenter.count({ where: { departmentId: id } }).catch(() => 0);
+    const userCount = await prisma.user.count({ where: { departmentId: id } }).catch(() => 0);
+    const totalLinked = assetCount + costCenterCount + userCount;
+
+    if (totalLinked > 0 && !force) {
+      const parts = [];
+      if (assetCount > 0) parts.push(`${assetCount} asset(s)`);
+      if (costCenterCount > 0) parts.push(`${costCenterCount} section(s)`);
+      if (userCount > 0) parts.push(`${userCount} user(s)`);
+      const refStr = parts.length > 0 ? parts.join(', ') : `${totalLinked} record(s)`;
+      return res.status(400).json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        details: {
+          assetsCount: assetCount,
+          costCentersCount: costCenterCount,
+          usersCount: userCount
+        },
+        message: `This department is currently referenced by ${refStr} and cannot be deleted.`
+      });
+    }
+
+    if (assetCount > 0 && force) {
+      await prisma.asset.updateMany({ where: { departmentId: id }, data: { departmentId: null } }).catch(() => null);
+    }
+    if (costCenterCount > 0 && force) {
+      await prisma.costCenter.updateMany({ where: { departmentId: id }, data: { departmentId: null } }).catch(() => null);
+    }
+
     try {
       await prisma.department.delete({ where: { id } }).catch(() => null);
     } catch (e) {}
@@ -1598,7 +1639,7 @@ export async function deleteLocation(req, res) {
 export async function createCostCenter(req, res) {
   try {
     const data = req.body;
-    if (!data.name) return res.status(400).json({ success: false, error: 'Cost Center Name is required' });
+    if (!data.name) return res.status(400).json({ success: false, error: 'Section Name is required' });
     if (!data.code || !data.code.trim()) {
       data.code = await generateAutoCode('cost_center', data.name, memoryCostCenters, 'cost_centers');
     }
@@ -1641,7 +1682,7 @@ export async function createCostCenter(req, res) {
     };
 
     memoryCostCenters.unshift(newCC);
-    res.status(201).json({ success: true, costCenter: newCC, message: 'Cost Center created successfully' });
+    res.status(201).json({ success: true, costCenter: newCC, message: 'Section created successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1668,7 +1709,7 @@ export async function updateCostCenter(req, res) {
       memoryCostCenters[index] = { ...memoryCostCenters[index], ...data };
     }
 
-    res.json({ success: true, costCenter: { id, ...data }, message: 'Cost Center updated successfully' });
+    res.json({ success: true, costCenter: { id, ...data }, message: 'Section updated successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
@@ -1677,6 +1718,41 @@ export async function updateCostCenter(req, res) {
 export async function deleteCostCenter(req, res) {
   try {
     const { id } = req.params;
+    const force = req.query.force === 'true';
+    const action = req.query.action;
+
+    if (action === 'deactivate') {
+      await prisma.costCenter.update({ where: { id }, data: { active: false } }).catch(() => null);
+      const index = memoryCostCenters.findIndex(c => c.id === id);
+      if (index !== -1) memoryCostCenters[index].status = 'Inactive';
+      return res.json({ success: true, message: 'Section marked Inactive.' });
+    }
+
+    const assetCount = await prisma.asset.count({ where: { costCenterId: id } }).catch(() => 0);
+    const userCount = await prisma.user.count({ where: { costCenterId: id } }).catch(() => 0);
+    const totalLinked = assetCount + userCount;
+
+    if (totalLinked > 0 && !force) {
+      const parts = [];
+      if (assetCount > 0) parts.push(`${assetCount} asset(s)`);
+      if (userCount > 0) parts.push(`${userCount} user(s)`);
+      const refStr = parts.length > 0 ? parts.join(', ') : `${totalLinked} record(s)`;
+      return res.status(400).json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        details: {
+          assetsCount: assetCount,
+          usersCount: userCount
+        },
+        message: `This section is currently referenced by ${refStr} and cannot be deleted.`
+      });
+    }
+
+    if (assetCount > 0 && force) {
+      await prisma.asset.updateMany({ where: { costCenterId: id }, data: { costCenterId: null } }).catch(() => null);
+    }
+
     try {
       await prisma.costCenter.delete({ where: { id } }).catch(() => null);
     } catch (e) {}
@@ -1684,7 +1760,7 @@ export async function deleteCostCenter(req, res) {
     const index = memoryCostCenters.findIndex(c => c.id === id);
     if (index !== -1) memoryCostCenters.splice(index, 1);
 
-    res.json({ success: true, message: 'Cost Center deleted successfully' });
+    res.json({ success: true, message: 'Section deleted successfully' });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

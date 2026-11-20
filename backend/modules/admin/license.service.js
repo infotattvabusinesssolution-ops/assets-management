@@ -194,7 +194,7 @@ export async function validateCanAddCompany() {
     return {
       allowed: false,
       code: 'MULTI_COMPANY_LICENSE_REQUIRED',
-      message: `Multi-Company License Required: Your current license is for 1 Company (${license.licensedTo}). You can create unlimited divisions, departments, and cost centers under this company, but adding additional legal operating companies requires purchasing a Multi-Company Enterprise License.`
+      message: `Multi-Company License Required: Your current license is for 1 Company (${license.licensedTo}). You can create unlimited divisions, departments, and sections under this company, but adding additional legal operating companies requires purchasing a Multi-Company Enterprise License.`
     };
   }
   if (license.metrics.isCompanyLimitReached) {
