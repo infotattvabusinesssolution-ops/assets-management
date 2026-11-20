@@ -3893,15 +3893,36 @@ export async function deleteDepartment(req, res, next) {
   try {
     const { id } = req.params;
     const force = req.query.force === 'true';
+    const action = req.query.action;
+
+    if (action === 'deactivate') {
+      await prisma.department.update({ where: { id }, data: { active: false } }).catch(() => null);
+      return res.json({ success: true, message: 'Department marked Inactive.' });
+    }
+
     const assetCount = await prisma.asset.count({ where: { departmentId: id } }).catch(() => 0);
-    if (assetCount > 0 && !force) {
+    const costCenterCount = await prisma.costCenter.count({ where: { departmentId: id } }).catch(() => 0);
+    const userCount = await prisma.user.count({ where: { departmentId: id } }).catch(() => 0);
+    const totalLinked = assetCount + costCenterCount + userCount;
+
+    if (totalLinked > 0 && !force) {
       return res.status(400).json({
         success: false,
-        message: `This department is currently referenced by ${assetCount} asset(s) and cannot be deleted.`
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        details: {
+          assetsCount: assetCount,
+          costCentersCount: costCenterCount,
+          usersCount: userCount
+        },
+        message: `This department is currently referenced by ${assetCount} asset(s)${costCenterCount > 0 ? `, ${costCenterCount} section(s)` : ''}${userCount > 0 ? `, ${userCount} user(s)` : ''} and cannot be deleted.`
       });
     }
     if (assetCount > 0 && force) {
       await prisma.asset.updateMany({ where: { departmentId: id }, data: { departmentId: null } }).catch(() => null);
+    }
+    if (costCenterCount > 0 && force) {
+      await prisma.costCenter.updateMany({ where: { departmentId: id }, data: { departmentId: null } }).catch(() => null);
     }
     await prisma.department.delete({ where: { id } });
     res.json({ success: true, message: 'Department deleted successfully.' });
@@ -4078,6 +4099,33 @@ export async function updateCostCenter(req, res, next) {
 export async function deleteCostCenter(req, res, next) {
   try {
     const { id } = req.params;
+    const force = req.query.force === 'true';
+    const action = req.query.action;
+
+    if (action === 'deactivate') {
+      await prisma.costCenter.update({ where: { id }, data: { active: false } }).catch(() => null);
+      return res.json({ success: true, message: 'Section marked Inactive.' });
+    }
+
+    const assetCount = await prisma.asset.count({ where: { costCenterId: id } }).catch(() => 0);
+    const userCount = await prisma.user.count({ where: { costCenterId: id } }).catch(() => 0);
+    const totalLinked = assetCount + userCount;
+
+    if (totalLinked > 0 && !force) {
+      return res.status(400).json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: totalLinked,
+        details: {
+          assetsCount: assetCount,
+          usersCount: userCount
+        },
+        message: `This section is currently referenced by ${assetCount} asset(s)${userCount > 0 ? `, ${userCount} user(s)` : ''} and cannot be deleted.`
+      });
+    }
+    if (assetCount > 0 && force) {
+      await prisma.asset.updateMany({ where: { costCenterId: id }, data: { costCenterId: null } }).catch(() => null);
+    }
     await prisma.costCenter.delete({ where: { id } });
     res.json({ success: true, message: 'Cost center deleted successfully.' });
   } catch (err) {
@@ -5607,10 +5655,10 @@ function generateNextItemCode() {
 
 export async function getItemMasters(req, res, next) {
   try {
+    const includeInactive = req.query.includeInactive !== 'false';
     await ensureItemMastersTable();
     if (isDbConnected()) {
       try {
-        const includeInactive = req.query.includeInactive !== 'false';
         const query = includeInactive
           ? `SELECT * FROM item_masters ORDER BY itemCode ASC`
           : `SELECT * FROM item_masters WHERE active = 1 ORDER BY itemCode ASC`;
