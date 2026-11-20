@@ -525,23 +525,24 @@ export function DepartmentsTab({
       await loadDepartments();
       triggerToast && triggerToast(res?.message || `Department "${dept.name || dept.code}" deleted successfully.`);
     } catch (err) {
-      const data = err?.response?.data;
+      const data = err?.response?.data || err;
       if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
         setDeptToDelete(null);
-        const match = (data?.message || '').match(/referenced by (\d+) asset/);
-        const assetsCount = match ? parseInt(match[1], 10) : (data?.details?.assetsCount || 1);
+        const match = (data?.message || '').match(/referenced by (?:(\d+) asset)?/);
+        const assetsCount = data?.details?.assetsCount ?? (match && match[1] ? parseInt(match[1], 10) : 0);
+        const linkedCount = data?.linkedCount || (assetsCount + (data?.details?.costCentersCount || 0) + (data?.details?.usersCount || 0)) || 1;
         setSmartDeleteState({
           isOpen: true,
           item: dept,
-          linkedCount: data?.linkedCount || assetsCount,
-          details: data?.details || { assetsCount },
+          linkedCount,
+          details: data?.details || { assetsCount, costCentersCount: data?.details?.costCentersCount || 0, usersCount: data?.details?.usersCount || 0 },
           isProcessing: false
         });
         return;
       }
       setDeptToDelete(null);
       console.warn('Delete department error:', err);
-      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete department.');
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete department.', 'error');
     } finally {
       setIsDeleting(false);
     }

@@ -8,6 +8,7 @@ import {
   ChevronRight,
   Plus,
   CheckCircle2,
+  AlertTriangle,
   X
 } from 'lucide-react';
 import clsx from 'clsx';
@@ -56,9 +57,14 @@ export function CompanyOrganization() {
     }
   }, [location]);
 
-  const triggerToast = (msg) => {
-    setToastMsg(msg);
-    setTimeout(() => setToastMsg(''), 3500);
+  const triggerToast = (msg, type = 'success') => {
+    if (!msg) return;
+    const isError = type === 'error' || /cannot|failed|unable|error|not allowed|referenced by/i.test(String(msg));
+    setToastMsg({
+      text: typeof msg === 'string' ? msg : (msg?.message || 'Action completed'),
+      isError
+    });
+    setTimeout(() => setToastMsg(null), 3500);
   };
 
   const TABS = [
@@ -73,10 +79,18 @@ export function CompanyOrganization() {
     <div className="min-h-screen bg-[#F8FAFC] font-sans antialiased text-[#0F172A] p-6 space-y-6">
       {/* Toast Notification */}
       {toastMsg && (
-        <div className="fixed top-5 right-5 z-50 flex items-center gap-3 bg-emerald-50 border border-emerald-300 text-emerald-800 px-4 py-3 rounded-xl shadow-lg animate-fadeIn">
-          <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-          <span className="text-xs font-bold">{toastMsg}</span>
-          <button onClick={() => setToastMsg('')} className="text-emerald-500 hover:text-emerald-700 ml-2">
+        <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 px-4 py-3 rounded-xl shadow-lg border animate-fadeIn ${
+          toastMsg.isError
+            ? 'bg-rose-50 border-rose-300 text-rose-800'
+            : 'bg-emerald-50 border-emerald-300 text-emerald-800'
+        }`}>
+          {toastMsg.isError ? (
+            <AlertTriangle className="w-5 h-5 text-rose-600 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-5 h-5 text-emerald-600 shrink-0" />
+          )}
+          <span className="text-xs font-bold">{toastMsg.text || toastMsg}</span>
+          <button onClick={() => setToastMsg(null)} className={`ml-2 hover:opacity-80 ${toastMsg.isError ? 'text-rose-500' : 'text-emerald-500'}`}>
             <X className="w-4 h-4" />
           </button>
         </div>

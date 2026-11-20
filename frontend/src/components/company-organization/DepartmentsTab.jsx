@@ -86,7 +86,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
   const [statusFilter, setStatusFilter] = useState('All Status');
   const [typeFilter, setTypeFilter] = useState('All Types');
   const [locationFilter, setLocationFilter] = useState('All Locations');
-  const [costCenterFilter, setCostCenterFilter] = useState('All Cost Centers');
+  const [costCenterFilter, setCostCenterFilter] = useState('All Sections');
   const [headFilter, setHeadFilter] = useState('All Users');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -138,7 +138,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
         locationFilter === 'All Locations' || locationFilter === 'All' || d.location === locationFilter;
 
       const matchesCostCenter =
-        costCenterFilter === 'All Cost Centers' || costCenterFilter === 'All' || d.costCenter === costCenterFilter;
+        costCenterFilter === 'All Sections' || costCenterFilter === 'All Cost Centers' || costCenterFilter === 'All' || d.costCenter === costCenterFilter;
 
       const matchesHead =
         headFilter === 'All Users' || headFilter === 'All' || d.departmentHead === headFilter;
@@ -175,7 +175,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
     setStatusFilter('All Status');
     setTypeFilter('All Types');
     setLocationFilter('All Locations');
-    setCostCenterFilter('All Cost Centers');
+    setCostCenterFilter('All Sections');
     setHeadFilter('All Users');
     setFromDate('');
     setToDate('');
@@ -316,15 +316,17 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
     if (!deptToDelete) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/admin/organization/departments/${deptToDelete.id}`).catch(() => null);
+      const res = await api.delete(`/admin/organization/departments/${deptToDelete.id}`);
       setDepartments(departments.filter((d) => d.id !== deptToDelete.id));
-      triggerToast && triggerToast(`Department "${deptToDelete.name}" deleted.`);
+      triggerToast && triggerToast(res?.message || `Department "${deptToDelete.name}" deleted.`);
       setDeptToDelete(null);
     } catch (err) {
       console.error(err);
-      triggerToast && triggerToast('Failed to delete department.');
+      const data = err?.response?.data || err;
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete department.', 'error');
     } finally {
       setIsDeleting(false);
+      setDeptToDelete(null);
     }
   };
 
@@ -442,7 +444,7 @@ export function DepartmentsTab({ triggerToast, onSwitchTab, openAddModalTrigger 
                 onChange={(e) => setCostCenterFilter(e.target.value)}
                 className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
               >
-                <option value="All Cost Centers">All Sections</option>
+                <option value="All Sections">All Sections</option>
                 <option value="CC-1001">CC-1001</option>
                 <option value="CC-1002">CC-1002</option>
                 <option value="CC-1003">CC-1003</option>

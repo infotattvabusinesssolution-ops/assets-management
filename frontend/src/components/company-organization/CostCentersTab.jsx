@@ -350,13 +350,16 @@ export function CostCentersTab({ triggerToast, onSwitchTab, openAddModalTrigger 
     if (!ccToDelete) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/admin/organization/cost-centers/${ccToDelete.id}`).catch(() => null);
+      const res = await api.delete(`/admin/organization/cost-centers/${ccToDelete.id}`);
       setCostCenters(costCenters.filter((c) => c.id !== ccToDelete.id));
-      triggerToast && triggerToast(`Section "${ccToDelete.code}" deleted.`);
+      const msg = res?.message ? res.message.replace(/cost center/gi, 'section').replace(/Cost Center/gi, 'Section') : `Section "${ccToDelete.code}" deleted.`;
+      triggerToast && triggerToast(msg);
       setCcToDelete(null);
     } catch (err) {
       console.error(err);
-      triggerToast && triggerToast('Failed to delete section.');
+      const data = err?.response?.data || err;
+      const errMsg = (data?.message || err?.message || 'Failed to delete section.').replace(/cost center/gi, 'section').replace(/Cost center/gi, 'Section').replace(/Cost Center/gi, 'Section');
+      triggerToast && triggerToast(errMsg, 'error');
     } finally {
       setIsDeleting(false);
     }

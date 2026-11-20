@@ -522,20 +522,20 @@ export function ClassesTab({
       await loadClasses();
       triggerToast && triggerToast(`Asset Sub Group "${cls.name || cls.code}" deleted successfully.`);
     } catch (err) {
-      const data = err?.response?.data;
-      if (data?.requiresConfirmation) {
+      const data = err?.response?.data || err;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
         setClassToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: cls,
-          linkedCount: data.linkedCount || 0,
+          linkedCount: data.linkedCount || (data.details?.assetsCount || 1),
           details: data.details || null,
           isProcessing: false
         });
         return;
       }
       setClassToDelete(null);
-      triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete Asset Sub Group.');
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete Asset Sub Group.', 'error');
     } finally {
       setIsDeleting(false);
     }

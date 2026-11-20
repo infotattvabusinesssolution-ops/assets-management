@@ -461,25 +461,29 @@ export function CostCentersTab({
       }
       setCcToDelete(null);
       await loadCostCenters();
-      triggerToast && triggerToast(res?.message || `Section "${cc.name || cc.code}" deleted successfully.`);
+      const rawMsg = res?.message || `Section "${cc.name || cc.code}" deleted successfully.`;
+      const cleanMsg = rawMsg.replace(/cost center/gi, 'section').replace(/Cost center/gi, 'Section').replace(/Cost Center/gi, 'Section');
+      triggerToast && triggerToast(cleanMsg);
     } catch (err) {
-      const data = err?.response?.data;
+      const data = err?.response?.data || err;
       if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
         setCcToDelete(null);
-        const match = (data?.message || '').match(/referenced by (\d+) asset/);
-        const assetsCount = match ? parseInt(match[1], 10) : (data?.details?.assetsCount || 1);
+        const match = (data?.message || '').match(/referenced by (?:(\d+) asset)?/);
+        const assetsCount = data?.details?.assetsCount ?? (match && match[1] ? parseInt(match[1], 10) : 0);
+        const linkedCount = data?.linkedCount || (assetsCount + (data?.details?.usersCount || 0)) || 1;
         setSmartDeleteState({
           isOpen: true,
           item: cc,
-          linkedCount: data?.linkedCount || assetsCount,
-          details: data?.details || { assetsCount },
+          linkedCount,
+          details: data?.details || { assetsCount, usersCount: data?.details?.usersCount || 0 },
           isProcessing: false
         });
         return;
       }
       setCcToDelete(null);
-      console.warn('Delete cost center error:', err);
-      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete section.');
+      console.warn('Delete section error:', err);
+      const errMsg = (data?.message || err?.message || 'Failed to delete section.').replace(/cost center/gi, 'section').replace(/Cost center/gi, 'Section').replace(/Cost Center/gi, 'Section');
+      triggerToast && triggerToast(errMsg, 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -491,11 +495,14 @@ export function CostCentersTab({
     try {
       const res = await api.delete(`/master-data/cost-centers/${smartDeleteState.item.id}?action=deactivate`);
       setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
-      triggerToast && triggerToast(res?.message || 'Section marked Inactive.');
+      const rawDeactMsg = res?.message || 'Section marked Inactive.';
+      const cleanDeactMsg = rawDeactMsg.replace(/cost center/gi, 'section').replace(/Cost center/gi, 'Section').replace(/Cost Center/gi, 'Section');
+      triggerToast && triggerToast(cleanDeactMsg);
       await loadCostCenters();
     } catch (err) {
       setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
-      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate section.');
+      const deactErr = (err?.response?.data?.message || 'Failed to deactivate section.').replace(/cost center/gi, 'section').replace(/Cost center/gi, 'Section').replace(/Cost Center/gi, 'Section');
+      triggerToast && triggerToast(deactErr);
     }
   };
 

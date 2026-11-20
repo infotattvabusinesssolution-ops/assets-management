@@ -559,20 +559,20 @@ export function SubCategoriesTab({
       await loadSubCategories();
       triggerToast && triggerToast(`Sub Category "${sc.name || sc.code}" deleted successfully.`);
     } catch (err) {
-      const data = err?.response?.data;
-      if (data?.requiresConfirmation) {
+      const data = err?.response?.data || err;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
         setSubCategoryToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: sc,
-          linkedCount: data.linkedCount || 0,
+          linkedCount: data.linkedCount || (data.details?.assetsCount || 1),
           details: data.details || null,
           isProcessing: false
         });
         return;
       }
       setSubCategoryToDelete(null);
-      triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete Sub Category.');
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete Sub Category.', 'error');
     } finally {
       setIsDeleting(false);
     }

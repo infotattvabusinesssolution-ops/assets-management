@@ -34,6 +34,7 @@ import { MasterDataPagination, usePagination } from './MasterDataPagination';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { StatusConfirmModal } from './StatusConfirmModal';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 // Dynamic Master Data State (strictly driven from database / master data screens)
 
@@ -65,6 +66,7 @@ export function ItemMasterTab({
   const [isDeleting, setIsDeleting] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
   const [showDeleteConfirmModal, setShowDeleteConfirmModal] = useState(false);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
   const [itemToToggleStatus, setItemToToggleStatus] = useState(null);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
 
@@ -685,11 +687,18 @@ export function ItemMasterTab({
     if (!itemToDelete) return;
     setIsDeleting(true);
     try {
-      await api.delete(`/master-data/items/${itemToDelete.id}`).catch(err => {
-        // If 404, it means item is already removed from backend or only in local state - proceed with deletion
-        if (err?.response?.status === 404) return null;
-        throw err;
-      });
+      const res = await api.delete(`/master-data/items/${itemToDelete.id}`);
+      if (res?.requiresConfirmation) {
+        setShowDeleteConfirmModal(false);
+        setSmartDeleteState({
+          isOpen: true,
+          item: itemToDelete,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
+      }
       // Purge from local storage custom items
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
@@ -703,7 +712,19 @@ export function ItemMasterTab({
       setShowDeleteConfirmModal(false);
       setItemToDelete(null);
     } catch (err) {
-      if (err?.response?.status === 404) {
+      const data = err?.response?.data || err;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
+        setShowDeleteConfirmModal(false);
+        setSmartDeleteState({
+          isOpen: true,
+          item: itemToDelete,
+          linkedCount: data.linkedCount || (data.details?.assetsCount || 1),
+          details: data.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      if (err?.response?.status === 404 || err?.status === 404) {
         try {
           const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
           localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.filter(i => i.id !== itemToDelete.id)));
@@ -715,10 +736,38 @@ export function ItemMasterTab({
         setShowDeleteConfirmModal(false);
         setItemToDelete(null);
       } else {
-        triggerToast && triggerToast(err?.response?.data?.message || 'Failed to delete item.');
+        triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete item.', 'error');
       }
     } finally {
       setIsDeleting(false);
+    }
+  };
+
+  const handleSmartDeactivateItem = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/items/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Item deactivated successfully.');
+      await loadDynamicMasters();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate item.');
+    }
+  };
+
+  const handleSmartForceDeleteItem = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/items/${smartDeleteState.item.id}?action=force_delete`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || 'Item permanently deleted.');
+      await loadDynamicMasters();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to force delete item.');
     }
   };
 
@@ -1658,6 +1707,19 @@ export function ItemMasterTab({
         itemCode={itemToToggleStatus?.itemCode}
         currentStatus={itemToToggleStatus?.active !== false ? 'Active' : 'Inactive'}
         isLoading={isStatusUpdating}
+      />
+
+      {/* SMART DELETE MODAL */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName="Item Master"
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateItem}
+        onForceDelete={handleSmartForceDeleteItem}
+        isProcessing={smartDeleteState.isProcessing}
       />
     </div>
   );

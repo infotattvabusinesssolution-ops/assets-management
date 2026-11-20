@@ -3279,7 +3279,7 @@ export function SystemConfiguration() {
                     <span>Single-Company License Enforced (Head Office)</span>
                   </div>
                   <p className="text-[11px] text-amber-700 leading-relaxed">
-                    Your organization is licensed for <strong>1 Head Office Company</strong> ({licenseData?.licensedTo || 'Primary Corporate'}). You can create unlimited divisions, departments, sections, and cost centers under this company. Activating additional legal operating companies requires an authorized <strong>Multi-Company Enterprise License Key</strong>.
+                    Your organization is licensed for <strong>1 Head Office Company</strong> ({licenseData?.licensedTo || 'Primary Corporate'}). You can create unlimited divisions, departments, and sections under this company. Activating additional legal operating companies requires an authorized <strong>Multi-Company Enterprise License Key</strong>.
                   </p>
                 </div>
               )}

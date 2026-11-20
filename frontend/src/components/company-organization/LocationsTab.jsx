@@ -79,7 +79,7 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
   const [cityFilter, setCityFilter] = useState('All Cities');
   const [typeFilter, setTypeFilter] = useState('All Types');
   const [statusFilter, setStatusFilter] = useState('All Statuses');
-  const [costCenterFilter, setCostCenterFilter] = useState('All Cost Centers');
+  const [costCenterFilter, setCostCenterFilter] = useState('All Sections');
   const [departmentFilter, setDepartmentFilter] = useState('All Departments');
   const [fromDate, setFromDate] = useState('');
   const [toDate, setToDate] = useState('');
@@ -141,7 +141,7 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
         statusFilter === 'All Statuses' || statusFilter === 'All Status' || statusFilter === 'All' || loc.status.toLowerCase() === statusFilter.toLowerCase();
 
       const matchesCostCenter =
-        costCenterFilter === 'All Cost Centers' || costCenterFilter === 'All' || loc.costCenter === costCenterFilter;
+        costCenterFilter === 'All Sections' || costCenterFilter === 'All Cost Centers' || costCenterFilter === 'All' || loc.costCenter === costCenterFilter;
 
       return (
         matchesSearch &&
@@ -195,7 +195,7 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
     setCityFilter('All Cities');
     setTypeFilter('All Types');
     setStatusFilter('All Statuses');
-    setCostCenterFilter('All Cost Centers');
+    setCostCenterFilter('All Sections');
     setDepartmentFilter('All Departments');
     setFromDate('');
     setToDate('');
@@ -513,7 +513,7 @@ export function LocationsTab({ triggerToast, onSwitchTab, openAddModalTrigger })
                   onChange={(e) => setCostCenterFilter(e.target.value)}
                   className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
                 >
-                  <option value="All Cost Centers">All Sections</option>
+                  <option value="All Sections">All Sections</option>
                   <option value="CC-1001">CC-1001</option>
                   <option value="CC-1002">CC-1002</option>
                   <option value="CC-2001">CC-2001</option>

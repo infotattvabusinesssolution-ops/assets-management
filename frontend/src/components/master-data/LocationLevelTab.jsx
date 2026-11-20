@@ -24,6 +24,7 @@ import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { StatusConfirmModal } from './StatusConfirmModal';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export function LocationLevelTab({
   level = 1,
@@ -59,6 +60,7 @@ export function LocationLevelTab({
   const [editingItem, setEditingItem] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
   const [levelToToggleStatus, setLevelToToggleStatus] = useState(null);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [modalError, setModalError] = useState('');
@@ -366,7 +368,18 @@ export function LocationLevelTab({
   const handleConfirmDelete = async () => {
     if (!itemToDelete) return;
     try {
-      await api.delete(`/master-data/location-levels/${level}/${itemToDelete.id}`).catch(() => null);
+      const res = await api.delete(`/master-data/location-levels/${level}/${itemToDelete.id}`);
+      if (res?.requiresConfirmation) {
+        setShowDeleteModal(false);
+        setSmartDeleteState({
+          isOpen: true,
+          item: itemToDelete,
+          linkedCount: res.linkedCount || 0,
+          details: res.details || null,
+          isProcessing: false
+        });
+        return;
+      }
       const updated = items.filter((i) => i.id !== itemToDelete.id);
       setItems(updated);
       localStorage.setItem(storageKey, JSON.stringify(updated));
@@ -374,11 +387,51 @@ export function LocationLevelTab({
         setSelectedItem(updated[0] || null);
       }
       triggerToast && triggerToast(`${levelName} record "${itemToDelete.code}" deleted.`);
-    } catch (err) {
-      triggerToast && triggerToast('Failed to delete record.');
-    } finally {
       setShowDeleteModal(false);
       setItemToDelete(null);
+    } catch (err) {
+      const data = err?.response?.data || err;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
+        setShowDeleteModal(false);
+        setSmartDeleteState({
+          isOpen: true,
+          item: itemToDelete,
+          linkedCount: data.linkedCount || (data.details?.assetsCount || 1),
+          details: data.details || null,
+          isProcessing: false
+        });
+        return;
+      }
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete record.', 'error');
+      setShowDeleteModal(false);
+    }
+  };
+
+  const handleSmartDeactivateLevel = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/location-levels/${level}/${smartDeleteState.item.id}?action=deactivate`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || `${levelName} record deactivated successfully.`);
+      await loadRecords();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate.');
+    }
+  };
+
+  const handleSmartForceDeleteLevel = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      const res = await api.delete(`/master-data/location-levels/${level}/${smartDeleteState.item.id}?action=force_delete`);
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(res?.message || `${levelName} record permanently deleted.`);
+      await loadRecords();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to force delete.');
     }
   };
 
@@ -805,6 +858,19 @@ export function LocationLevelTab({
         itemCode={levelToToggleStatus?.code}
         currentStatus={levelToToggleStatus?.status}
         isLoading={isStatusUpdating}
+      />
+
+      {/* SMART DELETE MODAL */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName={levelName}
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateLevel}
+        onForceDelete={handleSmartForceDeleteLevel}
+        isProcessing={smartDeleteState.isProcessing}
       />
     </div>
   );

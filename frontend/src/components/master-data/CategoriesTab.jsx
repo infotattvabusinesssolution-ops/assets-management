@@ -565,13 +565,13 @@ export function CategoriesTab({
       await loadCategories();
       triggerToast && triggerToast(res?.message || `Category "${cat.name || cat.code}" deleted successfully.`);
     } catch (err) {
-      const data = err?.response?.data;
-      if (data?.requiresConfirmation) {
+      const data = err?.response?.data || err;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
         setCategoryToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: cat,
-          linkedCount: data.linkedCount || 0,
+          linkedCount: data.linkedCount || (data.details?.assetsCount || 1),
           details: data.details || null,
           isProcessing: false
         });
@@ -579,7 +579,7 @@ export function CategoriesTab({
       }
       setCategoryToDelete(null);
       console.warn('Delete category error:', err);
-      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete category.');
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete category.', 'error');
     } finally {
       setIsDeleting(false);
     }

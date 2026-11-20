@@ -308,8 +308,8 @@ const MASTER_CONFIGS = {
     headers: ['Section Code', 'Section Name', 'Type', 'Manager', 'Description', 'Status'],
     fields: ['code', 'name', 'type', 'manager', 'description', 'status'],
     sampleRows: [
-      ['CC-1010', 'Corporate IT Operations', 'Operational', 'Michael Chen', 'Cost center for IT infrastructure', 'Active'],
-      ['CC-2020', 'Executive Administration', 'Administrative', 'Sarah Mitchell', 'Corporate leadership center', 'Active']
+      ['SEC-1010', 'Corporate IT Operations', 'Operational', 'Michael Chen', 'Section for IT infrastructure', 'Active'],
+      ['SEC-2020', 'Executive Administration', 'Administrative', 'Sarah Mitchell', 'Corporate leadership section', 'Active']
     ],
     mapRow: (r) => ({
       code: r.code || r['section code'] || r['cost center code'] || '',
@@ -756,8 +756,13 @@ export function MasterDataSetup() {
 
   const [toastMessage, setToastMessage] = useState(null);
 
-  const triggerToast = (msg) => {
-    setToastMessage(msg);
+  const triggerToast = (msg, type = 'success') => {
+    if (!msg) return;
+    const isError = type === 'error' || /cannot|failed|unable|error|not allowed|referenced by/i.test(String(msg));
+    setToastMessage({
+      text: typeof msg === 'string' ? msg : (msg?.message || 'Action completed'),
+      isError
+    });
     setTimeout(() => setToastMessage(null), 3500);
   };
 
@@ -1127,9 +1132,17 @@ export function MasterDataSetup() {
     <div className="space-y-4 pb-12 select-none text-slate-900">
       {/* Toast Alert */}
       {toastMessage && (
-        <div className="fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl bg-slate-900 text-white text-xs border border-slate-700 animate-in slide-in-from-bottom-3 fade-in duration-200">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span className="font-medium">{toastMessage}</span>
+        <div className={`fixed bottom-6 right-6 z-[9999] flex items-center gap-3 px-4 py-3 rounded-xl shadow-2xl text-xs border animate-in slide-in-from-bottom-3 fade-in duration-200 ${
+          toastMessage.isError
+            ? 'bg-rose-950/95 text-rose-100 border-rose-800 shadow-rose-950/40'
+            : 'bg-slate-900 text-white border-slate-700 shadow-slate-900/40'
+        }`}>
+          {toastMessage.isError ? (
+            <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+          )}
+          <span className="font-medium">{toastMessage.text || toastMessage}</span>
           <button
             onClick={() => setToastMessage(null)}
             className="ml-2 text-slate-400 hover:text-white transition-colors cursor-pointer"

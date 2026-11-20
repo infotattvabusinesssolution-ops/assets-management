@@ -47,7 +47,7 @@ const MASTER_DATA_CARDS = [
   {
     id: 'org',
     title: 'Organization Structure',
-    desc: 'Manage divisions, departments, sections and cost centers under your licensed company.',
+    desc: 'Manage divisions, departments, and sections under your licensed company.',
     icon: Building2,
     modal: 'department'
   },

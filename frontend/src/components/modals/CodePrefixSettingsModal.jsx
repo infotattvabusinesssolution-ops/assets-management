@@ -26,7 +26,7 @@ const ENTITY_GROUPS = [
     entities: [
       { key: 'company', label: 'Company', defaultPrefix: 'CMP-', description: 'Legal entities and operating corporate units' },
       { key: 'department', label: 'Department', defaultPrefix: 'DEP-', description: 'Operational divisions and departments' },
-      { key: 'cost_center', label: 'Section', defaultPrefix: 'SEC-', description: 'Financial sections and cost center codes' },
+      { key: 'cost_center', label: 'Section', defaultPrefix: 'SEC-', description: 'Financial sections and operational subdivisions' },
       { key: 'employee', label: 'Custodian / Employee', defaultPrefix: 'EMP-', description: 'Asset custodians and employees' }
     ]
   },

@@ -557,6 +557,36 @@ export function LocationsTab({
     }
   };
 
+  const handleInitiateDeleteLocation = (loc) => {
+    setActiveRowMenuId && setActiveRowMenuId(null);
+    const childCount = locationsList.filter(s =>
+      (s.parentLocation && (s.parentLocation === loc.code || s.parentLocation === loc.id || (loc.name && s.parentLocation === loc.name))) ||
+      (loc.code && [s.locationLevel1, s.locationLevel2, s.locationLevel3, s.locationLevel4].includes(loc.code)) ||
+      (loc.name && [s.locationLevel1, s.locationLevel2, s.locationLevel3, s.locationLevel4].includes(loc.name))
+    ).length;
+    const totalAssets = loc.totalAssets || loc.relatedInfo?.assets || 0;
+    const buildingsCount = loc.buildingsCount || loc.relatedInfo?.buildings || 0;
+    const deptsCount = loc.departmentsCount || loc.relatedInfo?.departments || 0;
+    const totalLinked = childCount + totalAssets + buildingsCount + deptsCount;
+
+    if (totalLinked > 0) {
+      setSmartDeleteState({
+        isOpen: true,
+        item: loc,
+        linkedCount: totalLinked,
+        details: {
+          childCount,
+          assetsCount: totalAssets,
+          buildingsCount,
+          deptsCount
+        },
+        isProcessing: false
+      });
+      return;
+    }
+    handleDeleteLocation(loc);
+  };
+
   const handleDeleteLocation = (loc) => {
     setActiveRowMenuId && setActiveRowMenuId(null);
     setLocToDelete(loc);
@@ -584,13 +614,13 @@ export function LocationsTab({
       await loadLocations();
       triggerToast && triggerToast(res?.message || `Location "${loc.code}" deleted successfully.`);
     } catch (err) {
-      const data = err?.response?.data;
-      if (data?.requiresConfirmation) {
+      const data = err?.response?.data || err;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
         setLocToDelete(null);
         setSmartDeleteState({
           isOpen: true,
           item: loc,
-          linkedCount: data.linkedCount || 0,
+          linkedCount: data.linkedCount || (data.details?.assetsCount || 1),
           details: data.details || null,
           isProcessing: false
         });
@@ -599,7 +629,7 @@ export function LocationsTab({
       setLocToDelete(null);
       console.warn('Delete location error:', err);
       const errMsg = data?.message || err?.message || 'Cannot delete location.';
-      triggerToast && triggerToast(errMsg);
+      triggerToast && triggerToast(errMsg, 'error');
     } finally {
       setIsDeleting(false);
     }
@@ -609,7 +639,7 @@ export function LocationsTab({
     if (!smartDeleteState.item) return;
     setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
     try {
-      const res = await api.delete(`/master-data/sites/${smartDeleteState.item.id}?action=deactivate`);
+      const res = await api.delete(`/master-data/sites/${smartDeleteState.item.id}?action=deactivate&name=${encodeURIComponent(smartDeleteState.item.name || '')}&code=${encodeURIComponent(smartDeleteState.item.code || '')}`);
       setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
       triggerToast && triggerToast(res?.message || 'Location deactivated successfully.');
       await loadLocations();
@@ -857,7 +887,7 @@ export function LocationsTab({
                                 <button
                                   onClick={() => {
                                     setActiveRowMenuId && setActiveRowMenuId(null);
-                                    handleDeleteLocation(loc);
+                                    handleInitiateDeleteLocation(loc);
                                   }}
                                   className="w-full px-2.5 py-1.5 text-xs font-semibold text-rose-600 hover:bg-rose-50 rounded-lg flex items-center gap-2 cursor-pointer"
                                 >

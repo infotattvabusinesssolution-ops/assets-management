@@ -32,6 +32,7 @@ import MasterCodeInput from './MasterCodeInput';
 import MasterEmptyState from './MasterEmptyState';
 import { DeleteConfirmModal } from './DeleteConfirmModal';
 import { StatusConfirmModal } from './StatusConfirmModal';
+import { SmartDeleteModal } from './SmartDeleteModal';
 
 export const DEFAULT_MANUFACTURERS = [];
 
@@ -132,6 +133,7 @@ export function GenericMasterTab({
   const [editingItem, setEditingItem] = useState(null);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [itemToDelete, setItemToDelete] = useState(null);
+  const [smartDeleteState, setSmartDeleteState] = useState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
   const [genericToToggleStatus, setGenericToToggleStatus] = useState(null);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
   const [modalError, setModalError] = useState('');
@@ -784,29 +786,58 @@ export function GenericMasterTab({
   };
 
   // Delete handler
-  const handleDeleteConfirm = () => {
+  const handleDeleteConfirm = async () => {
     if (!itemToDelete) return;
     const targetId = itemToDelete.id;
     const targetCode = (itemToDelete.code || '').trim().toUpperCase();
     const targetName = (itemToDelete.name || '').trim().toLowerCase();
+
+    let endpoint = null;
+    if (activeTab === 'uom') endpoint = `/master-data/uoms/${targetId}`;
+    else if (activeTab === 'asset-types') endpoint = `/master-data/asset-types/${targetId}`;
+    else if (activeTab === 'brands') endpoint = `/master-data/brands/${targetId}`;
+    else if (activeTab === 'manufacturers') endpoint = `/master-data/manufacturers/${targetId}`;
+
+    if (endpoint) {
+      try {
+        const res = await api.delete(endpoint);
+        if (res?.requiresConfirmation) {
+          setShowDeleteModal(false);
+          setSmartDeleteState({
+            isOpen: true,
+            item: itemToDelete,
+            linkedCount: res.linkedCount || 0,
+            details: res.details || null,
+            isProcessing: false
+          });
+          return;
+        }
+      } catch (err) {
+        const data = err?.response?.data || err;
+        if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
+          setShowDeleteModal(false);
+          setSmartDeleteState({
+            isOpen: true,
+            item: itemToDelete,
+            linkedCount: data.linkedCount || (data.details?.assetsCount || 1),
+            details: data.details || null,
+            isProcessing: false
+          });
+          return;
+        }
+        triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete record.', 'error');
+        setShowDeleteModal(false);
+        return;
+      }
+    }
 
     const updated = items.filter((it) => it.id !== targetId);
     setItems(updated);
     if (selectedItem?.id === targetId) {
       setSelectedItem(updated[0] || null);
     }
+
     if (activeTab === 'uom') {
-      console.log('🗑️ [Deleting UOM in Frontend]:', itemToDelete);
-      api.delete(`/master-data/uoms/${targetId}`).then((res) => {
-        console.log('✅ [UOM Deleted Successfully from Database]:', {
-          id: targetId,
-          code: targetCode,
-          name: targetName,
-          response: res?.data || res
-        });
-      }).catch((err) => {
-        console.error('❌ Failed to delete UOM from backend:', err);
-      });
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
         localStorage.setItem(
@@ -822,7 +853,6 @@ export function GenericMasterTab({
       } catch (_) {}
     }
     if (activeTab === 'asset-types') {
-      api.delete(`/master-data/asset-types/${targetId}`).catch(() => null);
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
         localStorage.setItem(
@@ -838,7 +868,6 @@ export function GenericMasterTab({
       } catch (_) {}
     }
     if (activeTab === 'brands') {
-      api.delete(`/master-data/brands/${targetId}`).catch(() => null);
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
         localStorage.setItem(
@@ -859,7 +888,6 @@ export function GenericMasterTab({
       } catch (_) {}
     }
     if (activeTab === 'manufacturers') {
-      api.delete(`/master-data/manufacturers/${targetId}`).catch((err) => console.warn('Delete mfr err:', err));
       try {
         const custom = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
         localStorage.setItem(
@@ -898,6 +926,46 @@ export function GenericMasterTab({
     triggerToast && triggerToast(`${tabConfig.singular} "${itemToDelete.name}" deleted.`);
     setShowDeleteModal(false);
     setItemToDelete(null);
+  };
+
+  const handleSmartDeactivateGeneric = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      let endpoint = null;
+      if (activeTab === 'brands') endpoint = `/master-data/brands/${smartDeleteState.item.id}?action=deactivate`;
+      else if (activeTab === 'manufacturers') endpoint = `/master-data/manufacturers/${smartDeleteState.item.id}?action=deactivate`;
+      if (endpoint) {
+        await api.delete(endpoint);
+      }
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(`${tabConfig.singular} deactivated successfully.`);
+      if (activeTab === 'manufacturers') fetchRealManufacturers();
+      fetchItems();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to deactivate.');
+    }
+  };
+
+  const handleSmartForceDeleteGeneric = async () => {
+    if (!smartDeleteState.item) return;
+    setSmartDeleteState(prev => ({ ...prev, isProcessing: true }));
+    try {
+      let endpoint = null;
+      if (activeTab === 'brands') endpoint = `/master-data/brands/${smartDeleteState.item.id}?action=force_delete`;
+      else if (activeTab === 'manufacturers') endpoint = `/master-data/manufacturers/${smartDeleteState.item.id}?action=force_delete`;
+      if (endpoint) {
+        await api.delete(endpoint);
+      }
+      setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
+      triggerToast && triggerToast(`${tabConfig.singular} permanently deleted.`);
+      if (activeTab === 'manufacturers') fetchRealManufacturers();
+      fetchItems();
+    } catch (err) {
+      setSmartDeleteState(prev => ({ ...prev, isProcessing: false }));
+      triggerToast && triggerToast(err?.response?.data?.message || 'Failed to force delete.');
+    }
   };
 
   // Filtered records
@@ -1603,6 +1671,19 @@ export function GenericMasterTab({
         currentStatus={genericToToggleStatus?.status}
         warningNote={activeTab === 'manufacturers' ? 'Deactivating this Manufacturer will also deactivate its linked Brands.' : ''}
         isLoading={isStatusUpdating}
+      />
+
+      {/* SMART DELETE MODAL */}
+      <SmartDeleteModal
+        isOpen={smartDeleteState.isOpen}
+        onClose={() => setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false })}
+        item={smartDeleteState.item}
+        entityName={tabConfig.singular}
+        linkedCount={smartDeleteState.linkedCount}
+        details={smartDeleteState.details}
+        onDeactivate={handleSmartDeactivateGeneric}
+        onForceDelete={handleSmartForceDeleteGeneric}
+        isProcessing={smartDeleteState.isProcessing}
       />
     </div>
   );

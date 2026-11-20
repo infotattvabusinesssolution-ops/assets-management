@@ -447,19 +447,19 @@ export function AssetGroupsTab({
       setShowDeleteConfirmModal(false);
       setGroupToDelete(null);
     } catch (err) {
-      const data = err?.response?.data;
-      if (data?.requiresConfirmation) {
+      const data = err?.response?.data || err;
+      if (data?.requiresConfirmation || (data?.message && data.message.includes('referenced by'))) {
         setShowDeleteConfirmModal(false);
         setSmartDeleteState({
           isOpen: true,
           item: groupToDelete,
-          linkedCount: data.linkedCount || 0,
+          linkedCount: data.linkedCount || (data.details?.assetsCount || 1),
           details: data.details || null,
           isProcessing: false
         });
         return;
       }
-      triggerToast && triggerToast(err.response?.data?.message || 'Failed to delete asset group.');
+      triggerToast && triggerToast(data?.message || err?.message || 'Failed to delete asset group.', 'error');
     } finally {
       setIsDeleting(false);
     }
