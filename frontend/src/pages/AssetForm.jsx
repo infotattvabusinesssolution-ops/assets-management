@@ -479,6 +479,7 @@ export function AssetForm() {
   const [categories, setCategories] = useState([]);
   const [itemMasters, setItemMasters] = useState([]);
   const [selectedItemMasterId, setSelectedItemMasterId] = useState('');
+  const userClearedItemMasterRef = useRef(false);
   const [assetClasses, setAssetClasses] = useState([]);
   const [subCategories, setSubCategories] = useState([]);
   const [sites, setSites] = useState([]);
@@ -1068,9 +1069,11 @@ export function AssetForm() {
   const handleSelectItemMaster = (itemId) => {
     setSelectedItemMasterId(itemId);
     if (!itemId) {
+      userClearedItemMasterRef.current = true;
       handleClearItemMaster();
       return;
     }
+    userClearedItemMasterRef.current = false;
     const item = itemMasters.find(i => i.id === itemId);
     if (!item) return;
 
@@ -1108,6 +1111,7 @@ export function AssetForm() {
   };
 
   const handleClearItemMaster = () => {
+    userClearedItemMasterRef.current = true;
     setSelectedItemMasterId('');
     setFormData(prev => ({
       ...prev,
@@ -1115,6 +1119,13 @@ export function AssetForm() {
       supplierBarcode: ''
     }));
   };
+
+  // Auto-default single Item Master if only 1 exists
+  useEffect(() => {
+    if (!selectedItemMasterId && !userClearedItemMasterRef.current && itemMasters && itemMasters.length === 1) {
+      handleSelectItemMaster(itemMasters[0].id);
+    }
+  }, [itemMasters, selectedItemMasterId]);
 
   // Top-Down Step 1: Change Asset Type
   const handleAssetTypeChange = (newType) => {
