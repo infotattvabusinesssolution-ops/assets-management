@@ -4231,7 +4231,7 @@ export function AssetForm() {
 
           {/* Header & Purpose Banner matching Screenshot 1 */}
           <div className="bg-white border border-slate-200 rounded-xl p-5 shadow-2xs space-y-4">
-            {/* Top Row: Title & Action Buttons */}
+            {/* Top Row: Title */}
             <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
               <div className="space-y-1">
                 <div className="flex items-center gap-2 text-xs font-bold text-[#6C2BD9]">
@@ -4240,44 +4240,6 @@ export function AssetForm() {
                   </span>
                 </div>
                 <h1 className="text-2xl font-black text-slate-900 tracking-tight">New Asset Registration</h1>
-              </div>
-
-              {/* Action Buttons - Responsive Header Placement */}
-              <div className="flex items-center gap-2.5 flex-wrap shrink-0">
-                <button
-                  type="button"
-                  onClick={() => navigate('/assets')}
-                  className="px-3.5 py-2 bg-white hover:bg-slate-50 text-slate-600 font-bold rounded-xl text-xs border border-slate-300 shadow-2xs transition-all cursor-pointer"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="button"
-                  onClick={() => handleSubmit('DRAFT')}
-                  disabled={loading}
-                  className="px-4 py-2 bg-white hover:bg-purple-50 text-[#6C2BD9] hover:text-[#5b21b6] font-bold rounded-xl text-xs border border-purple-200 hover:border-purple-300 shadow-2xs transition-all cursor-pointer whitespace-nowrap"
-                >
-                  Save as Draft
-                </button>
-                {stepMode === 'wizard' && currentStep < 5 ? (
-                  <button
-                    type="button"
-                    onClick={handleNextStep}
-                    className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
-                  >
-                    Next Step ({FORM_STEPS[currentStep]?.name}) <ChevronRight className="w-3.5 h-3.5" />
-                  </button>
-                ) : (
-                  <button
-                    type="button"
-                    onClick={() => handleSubmit('SUBMITTED')}
-                    disabled={loading}
-                    className="px-5 py-2 bg-[#6C2BD9] hover:bg-[#5b21b6] text-white font-extrabold rounded-xl text-xs shadow-md shadow-[#6C2BD9]/20 transition-all cursor-pointer flex items-center gap-1.5 whitespace-nowrap"
-                  >
-                    {loading && <RefreshCw className="w-3.5 h-3.5 animate-spin" />}
-                    Submit for Approval
-                  </button>
-                )}
               </div>
             </div>
 
