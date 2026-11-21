@@ -178,7 +178,6 @@ export function DepartmentsTab({
 
   // Filter state
   const [deptSearchQuery, setDeptSearchQuery] = useState('');
-  const [deptTypeFilter, setDeptTypeFilter] = useState('All Types');
   const [deptStatusFilter, setDeptStatusFilter] = useState('All');
   const [deptLocationFilter, setDeptLocationFilter] = useState('All Locations');
   const [deptCompanyFilter, setDeptCompanyFilter] = useState('All Companies');
@@ -209,9 +208,6 @@ export function DepartmentsTab({
         (dept.manager && dept.manager.toLowerCase().includes(deptSearchQuery.toLowerCase())) ||
         (dept.description && dept.description.toLowerCase().includes(deptSearchQuery.toLowerCase()));
 
-      const matchesType =
-        deptTypeFilter === 'All Types' || deptTypeFilter === 'All' || dept.type === deptTypeFilter;
-
       const matchesStatus =
         deptStatusFilter === 'All' || dept.status.toLowerCase() === deptStatusFilter.toLowerCase();
 
@@ -221,9 +217,9 @@ export function DepartmentsTab({
       const matchesCompany =
         deptCompanyFilter === 'All Companies' || deptCompanyFilter === 'All' || dept.company === deptCompanyFilter;
 
-      return matchesSearch && matchesType && matchesStatus && matchesLoc && matchesCompany;
+      return matchesSearch && matchesStatus && matchesLoc && matchesCompany;
     });
-  }, [departmentsList, deptSearchQuery, deptTypeFilter, deptStatusFilter, deptLocationFilter, deptCompanyFilter]);
+  }, [departmentsList, deptSearchQuery, deptStatusFilter, deptLocationFilter, deptCompanyFilter]);
 
   const isCompanyInactive = (c) => {
     if (!c) return false;
@@ -282,7 +278,6 @@ export function DepartmentsTab({
 
   const handleResetDeptFilters = () => {
     setDeptSearchQuery('');
-    setDeptTypeFilter('All Types');
     setDeptStatusFilter('All');
     setDeptLocationFilter('All Locations');
     setDeptCompanyFilter('All Companies');
@@ -579,22 +574,6 @@ export function DepartmentsTab({
             />
           </div>
 
-          <div className="w-full md:w-36 relative">
-            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Department Type</span>
-            <select
-              value={deptTypeFilter}
-              onChange={(e) => setDeptTypeFilter(e.target.value)}
-              className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-            >
-              <option value="All Types">All Types</option>
-              {Array.from(new Set(departmentsList.map(d => d.type).filter(Boolean))).map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="w-full md:w-28 relative">
             <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Status</span>
             <select
@@ -693,7 +672,6 @@ export function DepartmentsTab({
                   <th className="py-3 px-2 text-center">#</th>
                   <th className="py-3 px-3">Dept Code</th>
                   <th className="py-3 px-3">Dept Name</th>
-                  <th className="py-3 px-3">Type</th>
                   <th className="py-3 px-3">Manager</th>
                   <th className="py-3 px-3">Location</th>
                   <th className="py-3 px-3 text-right">Employees</th>
@@ -709,7 +687,7 @@ export function DepartmentsTab({
                     subtitle={deptSearchQuery ? "No departments match your search criteria." : "Get started by defining your first department."}
                     actionLabel="Add Department"
                     onAction={() => handleOpenAddDeptModal(null)}
-                    colSpan={9}
+                    colSpan={8}
                   />
                 ) : (
                   pagedDepartments.map((dept, index) => {
@@ -750,7 +728,6 @@ export function DepartmentsTab({
                           )}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-700">{dept.type || '-'}</td>
                       <td className="py-2.5 px-3 text-slate-800 font-medium">{dept.manager || '-'}</td>
                       <td className="py-2.5 px-3 text-slate-700">{dept.location || '-'}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">{dept.employees}</td>
@@ -891,11 +868,6 @@ export function DepartmentsTab({
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Dept Name</span>
                 <span className="col-span-2 font-semibold text-slate-900">{selectedDepartment.name}</span>
-              </div>
-
-              <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                <span className="text-slate-500 font-medium">Type</span>
-                <span className="col-span-2 font-semibold text-slate-800">{selectedDepartment.type}</span>
               </div>
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
