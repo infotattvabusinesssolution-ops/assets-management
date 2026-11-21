@@ -76,37 +76,74 @@ export async function getDashboardKpis(req, res, next) {
       by: ['lifecycleStatus'],
       _count: { _all: true },
       where: baseFilter
-    });
+    }).catch(() => []);
     const statusCounts = {};
     rawStatusCounts.forEach(s => {
       statusCounts[s.lifecycleStatus] = s._count._all;
     });
 
-    // 2. Category Distribution Counts
+    // 2. Category Distribution & Data
     const rawCatCounts = await prisma.asset.groupBy({
       by: ['categoryId'],
       _count: { _all: true },
       where: baseFilter
-    });
+    }).catch(() => []);
     const categoryIds = rawCatCounts.map(c => c.categoryId).filter(Boolean);
     const categories = categoryIds.length > 0
-      ? await prisma.category.findMany({ where: { id: { in: categoryIds } } })
+      ? await prisma.category.findMany({ where: { id: { in: categoryIds } } }).catch(() => [])
       : [];
     const catMap = Object.fromEntries(categories.map(c => [c.id, c.name]));
     const categoryCounts = rawCatCounts.map(c => ({
       name: catMap[c.categoryId] || 'General Inventory',
       count: c._count._all
     }));
+    const categoryData = rawCatCounts.map(c => {
+      const val = c._count._all;
+      const pct = totalAssets > 0 ? `${((val / totalAssets) * 100).toFixed(1)}%` : '0%';
+      return {
+        name: catMap[c.categoryId] || 'General Inventory',
+        value: val,
+        percentage: pct
+      };
+    });
 
-    // 3. Recent Activities Feed
+    // 3. Location / Site Breakdown
+    const rawLocCounts = await prisma.asset.groupBy({
+      by: ['siteId'],
+      _count: { _all: true },
+      where: baseFilter
+    }).catch(() => []);
+    const siteIds = rawLocCounts.map(l => l.siteId).filter(Boolean);
+    const sites = siteIds.length > 0
+      ? await prisma.site.findMany({ where: { id: { in: siteIds } } }).catch(() => [])
+      : [];
+    const siteMap = Object.fromEntries(sites.map(s => [s.id, s.name || s.code]));
+    const locationData = rawLocCounts.map(l => ({
+      name: siteMap[l.siteId] || 'Unassigned Location',
+      count: l._count._all
+    }));
+
+    // 4. Maintenance Status Breakdown
+    const plannedWorkOrders = await prisma.maintenanceWorkOrder.count({
+      where: { status: 'SCHEDULED' }
+    }).catch(() => 0);
+    const maintTotal = (activeAssets + underMaintenance + maintenanceOverdue + plannedWorkOrders) || 1;
+    const maintenanceStatusData = [
+      { name: 'In Use', value: activeAssets, percentage: `${((activeAssets / maintTotal) * 100).toFixed(1)}%` },
+      { name: 'Under Maintenance', value: underMaintenance, percentage: `${((underMaintenance / maintTotal) * 100).toFixed(1)}%` },
+      { name: 'Overdue', value: maintenanceOverdue, percentage: `${((maintenanceOverdue / maintTotal) * 100).toFixed(1)}%` },
+      { name: 'Planned', value: plannedWorkOrders, percentage: `${((plannedWorkOrders / maintTotal) * 100).toFixed(1)}%` }
+    ];
+
+    // 5. Recent Activities Feed
     const rawTransactions = await prisma.assetTransaction.findMany({
-      take: 6,
+      take: 8,
       orderBy: { timestamp: 'desc' },
       include: {
         asset: { select: { assetId: true, description: true } },
         performedBy: { select: { fullName: true, username: true } }
       }
-    });
+    }).catch(() => []);
 
     const formatRelativeTime = (date) => {
       if (!date) return 'Recently';
@@ -122,17 +159,18 @@ export async function getDashboardKpis(req, res, next) {
 
     const recentActivities = rawTransactions.map(tx => ({
       id: tx.id,
-      user: tx.performedBy?.fullName || tx.performedBy?.username || 'System Admin',
-      action: `${tx.transactionType.replace(/_/g, ' ')} ${tx.asset?.assetId || ''} (${tx.asset?.description || 'Asset'})`,
+      title: (tx.transactionType || 'TRANSACTION').replace(/_/g, ' '),
+      detail: `${tx.asset?.assetId ? tx.asset.assetId + ' - ' : ''}${tx.asset?.description || 'Asset'}`,
+      user: tx.performedBy?.fullName || tx.performedBy?.username || 'System User',
       time: formatRelativeTime(tx.timestamp),
       status: tx.toStatus || 'COMPLETED',
-      color: 'purple'
+      color: 'text-purple-600 bg-purple-50'
     }));
 
-    // 4. Monthly Trend Buckets for Charts
+    // 6. Monthly Trend Buckets
     const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
     const trendBuckets = [];
-    for (let i = 11; i >= 0; i--) {
+    for (let i = 8; i >= 0; i--) {
       const d = new Date();
       d.setMonth(d.getMonth() - i);
       trendBuckets.push({
@@ -140,6 +178,7 @@ export async function getDashboardKpis(req, res, next) {
         monthNum: d.getMonth(),
         label: months[d.getMonth()],
         acquisitions: 0,
+        capex: 0,
         netBookValue: 0
       });
     }
@@ -147,32 +186,162 @@ export async function getDashboardKpis(req, res, next) {
     const allAssetsForTrend = await prisma.asset.findMany({
       where: baseFilter,
       select: { createdAt: true, acquisitionValue: true }
-    });
+    }).catch(() => []);
 
-    let runningVal = Math.max(100, totalAssetValue / 1000);
     allAssetsForTrend.forEach(a => {
       const aDate = new Date(a.createdAt);
       const bucket = trendBuckets.find(b => b.year === aDate.getFullYear() && b.monthNum === aDate.getMonth());
       if (bucket) {
         bucket.acquisitions += 1;
+        bucket.capex += Math.round(Number(a.acquisitionValue || 0) / 1000);
       }
     });
 
-    const analyticsTrend = trendBuckets.map((b, idx) => {
-      const addition = b.acquisitions * 15 + (idx + 1) * 8;
-      runningVal += addition;
+    let accumNbv = 0;
+    const financialTrend = trendBuckets.map(b => {
+      accumNbv += b.capex;
       return {
         month: b.label,
-        acquisitions: b.acquisitions > 0 ? b.acquisitions : (idx + 1) * 4 + 12,
-        netBookValue: Math.round(runningVal)
+        netBookValue: accumNbv,
+        capex: b.capex,
+        opex: Math.round(b.capex * 0.1)
       };
     });
 
-    // 5. Work Order SLA Trend Data
+    // 7. Movement Trend Data (Past 9 Months)
+    const movementTrendData = trendBuckets.map(b => ({
+      month: b.label,
+      assigned: 0,
+      transferred: 0,
+      returned: 0
+    }));
+    rawTransactions.forEach(tx => {
+      const txDate = new Date(tx.timestamp);
+      const b = movementTrendData.find(m => {
+        const bucket = trendBuckets.find(tb => tb.label === m.month);
+        return bucket && bucket.year === txDate.getFullYear() && bucket.monthNum === txDate.getMonth();
+      });
+      if (b) {
+        const type = (tx.transactionType || '').toUpperCase();
+        if (type.includes('ASSIGN')) b.assigned += 1;
+        else if (type.includes('TRANSFER') || type.includes('MOVE')) b.transferred += 1;
+        else if (type.includes('RETURN') || type.includes('CHECKIN')) b.returned += 1;
+      }
+    });
+
+    // 8. Top 5 Asset Types
+    const rawTypeCounts = await prisma.asset.groupBy({
+      by: ['assetType'],
+      _count: { _all: true },
+      where: baseFilter,
+      orderBy: { _count: { assetType: 'desc' } },
+      take: 5
+    }).catch(() => []);
+    const topAssetTypes = rawTypeCounts.map(t => ({
+      name: t.assetType || 'General Equipment',
+      count: t._count._all
+    }));
+
+    // 9. Warranty Expiry (Next 6 Months)
+    const warrantyExpiryData = [];
+    for (let i = 0; i < 6; i++) {
+      const d = new Date();
+      d.setMonth(d.getMonth() + i);
+      warrantyExpiryData.push({
+        year: d.getFullYear(),
+        monthNum: d.getMonth(),
+        month: months[d.getMonth()],
+        count: 0
+      });
+    }
+    const rawWarranties = await prisma.warranty.findMany({
+      where: {
+        endDate: {
+          gte: new Date(),
+          lte: new Date(new Date().getFullYear(), new Date().getMonth() + 6, 0)
+        }
+      },
+      select: { endDate: true }
+    }).catch(() => []);
+    rawWarranties.forEach(w => {
+      if (w.endDate) {
+        const wDate = new Date(w.endDate);
+        const b = warrantyExpiryData.find(m => m.year === wDate.getFullYear() && m.monthNum === wDate.getMonth());
+        if (b) b.count += 1;
+      }
+    });
+
+    // 10. Condition Distribution
+    const rawCondCounts = await prisma.asset.groupBy({
+      by: ['condition'],
+      _count: { _all: true },
+      where: baseFilter
+    }).catch(() => []);
+    const conditionData = rawCondCounts.map(c => {
+      const val = c._count._all;
+      const pct = totalAssets > 0 ? `${((val / totalAssets) * 100).toFixed(1)}%` : '0%';
+      return {
+        name: c.condition || 'GOOD',
+        value: val,
+        percentage: pct
+      };
+    });
+
+    // 11. Upcoming Maintenance Work Orders
+    const rawUpcomingWO = await prisma.maintenanceWorkOrder.findMany({
+      where: {
+        status: { in: ['OPEN', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS'] }
+      },
+      take: 5,
+      orderBy: { scheduledDate: 'asc' },
+      include: {
+        asset: { select: { assetId: true, description: true, site: { select: { name: true } } } }
+      }
+    }).catch(() => []);
+    const upcomingMaintenance = rawUpcomingWO.map(wo => {
+      const sDate = wo.scheduledDate || wo.dueDate || wo.createdAt;
+      const dateTag = sDate ? new Date(sDate).toLocaleDateString('en-GB', { day: '2-digit', month: 'short' }) : 'Pending';
+      return {
+        id: wo.id,
+        dateTag,
+        dateColor: 'bg-purple-100 text-purple-700',
+        code: wo.workOrderNumber || wo.asset?.assetId || 'WO-SCHEDULED',
+        title: wo.title || 'Inspection & Service',
+        location: wo.asset?.site?.name || 'Assigned Facility'
+      };
+    });
+
+    // 12. Real System Alerts
+    const alerts = [];
+    if (maintenanceOverdue > 0) {
+      alerts.push({ id: 'alert-overdue', type: 'danger', text: `${maintenanceOverdue} asset(s) are overdue for maintenance` });
+    }
+    if (warrantiesExpiring > 0) {
+      alerts.push({ id: 'alert-warranty', type: 'warning', text: `${warrantiesExpiring} asset(s) with warranty expiring in 30 days` });
+    }
+    if (missingAssets > 0) {
+      alerts.push({ id: 'alert-missing', type: 'danger', text: `${missingAssets} asset(s) reported missing or lost` });
+    }
+    if (underMaintenance > 0) {
+      alerts.push({ id: 'alert-maint', type: 'info', text: `${underMaintenance} asset(s) currently under active maintenance` });
+    }
+    if (discoveryAnomalies > 0) {
+      alerts.push({ id: 'alert-disc', type: 'warning', text: `${discoveryAnomalies} unverified discovery candidate(s) detected` });
+    }
+
+    // 13. Other Telemetry Counts
+    const activeReadersCount = await prisma.rtlsReader.count({ where: { status: 'ONLINE' } }).catch(() => 0);
+    const totalReadersCount = await prisma.rtlsReader.count().catch(() => 0);
+    const activeFloorMapsCount = await prisma.floorMap.count({ where: { active: true } }).catch(() => 0);
+    const activeWorkOrdersCount = await prisma.maintenanceWorkOrder.count({
+      where: { status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS'] } }
+    }).catch(() => 0);
+
+    // 14. Work Order SLA Trend Data
     const rawWorkOrders = await prisma.maintenanceWorkOrder.findMany({
       take: 100,
       orderBy: { createdAt: 'desc' }
-    });
+    }).catch(() => []);
     const woTrendMap = {};
     rawWorkOrders.forEach(wo => {
       const m = months[new Date(wo.createdAt).getMonth()];
@@ -182,11 +351,17 @@ export async function getDashboardKpis(req, res, next) {
       if (wo.workType === 'PREVENTIVE') woTrendMap[m].preventive += 1;
     });
 
-    const workOrderSlaTrend = trendBuckets.slice(-7).map((b, i) => ({
+    const workOrderSlaTrend = trendBuckets.slice(-7).map(b => ({
       month: b.label,
-      completed: woTrendMap[b.label]?.completed || (i + 1) * 5 + 12,
-      overdue: woTrendMap[b.label]?.overdue || (i % 3) + 1,
-      preventive: woTrendMap[b.label]?.preventive || (i + 1) * 4 + 8
+      completed: woTrendMap[b.label]?.completed || 0,
+      overdue: woTrendMap[b.label]?.overdue || 0,
+      preventive: woTrendMap[b.label]?.preventive || 0
+    }));
+
+    const analyticsTrend = trendBuckets.map(b => ({
+      month: b.label,
+      acquisitions: b.acquisitions,
+      netBookValue: b.capex
     }));
 
     res.json({
@@ -208,7 +383,21 @@ export async function getDashboardKpis(req, res, next) {
         totalContracts,
         statusCounts,
         categoryCounts,
+        categoryData,
+        locationData,
+        maintenanceStatusData,
+        movementTrendData,
+        topAssetTypes,
+        warrantyExpiryData,
+        conditionData,
+        financialTrend,
         recentActivities,
+        upcomingMaintenance,
+        alerts,
+        activeReadersCount,
+        totalReadersCount,
+        activeFloorMapsCount,
+        activeWorkOrdersCount,
         analyticsTrend,
         workOrderSlaTrend
       }
