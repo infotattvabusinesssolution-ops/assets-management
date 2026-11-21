@@ -342,7 +342,7 @@ export function CustodiansTab({
 
       setFormState({
         custodianType: 'Internal',
-        employeeCode: `EMP-${1000 + custodians.length + 1}`,
+        employeeCode: '',
         fullName: '',
         email: '',
         phone: '',
