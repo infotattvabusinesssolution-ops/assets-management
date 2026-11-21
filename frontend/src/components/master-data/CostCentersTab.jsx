@@ -144,7 +144,6 @@ export function CostCentersTab({
   const [ccCompanyFilter, setCcCompanyFilter] = useState('All Companies');
   const [ccDepartmentFilter, setCcDepartmentFilter] = useState('All Departments');
   const [ccStatusFilter, setCcStatusFilter] = useState('All');
-  const [ccTypeFilter, setCcTypeFilter] = useState('All');
 
   // Modal state
   const [showAddCCModal, setShowAddCCModal] = useState(false);
@@ -212,12 +211,9 @@ export function CostCentersTab({
       const matchesStatus =
         ccStatusFilter === 'All' || cc.status.toLowerCase() === ccStatusFilter.toLowerCase();
 
-      const matchesType =
-        ccTypeFilter === 'All' || ccTypeFilter === 'All Types' || cc.type === ccTypeFilter;
-
-      return matchesSearch && matchesCompany && matchesDepartment && matchesStatus && matchesType;
+      return matchesSearch && matchesCompany && matchesDepartment && matchesStatus;
     });
-  }, [costCentersList, ccSearchQuery, ccCompanyFilter, ccStatusFilter, ccTypeFilter]);
+  }, [costCentersList, ccSearchQuery, ccCompanyFilter, ccDepartmentFilter, ccStatusFilter]);
 
   const {
     currentPage,
@@ -233,7 +229,6 @@ export function CostCentersTab({
     setCcCompanyFilter('All Companies');
     setCcDepartmentFilter('All Departments');
     setCcStatusFilter('All');
-    setCcTypeFilter('All');
   };
 
   const handleOpenAddCCModal = (ccToEdit = null) => {
@@ -570,22 +565,6 @@ export function CostCentersTab({
             </select>
           </div>
 
-          <div className="w-full md:w-36 relative">
-            <span className="text-[10px] font-semibold text-slate-400 block mb-0.5">Type</span>
-            <select
-              value={ccTypeFilter}
-              onChange={(e) => setCcTypeFilter(e.target.value)}
-              className="w-full bg-slate-50/70 border border-slate-200 rounded-xl px-3 py-1.5 text-xs font-semibold text-slate-700 focus:outline-none focus:border-[#6C2BD9] cursor-pointer"
-            >
-              <option value="All">All</option>
-              {Array.from(new Set(costCentersList.map(c => c.type).filter(Boolean))).map((type) => (
-                <option key={type} value={type}>
-                  {type}
-                </option>
-              ))}
-            </select>
-          </div>
-
           <div className="pt-4 md:pt-0 flex items-center gap-2">
             <button
               onClick={handleResetCCFilters}
@@ -638,7 +617,6 @@ export function CostCentersTab({
                   <th className="py-3 px-3">Section Name ↕</th>
                   <th className="py-3 px-3">Company</th>
                   <th className="py-3 px-3">Department</th>
-                  <th className="py-3 px-3">Type</th>
                   <th className="py-3 px-3">Manager</th>
                   <th className="py-3 px-3 text-right">Total Assets</th>
                   <th className="py-3 px-3 text-center">Status</th>
@@ -653,7 +631,7 @@ export function CostCentersTab({
                     subtitle={ccSearchQuery ? "No sections match your search criteria." : "Get started by defining your first section."}
                     actionLabel="Add Section"
                     onAction={() => handleOpenAddCCModal(null)}
-                    colSpan={10}
+                    colSpan={9}
                   />
                 ) : (
                   pagedCostCenters.map((cc, index) => {
@@ -707,7 +685,6 @@ export function CostCentersTab({
                           })()}
                         </div>
                       </td>
-                      <td className="py-2.5 px-3 text-slate-700">{cc.type || '-'}</td>
                       <td className="py-2.5 px-3 text-slate-800 font-medium">{cc.manager || '-'}</td>
                       <td className="py-2.5 px-3 text-right font-mono font-bold text-slate-900">
                         {(cc.totalAssets ?? 0).toLocaleString()}
@@ -890,13 +867,6 @@ export function CostCentersTab({
                   })()}
                 </span>
               </div>
-
-              {selectedCostCenter.type && (
-                <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
-                  <span className="text-slate-500 font-medium">Type</span>
-                  <span className="col-span-2 text-slate-700">{selectedCostCenter.type}</span>
-                </div>
-              )}
 
               <div className="grid grid-cols-3 gap-1 py-1 border-t border-slate-100">
                 <span className="text-slate-500 font-medium">Manager</span>
