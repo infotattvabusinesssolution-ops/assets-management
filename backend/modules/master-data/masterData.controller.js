@@ -5541,10 +5541,11 @@ function readItemMastersFromFile() {
 function writeItemMastersToFile(list) {
   const candidates = [
     ITEM_MASTERS_FILE,
-    path.resolve(__dirname, '../../data', 'item_masters.json'),
-    path.join(process.cwd(), 'data', 'item_masters.json'),
-    path.join(process.cwd(), 'assets-management', 'backend', 'data', 'item_masters.json')
+    path.resolve(__dirname, '../../data', 'item_masters.json')
   ];
+  if (fs.existsSync(path.join(process.cwd(), 'data'))) {
+    candidates.push(path.join(process.cwd(), 'data', 'item_masters.json'));
+  }
   for (const p of new Set(candidates)) {
     try {
       const dir = path.dirname(p);
