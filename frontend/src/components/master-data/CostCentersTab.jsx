@@ -79,12 +79,7 @@ export function CostCentersTab({
       const allLoadedEmployees = [
         ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : (Array.isArray(empRes) ? empRes : [])))
       ];
-      let customCustodians = [];
-      try {
-        customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-      } catch (_) {}
-      const combinedEmployees = deduplicateCustodians(allLoadedEmployees, customCustodians);
-      setCustodiansList(combinedEmployees);
+      setCustodiansList(allLoadedEmployees);
       if (res?.costCenters && res.costCenters.length > 0) {
         const mapped = res.costCenters.map((cc) => {
           const isCompActive = cc.company ? (cc.company.active !== false && cc.company.status !== 'Inactive') : true;
@@ -180,13 +175,8 @@ export function CostCentersTab({
       const allLoadedEmployees = [
         ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : (Array.isArray(empRes) ? empRes : [])))
       ];
-      let customCustodians = [];
-      try {
-        customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-      } catch (_) {}
-      const deduped = deduplicateCustodians(allLoadedEmployees, customCustodians);
-      setCustodiansList(deduped);
-      return deduped;
+      setCustodiansList(allLoadedEmployees);
+      return allLoadedEmployees;
     } catch (_) {
       return custodiansList;
     }
@@ -328,7 +318,7 @@ export function CostCentersTab({
     }
 
     const matchedComp = companiesList.find(c => c.name === ccFormState.company || c.code === ccFormState.company || c.id === ccFormState.company);
-    let companyId = matchedComp?.id || null;
+    let companyId = matchedComp?.id || user?.companyId || null;
     if (!companyId && ccFormState.departmentId) {
       const matchedDept = departmentsList.find(d => d.id === ccFormState.departmentId);
       if (matchedDept?.companyId) companyId = matchedDept.companyId;

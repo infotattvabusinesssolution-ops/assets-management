@@ -49,7 +49,8 @@ export const INITIAL_USERS = [];
 
 export function UserManagement() {
   const navigate = useNavigate();
-  const { logout } = useAuth();
+  const { user, logout } = useAuth();
+  const storageKey = user?.companyId ? `fams_custom_users_${user.companyId}` : 'fams_custom_users';
 
   // State
   const [userList, setUserList] = useState([]);
@@ -170,35 +171,7 @@ export function UserManagement() {
       ]);
 
       const serverCustodians = custRes?.custodians || custRes?.employees || (Array.isArray(custRes) ? custRes : []);
-      let localCustodians = [];
-      try {
-        localCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-        // Clean out any legacy mock demo custodians from localStorage
-        const demoDomains = ['infotatwaa.com', 'corporate.com', 'infotattva.com', 'apexfacilities.com'];
-        const cleanLocal = localCustodians.filter(c => {
-          const email = String(c?.email || '').toLowerCase();
-          const code = String(c?.employeeCode || c?.code || '').toUpperCase();
-          if (demoDomains.some(d => email.includes(d))) return false;
-          if (['EMP-101', 'EMP-103', 'EMP-104', 'EMP-105', 'EMP-106', 'EMP-107', 'EMP-108', 'EMP-CORP-96381', 'EMP-FAC', 'EMP-JOHN', 'EMP-JANE', 'CUST-EXT-01'].includes(code)) return false;
-          return true;
-        });
-        if (cleanLocal.length !== localCustodians.length) {
-          localStorage.setItem('fams_custom_custodians', JSON.stringify(cleanLocal));
-          localCustodians = cleanLocal;
-        }
-      } catch (_) {}
-
-      // Combine server and local, strictly excluding legacy demo mock accounts
-      const demoDomains = ['infotatwaa.com', 'corporate.com', 'infotattva.com', 'apexfacilities.com'];
-      const demoCodes = new Set(['EMP-101', 'EMP-103', 'EMP-104', 'EMP-105', 'EMP-106', 'EMP-107', 'EMP-108', 'EMP-CORP-96381', 'EMP-FAC', 'EMP-JOHN', 'EMP-JANE', 'CUST-EXT-01']);
-      const combinedCustodians = [...serverCustodians, ...localCustodians].filter(c => {
-        if (!c) return false;
-        const email = String(c.email || '').toLowerCase();
-        const code = String(c.employeeCode || c.code || '').toUpperCase();
-        if (demoDomains.some(d => email.includes(d))) return false;
-        if (demoCodes.has(code)) return false;
-        return true;
-      });
+      const combinedCustodians = serverCustodians;
       const seenCust = new Set();
       const getStrVal = (val, fallback = '') => {
         if (!val) return fallback;
@@ -272,15 +245,7 @@ export function UserManagement() {
           })));
       }
       if (sectionsRes && Array.isArray(sectionsRes.costCenters)) {
-        let customCostCenters = [];
-        try { customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
-        const mergedSections = [...sectionsRes.costCenters];
-        for (const s of customCostCenters) {
-          if (!mergedSections.some(x => x.id === s.id || (x.code && x.code.toLowerCase() === (s.code || '').toLowerCase()))) {
-            mergedSections.push(s);
-          }
-        }
-        setSectionsList(mergedSections.map(s => {
+        setSectionsList(sectionsRes.costCenters.map(s => {
           const active = isRecordActive(s);
           return {
             ...s,
@@ -291,24 +256,14 @@ export function UserManagement() {
           };
         }));
       } else {
-        let customCostCenters = [];
-        try { customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
-        setSectionsList(customCostCenters.map(s => {
-          const active = isRecordActive(s);
-          return {
-            ...s,
-            name: typeof s.name === 'string' ? s.name : (s.name?.name || String(s.name || '')),
-            code: typeof s.code === 'string' ? s.code : String(s.code || ''),
-            active,
-            status: active ? 'Active' : 'Inactive'
-          };
-        }));
+        setSectionsList([]);
       }
       const fetchedRoles = rolesRes?.roles || (Array.isArray(rolesRes) ? rolesRes : []);
       if (fetchedRoles.length > 0) {
         let savedPermsMap = {};
         try {
-          savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+          const permStorageKey = user?.companyId ? `fams_saved_role_permissions_${user.companyId}` : 'fams_saved_role_permissions';
+          savedPermsMap = JSON.parse(localStorage.getItem(permStorageKey) || '{}');
         } catch (_) {}
 
         setRolesList(fetchedRoles.map(r => {
@@ -610,7 +565,7 @@ export function UserManagement() {
     setLoading(true);
     let customUsers = [];
     try {
-      customUsers = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      customUsers = JSON.parse(localStorage.getItem(storageKey) || '[]');
     } catch (e) {}
 
     try {
@@ -630,9 +585,7 @@ export function UserManagement() {
 
       if (data && data.success && Array.isArray(data.users)) {
         const serverUsers = data.users;
-        const serverIds = new Set(serverUsers.map(u => u.id));
-        const missingCustom = customUsers.filter(u => !serverIds.has(u.id) && !u.email?.includes('asset360.com') && !u.id?.startsWith('USR-0'));
-        let allUsers = [...missingCustom, ...serverUsers];
+        let allUsers = [...serverUsers];
 
         if (searchQuery.trim()) {
           const q = searchQuery.toLowerCase();
@@ -762,9 +715,9 @@ export function UserManagement() {
     } catch (err) {}
 
     try {
-      let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      let stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
       stored = stored.map(u => u.id === user.id ? { ...u, status: nextStatus } : u);
-      localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+      localStorage.setItem(storageKey, JSON.stringify(stored));
     } catch (e) {}
 
     setUserList(prev => prev.map(u => u.id === user.id ? { ...u, status: nextStatus } : u));
@@ -830,9 +783,9 @@ export function UserManagement() {
       }).catch(() => null);
 
       try {
-        let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+        let stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
         stored = stored.map(u => u.id === selectedUser.id ? { ...u, role: roleName, roleId: roleId } : u);
-        localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+        localStorage.setItem(storageKey, JSON.stringify(stored));
       } catch (e) {}
 
       setUserList(prev => prev.map(u => u.id === selectedUser.id ? { ...u, role: roleName, roleId: roleId } : u));
@@ -854,9 +807,9 @@ export function UserManagement() {
     } catch (e) {}
 
     try {
-      let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      let stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
       stored = stored.map(u => u.id === user.id ? { ...u, mfaEnabled: nextMfa } : u);
-      localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+      localStorage.setItem(storageKey, JSON.stringify(stored));
     } catch (e) {}
 
     setUserList(prev => prev.map(u => u.id === user.id ? { ...u, mfaEnabled: nextMfa } : u));
@@ -895,9 +848,9 @@ export function UserManagement() {
     } catch (err) {}
 
     try {
-      let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      let stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
       stored = stored.filter(u => u.id !== user.id);
-      localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+      localStorage.setItem(storageKey, JSON.stringify(stored));
     } catch (e) {}
 
     setUserList(prev => prev.filter(u => u.id !== user.id));
@@ -935,13 +888,13 @@ export function UserManagement() {
     };
 
     try {
-      let stored = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+      let stored = JSON.parse(localStorage.getItem(storageKey) || '[]');
       if (showEditModal) {
         stored = stored.map(u => u.id === targetUser.id ? targetUser : u);
       } else {
         stored = [targetUser, ...stored.filter(u => u.id !== targetUser.id)];
       }
-      localStorage.setItem('fams_custom_users', JSON.stringify(stored));
+      localStorage.setItem(storageKey, JSON.stringify(stored));
     } catch (e) {}
 
     if (showEditModal) {
@@ -977,7 +930,8 @@ export function UserManagement() {
 
     let savedPermsMap = {};
     try {
-      savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+      const permStorageKey = user?.companyId ? `fams_saved_role_permissions_${user.companyId}` : 'fams_saved_role_permissions';
+      savedPermsMap = JSON.parse(localStorage.getItem(permStorageKey) || '{}');
     } catch (_) {}
 
     const userRoleIdentifier = selectedUser.roleId || selectedUser.role;

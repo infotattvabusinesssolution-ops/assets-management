@@ -42,7 +42,8 @@ export function SubCategoriesTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
+  const storageKey = user?.companyId ? `fams_custom_subcategories_${user.companyId}` : 'fams_custom_subcategories';
   const {
     canCreate,
     canEdit,
@@ -89,10 +90,8 @@ export function SubCategoriesTab({
         setAvailableAssetClasses(enrichedClasses);
       }
 
-      const customClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
       const serverClassCodes = (clsRes?.assetClasses || []).map(c => (c.code || '').toUpperCase());
-      const customClassCodes = customClasses.map(c => (c.code || '').toUpperCase());
-      const classCodes = new Set([...serverClassCodes, ...customClassCodes]);
+      const classCodes = new Set(serverClassCodes);
 
       if (classRes?.assetClasses && classRes.assetClasses.length > 0) {
         // Exclude any true asset classes!
@@ -142,32 +141,17 @@ export function SubCategoriesTab({
           };
         });
 
-        const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-        const filteredCustom = custom.filter(c => !classCodes.has((c.code || '').toUpperCase()));
-        const serverCodes = new Set(mapped.map(m => (m.code || m.name || '').toUpperCase().trim()));
-        const missingCustom = filteredCustom.filter(c => !serverCodes.has((c.code || c.name || '').toUpperCase().trim()));
-        const rawList = [...mapped, ...missingCustom];
-
-        const seen = new Set();
-        const fullList = rawList.filter(item => {
-          const key = (item.code || item.name || '').toUpperCase().trim();
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-        setSubCategoriesList(fullList);
-        setSelectedSubCategory((prev) => (prev ? fullList.find((s) => s.id === prev.id) || fullList[0] || null : fullList[0] || null));
+        setSubCategoriesList(mapped);
+        setSelectedSubCategory((prev) => (prev ? mapped.find((s) => s.id === prev.id) || mapped[0] || null : mapped[0] || null));
       } else {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-        setSubCategoriesList(custom);
-        setSelectedSubCategory(custom[0] || null);
+        setSubCategoriesList([]);
+        setSelectedSubCategory(null);
       }
     } catch (err) {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+      console.warn('Failed to fetch sub-categories from backend:', err);
+      const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
       setSubCategoriesList(custom);
       setSelectedSubCategory(custom[0] || null);
-      console.warn('Failed to fetch sub-categories from backend:', err);
     } finally {
       setIsLoading(false);
     }
@@ -188,25 +172,8 @@ export function SubCategoriesTab({
   const [showAddSubCatModal, setShowAddSubCatModal] = useState(false);
   const [modalError, setModalError] = useState('');
   const [editingSubCategory, setEditingSubCategory] = useState(null);
-  const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
-    try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
-      return [...custom, ...INITIAL_ASSET_GROUPS.filter(d => !existing.has(d.name.toLowerCase()))];
-    } catch (_) {
-      return INITIAL_ASSET_GROUPS;
-    }
-  });
-
-  const [availableAssetClasses, setAvailableAssetClasses] = useState(() => {
-    try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
-      return [...custom, ...INITIAL_CLASSES.filter(d => !existing.has(d.name.toLowerCase()))];
-    } catch (_) {
-      return INITIAL_CLASSES;
-    }
-  });
+  const [availableAssetGroups, setAvailableAssetGroups] = useState([]);
+  const [availableAssetClasses, setAvailableAssetClasses] = useState([]);
 
   const isCategoryInactive = (c) => {
     if (!c) return false;
@@ -427,6 +394,7 @@ export function SubCategoriesTab({
 
     const payload = {
       name: cleanName,
+      companyId: user?.companyId || undefined,
       categoryId: targetCatId,
       categoryName: subCatFormState.categoryName || (categories.find(c => c.id === targetCatId)?.name || ''),
       assetSubGroupName: subCatFormState.className || '',
@@ -552,8 +520,8 @@ export function SubCategoriesTab({
         return;
       }
       try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-        localStorage.setItem('fams_custom_subcategories', JSON.stringify(custom.filter(c => c.id !== sc.id)));
+        const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify(custom.filter(c => c.id !== sc.id)));
       } catch (_) { }
       setSubCategoryToDelete(null);
       await loadSubCategories();

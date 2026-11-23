@@ -38,17 +38,10 @@ export function AddSiteModal({ isOpen, onClose, onSuccess, companies = [] }) {
       const res = await api.post('/master-data/sites', newSiteObj);
       const saved = (res && res.success && res.site) ? res.site : newSiteObj;
 
-      const existing = JSON.parse(localStorage.getItem('fams_sites') || '[]');
-      const updated = [...existing, saved];
-      localStorage.setItem('fams_sites', JSON.stringify(updated));
-
       if (onSuccess) onSuccess(saved);
       onClose();
     } catch (err) {
-      console.warn('Site save fallback to local:', err);
-      const existing = JSON.parse(localStorage.getItem('fams_sites') || '[]');
-      const updated = [...existing, newSiteObj];
-      localStorage.setItem('fams_sites', JSON.stringify(updated));
+      console.warn('Site save error:', err);
 
       if (onSuccess) onSuccess(newSiteObj);
       onClose();

@@ -235,22 +235,8 @@ export function AssetList() {
         siteNames.push(...sitesRes.value.sites.map(s => s.name).filter(Boolean));
       }
 
-      try {
-        const storedCats = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-        if (Array.isArray(storedCats)) {
-          catNames.push(...storedCats.map(c => typeof c === 'string' ? c : c.name).filter(Boolean));
-        }
-        const storedDepts = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
-        if (Array.isArray(storedDepts)) {
-          deptNames.push(...storedDepts.map(d => typeof d === 'string' ? d : d.name).filter(Boolean));
-        }
-      } catch (_) {}
-
-      const defaultCategories = ['IT Infrastructure', 'Laptops & Workstations', 'Servers & Storage', 'Networking', 'Office Furniture', 'Vehicles & Fleet', 'Heavy Machinery', 'Facilities & AV'];
-      const defaultDepartments = ['Information Technology', 'Finance & Accounting', 'Human Resources', 'Operations', 'Supply Chain & Logistics', 'Administration'];
-
-      setMasterCategories(Array.from(new Set([...catNames, ...defaultCategories])));
-      setMasterDepartments(Array.from(new Set([...deptNames, ...defaultDepartments])));
+      setMasterCategories(Array.from(new Set(catNames)));
+      setMasterDepartments(Array.from(new Set(deptNames)));
       setMasterLocations(Array.from(new Set(siteNames)));
     } catch (err) {
       console.warn('Failed to load filter options:', err);

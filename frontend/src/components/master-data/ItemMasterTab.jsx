@@ -159,85 +159,50 @@ export function ItemMasterTab({
       setItems(mergedItems);
       setSelectedItem(prev => (mergedItems.some(i => i.id === prev?.id) ? prev : (mergedItems[0] || null)));
 
-      // Merge Asset Groups: Server + Local Custom
-      const localGroups = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-      const serverGroups = grpRes?.assetGroups || [];
-      const seenGroupNames = new Set();
-      const mergedGroups = [...serverGroups, ...localGroups].filter(g => {
-        const name = (g.name || g.code || '').trim().toLowerCase();
-        if (!name || seenGroupNames.has(name)) return false;
-        seenGroupNames.add(name);
-        return true;
-      });
-      setAssetGroups(mergedGroups);
+      // Asset Groups: Trust server data, fall back to scoped local storage only on complete network failure
+      const serverGroups = grpRes?.assetGroups;
+      const finalGroups = Array.isArray(serverGroups)
+        ? serverGroups
+        : JSON.parse(localStorage.getItem(getScopedKey('fams_custom_asset_groups')) || '[]');
+      setAssetGroups(finalGroups);
 
-      // Merge Asset Subgroups (Classes): Server + Local Custom
-      const localClasses = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-      const serverClasses = (asgRes?.assetSubGroups || []).map(c => {
-        const descGroup = (c.description || '').match(/\[group:([^\]]+)\]/)?.[1];
-        const resolvedGroup = descGroup || c.groupName || c.assetGroupName || '';
-        return {
-          ...c,
-          groupName: resolvedGroup,
-          assetGroupName: resolvedGroup
-        };
-      });
-      const seenClassNames = new Set();
-      const mergedClasses = [...serverClasses, ...localClasses].filter(c => {
-        const name = (c.name || c.code || '').trim().toLowerCase();
-        if (!name || seenClassNames.has(name)) return false;
-        seenClassNames.add(name);
-        return true;
-      });
-      setAssetSubGroups(mergedClasses);
+      // Asset Subgroups (Classes): Trust server data, fall back to scoped local storage only on network failure
+      const serverClasses = Array.isArray(asgRes?.assetSubGroups)
+        ? asgRes.assetSubGroups.map(c => {
+            const descGroup = (c.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+            const resolvedGroup = descGroup || c.groupName || c.assetGroupName || '';
+            return {
+              ...c,
+              groupName: resolvedGroup,
+              assetGroupName: resolvedGroup
+            };
+          })
+        : JSON.parse(localStorage.getItem(getScopedKey('fams_custom_asset_classes')) || '[]');
+      setAssetSubGroups(serverClasses);
 
-      // Merge Categories: Server + Local Custom
-      const localCats = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-      const serverCats = catRes?.categories || [];
-      const seenCatNames = new Set();
-      const mergedCats = [...serverCats, ...localCats].filter(c => {
-        const name = (c.name || c.code || '').trim().toLowerCase();
-        if (!name || seenCatNames.has(name)) return false;
-        seenCatNames.add(name);
-        return true;
-      });
-      setCategories(mergedCats);
+      // Categories: Trust server data, fall back to scoped local storage only on network failure
+      const finalCats = Array.isArray(catRes?.categories)
+        ? catRes.categories
+        : JSON.parse(localStorage.getItem(getScopedKey('fams_custom_categories')) || '[]');
+      setCategories(finalCats);
 
-      // Merge Sub Categories: Server + Local Custom
-      const localSubCats = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-      const serverSubCats = subCatRes?.subCategories || [];
-      const seenSubCatNames = new Set();
-      const mergedSubCats = [...serverSubCats, ...localSubCats].filter(s => {
-        const name = (s.name || s.code || '').trim().toLowerCase();
-        if (!name || seenSubCatNames.has(name)) return false;
-        seenSubCatNames.add(name);
-        return true;
-      });
-      setSubCategories(mergedSubCats);
+      // Sub Categories: Trust server data, fall back to scoped local storage only on network failure
+      const finalSubCats = Array.isArray(subCatRes?.subCategories)
+        ? subCatRes.subCategories
+        : JSON.parse(localStorage.getItem(getScopedKey('fams_custom_subcategories')) || '[]');
+      setSubCategories(finalSubCats);
 
-      // Merge Manufacturers: Server + Local Custom
-      const localMfrs = JSON.parse(localStorage.getItem('fams_custom_manufacturers') || '[]');
-      const serverMfrs = mfrRes?.manufacturers || [];
-      const seenMfrs = new Set();
-      const mergedMfrs = [...serverMfrs, ...localMfrs].filter(m => {
-        const name = (m.name || m.code || '').trim().toLowerCase();
-        if (!name || seenMfrs.has(name)) return false;
-        seenMfrs.add(name);
-        return true;
-      });
-      setManufacturers(mergedMfrs);
+      // Manufacturers: Trust server data, fall back to scoped local storage only on network failure
+      const finalMfrs = Array.isArray(mfrRes?.manufacturers)
+        ? mfrRes.manufacturers
+        : JSON.parse(localStorage.getItem(getScopedKey('fams_custom_manufacturers')) || '[]');
+      setManufacturers(finalMfrs);
 
-      // Merge Brands: Server + Local Custom
-      const localBrands = JSON.parse(localStorage.getItem('fams_custom_brands') || '[]');
-      const serverBrands = brandRes?.brands || [];
-      const seenBrands = new Set();
-      const mergedBrands = [...serverBrands, ...localBrands].filter(b => {
-        const name = (b.name || b.code || '').trim().toLowerCase();
-        if (!name || seenBrands.has(name)) return false;
-        seenBrands.add(name);
-        return true;
-      });
-      setBrands(mergedBrands);
+      // Brands: Trust server data, fall back to scoped local storage only on network failure
+      const finalBrands = Array.isArray(brandRes?.brands)
+        ? brandRes.brands
+        : JSON.parse(localStorage.getItem(getScopedKey('fams_custom_brands')) || '[]');
+      setBrands(finalBrands);
 
       if (uomRes?.uoms) setUoms(uomRes.uoms);
     } catch (err) {
@@ -619,6 +584,7 @@ export function ItemMasterTab({
       const finalCode = cleanCode || nextItemCodePreview;
       const payload = {
         ...formState,
+        companyId: user?.companyId || undefined,
         itemCode: finalCode,
         code: finalCode,
         active: formState.status === 'Active'

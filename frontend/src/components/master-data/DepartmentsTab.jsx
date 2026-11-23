@@ -82,12 +82,7 @@ export function DepartmentsTab({
       const allLoadedEmployees = [
         ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : (Array.isArray(empRes) ? empRes : [])))
       ];
-      let customCustodians = [];
-      try {
-        customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-      } catch (_) {}
-      const combinedEmployees = deduplicateCustodians(allLoadedEmployees, customCustodians);
-      setCustodiansList(combinedEmployees);
+      setCustodiansList(allLoadedEmployees);
 
       if (res?.departments && res.departments.length > 0) {
         const mapped = res.departments.map((dept) => {
@@ -255,13 +250,8 @@ export function DepartmentsTab({
       const allLoadedEmployees = [
         ...(Array.isArray(empRes?.employees) ? empRes.employees : (Array.isArray(empRes?.custodians) ? empRes.custodians : (Array.isArray(empRes) ? empRes : [])))
       ];
-      let customCustodians = [];
-      try {
-        customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-      } catch (_) {}
-      const deduped = deduplicateCustodians(allLoadedEmployees, customCustodians);
-      setCustodiansList(deduped);
-      return deduped;
+      setCustodiansList(allLoadedEmployees);
+      return allLoadedEmployees;
     } catch (_) {
       return custodiansList;
     }

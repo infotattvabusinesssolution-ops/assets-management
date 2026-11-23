@@ -547,13 +547,14 @@ const formatItemToRow = (item, fields) => {
   });
 };
 
-const fetchActiveTabExportData = async (config, activeTab) => {
+const fetchActiveTabExportData = async (config, activeTab, companyId) => {
   if (activeTab === 'status-codes') {
     try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_status_codes') || '[]');
-      return custom.length > 0 ? custom : DEFAULT_STATUS_CODES;
+      const storageKey = companyId ? `fams_custom_status_codes_${companyId}` : 'fams_custom_status_codes';
+      const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      return custom;
     } catch {
-      return DEFAULT_STATUS_CODES;
+      return [];
     }
   }
   if (!config.endpoint) {
@@ -652,6 +653,7 @@ const getMasterPermKey = (tabId) => {
 
 export function MasterDataSetup() {
   const { user, hasMasterPermission } = useAuth();
+  const getScopedKey = (base) => (user?.companyId ? `${base}_${user.companyId}` : base);
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const activeTab = searchParams.get('tab') || 'asset-groups';
@@ -791,7 +793,7 @@ export function MasterDataSetup() {
     setIsSavingMultiple(true);
     try {
       if (activeTab === 'status-codes') {
-        const existing = JSON.parse(localStorage.getItem('fams_custom_status_codes') || JSON.stringify(DEFAULT_STATUS_CODES));
+        const existing = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_status_codes')) || '[]');
         const newRecords = validRows.map((r) => ({
           id: `stat-${Date.now()}-${Math.random().toString(36).substr(2, 6)}`,
           code: r.code.trim().toUpperCase(),
@@ -801,7 +803,7 @@ export function MasterDataSetup() {
           status: 'Active',
           active: true
         }));
-        localStorage.setItem('fams_custom_status_codes', JSON.stringify([...newRecords, ...existing]));
+        localStorage.setItem(getScopedKey('fams_custom_status_codes'), JSON.stringify([...newRecords, ...existing]));
         triggerToast(`Successfully added ${validRows.length} Status Codes!`);
       } else if (config.postEndpoint || config.endpoint) {
         const targetUrl = config.postEndpoint || config.endpoint.split('?')[0];
@@ -917,12 +919,12 @@ export function MasterDataSetup() {
     let imported = 0;
     try {
       if (activeTab === 'status-codes') {
-        const existing = JSON.parse(localStorage.getItem('fams_custom_status_codes') || JSON.stringify(DEFAULT_STATUS_CODES));
+        const existing = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_status_codes')) || '[]');
         const updated = [
           ...importParsedRows,
           ...existing.filter((e) => !importParsedRows.some((r) => (r.code && r.code.toUpperCase() === (e.code || '').toUpperCase())))
         ];
-        localStorage.setItem('fams_custom_status_codes', JSON.stringify(updated));
+        localStorage.setItem(getScopedKey('fams_custom_status_codes'), JSON.stringify(updated));
         imported = importParsedRows.length;
       } else if (config.postEndpoint || config.endpoint) {
         const targetUrl = config.postEndpoint || config.endpoint.split('?')[0];
@@ -938,7 +940,7 @@ export function MasterDataSetup() {
 
       // Record in import history
       try {
-        const history = JSON.parse(localStorage.getItem('fams_import_history') || '[]');
+        const history = JSON.parse(localStorage.getItem(getScopedKey('fams_import_history')) || '[]');
         history.unshift({
           id: `imp-${Date.now()}`,
           entity: config.name,
@@ -947,7 +949,7 @@ export function MasterDataSetup() {
           importedRows: imported,
           timestamp: new Date().toLocaleString()
         });
-        localStorage.setItem('fams_import_history', JSON.stringify(history.slice(0, 30)));
+        localStorage.setItem(getScopedKey('fams_import_history'), JSON.stringify(history.slice(0, 30)));
       } catch (_) {}
 
       setGroupReloadTrigger((prev) => prev + 1);
@@ -987,7 +989,7 @@ export function MasterDataSetup() {
     setShowExportDropdown(false);
     const config = getMasterConfig(activeTab);
     try {
-      const records = await fetchActiveTabExportData(config, activeTab);
+      const records = await fetchActiveTabExportData(config, activeTab, user?.companyId);
       const rows = records.map((item) => formatItemToRow(item, config.fields));
       const csvContent = [
         config.headers.map((h) => `"${h.replace(/"/g, '""')}"`).join(','),
@@ -1013,7 +1015,7 @@ export function MasterDataSetup() {
     setShowExportDropdown(false);
     const config = getMasterConfig(activeTab);
     try {
-      const records = await fetchActiveTabExportData(config, activeTab);
+      const records = await fetchActiveTabExportData(config, activeTab, user?.companyId);
       const rows = records.map((item) => formatItemToRow(item, config.fields));
       const excelHtml = `
         <html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel" xmlns="http://www.w3.org/TR/REC-html40">
@@ -1058,7 +1060,7 @@ export function MasterDataSetup() {
     setShowExportDropdown(false);
     const config = getMasterConfig(activeTab);
     try {
-      const records = await fetchActiveTabExportData(config, activeTab);
+      const records = await fetchActiveTabExportData(config, activeTab, user?.companyId);
       const rows = records.map((item) => formatItemToRow(item, config.fields));
 
       const printWindow = window.open('', '_blank');
@@ -1839,7 +1841,7 @@ export function MasterDataSetup() {
 
             <div className="space-y-2 text-xs max-h-80 overflow-y-auto pr-1">
               {(() => {
-                const history = JSON.parse(localStorage.getItem('fams_import_history') || '[]');
+                const history = JSON.parse(localStorage.getItem(getScopedKey('fams_import_history')) || '[]');
                 if (history.length === 0) {
                   return (
                     <div className="p-8 text-center text-slate-500">
@@ -1871,7 +1873,7 @@ export function MasterDataSetup() {
               <button
                 type="button"
                 onClick={() => {
-                  localStorage.removeItem('fams_import_history');
+                  localStorage.removeItem(getScopedKey('fams_import_history'));
                   triggerToast('Import history cleared.');
                   setShowImportHistoryModal(false);
                 }}

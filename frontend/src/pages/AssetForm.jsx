@@ -300,20 +300,12 @@ export function AssetForm() {
       const newBld = res?.building || { id: `bld-${Date.now()}`, name: cleanName, code, siteId: currentSiteId };
       setBuildings(prev => [...prev, newBld]);
       setFormData(prev => ({ ...prev, buildingId: newBld.id, building: newBld.name }));
-      try {
-        const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
-        localStorage.setItem('fams_buildings', JSON.stringify([...stored, newBld]));
-      } catch (_) { }
       showToast('success', `Building "${cleanName}" added successfully!`);
     } catch (err) {
       console.warn('Add building error:', err);
       const newBld = { id: `bld-${Date.now()}`, name: cleanName, code, siteId: currentSiteId };
       setBuildings(prev => [...prev, newBld]);
       setFormData(prev => ({ ...prev, buildingId: newBld.id, building: newBld.name }));
-      try {
-        const stored = JSON.parse(localStorage.getItem('fams_buildings') || '[]');
-        localStorage.setItem('fams_buildings', JSON.stringify([...stored, newBld]));
-      } catch (_) { }
       showToast('success', `Building "${cleanName}" added successfully!`);
     }
   };
@@ -356,11 +348,6 @@ export function AssetForm() {
         });
       }
 
-      try {
-        const stored = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
-        localStorage.setItem('fams_custom_departments', JSON.stringify([...stored, newDept]));
-      } catch (_) { }
-
       // Refresh live departments list from backend in background
       api.get('/master-data/departments')
         .then(r => {
@@ -396,10 +383,6 @@ export function AssetForm() {
           department: newDept.name || cleanName
         });
       }
-      try {
-        const stored = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]');
-        localStorage.setItem('fams_custom_departments', JSON.stringify([...stored, newDept]));
-      } catch (_) { }
       showToast('success', `Department "${cleanName}" added and selected successfully!`);
     }
   };
@@ -624,21 +607,14 @@ export function AssetForm() {
         setBrands((brandRes?.brands || []).filter(b => b.active !== false && b.status !== 'Inactive'));
         if (empRes?.employees) setEmployees(empRes.employees.filter(e => e.active !== false && e.status !== 'Inactive'));
 
-        const parseLevelItems = (res, lvl) => {
+        const parseLevelItems = (res) => {
           let items = res?.locationLevels && Array.isArray(res.locationLevels) ? res.locationLevels : [];
-          try {
-            const local = JSON.parse(localStorage.getItem(`fams_custom_location_level_${lvl}`) || '[]');
-            const codes = new Set(items.map(x => (x.code || '').toUpperCase().trim()));
-            const missingLocal = local.filter(l => !codes.has((l.code || '').toUpperCase().trim()));
-            return [...items, ...missingLocal].filter(it => it.active !== false && it.status !== 'Inactive');
-          } catch (_) {
-            return items;
-          }
+          return items.filter(it => it.active !== false && it.status !== 'Inactive');
         };
-        setLevel1List(parseLevelItems(lvl1Res, 1));
-        setLevel2List(parseLevelItems(lvl2Res, 2));
-        setLevel3List(parseLevelItems(lvl3Res, 3));
-        setLevel4List(parseLevelItems(lvl4Res, 4));
+        setLevel1List(parseLevelItems(lvl1Res));
+        setLevel2List(parseLevelItems(lvl2Res));
+        setLevel3List(parseLevelItems(lvl3Res));
+        setLevel4List(parseLevelItems(lvl4Res));
         if (condRes?.assetConditions && Array.isArray(condRes.assetConditions) && condRes.assetConditions.length > 0) {
           setAssetConditions(condRes.assetConditions);
         }

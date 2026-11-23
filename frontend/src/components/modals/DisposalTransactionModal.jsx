@@ -20,6 +20,7 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 
 // System-defined enumeration for Disposal Reasons (Per requirements doc: immutable system enumeration)
 export const SYSTEM_DISPOSAL_REASONS = [
@@ -46,6 +47,8 @@ export function DisposalTransactionModal({
   onSuccess,
   triggerToast
 }) {
+  const { user } = useAuth();
+  const pendingStorageKey = user?.companyId ? `fams_pending_disposals_${user.companyId}` : 'fams_pending_disposals';
   const [targetAsset, setTargetAsset] = useState(preselectedAsset);
   const [candidates, setCandidates] = useState([]);
   const [candidateSearch, setCandidateSearch] = useState('');
@@ -248,7 +251,7 @@ export function DisposalTransactionModal({
 
         // Add to client-side pending queue store
         try {
-          const cached = JSON.parse(localStorage.getItem('fams_pending_disposals') || '[]');
+          const cached = JSON.parse(localStorage.getItem(pendingStorageKey) || '[]');
           const pendingItem = {
             ...targetAsset,
             lifecycleStatus: 'PENDING_DISPOSAL',
@@ -256,14 +259,14 @@ export function DisposalTransactionModal({
             disposalDetails: payload
           };
           const updated = [pendingItem, ...cached.filter(c => c.id !== targetAsset.id && c.assetId !== targetAsset.assetId)];
-          localStorage.setItem('fams_pending_disposals', JSON.stringify(updated));
+          localStorage.setItem(pendingStorageKey, JSON.stringify(updated));
         } catch (_) {}
       } else {
         // Remove from client-side pending queue store
         try {
-          const cached = JSON.parse(localStorage.getItem('fams_pending_disposals') || '[]');
+          const cached = JSON.parse(localStorage.getItem(pendingStorageKey) || '[]');
           const filtered = cached.filter(c => c.id !== targetAsset.id && c.assetId !== targetAsset.assetId);
-          localStorage.setItem('fams_pending_disposals', JSON.stringify(filtered));
+          localStorage.setItem(pendingStorageKey, JSON.stringify(filtered));
         } catch (_) {}
       }
 

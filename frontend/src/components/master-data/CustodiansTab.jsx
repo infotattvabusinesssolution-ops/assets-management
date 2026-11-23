@@ -47,7 +47,8 @@ export function CustodiansTab({
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
 
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
+  const storageKey = user?.companyId ? `fams_custom_custodians_${user.companyId}` : 'fams_custom_custodians';
   const {
     canCreate,
     canEdit,
@@ -151,77 +152,26 @@ export function CustodiansTab({
         api.get('/master-data/sites?includeInactive=true').catch(() => null)
       ]);
 
-      let customCompanies = [];
-      try { customCompanies = JSON.parse(localStorage.getItem('fams_custom_companies') || '[]'); } catch (_) {}
       const serverComps = Array.isArray(compRes?.companies) ? compRes.companies : [];
-      const mergedCompanies = [...serverComps];
-      for (const c of customCompanies) {
-        if (!mergedCompanies.some(x => x.id === c.id || (x.code && x.code.toLowerCase() === (c.code || '').toLowerCase()))) {
-          mergedCompanies.push(c);
-        }
-      }
-      setCompanies(mergedCompanies);
+      setCompanies(serverComps);
 
-      let customDepartments = [];
-      try { customDepartments = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]'); } catch (_) {}
       const serverDepts = Array.isArray(deptRes?.departments) ? deptRes.departments : [];
-      const mergedDepartments = [...serverDepts];
-      for (const d of customDepartments) {
-        if (!mergedDepartments.some(x => x.id === d.id || (x.code && x.code.toLowerCase() === (d.code || '').toLowerCase()))) {
-          mergedDepartments.push(d);
-        }
-      }
-      setDepartments(mergedDepartments);
+      setDepartments(serverDepts);
 
-      let customCostCenters = [];
-      try { customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
       const serverCostCenters = Array.isArray(ccRes?.costCenters) ? ccRes.costCenters : [];
-      const mergedSections = [...serverCostCenters];
-      for (const s of customCostCenters) {
-        if (!mergedSections.some(x => x.id === s.id || (x.code && x.code.toLowerCase() === (s.code || '').toLowerCase()))) {
-          mergedSections.push(s);
-        }
-      }
-      setSections(mergedSections);
+      setSections(serverCostCenters);
 
-      let customLocations = [];
-      try { customLocations = JSON.parse(localStorage.getItem('fams_custom_locations') || '[]'); } catch (_) {}
       const serverSites = Array.isArray(siteRes?.sites) ? siteRes.sites : (Array.isArray(siteRes?.locations) ? siteRes.locations : []);
-      const mergedLocations = [...serverSites];
-      for (const l of customLocations) {
-        if (!mergedLocations.some(x => x.id === l.id || (x.code && x.code.toLowerCase() === (l.code || '').toLowerCase()))) {
-          mergedLocations.push(l);
-        }
-      }
-      setLocations(mergedLocations);
+      setLocations(serverSites);
 
-      const customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
       const serverCustodians = Array.isArray(empRes?.employees) ? empRes.employees : [];
-      const merged = deduplicateCustodians(serverCustodians, customCustodians);
-      setCustodians(merged);
-      setSelectedCustodian(merged[0] || null);
+      setCustodians(serverCustodians);
+      setSelectedCustodian(serverCustodians[0] || null);
     } catch (err) {
       console.warn('Failed to load custodians:', err);
-      let customComps = [];
-      try { customComps = JSON.parse(localStorage.getItem('fams_custom_companies') || '[]'); } catch (_) {}
-      setCompanies(customComps);
-
-      let customDepts = [];
-      try { customDepts = JSON.parse(localStorage.getItem('fams_custom_departments') || '[]'); } catch (_) {}
-      setDepartments(customDepts);
-
-      let customCC = [];
-      try { customCC = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]'); } catch (_) {}
-      setSections(customCC);
-
-      let customLocs = [];
-      try { customLocs = JSON.parse(localStorage.getItem('fams_custom_locations') || '[]'); } catch (_) {}
-      setLocations(customLocs);
-
-      const customCustodians = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-      const deduped = deduplicateCustodians(customCustodians);
-      setCustodians(deduped);
-      setSelectedCustodian(deduped[0] || null);
+      const customCustodians = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      setCustodians(customCustodians);
+      setSelectedCustodian(customCustodians[0] || null);
     } finally {
       setIsLoading(false);
     }
@@ -286,33 +236,6 @@ export function CustodiansTab({
 
   const handleOpenAddModal = (custToEdit = null) => {
     setModalError('');
-    try {
-      const customCostCenters = JSON.parse(localStorage.getItem('fams_custom_cost_centers') || '[]');
-      if (customCostCenters.length > 0) {
-        setSections(prev => {
-          const merged = [...prev];
-          for (const s of customCostCenters) {
-            if (!merged.some(x => x.id === s.id || (x.code && x.code.toLowerCase() === (s.code || '').toLowerCase()))) {
-              merged.push(s);
-            }
-          }
-          return merged;
-        });
-      }
-      const customLocs = JSON.parse(localStorage.getItem('fams_custom_locations') || '[]');
-      if (customLocs.length > 0) {
-        setLocations(prev => {
-          const merged = [...prev];
-          for (const l of customLocs) {
-            if (!merged.some(x => x.id === l.id || (x.code && x.code.toLowerCase() === (l.code || '').toLowerCase()))) {
-              merged.push(l);
-            }
-          }
-          return merged;
-        });
-      }
-    } catch (_) {}
-
     if (custToEdit) {
       setEditingCustodian(custToEdit);
       setFormState({
@@ -346,7 +269,7 @@ export function CustodiansTab({
         fullName: '',
         email: '',
         phone: '',
-        companyId: defaultComp ? defaultComp.id : '',
+        companyId: defaultComp ? defaultComp.id : (user?.companyId || ''),
         departmentId: defaultDept ? defaultDept.id : '',
         section: defaultSec ? (defaultSec.name || defaultSec.code) : '',
         costCenterId: defaultSec ? defaultSec.id : '',
@@ -452,7 +375,7 @@ export function CustodiansTab({
         email: cleanEmail,
         phone: formState.phone.trim(),
         custodianType: formState.custodianType,
-        companyId: formState.companyId || undefined,
+        companyId: formState.companyId || user?.companyId || undefined,
         company: selectedComp ? { name: selectedComp.name } : undefined,
         departmentId: formState.departmentId || undefined,
         department: selectedDept ? { name: selectedDept.name } : undefined,
@@ -468,8 +391,8 @@ export function CustodiansTab({
         const res = await api.put(`/master-data/employees/${editingCustodian.id}`, payload);
         const updated = res?.employee || { ...editingCustodian, ...payload };
         try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-          localStorage.setItem('fams_custom_custodians', JSON.stringify(custom.map(c => c.id === editingCustodian.id ? updated : c)));
+          const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          localStorage.setItem(storageKey, JSON.stringify(custom.map(c => c.id === editingCustodian.id ? updated : c)));
         } catch (_) {}
         const list = custodians.map(c => c.id === editingCustodian.id ? updated : c);
         setCustodians(list);
@@ -479,8 +402,8 @@ export function CustodiansTab({
         const res = await api.post('/master-data/employees', payload);
         const newCust = res?.employee || { ...payload, id: `cust-${Date.now()}` };
         try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-          localStorage.setItem('fams_custom_custodians', JSON.stringify([newCust, ...custom]));
+          const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+          localStorage.setItem(storageKey, JSON.stringify([newCust, ...custom]));
         } catch (_) {}
         const list = [newCust, ...custodians];
         setCustodians(list);
@@ -534,9 +457,9 @@ export function CustodiansTab({
 
     // Clean up from browser localStorage immediately so it never resurrects
     try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
+      const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
       const filtered = custom.filter(c => c.id !== cust.id && c.employeeCode !== cust.employeeCode);
-      localStorage.setItem('fams_custom_custodians', JSON.stringify(filtered));
+      localStorage.setItem(storageKey, JSON.stringify(filtered));
     } catch (_) {}
 
     try {
@@ -598,8 +521,8 @@ export function CustodiansTab({
     try {
       const res = await api.delete(`/master-data/employees/${smartDeleteState.item.id}?action=force_delete`);
       try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_custodians') || '[]');
-        localStorage.setItem('fams_custom_custodians', JSON.stringify(custom.filter(c => c.id !== smartDeleteState.item.id)));
+        const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify(custom.filter(c => c.id !== smartDeleteState.item.id)));
       } catch (_) {}
       setSmartDeleteState({ isOpen: false, item: null, linkedCount: 0, details: null, isProcessing: false });
       triggerToast && triggerToast(res?.message || 'Custodian and assignments unlinked, permanently deleted from database.');

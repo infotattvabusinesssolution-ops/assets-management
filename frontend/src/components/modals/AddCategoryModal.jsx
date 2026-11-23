@@ -42,17 +42,12 @@ export function AddCategoryModal({
       const res = await api.post('/master-data/categories', newCategoryObj);
       const saved = (res && res.success && res.category) ? res.category : newCategoryObj;
 
-      const existing = JSON.parse(localStorage.getItem('fams_categories') || '[]');
-      const updated = [...existing, saved];
-      localStorage.setItem('fams_categories', JSON.stringify(updated));
-
       if (onSuccess) onSuccess(saved);
       onClose();
     } catch (err) {
-      console.warn('Category save fallback to local:', err);
-      const existing = JSON.parse(localStorage.getItem('fams_categories') || '[]');
-      const updated = [...existing, newCategoryObj];
-      localStorage.setItem('fams_categories', JSON.stringify(updated));
+      console.warn('Category save error:', err);
+      if (onSuccess) onSuccess(newCategoryObj);
+      onClose();
 
       if (onSuccess) onSuccess(newCategoryObj);
       onClose();

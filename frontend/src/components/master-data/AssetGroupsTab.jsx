@@ -45,7 +45,8 @@ export function AssetGroupsTab({
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
 
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
+  const storageKey = user?.companyId ? `fams_custom_asset_groups_${user.companyId}` : 'fams_custom_asset_groups';
   const {
     canCreate,
     canEdit,
@@ -79,15 +80,7 @@ export function AssetGroupsTab({
   const [showAddGrpModal, setShowAddGrpModal] = useState(false);
   const [editingGroup, setEditingGroup] = useState(null);
   const [modalError, setModalError] = useState('');
-  const [availableAssetTypes, setAvailableAssetTypes] = useState(() => {
-    try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_types') || '[]');
-      const existing = new Set(custom.map(c => c.name.toLowerCase()));
-      return [...custom, ...DEFAULT_ASSET_TYPES.filter(d => !existing.has(d.name.toLowerCase()))];
-    } catch (_) {
-      return DEFAULT_ASSET_TYPES;
-    }
-  });
+  const [availableAssetTypes, setAvailableAssetTypes] = useState([]);
 
   const [grpFormState, setGrpFormState] = useState({
     code: '',
@@ -130,24 +123,20 @@ export function AssetGroupsTab({
     setIsLoading(true);
     let customGroups = [];
     try {
-      customGroups = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
+      customGroups = JSON.parse(localStorage.getItem(storageKey) || '[]');
     } catch (e) { }
 
     try {
       const res = await api.get('/master-data/asset-groups?includeInactive=true');
-      if (res?.assetGroups && res.assetGroups.length > 0) {
+      if (res?.assetGroups && Array.isArray(res.assetGroups)) {
         console.log('📦 [AssetGroupsTab] Loaded asset groups from DB:', res.assetGroups);
-        const serverIds = new Set(res.assetGroups.map(g => String(g.id)));
-        const serverCodes = new Set(res.assetGroups.map(g => String(g.code).toUpperCase()));
-        const missingCustom = customGroups.filter(g => !serverIds.has(String(g.id)) && !serverCodes.has(String(g.code).toUpperCase()));
-        const merged = [...missingCustom, ...res.assetGroups];
-        setAssetGroups(merged);
-        if (!selectedGroup || !merged.some((g) => g.id === selectedGroup.id)) {
-          setSelectedGroup(merged[0] || null);
+        setAssetGroups(res.assetGroups);
+        if (!selectedGroup || !res.assetGroups.some((g) => g.id === selectedGroup.id)) {
+          setSelectedGroup(res.assetGroups[0] || null);
         }
       } else {
-        setAssetGroups(customGroups);
-        setSelectedGroup(customGroups[0] || null);
+        setAssetGroups([]);
+        setSelectedGroup(null);
       }
     } catch (err) {
       console.warn('Failed to fetch asset groups from backend, using local dataset:', err);
@@ -434,8 +423,8 @@ export function AssetGroupsTab({
         return;
       }
       try {
-        const currentCustom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-        localStorage.setItem('fams_custom_asset_groups', JSON.stringify(currentCustom.filter(g => g.id !== groupToDelete.id && g.code !== groupToDelete.code)));
+        const currentCustom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify(currentCustom.filter(g => g.id !== groupToDelete.id && g.code !== groupToDelete.code)));
       } catch (e) { }
 
       const updated = assetGroups.filter((g) => g.id !== groupToDelete.id);

@@ -43,7 +43,8 @@ export function CategoriesTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
+  const storageKey = user?.companyId ? `fams_custom_categories_${user.companyId}` : 'fams_custom_categories';
   const {
     canCreate,
     canEdit,
@@ -66,7 +67,7 @@ export function CategoriesTab({
   const loadCategories = async () => {
     setIsLoading(true);
     try {
-      const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
+      const subcatCustom = JSON.parse(localStorage.getItem(user?.companyId ? `fams_custom_subcategories_${user.companyId}` : 'fams_custom_subcategories') || '[]');
       const [res, grpRes, clsRes, subcatRes] = await Promise.all([
         api.get('/master-data/categories?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
@@ -86,7 +87,7 @@ export function CategoriesTab({
         });
         setAvailableAssetClasses(enrichedClasses);
       }
-      const allLiveSubCats = [...(subcatRes?.assetClasses || subcatRes?.subCategories || []), ...subcatCustom];
+      const allLiveSubCats = subcatRes?.assetClasses || subcatRes?.subCategories || (Array.isArray(subcatCustom) ? subcatCustom : []);
       setLiveSubCategories(allLiveSubCats);
       if (res?.categories && res.categories.length > 0) {
         const mapped = res.categories.map((cat, idx) => ({
@@ -129,32 +130,17 @@ export function CategoriesTab({
             spareParts: 0
           }
         }));
-        const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-        const serverCodes = new Set(mapped.map(m => (m.code || m.name || '').toUpperCase().trim()));
-        const missingCustom = custom.filter(c => !serverCodes.has((c.code || c.name || '').toUpperCase().trim()));
-        const rawList = [...mapped, ...missingCustom];
-
-        // Deduplicate strictly so no category appears twice
-        const seen = new Set();
-        const fullList = rawList.filter(item => {
-          const key = (item.code || item.name || '').toUpperCase().trim();
-          if (!key || seen.has(key)) return false;
-          seen.add(key);
-          return true;
-        });
-
-        setCategoriesList(fullList);
-        setSelectedCategory((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] || null : fullList[0] || null));
+        setCategoriesList(mapped);
+        setSelectedCategory((prev) => (prev ? mapped.find((c) => c.id === prev.id) || mapped[0] || null : mapped[0] || null));
       } else {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-        setCategoriesList(custom);
-        setSelectedCategory(custom[0] || null);
+        setCategoriesList([]);
+        setSelectedCategory(null);
       }
     } catch (err) {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+      console.warn('Failed to fetch categories, using fallback dataset:', err);
+      const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
       setCategoriesList(custom);
       setSelectedCategory(custom[0] || null);
-      console.warn('Failed to fetch categories, using fallback dataset:', err);
     } finally {
       setIsLoading(false);
     }
@@ -174,25 +160,8 @@ export function CategoriesTab({
   const [showAddCatModal, setShowAddCatModal] = useState(false);
   const [modalError, setModalError] = useState('');
   const [editingCategory, setEditingCategory] = useState(null);
-  const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
-    try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
-      return [...custom, ...INITIAL_ASSET_GROUPS.filter(d => !existing.has(d.name.toLowerCase()))];
-    } catch (_) {
-      return INITIAL_ASSET_GROUPS;
-    }
-  });
-
-  const [availableAssetClasses, setAvailableAssetClasses] = useState(() => {
-    try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
-      return [...custom, ...INITIAL_CLASSES.filter(d => !existing.has(d.name.toLowerCase()))];
-    } catch (_) {
-      return INITIAL_CLASSES;
-    }
-  });
+  const [availableAssetGroups, setAvailableAssetGroups] = useState([]);
+  const [availableAssetClasses, setAvailableAssetClasses] = useState([]);
 
   // Determines if an Asset Sub Group is inactive (either itself or via its parent group)
   const isClassInactive = (cls) => {
@@ -416,6 +385,7 @@ export function CategoriesTab({
         await api.put(`/master-data/categories/${editingCategory.id}`, {
           code: cleanCode,
           name: cleanName,
+          companyId: editingCategory.companyId || user?.companyId || undefined,
           assetSubGroupId: targetSubGroupId,
           className: catFormState.className,
           description: taggedDescription,
@@ -434,6 +404,7 @@ export function CategoriesTab({
       try {
         const payload = {
           name: cleanName,
+          companyId: user?.companyId || undefined,
           assetSubGroupId: targetSubGroupId,
           className: catFormState.className,
           description: taggedDescription,
@@ -558,8 +529,8 @@ export function CategoriesTab({
         return;
       }
       try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
-        localStorage.setItem('fams_custom_categories', JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
+        const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify(custom.filter(c => c.id !== cat.id && c.code !== cat.code)));
       } catch (_) { }
       setCategoryToDelete(null);
       await loadCategories();

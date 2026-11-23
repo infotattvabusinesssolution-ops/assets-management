@@ -42,7 +42,8 @@ export function ClassesTab({
   externalShowAddModal,
   setExternalShowAddModal
 }) {
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
+  const storageKey = user?.companyId ? `fams_custom_asset_classes_${user.companyId}` : 'fams_custom_asset_classes';
   const {
     canCreate,
     canEdit,
@@ -66,9 +67,9 @@ export function ClassesTab({
   const loadClasses = async () => {
     setIsLoading(true);
     try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-      const subcatCustom = JSON.parse(localStorage.getItem('fams_custom_subcategories') || '[]');
-      const customCats = JSON.parse(localStorage.getItem('fams_custom_categories') || '[]');
+      const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      const subcatCustom = JSON.parse(localStorage.getItem(user?.companyId ? `fams_custom_subcategories_${user.companyId}` : 'fams_custom_subcategories') || '[]');
+      const customCats = JSON.parse(localStorage.getItem(user?.companyId ? `fams_custom_categories_${user.companyId}` : 'fams_custom_categories') || '[]');
       const [res, grpRes, subcatRes, catRes] = await Promise.all([
         api.get('/master-data/asset-sub-groups?includeInactive=true').catch(() => null),
         api.get('/master-data/asset-groups?includeInactive=true').catch(() => null),
@@ -80,10 +81,12 @@ export function ClassesTab({
       const customSubcatCodes = subcatCustom.map(s => (s.code || '').toUpperCase());
       const subcatCodes = new Set([...serverSubcatCodes, ...customSubcatCodes]);
 
-      const allLiveCats = [...(catRes?.categories || []), ...customCats];
+      const allLiveCats = Array.isArray(catRes?.categories) ? catRes.categories : customCats;
       setLiveCategories(allLiveCats);
 
-      const allLiveSubCats = [...(subcatRes?.assetClasses || subcatRes?.subCategories || []), ...subcatCustom];
+      const allLiveSubCats = Array.isArray(subcatRes?.assetClasses || subcatRes?.subCategories)
+        ? (subcatRes?.assetClasses || subcatRes?.subCategories)
+        : subcatCustom;
       setLiveSubCategories(allLiveSubCats);
 
       if (grpRes?.assetGroups && Array.isArray(grpRes.assetGroups)) {
@@ -139,22 +142,14 @@ export function ClassesTab({
         });
       }
 
-      const serverCodes = new Set(serverClasses.map(m => (m.code || m.name || '').toUpperCase().trim()));
-      const missingCustom = custom.filter(c => !serverCodes.has((c.code || c.name || '').toUpperCase().trim()));
-      const rawList = [...serverClasses, ...missingCustom];
-
-      const seen = new Set();
-      const fullList = rawList.filter(item => {
-        const key = (item.code || item.name || '').toUpperCase().trim();
-        if (!key || seen.has(key)) return false;
-        seen.add(key);
-        return true;
-      });
-
+      const fullList = serverClasses;
       setClassesList(fullList);
       setSelectedClass((prev) => (prev ? fullList.find((c) => c.id === prev.id) || fullList[0] || null : fullList[0] || null));
     } catch (err) {
       console.warn('Failed to fetch asset classes, using local dataset:', err);
+      const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      setClassesList(custom);
+      setSelectedClass(custom[0] || null);
     } finally {
       setIsLoading(false);
     }
@@ -174,15 +169,7 @@ export function ClassesTab({
   const [showAddClsModal, setShowAddClsModal] = useState(false);
   const [modalError, setModalError] = useState('');
   const [editingClass, setEditingClass] = useState(null);
-  const [availableAssetGroups, setAvailableAssetGroups] = useState(() => {
-    try {
-      const custom = JSON.parse(localStorage.getItem('fams_custom_asset_groups') || '[]');
-      const existing = new Set(custom.map(c => (c.name || c.code).toLowerCase()));
-      return [...custom, ...INITIAL_ASSET_GROUPS.filter(d => !existing.has(d.name.toLowerCase()))];
-    } catch (_) {
-      return INITIAL_ASSET_GROUPS;
-    }
-  });
+  const [availableAssetGroups, setAvailableAssetGroups] = useState([]);
 
   const [clsFormState, setClsFormState] = useState({
     code: '',
@@ -372,6 +359,7 @@ export function ClassesTab({
         await api.put(`/master-data/asset-sub-groups/${editingClass.id}`, {
           code: cleanCode,
           name: cleanName,
+          companyId: editingClass.companyId || user?.companyId || undefined,
           assetGroupId: targetGroupId,
           groupName: clsFormState.groupName,
           assetGroupName: clsFormState.groupName,
@@ -383,6 +371,7 @@ export function ClassesTab({
       } else {
         const payload = {
           name: cleanName,
+          companyId: user?.companyId || undefined,
           assetGroupId: targetGroupId,
           groupName: clsFormState.groupName,
           assetGroupName: clsFormState.groupName,
@@ -515,8 +504,8 @@ export function ClassesTab({
         return;
       }
       try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_asset_classes') || '[]');
-        localStorage.setItem('fams_custom_asset_classes', JSON.stringify(custom.filter(c => c.id !== cls.id)));
+        const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+        localStorage.setItem(storageKey, JSON.stringify(custom.filter(c => c.id !== cls.id)));
       } catch (_) { }
       setClassToDelete(null);
       await loadClasses();

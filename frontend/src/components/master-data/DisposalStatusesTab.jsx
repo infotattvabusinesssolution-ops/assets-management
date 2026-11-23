@@ -41,7 +41,8 @@ export function DisposalStatusesTab({
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
 
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
+  const storageKey = user?.companyId ? `fams_disposal_statuses_${user.companyId}` : 'fams_disposal_statuses';
   const {
     canCreate,
     canEdit,
@@ -79,7 +80,7 @@ export function DisposalStatusesTab({
       if (res && res.disposalStatuses && Array.isArray(res.disposalStatuses)) {
         setStatuses(res.disposalStatuses);
       } else {
-        const stored = localStorage.getItem('fams_disposal_statuses');
+        const stored = localStorage.getItem(storageKey);
         if (stored) {
           try { setStatuses(JSON.parse(stored)); } catch (_) { setStatuses([]); }
         } else {
@@ -156,7 +157,7 @@ export function DisposalStatusesTab({
       await api.put(`/master-data/disposal-statuses/${item.id}`, { active: nextActive }).catch(() => null);
       setStatuses(prev => {
         const updated = prev.map(s => s.id === item.id ? { ...s, active: nextActive } : s);
-        try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
+        try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (_) {}
         return updated;
       });
       triggerToast?.(`Disposal status marked as ${nextActive ? 'Active' : 'Inactive'}`, 'success');
@@ -206,7 +207,7 @@ export function DisposalStatusesTab({
         await api.put(`/master-data/disposal-statuses/${editingStatus.id}`, formData);
         setStatuses(prev => {
           const updated = prev.map(s => s.id === editingStatus.id ? { ...s, ...formData } : s);
-          try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
+          try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (_) {}
           return updated;
         });
         triggerToast?.('Disposal status updated successfully', 'success');
@@ -221,7 +222,7 @@ export function DisposalStatusesTab({
         };
         setStatuses(prev => {
           const updated = [...prev, newRecord];
-          try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
+          try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (_) {}
           return updated;
         });
         triggerToast?.('Disposal status created successfully', 'success');
@@ -243,7 +244,7 @@ export function DisposalStatusesTab({
       await api.delete(`/master-data/disposal-statuses/${statusToDelete.id}`).catch(() => null);
       setStatuses(prev => {
         const updated = prev.filter(s => s.id !== statusToDelete.id);
-        try { localStorage.setItem('fams_disposal_statuses', JSON.stringify(updated)); } catch (_) {}
+        try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (_) {}
         return updated;
       });
       triggerToast?.('Disposal status deleted successfully', 'success');

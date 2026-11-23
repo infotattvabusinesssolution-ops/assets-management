@@ -116,7 +116,7 @@ export function LocationsTab({
   setExternalShowAddModal,
   onNavigateTab
 }) {
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
   const {
     canCreate,
     canEdit,
@@ -240,15 +240,13 @@ export function LocationsTab({
 
   const loadLevelOptions = async () => {
     const fetchLevel = async (lvl) => {
+      const storageKey = user?.companyId ? `fams_custom_location_level_${lvl}_${user.companyId}` : `fams_custom_location_level_${lvl}`;
       try {
         const res = await api.get(`/master-data/location-levels/${lvl}`).catch(() => null);
         let items = res?.locationLevels && Array.isArray(res.locationLevels) ? res.locationLevels : [];
-        const local = JSON.parse(localStorage.getItem(`fams_custom_location_level_${lvl}`) || '[]');
-        const codes = new Set(items.map(x => (x.code || '').toUpperCase().trim()));
-        const missingLocal = local.filter(l => !codes.has((l.code || '').toUpperCase().trim()));
-        return [...items, ...missingLocal].filter(it => it.active !== false && it.status !== 'Inactive');
+        return items.filter(it => it.active !== false && it.status !== 'Inactive');
       } catch (err) {
-        const local = JSON.parse(localStorage.getItem(`fams_custom_location_level_${lvl}`) || '[]');
+        const local = JSON.parse(localStorage.getItem(storageKey) || '[]');
         return local.filter(it => it.active !== false && it.status !== 'Inactive');
       }
     };
@@ -465,6 +463,7 @@ export function LocationsTab({
 
     const payload = {
       name: cleanName,
+      companyId: user?.companyId || undefined,
       type: locFormState.type || (allLocationTypes[0] || 'Internal'),
       locationLevel1: locFormState.locationLevel1 || '',
       locationLevel2: locFormState.locationLevel2 || '',

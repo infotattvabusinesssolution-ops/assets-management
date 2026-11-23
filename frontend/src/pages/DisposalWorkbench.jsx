@@ -32,9 +32,12 @@ import {
 } from 'lucide-react';
 import clsx from 'clsx';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 import { DisposalTransactionModal, SYSTEM_DISPOSAL_REASONS } from '../components/modals/DisposalTransactionModal';
 
 export function DisposalWorkbench() {
+  const { user } = useAuth();
+  const pendingStorageKey = user?.companyId ? `fams_pending_disposals_${user.companyId}` : 'fams_pending_disposals';
   const [searchParams, setSearchParams] = useSearchParams();
   const navigate = useNavigate();
 
@@ -83,7 +86,7 @@ export function DisposalWorkbench() {
       // Retrieve cached pending items from localStorage
       let cachedPending = [];
       try {
-        cachedPending = JSON.parse(localStorage.getItem('fams_pending_disposals') || '[]');
+        cachedPending = JSON.parse(localStorage.getItem(pendingStorageKey) || '[]');
       } catch (_) {}
 
       const pendingMap = new Map();
@@ -116,7 +119,7 @@ export function DisposalWorkbench() {
       const finalPending = Array.from(pendingMap.values());
       setPendingAssets(finalPending);
       try {
-        localStorage.setItem('fams_pending_disposals', JSON.stringify(finalPending));
+        localStorage.setItem(pendingStorageKey, JSON.stringify(finalPending));
       } catch (_) {}
     } catch (err) {
       console.warn('Failed to load disposal records:', err.message);

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { api } from '../../services/api';
+import { useAuth } from '../../context/AuthContext';
 import {
   ShieldCheck,
   Search,
@@ -234,9 +235,14 @@ const INITIAL_ROLES = [
 ];
 
 export function RolesPermissions() {
+  const { user } = useAuth();
+  const cachedRolesStorageKey = user?.companyId ? `fams_cached_roles_list_${user.companyId}` : 'fams_cached_roles_list';
+  const savedPermsStorageKey = user?.companyId ? `fams_saved_role_permissions_${user.companyId}` : 'fams_saved_role_permissions';
+  const customUsersStorageKey = user?.companyId ? `fams_custom_users_${user.companyId}` : 'fams_custom_users';
+
   const [roles, setRoles] = useState(() => {
     try {
-      const cached = localStorage.getItem('fams_cached_roles_list');
+      const cached = localStorage.getItem(cachedRolesStorageKey);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) return parsed;
@@ -246,7 +252,7 @@ export function RolesPermissions() {
   });
   const [loadingRoles, setLoadingRoles] = useState(() => {
     try {
-      const cached = localStorage.getItem('fams_cached_roles_list');
+      const cached = localStorage.getItem(cachedRolesStorageKey);
       if (cached) {
         const parsed = JSON.parse(cached);
         if (Array.isArray(parsed) && parsed.length > 0) return false;
@@ -259,17 +265,17 @@ export function RolesPermissions() {
   useEffect(() => {
     if (roles && roles.length > 0) {
       try {
-        localStorage.setItem('fams_cached_roles_list', JSON.stringify(roles));
+        localStorage.setItem(cachedRolesStorageKey, JSON.stringify(roles));
       } catch (_) {}
     }
-  }, [roles]);
+  }, [roles, cachedRolesStorageKey]);
 
   useEffect(() => {
     const fetchRoles = async () => {
       try {
         let savedPermsMap = {};
         try {
-          savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+          savedPermsMap = JSON.parse(localStorage.getItem(savedPermsStorageKey) || '{}');
         } catch (_) {}
 
         const res = await api.get('/admin/roles').catch(() => null);
@@ -621,7 +627,7 @@ export function RolesPermissions() {
 
       let localUsers = [];
       try {
-        localUsers = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+        localUsers = JSON.parse(localStorage.getItem(customUsersStorageKey) || '[]');
       } catch (e) {}
 
       const demoDomains = ['infotatwaa.com', 'corporate.com', 'infotattva.com', 'apexfacilities.com'];
@@ -681,7 +687,7 @@ export function RolesPermissions() {
 
       // Update localStorage custom users so User Management reflects role immediately
       try {
-        let localUsers = JSON.parse(localStorage.getItem('fams_custom_users') || '[]');
+        let localUsers = JSON.parse(localStorage.getItem(customUsersStorageKey) || '[]');
         localUsers = localUsers.map((u) => {
           if (assignedArray.includes(u.id)) {
             return { ...u, role: selectedRole.name, roleId: selectedRole.id };
@@ -691,7 +697,7 @@ export function RolesPermissions() {
           }
           return u;
         });
-        localStorage.setItem('fams_custom_users', JSON.stringify(localUsers));
+        localStorage.setItem(customUsersStorageKey, JSON.stringify(localUsers));
       } catch (e) {}
 
       const newCount = res?.userCount !== undefined ? res.userCount : assignedArray.length;
@@ -833,10 +839,10 @@ export function RolesPermissions() {
 
       // Cache saved permissions in localStorage so changes persist across screen navigation and page reloads
       try {
-        let savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+        let savedPermsMap = JSON.parse(localStorage.getItem(savedPermsStorageKey) || '{}');
         savedPermsMap[selectedRole.id] = permsToSave;
         if (selectedRole.code) savedPermsMap[selectedRole.code] = permsToSave;
-        localStorage.setItem('fams_saved_role_permissions', JSON.stringify(savedPermsMap));
+        localStorage.setItem(savedPermsStorageKey, JSON.stringify(savedPermsMap));
       } catch (_) {}
 
       // If the currently logged in user has this role, update their permissions in session immediately
@@ -866,10 +872,10 @@ export function RolesPermissions() {
         )
       );
       try {
-        let savedPermsMap = JSON.parse(localStorage.getItem('fams_saved_role_permissions') || '{}');
+        let savedPermsMap = JSON.parse(localStorage.getItem(savedPermsStorageKey) || '{}');
         savedPermsMap[selectedRole.id] = rolePermissions;
         if (selectedRole.code) savedPermsMap[selectedRole.code] = rolePermissions;
-        localStorage.setItem('fams_saved_role_permissions', JSON.stringify(savedPermsMap));
+        localStorage.setItem(savedPermsStorageKey, JSON.stringify(savedPermsMap));
       } catch (_) {}
       triggerToast(err.response?.data?.error || err.message || 'Permissions updated in current session.');
       setShowPermissionsModal(false);

@@ -36,18 +36,10 @@ export function AddCompanyModal({ isOpen, onClose, onSuccess }) {
       const res = await api.post('/master-data/companies', newCompanyObj);
       const saved = (res && res.success && res.company) ? res.company : newCompanyObj;
 
-      const existing = JSON.parse(localStorage.getItem('fams_companies') || '[]');
-      const updated = [...existing, saved];
-      localStorage.setItem('fams_companies', JSON.stringify(updated));
-
       if (onSuccess) onSuccess(saved);
       onClose();
     } catch (err) {
-      console.warn('Company save fallback to local:', err);
-      const existing = JSON.parse(localStorage.getItem('fams_companies') || '[]');
-      const updated = [...existing, newCompanyObj];
-      localStorage.setItem('fams_companies', JSON.stringify(updated));
-
+      console.warn('Company save error:', err);
       if (onSuccess) onSuccess(newCompanyObj);
       onClose();
     } finally {
