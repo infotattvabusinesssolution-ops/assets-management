@@ -2016,9 +2016,10 @@ export async function transitionLifecycle(req, res, next) {
       return res.status(400).json({ success: false, message: `Invalid status [${toStatus}]` });
     }
 
-    let asset = await prisma.asset.findUnique({ where: { id } });
+    const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+    let asset = await prisma.asset.findFirst({ where: { id, ...tenantWhere } });
     if (!asset) {
-      asset = await prisma.asset.findFirst({ where: { assetId: id } });
+      asset = await prisma.asset.findFirst({ where: { assetId: id, ...tenantWhere } });
     }
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
@@ -2307,9 +2308,10 @@ export async function requestAssetTransfer(req, res, next) {
     const { targetEmployee, targetLocation, reason, remarks } = req.body;
     const finalUserId = await resolveDbUserId(req.user);
 
-    let asset = await prisma.asset.findUnique({ where: { id } });
+    const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+    let asset = await prisma.asset.findFirst({ where: { id, ...tenantWhere } });
     if (!asset) {
-      asset = await prisma.asset.findFirst({ where: { assetId: id } });
+      asset = await prisma.asset.findFirst({ where: { assetId: id, ...tenantWhere } });
     }
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
@@ -2365,9 +2367,10 @@ export async function requestAssetReturn(req, res, next) {
     const { reason, returnStore, condition, accessories, remarks } = req.body;
     const finalUserId = await resolveDbUserId(req.user);
 
-    let asset = await prisma.asset.findUnique({ where: { id } });
+    const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+    let asset = await prisma.asset.findFirst({ where: { id, ...tenantWhere } });
     if (!asset) {
-      asset = await prisma.asset.findFirst({ where: { assetId: id } });
+      asset = await prisma.asset.findFirst({ where: { assetId: id, ...tenantWhere } });
     }
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });
@@ -2428,9 +2431,10 @@ export async function reportAssetIssue(req, res, next) {
     const { issueType, severity = 'MEDIUM', description, isUnusable } = req.body;
     const finalUserId = await resolveDbUserId(req.user);
 
-    let asset = await prisma.asset.findUnique({ where: { id } });
+    const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+    let asset = await prisma.asset.findFirst({ where: { id, ...tenantWhere } });
     if (!asset) {
-      asset = await prisma.asset.findFirst({ where: { assetId: id } });
+      asset = await prisma.asset.findFirst({ where: { assetId: id, ...tenantWhere } });
     }
     if (!asset) {
       return res.status(404).json({ success: false, message: 'Asset not found' });

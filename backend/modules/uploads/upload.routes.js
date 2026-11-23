@@ -7,6 +7,7 @@ import {
   updateUploadPolicyHandler
 } from './upload.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
+import { requireRole } from '../../middleware/rbac.js';
 
 const router = Router();
 
@@ -20,11 +21,11 @@ const upload = multer({
 
 router.use(authenticateToken);
 
-// Upload policies (Dynamic DB-controlled size & format restrictions)
+// Upload policies (Dynamic DB-controlled size & format restrictions - Admin only)
 router.get('/policy/:policyKey', getUploadPolicyHandler);
 router.get('/policy', getUploadPolicyHandler);
-router.put('/policy/:policyKey', updateUploadPolicyHandler);
-router.put('/policy', updateUploadPolicyHandler);
+router.put('/policy/:policyKey', requireRole('SYS_ADMIN'), updateUploadPolicyHandler);
+router.put('/policy', requireRole('SYS_ADMIN'), updateUploadPolicyHandler);
 
 // Single file upload (document or image)
 router.post('/file', upload.single('file'), uploadSingleFile);

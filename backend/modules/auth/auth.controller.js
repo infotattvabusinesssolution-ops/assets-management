@@ -534,7 +534,7 @@ export async function createUser(req, res, next) {
     }
 
     // Dynamic Company Password Policy Validation
-    const policy = await getPolicyForCompany(companyId || null);
+    const policy = await getPolicyForCompany(targetCompanyId || null);
     const validation = validatePasswordAgainstPolicy(password, policy);
     if (!validation.isValid) {
       return res.status(400).json({
@@ -574,6 +574,12 @@ export async function createUser(req, res, next) {
 
         if (!role) {
           return res.status(400).json({ success: false, message: `Invalid role specified: ${roleId}` });
+        }
+
+        // Privilege Escalation Guard: Only SYS_ADMIN can create another SYS_ADMIN
+        const currentUserRole = req.user?.role?.code || req.user?.role;
+        if (role.code === 'SYS_ADMIN' && currentUserRole !== 'SYS_ADMIN') {
+          return res.status(403).json({ success: false, message: 'Forbidden: Only a System Administrator can assign the System Administrator role.' });
         }
 
         const passwordHash = await bcrypt.hash(password, 10);
@@ -747,7 +753,13 @@ export async function updateUser(req, res, next) {
                 ]
               }
             });
-            if (role) resolvedRoleId = role.id;
+            if (role) {
+              const currentUserRole = req.user?.role?.code || req.user?.role;
+              if (role.code === 'SYS_ADMIN' && currentUserRole !== 'SYS_ADMIN') {
+                return res.status(403).json({ success: false, message: 'Forbidden: Only a System Administrator can assign the System Administrator role.' });
+              }
+              resolvedRoleId = role.id;
+            }
           }
 
           const updatedUser = await prisma.user.update({
@@ -757,7 +769,7 @@ export async function updateUser(req, res, next) {
               email: email ? email.trim().toLowerCase() : undefined,
               phone: phone !== undefined ? phone.trim() : undefined,
               roleId: resolvedRoleId,
-              companyId: companyId !== undefined ? (companyId || null) : undefined,
+              companyId: req.tenantCompanyId ? undefined : (companyId !== undefined ? (companyId || null) : undefined),
               siteId: siteId !== undefined ? (siteId || null) : undefined,
               departmentId: departmentId !== undefined ? (departmentId || null) : undefined,
               costCenterId: costCenterId !== undefined ? (costCenterId || null) : undefined,
@@ -843,11 +855,12 @@ export async function resetUserPassword(req, res, next) {
           where: { id },
           data: { passwordHash, forcePasswordChange: true }
         });
+        const safeId = (id || '').replace(/'/g, "''");
         await prisma.$executeRawUnsafe(`
           UPDATE users 
           SET temporary_password_expires_at = '${expiresAt.toISOString()}',
               must_change_password = 1 
-          WHERE id = '${id}'
+          WHERE id = '${safeId}'
         `).catch(() => null);
 
         // Record Audit Log for administrator reset
@@ -1011,6 +1024,9 @@ export async function changePassword(req, res, next) {
 export async function deleteUser(req, res, next) {
   try {
     const { id } = req.params;
+    if (id === req.user?.id) {
+      return res.status(400).json({ success: false, message: 'Security restriction: You cannot deactivate your own account.' });
+    }
 
     if (isSqlServerConnected) {
       try {

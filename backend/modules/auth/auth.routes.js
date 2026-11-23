@@ -1,4 +1,5 @@
 import { Router } from 'express';
+import rateLimit from 'express-rate-limit';
 import {
   login,
   getProfile,
@@ -20,10 +21,17 @@ import { enforceTenantScope } from '../../middleware/tenantScope.js';
 
 const router = Router();
 
-router.post('/login', login);
-router.post('/activate-license', activateLicense);
-router.post('/forgot-password', forgotPassword);
-router.post('/reset-password-with-token', resetPasswordWithToken);
+// Strict Rate Limiting for Auth Endpoints (mitigates brute-force credential stuffing)
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 30,
+  message: { success: false, message: 'Too many authentication attempts from this IP. Please try again after 15 minutes.' }
+});
+
+router.post('/login', authLimiter, login);
+router.post('/activate-license', authLimiter, activateLicense);
+router.post('/forgot-password', authLimiter, forgotPassword);
+router.post('/reset-password-with-token', authLimiter, resetPasswordWithToken);
 router.get('/password-policy', getPasswordPolicy);
 
 // Authenticated + Tenant Scoped Routes

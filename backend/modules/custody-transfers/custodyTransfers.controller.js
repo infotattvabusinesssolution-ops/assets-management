@@ -328,6 +328,15 @@ export async function updateTransfer(req, res, next) {
       return res.status(404).json({ success: false, message: 'Transfer record not found' });
     }
 
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      const isSender = existing.fromCompanyId === tenantCompanyId;
+      const isRecipient = existing.toCompanyId === tenantCompanyId;
+      if (!isSender && !isRecipient && req.user?.role?.code !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, message: 'Access denied: transfer record belongs to another company.' });
+      }
+    }
+
     const validEnumTypes = ['INTRA_SITE', 'INTER_SITE', 'INTER_COMPANY', 'INTER_DEPARTMENT'];
     const rawType = (transferType || existing.transferType || '').toUpperCase();
     const dbTransferType = validEnumTypes.includes(rawType) ? rawType : 'INTER_SITE';

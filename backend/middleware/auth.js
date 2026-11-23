@@ -14,6 +14,9 @@ export async function authenticateToken(req, res, next) {
 
     let decoded;
     if (token.startsWith('demo-')) {
+      if (config.env === 'production') {
+        return res.status(401).json({ success: false, message: 'Demo tokens are not permitted in production environment' });
+      }
       decoded = {
         id: 'usr-admin-01',
         username: 'admin',

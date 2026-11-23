@@ -710,11 +710,12 @@ export async function resetAdminUserPassword(req, res) {
         }
       }).catch(() => null);
 
+      const safeId = (id || '').replace(/'/g, "''");
       await prisma.$executeRawUnsafe(`
         UPDATE users 
         SET temporary_password_expires_at = '${expiresAt.toISOString()}',
             must_change_password = 1 
-        WHERE id = '${id}'
+        WHERE id = '${safeId}'
       `).catch(() => null);
 
       // Record Audit Log for administrator reset
@@ -758,6 +759,9 @@ export async function resetAdminUserPassword(req, res) {
 export async function deleteAdminUser(req, res) {
   try {
     const { id } = req.params;
+    if (id === req.user?.id) {
+      return res.status(400).json({ success: false, error: 'Security restriction: You cannot delete your own account.' });
+    }
     let user = memoryUsers.find(u => u.id === id);
 
     // Safety: prevent deletion of primary administrator
@@ -1385,6 +1389,10 @@ export async function createCompany(req, res) {
 export async function updateCompany(req, res) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId && id !== tenantCompanyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, error: 'Access denied: cannot modify another company.' });
+    }
     const data = req.body;
 
     try {
@@ -1481,6 +1489,13 @@ export async function createDepartment(req, res) {
 export async function updateDepartment(req, res) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      const dept = await prisma.department.findUnique({ where: { id } }).catch(() => null);
+      if (dept && dept.companyId && dept.companyId !== tenantCompanyId) {
+        return res.status(403).json({ success: false, error: 'Access denied: department belongs to another company.' });
+      }
+    }
     const data = req.body;
 
     try {
@@ -1619,6 +1634,13 @@ export async function createLocation(req, res) {
 export async function updateLocation(req, res) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      const site = await prisma.site.findUnique({ where: { id } }).catch(() => null);
+      if (site && site.companyId && site.companyId !== tenantCompanyId) {
+        return res.status(403).json({ success: false, error: 'Access denied: location belongs to another company.' });
+      }
+    }
     const data = req.body;
 
     try {
@@ -1716,6 +1738,13 @@ export async function createCostCenter(req, res) {
 export async function updateCostCenter(req, res) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      const cc = await prisma.costCenter.findUnique({ where: { id } }).catch(() => null);
+      if (cc && cc.companyId && cc.companyId !== tenantCompanyId) {
+        return res.status(403).json({ success: false, error: 'Access denied: section belongs to another company.' });
+      }
+    }
     const data = req.body;
 
     try {

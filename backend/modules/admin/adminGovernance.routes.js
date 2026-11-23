@@ -46,8 +46,12 @@ import {
   toggleJobStatus,
   triggerJobRunNow
 } from './adminGovernance.controller.js';
+import { authenticateToken } from '../../middleware/auth.js';
 
 const router = Router();
+
+// Enforce authentication on all admin governance, config, and system audit routes
+router.use(authenticateToken);
 
 // Configuration Endpoints
 router.get('/config', getSystemConfig);

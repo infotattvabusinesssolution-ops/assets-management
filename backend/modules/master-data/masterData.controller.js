@@ -905,6 +905,12 @@ export async function createCompany(req, res, next) {
 export async function updateCompany(req, res, next) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && id !== tenantCompanyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+      return res.status(403).json({ success: false, message: 'Access denied: cannot modify another company.' });
+    }
+
     const { code, name, currency, taxId, address, active, status } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
@@ -1417,9 +1423,23 @@ export async function createSite(req, res, next) {
 export async function updateSite(req, res, next) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT TOP 1 companyId FROM sites WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+        if (rows && rows.length > 0 && rows[0].companyId && rows[0].companyId !== tenantCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: site belongs to another company.' });
+        }
+      } catch (_) {}
+    }
+
     const { code, name, type, locationLevel1, locationLevel2, locationLevel3, locationLevel4, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
 
     const idx = inMemoryLocations.findIndex(l => l.id === id || l.code === id);
+    if (idx !== -1 && tenantCompanyId && inMemoryLocations[idx].companyId && inMemoryLocations[idx].companyId !== tenantCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: site belongs to another company.' });
+    }
     if (idx === -1) return res.status(404).json({ success: false, message: 'Location not found' });
 
     const cleanCode = code ? code.trim().toUpperCase() : inMemoryLocations[idx].code;
@@ -2650,6 +2670,22 @@ export async function updateAssetSubGroup(req, res, next) {
   try {
     await ensureAssetSubGroupsTable();
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT companyId FROM asset_sub_groups WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`).catch(() => []);
+        if (rows && rows.length > 0) {
+          if (rows[0].companyId && rows[0].companyId !== tenantCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
+          if (!rows[0].companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, message: 'Cannot modify system default sub groups.' });
+          }
+        }
+      } catch (_) {}
+    }
+
     const { code, name, assetGroupId, assetGroupName, groupName, assetType, description, active, status } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
@@ -2659,6 +2695,9 @@ export async function updateAssetSubGroup(req, res, next) {
 
     const current = readAssetSubGroupsFromFile();
     const idx = current.findIndex(s => s.id === id || s.code === id);
+    if (idx !== -1 && tenantCompanyId && current[idx].companyId && current[idx].companyId !== tenantCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
 
     if (cleanCode && current.some(s => s.id !== id && s.code !== id && (s.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Another Asset Sub Group with code "${cleanCode}" already exists.` });
@@ -3180,6 +3219,22 @@ export async function updateSubCategory(req, res, next) {
   try {
     await ensureSubCategoriesTable();
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT companyId FROM sub_categories WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`).catch(() => []);
+        if (rows && rows.length > 0) {
+          if (rows[0].companyId && rows[0].companyId !== tenantCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
+          if (!rows[0].companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, message: 'Cannot modify system default sub categories.' });
+          }
+        }
+      } catch (_) {}
+    }
+
     const { code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, className, assetGroupId, assetGroupName, groupName, description, active, status } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
@@ -3706,7 +3761,26 @@ export async function createManufacturer(req, res, next) {
 export async function updateManufacturer(req, res, next) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const mfr = await prisma.manufacturer.findFirst({ where: { OR: [{ id }, { code: id }] } }).catch(() => null);
+        if (mfr) {
+          if (mfr.companyId && mfr.companyId !== tenantCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
+          if (!mfr.companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, message: 'Cannot modify system default manufacturers.' });
+          }
+        }
+      } catch (_) {}
+    }
+
     let idx = inMemoryManufacturers.findIndex(m => m.id === id || m.code === id);
+    if (idx !== -1 && tenantCompanyId && inMemoryManufacturers[idx].companyId && inMemoryManufacturers[idx].companyId !== tenantCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
     if (idx === -1 && isDbConnected()) {
       try {
         const dbMfr = await prisma.manufacturer.findFirst({ where: { OR: [{ id }, { code: id }] } });
@@ -4161,6 +4235,17 @@ export async function createDepartment(req, res, next) {
 export async function updateDepartment(req, res, next) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const dept = await prisma.department.findUnique({ where: { id } }).catch(() => null);
+        if (dept && dept.companyId && dept.companyId !== tenantCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: department belongs to another company.' });
+        }
+      } catch (_) {}
+    }
+
     const {
       code,
       name,
@@ -4428,6 +4513,17 @@ export async function createCostCenter(req, res, next) {
 export async function updateCostCenter(req, res, next) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const cc = await prisma.costCenter.findUnique({ where: { id } }).catch(() => null);
+        if (cc && cc.companyId && cc.companyId !== tenantCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: section belongs to another company.' });
+        }
+      } catch (_) {}
+    }
+
     const { code, name, active, status, companyId, departmentId, type, manager, description } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : undefined;
     const cleanName = name ? name.trim() : undefined;
@@ -4723,6 +4819,17 @@ export async function createEmployee(req, res, next) {
 export async function updateEmployee(req, res, next) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const emp = await prisma.employee.findUnique({ where: { id } }).catch(() => null);
+        if (emp && emp.companyId && emp.companyId !== tenantCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: custodian belongs to another company.' });
+        }
+      } catch (_) {}
+    }
+
     const { employeeCode, fullName, email, companyId, departmentId, costCenterId, active, status, custodianType, organization, section, location, phone } = req.body;
     const cleanCode = employeeCode ? employeeCode.trim().toUpperCase() : undefined;
     const cleanEmail = email ? email.trim() : undefined;
@@ -4879,6 +4986,21 @@ export async function updateMasterEntity(req, res, next) {
       return res.status(400).json({ success: false, message: `Unsupported entity type: ${entityType}` });
     }
 
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const existingRec = await prisma[modelName].findUnique({ where: { id } }).catch(() => null);
+        if (existingRec) {
+          if (existingRec.companyId && existingRec.companyId !== tenantCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
+          if ((entityType === 'company' || modelName === 'company') && id !== tenantCompanyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, message: 'Access denied: cannot modify another company.' });
+          }
+        }
+      } catch (_) {}
+    }
+
     if ((entityType === 'department' || modelName === 'department') && req.body.active === true) {
       const existing = await prisma.department.findUnique({ where: { id } });
       const targetCompId = req.body.companyId || existing?.companyId;
@@ -4946,6 +5068,16 @@ export async function toggleMasterEntityStatus(req, res, next) {
     const existing = await prisma[modelName].findUnique({ where: { id } });
     if (!existing) {
       return res.status(404).json({ success: false, message: 'Record not found' });
+    }
+
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      if (existing.companyId && existing.companyId !== tenantCompanyId) {
+        return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+      }
+      if ((entityType === 'company' || modelName === 'company') && id !== tenantCompanyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+        return res.status(403).json({ success: false, message: 'Access denied: cannot modify another company.' });
+      }
     }
 
     // Validation: prevent activating child entity if parent company/manufacturer is inactive
@@ -6462,10 +6594,28 @@ export async function createItemMaster(req, res, next) {
 export async function updateItemMaster(req, res, next) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const safeId = (id || '').replace(/'/g, "''");
+        const rows = await prisma.$queryRawUnsafe(`SELECT companyId FROM item_masters WHERE id = '${safeId}' OR itemCode = '${safeId}'`).catch(() => []);
+        if (rows && rows.length > 0 && rows[0].companyId && rows[0].companyId !== tenantCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+        }
+      } catch (_) {}
+    }
+
     let idx = inMemoryItemMasters.findIndex(i => i.id === id || i.itemCode === id);
+    if (idx !== -1 && tenantCompanyId && inMemoryItemMasters[idx].companyId && inMemoryItemMasters[idx].companyId !== tenantCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
     if (idx === -1) {
       inMemoryItemMasters = readItemMastersFromFile();
       idx = inMemoryItemMasters.findIndex(i => i.id === id || i.itemCode === id);
+      if (idx !== -1 && tenantCompanyId && inMemoryItemMasters[idx].companyId && inMemoryItemMasters[idx].companyId !== tenantCompanyId) {
+        return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+      }
     }
 
     if (idx === -1 && isDbConnected()) {
@@ -7381,7 +7531,26 @@ export async function createBrand(req, res, next) {
 export async function updateBrand(req, res, next) {
   try {
     const { id } = req.params;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    if (tenantCompanyId && isDbConnected()) {
+      try {
+        const dbBrand = await prisma.brand.findFirst({ where: { OR: [{ id }, { code: id }] } }).catch(() => null);
+        if (dbBrand) {
+          if (dbBrand.companyId && dbBrand.companyId !== tenantCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
+          if (!dbBrand.companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, message: 'Cannot modify system default brands.' });
+          }
+        }
+      } catch (_) {}
+    }
+
     let idx = inMemoryBrands.findIndex(b => b.id === id || b.code === id);
+    if (idx !== -1 && tenantCompanyId && inMemoryBrands[idx].companyId && inMemoryBrands[idx].companyId !== tenantCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
     let existingDb = null;
     if (isDbConnected()) {
       try {
