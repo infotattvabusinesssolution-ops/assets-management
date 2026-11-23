@@ -207,7 +207,7 @@ async function getTenantWorkflowFilter(req) {
     };
   } catch (err) {
     console.warn('Error computing tenant workflow filter:', err.message);
-    return {};
+    return { requestedByUserId: '__FILTER_ERROR__' };
   }
 }
 

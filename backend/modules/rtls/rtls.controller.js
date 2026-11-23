@@ -5,7 +5,18 @@ import { realtimeEngine } from './realtimeEngine.js';
 
 export async function getReaders(req, res, next) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId || req.dataScopeFilter?.companyId;
+    let siteFilter = {};
+    if (tenantCompanyId) {
+      const companySites = await prisma.site.findMany({
+        where: { companyId: tenantCompanyId },
+        select: { id: true }
+      }).catch(() => []);
+      const siteIds = companySites.map(s => s.id);
+      siteFilter = { siteId: { in: siteIds } };
+    }
     const readers = await prisma.rtlsReader.findMany({
+      where: siteFilter,
       include: {
         antennas: true,
         _count: { select: { events: true, locations: true } }

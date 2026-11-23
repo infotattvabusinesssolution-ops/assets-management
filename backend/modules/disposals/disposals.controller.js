@@ -208,15 +208,21 @@ export async function getPendingDisposals(req, res, next) {
           orderBy: { updatedAt: 'desc' }
         });
 
-        if (assets && assets.length > 0) {
-          return res.json({ success: true, assets });
+        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+        if (Array.isArray(assets)) {
+          if (tenantCompanyId) return res.json({ success: true, assets });
+          if (assets.length > 0) return res.json({ success: true, assets });
         }
       } catch (dbErr) {
         console.warn('DB getPendingDisposals query skipped, using store:', dbErr.message);
       }
     }
 
-    const pendingList = readPendingDisposalsFromFile();
+    let pendingList = readPendingDisposalsFromFile();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      pendingList = pendingList.filter(a => a.companyId === tenantCompanyId);
+    }
     return res.json({ success: true, assets: pendingList });
   } catch (err) { next(err); }
 }
@@ -290,16 +296,27 @@ export async function getDisposedAssets(req, res, next) {
             };
           });
 
-        if (enrichedAssets.length > 0) {
-          writeDisposedAssetsToFile(enrichedAssets);
-          return res.json({ success: true, assets: enrichedAssets });
+        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+        if (Array.isArray(enrichedAssets)) {
+          if (tenantCompanyId) {
+            writeDisposedAssetsToFile(enrichedAssets);
+            return res.json({ success: true, assets: enrichedAssets });
+          }
+          if (enrichedAssets.length > 0) {
+            writeDisposedAssetsToFile(enrichedAssets);
+            return res.json({ success: true, assets: enrichedAssets });
+          }
         }
       } catch (dbErr) {
         console.warn('DB getDisposedAssets query skipped, using store:', dbErr.message);
       }
     }
 
-    const disposedAssets = readDisposedAssetsFromFile();
+    let disposedAssets = readDisposedAssetsFromFile();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      disposedAssets = disposedAssets.filter(a => a.companyId === tenantCompanyId);
+    }
     res.json({ success: true, assets: disposedAssets });
   } catch (err) { next(err); }
 }
@@ -307,15 +324,25 @@ export async function getDisposedAssets(req, res, next) {
 // Fetch KPI metrics and summary for asset disposals
 export async function getDisposalSummary(req, res, next) {
   try {
-    const disposedList = readDisposedAssetsFromFile();
-    const pendingList = readPendingDisposalsFromFile();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    let disposedList = readDisposedAssetsFromFile();
+    let pendingList = readPendingDisposalsFromFile();
+    if (tenantCompanyId) {
+      disposedList = disposedList.filter(a => a.companyId === tenantCompanyId);
+      pendingList = pendingList.filter(a => a.companyId === tenantCompanyId);
+    }
 
     if (isDbConnected()) {
       try {
+        const assetWhere = tenantCompanyId ? { companyId: tenantCompanyId } : {};
+        const txWhere = {
+          transactionType: { in: ['DISPOSAL', 'DISPOSE'] },
+          ...(tenantCompanyId ? { asset: { companyId: tenantCompanyId } } : {})
+        };
         const [allAssets, disposeTxs, bookValues] = await Promise.all([
-          prisma.asset.findMany({ select: { id: true, lifecycleStatus: true, active: true, acquisitionValue: true } }),
+          prisma.asset.findMany({ where: assetWhere, select: { id: true, lifecycleStatus: true, active: true, acquisitionValue: true } }),
           prisma.assetTransaction.findMany({
-            where: { transactionType: { in: ['DISPOSAL', 'DISPOSE'] } },
+            where: txWhere,
             select: { assetId: true, notes: true, payload: true, createdAt: true }
           }),
           prisma.assetBookValue.findMany({ where: { bookType: 'CORPORATE' } }).catch(() => [])

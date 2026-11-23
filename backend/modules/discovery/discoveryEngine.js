@@ -151,8 +151,9 @@ async function identifyIp(ip, mdnsName = '') {
 import { Bonjour } from 'bonjour-service';
 
 export class DiscoveryEngine {
-  static async runIpScan(ipStart, ipEnd, jobId = 'MANUAL-SCAN') {
+  static async runIpScan(ipStart, ipEnd, jobId = 'MANUAL-SCAN', options = {}) {
     const { start: startNum, end: endNum, scanner } = validateLocalRange(ipStart, ipEnd);
+    const companyId = options.companyId || null;
     const started = Date.now();
     const targets = Array.from({ length: endNum - startNum + 1 }, (_, index) => numToIp(startNum + index));
     const aliveIps = [];
@@ -214,7 +215,7 @@ export class DiscoveryEngine {
           macAddress: device.macAddress || null, discoverySource: 'IP Range Scan',
           manufacturer: device.manufacturer || null, osFamily: device.deviceType || null,
           lastSeen: now, rawCollectorPayload: JSON.stringify({
-            jobName: jobId, scanMethod: 'ICMP/TCP', observedAt: now.toISOString(),
+            companyId, jobName: jobId, scanMethod: 'ICMP/TCP', observedAt: now.toISOString(),
             deviceType: device.deviceType || 'Device'
           })
         };
@@ -228,10 +229,13 @@ export class DiscoveryEngine {
           where: { observationId: observation.id, status: 'CONFIRMED' }
         });
         if (!confirmed) {
-          const asset = await prisma.asset.findFirst({ where: { OR: [
-            { ipAddress: device.ipAddress },
-            ...(device.macAddress ? [{ macAddress: device.macAddress }] : [])
-          ] } });
+          const asset = await prisma.asset.findFirst({ where: {
+            ...(companyId ? { companyId } : {}),
+            OR: [
+              { ipAddress: device.ipAddress },
+              ...(device.macAddress ? [{ macAddress: device.macAddress }] : [])
+            ]
+          } });
           if (asset) {
             const suggested = await prisma.discoveryMatch.findFirst({
               where: { observationId: observation.id, status: 'SUGGESTED' }

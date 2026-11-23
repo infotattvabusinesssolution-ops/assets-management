@@ -17,6 +17,11 @@ export async function getCampaigns(req, res, next) {
       // Prisma error fallback
     }
 
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      return res.json({ success: true, campaigns: campaigns || [] });
+    }
+
     if (!campaigns || campaigns.length === 0) {
       const defaultCampaign = await stocktakeService.getCampaignDetails();
       campaigns = [defaultCampaign];

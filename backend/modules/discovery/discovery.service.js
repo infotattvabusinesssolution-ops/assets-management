@@ -25,6 +25,7 @@ const mapDevice = (observation) => {
     : match?.status === 'SUGGESTED' ? 'Review' : 'New';
   return {
     id: observation.id,
+    companyId: asset?.companyId || metadata.companyId || null,
     ipAddress: observation.ipAddress || '',
     hostname: observation.hostname || '',
     macAddress: observation.macAddress || '',
@@ -65,9 +66,11 @@ const mapDevice = (observation) => {
 };
 
 async function saveSnapshot(entityType, entityId, value, action = 'SAVE') {
-  await prisma.auditEvent.create({ data: {
-    entityType, entityId, action, afterState: JSON.stringify(value)
-  } });
+  await prisma.auditEvent.create({
+    data: {
+      entityType, entityId, action, afterState: JSON.stringify(value)
+    }
+  });
   return value;
 }
 
@@ -145,10 +148,12 @@ export class DiscoveryService {
     requireDb();
     const existing = await prisma.discoveryMatch.findFirst({ where: { observationId: deviceId } });
     if (!existing) throw new Error('Suggested match not found.');
-    await prisma.discoveryMatch.update({ where: { id: existing.id }, data: {
-      matchedAssetId: null, confidenceScore: 0, status: 'REJECTED',
-      reviewedByUserId: user?.id || null, reviewedAt: new Date()
-    } });
+    await prisma.discoveryMatch.update({
+      where: { id: existing.id }, data: {
+        matchedAssetId: null, confidenceScore: 0, status: 'REJECTED',
+        reviewedByUserId: user?.id || null, reviewedAt: new Date()
+      }
+    });
     return this.getDeviceById(deviceId);
   }
 
@@ -165,15 +170,17 @@ export class DiscoveryService {
     const already = await prisma.asset.findFirst({ where: { discoveryId: deviceId } });
     if (already) return { device: await this.confirmMatch({ deviceId, assetId: already.id, user }), assetId: already.assetId };
     const dbUser = user?.id ? await prisma.user.findUnique({ where: { id: user.id } }) : null;
-    const asset = await prisma.asset.create({ data: {
-      assetId: `AST-DISC-${Date.now()}`,
-      description: assetData.assetName || observation.hostname || observation.modelName || 'Discovered device',
-      serialNumber: assetData.serialNumber || observation.serialNumber,
-      hostname: observation.hostname, ipAddress: observation.ipAddress,
-      macAddress: observation.macAddress, discoveryId: deviceId,
-      companyId: company.id, siteId: site.id, categoryId: category.id,
-      lifecycleStatus: 'RECEIVED', condition: 'NEW', createdByUserId: dbUser?.id || null
-    } });
+    const asset = await prisma.asset.create({
+      data: {
+        assetId: `AST-DISC-${Date.now()}`,
+        description: assetData.assetName || observation.hostname || observation.modelName || 'Discovered device',
+        serialNumber: assetData.serialNumber || observation.serialNumber,
+        hostname: observation.hostname, ipAddress: observation.ipAddress,
+        macAddress: observation.macAddress, discoveryId: deviceId,
+        companyId: company.id, siteId: site.id, categoryId: category.id,
+        lifecycleStatus: 'RECEIVED', condition: 'NEW', createdByUserId: dbUser?.id || null
+      }
+    });
     const device = await this.confirmMatch({ deviceId, assetId: asset.id, user });
     return { device, assetId: asset.assetId };
   }
@@ -183,13 +190,15 @@ export class DiscoveryService {
     const row = await prisma.discoveryObservation.findUnique({ where: { id } });
     if (!row) throw new Error('Device not found.');
     const metadata = { ...parse(row.rawCollectorPayload), ...updates };
-    await prisma.discoveryObservation.update({ where: { id }, data: {
-      hostname: updates.hostname ?? row.hostname,
-      ipAddress: updates.ipAddress ?? row.ipAddress,
-      macAddress: updates.macAddress ?? row.macAddress,
-      serialNumber: updates.serialNumber ?? row.serialNumber,
-      rawCollectorPayload: JSON.stringify(metadata)
-    } });
+    await prisma.discoveryObservation.update({
+      where: { id }, data: {
+        hostname: updates.hostname ?? row.hostname,
+        ipAddress: updates.ipAddress ?? row.ipAddress,
+        macAddress: updates.macAddress ?? row.macAddress,
+        serialNumber: updates.serialNumber ?? row.serialNumber,
+        rawCollectorPayload: JSON.stringify(metadata)
+      }
+    });
     return this.getDeviceById(id);
   }
 
@@ -223,9 +232,11 @@ export class DiscoveryService {
 
   static async getJobStats() {
     const jobs = await this.getJobs();
-    return { total: jobs.length, completed: jobs.filter(j => j.status === 'Completed').length,
+    return {
+      total: jobs.length, completed: jobs.filter(j => j.status === 'Completed').length,
       running: jobs.filter(j => j.status === 'Running').length, failed: jobs.filter(j => j.status === 'Failed').length,
-      scheduled: jobs.filter(j => ['Scheduled', 'Ready'].includes(j.status)).length };
+      scheduled: jobs.filter(j => ['Scheduled', 'Ready'].includes(j.status)).length
+    };
   }
 
   static async getJobById(id) {
@@ -313,13 +324,16 @@ export class DiscoveryService {
   static async exportDataset({ exportType = 'CURRENT', format = 'csv', columns = [], filters = {} } = {}) {
     const result = await this.getDiscoveredDevices({ ...(exportType === 'CURRENT' ? filters : {}), limit: 2000 });
     const activeColumns = columns.length ? columns : ['ipAddress', 'hostname', 'macAddress', 'manufacturer', 'model', 'serialNumber', 'assetStatus'];
-    return { fileName: `discovery-devices.${format}`, recordCount: result.pagination.totalRecords,
-      format, columns: activeColumns, records: result.devices };
+    return {
+      fileName: `discovery-devices.${format}`, recordCount: result.pagination.totalRecords,
+      format, columns: activeColumns, records: result.devices
+    };
   }
 
   static async getImportCandidates(params = {}) {
     const result = await this.getDiscoveredDevices({ limit: 2000 });
-    let candidates = result.devices.map(d => ({ ...d,
+    let candidates = result.devices.map(d => ({
+      ...d,
       assetAction: d.linkedAssetId ? 'Match Existing' : 'Create New',
       assetStatus: d.linkedAssetId ? 'Matched' : 'New / Unregistered',
       matchedAssetId: d.linkedAssetId,
@@ -327,8 +341,10 @@ export class DiscoveryService {
     }));
     if (params.status === 'New / Unregistered') candidates = candidates.filter(d => !d.linkedAssetId);
     if (params.search) candidates = candidates.filter(d => `${d.hostname} ${d.ipAddress} ${d.serialNumber}`.toLowerCase().includes(params.search.toLowerCase()));
-    return { totalSelected: candidates.length, newAssetsCount: candidates.filter(d => !d.linkedAssetId).length,
-      matchedCount: candidates.filter(d => d.linkedAssetId).length, reviewCount: 0, candidates };
+    return {
+      totalSelected: candidates.length, newAssetsCount: candidates.filter(d => !d.linkedAssetId).length,
+      matchedCount: candidates.filter(d => d.linkedAssetId).length, reviewCount: 0, candidates
+    };
   }
 
   static async validateImportBatch({ devices = [] } = {}) {
@@ -339,8 +355,10 @@ export class DiscoveryService {
       return { deviceId: device.id, hostname: device.hostname, status: issues.length ? 'Failed' : 'Passed', issues };
     });
     const errorCount = validationDetails.filter(detail => detail.issues.length).length;
-    return { success: true, totalDevices: devices.length, validCount: devices.length - errorCount,
-      warningCount: 0, errorCount, allValid: errorCount === 0, validationDetails };
+    return {
+      success: true, totalDevices: devices.length, validCount: devices.length - errorCount,
+      warningCount: 0, errorCount, allValid: errorCount === 0, validationDetails
+    };
   }
 
   static async executeImportBatch({ devices = [], options = {} } = {}, user) {
@@ -358,11 +376,13 @@ export class DiscoveryService {
         } else skippedRecords.push({ deviceId: device.id });
       } catch (error) { failedRecords.push({ deviceId: device.id, message: error.message }); }
     }
-    const batch = { batchId, timestamp: new Date().toISOString(), initiatedBy: user?.fullName || '',
+    const batch = {
+      batchId, timestamp: new Date().toISOString(), initiatedBy: user?.fullName || '',
       totalProcessed: devices.length, assetsCreatedCount: createdAssets.length, existingLinkedCount: linkedAssets.length,
       skippedCount: skippedRecords.length, failedCount: failedRecords.length,
       createdAssets, linkedAssets, skippedRecords, failedRecords, options,
-      status: failedRecords.length ? 'Partial' : 'Completed' };
+      status: failedRecords.length ? 'Partial' : 'Completed'
+    };
     await saveSnapshot('DISCOVERY_IMPORT_BATCH', batchId, batch);
     return { success: failedRecords.length === 0, ...batch };
   }

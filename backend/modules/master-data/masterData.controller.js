@@ -183,75 +183,124 @@ export async function updateCodePrefixes(req, res, next) {
 
 export async function getMasterDataStats(req, res, next) {
   try {
-    let assetGroupsCount = memoryAssetGroups.length;
-    let companiesCount = 12;
-    let sitesCount = 8;
-    let buildingsCount = 16;
-    let floorsCount = 42;
-    let roomsCount = 138;
-    let categoriesCount = 24;
-    let activeCategoriesCount = 22;
-    let manufacturersCount = 45;
-    let modelsCount = 110;
-    let activeModelsCount = 98;
-    let departmentsCount = 15;
-    let costCentersCount = 28;
-    let employeesCount = 340;
-    let activeEmployeesCount = 325;
-    let customFieldsCount = 14;
-    let tagsCount = 52;
-    let contractsCount = 19;
-    let workflowsCount = 7;
-    let mapsCount = 4;
-    let activeSitesCount = 8;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
+    let assetGroupsCount = tenantCompanyId ? 0 : memoryAssetGroups.length;
+    let companiesCount = tenantCompanyId ? 1 : 12;
+    let sitesCount = tenantCompanyId ? 0 : 8;
+    let buildingsCount = tenantCompanyId ? 0 : 16;
+    let floorsCount = tenantCompanyId ? 0 : 42;
+    let roomsCount = tenantCompanyId ? 0 : 138;
+    let categoriesCount = tenantCompanyId ? 0 : 24;
+    let activeCategoriesCount = tenantCompanyId ? 0 : 22;
+    let manufacturersCount = tenantCompanyId ? 0 : 45;
+    let modelsCount = tenantCompanyId ? 0 : 110;
+    let activeModelsCount = tenantCompanyId ? 0 : 98;
+    let departmentsCount = tenantCompanyId ? 0 : 15;
+    let costCentersCount = tenantCompanyId ? 0 : 28;
+    let employeesCount = tenantCompanyId ? 0 : 340;
+    let activeEmployeesCount = tenantCompanyId ? 0 : 325;
+    let customFieldsCount = tenantCompanyId ? 0 : 14;
+    let tagsCount = tenantCompanyId ? 0 : 52;
+    let contractsCount = tenantCompanyId ? 0 : 19;
+    let workflowsCount = tenantCompanyId ? 0 : 7;
+    let mapsCount = tenantCompanyId ? 0 : 4;
+    let activeSitesCount = tenantCompanyId ? 0 : 8;
 
     if (isDbConnected()) {
       try {
-        const assetGroupsCountRes = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM asset_groups`).catch(() => [{ cnt: memoryAssetGroups.length }]);
-        assetGroupsCount = Number(assetGroupsCountRes?.[0]?.cnt || memoryAssetGroups.length);
+        if (tenantCompanyId) {
+          const tenantSiteRows = await prisma.site.findMany({
+            where: { companyId: tenantCompanyId },
+            select: { id: true, active: true }
+          }).catch(() => []);
+          const tenantSiteIds = tenantSiteRows.map(s => s.id);
+          sitesCount = tenantSiteRows.length;
+          activeSitesCount = tenantSiteRows.filter(s => s.active !== false).length;
 
-        const counts = await Promise.all([
-          prisma.company.count().catch(() => companiesCount),
-          prisma.site.count().catch(() => sitesCount),
-          prisma.building.count().catch(() => buildingsCount),
-          prisma.floor.count().catch(() => floorsCount),
-          prisma.room.count().catch(() => roomsCount),
-          prisma.category.count().catch(() => categoriesCount),
-          prisma.manufacturer.count().catch(() => manufacturersCount),
-          prisma.assetModel.count().catch(() => modelsCount),
-          prisma.department.count().catch(() => departmentsCount),
-          prisma.costCenter.count().catch(() => costCentersCount),
-          prisma.employee.count().catch(() => employeesCount),
-          prisma.customFieldDefinition.count().catch(() => customFieldsCount),
-          prisma.tag.count().catch(() => tagsCount),
-          prisma.contract.count().catch(() => contractsCount),
-          prisma.workflowDefinition.count().catch(() => workflowsCount),
-          prisma.floorMap.count().catch(() => mapsCount)
-        ]);
+          const counts = await Promise.all([
+            prisma.company.count({ where: { id: tenantCompanyId } }).catch(() => 1),
+            tenantSiteIds.length ? prisma.building.count({ where: { siteId: { in: tenantSiteIds } } }).catch(() => 0) : 0,
+            tenantSiteIds.length ? prisma.floor.count({ where: { building: { siteId: { in: tenantSiteIds } } } }).catch(() => 0) : 0,
+            tenantSiteIds.length ? prisma.room.count({ where: { floor: { building: { siteId: { in: tenantSiteIds } } } } }).catch(() => 0) : 0,
+            prisma.category.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
+            prisma.manufacturer.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
+            prisma.assetModel.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
+            prisma.department.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
+            prisma.costCenter.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
+            prisma.employee.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
+            prisma.tag.count({ where: { asset: { companyId: tenantCompanyId } } }).catch(() => 0),
+            prisma.contract.count({ where: { coveredAssets: { some: { asset: { companyId: tenantCompanyId } } } } }).catch(() => 0),
+            tenantSiteIds.length ? prisma.floorMap.count({ where: { floor: { building: { siteId: { in: tenantSiteIds } } } } }).catch(() => 0) : 0
+          ]);
 
-        companiesCount = counts[0];
-        sitesCount = counts[1];
-        buildingsCount = counts[2];
-        floorsCount = counts[3];
-        roomsCount = counts[4];
-        categoriesCount = counts[5];
-        manufacturersCount = counts[6];
-        modelsCount = counts[7];
-        departmentsCount = counts[8];
-        costCentersCount = counts[9];
-        employeesCount = counts[10];
-        customFieldsCount = counts[11];
-        tagsCount = counts[12];
-        contractsCount = counts[13];
-        workflowsCount = counts[14];
-        mapsCount = counts[15];
+          companiesCount = counts[0];
+          buildingsCount = counts[1];
+          floorsCount = counts[2];
+          roomsCount = counts[3];
+          categoriesCount = counts[4];
+          manufacturersCount = counts[5];
+          modelsCount = counts[6];
+          departmentsCount = counts[7];
+          costCentersCount = counts[8];
+          employeesCount = counts[9];
+          tagsCount = counts[10];
+          contractsCount = counts[11];
+          mapsCount = counts[12];
 
-        activeCategoriesCount = await prisma.category.count({ where: { active: true } }).catch(() => categoriesCount);
-        activeSitesCount = await prisma.site.count({ where: { active: true } }).catch(() => sitesCount);
-        activeEmployeesCount = await prisma.employee.count({ where: { active: true } }).catch(() => employeesCount);
-        activeModelsCount = await prisma.assetModel.count({ where: { active: true } }).catch(() => modelsCount);
+          const groupRes = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM asset_groups WHERE companyId = '${tenantCompanyId}'`).catch(() => [{ cnt: 0 }]);
+          assetGroupsCount = Number(groupRes?.[0]?.cnt || 0);
+
+          activeCategoriesCount = await prisma.category.count({ where: { companyId: tenantCompanyId, active: true } }).catch(() => categoriesCount);
+          activeEmployeesCount = await prisma.employee.count({ where: { companyId: tenantCompanyId, active: true } }).catch(() => employeesCount);
+          activeModelsCount = await prisma.assetModel.count({ where: { companyId: tenantCompanyId, active: true } }).catch(() => modelsCount);
+        } else {
+          const assetGroupsCountRes = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM asset_groups`).catch(() => [{ cnt: memoryAssetGroups.length }]);
+          assetGroupsCount = Number(assetGroupsCountRes?.[0]?.cnt || memoryAssetGroups.length);
+
+          const counts = await Promise.all([
+            prisma.company.count().catch(() => companiesCount),
+            prisma.site.count().catch(() => sitesCount),
+            prisma.building.count().catch(() => buildingsCount),
+            prisma.floor.count().catch(() => floorsCount),
+            prisma.room.count().catch(() => roomsCount),
+            prisma.category.count().catch(() => categoriesCount),
+            prisma.manufacturer.count().catch(() => manufacturersCount),
+            prisma.assetModel.count().catch(() => modelsCount),
+            prisma.department.count().catch(() => departmentsCount),
+            prisma.costCenter.count().catch(() => costCentersCount),
+            prisma.employee.count().catch(() => employeesCount),
+            prisma.customFieldDefinition.count().catch(() => customFieldsCount),
+            prisma.tag.count().catch(() => tagsCount),
+            prisma.contract.count().catch(() => contractsCount),
+            prisma.workflowDefinition.count().catch(() => workflowsCount),
+            prisma.floorMap.count().catch(() => mapsCount)
+          ]);
+
+          companiesCount = counts[0];
+          sitesCount = counts[1];
+          buildingsCount = counts[2];
+          floorsCount = counts[3];
+          roomsCount = counts[4];
+          categoriesCount = counts[5];
+          manufacturersCount = counts[6];
+          modelsCount = counts[7];
+          departmentsCount = counts[8];
+          costCentersCount = counts[9];
+          employeesCount = counts[10];
+          customFieldsCount = counts[11];
+          tagsCount = counts[12];
+          contractsCount = counts[13];
+          workflowsCount = counts[14];
+          mapsCount = counts[15];
+
+          activeCategoriesCount = await prisma.category.count({ where: { active: true } }).catch(() => categoriesCount);
+          activeSitesCount = await prisma.site.count({ where: { active: true } }).catch(() => sitesCount);
+          activeEmployeesCount = await prisma.employee.count({ where: { active: true } }).catch(() => employeesCount);
+          activeModelsCount = await prisma.assetModel.count({ where: { active: true } }).catch(() => modelsCount);
+        }
       } catch (dbErr) {
-        console.warn('Master data stats using resilient fallback:', dbErr.message);
+        console.warn('Master data stats error/fallback:', dbErr.message);
       }
     }
 
@@ -356,15 +405,15 @@ export async function getAssetGroups(req, res, next) {
     });
 
     const existingIds = new Set(dbGroups.map(g => g.id));
-    const existingCodes = new Set(dbGroups.map(g => g.code.toUpperCase()));
+    const existingCodes = new Set(dbGroups.map(g => (g.code || '').toUpperCase()));
     const memoryOnly = memoryAssetGroups.filter(mg =>
-      (!tenantCompanyId || mg.companyId === tenantCompanyId || !mg.companyId) &&
+      (tenantCompanyId ? mg.companyId === tenantCompanyId : true) &&
       !existingIds.has(mg.id) &&
       !existingCodes.has((mg.code || '').toUpperCase())
     );
     let assetGroups = [...memoryOnly, ...dbGroups];
 
-    if (assetGroups.length === 0) {
+    if (!tenantCompanyId && assetGroups.length === 0) {
       assetGroups = [...memoryAssetGroups];
     }
 
@@ -1099,7 +1148,11 @@ export async function getSites(req, res, next) {
               : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites ORDER BY name ASC`)
           : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites WHERE active = 1 ${tenantClause} ORDER BY name ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
-        if (Array.isArray(rows) && rows.length > 0) {
+        if (Array.isArray(rows)) {
+          if (rows.length === 0 && tenantCompanyId) {
+            return res.json({ success: true, sites: [] });
+          }
+          if (rows.length > 0) {
           // Pre-fetch relation counts for all sites in bulk
           const siteAssetCounts = {};
           const siteChildCounts = {};
@@ -1171,15 +1224,18 @@ export async function getSites(req, res, next) {
           inMemoryLocations = resolved;
           writeLocationsToFile(resolved);
           return res.json({ success: true, sites: resolved });
+          }
         }
       } catch (dbErr) {
         console.warn('DB getSites query skipped, using persistent store:', dbErr.message);
       }
     }
 
-    const resolvedMem = inMemoryLocations.map(loc => ({
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const filteredMem = inMemoryLocations.filter(loc => !tenantCompanyId || loc.companyId === tenantCompanyId);
+    const resolvedMem = filteredMem.map(loc => ({
       ...loc,
-      fullPath: loc.fullPath || computeLocationFullPath(loc, inMemoryLocations)
+      fullPath: loc.fullPath || computeLocationFullPath(loc, filteredMem)
     }));
     res.json({ success: true, sites: resolvedMem });
   } catch (err) { next(err); }
@@ -2456,7 +2512,8 @@ export async function getAssetSubGroups(req, res, next) {
         console.warn('DB getAssetSubGroups skipped:', dbErr.message);
       }
     }
-    const memList = readAssetSubGroupsFromFile().map(s => {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const memList = readAssetSubGroupsFromFile().filter(s => !tenantCompanyId || s.companyId === tenantCompanyId).map(s => {
       const groupFromDesc = (s.description || '').match(/\[group:([^\]]+)\]/)?.[1];
       const resolvedGroup = groupFromDesc || s.assetGroupName || s.groupName || '-';
       return {
@@ -2996,7 +3053,8 @@ export async function getSubCategories(req, res, next) {
         console.warn('DB getSubCategories skipped:', dbErr.message);
       }
     }
-    const memList = readSubCategoriesFromFile();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const memList = readSubCategoriesFromFile().filter(s => !tenantCompanyId || s.companyId === tenantCompanyId);
     const list = req.query.includeInactive !== 'false' ? memList : memList.filter(s => s.active !== false);
     res.json({ success: true, subCategories: list, assetClasses: list });
   } catch (err) { next(err); }
@@ -4729,6 +4787,7 @@ export async function deleteEmployee(req, res, next) {
     const action = req.query.action;
     const force = req.query.force === 'true' || action === 'force_delete';
     const deactivateOnly = action === 'deactivate';
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
 
     if (isDbConnected()) {
       const emp = await prisma.employee.findFirst({
@@ -8408,6 +8467,9 @@ export async function getSuppliers(req, res, next) {
           ORDER BY providerName ASC
         `);
         if (Array.isArray(rows)) {
+          if (rows.length === 0 && tenantCompanyId) {
+            return res.json({ success: true, suppliers: [], vendors: [] });
+          }
           const list = rows.map(r => ({
             id: r.id,
             code: r.code || r.id,
@@ -8416,6 +8478,7 @@ export async function getSuppliers(req, res, next) {
             contact: r.contact || '',
             email: r.email || '',
             phone: r.phone || '',
+            companyId: r.companyId,
             status: r.status || 'ACTIVE',
             active: r.status === 'ACTIVE'
           }));
@@ -8428,9 +8491,10 @@ export async function getSuppliers(req, res, next) {
       }
     }
 
+    const filteredMem = inMemorySuppliers.filter(s => !tenantCompanyId || s.companyId === tenantCompanyId);
     const list = includeInactive
-      ? inMemorySuppliers
-      : inMemorySuppliers.filter(s => s.active !== false && s.status !== 'INACTIVE');
+      ? filteredMem
+      : filteredMem.filter(s => s.active !== false && s.status !== 'INACTIVE');
 
     res.json({ success: true, suppliers: list, vendors: list });
   } catch (err) { next(err); }

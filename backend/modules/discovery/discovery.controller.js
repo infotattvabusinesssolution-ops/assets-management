@@ -16,7 +16,9 @@ export async function getDiscoveryKpis(req, res, next) {
 
 export async function getDiscoveredDevices(req, res, next) {
   try {
-    res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    if (typeof res.setHeader === 'function') {
+      res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+    }
     const result = await DiscoveryService.getDiscoveredDevices(req.query);
     res.json({ success: true, ...result });
   } catch (err) { next(err); }

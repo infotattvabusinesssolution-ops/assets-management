@@ -158,6 +158,7 @@ export async function getDashboardKpis(req, res, next) {
     const rawTransactions = await prisma.assetTransaction.findMany({
       take: 8,
       orderBy: { timestamp: 'desc' },
+      where: scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {},
       include: {
         asset: { select: { assetId: true, description: true } },
         performedBy: { select: { fullName: true, username: true } }
@@ -248,18 +249,8 @@ export async function getDashboardKpis(req, res, next) {
       }
     });
 
-    // 8. Top 5 Asset Types
-    const rawTypeCounts = await prisma.asset.groupBy({
-      by: ['assetType'],
-      _count: { _all: true },
-      where: baseFilter,
-      orderBy: { _count: { assetType: 'desc' } },
-      take: 5
-    }).catch(() => []);
-    const topAssetTypes = rawTypeCounts.map(t => ({
-      name: t.assetType || 'General Equipment',
-      count: t._count._all
-    }));
+    // 8. Top 5 Asset Categories / Types
+    const topAssetTypes = categoryCounts.slice(0, 5);
 
     // 9. Warranty Expiry (Next 6 Months)
     const warrantyExpiryData = [];
@@ -309,7 +300,8 @@ export async function getDashboardKpis(req, res, next) {
     // 11. Upcoming Maintenance Work Orders
     const rawUpcomingWO = await prisma.maintenanceWorkOrder.findMany({
       where: {
-        status: { in: ['OPEN', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS'] }
+        status: { in: ['OPEN', 'ASSIGNED', 'SCHEDULED', 'IN_PROGRESS'] },
+        ...(scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {})
       },
       take: 5,
       orderBy: { scheduledDate: 'asc' },
@@ -349,16 +341,28 @@ export async function getDashboardKpis(req, res, next) {
     }
 
     // 13. Other Telemetry Counts
-    const activeReadersCount = await prisma.rtlsReader.count({ where: { status: 'ONLINE' } }).catch(() => 0);
-    const totalReadersCount = await prisma.rtlsReader.count().catch(() => 0);
-    const activeFloorMapsCount = await prisma.floorMap.count({ where: { active: true } }).catch(() => 0);
+    const companySites = scopeFilter.companyId ? await prisma.site.findMany({ where: { companyId: scopeFilter.companyId }, select: { id: true } }).catch(() => []) : [];
+    const companySiteIds = companySites.map(s => s.id);
+    const readerWhere = scopeFilter.companyId ? { siteId: { in: companySiteIds } } : {};
+    const activeReadersCount = await prisma.rtlsReader.count({ where: { status: 'ONLINE', ...readerWhere } }).catch(() => 0);
+    const totalReadersCount = await prisma.rtlsReader.count({ where: readerWhere }).catch(() => 0);
+    const activeFloorMapsCount = await prisma.floorMap.count({
+      where: {
+        active: true,
+        ...(scopeFilter.companyId ? { floor: { building: { site: { companyId: scopeFilter.companyId } } } } : {})
+      }
+    }).catch(() => 0);
     const activeWorkOrdersCount = await prisma.maintenanceWorkOrder.count({
-      where: { status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS'] } }
+      where: {
+        status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS'] },
+        ...(scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {})
+      }
     }).catch(() => 0);
 
     // 14. Work Order SLA Trend Data
     const rawWorkOrders = await prisma.maintenanceWorkOrder.findMany({
       take: 100,
+      where: scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {},
       orderBy: { createdAt: 'desc' }
     }).catch(() => []);
     const woTrendMap = {};
