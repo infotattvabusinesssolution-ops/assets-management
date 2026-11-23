@@ -379,27 +379,6 @@ export function Login() {
     navigate(destination);
   };
 
-  // 1-Click Quick Admin Login Helper
-  const handleQuickAdminLogin = async () => {
-    setError('');
-    setUsername('admin');
-    setPassword('Password@123');
-    let res = await login('admin', 'Password@123');
-    if (!res || !res.success) {
-      res = await login('admin', 'Admin@123');
-    }
-    if (res && res.success) {
-      if (res.mustChangePassword || res.user?.forcePasswordChange) {
-        setForcePassUser(res.user);
-        setShowForcePassModal(true);
-        return;
-      }
-      redirectByUserRole(res.user);
-    } else {
-      setError(res?.message || 'Admin login failed');
-    }
-  };
-
   // Standard Username & Password Authentication
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -434,7 +413,12 @@ export function Login() {
         return;
       }
       redirectByUserRole(res.user);
-    } else if (res?.requiresLicenseActivation) {
+    } else if (
+      res?.requiresLicenseActivation ||
+      res?.code === 'LICENSE_INACTIVE' ||
+      res?.code === 'LICENSE_EXPIRED' ||
+      (res?.message && String(res.message).toLowerCase().includes('license'))
+    ) {
       setLicenseCompanyName(res.companyName || '');
       setLicenseKeyInput('');
       setLicenseError('');
@@ -859,36 +843,35 @@ export function Login() {
             </div>
 
             {error && (
-              <div className="py-1.5 px-3 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex items-center justify-between gap-2 shadow-2xs animate-fadeIn">
-                <div className="flex items-center gap-1.5 min-w-0">
-                  <AlertCircle className="w-3.5 h-3.5 flex-shrink-0 text-rose-600" />
-                  <span className="font-semibold truncate text-[11px] sm:text-xs">{error}</span>
+              <div className="py-2 px-3.5 rounded-xl bg-rose-50 border border-rose-200 text-rose-700 text-xs flex flex-col sm:flex-row sm:items-center justify-between gap-2 shadow-2xs animate-fadeIn">
+                <div className="flex items-center gap-2 min-w-0">
+                  <AlertCircle className="w-4 h-4 flex-shrink-0 text-rose-600" />
+                  <span className="font-semibold text-[11px] sm:text-xs leading-tight">{error}</span>
                 </div>
-                <button
-                  type="button"
-                  onClick={() => setError('')}
-                  className="p-0.5 hover:bg-rose-100 rounded text-rose-500 hover:text-rose-700 transition-colors cursor-pointer flex-shrink-0"
-                  title="Dismiss"
-                >
-                  <X className="w-3.5 h-3.5" />
-                </button>
+                <div className="flex items-center gap-2 flex-shrink-0 self-end sm:self-auto">
+                  {String(error).toLowerCase().includes('license') && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setShowLicenseModal(true);
+                        setLicenseError('');
+                      }}
+                      className="px-2.5 py-1 bg-[#6C2BD9] hover:bg-[#5B21B6] text-white rounded-lg text-[11px] font-bold transition shadow-sm cursor-pointer whitespace-nowrap"
+                    >
+                      Enter License Key
+                    </button>
+                  )}
+                  <button
+                    type="button"
+                    onClick={() => setError('')}
+                    className="p-1 hover:bg-rose-100 rounded text-rose-500 hover:text-rose-700 transition-colors cursor-pointer"
+                    title="Dismiss"
+                  >
+                    <X className="w-3.5 h-3.5" />
+                  </button>
+                </div>
               </div>
             )}
-
-            {/* Quick Demo Credentials Pill */}
-            <div className="flex items-center justify-between px-3 py-1.5 text-[11px] text-slate-600 bg-purple-50/70 border border-purple-100 rounded-xl">
-              <span className="flex items-center gap-1.5 min-w-0 truncate">
-                <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse flex-shrink-0"></span>
-                <span className="truncate">System Admin: <strong className="text-slate-800">admin</strong> / <strong className="text-slate-800">Password@123</strong></span>
-              </span>
-              <button
-                type="button"
-                onClick={handleQuickAdminLogin}
-                className="text-[#6C2BD9] hover:text-[#5b21b6] font-bold hover:underline cursor-pointer flex-shrink-0 ml-1.5"
-              >
-                Auto-fill &amp; Login
-              </button>
-            </div>
 
             {/* Standard Login Form */}
             <form onSubmit={handleSubmit} className="space-y-2.5 sm:space-y-3">
@@ -1000,6 +983,21 @@ export function Login() {
                 </svg>
                 <span>{t.signInWithSso}</span>
               </button>
+
+              {/* Direct License Activation Helper Link */}
+              <div className="text-center pt-2">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setShowLicenseModal(true);
+                    setLicenseError('');
+                  }}
+                  className="text-xs font-semibold text-[#6C2BD9] hover:text-[#5B21B6] hover:underline transition cursor-pointer inline-flex items-center gap-1.5"
+                >
+                  <KeyRound className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                  <span>Have a new company License Key? Activate Account</span>
+                </button>
+              </div>
 
             </form>
 

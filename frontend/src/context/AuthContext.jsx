@@ -191,12 +191,19 @@ export function AuthProvider({ children }) {
         mustChangePassword: Boolean(res.mustChangePassword ?? res.user?.forcePasswordChange)
       };
     } catch (err) {
-      const errData = err?.response?.data;
+      const errData = err?.response?.data || err;
+      const isLic = Boolean(
+        errData?.requiresLicenseActivation ||
+        errData?.licenseInactive ||
+        errData?.code === 'LICENSE_INACTIVE' ||
+        errData?.code === 'LICENSE_EXPIRED' ||
+        (errData?.message && String(errData.message).toLowerCase().includes('license'))
+      );
       return {
         success: false,
         message: errData?.message || err?.message || 'Login failed.',
-        requiresLicenseActivation: Boolean(errData?.requiresLicenseActivation),
-        companyName: errData?.companyName,
+        requiresLicenseActivation: isLic,
+        companyName: errData?.companyName || '',
         code: errData?.code
       };
     } finally {
@@ -229,9 +236,10 @@ export function AuthProvider({ children }) {
         mustChangePassword: Boolean(res.mustChangePassword ?? res.user?.forcePasswordChange)
       };
     } catch (err) {
+      const errData = err?.response?.data || err;
       return {
         success: false,
-        message: err?.response?.data?.message || err?.message || 'License activation failed.'
+        message: errData?.message || err?.message || 'License activation failed.'
       };
     } finally {
       setLoading(false);
