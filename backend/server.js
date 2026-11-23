@@ -3,6 +3,7 @@ import { connectDB, isDbConnected } from './config/db.js';
 import { config } from './config/index.js';
 import { logger } from './config/logger.js';
 import { ensureDefaultSeed } from './config/seedHelper.js';
+import { ensureMultiTenantTables } from './modules/admin/superAdmin.service.js';
 import { runDueMaintenancePlans } from './modules/maintenance/maintenancePlans.controller.js';
 import { runDuePreventiveSchedules } from './modules/maintenance/preventive.controller.js';
 
@@ -29,6 +30,7 @@ async function startServer() {
   try {
     const connected = await connectDB();
     if (connected) {
+      await ensureMultiTenantTables();
       await ensureDefaultSeed();
       runDueMaintenancePlans().catch(error => logger.error('Maintenance plan scheduler failed', error));
       runDuePreventiveSchedules().catch(error => logger.error('Preventive schedule runner failed', error));

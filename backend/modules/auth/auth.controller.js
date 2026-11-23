@@ -468,8 +468,11 @@ export async function getRoles(req, res, next) {
 
 export async function createUser(req, res, next) {
   try {
+    const { username, email, password, fullName, phone, roleId, companyId, branchId, siteId, departmentId, costCenterId, active } = req.body;
+
     // 1. Enterprise User Licensing Cap Validation
-    const licenseCheck = await validateCanAddUser();
+    const targetCompanyId = companyId || req.user?.companyId;
+    const licenseCheck = await validateCanAddUser(targetCompanyId);
     if (!licenseCheck.allowed) {
       return res.status(403).json({
         success: false,
@@ -477,8 +480,6 @@ export async function createUser(req, res, next) {
         message: licenseCheck.message
       });
     }
-
-    const { username, email, password, fullName, phone, roleId, companyId, siteId, departmentId, costCenterId, active } = req.body;
 
     if (!username || !email || !password || !fullName || !roleId) {
       return res.status(400).json({ success: false, message: 'Required fields missing: username, email, password, fullName, roleId' });
@@ -542,6 +543,7 @@ export async function createUser(req, res, next) {
             phone: phone ? phone.trim() : null,
             roleId: role.id,
             companyId: companyId || null,
+            branchId: branchId || null,
             siteId: siteId || null,
             departmentId: departmentId || null,
             costCenterId: costCenterId || null,

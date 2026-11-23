@@ -11,6 +11,7 @@
     "postinstall": "prisma generate",
     "seed": "node scripts/seed.js",
     "seed:working": "node scripts/seed-working-data.js",
+    "superadmin": "node scripts/superadmin.js",
     "test": "node --test tests/**/*.test.js"
   },
   "dependencies": {

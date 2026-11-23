@@ -36,7 +36,8 @@ export async function applyLicense(req, res, next) {
       });
     }
 
-    const updatedLicense = await applyLicenseKey(licenseKey);
+    const companyId = req.user?.companyId || req.body?.companyId;
+    const updatedLicense = await applyLicenseKey(licenseKey, companyId);
     res.json({
       success: true,
       message: 'License key verified and applied successfully.',

@@ -1138,9 +1138,23 @@ export async function getSites(req, res, next) {
 
 export async function createSite(req, res, next) {
   try {
-    const { code, name, type, locationLevel1, locationLevel2, locationLevel3, locationLevel4, level, parentLocation, city, country, address, postalCode, active, status } = req.body;
+    const { code, name, type, locationLevel1, locationLevel2, locationLevel3, locationLevel4, level, parentLocation, city, country, address, postalCode, active, status, companyId } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Location Name is required.' });
+    }
+
+    // License Enforcement: Check Max Branches for Company
+    const targetCompanyId = companyId || req.user?.companyId;
+    if (targetCompanyId) {
+      const { validateLicenseForCompany } = await import('../admin/superAdmin.service.js');
+      const branchCheck = await validateLicenseForCompany(targetCompanyId, 'ADD_BRANCH');
+      if (!branchCheck.allowed) {
+        return res.status(403).json({
+          success: false,
+          code: branchCheck.code,
+          message: branchCheck.message
+        });
+      }
     }
 
     const cleanName = name.trim();
@@ -7989,4 +8003,70 @@ export async function createSupplier(req, res, next) {
     writeSuppliersToFile(inMemorySuppliers);
     res.status(201).json({ success: true, supplier: newRecord, vendor: newRecord });
   } catch (err) { next(err); }
+}
+
+export async function getBranches(req, res, next) {
+  try {
+    const user = req.user;
+    const companyId = req.query.companyId || user?.companyId;
+    const where = {};
+    if (companyId) where.companyId = companyId;
+
+    if (isDbConnected()) {
+      const branches = await prisma.branch.findMany({
+        where,
+        orderBy: { name: 'asc' }
+      });
+      return res.json({ success: true, branches });
+    }
+    return res.json({ success: true, branches: [] });
+  } catch (err) {
+    next(err);
+  }
+}
+
+export async function createBranch(req, res, next) {
+  try {
+    const { name, code, city, address, companyId } = req.body;
+    const targetCompanyId = companyId || req.user?.companyId;
+
+    if (!name || !name.trim()) {
+      return res.status(400).json({ success: false, message: 'Branch Name is required.' });
+    }
+    if (!targetCompanyId) {
+      return res.status(400).json({ success: false, message: 'Company ID is required to create a branch.' });
+    }
+
+    const { validateLicenseForCompany } = await import('../admin/superAdmin.service.js');
+    const branchCheck = await validateLicenseForCompany(targetCompanyId, 'ADD_BRANCH');
+    if (!branchCheck.allowed) {
+      return res.status(403).json({
+        success: false,
+        code: branchCheck.code,
+        message: branchCheck.message
+      });
+    }
+
+    if (isDbConnected()) {
+      const newBranch = await prisma.branch.create({
+        data: {
+          name: name.trim(),
+          code: code ? code.trim().toUpperCase() : null,
+          city: city ? city.trim() : null,
+          address: address ? address.trim() : null,
+          companyId: targetCompanyId,
+          isActive: true
+        }
+      });
+      return res.status(201).json({ success: true, branch: newBranch, message: 'Branch created successfully.' });
+    }
+
+    return res.status(201).json({
+      success: true,
+      branch: { id: `br-${Date.now()}`, name: name.trim(), companyId: targetCompanyId, isActive: true },
+      message: 'Branch created.'
+    });
+  } catch (err) {
+    next(err);
+  }
 }
