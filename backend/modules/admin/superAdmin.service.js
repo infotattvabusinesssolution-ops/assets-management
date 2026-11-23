@@ -89,6 +89,29 @@ export async function ensureMultiTenantTables() {
       END
     `);
 
+    // 7. Add companyId to taxonomy master tables for multi-tenant isolation
+    const taxonomyTables = [
+      'asset_groups',
+      'asset_sub_groups',
+      'categories',
+      'sub_categories',
+      'manufacturers',
+      'brands',
+      'models',
+      'suppliers'
+    ];
+    for (const table of taxonomyTables) {
+      await prisma.$executeRawUnsafe(`
+        IF EXISTS (SELECT * FROM sysobjects WHERE name='${table}' and xtype='U')
+        BEGIN
+          IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('${table}') AND name = 'companyId')
+          BEGIN
+            ALTER TABLE ${table} ADD companyId NVARCHAR(100) NULL;
+          END
+        END
+      `).catch(() => null);
+    }
+
     tablesEnsured = true;
     logger.info('✅ Multi-Tenant architecture tables and relations ensured in SQL Server.');
   } catch (err) {

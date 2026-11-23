@@ -2337,7 +2337,9 @@ export async function getAssetSubGroups(req, res, next) {
     await ensureAssetSubGroupsTable();
     if (isDbConnected()) {
       try {
-        let whereClause = req.query.includeInactive !== 'false' ? '1=1' : 'sg.active = 1';
+        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+        const tenantFilter = tenantCompanyId ? `(sg.companyId = '${tenantCompanyId}' OR sg.companyId IS NULL)` : '1=1';
+        let whereClause = `${tenantFilter} ${req.query.includeInactive !== 'false' ? '' : 'AND sg.active = 1'}`;
         if (req.query.assetGroupId) {
           whereClause += ` AND sg.assetGroupId = '${String(req.query.assetGroupId).replace(/'/g, "''")}'`;
         }
@@ -2848,7 +2850,9 @@ export async function getSubCategories(req, res, next) {
     await ensureSubCategoriesTable();
     if (isDbConnected()) {
       try {
-        let whereClause = req.query.includeInactive !== 'false' ? '1=1' : 'sc.active = 1';
+        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+        const tenantFilter = tenantCompanyId ? `(sc.companyId = '${tenantCompanyId}' OR sc.companyId IS NULL)` : '1=1';
+        let whereClause = `${tenantFilter} ${req.query.includeInactive !== 'false' ? '' : 'AND sc.active = 1'}`;
         if (req.query.categoryId) {
           whereClause += ` AND sc.categoryId = '${String(req.query.categoryId).replace(/'/g, "''")}'`;
         }

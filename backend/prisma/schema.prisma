@@ -312,6 +312,7 @@ model AssetGroup {
   description    String?
   assetType      String          @default("Both")
   active         Boolean         @default(true)
+  companyId      String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   assetSubGroups AssetSubGroup[]
@@ -402,6 +403,7 @@ model Category {
   name                          String
   description                   String?
   assetSubGroupId               String?            @db.NVarChar(100)
+  companyId                     String?
   depreciationMethod            String             @default("STRAIGHT_LINE")
   annualDepreciationRatePercent Decimal?           @db.Decimal(5, 2)
   defaultUsefulLifeMonths       Int                @default(60)
@@ -430,6 +432,7 @@ model AssetSubGroup {
   description    String?
   totalAssets    Int?        @default(0)
   active         Boolean?    @default(true)
+  companyId      String?
   createdAt      DateTime?   @default(now())
   updatedAt      DateTime?   @updatedAt
   assetGroup     AssetGroup? @relation(fields: [assetGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
@@ -451,6 +454,7 @@ model SubCategory {
   description       String?
   totalAssets       Int?      @default(0)
   active            Boolean?  @default(true)
+  companyId         String?
   lifeInMonths      Int?      @default(60)
   prefix            String?
   minCapitalizationValue Float? @default(0)
@@ -466,6 +470,7 @@ model Manufacturer {
   name           String   @unique
   supportContact String?
   website        String?
+  companyId      String?
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
@@ -485,6 +490,7 @@ model Brand {
   manufacturerName String?       @db.NVarChar(200)
   description      String?       @db.NVarChar(500)
   active           Boolean?      @default(true)
+  companyId        String?
   createdAt        DateTime?     @default(now())
   updatedAt        DateTime?     @updatedAt
 
@@ -501,6 +507,7 @@ model AssetModel {
   manufacturerId String
   categoryId     String
   specifications String?
+  companyId      String?
   active         Boolean  @default(true)
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
