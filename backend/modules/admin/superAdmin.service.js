@@ -97,8 +97,11 @@ export async function ensureMultiTenantTables() {
       'sub_categories',
       'manufacturers',
       'brands',
+      'asset_models',
       'models',
-      'suppliers'
+      'service_providers',
+      'suppliers',
+      'item_masters'
     ];
     for (const table of taxonomyTables) {
       await prisma.$executeRawUnsafe(`
@@ -298,7 +301,7 @@ export async function provisionCompany({
       }
     });
 
-    // 5. Create License
+    // 5. Create License (pending client activation with license key)
     const newLicense = await prisma.license.create({
       data: {
         companyId: newCompany.id,
@@ -306,7 +309,7 @@ export async function provisionCompany({
         maxUsers: Number(maxUsers) || 100,
         maxBranches: Number(maxBranches) || 5,
         expiryDate,
-        isActive: true
+        isActive: false
       }
     });
 
@@ -398,7 +401,7 @@ export async function provisionCompany({
       maxUsers: Number(maxUsers) || 100,
       maxBranches: Number(maxBranches) || 5,
       expiryDate,
-      isActive: true
+      isActive: false
     },
     branch: {
       id: `br-${cleanCode.toLowerCase()}-01`,

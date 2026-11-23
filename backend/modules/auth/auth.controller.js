@@ -236,6 +236,41 @@ export async function login(req, res, next) {
             }
           }
 
+          // Check Company License Activation Gate
+          if (user.companyId && user.role?.code !== 'SUPER_ADMIN') {
+            try {
+              const license = await prisma.license.findUnique({
+                where: { companyId: user.companyId }
+              });
+
+              if (license) {
+                if (license.expiryDate && new Date() > new Date(license.expiryDate)) {
+                  return res.status(403).json({
+                    success: false,
+                    requiresLicenseActivation: true,
+                    licenseExpired: true,
+                    code: 'LICENSE_EXPIRED',
+                    companyName: user.company?.name || 'Your Organization',
+                    message: 'Your company license has expired. Please contact Super Administrator to renew.'
+                  });
+                }
+
+                if (license.isActive === false || license.isActive === 0) {
+                  return res.status(403).json({
+                    success: false,
+                    requiresLicenseActivation: true,
+                    licenseInactive: true,
+                    code: 'LICENSE_INACTIVE',
+                    companyName: user.company?.name || 'Your Organization',
+                    message: 'Company account is not yet activated. Please enter the Asset360 License Key provided by the Super Administrator.'
+                  });
+                }
+              }
+            } catch (licErr) {
+              console.warn('License verification error during login:', licErr.message);
+            }
+          }
+
           try {
             await prisma.user.update({
               where: { id: user.id },
@@ -1229,5 +1264,118 @@ export async function resetPasswordWithToken(req, res, next) {
     return res.status(500).json({ success: false, message: 'Failed to reset password: ' + err.message });
   }
 }
+
+/**
+ * Activate company license using credentials + license key
+ */
+export async function activateLicense(req, res, next) {
+  try {
+    const { username, password, licenseKey } = req.body;
+    if (!username || !password || !licenseKey) {
+      return res.status(400).json({
+        success: false,
+        message: 'Username, password, and license key are required.'
+      });
+    }
+
+    const cleanUsername = username.trim();
+    const cleanKey = licenseKey.trim().toUpperCase();
+
+    let user = null;
+    if (isSqlServerConnected) {
+      try {
+        user = await prisma.user.findFirst({
+          where: { username: cleanUsername },
+          include: {
+            role: true,
+            company: true,
+            site: true,
+            department: true,
+            costCenter: true
+          }
+        });
+      } catch (err) {
+        console.warn('User lookup in activateLicense error:', err.message);
+      }
+    }
+
+    if (!user || !user.active) {
+      return res.status(401).json({ success: false, message: 'Invalid credentials or account is inactive.' });
+    }
+
+    const isMatch = await bcrypt.compare(password, user.passwordHash).catch(() => false);
+    if (!isMatch) {
+      return res.status(401).json({ success: false, message: 'Invalid username or password.' });
+    }
+
+    if (!user.companyId) {
+      return res.status(400).json({ success: false, message: 'User is not associated with any registered company.' });
+    }
+
+    let license = null;
+    try {
+      license = await prisma.license.findUnique({
+        where: { companyId: user.companyId }
+      });
+    } catch (licErr) {
+      console.warn('License query error:', licErr.message);
+    }
+
+    if (!license) {
+      return res.status(404).json({ success: false, message: 'No license record found for this company. Please contact Super Administrator.' });
+    }
+
+    if ((license.licenseKey || '').trim().toUpperCase() !== cleanKey) {
+      return res.status(400).json({ success: false, message: 'Invalid License Key. The entered key does not match this company license.' });
+    }
+
+    if (license.expiryDate && new Date() > new Date(license.expiryDate)) {
+      return res.status(400).json({ success: false, message: 'This license has expired. Please contact Super Administrator to renew.' });
+    }
+
+    // Activate the license
+    await prisma.license.update({
+      where: { companyId: user.companyId },
+      data: { isActive: true }
+    });
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLogin: new Date() }
+    }).catch(() => null);
+
+    const token = jwt.sign(
+      {
+        id: user.id,
+        username: user.username,
+        role: user.role ? user.role.code : 'USER',
+        companyId: user.companyId
+      },
+      config.jwt.secret,
+      { expiresIn: config.jwt.accessExpiry || '24h' }
+    );
+
+    return res.json({
+      success: true,
+      message: 'License activated successfully! Welcome to Asset360.',
+      token,
+      mustChangePassword: Boolean(user.forcePasswordChange),
+      user: {
+        id: user.id,
+        username: user.username,
+        fullName: user.fullName,
+        email: user.email,
+        role: formatUserRole(user.role),
+        company: user.company,
+        site: user.site,
+        department: user.department,
+        forcePasswordChange: Boolean(user.forcePasswordChange)
+      }
+    });
+  } catch (err) {
+    next(err);
+  }
+}
+
 
 

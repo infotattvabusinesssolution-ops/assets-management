@@ -10,7 +10,8 @@ import {
   changePassword,
   deleteUser,
   forgotPassword,
-  resetPasswordWithToken
+  resetPasswordWithToken,
+  activateLicense
 } from './auth.controller.js';
 import { getPasswordPolicy } from '../admin/passwordPolicy.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
@@ -20,6 +21,7 @@ import { enforceTenantScope } from '../../middleware/tenantScope.js';
 const router = Router();
 
 router.post('/login', login);
+router.post('/activate-license', activateLicense);
 router.post('/forgot-password', forgotPassword);
 router.post('/reset-password-with-token', resetPasswordWithToken);
 router.get('/password-policy', getPasswordPolicy);
