@@ -191,7 +191,48 @@ export function AuthProvider({ children }) {
         mustChangePassword: Boolean(res.mustChangePassword ?? res.user?.forcePasswordChange)
       };
     } catch (err) {
-      return { success: false, message: err?.response?.data?.message || err?.message || 'Login failed.' };
+      const errData = err?.response?.data;
+      return {
+        success: false,
+        message: errData?.message || err?.message || 'Login failed.',
+        requiresLicenseActivation: Boolean(errData?.requiresLicenseActivation),
+        companyName: errData?.companyName,
+        code: errData?.code
+      };
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const activateLicense = async (username, password, licenseKey) => {
+    if (!username?.trim() || !password || !licenseKey?.trim()) {
+      return { success: false, message: 'Username, password, and license key are required.' };
+    }
+    setLoading(true);
+    try {
+      const res = await api.post('/auth/activate-license', {
+        username: username.trim(),
+        password,
+        licenseKey: licenseKey.trim()
+      });
+      if (!res?.success || !res.token || !res.user) throw new Error(res?.message || 'License activation failed.');
+      const normalized = normalizeUserProfile(res.user);
+      localStorage.removeItem('fams_explicit_logout');
+      localStorage.setItem('fams_token', res.token);
+      localStorage.setItem('fams_user', JSON.stringify(normalized));
+      localStorage.setItem('fams_primary_role', normalized.role?.code || '');
+      setUser(normalized);
+      setToken(res.token);
+      return {
+        success: true,
+        user: normalized,
+        mustChangePassword: Boolean(res.mustChangePassword ?? res.user?.forcePasswordChange)
+      };
+    } catch (err) {
+      return {
+        success: false,
+        message: err?.response?.data?.message || err?.message || 'License activation failed.'
+      };
     } finally {
       setLoading(false);
     }
@@ -364,7 +405,7 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{
-      user, token, isAuthenticated: !!user, loading, login, logout, changePassword,
+      user, token, isAuthenticated: !!user, loading, login, logout, changePassword, activateLicense,
       switchRole: () => false, can, hasPermission, hasMasterPermission, getMasterPermissions, hasRole
     }}>
       {children}

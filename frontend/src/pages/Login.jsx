@@ -25,7 +25,8 @@ import {
   X,
   Send,
   Wrench,
-  ShieldAlert
+  ShieldAlert,
+  KeyRound
 } from 'lucide-react';
 
 const LANGUAGES = [
@@ -294,6 +295,14 @@ export function Login() {
   const [isForcePassValid, setIsForcePassValid] = useState(false);
   const [loginCompanyPolicy, setLoginCompanyPolicy] = useState(DEFAULT_FRONTEND_POLICY);
 
+  // Company License Key Activation States
+  const [showLicenseModal, setShowLicenseModal] = useState(false);
+  const [licenseCompanyName, setLicenseCompanyName] = useState('');
+  const [licenseKeyInput, setLicenseKeyInput] = useState('');
+  const [licenseError, setLicenseError] = useState('');
+  const [licenseSubmitting, setLicenseSubmitting] = useState(false);
+  const [licenseSuccess, setLicenseSuccess] = useState(false);
+
   useEffect(() => {
     fetch(`${API_BASE_URL}/auth/password-policy`)
       .then((res) => res.json())
@@ -317,7 +326,7 @@ export function Login() {
 
   const langRef = useRef(null);
 
-  const { login, changePassword, logout, loading } = useAuth();
+  const { login, changePassword, activateLicense, logout, loading } = useAuth();
 
   const t = TRANSLATIONS[selectedLang.code] || TRANSLATIONS.en;
 
@@ -425,8 +434,48 @@ export function Login() {
         return;
       }
       redirectByUserRole(res.user);
+    } else if (res?.requiresLicenseActivation) {
+      setLicenseCompanyName(res.companyName || '');
+      setLicenseKeyInput('');
+      setLicenseError('');
+      setLicenseSuccess(false);
+      setShowLicenseModal(true);
     } else {
       setError(res?.message || 'Invalid username or password');
+    }
+  };
+
+  const handleActivateLicenseSubmit = async (e) => {
+    e.preventDefault();
+    setLicenseError('');
+
+    const key = licenseKeyInput.trim();
+    if (!key) {
+      setLicenseError('Please enter your Asset360 License Key.');
+      return;
+    }
+
+    setLicenseSubmitting(true);
+    try {
+      const res = await activateLicense(username.trim(), password, key);
+      if (res && res.success) {
+        setLicenseSuccess(true);
+        setTimeout(() => {
+          setShowLicenseModal(false);
+          if (res.mustChangePassword || res.user?.forcePasswordChange) {
+            setForcePassUser(res.user);
+            setShowForcePassModal(true);
+          } else {
+            redirectByUserRole(res.user);
+          }
+        }, 1200);
+      } else {
+        setLicenseError(res?.message || 'Failed to activate license. Please check your key.');
+      }
+    } catch (err) {
+      setLicenseError(err?.message || 'An error occurred during license activation.');
+    } finally {
+      setLicenseSubmitting(false);
     }
   };
 
@@ -1496,6 +1545,92 @@ export function Login() {
                     className="w-full py-2.5 text-slate-500 hover:text-slate-800 text-xs font-semibold rounded-xl transition cursor-pointer"
                   >
                     Cancel and Sign Out
+                  </button>
+                </div>
+              </form>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Company License Key Activation Gate Modal */}
+      {showLicenseModal && (
+        <div className="fixed inset-0 z-[100] bg-slate-900/60 backdrop-blur-md flex items-center justify-center p-4 animate-in fade-in duration-200">
+          <div className="bg-white border border-slate-200 rounded-3xl w-full max-w-md shadow-2xl p-6 sm:p-7 relative overflow-hidden animate-in zoom-in-95 duration-200 text-slate-900">
+            {/* Top decorative gradient bar */}
+            <div className="absolute top-0 left-0 right-0 h-1.5 bg-gradient-to-r from-amber-500 via-[#6C2BD9] to-indigo-600"></div>
+
+            <div className="text-center mb-5 pt-2">
+              <div className="w-14 h-14 rounded-2xl bg-amber-50 border border-amber-200 text-amber-600 flex items-center justify-center mx-auto mb-3 shadow-sm">
+                <KeyRound className="w-7 h-7 text-amber-600" />
+              </div>
+              <h3 className="text-lg font-bold text-slate-900">
+                Activate Company License
+              </h3>
+              <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">
+                Welcome{licenseCompanyName ? ` to ${licenseCompanyName}` : ''}! Your company account has been created and is pending license activation. Please enter your <span className="font-semibold text-slate-800">Asset360 License Key</span> to activate your account.
+              </p>
+            </div>
+
+            {licenseError && (
+              <div className="p-3 mb-4 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs flex items-center gap-2">
+                <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
+                <span>{licenseError}</span>
+              </div>
+            )}
+
+            {licenseSuccess ? (
+              <div className="p-4 bg-emerald-50 border border-emerald-200 rounded-2xl text-emerald-800 text-xs font-semibold flex flex-col items-center justify-center gap-2 text-center py-6">
+                <CheckCircle2 className="w-8 h-8 text-emerald-600 animate-bounce" />
+                <span className="text-sm font-bold text-emerald-900">License Activated Successfully!</span>
+                <span className="text-[11px] text-emerald-700">Signing into your account...</span>
+              </div>
+            ) : (
+              <form onSubmit={handleActivateLicenseSubmit} className="space-y-4 text-xs">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1.5">
+                    Asset360 License Key *
+                  </label>
+                  <div className="relative">
+                    <input
+                      type="text"
+                      required
+                      value={licenseKeyInput}
+                      onChange={(e) => setLicenseKeyInput(e.target.value.toUpperCase())}
+                      placeholder="e.g. ASSET360-ABCT-8A9F-2026-ENT"
+                      className="w-full px-3.5 py-2.5 bg-slate-50 border border-slate-200 rounded-xl text-slate-900 font-mono text-xs placeholder-slate-400 focus:bg-white focus:outline-none focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
+                    />
+                  </div>
+                  <p className="text-[11px] text-slate-400 mt-1">
+                    Format: ASSET360-&lt;COMPANY&gt;-&lt;KEY&gt;-&lt;YEAR&gt;-ENT
+                  </p>
+                </div>
+
+                <div className="pt-2 space-y-2">
+                  <button
+                    type="submit"
+                    disabled={licenseSubmitting || !licenseKeyInput.trim()}
+                    className="w-full py-3 bg-[#6C2BD9] hover:bg-[#5B21B6] disabled:opacity-50 text-white font-bold rounded-xl transition-all shadow-md flex items-center justify-center gap-2 cursor-pointer"
+                  >
+                    {licenseSubmitting ? (
+                      <span>Verifying & Activating...</span>
+                    ) : (
+                      <>
+                        <ShieldCheck className="w-4 h-4" />
+                        <span>Activate & Sign In</span>
+                      </>
+                    )}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setShowLicenseModal(false);
+                      setLicenseKeyInput('');
+                      setLicenseError('');
+                    }}
+                    className="w-full py-2.5 text-slate-500 hover:text-slate-800 text-xs font-semibold rounded-xl transition cursor-pointer"
+                  >
+                    Back to Login
                   </button>
                 </div>
               </form>
