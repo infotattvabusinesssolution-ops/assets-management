@@ -22,60 +22,70 @@ export async function getDashboardKpis(req, res, next) {
       totalWorkOrders,
       totalContracts
     ] = await Promise.all([
-      prisma.asset.count({ where: baseFilter }),
+      prisma.asset.count({ where: baseFilter }).catch(() => 0),
       prisma.asset.count({
         where: {
           ...scopeFilter,
           active: true,
           lifecycleStatus: { in: ['IN_SERVICE', 'ASSIGNED', 'TAGGED', 'IN_STORE'] }
         }
-      }),
+      }).catch(() => 0),
       prisma.asset.count({
         where: {
           ...scopeFilter,
           lifecycleStatus: { in: ['MISSING', 'LOST_STOLEN'] }
         }
-      }),
+      }).catch(() => 0),
       prisma.asset.count({
         where: {
           ...scopeFilter,
           active: true,
           lifecycleStatus: 'UNDER_MAINTENANCE'
         }
-      }),
+      }).catch(() => 0),
       prisma.asset.count({
         where: {
           ...scopeFilter,
           lifecycleStatus: { in: ['DISPOSED', 'RETIRED'] }
         }
-      }),
+      }).catch(() => 0),
       prisma.asset.aggregate({
         _sum: { acquisitionValue: true },
         where: baseFilter
-      }),
+      }).catch(() => ({ _sum: { acquisitionValue: 0 } })),
       prisma.maintenanceWorkOrder.count({
         where: {
           status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS'] },
           ...(scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {})
         }
-      }),
+      }).catch(() => 0),
       prisma.warranty.count({
         where: {
           endDate: { lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
           ...(scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {})
         }
-      }),
+      }).catch(() => 0),
       prisma.discoveryMatch.count({
         where: {
           status: { in: ['UNKNOWN', 'CONFLICT'] },
-          ...(scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {})
+          ...(scopeFilter.companyId ? { matchedAsset: { companyId: scopeFilter.companyId } } : {})
         }
-      }),
-      prisma.user.count({ where: { active: true, ...(scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {}) } }),
-      prisma.receipt.count({ where: scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {} }),
-      prisma.floorMap.count({ where: { active: true, ...(scopeFilter.companyId ? { site: { companyId: scopeFilter.companyId } } : {}) } }),
-      prisma.maintenanceWorkOrder.count({ where: scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {} }),
-      prisma.contract.count({ where: { active: true, ...(scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {}) } })
+      }).catch(() => 0),
+      prisma.user.count({ where: { active: true, ...(scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {}) } }).catch(() => 0),
+      prisma.receipt.count({ where: scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {} }).catch(() => 0),
+      prisma.floorMap.count({
+        where: {
+          active: true,
+          ...(scopeFilter.companyId ? { floor: { building: { site: { companyId: scopeFilter.companyId } } } } : {})
+        }
+      }).catch(() => 0),
+      prisma.maintenanceWorkOrder.count({ where: scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {} }).catch(() => 0),
+      prisma.contract.count({
+        where: {
+          active: true,
+          ...(scopeFilter.companyId ? { coveredAssets: { some: { asset: { companyId: scopeFilter.companyId } } } } : {})
+        }
+      }).catch(() => 0)
     ]);
 
     const totalAssetValue = Number(valueAggregation._sum.acquisitionValue || 0);

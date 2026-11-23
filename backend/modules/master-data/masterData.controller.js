@@ -4023,24 +4023,6 @@ export async function createDepartment(req, res, next) {
       ? code.trim().toUpperCase()
       : await generateAutoCode('department', cleanName, [], 'departments');
 
-    if (isDbConnected()) {
-      try {
-        const existing = await prisma.department.findFirst({
-          where: {
-            OR: [
-              { code: cleanCode },
-              { name: cleanName }
-            ]
-          }
-        });
-        if (existing) {
-          return res.status(409).json({ success: false, message: `Department with code "${cleanCode}" or name "${cleanName}" already exists.` });
-        }
-      } catch (dbErr) {
-        console.warn('DB check duplicate department skipped:', dbErr.message);
-      }
-    }
-
     let targetCompanyId = req.tenantCompanyId || req.user?.companyId || companyId || req.body.companyId;
     if (!targetCompanyId && req.body.company) {
       const comp = await prisma.company.findFirst({
@@ -4059,6 +4041,25 @@ export async function createDepartment(req, res, next) {
     }
     if (!targetCompanyId) {
       return res.status(400).json({ success: false, message: 'An active Company is required to create a Department.' });
+    }
+
+    if (isDbConnected()) {
+      try {
+        const existing = await prisma.department.findFirst({
+          where: {
+            companyId: targetCompanyId,
+            OR: [
+              { code: cleanCode },
+              { name: cleanName }
+            ]
+          }
+        });
+        if (existing) {
+          return res.status(409).json({ success: false, message: `Department with code "${cleanCode}" or name "${cleanName}" already exists in this company.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate department skipped:', dbErr.message);
+      }
     }
 
     const checkCompany = await prisma.company.findUnique({
@@ -6079,7 +6080,7 @@ export async function getItemMasters(req, res, next) {
         const activeFilter = includeInactive ? '' : 'AND active = 1';
         const query = `SELECT * FROM item_masters WHERE ${tenantFilter} ${activeFilter} ORDER BY itemCode ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
-        if (Array.isArray(rows) && rows.length > 0) {
+        if (Array.isArray(rows)) {
           const list = rows.map(r => ({
             id: r.id,
             itemCode: r.itemCode,
@@ -6106,8 +6107,6 @@ export async function getItemMasters(req, res, next) {
             createdAt: r.createdAt,
             updatedAt: r.updatedAt
           }));
-          inMemoryItemMasters = list;
-          writeItemMastersToFile(list);
           return res.json({ success: true, items: list });
         } else if (isDbConnected()) {
           // If DB table is empty, auto-sync file records into database
