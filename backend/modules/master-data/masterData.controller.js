@@ -5534,10 +5534,18 @@ async function ensureAssetConditionsTable() {
   if (assetConditionsTableEnsured || !isDbConnected()) return;
   try {
     await prisma.$executeRawUnsafe(`
+      IF EXISTS (SELECT * FROM sysobjects WHERE name='asset_conditions' and xtype='U')
+      BEGIN
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('asset_conditions') AND name = 'companyId')
+        BEGIN
+          ALTER TABLE asset_conditions ADD companyId NVARCHAR(100) NULL;
+        END
+      END
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='asset_conditions' and xtype='U')
       BEGIN
         CREATE TABLE asset_conditions (
           id NVARCHAR(100) PRIMARY KEY,
+          companyId NVARCHAR(100) NULL,
           code NVARCHAR(50) NOT NULL UNIQUE,
           name NVARCHAR(100) NOT NULL,
           description NVARCHAR(500) NULL,
@@ -5545,13 +5553,6 @@ async function ensureAssetConditionsTable() {
           createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
           updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
         );
-
-        INSERT INTO asset_conditions (id, code, name, description, active) VALUES
-        ('cond-new', 'NEW', 'New', 'Brand new, unused condition', 1),
-        ('cond-good', 'GOOD', 'Good', 'Normal working condition, minor wear', 1),
-        ('cond-fair', 'FAIR', 'Fair', 'Functional with noticeable wear or minor defects', 1),
-        ('cond-damaged', 'DAMAGED', 'Damaged', 'Requires repair or maintenance', 1),
-        ('cond-refurbished', 'REFURBISHED', 'Refurbished', 'Restored to working order', 1);
       END
     `);
     assetConditionsTableEnsured = true;
@@ -5929,9 +5930,17 @@ async function ensureDisposalStatusesTable() {
   if (disposalStatusesTableEnsured || !isDbConnected()) return;
   try {
     await prisma.$executeRawUnsafe(`
+      IF EXISTS (SELECT * FROM sysobjects WHERE name='disposal_statuses' and xtype='U')
+      BEGIN
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('disposal_statuses') AND name = 'companyId')
+        BEGIN
+          ALTER TABLE disposal_statuses ADD companyId NVARCHAR(100) NULL;
+        END
+      END
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='disposal_statuses' and xtype='U')
       CREATE TABLE disposal_statuses (
         id NVARCHAR(100) PRIMARY KEY,
+        companyId NVARCHAR(100) NULL,
         code NVARCHAR(50) NOT NULL UNIQUE,
         name NVARCHAR(100) NOT NULL,
         description NVARCHAR(500) NULL,
@@ -6031,9 +6040,17 @@ async function ensureUomsTable() {
   if (uomsTableEnsured || !isDbConnected()) return;
   try {
     await prisma.$executeRawUnsafe(`
+      IF EXISTS (SELECT * FROM sysobjects WHERE name='units_of_measure' and xtype='U')
+      BEGIN
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('units_of_measure') AND name = 'companyId')
+        BEGIN
+          ALTER TABLE units_of_measure ADD companyId NVARCHAR(100) NULL;
+        END
+      END
       IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='units_of_measure' and xtype='U')
       CREATE TABLE units_of_measure (
         id NVARCHAR(100) PRIMARY KEY,
+        companyId NVARCHAR(100) NULL,
         code NVARCHAR(50) NOT NULL UNIQUE,
         name NVARCHAR(100) NOT NULL,
         symbol NVARCHAR(20) NULL,
@@ -6047,6 +6064,8 @@ async function ensureUomsTable() {
       ALTER TABLE units_of_measure ADD symbol NVARCHAR(20) NULL;
       IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('units_of_measure') AND name = 'category')
       ALTER TABLE units_of_measure ADD category NVARCHAR(100) NULL;
+      IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('units_of_measure') AND name = 'companyId')
+      ALTER TABLE units_of_measure ADD companyId NVARCHAR(100) NULL;
     `);
 
     uomsTableEnsured = true;
@@ -6157,9 +6176,13 @@ export async function getItemMasters(req, res, next) {
       inMemoryItemMasters = readItemMastersFromFile();
       itemMastersLoaded = true;
     }
-    const list = includeInactive
-      ? inMemoryItemMasters
-      : inMemoryItemMasters.filter(i => i.active !== false);
+    let list = inMemoryItemMasters;
+    if (tenantCompanyId) {
+      list = list.filter(i => i.companyId === tenantCompanyId);
+    }
+    if (!includeInactive) {
+      list = list.filter(i => i.active !== false);
+    }
     res.json({ success: true, items: list });
   } catch (err) { next(err); }
 }
@@ -6167,20 +6190,23 @@ export async function getItemMasters(req, res, next) {
 export async function getItemMasterById(req, res, next) {
   try {
     const { id } = req.params;
-    let item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id || (i.code && i.code === id));
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    let item = inMemoryItemMasters.find(i => (i.id === id || i.itemCode === id || (i.code && i.code === id)) && (!tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId));
     if (!item) {
       inMemoryItemMasters = readItemMastersFromFile();
-      item = inMemoryItemMasters.find(i => i.id === id || i.itemCode === id || (i.code && i.code === id));
+      item = inMemoryItemMasters.find(i => (i.id === id || i.itemCode === id || (i.code && i.code === id)) && (!tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId));
     }
     if (!item && isDbConnected()) {
       try {
         await ensureItemMastersTable();
         const safeId = (id || '').replace(/'/g, "''");
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM item_masters WHERE id = '${safeId}' OR itemCode = '${safeId}'`);
+        const companyWhere = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM item_masters WHERE (id = '${safeId}' OR itemCode = '${safeId}') ${companyWhere}`);
         if (Array.isArray(rows) && rows.length > 0) {
           const r = rows[0];
           item = {
             id: r.id,
+            companyId: r.companyId || '',
             itemCode: r.itemCode,
             itemName: r.itemName,
             supplierBarcode: r.supplierBarcode || '',
@@ -6665,10 +6691,12 @@ export async function deleteItemMaster(req, res, next) {
 export async function getUoms(req, res, next) {
   try {
     await ensureUomsTable();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     if (isDbConnected()) {
       try {
-        const rows = await prisma.$queryRawUnsafe(`SELECT id, code, name, symbol, category, description, active FROM units_of_measure ORDER BY name ASC`);
-        if (Array.isArray(rows) && rows.length > 0) {
+        const tenantFilter = tenantCompanyId ? `WHERE companyId = '${tenantCompanyId}'` : '';
+        const rows = await prisma.$queryRawUnsafe(`SELECT id, code, name, symbol, category, description, active, companyId FROM units_of_measure ${tenantFilter} ORDER BY name ASC`);
+        if (Array.isArray(rows)) {
           const list = rows.map(r => ({
             id: r.id,
             code: r.code,
@@ -6676,35 +6704,40 @@ export async function getUoms(req, res, next) {
             symbol: r.symbol || '',
             category: r.category || 'Discrete Count',
             description: r.description || '',
+            companyId: r.companyId || '',
             active: Boolean(r.active)
           }));
-          inMemoryUoms = list;
-          writeUomsToFile(list);
           return res.json({ success: true, uoms: list });
         }
       } catch (dbErr) {
         console.warn('DB getUoms query skipped, using persistent store:', dbErr.message);
       }
     }
-    res.json({ success: true, uoms: inMemoryUoms });
+    let list = inMemoryUoms;
+    if (tenantCompanyId) {
+      list = list.filter(u => u.companyId === tenantCompanyId);
+    }
+    res.json({ success: true, uoms: list });
   } catch (err) { next(err); }
 }
 
 export async function createUom(req, res, next) {
   try {
+    const targetCompanyId = req.body.companyId || req.tenantCompanyId || req.user?.companyId || null;
     const { code, name, symbol, category, description, active } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'UOM Name is required.' });
     const cleanName = name.trim();
+    const tenantUoms = targetCompanyId ? inMemoryUoms.filter(u => u.companyId === targetCompanyId) : inMemoryUoms;
     const cleanCode = (code && code.trim())
       ? code.trim().toUpperCase()
-      : await generateAutoCode('uom', cleanName, inMemoryUoms, 'units_of_measure');
+      : await generateAutoCode('uom', cleanName, tenantUoms, 'units_of_measure');
     const cleanSymbol = (symbol || '').trim();
     const cleanCategory = (category || 'Discrete Count').trim();
     const cleanDesc = (description || '').trim();
     const isAct = active !== false;
 
-    // Strict duplicate check
-    const exists = inMemoryUoms.some(u => 
+    // Strict duplicate check scoped to tenant
+    const exists = tenantUoms.some(u => 
       (u.code && u.code.toUpperCase() === cleanCode) || 
       (u.name && u.name.toLowerCase() === cleanName.toLowerCase())
     );
@@ -6715,8 +6748,11 @@ export async function createUom(req, res, next) {
     await ensureUomsTable();
     if (isDbConnected()) {
       try {
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
         const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM units_of_measure WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
+          `SELECT id FROM units_of_measure 
+           WHERE (UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}')
+           ${companyWhere}`
         );
         if (Array.isArray(existing) && existing.length > 0) {
           return res.status(409).json({ success: false, message: `Duplicate Error: UOM with code "${cleanCode}" or name "${cleanName}" already exists.` });
@@ -6726,6 +6762,7 @@ export async function createUom(req, res, next) {
     const id = req.body.id || crypto.randomUUID();
     const newUom = {
       id,
+      companyId: targetCompanyId,
       code: cleanCode,
       name: cleanName,
       symbol: cleanSymbol,
@@ -6740,8 +6777,8 @@ export async function createUom(req, res, next) {
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
-          INSERT INTO units_of_measure (id, code, name, symbol, category, description, active, createdAt, updatedAt)
-          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanSymbol.replace(/'/g, "''")}', '${cleanCategory.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', ${isAct ? 1 : 0}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          INSERT INTO units_of_measure (id, code, name, symbol, category, description, active, companyId, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanSymbol.replace(/'/g, "''")}', '${cleanCategory.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', ${isAct ? 1 : 0}, ${targetCompanyId ? `'${targetCompanyId}'` : 'NULL'}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
       } catch (dbErr) {
         console.warn('DB insert units_of_measure skipped:', dbErr.message);
@@ -6757,8 +6794,27 @@ export async function createUom(req, res, next) {
 export async function updateUom(req, res, next) {
   try {
     const { id } = req.params;
+    const targetCompanyId = req.body.companyId || req.tenantCompanyId || req.user?.companyId || null;
     const { code, name, symbol, category, description, active } = req.body;
     const idx = inMemoryUoms.findIndex(u => u.id === id || u.code === id);
+
+    // Tenant check
+    if (idx !== -1 && targetCompanyId && inMemoryUoms[idx].companyId && inMemoryUoms[idx].companyId !== targetCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
+
+    if (isDbConnected() && targetCompanyId) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT id, companyId FROM units_of_measure 
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(rows) && rows[0]?.companyId && rows[0].companyId !== targetCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+        }
+      } catch (_) {}
+    }
+
     if (idx === -1) return res.status(404).json({ success: false, message: 'UOM not found' });
 
     const cleanCode = code ? code.trim().toUpperCase() : inMemoryUoms[idx].code;
@@ -6768,7 +6824,8 @@ export async function updateUom(req, res, next) {
     const cleanDesc = description !== undefined ? description.trim() : inMemoryUoms[idx].description;
     const isAct = active !== undefined ? Boolean(active) : inMemoryUoms[idx].active;
 
-    const dup = inMemoryUoms.find(u => (u.id !== id && u.code !== id) && (
+    const tenantUoms = targetCompanyId ? inMemoryUoms.filter(u => u.companyId === targetCompanyId) : inMemoryUoms;
+    const dup = tenantUoms.find(u => (u.id !== id && u.code !== id) && (
       (cleanCode && u.code && u.code.toUpperCase() === cleanCode) || 
       (cleanName && u.name && u.name.toLowerCase() === cleanName.toLowerCase())
     ));
@@ -6780,8 +6837,9 @@ export async function updateUom(req, res, next) {
         const whereParts = [];
         if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
         if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
         const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM units_of_measure WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
+          `SELECT id FROM units_of_measure WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')}) ${companyWhere}`
         );
         if (Array.isArray(existing) && existing.length > 0) {
           return res.status(409).json({ success: false, message: `Duplicate Error: UOM with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
@@ -6791,6 +6849,7 @@ export async function updateUom(req, res, next) {
 
     inMemoryUoms[idx] = {
       ...inMemoryUoms[idx],
+      companyId: targetCompanyId || inMemoryUoms[idx].companyId,
       code: cleanCode,
       name: cleanName,
       symbol: cleanSymbol,
@@ -6828,13 +6887,34 @@ export async function updateUom(req, res, next) {
 export async function deleteUom(req, res, next) {
   try {
     const { id } = req.params;
+    const targetCompanyId = req.tenantCompanyId || req.user?.companyId || null;
+    const idx = inMemoryUoms.findIndex(u => u.id === id || u.code === id);
+
+    // Tenant check
+    if (idx !== -1 && targetCompanyId && inMemoryUoms[idx].companyId && inMemoryUoms[idx].companyId !== targetCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
+
+    if (isDbConnected() && targetCompanyId) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT id, companyId FROM units_of_measure 
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(rows) && rows[0]?.companyId && rows[0].companyId !== targetCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+        }
+      } catch (_) {}
+    }
+
     console.log('🗑️ [Backend UOM Deleted]:', id);
     inMemoryUoms = inMemoryUoms.filter(u => u.id !== id && u.code !== id);
 
     await ensureUomsTable();
     if (isDbConnected()) {
       try {
-        await prisma.$executeRawUnsafe(`DELETE FROM units_of_measure WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'`);
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
+        await prisma.$executeRawUnsafe(`DELETE FROM units_of_measure WHERE (id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}') ${companyWhere}`);
       } catch (dbErr) {
         console.warn('DB delete units_of_measure skipped:', dbErr.message);
       }
@@ -6849,30 +6929,35 @@ export async function deleteUom(req, res, next) {
 export async function getDisposalStatuses(req, res, next) {
   try {
     await ensureDisposalStatusesTable();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const includeInactive = req.query.includeInactive !== 'false';
     if (isDbConnected()) {
       try {
-        const whereClause = includeInactive ? '' : 'WHERE active = 1';
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM disposal_statuses ${whereClause} ORDER BY name ASC`);
+        const tenantFilter = tenantCompanyId ? `WHERE companyId = '${tenantCompanyId}'` : 'WHERE 1=1';
+        const activeFilter = includeInactive ? '' : 'AND active = 1';
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM disposal_statuses ${tenantFilter} ${activeFilter} ORDER BY name ASC`);
         if (Array.isArray(rows)) {
           const list = rows.map(r => ({
             id: r.id,
             code: r.code,
             name: r.name,
             description: r.description || '',
+            companyId: r.companyId || '',
             active: Boolean(r.active)
           }));
-          inMemoryDisposalStatuses = list;
-          writeDisposalStatusesToFile(list);
           return res.json({ success: true, disposalStatuses: list });
         }
       } catch (dbErr) {
         console.warn('DB getDisposalStatuses skipped, using persistent store:', dbErr.message);
       }
     }
-    const list = includeInactive
-      ? inMemoryDisposalStatuses
-      : inMemoryDisposalStatuses.filter(s => s.active !== false);
+    let list = inMemoryDisposalStatuses;
+    if (tenantCompanyId) {
+      list = list.filter(s => s.companyId === tenantCompanyId);
+    }
+    if (!includeInactive) {
+      list = list.filter(s => s.active !== false);
+    }
     res.json({ success: true, disposalStatuses: list });
   } catch (err) { next(err); }
 }
@@ -6880,25 +6965,30 @@ export async function getDisposalStatuses(req, res, next) {
 export async function createDisposalStatus(req, res, next) {
   try {
     await ensureDisposalStatusesTable();
+    const targetCompanyId = req.body.companyId || req.tenantCompanyId || req.user?.companyId || null;
     const { code, name, description } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Name is required' });
 
     const cleanName = name.trim();
+    const tenantStatuses = targetCompanyId ? inMemoryDisposalStatuses.filter(s => s.companyId === targetCompanyId) : inMemoryDisposalStatuses;
     const cleanCode = (code && code.trim())
       ? code.trim().toUpperCase().replace(/\s+/g, '_')
-      : await generateAutoCode('disposal_status', cleanName, inMemoryDisposalStatuses, 'disposal_statuses');
+      : await generateAutoCode('disposal_status', cleanName, tenantStatuses, 'disposal_statuses');
 
-    if (inMemoryDisposalStatuses.some(s => s.code.toLowerCase() === cleanCode.toLowerCase())) {
+    if (tenantStatuses.some(s => s.code.toLowerCase() === cleanCode.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Disposal status code "${cleanCode}" already exists.` });
     }
-    if (inMemoryDisposalStatuses.some(s => s.name.toLowerCase() === cleanName.toLowerCase())) {
+    if (tenantStatuses.some(s => s.name.toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Disposal status name "${cleanName}" already exists.` });
     }
 
     if (isDbConnected()) {
       try {
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
         const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM disposal_statuses WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
+          `SELECT id FROM disposal_statuses 
+           WHERE (UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}')
+           ${companyWhere}`
         );
         if (Array.isArray(existing) && existing.length > 0) {
           return res.status(409).json({ success: false, message: `Disposal status with code "${cleanCode}" or name "${cleanName}" already exists.` });
@@ -6908,6 +6998,7 @@ export async function createDisposalStatus(req, res, next) {
 
     const newStatus = {
       id: 'disp-' + Date.now().toString(36),
+      companyId: targetCompanyId,
       code: cleanCode,
       name: cleanName,
       description: description ? description.trim() : '',
@@ -6918,8 +7009,8 @@ export async function createDisposalStatus(req, res, next) {
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
-          INSERT INTO disposal_statuses (id, code, name, description, active, createdAt, updatedAt)
-          VALUES ('${newStatus.id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(description || '').replace(/'/g, "''")}', 1, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          INSERT INTO disposal_statuses (id, code, name, description, active, companyId, createdAt, updatedAt)
+          VALUES ('${newStatus.id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${(description || '').replace(/'/g, "''")}', 1, ${targetCompanyId ? `'${targetCompanyId}'` : 'NULL'}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
       } catch (dbErr) {
         console.warn('DB insert disposal_statuses skipped:', dbErr.message);
@@ -6935,15 +7026,24 @@ export async function createDisposalStatus(req, res, next) {
 export async function updateDisposalStatus(req, res, next) {
   try {
     const { id } = req.params;
+    const targetCompanyId = req.body.companyId || req.tenantCompanyId || req.user?.companyId || null;
     const { code, name, description, active } = req.body;
     let idx = inMemoryDisposalStatuses.findIndex(s => s.id === id || s.code === id);
+    if (idx !== -1 && targetCompanyId && inMemoryDisposalStatuses[idx].companyId && inMemoryDisposalStatuses[idx].companyId !== targetCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
+
     if (idx === -1 && isDbConnected()) {
       try {
         const safeId = (id || '').replace(/'/g, "''");
         const rows = await prisma.$queryRawUnsafe(`SELECT * FROM disposal_statuses WHERE id = '${safeId}' OR code = '${safeId}'`);
         if (Array.isArray(rows) && rows[0]) {
+          if (targetCompanyId && rows[0].companyId && rows[0].companyId !== targetCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
           const loaded = {
             id: rows[0].id,
+            companyId: rows[0].companyId || '',
             code: rows[0].code,
             name: rows[0].name,
             description: rows[0].description || '',
@@ -6961,7 +7061,8 @@ export async function updateDisposalStatus(req, res, next) {
     const cleanDesc = description !== undefined ? description.trim() : (existing?.description || '');
     const cleanActive = active !== undefined ? (active ? 1 : 0) : (existing?.active !== false ? 1 : 0);
 
-    if (inMemoryDisposalStatuses.some(s => s.id !== id && s.code !== id && (
+    const tenantStatuses = targetCompanyId ? inMemoryDisposalStatuses.filter(s => s.companyId === targetCompanyId) : inMemoryDisposalStatuses;
+    if (tenantStatuses.some(s => s.id !== id && s.code !== id && (
       (cleanCode && s.code.toLowerCase() === cleanCode.toLowerCase()) ||
       (cleanName && s.name.toLowerCase() === cleanName.toLowerCase())
     ))) {
@@ -6975,8 +7076,9 @@ export async function updateDisposalStatus(req, res, next) {
         if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
         if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
         const safeId = (id || '').replace(/'/g, "''");
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
         const dbEx = await prisma.$queryRawUnsafe(
-          `SELECT id FROM disposal_statuses WHERE id != '${safeId}' AND code != '${safeId}' AND (${whereParts.join(' OR ')})`
+          `SELECT id FROM disposal_statuses WHERE id != '${safeId}' AND code != '${safeId}' AND (${whereParts.join(' OR ')}) ${companyWhere}`
         );
         if (Array.isArray(dbEx) && dbEx.length > 0) {
           return res.status(409).json({ success: false, message: `Another Disposal status with this code or name already exists.` });
@@ -6999,6 +7101,7 @@ export async function updateDisposalStatus(req, res, next) {
     if (idx !== -1) {
       inMemoryDisposalStatuses[idx] = {
         ...inMemoryDisposalStatuses[idx],
+        companyId: targetCompanyId || inMemoryDisposalStatuses[idx]?.companyId,
         code: cleanCode,
         name: cleanName,
         description: cleanDesc,
@@ -7008,6 +7111,7 @@ export async function updateDisposalStatus(req, res, next) {
     } else {
       inMemoryDisposalStatuses.push({
         id,
+        companyId: targetCompanyId,
         code: cleanCode,
         name: cleanName,
         description: cleanDesc,
@@ -7024,12 +7128,25 @@ export async function updateDisposalStatus(req, res, next) {
 export async function deleteDisposalStatus(req, res, next) {
   try {
     const { id } = req.params;
+    const targetCompanyId = req.tenantCompanyId || req.user?.companyId || null;
     await ensureDisposalStatusesTable();
+    const item = inMemoryDisposalStatuses.find(s => s.id === id || s.code === id);
+    if (item && targetCompanyId && item.companyId && item.companyId !== targetCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
+
     if (isDbConnected()) {
       try {
+        const safeId = (id || '').replace(/'/g, "''");
+        if (targetCompanyId) {
+          const rows = await prisma.$queryRawUnsafe(`SELECT id, companyId FROM disposal_statuses WHERE id = '${safeId}' OR code = '${safeId}'`);
+          if (Array.isArray(rows) && rows[0]?.companyId && rows[0].companyId !== targetCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
+        }
         await prisma.$executeRawUnsafe(`
           DELETE FROM disposal_statuses
-          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+          WHERE id = '${safeId}' OR code = '${safeId}'
         `);
       } catch (dbErr) {
         console.warn('DB delete disposal_statuses skipped:', dbErr.message);
@@ -7716,18 +7833,37 @@ function writeLocationLevelsToFile(level, list) {
   }
 }
 
+async function ensureLocationLevelTable(level) {
+  if (!isDbConnected()) return;
+  const tableName = `location_level_${level}`;
+  try {
+    await prisma.$executeRawUnsafe(`
+      IF EXISTS (SELECT * FROM sysobjects WHERE name='${tableName}' and xtype='U')
+      BEGIN
+        IF NOT EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('${tableName}') AND name = 'companyId')
+        BEGIN
+          ALTER TABLE ${tableName} ADD companyId NVARCHAR(100) NULL;
+        END
+      END
+    `).catch(() => null);
+  } catch (_) {}
+}
+
 export async function getLocationLevels(req, res, next) {
   try {
     const level = parseInt(req.params.level, 10) || 1;
     const tableName = `location_level_${level}`;
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    await ensureLocationLevelTable(level);
     let list = [];
     if (isDbConnected()) {
       try {
-        const whereClause = req.query.includeInactive === 'false' ? 'WHERE active = 1' : '';
+        const tenantFilter = tenantCompanyId ? `WHERE companyId = '${tenantCompanyId}'` : 'WHERE 1=1';
+        const activeFilter = req.query.includeInactive === 'false' ? 'AND active = 1' : '';
         const rows = await prisma.$queryRawUnsafe(`
-          SELECT id, code, name, description, status, active, createdAt, updatedAt
+          SELECT id, code, name, description, status, active, companyId, createdAt, updatedAt
           FROM ${tableName}
-          ${whereClause}
+          ${tenantFilter} ${activeFilter}
           ORDER BY name ASC
         `);
         if (Array.isArray(rows)) {
@@ -7738,11 +7874,11 @@ export async function getLocationLevels(req, res, next) {
             description: r.description || '',
             status: r.status || (r.active ? 'Active' : 'Inactive'),
             active: Boolean(r.active),
+            companyId: r.companyId || '',
             level,
             createdAt: r.createdAt,
             updatedAt: r.updatedAt
           }));
-          writeLocationLevelsToFile(level, list);
           return res.json({ success: true, locationLevels: list, level });
         }
       } catch (dbErr) {
@@ -7750,6 +7886,9 @@ export async function getLocationLevels(req, res, next) {
       }
     }
     list = readLocationLevelsFromFile(level);
+    if (tenantCompanyId) {
+      list = list.filter(item => item.companyId === tenantCompanyId);
+    }
     if (req.query.includeInactive === 'false') {
       list = list.filter(item => item.active !== false && item.status !== 'Inactive');
     }
@@ -7761,28 +7900,33 @@ export async function createLocationLevel(req, res, next) {
   try {
     const level = parseInt(req.params.level, 10) || 1;
     const tableName = `location_level_${level}`;
+    const targetCompanyId = req.body.companyId || req.tenantCompanyId || req.user?.companyId || null;
     const { code, name, description, status, active } = req.body;
     if (!name || !name.trim()) {
       return res.status(400).json({ success: false, message: 'Location Name is required.' });
     }
+    await ensureLocationLevelTable(level);
     const cleanName = name.trim();
+    const allRecords = readLocationLevelsFromFile(level);
+    const tenantRecords = targetCompanyId ? allRecords.filter(r => r.companyId === targetCompanyId) : allRecords;
     const cleanCode = (code && code.trim())
       ? code.trim().toUpperCase()
-      : await generateAutoCode(`location_level_${level}`, cleanName, readLocationLevelsFromFile(level), tableName);
+      : await generateAutoCode(`location_level_${level}`, cleanName, tenantRecords, tableName);
 
-    const list = readLocationLevelsFromFile(level);
-    if (list.some(item => (item.code || '').toUpperCase() === cleanCode)) {
+    if (tenantRecords.some(item => (item.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}. Duplicate codes are not allowed.` });
     }
-    if (list.some(item => (item.name || '').toLowerCase() === cleanName.toLowerCase())) {
+    if (tenantRecords.some(item => (item.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Location Name "${cleanName}" already exists in Location Level ${level}. Duplicate names are not allowed.` });
     }
 
     if (isDbConnected()) {
       try {
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
         const existing = await prisma.$queryRawUnsafe(`
           SELECT id, code, name FROM ${tableName}
-          WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'
+          WHERE (UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}')
+          ${companyWhere}
         `);
         if (Array.isArray(existing) && existing.length > 0) {
           const matchCode = (existing[0].code || '').toUpperCase() === cleanCode;
@@ -7797,6 +7941,7 @@ export async function createLocationLevel(req, res, next) {
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const newRecord = {
       id: `loc-lvl${level}-${Date.now()}`,
+      companyId: targetCompanyId,
       code: cleanCode,
       name: cleanName,
       description: description || '',
@@ -7810,7 +7955,7 @@ export async function createLocationLevel(req, res, next) {
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
-          INSERT INTO ${tableName} (id, code, name, description, status, active, createdAt, updatedAt)
+          INSERT INTO ${tableName} (id, code, name, description, status, active, companyId, createdAt, updatedAt)
           VALUES (
             '${newRecord.id}',
             '${newRecord.code}',
@@ -7818,6 +7963,7 @@ export async function createLocationLevel(req, res, next) {
             '${(newRecord.description || '').replace(/'/g, "''")}',
             '${newRecord.status}',
             ${isAct ? 1 : 0},
+            ${targetCompanyId ? `'${targetCompanyId}'` : 'NULL'},
             CURRENT_TIMESTAMP,
             CURRENT_TIMESTAMP
           )
@@ -7827,8 +7973,8 @@ export async function createLocationLevel(req, res, next) {
       }
     }
 
-    list.unshift(newRecord);
-    writeLocationLevelsToFile(level, list);
+    allRecords.unshift(newRecord);
+    writeLocationLevelsToFile(level, allRecords);
     res.status(201).json({ success: true, locationLevel: newRecord });
   } catch (err) { next(err); }
 }
@@ -7837,26 +7983,49 @@ export async function updateLocationLevel(req, res, next) {
   try {
     const level = parseInt(req.params.level, 10) || 1;
     const tableName = `location_level_${level}`;
+    const targetCompanyId = req.body.companyId || req.tenantCompanyId || req.user?.companyId || null;
     const { id } = req.params;
-    const list = readLocationLevelsFromFile(level);
-    const idx = list.findIndex(item => item.id === id || item.code === id);
+    await ensureLocationLevelTable(level);
+    const allRecords = readLocationLevelsFromFile(level);
+    const idx = allRecords.findIndex(item => item.id === id || item.code === id);
+
+    // Tenant check
+    if (idx !== -1 && targetCompanyId && allRecords[idx].companyId && allRecords[idx].companyId !== targetCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
+
+    if (isDbConnected() && targetCompanyId) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT id, companyId FROM ${tableName}
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(rows) && rows[0]?.companyId && rows[0].companyId !== targetCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+        }
+      } catch (_) {}
+    }
 
     const { code, name, description, status, active } = req.body;
-    const cleanCode = code ? code.trim().toUpperCase() : (list[idx]?.code || '');
-    const cleanName = name ? name.trim() : (list[idx]?.name || '');
+    const cleanCode = code ? code.trim().toUpperCase() : (allRecords[idx]?.code || '');
+    const cleanName = name ? name.trim() : (allRecords[idx]?.name || '');
 
-    if (list.some(item => item.id !== id && (item.code || '').toUpperCase() === cleanCode)) {
+    const tenantRecords = targetCompanyId ? allRecords.filter(r => r.companyId === targetCompanyId) : allRecords;
+    if (tenantRecords.some(item => item.id !== id && (item.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Location Code "${cleanCode}" already exists in Location Level ${level}. Duplicate codes are not allowed.` });
     }
-    if (cleanName && list.some(item => item.id !== id && (item.name || '').toLowerCase() === cleanName.toLowerCase())) {
+    if (cleanName && tenantRecords.some(item => item.id !== id && (item.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Location Name "${cleanName}" already exists in Location Level ${level}. Duplicate names are not allowed.` });
     }
 
     if (isDbConnected()) {
       try {
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
         const existing = await prisma.$queryRawUnsafe(`
           SELECT id, code, name FROM ${tableName}
-          WHERE (UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}') AND id != '${id.replace(/'/g, "''")}'
+          WHERE (UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}') 
+            AND id != '${id.replace(/'/g, "''")}'
+            ${companyWhere}
         `);
         if (Array.isArray(existing) && existing.length > 0) {
           const matchCode = (existing[0].code || '').toUpperCase() === cleanCode;
@@ -7868,12 +8037,14 @@ export async function updateLocationLevel(req, res, next) {
       } catch (err) {}
     }
 
-    const isAct = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : (list[idx]?.active ?? true));
+    const isAct = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : (allRecords[idx]?.active ?? true));
     const updated = {
+      ...(allRecords[idx] || {}),
       id,
+      companyId: targetCompanyId || allRecords[idx]?.companyId,
       code: cleanCode,
       name: cleanName,
-      description: description !== undefined ? description : (list[idx]?.description || ''),
+      description: description !== undefined ? description : (allRecords[idx]?.description || ''),
       active: isAct,
       status: isAct ? 'Active' : 'Inactive',
       level,
@@ -7898,11 +8069,11 @@ export async function updateLocationLevel(req, res, next) {
     }
 
     if (idx !== -1) {
-      list[idx] = { ...list[idx], ...updated };
+      allRecords[idx] = updated;
     } else {
-      list.unshift(updated);
+      allRecords.unshift(updated);
     }
-    writeLocationLevelsToFile(level, list);
+    writeLocationLevelsToFile(level, allRecords);
     res.json({ success: true, locationLevel: updated });
   } catch (err) { next(err); }
 }
@@ -7911,12 +8082,32 @@ export async function deleteLocationLevel(req, res, next) {
   try {
     const level = parseInt(req.params.level, 10) || 1;
     const tableName = `location_level_${level}`;
+    const targetCompanyId = req.tenantCompanyId || req.user?.companyId || null;
     const { id } = req.params;
+    await ensureLocationLevelTable(level);
+    let allRecords = readLocationLevelsFromFile(level);
+    const item = allRecords.find(it => it.id === id || it.code === id);
+
+    // Tenant check
+    if (item && targetCompanyId && item.companyId && item.companyId !== targetCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
+
+    if (isDbConnected() && targetCompanyId) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT id, companyId FROM ${tableName}
+          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(rows) && rows[0]?.companyId && rows[0].companyId !== targetCompanyId) {
+          return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+        }
+      } catch (_) {}
+    }
+
     const action = req.query.action || req.body?.action;
     const force = req.query.force === 'true' || action === 'force_delete';
     const deactivateOnly = req.body?.deactivateOnly || action === 'deactivate';
-    let list = readLocationLevelsFromFile(level);
-    const item = list.find(it => it.id === id || it.code === id);
     const itemCode = (item ? item.code : id).trim();
     const itemName = (item ? item.name : '').trim();
 
@@ -7925,11 +8116,13 @@ export async function deleteLocationLevel(req, res, next) {
     if (isDbConnected()) {
       try {
         const colName = `locationLevel${level}`;
+        const companyFilter = targetCompanyId ? `AND companyId = '${targetCompanyId}'` : '';
         const rows = await prisma.$queryRawUnsafe(`
           SELECT COUNT(*) as cnt FROM sites 
-          WHERE ${colName} = '${id.replace(/'/g, "''")}' 
+          WHERE (${colName} = '${id.replace(/'/g, "''")}' 
              OR ${colName} = '${itemCode.replace(/'/g, "''")}' 
-             OR (${itemName ? `${colName} = '${itemName.replace(/'/g, "''")}'` : '1=0'})
+             OR (${itemName ? `${colName} = '${itemName.replace(/'/g, "''")}'` : '1=0'}))
+             ${companyFilter}
         `);
         sitesCount = Number(rows?.[0]?.cnt || 0);
       } catch (e) {
@@ -7958,28 +8151,30 @@ export async function deleteLocationLevel(req, res, next) {
           `);
         } catch (_) {}
       }
-      const idx = list.findIndex(it => it.id === id || it.code === id);
+      const idx = allRecords.findIndex(it => it.id === id || it.code === id);
       if (idx !== -1) {
-        list[idx].active = false;
-        list[idx].status = 'Inactive';
-        list[idx].updatedAt = new Date().toISOString();
-        writeLocationLevelsToFile(level, list);
-        return res.json({ success: true, locationLevel: list[idx], message: `Location Level ${level} record deactivated (${sitesCount} linked locations preserved).` });
+        allRecords[idx].active = false;
+        allRecords[idx].status = 'Inactive';
+        allRecords[idx].updatedAt = new Date().toISOString();
+        writeLocationLevelsToFile(level, allRecords);
+        return res.json({ success: true, locationLevel: allRecords[idx], message: `Location Level ${level} record deactivated (${sitesCount} linked locations preserved).` });
       }
       return res.json({ success: true, message: `Location Level ${level} record deactivated.` });
     }
 
     if (isDbConnected()) {
       try {
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
         await prisma.$executeRawUnsafe(`
           DELETE FROM ${tableName}
-          WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+          WHERE (id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}')
+          ${companyWhere}
         `);
       } catch (_) {}
     }
 
-    list = list.filter(item => item.id !== id && item.code !== id);
-    writeLocationLevelsToFile(level, list);
+    allRecords = allRecords.filter(item => item.id !== id && item.code !== id);
+    writeLocationLevelsToFile(level, allRecords);
     res.json({ success: true, hardDeleted: true, message: `Location Level ${level} record deleted.` });
   } catch (err) { next(err); }
 }
@@ -7987,30 +8182,35 @@ export async function deleteLocationLevel(req, res, next) {
 export async function getAssetConditions(req, res, next) {
   try {
     await ensureAssetConditionsTable();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const includeInactive = req.query.includeInactive !== 'false';
     if (isDbConnected()) {
       try {
-        const whereClause = includeInactive ? '' : 'WHERE active = 1';
-        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM asset_conditions ${whereClause} ORDER BY createdAt ASC, name ASC`);
-        if (Array.isArray(rows) && rows.length > 0) {
+        const tenantFilter = tenantCompanyId ? `WHERE companyId = '${tenantCompanyId}'` : 'WHERE 1=1';
+        const activeFilter = includeInactive ? '' : 'AND active = 1';
+        const rows = await prisma.$queryRawUnsafe(`SELECT id, code, name, description, active, companyId FROM asset_conditions ${tenantFilter} ${activeFilter} ORDER BY createdAt ASC, name ASC`);
+        if (Array.isArray(rows)) {
           const list = rows.map(r => ({
             id: r.id,
             code: r.code,
             name: r.name,
             description: r.description || '',
+            companyId: r.companyId || '',
             active: Boolean(r.active)
           }));
-          inMemoryAssetConditions = list;
-          writeAssetConditionsToFile(list);
           return res.json({ success: true, assetConditions: list });
         }
       } catch (dbErr) {
         console.warn('DB getAssetConditions skipped, using persistent store:', dbErr.message);
       }
     }
-    const list = includeInactive
-      ? inMemoryAssetConditions
-      : inMemoryAssetConditions.filter(s => s.active !== false);
+    let list = inMemoryAssetConditions;
+    if (tenantCompanyId) {
+      list = list.filter(s => s.companyId === tenantCompanyId);
+    }
+    if (!includeInactive) {
+      list = list.filter(s => s.active !== false);
+    }
     res.json({ success: true, assetConditions: list });
   } catch (err) { next(err); }
 }
@@ -8018,21 +8218,38 @@ export async function getAssetConditions(req, res, next) {
 export async function createAssetCondition(req, res, next) {
   try {
     await ensureAssetConditionsTable();
+    const targetCompanyId = req.body.companyId || req.tenantCompanyId || req.user?.companyId || null;
     const { code, name, description, active } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Condition Name is required.' });
     const cleanName = name.trim();
+    const tenantConds = targetCompanyId ? inMemoryAssetConditions.filter(c => c.companyId === targetCompanyId) : inMemoryAssetConditions;
     const cleanCode = (code && code.trim())
       ? code.trim().toUpperCase()
-      : await generateAutoCode('asset_condition', cleanName, inMemoryAssetConditions, 'asset_conditions');
+      : await generateAutoCode('asset_condition', cleanName, tenantConds, 'asset_conditions');
     const cleanDesc = (description || '').trim();
     const isAct = active !== false;
 
-    if (inMemoryAssetConditions.some(c => (c.code || '').toUpperCase() === cleanCode)) {
+    if (tenantConds.some(c => (c.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Asset Condition with code "${cleanCode}" already exists.` });
+    }
+
+    if (isDbConnected()) {
+      try {
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
+        const existing = await prisma.$queryRawUnsafe(
+          `SELECT id FROM asset_conditions 
+           WHERE (UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}')
+           ${companyWhere}`
+        );
+        if (Array.isArray(existing) && existing.length > 0) {
+          return res.status(409).json({ success: false, message: `Asset Condition with code "${cleanCode}" already exists.` });
+        }
+      } catch (err) {}
     }
 
     const newCond = {
       id: `cond-${Date.now().toString(36)}`,
+      companyId: targetCompanyId,
       code: cleanCode,
       name: cleanName,
       description: cleanDesc,
@@ -8042,8 +8259,8 @@ export async function createAssetCondition(req, res, next) {
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
-          INSERT INTO asset_conditions (id, code, name, description, active)
-          VALUES ('${newCond.id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', ${isAct ? 1 : 0})
+          INSERT INTO asset_conditions (id, code, name, description, active, companyId, createdAt, updatedAt)
+          VALUES ('${newCond.id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', '${cleanDesc.replace(/'/g, "''")}', ${isAct ? 1 : 0}, ${targetCompanyId ? `'${targetCompanyId}'` : 'NULL'}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
       } catch (dbErr) {
         console.warn('DB createAssetCondition skipped:', dbErr.message);
@@ -8059,17 +8276,26 @@ export async function createAssetCondition(req, res, next) {
 export async function updateAssetCondition(req, res, next) {
   try {
     const { id } = req.params;
+    const targetCompanyId = req.body.companyId || req.tenantCompanyId || req.user?.companyId || null;
     const { code, name, description, active } = req.body;
     await ensureAssetConditionsTable();
 
     let idx = inMemoryAssetConditions.findIndex(s => s.id === id || s.code === id);
+    if (idx !== -1 && targetCompanyId && inMemoryAssetConditions[idx].companyId && inMemoryAssetConditions[idx].companyId !== targetCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
+
     if (idx === -1 && isDbConnected()) {
       try {
         const safeId = (id || '').replace(/'/g, "''");
         const rows = await prisma.$queryRawUnsafe(`SELECT * FROM asset_conditions WHERE id = '${safeId}' OR code = '${safeId}'`);
         if (Array.isArray(rows) && rows[0]) {
+          if (targetCompanyId && rows[0].companyId && rows[0].companyId !== targetCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
           const loaded = {
             id: rows[0].id,
+            companyId: rows[0].companyId || '',
             code: rows[0].code,
             name: rows[0].name,
             description: rows[0].description || '',
@@ -8093,12 +8319,14 @@ export async function updateAssetCondition(req, res, next) {
     const cleanDesc = description !== undefined ? description.trim() : current.description;
     const isAct = active !== undefined ? Boolean(active) : current.active;
 
-    if (cleanCode !== current.code && inMemoryAssetConditions.some((s, i) => i !== idx && (s.code || '').toUpperCase() === cleanCode)) {
+    const tenantConds = targetCompanyId ? inMemoryAssetConditions.filter(c => c.companyId === targetCompanyId) : inMemoryAssetConditions;
+    if (cleanCode !== current.code && tenantConds.some((s, i) => i !== idx && (s.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Asset Condition code "${cleanCode}" already exists.` });
     }
 
     const updated = {
       ...current,
+      companyId: targetCompanyId || current.companyId,
       code: cleanCode,
       name: cleanName,
       description: cleanDesc,
@@ -8131,13 +8359,28 @@ export async function updateAssetCondition(req, res, next) {
 export async function deleteAssetCondition(req, res, next) {
   try {
     const { id } = req.params;
+    const targetCompanyId = req.tenantCompanyId || req.user?.companyId || null;
     await ensureAssetConditionsTable();
+
+    const item = inMemoryAssetConditions.find(s => s.id === id || s.code === id);
+    if (item && targetCompanyId && item.companyId && item.companyId !== targetCompanyId) {
+      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    }
+
     if (isDbConnected()) {
       try {
         const safeId = (id || '').replace(/'/g, "''");
+        if (targetCompanyId) {
+          const rows = await prisma.$queryRawUnsafe(`SELECT id, companyId FROM asset_conditions WHERE id = '${safeId}' OR code = '${safeId}'`);
+          if (Array.isArray(rows) && rows[0]?.companyId && rows[0].companyId !== targetCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
+        }
+        const companyWhere = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
         await prisma.$executeRawUnsafe(`
           DELETE FROM asset_conditions
-          WHERE id = '${safeId}' OR code = '${safeId}'
+          WHERE (id = '${safeId}' OR code = '${safeId}')
+          ${companyWhere}
         `);
       } catch (dbErr) {
         console.warn('DB delete asset_conditions skipped:', dbErr.message);
