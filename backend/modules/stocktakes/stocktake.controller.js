@@ -6,7 +6,10 @@ export async function getCampaigns(req, res, next) {
     let campaigns = [];
     try {
       if (prisma.stocktakeCampaign) {
+        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+        const where = tenantCompanyId ? { companyId: tenantCompanyId } : {};
         campaigns = await prisma.stocktakeCampaign.findMany({
+          where,
           orderBy: { createdAt: 'desc' }
         });
       }
@@ -30,7 +33,7 @@ export async function createCampaign(req, res, next) {
     const userId = req.user?.id || req.user?._id;
 
     try {
-      let companyId = scope.companyId;
+      let companyId = req.tenantCompanyId || req.user?.companyId || scope.companyId;
       let siteId = scope.siteId;
 
       if (!companyId) {

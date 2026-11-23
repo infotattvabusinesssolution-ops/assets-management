@@ -26,11 +26,13 @@ import {
 } from './asset.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
 import { enforceDataScope, requirePermission } from '../../middleware/rbac.js';
+import { enforceTenantScope } from '../../middleware/tenantScope.js';
 
 const router = Router();
 
 router.use(authenticateToken);
 router.use(enforceDataScope);
+router.use(enforceTenantScope);
 
 router.get('/', requirePermission('ASSETS_VIEW'), getAssets);
 router.get('/my-assets', requirePermission('ASSETS_VIEW'), getMyAssets);
@@ -60,6 +62,3 @@ router.patch('/:id/lifecycle', requirePermission('ASSETS_TRANSITION'), transitio
 router.delete('/:id', requirePermission('ASSETS_DELETE'), deleteAsset);
 
 export default router;
-
-
-

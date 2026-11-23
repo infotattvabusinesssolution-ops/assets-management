@@ -1,5 +1,6 @@
 import prisma from '../../config/prisma.js';
 import { randomUUID } from 'node:crypto';
+import { belongsToTenant, maskFinancialFields } from '../../middleware/tenantScope.js';
 
 const assetPrefix = (value, fallback) => {
   const words = String(value || '').toUpperCase().match(/[A-Z0-9]+/g) || [];
@@ -73,6 +74,11 @@ export async function getAssets(req, res, next) {
 
     const where = { ...req.dataScopeFilter };
 
+    // TENANT ISOLATION: Force companyId from authenticated user, ignore query param
+    if (req.tenantCompanyId) {
+      where.companyId = req.tenantCompanyId;
+    }
+
     if (search) {
       where.OR = [
         { assetId: { contains: search } },
@@ -85,7 +91,7 @@ export async function getAssets(req, res, next) {
     if (status) where.lifecycleStatus = status;
     if (categoryId) where.categoryId = categoryId;
     if (siteId) where.siteId = siteId;
-    if (companyId) where.companyId = companyId;
+    // companyId from query is IGNORED — tenant scoping enforced above
     if (custodianId) where.custodianId = custodianId;
     if (condition) where.condition = condition;
 
@@ -125,6 +131,9 @@ export async function getAssets(req, res, next) {
     ]);
 
     const totalPortfolio = await prisma.asset.count({ where: baseWhere });
+
+    // Financial field masking for non-finance roles
+    maskFinancialFields(assets, req);
 
     res.json({
       success: true,
@@ -179,14 +188,17 @@ export async function getAsset360(req, res, next) {
       customFieldValues: { include: { customFieldDef: true } }
     };
 
-    let asset = await prisma.asset.findUnique({
-      where: { id },
+    // TENANT ISOLATION: Scope single-asset lookup to user's company
+    const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+
+    let asset = await prisma.asset.findFirst({
+      where: { id, ...tenantWhere },
       include: assetIncludes
     });
 
     if (!asset) {
       asset = await prisma.asset.findFirst({
-        where: { assetId: id },
+        where: { assetId: id, ...tenantWhere },
         include: assetIncludes
       });
     }
@@ -246,40 +258,48 @@ export async function getAsset360(req, res, next) {
 
     const assetImages = attachments.filter(file => file.fileType === 'ASSET_IMAGE');
 
+    const asset360Data = {
+      asset: {
+        ...asset,
+        imageUrl: assetImages[0]?.url || null,
+        assetImages: assetImages.map(img => ({
+          id: img.id,
+          url: img.url,
+          name: img.fileName,
+          size: img.fileSize,
+          createdAt: img.createdAt
+        }))
+      },
+      bookValues,
+      transactions,
+      workOrders,
+      stocktakeObservations,
+      mapPosition,
+      discoveryMatch: discoveryMatch ? {
+        ...discoveryMatch,
+        ...discoveryMatch.observation,
+        operatingSystem: [discoveryMatch.observation.osFamily, discoveryMatch.observation.osVersion].filter(Boolean).join(' '),
+        cpu: discoveryMatch.observation.cpuInfo,
+        ram: discoveryMatch.observation.ramGb == null ? null : `${discoveryMatch.observation.ramGb} GB`,
+        storage: discoveryMatch.observation.storageGb == null ? null : `${discoveryMatch.observation.storageGb} GB`
+      } : null,
+      schedules,
+      warranty,
+      auditEvents,
+      documents: attachments.filter(file => file.fileType !== 'ASSET_IMAGE').map(file => ({
+        id: file.id, name: file.fileName, size: file.fileSize, url: file.url, type: file.fileType
+      }))
+    };
+
+    // Mask financial fields for non-finance users
+    maskFinancialFields(asset360Data.asset, req);
+    if (asset360Data.bookValues) {
+      maskFinancialFields(asset360Data, req);
+    }
+
     res.json({
       success: true,
-      asset360: {
-        asset: {
-          ...asset,
-          imageUrl: assetImages[0]?.url || null,
-          assetImages: assetImages.map(img => ({
-            id: img.id,
-            url: img.url,
-            name: img.fileName,
-            size: img.fileSize,
-            createdAt: img.createdAt
-          }))
-        },
-        bookValues,
-        transactions,
-        workOrders,
-        stocktakeObservations,
-        mapPosition,
-        discoveryMatch: discoveryMatch ? {
-          ...discoveryMatch,
-          ...discoveryMatch.observation,
-          operatingSystem: [discoveryMatch.observation.osFamily, discoveryMatch.observation.osVersion].filter(Boolean).join(' '),
-          cpu: discoveryMatch.observation.cpuInfo,
-          ram: discoveryMatch.observation.ramGb == null ? null : `${discoveryMatch.observation.ramGb} GB`,
-          storage: discoveryMatch.observation.storageGb == null ? null : `${discoveryMatch.observation.storageGb} GB`
-        } : null,
-        schedules,
-        warranty,
-        auditEvents,
-        documents: attachments.filter(file => file.fileType !== 'ASSET_IMAGE').map(file => ({
-          id: file.id, name: file.fileName, size: file.fileSize, url: file.url, type: file.fileType
-        }))
-      }
+      asset360: asset360Data
     });
   } catch (err) {
     next(err);
@@ -489,9 +509,15 @@ export async function createAsset(req, res, next) {
       if (existingSerial) return res.status(409).json({ success: false, message: `Serial number ${existingSerial.serialNumber} is already registered to ${existingSerial.assetId}.` });
     }
 
-    // 2. Resolve or fallback Company
+    // 2. Resolve or fallback Company — TENANT ISOLATION: Force from user
     let company = null;
-    if (rawCompany) {
+    const forcedCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (forcedCompanyId) {
+      company = await prisma.company.findFirst({
+        where: { id: forcedCompanyId }
+      });
+    }
+    if (!company && rawCompany) {
       company = await prisma.company.findFirst({
         where: {
           OR: [
@@ -1153,9 +1179,11 @@ export async function updateAsset(req, res, next) {
   try {
     const { id } = req.params;
 
-    // Find asset by UUID or assetId
-    let oldAsset = await prisma.asset.findUnique({
-      where: { id },
+    // Find asset by UUID or assetId — TENANT ISOLATION: scope to user's company
+    const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+
+    let oldAsset = await prisma.asset.findFirst({
+      where: { id, ...tenantWhere },
       include: {
         category: true,
         company: true,
@@ -1173,7 +1201,7 @@ export async function updateAsset(req, res, next) {
 
     if (!oldAsset) {
       oldAsset = await prisma.asset.findFirst({
-        where: { assetId: id },
+        where: { assetId: id, ...tenantWhere },
         include: {
           category: true,
           company: true,
@@ -2180,6 +2208,9 @@ export async function getMyAssets(req, res, next) {
       history: portfolioTotal
     };
 
+    // Financial field masking for non-finance roles
+    maskFinancialFields(assets, req);
+
     res.json({
       success: true,
       assets,
@@ -2513,9 +2544,11 @@ export async function getAssetDocuments(req, res, next) {
 export async function deleteAsset(req, res, next) {
   try {
     const { id } = req.params;
-    let existing = await prisma.asset.findUnique({ where: { id } });
+    const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+
+    let existing = await prisma.asset.findFirst({ where: { id, ...tenantWhere } });
     if (!existing) {
-      existing = await prisma.asset.findFirst({ where: { assetId: id } });
+      existing = await prisma.asset.findFirst({ where: { assetId: id, ...tenantWhere } });
     }
 
     if (!existing) {
@@ -2601,12 +2634,13 @@ export async function bulkDeleteAssets(req, res, next) {
       return res.status(400).json({ success: false, message: 'No asset IDs provided.' });
     }
 
+    const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
     let deletedCount = 0;
     for (const id of ids) {
       try {
-        let existing = await prisma.asset.findUnique({ where: { id } });
+        let existing = await prisma.asset.findFirst({ where: { id, ...tenantWhere } });
         if (!existing) {
-          existing = await prisma.asset.findFirst({ where: { assetId: id } });
+          existing = await prisma.asset.findFirst({ where: { assetId: id, ...tenantWhere } });
         }
         if (!existing) continue;
 
@@ -2670,8 +2704,10 @@ export async function bulkUpdateAssetStatus(req, res, next) {
       return res.status(400).json({ success: false, message: 'Invalid payload: ids and status are required.' });
     }
 
+    const tenantFilter = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
     const result = await prisma.asset.updateMany({
       where: {
+        ...tenantFilter,
         OR: [
           { id: { in: ids } },
           { assetId: { in: ids } }

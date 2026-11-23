@@ -401,15 +401,12 @@ export async function getProfile(req, res, next) {
 export async function getUsers(req, res, next) {
   try {
     const user = req.user;
-    const role = user?.role || user?.roleId;
-    const roleCode = typeof role === 'string' ? role : role?.code;
+    const targetCompanyId = req.tenantCompanyId || user?.companyId;
 
-    // Multi-tenant company scoping: if not global SYS_ADMIN, restrict to user's company
+    // Multi-tenant company scoping: ALWAYS restrict to user's company
     const where = {};
-    if (user && roleCode !== 'SYS_ADMIN' && user.companyId) {
-      where.companyId = user.companyId;
-    } else if (req.query?.companyId) {
-      where.companyId = req.query.companyId;
+    if (targetCompanyId) {
+      where.companyId = targetCompanyId;
     }
 
     if (isSqlServerConnected) {
@@ -468,10 +465,11 @@ export async function getRoles(req, res, next) {
 
 export async function createUser(req, res, next) {
   try {
-    const { username, email, password, fullName, phone, roleId, companyId, branchId, siteId, departmentId, costCenterId, active } = req.body;
+    const { username, email, password, fullName, phone, roleId, branchId, siteId, departmentId, costCenterId, active } = req.body;
+    // TENANT ISOLATION: Force companyId from authenticated session
+    const targetCompanyId = req.tenantCompanyId || req.user?.companyId || req.body.companyId;
 
     // 1. Enterprise User Licensing Cap Validation
-    const targetCompanyId = companyId || req.user?.companyId;
     const licenseCheck = await validateCanAddUser(targetCompanyId);
     if (!licenseCheck.allowed) {
       return res.status(403).json({
@@ -542,7 +540,7 @@ export async function createUser(req, res, next) {
             fullName: fullName.trim(),
             phone: phone ? phone.trim() : null,
             roleId: role.id,
-            companyId: companyId || null,
+            companyId: targetCompanyId || null,
             branchId: branchId || null,
             siteId: siteId || null,
             departmentId: departmentId || null,
@@ -671,7 +669,11 @@ export async function updateUser(req, res, next) {
 
     if (isSqlServerConnected) {
       try {
-        const user = await prisma.user.findUnique({ where: { id } });
+        const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+        const user = await prisma.user.findFirst({ where: { id, ...tenantWhere } });
+        if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+        }
         if (user) {
           if (email && email.toLowerCase() !== user.email.toLowerCase()) {
             const existing = await prisma.user.findFirst({
@@ -756,7 +758,8 @@ export async function resetUserPassword(req, res, next) {
     let targetUser = null;
 
     if (isSqlServerConnected) {
-      targetUser = await prisma.user.findUnique({ where: { id } }).catch(() => null);
+      const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+      targetUser = await prisma.user.findFirst({ where: { id, ...tenantWhere } }).catch(() => null);
     }
     if (!targetUser) {
       targetUser = FALLBACK_USERS.find(u => u.id === id);
@@ -961,8 +964,13 @@ export async function deleteUser(req, res, next) {
 
     if (isSqlServerConnected) {
       try {
-        const user = await prisma.user.update({
-          where: { id },
+        const tenantWhere = req.tenantCompanyId ? { companyId: req.tenantCompanyId } : {};
+        const user = await prisma.user.findFirst({ where: { id, ...tenantWhere } });
+        if (!user) {
+          return res.status(404).json({ success: false, message: 'User not found' });
+        }
+        await prisma.user.update({
+          where: { id: user.id },
           data: { active: false }
         });
         return res.json({ success: true, message: `User ${user.username} has been deactivated` });

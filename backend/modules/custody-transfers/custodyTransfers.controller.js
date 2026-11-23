@@ -4,7 +4,10 @@ import * as movementHistory from './movementHistory.service.js';
 
 export async function getCustodyAssignments(req, res, next) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const where = tenantCompanyId ? { asset: { companyId: tenantCompanyId } } : {};
     const assignments = await prisma.custodyAssignment.findMany({
+      where,
       include: {
         asset: {
           include: {
@@ -29,8 +32,10 @@ export async function getCustodyAssignments(req, res, next) {
 
 export async function getCustodyStats(req, res, next) {
   try {
-    const totalAssignments = await prisma.custodyAssignment.count();
-    const activeAssignments = await prisma.custodyAssignment.count({ where: { active: true } });
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const assetFilter = tenantCompanyId ? { asset: { companyId: tenantCompanyId } } : {};
+    const totalAssignments = await prisma.custodyAssignment.count({ where: assetFilter });
+    const activeAssignments = await prisma.custodyAssignment.count({ where: { active: true, ...assetFilter } });
     const totalTransfers = await prisma.assetTransfer.count();
     
     const now = new Date();
@@ -189,7 +194,10 @@ export async function returnCustody(req, res, next) {
 
 export async function getTransfers(req, res, next) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const transferWhere = tenantCompanyId ? { fromCompanyId: tenantCompanyId } : {};
     const transfers = await prisma.assetTransfer.findMany({
+      where: transferWhere,
       include: {
         asset: {
           include: {

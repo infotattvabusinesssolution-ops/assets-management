@@ -4,7 +4,9 @@ import { annualDepreciationDue } from './annualDepreciation.js';
 
 export async function getFinancialSummary(req, res, next) {
   try {
-    const books = await prisma.assetBookValue.findMany({ where: { bookType: 'CORPORATE' } });
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const assetWhere = tenantCompanyId ? { asset: { companyId: tenantCompanyId } } : {};
+    const books = await prisma.assetBookValue.findMany({ where: { bookType: 'CORPORATE', ...assetWhere } });
     let totalAssetValue = new Decimal(0);
     let totalAccumulatedDep = new Decimal(0);
     let totalNetBookValue = new Decimal(0);
@@ -52,7 +54,10 @@ export async function getFinancialSummary(req, res, next) {
 
 export async function getFiscalPeriods(req, res, next) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const where = tenantCompanyId ? { companyId: tenantCompanyId } : {};
     const periods = await prisma.fiscalPeriod.findMany({
+      where,
       include: { company: true },
       orderBy: [{ year: 'desc' }, { periodNumber: 'desc' }]
     });

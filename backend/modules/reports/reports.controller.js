@@ -62,11 +62,11 @@ export async function getDashboardKpis(req, res, next) {
       prisma.discoveryMatch.count({
         where: { status: { in: ['UNKNOWN', 'CONFLICT'] } }
       }),
-      prisma.user.count({ where: { active: true } }),
+      prisma.user.count({ where: { active: true, ...(scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {}) } }),
       prisma.receipt.count(),
       prisma.floorMap.count({ where: { active: true } }),
-      prisma.maintenanceWorkOrder.count(),
-      prisma.contract.count({ where: { active: true } })
+      prisma.maintenanceWorkOrder.count({ where: scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {} }),
+      prisma.contract.count({ where: { active: true, ...(scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {}) } })
     ]);
 
     const totalAssetValue = Number(valueAggregation._sum.acquisitionValue || 0);

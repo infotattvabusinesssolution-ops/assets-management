@@ -93,8 +93,10 @@ export async function getDisposalCandidates(req, res, next) {
   try {
     const { search, categoryId, siteId, limit = 200 } = req.query;
 
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const where = {
       active: true,
+      ...(tenantCompanyId ? { companyId: tenantCompanyId } : {}),
       lifecycleStatus: { notIn: ['DISPOSED', 'RETIRED', 'PENDING_DISPOSAL', 'DISPOSAL', 'Disposed', 'Retired', 'SCRAPPED', 'SOLD', 'DONATED', 'WRITTEN_OFF'] }
     };
 
@@ -192,6 +194,7 @@ export async function getPendingDisposals(req, res, next) {
       try {
         const assets = await prisma.asset.findMany({
           where: {
+            ...(req.tenantCompanyId || req.user?.companyId ? { companyId: req.tenantCompanyId || req.user?.companyId } : {}),
             lifecycleStatus: { in: ['PENDING_DISPOSAL', 'DISPOSAL', 'Pending Disposal'] }
           },
           include: {

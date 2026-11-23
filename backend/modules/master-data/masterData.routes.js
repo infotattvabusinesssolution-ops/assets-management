@@ -36,10 +36,12 @@ import {
   getCodePrefixes, updateCodePrefixes
 } from './masterData.controller.js';
 import { authenticateToken } from '../../middleware/auth.js';
+import { enforceTenantScope } from '../../middleware/tenantScope.js';
 
 const router = Router();
 
 router.use(authenticateToken);
+router.use(enforceTenantScope);
 
 router.get('/stats', getMasterDataStats);
 

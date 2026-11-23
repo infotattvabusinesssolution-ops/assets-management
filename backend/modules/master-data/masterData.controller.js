@@ -756,6 +756,11 @@ export async function getCompanies(req, res, next) {
   try {
     const includeInactive = req.query.includeInactive !== 'false';
     const where = includeInactive ? {} : { active: true };
+    // TENANT ISOLATION: Scoped to user's company
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      where.id = tenantCompanyId;
+    }
     const companies = await prisma.company.findMany({ where, orderBy: { name: 'asc' } });
     res.json({ success: true, companies });
   } catch (err) { next(err); }
@@ -1046,9 +1051,15 @@ export async function getSites(req, res, next) {
     if (isDbConnected()) {
       try {
         const includeInactive = req.query.includeInactive !== 'false';
+        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+        const tenantClause = tenantCompanyId ? `AND companyId = '${tenantCompanyId}'` : '';
+        const tenantWhere = tenantCompanyId ? `WHERE companyId = '${tenantCompanyId}'` : '';
+
         const query = includeInactive
-          ? `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites ORDER BY name ASC`
-          : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites WHERE active = 1 ORDER BY name ASC`;
+          ? (tenantCompanyId
+              ? `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites ${tenantWhere} ORDER BY name ASC`
+              : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites ORDER BY name ASC`)
+          : `SELECT id, code, name, city, country, companyId, type, level, parentLocation, fullPath, locationLevel1, locationLevel2, locationLevel3, locationLevel4, address, active, createdAt, updatedAt FROM sites WHERE active = 1 ${tenantClause} ORDER BY name ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
         if (Array.isArray(rows) && rows.length > 0) {
           // Pre-fetch relation counts for all sites in bulk
@@ -1144,7 +1155,7 @@ export async function createSite(req, res, next) {
     }
 
     // License Enforcement: Check Max Branches for Company
-    const targetCompanyId = companyId || req.user?.companyId;
+    const targetCompanyId = req.tenantCompanyId || companyId || req.user?.companyId;
     if (targetCompanyId) {
       const { validateLicenseForCompany } = await import('../admin/superAdmin.service.js');
       const branchCheck = await validateLicenseForCompany(targetCompanyId, 'ADD_BRANCH');
@@ -3806,7 +3817,10 @@ export async function getDepartments(req, res, next) {
           active: true,
           company: { active: true }
         };
-    if (req.query.companyId) {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      where.companyId = tenantCompanyId;
+    } else if (req.query.companyId) {
       where.companyId = req.query.companyId;
     }
     let departments;
@@ -3894,7 +3908,7 @@ export async function createDepartment(req, res, next) {
       }
     }
 
-    let targetCompanyId = companyId || req.body.companyId;
+    let targetCompanyId = req.tenantCompanyId || req.user?.companyId || companyId || req.body.companyId;
     if (!targetCompanyId && req.body.company) {
       const comp = await prisma.company.findFirst({
         where: {
@@ -3991,7 +4005,7 @@ export async function updateDepartment(req, res, next) {
       }
     }
 
-    let targetCompanyId = companyId;
+    let targetCompanyId = req.tenantCompanyId || req.user?.companyId || companyId;
     if (!targetCompanyId && req.body.company) {
       const comp = await prisma.company.findFirst({
         where: {
@@ -4127,11 +4141,14 @@ export async function getCostCenters(req, res, next) {
   try {
     const includeInactive = req.query.includeInactive !== 'false';
     const where = includeInactive ? {} : { active: true };
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      where.companyId = tenantCompanyId;
+    } else if (req.query.companyId) {
+      where.companyId = req.query.companyId;
+    }
     if (req.query.departmentId) {
       where.departmentId = req.query.departmentId;
-    }
-    if (req.query.companyId) {
-      where.companyId = req.query.companyId;
     }
     let costCenters;
     try {
@@ -4180,7 +4197,7 @@ export async function createCostCenter(req, res, next) {
       }
     }
 
-    let targetCompanyId = companyId;
+    let targetCompanyId = req.tenantCompanyId || req.user?.companyId || companyId;
     if (!targetCompanyId && departmentId) {
       try {
         const d = await prisma.department.findUnique({ where: { id: departmentId } });
@@ -4335,6 +4352,10 @@ export async function getEmployees(req, res, next) {
   try {
     const includeInactive = req.query.includeInactive !== 'false';
     const where = includeInactive ? {} : { active: true };
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId) {
+      where.companyId = tenantCompanyId;
+    }
     if (isDbConnected()) {
       try {
         const employees = await prisma.employee.findMany({
@@ -4420,7 +4441,7 @@ export async function createEmployee(req, res, next) {
       }
     }
 
-    let targetCompanyId = companyId;
+    let targetCompanyId = req.tenantCompanyId || req.user?.companyId || companyId;
     if (!targetCompanyId && isDbConnected()) {
       const firstComp = await prisma.company.findFirst().catch(() => null);
       if (firstComp) targetCompanyId = firstComp.id;
@@ -8008,7 +8029,7 @@ export async function createSupplier(req, res, next) {
 export async function getBranches(req, res, next) {
   try {
     const user = req.user;
-    const companyId = req.query.companyId || user?.companyId;
+    const companyId = req.tenantCompanyId || user?.companyId || req.query.companyId;
     const where = {};
     if (companyId) where.companyId = companyId;
 

@@ -65,6 +65,12 @@ export async function authenticateToken(req, res, next) {
     }
 
     req.user = user;
+    // Multi-Tenant Isolation: Attach tenant scoping directly to every authenticated request
+    const companyId = user.companyId || (user.company && user.company.id) || null;
+    req.tenantCompanyId = companyId;
+    req.tenantFilter = companyId ? { companyId } : {};
+    req.dataScopeFilter = companyId ? { companyId } : {};
+
     next();
   } catch (err) {
     return res.status(403).json({ success: false, message: 'Invalid or expired token', error: err.message });

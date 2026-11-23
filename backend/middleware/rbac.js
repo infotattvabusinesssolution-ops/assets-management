@@ -132,24 +132,30 @@ export function requireRole(...allowedRoles) {
 }
 
 /**
- * Attaches query data scope filters based on user assigned scopes
+ * Attaches query data scope filters based on user assigned scopes.
+ * MULTI-TENANT: ALL roles (including SYS_ADMIN) are scoped to their company.
+ * SYS_ADMIN is the company System Administrator, NOT a platform super admin.
  */
 export function enforceDataScope(req, res, next) {
-  const role = req.user?.role || req.user?.roleId;
-  const roleCode = typeof role === 'string' ? role : role?.code;
-
-  if (!req.user || roleCode === 'SYS_ADMIN' || roleCode === 'MANAGEMENT') {
+  if (!req.user) {
     req.dataScopeFilter = {};
     return next();
   }
 
   const user = req.user;
+  const companyId = user.companyId || (user.company && user.company.id) || null;
   const filter = {};
 
-  if (user.companyId) {
-    filter.companyId = user.companyId;
+  // ALWAYS scope to company — no bypass for any role
+  if (companyId) {
+    filter.companyId = companyId;
   }
 
   req.dataScopeFilter = filter;
+
+  // Also set tenantCompanyId for IDOR helpers
+  req.tenantCompanyId = companyId;
+  req.tenantFilter = companyId ? { companyId } : {};
+
   next();
 }
