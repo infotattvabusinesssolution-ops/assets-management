@@ -6,8 +6,12 @@ import { TaggingService } from './tagging.service.js';
  */
 export async function getAssets(req, res, next) {
   try {
-    const assets = await TaggingService.getEligibleAssets(req.query);
-    const summary = await TaggingService.getTaggingSummary();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const assets = await TaggingService.getEligibleAssets({
+      ...req.query,
+      ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
+    });
+    const summary = await TaggingService.getTaggingSummary(tenantCompanyId);
     res.json({
       success: true,
       assets,
@@ -56,8 +60,9 @@ export async function associateTag(req, res, next) {
  */
 export async function getRecentTagged(req, res, next) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const limit = parseInt(req.query.limit) || 10;
-    const recent = await TaggingService.getRecentTagged(limit);
+    const recent = await TaggingService.getRecentTagged(limit, tenantCompanyId);
     res.json({
       success: true,
       recent
@@ -72,7 +77,8 @@ export async function getRecentTagged(req, res, next) {
  */
 export async function getTaggingStats(req, res, next) {
   try {
-    const summary = await TaggingService.getTaggingSummary();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const summary = await TaggingService.getTaggingSummary(tenantCompanyId);
     res.json({
       success: true,
       stats: summary

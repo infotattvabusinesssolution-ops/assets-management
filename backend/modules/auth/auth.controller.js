@@ -239,9 +239,24 @@ export async function login(req, res, next) {
           // Check Company License Activation Gate
           if (user.companyId && user.role?.code !== 'SUPER_ADMIN') {
             try {
-              const license = await prisma.license.findUnique({
-                where: { companyId: user.companyId }
-              });
+              let license = null;
+              try {
+                if (prisma.license?.findUnique) {
+                  license = await prisma.license.findUnique({
+                    where: { companyId: user.companyId }
+                  });
+                }
+              } catch (_) {}
+
+              if (!license) {
+                try {
+                  const safeCid = String(user.companyId).replace(/'/g, "''");
+                  const rawLics = await prisma.$queryRawUnsafe(`SELECT TOP 1 * FROM licenses WHERE companyId = '${safeCid}'`);
+                  if (Array.isArray(rawLics) && rawLics.length > 0) {
+                    license = rawLics[0];
+                  }
+                } catch (_) {}
+              }
 
               if (license) {
                 if (license.expiryDate && new Date() > new Date(license.expiryDate)) {
@@ -255,7 +270,7 @@ export async function login(req, res, next) {
                   });
                 }
 
-                if (license.isActive === false || license.isActive === 0) {
+                if (license.isActive === false || license.isActive === 0 || !license.isActive) {
                   return res.status(403).json({
                     success: false,
                     requiresLicenseActivation: true,
@@ -1314,11 +1329,23 @@ export async function activateLicense(req, res, next) {
 
     let license = null;
     try {
-      license = await prisma.license.findUnique({
-        where: { companyId: user.companyId }
-      });
+      if (prisma.license?.findUnique) {
+        license = await prisma.license.findUnique({
+          where: { companyId: user.companyId }
+        });
+      }
     } catch (licErr) {
       console.warn('License query error:', licErr.message);
+    }
+
+    if (!license) {
+      try {
+        const safeCid = String(user.companyId).replace(/'/g, "''");
+        const rawLics = await prisma.$queryRawUnsafe(`SELECT TOP 1 * FROM licenses WHERE companyId = '${safeCid}'`);
+        if (Array.isArray(rawLics) && rawLics.length > 0) {
+          license = rawLics[0];
+        }
+      } catch (_) {}
     }
 
     if (!license) {
@@ -1334,10 +1361,19 @@ export async function activateLicense(req, res, next) {
     }
 
     // Activate the license
-    await prisma.license.update({
-      where: { companyId: user.companyId },
-      data: { isActive: true }
-    });
+    try {
+      if (prisma.license?.update) {
+        await prisma.license.update({
+          where: { companyId: user.companyId },
+          data: { isActive: true }
+        });
+      } else {
+        throw new Error('prisma.license not available');
+      }
+    } catch (_) {
+      const safeCid = String(user.companyId).replace(/'/g, "''");
+      await prisma.$queryRawUnsafe(`UPDATE licenses SET isActive = 1, updatedAt = CURRENT_TIMESTAMP WHERE companyId = '${safeCid}'`);
+    }
 
     await prisma.user.update({
       where: { id: user.id },

@@ -2,7 +2,16 @@ import prisma from '../../config/prisma.js';
 
 export async function getContracts(req, res, next) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const where = tenantCompanyId ? {
+      coveredAssets: {
+        some: {
+          asset: { companyId: tenantCompanyId }
+        }
+      }
+    } : {};
     const contracts = await prisma.contract.findMany({
+      where,
       include: {
         coveredAssets: {
           include: {

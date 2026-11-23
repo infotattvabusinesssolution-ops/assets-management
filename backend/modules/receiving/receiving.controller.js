@@ -4,8 +4,13 @@ import { listPurchaseOrders, findPurchaseOrder, storePurchaseOrder, listSupplier
 
 export async function getReceipts(req, res, next) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const where = {
+      status: { not: 'PURCHASE_ORDER' },
+      ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
+    };
     const receipts = await prisma.receipt.findMany({
-      where: { status: { not: 'PURCHASE_ORDER' } },
+      where,
       include: {
         company: true,
         site: true,
@@ -30,9 +35,14 @@ export async function getReceipts(req, res, next) {
 
 export async function getReceivingStats(req, res, next) {
   try {
-    const totalReceipts = await prisma.receipt.count({ where: { status: { not: 'PURCHASE_ORDER' } } });
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const where = {
+      status: { not: 'PURCHASE_ORDER' },
+      ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
+    };
+    const totalReceipts = await prisma.receipt.count({ where });
     const receipts = await prisma.receipt.findMany({
-      where: { status: { not: 'PURCHASE_ORDER' } },
+      where,
       include: { lineItems: true }
     });
 
@@ -49,7 +59,10 @@ export async function getReceivingStats(req, res, next) {
     }
 
     const stagedAssetsCount = await prisma.asset.count({
-      where: { lifecycleStatus: 'RECEIVED' }
+      where: {
+        lifecycleStatus: 'RECEIVED',
+        ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
+      }
     });
 
     res.json({
@@ -270,8 +283,15 @@ export async function getReceivingHistoryById(req, res, next) {
 export async function createReceipt(req, res, next) {
   try {
     let { companyId, siteId, poNumber, vendorName, packingSlip, receivingDock, lineItems } = req.body;
+    const targetCompanyId = req.tenantCompanyId || req.user?.companyId || companyId;
 
-    let company = await prisma.company.findFirst({ where: { active: true } });
+    let company = null;
+    if (targetCompanyId) {
+      company = await prisma.company.findUnique({ where: { id: targetCompanyId } });
+    }
+    if (!company) {
+      company = await prisma.company.findFirst({ where: { active: true } });
+    }
     if (!company) {
       const fallbackResult = await ReceivingService.submitReceivingTransaction(req.body, req.user);
       return res.status(201).json({ success: true, ...fallbackResult });

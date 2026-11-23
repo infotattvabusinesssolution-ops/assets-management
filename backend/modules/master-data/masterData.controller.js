@@ -298,7 +298,7 @@ export async function getAssetGroups(req, res, next) {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     if (isDbConnected()) {
       try {
-        const tenantFilter = tenantCompanyId ? `WHERE (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : (req.query.includeInactive !== 'false' ? '' : 'WHERE active = 1');
+        const tenantFilter = tenantCompanyId ? `WHERE (companyId = '${tenantCompanyId}')` : (req.query.includeInactive !== 'false' ? '' : 'WHERE active = 1');
         const activeFilter = tenantCompanyId
           ? (req.query.includeInactive !== 'false' ? '' : 'AND active = 1')
           : '';
@@ -397,7 +397,7 @@ export async function createAssetGroup(req, res, next) {
     // Try checking duplicate in DB if connected
     if (isDbConnected()) {
       try {
-        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}')` : '';
         const existing = await prisma.$queryRawUnsafe(
           `SELECT id FROM asset_groups WHERE (code = '${cleanCode.replace(/'/g, "''")}' OR name = '${cleanName.replace(/'/g, "''")}') ${tenantFilter}`
         );
@@ -1762,7 +1762,7 @@ export async function getCategories(req, res, next) {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const where = {
       ...(req.query.includeInactive !== 'false' ? {} : { active: true }),
-      ...(tenantCompanyId ? { OR: [{ companyId: tenantCompanyId }, { companyId: null }] } : {})
+      ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
     };
     const categories = await prisma.category.findMany({ 
       where, 
@@ -2416,7 +2416,7 @@ export async function getAssetSubGroups(req, res, next) {
     if (isDbConnected()) {
       try {
         const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-        const tenantFilter = tenantCompanyId ? `(sg.companyId = '${tenantCompanyId}' OR sg.companyId IS NULL)` : '1=1';
+        const tenantFilter = tenantCompanyId ? `(sg.companyId = '${tenantCompanyId}')` : '1=1';
         let whereClause = `${tenantFilter} ${req.query.includeInactive !== 'false' ? '' : 'AND sg.active = 1'}`;
         if (req.query.assetGroupId) {
           whereClause += ` AND sg.assetGroupId = '${String(req.query.assetGroupId).replace(/'/g, "''")}'`;
@@ -2944,7 +2944,7 @@ export async function getSubCategories(req, res, next) {
     if (isDbConnected()) {
       try {
         const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-        const tenantFilter = tenantCompanyId ? `(sc.companyId = '${tenantCompanyId}' OR sc.companyId IS NULL)` : '1=1';
+        const tenantFilter = tenantCompanyId ? `(sc.companyId = '${tenantCompanyId}')` : '1=1';
         let whereClause = `${tenantFilter} ${req.query.includeInactive !== 'false' ? '' : 'AND sc.active = 1'}`;
         if (req.query.categoryId) {
           whereClause += ` AND sc.categoryId = '${String(req.query.categoryId).replace(/'/g, "''")}'`;
@@ -3553,7 +3553,7 @@ export async function getManufacturers(req, res, next) {
       try {
         const where = {
           ...(includeInactive ? {} : { active: true }),
-          ...(tenantCompanyId ? { OR: [{ companyId: tenantCompanyId }, { companyId: null }] } : {})
+          ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
         };
         const manufacturers = await prisma.manufacturer.findMany({ where, orderBy: { name: 'asc' } });
         if (Array.isArray(manufacturers)) {
@@ -3890,7 +3890,7 @@ export async function getModels(req, res, next) {
   try {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const where = req.query.includeInactive !== 'false' ? {} : { active: true };
-    if (tenantCompanyId) where.OR = [{ companyId: tenantCompanyId }, { companyId: null }];
+    if (tenantCompanyId) where.companyId = tenantCompanyId;
     if (req.query.categoryId) where.categoryId = req.query.categoryId;
     if (req.query.manufacturerId) where.manufacturerId = req.query.manufacturerId;
 
@@ -6075,7 +6075,7 @@ export async function getItemMasters(req, res, next) {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     if (isDbConnected()) {
       try {
-        const tenantFilter = tenantCompanyId ? `(companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '1=1';
+        const tenantFilter = tenantCompanyId ? `(companyId = '${tenantCompanyId}')` : '1=1';
         const activeFilter = includeInactive ? '' : 'AND active = 1';
         const query = `SELECT * FROM item_masters WHERE ${tenantFilter} ${activeFilter} ORDER BY itemCode ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
@@ -7054,7 +7054,7 @@ export async function getBrands(req, res, next) {
       try {
         const whereClause = {
           ...(includeInactive ? {} : { active: true }),
-          ...(tenantCompanyId ? { OR: [{ companyId: tenantCompanyId }, { companyId: null }] } : {})
+          ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
         };
         const rows = await prisma.brand.findMany({
           where: whereClause,
@@ -8156,7 +8156,7 @@ export async function getSuppliers(req, res, next) {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     if (isDbConnected()) {
       try {
-        const tenantFilter = tenantCompanyId ? `(companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '1=1';
+        const tenantFilter = tenantCompanyId ? `(companyId = '${tenantCompanyId}')` : '1=1';
         const activeFilter = includeInactive ? '' : "AND status = 'ACTIVE'";
         const whereClause = `WHERE ${tenantFilter} ${activeFilter}`;
         const rows = await prisma.$queryRawUnsafe(`

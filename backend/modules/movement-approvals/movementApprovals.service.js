@@ -75,9 +75,16 @@ function formatTransfer(transfer, siteMap, roomMap, events, attachments) {
   };
 }
 
-async function allRequests() {
+async function allRequests(tenantCompanyId = null) {
   if (!isDbConnected()) fail('Database is unavailable. Movement approvals cannot be loaded.', 503);
+  const where = tenantCompanyId ? {
+    OR: [
+      { asset: { companyId: tenantCompanyId } },
+      { requestedBy: { companyId: tenantCompanyId } }
+    ]
+  } : {};
   const transfers = await prisma.assetTransfer.findMany({
+    where,
     include: { asset: { include: { category: true, manufacturer: true, model: true, site: true,
       room: true, department: true, custodian: true } }, fromCustodian: true, toCustodian: true,
       requestedBy: true, approvedBy: true }, orderBy: { createdAt: 'desc' }
@@ -124,13 +131,19 @@ function filteredRequests(records, query = {}) {
 }
 
 export class MovementApprovalsService {
-  static async getKpis() {
-    const records = await allRequests();
+  static async getKpis(tenantCompanyId = null) {
+    const records = await allRequests(tenantCompanyId);
     const now = new Date();
     const startOfMonth = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), 1));
-    const decisions = await prisma.assetTransaction.findMany({ where: {
-      transactionType: 'TRANSFER_APPROVAL_DECISION', timestamp: { gte: startOfMonth }
-    }, select: { payload: true } });
+    const txWhere = {
+      transactionType: 'TRANSFER_APPROVAL_DECISION',
+      timestamp: { gte: startOfMonth },
+      ...(tenantCompanyId ? { asset: { companyId: tenantCompanyId } } : {})
+    };
+    const decisions = await prisma.assetTransaction.findMany({
+      where: txWhere,
+      select: { payload: true }
+    });
     return {
       pendingApprovals: records.filter(record => record.status === 'Pending').length,
       approvedThisMonth: decisions.filter(event => payloadOf(event).decision === 'APPROVE').length,
@@ -139,8 +152,8 @@ export class MovementApprovalsService {
     };
   }
 
-  static async getApprovalRequests(query = {}) {
-    const all = await allRequests();
+  static async getApprovalRequests(query = {}, tenantCompanyId = null) {
+    const all = await allRequests(tenantCompanyId);
     const filtered = filteredRequests(all, query);
     const page = Math.max(1, Number(query.page) || 1);
     const limit = Math.min(1000, Math.max(1, Number(query.limit) || 10));

@@ -54,17 +54,26 @@ export async function getDashboardKpis(req, res, next) {
         where: baseFilter
       }),
       prisma.maintenanceWorkOrder.count({
-        where: { status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS'] } }
+        where: {
+          status: { in: ['OPEN', 'ASSIGNED', 'IN_PROGRESS'] },
+          ...(scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {})
+        }
       }),
       prisma.warranty.count({
-        where: { endDate: { lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) } }
+        where: {
+          endDate: { lte: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000) },
+          ...(scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {})
+        }
       }),
       prisma.discoveryMatch.count({
-        where: { status: { in: ['UNKNOWN', 'CONFLICT'] } }
+        where: {
+          status: { in: ['UNKNOWN', 'CONFLICT'] },
+          ...(scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {})
+        }
       }),
       prisma.user.count({ where: { active: true, ...(scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {}) } }),
-      prisma.receipt.count(),
-      prisma.floorMap.count({ where: { active: true } }),
+      prisma.receipt.count({ where: scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {} }),
+      prisma.floorMap.count({ where: { active: true, ...(scopeFilter.companyId ? { site: { companyId: scopeFilter.companyId } } : {}) } }),
       prisma.maintenanceWorkOrder.count({ where: scopeFilter.companyId ? { asset: { companyId: scopeFilter.companyId } } : {} }),
       prisma.contract.count({ where: { active: true, ...(scopeFilter.companyId ? { companyId: scopeFilter.companyId } : {}) } })
     ]);

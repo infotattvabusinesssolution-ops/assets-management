@@ -2,7 +2,8 @@ import MovementApprovalsService from './movementApprovals.service.js';
 
 export async function getMovementApprovals(req, res, next) {
   try {
-    const data = await MovementApprovalsService.getApprovalRequests(req.query);
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const data = await MovementApprovalsService.getApprovalRequests(req.query, tenantCompanyId);
     res.json({ success: true, ...data });
   } catch (err) {
     next(err);
@@ -11,7 +12,8 @@ export async function getMovementApprovals(req, res, next) {
 
 export async function getApprovalKpis(req, res, next) {
   try {
-    const kpis = await MovementApprovalsService.getKpis();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const kpis = await MovementApprovalsService.getKpis(tenantCompanyId);
     res.json({ success: true, data: kpis });
   } catch (err) {
     next(err);

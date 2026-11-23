@@ -180,10 +180,43 @@ async function formatWorkflowInstance(inst, assetMap = null, userMap = null) {
   };
 }
 
+async function getTenantWorkflowFilter(req) {
+  const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+  if (!tenantCompanyId) return {};
+
+  try {
+    // 1. Find all users belonging to this tenant company
+    const tenantUsers = await prisma.user.findMany({
+      where: { companyId: tenantCompanyId },
+      select: { id: true, username: true }
+    });
+    const userKeys = [...new Set(tenantUsers.flatMap(u => [u.id, u.username]).filter(Boolean))];
+
+    // 2. Find all assets belonging to this tenant company
+    const tenantAssets = await prisma.asset.findMany({
+      where: { companyId: tenantCompanyId },
+      select: { id: true, assetId: true }
+    });
+    const assetKeys = [...new Set(tenantAssets.flatMap(a => [a.id, a.assetId]).filter(Boolean))];
+
+    return {
+      OR: [
+        { requestedByUserId: { in: userKeys.length > 0 ? userKeys : ['__NON_EXISTENT_USER__'] } },
+        { entityId: { in: assetKeys.length > 0 ? assetKeys : ['__NON_EXISTENT_ASSET__'] } }
+      ]
+    };
+  } catch (err) {
+    console.warn('Error computing tenant workflow filter:', err.message);
+    return {};
+  }
+}
+
 export async function getPendingApprovals(req, res, next) {
   try {
+    const tenantFilter = await getTenantWorkflowFilter(req);
+    const where = { status: 'PENDING', ...tenantFilter };
     const instances = await prisma.workflowInstance.findMany({
-      where: { status: 'PENDING' },
+      where,
       include: {
         workflowDefinition: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
         approvalActions: { orderBy: { stepNumber: 'asc' } }
@@ -191,7 +224,7 @@ export async function getPendingApprovals(req, res, next) {
       orderBy: { createdAt: 'desc' }
     });
 
-    const requests = await Promise.all(instances.map(formatWorkflowInstance));
+    const requests = await Promise.all(instances.map(inst => formatWorkflowInstance(inst)));
 
     res.json({
       success: true,
@@ -204,8 +237,10 @@ export async function getPendingApprovals(req, res, next) {
 
 export async function getWorkflowHistory(req, res, next) {
   try {
+    const tenantFilter = await getTenantWorkflowFilter(req);
+    const where = { status: { not: 'PENDING' }, ...tenantFilter };
     const instances = await prisma.workflowInstance.findMany({
-      where: { status: { not: 'PENDING' } },
+      where,
       include: {
         workflowDefinition: { include: { steps: { orderBy: { stepNumber: 'asc' } } } },
         approvalActions: { orderBy: { stepNumber: 'asc' } }
@@ -214,7 +249,7 @@ export async function getWorkflowHistory(req, res, next) {
       take: 100
     });
 
-    const requests = await Promise.all(instances.map(formatWorkflowInstance));
+    const requests = await Promise.all(instances.map(inst => formatWorkflowInstance(inst)));
 
     res.json({
       success: true,
@@ -228,7 +263,8 @@ export async function getWorkflowHistory(req, res, next) {
 export async function getAllApprovals(req, res, next) {
   try {
     const { status } = req.query;
-    const where = {};
+    const tenantFilter = await getTenantWorkflowFilter(req);
+    const where = { ...tenantFilter };
     if (status && status !== 'All') {
       where.status = status.toUpperCase();
     }
@@ -470,6 +506,11 @@ export async function createApprovalRequest(req, res, next) {
     }
 
     if (!targetAsset) return res.status(404).json({ success: false, message: 'Asset not found.' });
+
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    if (tenantCompanyId && targetAsset.companyId && targetAsset.companyId !== tenantCompanyId) {
+      return res.status(403).json({ success: false, message: 'Unauthorized: Asset does not belong to your company.' });
+    }
     // 1. Resolve or auto-create Workflow Definition with 4 standard enterprise tiers
     let definition = await prisma.workflowDefinition.findFirst({
       where: {

@@ -54,12 +54,14 @@ class TaggingServiceStore {
       department = '',
       tagStatus = '',
       custodian = '',
-      assetStatus = ''
+      assetStatus = '',
+      companyId = ''
     } = filters;
 
     if (!isSqlServerConnected) throw new Error('Database is unavailable.');
     {
         const where = {};
+        if (companyId) where.companyId = companyId;
         if (barcode) where.OR = [{ barcode }, { assetId: barcode }];
         if (rfid) where.OR = [{ rfidEpc: rfid }, { tagNumber: rfid }];
         if (assetNumber) where.assetId = { contains: assetNumber };
@@ -456,11 +458,15 @@ class TaggingServiceStore {
   }
 
   // Get Tagging Summary Counts
-  async getTaggingSummary() {
+  async getTaggingSummary(tenantCompanyId = null) {
     if (isSqlServerConnected) {
       try {
-        const total = await prisma.asset.count({ where: { active: true } });
-        const tagged = await prisma.asset.count({ where: { active: true, tagNumber: { not: null } } });
+        const baseWhere = {
+          active: true,
+          ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
+        };
+        const total = await prisma.asset.count({ where: baseWhere });
+        const tagged = await prisma.asset.count({ where: { ...baseWhere, tagNumber: { not: null } } });
         const pending = Math.max(0, total - tagged);
         return {
           selected: total,
@@ -474,11 +480,14 @@ class TaggingServiceStore {
   }
 
   // Get Recent Tagged Assets
-  async getRecentTagged(limit = 10) {
+  async getRecentTagged(limit = 10, tenantCompanyId = null) {
     if (isSqlServerConnected) {
       try {
         const dbTags = await prisma.tag.findMany({
-          where: { assetId: { not: null } },
+          where: {
+            assetId: { not: null },
+            ...(tenantCompanyId ? { asset: { companyId: tenantCompanyId } } : {})
+          },
           include: { asset: true },
           orderBy: { updatedAt: 'desc' },
           take: limit

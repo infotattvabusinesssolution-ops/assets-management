@@ -250,9 +250,14 @@ export async function getAdminUsers(req, res) {
       accountStatus = ''
     } = req.query;
 
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const userWhere = (tenantCompanyId && !isSuperAdmin) ? { companyId: tenantCompanyId } : {};
+
     let dbUsers = [];
     try {
       dbUsers = await prisma.user.findMany({
+        where: userWhere,
         include: {
           role: true,
           department: true,
@@ -1184,7 +1189,12 @@ export async function assignUsersToRole(req, res) {
 
 export async function getCompaniesList(req, res) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const where = (tenantCompanyId && !isSuperAdmin) ? { id: tenantCompanyId } : {};
+
     const dbCompanies = await prisma.company.findMany({
+      where,
       include: { sites: true, departments: true, costCenters: true },
       orderBy: { name: 'asc' }
     });
@@ -1225,7 +1235,12 @@ export async function getBusinessUnitsList(req, res) {
 
 export async function getDepartmentsList(req, res) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const where = (tenantCompanyId && !isSuperAdmin) ? { companyId: tenantCompanyId } : {};
+
     const dbDepts = await prisma.department.findMany({
+      where,
       include: { company: true },
       orderBy: { name: 'asc' }
     });
@@ -1251,7 +1266,12 @@ export async function getDepartmentsList(req, res) {
 
 export async function getLocationsList(req, res) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const where = (tenantCompanyId && !isSuperAdmin) ? { companyId: tenantCompanyId } : {};
+
     const dbSites = await prisma.site.findMany({
+      where,
       include: { company: true, buildings: true },
       orderBy: { name: 'asc' }
     });
@@ -1277,7 +1297,12 @@ export async function getLocationsList(req, res) {
 
 export async function getCostCentersList(req, res) {
   try {
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const where = (tenantCompanyId && !isSuperAdmin) ? { companyId: tenantCompanyId } : {};
+
     const dbCC = await prisma.costCenter.findMany({
+      where,
       include: { company: true },
       orderBy: { code: 'asc' }
     });
