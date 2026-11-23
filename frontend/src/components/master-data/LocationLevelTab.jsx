@@ -40,7 +40,7 @@ export function LocationLevelTab({
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
 
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
   const {
     canCreate,
     canEdit,
@@ -73,7 +73,7 @@ export function LocationLevelTab({
     status: 'Active'
   });
 
-  const storageKey = `fams_custom_location_level_${level}`;
+  const storageKey = user?.companyId ? `fams_custom_location_level_${level}_${user.companyId}` : `fams_custom_location_level_${level}`;
 
   // External trigger for Add Modal
   useEffect(() => {
@@ -88,10 +88,8 @@ export function LocationLevelTab({
     setIsLoading(true);
     try {
       const res = await api.get(`/master-data/location-levels/${level}?includeInactive=true`).catch(() => null);
-      let custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
-      let serverRecords = [];
       if (res?.locationLevels && Array.isArray(res.locationLevels)) {
-        serverRecords = res.locationLevels.map((it) => ({
+        const serverRecords = res.locationLevels.map((it) => ({
           id: it.id,
           code: it.code,
           name: it.name,
@@ -101,38 +99,15 @@ export function LocationLevelTab({
           createdAt: it.createdAt,
           updatedAt: it.updatedAt
         }));
+        setItems(serverRecords);
+        setSelectedItem((prev) => (prev ? serverRecords.find(i => i.id === prev.id) || serverRecords[0] || null : serverRecords[0] || null));
+        return;
       }
 
-      const serverCodes = new Set(serverRecords.map(x => (x.code || '').toUpperCase().trim()).filter(Boolean));
-      const missingCustom = custom.filter(c => {
-        const code = (c.code || '').toUpperCase().trim();
-        return !code || !serverCodes.has(code);
-      }).map(c => ({
-        ...c,
-        status: c.status || (c.active === false ? 'Inactive' : 'Active'),
-        active: c.active !== false && c.status !== 'Inactive'
-      }));
-
-      // Automatically sync any local records that were saved while backend was offline
-      if (missingCustom.length > 0) {
-        for (const it of missingCustom) {
-          try {
-            await api.post(`/master-data/location-levels/${level}`, {
-              code: it.code,
-              name: it.name,
-              description: it.description || '',
-              status: it.status,
-              active: it.active
-            });
-          } catch (syncErr) {
-            console.warn(`Syncing custom item ${it.code} to DB skipped:`, syncErr.message);
-          }
-        }
-      }
-
-      const combined = [...serverRecords, ...missingCustom];
-      setItems(combined);
-      setSelectedItem((prev) => (prev ? combined.find(i => i.id === prev.id) || combined[0] || null : combined[0] || null));
+      // Offline fallback only when backend is unreachable
+      const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');
+      setItems(custom);
+      setSelectedItem(custom[0] || null);
     } catch (err) {
       console.warn(`Failed to load records for Location Level ${level}:`, err);
       const custom = JSON.parse(localStorage.getItem(storageKey) || '[]');

@@ -117,6 +117,26 @@ function normalizeUserProfile(userObj) {
   return clone;
 }
 
+export function clearStaleTenantLocalStorage(currentCompanyId) {
+  try {
+    const keysToRemove = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (!k) continue;
+      if (k.startsWith('fams_custom_') || k === 'fams_asset_conditions' || k.startsWith('fams_asset_conditions_')) {
+        if (!currentCompanyId) {
+          keysToRemove.push(k);
+        } else if (!k.endsWith(`_${currentCompanyId}`)) {
+          keysToRemove.push(k);
+        }
+      }
+    }
+    keysToRemove.forEach(k => {
+      try { localStorage.removeItem(k); } catch (_) {}
+    });
+  } catch (_) {}
+}
+
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => {
     if (localStorage.getItem('fams_explicit_logout') === 'true') return null;
@@ -157,6 +177,7 @@ export function AuthProvider({ children }) {
         if (!res?.success || !res.user) throw new Error('Profile unavailable');
         const { passwordHash, ...profile } = res.user;
         const normalized = normalizeUserProfile(profile);
+        clearStaleTenantLocalStorage(normalized.companyId);
         setUser(normalized);
         localStorage.setItem('fams_user', JSON.stringify(normalized));
         localStorage.setItem('fams_primary_role', normalized.role?.code || '');
@@ -179,6 +200,7 @@ export function AuthProvider({ children }) {
       const res = await api.post('/auth/login', { username: username.trim(), password });
       if (!res?.success || !res.token || !res.user) throw new Error(res?.message || 'Login failed.');
       const normalized = normalizeUserProfile(res.user);
+      clearStaleTenantLocalStorage(normalized.companyId);
       localStorage.removeItem('fams_explicit_logout');
       localStorage.setItem('fams_token', res.token);
       localStorage.setItem('fams_user', JSON.stringify(normalized));
@@ -224,6 +246,7 @@ export function AuthProvider({ children }) {
       });
       if (!res?.success || !res.token || !res.user) throw new Error(res?.message || 'License activation failed.');
       const normalized = normalizeUserProfile(res.user);
+      clearStaleTenantLocalStorage(normalized.companyId);
       localStorage.removeItem('fams_explicit_logout');
       localStorage.setItem('fams_token', res.token);
       localStorage.setItem('fams_user', JSON.stringify(normalized));
@@ -267,6 +290,7 @@ export function AuthProvider({ children }) {
   };
 
   const logout = () => {
+    clearStaleTenantLocalStorage(null);
     setUser(null);
     setToken(null);
     localStorage.setItem('fams_explicit_logout', 'true');

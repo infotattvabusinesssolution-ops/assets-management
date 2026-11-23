@@ -50,7 +50,7 @@ export function ConditionsTab({
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
 
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
   const {
     canCreate,
     canEdit,
@@ -58,6 +58,8 @@ export function ConditionsTab({
     canDuplicate,
     canActivate
   } = getMasterPermissions ? getMasterPermissions('conditions') : { canCreate: true, canEdit: true, canDelete: true, canDuplicate: true, canActivate: true };
+
+  const storageKey = user?.companyId ? `fams_asset_conditions_${user.companyId}` : 'fams_asset_conditions';
 
   const [conditions, setConditions] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -88,7 +90,7 @@ export function ConditionsTab({
       if (res && res.assetConditions && Array.isArray(res.assetConditions)) {
         setConditions(res.assetConditions);
       } else {
-        const stored = localStorage.getItem('fams_asset_conditions');
+        const stored = localStorage.getItem(storageKey);
         if (stored) {
           try { setConditions(JSON.parse(stored)); } catch (_) { setConditions([]); }
         } else {
@@ -165,7 +167,7 @@ export function ConditionsTab({
       await api.put(`/master-data/asset-conditions/${item.id}`, { active: nextActive }).catch(() => null);
       setConditions(prev => {
         const updated = prev.map(s => s.id === item.id ? { ...s, active: nextActive } : s);
-        try { localStorage.setItem('fams_asset_conditions', JSON.stringify(updated)); } catch (_) {}
+        try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (_) {}
         return updated;
       });
       triggerToast?.(`Asset condition marked as ${nextActive ? 'Active' : 'Inactive'}`, 'success');
@@ -215,7 +217,7 @@ export function ConditionsTab({
         await api.put(`/master-data/asset-conditions/${editingCondition.id}`, formData);
         setConditions(prev => {
           const updated = prev.map(s => s.id === editingCondition.id ? { ...s, ...formData } : s);
-          try { localStorage.setItem('fams_asset_conditions', JSON.stringify(updated)); } catch (_) {}
+          try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (_) {}
           return updated;
         });
         triggerToast?.('Condition updated successfully', 'success');
@@ -230,7 +232,7 @@ export function ConditionsTab({
         };
         setConditions(prev => {
           const updated = [...prev, newRecord];
-          try { localStorage.setItem('fams_asset_conditions', JSON.stringify(updated)); } catch (_) {}
+          try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (_) {}
           return updated;
         });
         triggerToast?.('Condition created successfully', 'success');
@@ -252,7 +254,7 @@ export function ConditionsTab({
       await api.delete(`/master-data/asset-conditions/${conditionToDelete.id}`).catch(() => null);
       setConditions(prev => {
         const updated = prev.filter(s => s.id !== conditionToDelete.id);
-        try { localStorage.setItem('fams_asset_conditions', JSON.stringify(updated)); } catch (_) {}
+        try { localStorage.setItem(storageKey, JSON.stringify(updated)); } catch (_) {}
         return updated;
       });
       triggerToast?.('Condition deleted successfully', 'success');

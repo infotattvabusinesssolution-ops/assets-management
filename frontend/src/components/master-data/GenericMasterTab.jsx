@@ -59,7 +59,8 @@ export function GenericMasterTab({
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
 
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
+  const getScopedKey = (base) => (user?.companyId ? `${base}_${user.companyId}` : base);
   const {
     canCreate,
     canEdit,
@@ -217,10 +218,8 @@ export function GenericMasterTab({
     try {
       if (activeTab === 'uom') {
         const res = await api.get('/master-data/uoms?includeInactive=true').catch(() => null);
-        let custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
-        let serverUoms = [];
-        if (res?.uoms && res.uoms.length > 0) {
-          serverUoms = res.uoms.map((u) => ({
+        if (res?.uoms && Array.isArray(res.uoms)) {
+          const serverUoms = res.uoms.map((u) => ({
             id: u.id,
             code: u.code,
             name: u.name,
@@ -230,17 +229,13 @@ export function GenericMasterTab({
             status: u.active === false ? 'Inactive' : 'Active',
             active: u.active !== false
           }));
+          setItems(serverUoms);
+          setSelectedItem(serverUoms[0] || null);
+          return;
         }
-        const serverKeys = new Set(serverUoms.map(x => (x.code || x.name || '').toUpperCase().trim()));
-        const missingCustom = custom.filter(c => !serverKeys.has((c.code || c.name || '').toUpperCase().trim())).map(c => ({
-          ...c,
-          status: c.status || (c.active === false ? 'Inactive' : 'Active'),
-          active: c.active !== false
-        }));
-        const combined = [...serverUoms, ...missingCustom];
-        console.log('📋 [Dynamic UOM Records Loaded from Database]:', combined);
-        setItems(combined);
-        setSelectedItem(combined[0] || null);
+        const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_uoms')) || '[]');
+        setItems(custom);
+        setSelectedItem(custom[0] || null);
         return;
       }
       if (activeTab === 'brands') {
@@ -505,9 +500,9 @@ export function GenericMasterTab({
       if (activeTab === 'uom') {
         await api.put(`/master-data/uoms/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
         try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
+          const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_uoms')) || '[]');
           const updatedCustom = custom.map(c => c.id === item.id ? { ...c, active: nextActive, status: nextStatus } : c);
-          localStorage.setItem('fams_custom_uoms', JSON.stringify(updatedCustom));
+          localStorage.setItem(getScopedKey('fams_custom_uoms'), JSON.stringify(updatedCustom));
         } catch (_) {}
       } else if (activeTab === 'asset-types') {
         await api.put(`/master-data/asset-types/${item.id}`, { active: nextActive, status: nextStatus }).catch(() => null);
@@ -610,8 +605,8 @@ export function GenericMasterTab({
             active: formState.status === 'Active'
           });
           try {
-            const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
-            localStorage.setItem('fams_custom_uoms', JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
+            const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_uoms')) || '[]');
+            localStorage.setItem(getScopedKey('fams_custom_uoms'), JSON.stringify(custom.map(c => c.id === editingItem.id ? { ...c, ...formState } : c)));
           } catch (_) {}
         }
         if (activeTab === 'brands') {
@@ -669,8 +664,8 @@ export function GenericMasterTab({
           });
           if (res?.uom?.id) newItem.id = res.uom.id;
           try {
-            const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
-            localStorage.setItem('fams_custom_uoms', JSON.stringify([newItem, ...custom]));
+            const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_uoms')) || '[]');
+            localStorage.setItem(getScopedKey('fams_custom_uoms'), JSON.stringify([newItem, ...custom]));
           } catch (_) {}
         }
         if (activeTab === 'asset-types') {
@@ -822,9 +817,9 @@ export function GenericMasterTab({
 
     if (activeTab === 'uom') {
       try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_uoms') || '[]');
+        const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_uoms')) || '[]');
         localStorage.setItem(
-          'fams_custom_uoms',
+          getScopedKey('fams_custom_uoms'),
           JSON.stringify(
             custom.filter(c =>
               c.id !== targetId &&

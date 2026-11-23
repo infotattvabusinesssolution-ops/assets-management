@@ -50,7 +50,8 @@ export function ItemMasterTab({
   const activeRowMenuId = propActiveRowMenuId !== undefined ? propActiveRowMenuId : localActiveRowMenuId;
   const setActiveRowMenuId = propSetActiveRowMenuId || setLocalActiveRowMenuId;
 
-  const { getMasterPermissions } = useAuth();
+  const { user, getMasterPermissions } = useAuth();
+  const getScopedKey = (base) => (user?.companyId ? `${base}_${user.companyId}` : base);
   const {
     canCreate,
     canEdit,
@@ -139,11 +140,15 @@ export function ItemMasterTab({
         api.get('/master-data/brands').catch(() => null)
       ]);
 
-      const customItems = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
       const serverItems = (itemRes?.items && Array.isArray(itemRes.items)) ? itemRes.items : [];
+      let mergedItems = serverItems;
+      if (!itemRes) {
+        const customItems = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_item_masters')) || '[]');
+        mergedItems = customItems;
+      }
       const mockIds = new Set(['itm-001', 'itm-002', 'itm-003']);
       const seenItemCodes = new Set();
-      const mergedItems = [...customItems, ...serverItems]
+      mergedItems = mergedItems
         .filter(itm => !mockIds.has(itm.id))
         .filter(itm => {
           const c = (itm.itemCode || itm.id || '').toUpperCase().trim();
@@ -369,7 +374,7 @@ export function ItemMasterTab({
 
   // Auto-generate next item code preview (guarantee uniqueness above baseline defaults)
   const nextItemCodePreview = useMemo(() => {
-    const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+    const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_item_masters')) || '[]');
     const baseline = ['ITM-000101', 'ITM-000102', 'ITM-000103', 'ITM-000104'];
     const allCodes = [
       ...items.map(i => i.itemCode || ''),
@@ -623,8 +628,8 @@ export function ItemMasterTab({
         const res = await api.put(`/master-data/items/${editingItem.id}`, payload);
         const saved = res?.item || { ...editingItem, ...payload };
         try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
-          localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.map(i => i.id === editingItem.id ? saved : i)));
+          const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_item_masters')) || '[]');
+          localStorage.setItem(getScopedKey('fams_custom_item_masters'), JSON.stringify(custom.map(i => i.id === editingItem.id ? saved : i)));
         } catch (_) { }
         const updated = items.map(i => i.id === editingItem.id ? saved : i);
         setItems(updated);
@@ -634,8 +639,8 @@ export function ItemMasterTab({
         const res = await api.post('/master-data/items', payload);
         const newItem = res?.item || { ...payload, id: `ITM-${Date.now()}` };
         try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
-          localStorage.setItem('fams_custom_item_masters', JSON.stringify([newItem, ...custom.filter(c => c.id !== newItem.id)]));
+          const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_item_masters')) || '[]');
+          localStorage.setItem(getScopedKey('fams_custom_item_masters'), JSON.stringify([newItem, ...custom.filter(c => c.id !== newItem.id)]));
         } catch (_) { }
         const updated = [newItem, ...items];
         setItems(updated);
@@ -666,8 +671,8 @@ export function ItemMasterTab({
     try {
       await api.put(`/master-data/items/${item.id}`, { ...item, active: nextStatus }).catch(() => null);
       try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
-        localStorage.setItem('fams_custom_item_masters', JSON.stringify(custom.map(i => i.id === item.id ? { ...i, active: nextStatus } : i)));
+        const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_item_masters')) || '[]');
+        localStorage.setItem(getScopedKey('fams_custom_item_masters'), JSON.stringify(custom.map(i => i.id === item.id ? { ...i, active: nextStatus } : i)));
       } catch (_) { }
       const updated = items.map(i => i.id === item.id ? { ...i, active: nextStatus } : i);
       setItems(updated);
@@ -699,9 +704,9 @@ export function ItemMasterTab({
       }
       // Purge from local storage custom items
       try {
-        const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+        const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_item_masters')) || '[]');
         localStorage.setItem(
-          'fams_custom_item_masters',
+          getScopedKey('fams_custom_item_masters'),
           JSON.stringify(custom.filter(i => 
             i.id !== itemToDelete.id &&
             i.itemCode !== itemToDelete.itemCode &&
@@ -732,9 +737,9 @@ export function ItemMasterTab({
       }
       if (err?.response?.status === 404 || err?.status === 404) {
         try {
-          const custom = JSON.parse(localStorage.getItem('fams_custom_item_masters') || '[]');
+          const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_item_masters')) || '[]');
           localStorage.setItem(
-            'fams_custom_item_masters',
+            getScopedKey('fams_custom_item_masters'),
             JSON.stringify(custom.filter(i => 
               i.id !== itemToDelete.id &&
               i.itemCode !== itemToDelete.itemCode &&
