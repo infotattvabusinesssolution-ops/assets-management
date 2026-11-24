@@ -10,7 +10,11 @@ import {
   listCompaniesSummary,
   updateCompanyLicense,
   resetCompanyAdminPassword,
-  getOrCreateSuperAdmin
+  getOrCreateSuperAdmin,
+  deleteCompanyCascade,
+  deactivateCompany,
+  reactivateCompany,
+  getCompanyDeletionAudit
 } from '../modules/admin/superAdmin.service.js';
 
 function ask(rl, question, defaultValue = '') {
@@ -268,7 +272,86 @@ async function main() {
     process.exit(0);
   }
 
-  // 5. Interactive Mode (Default when no subcommands)
+  // 5. Direct CLI Command: DELETE / PURGE COMPANY
+  if (command === 'delete' || command === 'remove' || command === 'purge') {
+    const code = options.code || options.company || options.id;
+    const force = options.force === true || options.force === 'true';
+    if (!code) {
+      console.error('❌ Error: --code is required (e.g. --code ABCT or --code 897)');
+      process.exit(1);
+    }
+    try {
+      const audit = await getCompanyDeletionAudit(code);
+      if (audit.counts.assets > 0 && !force) {
+        console.log(`\n========================================================================`);
+        console.log(`⚠️  DEPENDENCY PROTECTION NOTICE`);
+        console.log(`========================================================================`);
+        console.log(`🏢 Company        : ${audit.company.name} (${audit.company.code})`);
+        console.log(`📦 Active Assets  : ${audit.counts.assets}`);
+        console.log(`👥 Users/Admins   : ${audit.counts.users}`);
+        console.log(`📁 Departments    : ${audit.counts.departments}`);
+        console.log(`🏷️ Cost Centers   : ${audit.counts.costCenters}`);
+        console.log(`------------------------------------------------------------------------`);
+        console.log(`❌ Permanent deletion blocked to protect historical audit & financial trails.`);
+        console.log(`👉 Recommended: Run 'node scripts/superadmin.js deactivate --code ${audit.company.code}' to block access safely.`);
+        console.log(`👉 Or pass '--force' to permanently destroy all assets and master data.`);
+        console.log(`========================================================================\n`);
+        process.exit(1);
+      }
+
+      const res = await deleteCompanyCascade(code, { force });
+      console.log(`\n========================================================================`);
+      console.log(`🗑️  COMPANY & ASSOCIATED ENTITIES PERMANENTLY DELETED!`);
+      console.log(`========================================================================`);
+      console.log(`🏢 Company Name   : ${res.deletedCompany.name} (${res.deletedCompany.code})`);
+      console.log(`🆔 Company ID     : ${res.deletedCompany.id}`);
+      console.log(`👤 System Admins/Users Deleted : ${res.deletedCounts.users}`);
+      console.log(`📍 Branches Deleted            : ${res.deletedCounts.branches}`);
+      console.log(`🏢 Sites Deleted               : ${res.deletedCounts.sites}`);
+      console.log(`📜 License Removed             : ${res.deletedCounts.hasLicense ? 'YES' : 'NO'}`);
+      console.log(`========================================================================\n`);
+    } catch (err) {
+      console.error('❌ Deletion failed:', err.message);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
+
+  // 6. Direct CLI Command: DEACTIVATE / SUSPEND COMPANY
+  if (command === 'deactivate' || command === 'suspend') {
+    const code = options.code || options.company || options.id;
+    if (!code) {
+      console.error('❌ Error: --code is required (e.g. --code ABCT)');
+      process.exit(1);
+    }
+    try {
+      const res = await deactivateCompany(code);
+      console.log(`✅ Company "${res.company.name}" (${res.company.code}) and all its licenses, branches, and user credentials deactivated.`);
+    } catch (err) {
+      console.error('❌ Deactivation failed:', err.message);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
+
+  // 7. Direct CLI Command: REACTIVATE COMPANY
+  if (command === 'reactivate' || command === 'activate') {
+    const code = options.code || options.company || options.id;
+    if (!code) {
+      console.error('❌ Error: --code is required (e.g. --code ABCT)');
+      process.exit(1);
+    }
+    try {
+      const res = await reactivateCompany(code);
+      console.log(`✅ Company "${res.company.name}" (${res.company.code}) and all its licenses, branches, and user credentials reactivated.`);
+    } catch (err) {
+      console.error('❌ Reactivation failed:', err.message);
+      process.exit(1);
+    }
+    process.exit(0);
+  }
+
+  // 8. Interactive Mode (Default when no subcommands)
   const rl = readline.createInterface({
     input: process.stdin,
     output: process.stdout
@@ -280,9 +363,12 @@ async function main() {
     console.log('2. List All Companies & Licenses');
     console.log('3. Update / Extend Company License');
     console.log('4. Reset Client System Administrator Password');
-    console.log('5. Exit');
+    console.log('5. Delete Company & All Associated Data (License, Branches, Admin)');
+    console.log('6. Deactivate / Suspend Company & License');
+    console.log('7. Reactivate Company & License');
+    console.log('8. Exit');
 
-    const choice = await ask(rl, 'Enter option (1-5)');
+    const choice = await ask(rl, 'Enter option (1-8)');
 
     if (choice === '1') {
       await handleProvisionInteractive(rl);
@@ -314,12 +400,99 @@ async function main() {
       } catch (e) {
         console.error('❌ Error:', e.message);
       }
-    } else if (choice === '5' || choice.toLowerCase() === 'exit') {
+    } else if (choice === '5') {
+      const code = await ask(rl, 'Enter Company Code or ID to DELETE (e.g. 897, ABCT)');
+      if (!code) {
+        console.log('⚠️ Operation cancelled: No company code provided.');
+        continue;
+      }
+      try {
+        const audit = await getCompanyDeletionAudit(code);
+        console.log(`\n========================================================================`);
+        console.log(`🔍 COMPANY AUDIT & DEPENDENCY INSPECTION`);
+        console.log(`========================================================================`);
+        console.log(`🏢 Company Name   : ${audit.company.name} (${audit.company.code})`);
+        console.log(`🆔 Company ID     : ${audit.company.id}`);
+        console.log(`📦 Active Assets  : ${audit.counts.assets}`);
+        console.log(`👥 Users/Admins   : ${audit.counts.users}`);
+        console.log(`📍 Branches       : ${audit.counts.branches}`);
+        console.log(`📁 Departments    : ${audit.counts.departments}`);
+        console.log(`🏷️ Cost Centers   : ${audit.counts.costCenters}`);
+        console.log(`👤 Employees      : ${audit.counts.employees}`);
+        if (audit.externalUsers.length > 0) {
+          const extUsers = audit.externalUsers.map(u => `${u.username} (${u.company?.code || 'External'})`).join(', ');
+          console.log(`⚠️ External Users Linked to this Company's master data: ${extUsers}`);
+        }
+        console.log(`------------------------------------------------------------------------`);
+
+        if (audit.counts.assets > 0) {
+          console.log(`⚠️ ATTENTION: This company has ${audit.counts.assets} active asset(s)!`);
+          console.log(`👉 Enterprise Recommendation: Use Option 6 (Deactivate / Suspend) instead`);
+          console.log(`   to disable access while preserving historical and financial audit trails.`);
+          console.log(`------------------------------------------------------------------------`);
+          const confirm = await ask(rl, `If you still want to destroy all data and permanently purge this company, type 'FORCE PURGE'`);
+          if (confirm === 'FORCE PURGE') {
+            const res = await deleteCompanyCascade(code, { force: true });
+            console.log(`\n========================================================================`);
+            console.log(`🗑️  COMPANY & ASSOCIATED ENTITIES PERMANENTLY PURGED!`);
+            console.log(`========================================================================`);
+            console.log(`🏢 Company Name   : ${res.deletedCompany.name} (${res.deletedCompany.code})`);
+            console.log(`👤 Users Deleted  : ${res.deletedCounts.users}`);
+            console.log(`📍 Branches Deleted: ${res.deletedCounts.branches}`);
+            console.log(`========================================================================\n`);
+          } else {
+            console.log('❌ Deletion cancelled.');
+          }
+        } else {
+          console.log(`ℹ️ This company has 0 assets (Safe Empty / Test Tenant).`);
+          const confirm = await ask(rl, `Permanently delete company, license, branches, and admin credentials? (type 'yes' to confirm)`);
+          if (confirm.toLowerCase() === 'yes' || confirm === 'DELETE') {
+            const res = await deleteCompanyCascade(code, { force: true });
+            console.log(`\n========================================================================`);
+            console.log(`🗑️  COMPANY & ASSOCIATED ENTITIES PERMANENTLY DELETED!`);
+            console.log(`========================================================================`);
+            console.log(`🏢 Company Name   : ${res.deletedCompany.name} (${res.deletedCompany.code})`);
+            console.log(`👤 Users Deleted  : ${res.deletedCounts.users}`);
+            console.log(`📍 Branches Deleted: ${res.deletedCounts.branches}`);
+            console.log(`📜 License Removed: ${res.deletedCounts.hasLicense ? 'YES' : 'NO'}`);
+            console.log(`========================================================================\n`);
+          } else {
+            console.log('❌ Deletion cancelled.');
+          }
+        }
+      } catch (e) {
+        console.error('❌ Deletion Error:', e.message);
+      }
+    } else if (choice === '6') {
+      const code = await ask(rl, 'Enter Company Code or ID to Deactivate (e.g. 897, ABCT)');
+      if (!code) {
+        console.log('⚠️ Operation cancelled: No company code provided.');
+        continue;
+      }
+      try {
+        const res = await deactivateCompany(code);
+        console.log(`✅ Company "${res.company.name}" (${res.company.code}) and its license deactivated successfully!`);
+      } catch (e) {
+        console.error('❌ Error:', e.message);
+      }
+    } else if (choice === '7') {
+      const code = await ask(rl, 'Enter Company Code or ID to Reactivate (e.g. 897, ABCT)');
+      if (!code) {
+        console.log('⚠️ Operation cancelled: No company code provided.');
+        continue;
+      }
+      try {
+        const res = await reactivateCompany(code);
+        console.log(`✅ Company "${res.company.name}" (${res.company.code}) and its license reactivated successfully!`);
+      } catch (e) {
+        console.error('❌ Error:', e.message);
+      }
+    } else if (choice === '8' || choice.toLowerCase() === 'exit') {
       console.log('👋 Goodbye!');
       rl.close();
       process.exit(0);
     } else {
-      console.log('Invalid option. Please enter 1 to 5.');
+      console.log('Invalid option. Please enter 1 to 8.');
     }
   }
 }

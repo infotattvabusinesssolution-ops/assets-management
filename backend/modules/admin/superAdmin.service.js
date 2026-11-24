@@ -669,3 +669,430 @@ export async function validateLicenseForCompany(companyId, action) {
     return { allowed: true };
   }
 }
+
+/**
+ * Performs a safe pre-check dependency audit on a company before deletion.
+ * Detects assets, master data, and foreign key references.
+ */
+export async function getCompanyDeletionAudit(companyCodeOrId) {
+  await ensureMultiTenantTables();
+
+  if (!isDbConnected()) {
+    throw new Error('Database is offline.');
+  }
+
+  const company = await prisma.company.findFirst({
+    where: {
+      OR: [
+        { id: companyCodeOrId },
+        { code: companyCodeOrId }
+      ]
+    },
+    include: {
+      license: true,
+      branches: true,
+      sites: true,
+      users: true,
+      assets: true,
+      departments: true,
+      costCenters: true,
+      employees: true
+    }
+  });
+
+  if (!company) {
+    throw new Error(`Company "${companyCodeOrId}" not found in database.`);
+  }
+
+  const compId = company.id;
+  const deptIds = (company.departments || []).map(d => d.id);
+  const costCenterIds = (company.costCenters || []).map(c => c.id);
+
+  // Check for external users from OTHER companies referencing this company's taxonomy
+  let externalUsers = [];
+  if (deptIds.length > 0 || costCenterIds.length > 0) {
+    externalUsers = await prisma.user.findMany({
+      where: {
+        AND: [
+          { companyId: { not: compId } },
+          {
+            OR: [
+              ...(costCenterIds.length > 0 ? [{ costCenterId: { in: costCenterIds } }] : []),
+              ...(deptIds.length > 0 ? [{ departmentId: { in: deptIds } }] : [])
+            ]
+          }
+        ]
+      },
+      select: { id: true, username: true, email: true, company: { select: { name: true, code: true } } }
+    }).catch(() => []);
+  }
+
+  const assetCount = (company.assets || []).length;
+  const userCount = (company.users || []).length;
+  const branchCount = (company.branches || []).length;
+  const deptCount = (company.departments || []).length;
+  const costCenterCount = (company.costCenters || []).length;
+  const employeeCount = (company.employees || []).length;
+
+  const isSafeEmpty = assetCount === 0 && employeeCount === 0 && externalUsers.length === 0;
+
+  return {
+    company: {
+      id: company.id,
+      code: company.code,
+      name: company.name,
+      active: company.active
+    },
+    license: company.license ? {
+      key: company.license.licenseKey,
+      isActive: company.license.isActive,
+      maxUsers: company.license.maxUsers
+    } : null,
+    counts: {
+      assets: assetCount,
+      users: userCount,
+      branches: branchCount,
+      departments: deptCount,
+      costCenters: costCenterCount,
+      employees: employeeCount
+    },
+    externalUsers,
+    isSafeEmpty,
+    recommendation: isSafeEmpty ? 'SAFE_TO_PURGE' : 'DEACTIVATE_RECOMMENDED'
+  };
+}
+
+/**
+ * Permanently deletes a tenant company and all its associated records:
+ * License, Branches, Sites, Admin & Users, Password Policy, Cost Centers, Departments, etc.
+ * Handles unlinking of all relational foreign key dependencies cleanly.
+ */
+export async function deleteCompanyCascade(companyCodeOrId, { force = false } = {}) {
+  await ensureMultiTenantTables();
+
+  if (!isDbConnected()) {
+    throw new Error('Database is offline.');
+  }
+
+  const audit = await getCompanyDeletionAudit(companyCodeOrId);
+  const company = await prisma.company.findFirst({
+    where: {
+      OR: [
+        { id: companyCodeOrId },
+        { code: companyCodeOrId }
+      ]
+    },
+    include: {
+      license: true,
+      branches: true,
+      sites: true,
+      users: true,
+      assets: true,
+      departments: true,
+      costCenters: true,
+      employees: true
+    }
+  });
+
+  if (!company) {
+    throw new Error(`Company "${companyCodeOrId}" not found in database.`);
+  }
+
+  // Enterprise Guardrail: Prevent silent destruction of active assets
+  if (audit.counts.assets > 0 && !force) {
+    throw new Error(`Enterprise Protection Notice: Company "${company.name}" (${company.code}) has ${audit.counts.assets} active asset(s) and operational records. To preserve audit and tax records, choose DEACTIVATE instead. To force permanent purge of all assets, pass force: true or --force.`);
+  }
+
+  // Dependency Guardrail: Check external cross-company assignments
+  if (audit.externalUsers.length > 0 && !force) {
+    const extList = audit.externalUsers.map(u => `${u.username} (${u.company?.code || 'External'})`).join(', ');
+    throw new Error(`Dependency Conflict: ${audit.externalUsers.length} user(s) from other companies (${extList}) are assigned to this company's sections/departments. Please reassign them first, or pass force: true.`);
+  }
+
+  const compId = company.id;
+  const userIds = (company.users || []).map(u => u.id);
+  const siteIds = (company.sites || []).map(s => s.id);
+  const deptIds = (company.departments || []).map(d => d.id);
+  const costCenterIds = (company.costCenters || []).map(c => c.id);
+  const assetIds = (company.assets || []).map(a => a.id);
+
+  // -------------------------------------------------------------
+  // STEP 1: UNLINK EXTERNAL USER & EMPLOYEE & ASSET REFERENCES TO THIS COMPANY'S TAXONOMY
+  // -------------------------------------------------------------
+  // Any user in the entire DB pointing to this company's cost center, department, site, or branch
+  await prisma.user.updateMany({
+    where: {
+      OR: [
+        ...(costCenterIds.length > 0 ? [{ costCenterId: { in: costCenterIds } }] : []),
+        ...(deptIds.length > 0 ? [{ departmentId: { in: deptIds } }] : []),
+        ...(siteIds.length > 0 ? [{ siteId: { in: siteIds } }] : []),
+        { companyId: compId }
+      ]
+    },
+    data: {
+      costCenterId: null,
+      departmentId: null,
+      siteId: null,
+      branchId: null
+    }
+  }).catch(() => null);
+
+  // Any employee in the DB pointing to this company's cost center or department
+  if (costCenterIds.length > 0 || deptIds.length > 0) {
+    await prisma.employee.updateMany({
+      where: {
+        OR: [
+          ...(costCenterIds.length > 0 ? [{ costCenterId: { in: costCenterIds } }] : []),
+          ...(deptIds.length > 0 ? [{ departmentId: { in: deptIds } }] : [])
+        ]
+      },
+      data: {
+        costCenterId: null,
+        departmentId: null
+      }
+    }).catch(() => null);
+  }
+
+  // Any asset in the DB pointing to this company's cost center, department, or site
+  if (costCenterIds.length > 0 || deptIds.length > 0 || siteIds.length > 0) {
+    const ccList = costCenterIds.map(id => `'${id}'`).join(',');
+    const deptList = deptIds.map(id => `'${id}'`).join(',');
+    const siteList = siteIds.map(id => `'${id}'`).join(',');
+    const orClauses = [];
+    if (ccList) orClauses.push(`costCenterId IN (${ccList})`);
+    if (deptList) orClauses.push(`departmentId IN (${deptList})`);
+    if (siteList) orClauses.push(`siteId IN (${siteList})`);
+    if (orClauses.length > 0) {
+      await prisma.$executeRawUnsafe(`UPDATE assets SET costCenterId = NULL, departmentId = NULL WHERE ${orClauses.join(' OR ')}`).catch(() => null);
+    }
+  }
+
+  // Unlink Cost Centers from Departments (breaks circular cost_centers_departmentId_fkey)
+  if (deptIds.length > 0 || costCenterIds.length > 0) {
+    await prisma.costCenter.updateMany({
+      where: {
+        OR: [
+          { companyId: compId },
+          ...(deptIds.length > 0 ? [{ departmentId: { in: deptIds } }] : [])
+        ]
+      },
+      data: { departmentId: null }
+    }).catch(() => null);
+  }
+
+  // -------------------------------------------------------------
+  // STEP 2: CLEAN UP USER FOREIGN KEYS FOR USERS IN THIS COMPANY
+  // -------------------------------------------------------------
+  if (userIds.length > 0) {
+    await prisma.userDataScope.deleteMany({ where: { userId: { in: userIds } } }).catch(() => null);
+    await prisma.notification.deleteMany({ where: { userId: { in: userIds } } }).catch(() => null);
+    await prisma.auditEvent.deleteMany({ where: { userId: { in: userIds } } }).catch(() => null);
+    await prisma.custodyAssignment.deleteMany({ where: { issuedByUserId: { in: userIds } } }).catch(() => null);
+    await prisma.assetTransfer.deleteMany({
+      where: {
+        OR: [
+          { requestedByUserId: { in: userIds } },
+          { approvedByUserId: { in: userIds } },
+          { receivedByUserId: { in: userIds } }
+        ]
+      }
+    }).catch(() => null);
+
+    // Nullify optional user FKs on other tables via raw SQL
+    const uList = userIds.map(id => `'${id}'`).join(',');
+    if (uList) {
+      await prisma.$executeRawUnsafe(`UPDATE assets SET createdByUserId = NULL, updatedByUserId = NULL WHERE createdByUserId IN (${uList}) OR updatedByUserId IN (${uList})`).catch(() => null);
+      await prisma.$executeRawUnsafe(`UPDATE asset_transactions SET performedByUserId = NULL WHERE performedByUserId IN (${uList})`).catch(() => null);
+      await prisma.$executeRawUnsafe(`UPDATE maintenance_work_orders SET assignedTechnicianId = NULL, createdByUserId = NULL WHERE assignedTechnicianId IN (${uList}) OR createdByUserId IN (${uList})`).catch(() => null);
+      await prisma.$executeRawUnsafe(`UPDATE depreciation_runs SET postedByUserId = NULL WHERE postedByUserId IN (${uList})`).catch(() => null);
+      await prisma.$executeRawUnsafe(`UPDATE import_jobs SET createdByUserId = NULL WHERE createdByUserId IN (${uList})`).catch(() => null);
+    }
+
+    // Delete Users of this company
+    await prisma.user.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  }
+
+  // -------------------------------------------------------------
+  // STEP 3: ASSETS & ASSET TRANSACTIONS
+  // -------------------------------------------------------------
+  if (assetIds.length > 0) {
+    await prisma.maintenanceWorkOrder.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+    await prisma.custodyAssignment.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+    await prisma.assetTransfer.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+    await prisma.assetCustomFieldValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+    await prisma.assetBookValue.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+    await prisma.assetTransaction.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+    await prisma.contractAsset.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+    await prisma.tag.deleteMany({ where: { assetId: { in: assetIds } } }).catch(() => null);
+    await prisma.asset.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  }
+
+  // Transfers linking to/from this company
+  await prisma.assetTransfer.deleteMany({
+    where: { OR: [{ fromCompanyId: compId }, { toCompanyId: compId }] }
+  }).catch(() => null);
+
+  // -------------------------------------------------------------
+  // STEP 4: COST CENTERS & DEPARTMENTS & EMPLOYEES
+  // -------------------------------------------------------------
+  // Delete cost centers first (now that departmentId is NULL and users/assets/employees are unlinked)
+  await prisma.costCenter.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  // Delete departments (now that cost centers are gone)
+  await prisma.department.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  // Delete employees
+  await prisma.employee.deleteMany({ where: { companyId: compId } }).catch(() => null);
+
+  // -------------------------------------------------------------
+  // STEP 5: SITES & SUBSTRUCTURES
+  // -------------------------------------------------------------
+  if (siteIds.length > 0) {
+    try {
+      const buildings = await prisma.building.findMany({ where: { siteId: { in: siteIds } }, select: { id: true } });
+      const buildingIds = buildings.map(b => b.id);
+      if (buildingIds.length > 0) {
+        const floors = await prisma.floor.findMany({ where: { buildingId: { in: buildingIds } }, select: { id: true } });
+        const floorIds = floors.map(f => f.id);
+        if (floorIds.length > 0) {
+          const rooms = await prisma.room.findMany({ where: { floorId: { in: floorIds } }, select: { id: true } });
+          const roomIds = rooms.map(r => r.id);
+          if (roomIds.length > 0) {
+            await prisma.zone.deleteMany({ where: { roomId: { in: roomIds } } }).catch(() => null);
+            await prisma.room.deleteMany({ where: { id: { in: roomIds } } }).catch(() => null);
+          }
+          await prisma.floor.deleteMany({ where: { id: { in: floorIds } } }).catch(() => null);
+        }
+        await prisma.building.deleteMany({ where: { id: { in: buildingIds } } }).catch(() => null);
+      }
+    } catch (e) {}
+    await prisma.receipt.deleteMany({ where: { siteId: { in: siteIds } } }).catch(() => null);
+    await prisma.site.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  }
+
+  // -------------------------------------------------------------
+  // STEP 6: BRANCHES, LICENSES, POLICIES, OTHER RELATIONS
+  // -------------------------------------------------------------
+  await prisma.branch.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  await prisma.receipt.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  await prisma.depreciationRun.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  await prisma.fiscalPeriod.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  await prisma.serviceProvider.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  await prisma.companyPasswordPolicy.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  await prisma.license.deleteMany({ where: { companyId: compId } }).catch(() => null);
+  await prisma.role.deleteMany({ where: { companyId: compId, isSystem: false } }).catch(() => null);
+
+  // -------------------------------------------------------------
+  // STEP 7: FINALLY DELETE THE COMPANY RECORD
+  // -------------------------------------------------------------
+  await prisma.company.delete({ where: { id: compId } });
+
+  logger.info(`Permanently deleted company ${company.name} (${company.code}) and all child entities.`);
+
+  return {
+    success: true,
+    deletedCompany: {
+      id: company.id,
+      code: company.code,
+      name: company.name
+    },
+    deletedCounts: {
+      users: userIds.length,
+      branches: (company.branches || []).length,
+      sites: (company.sites || []).length,
+      departments: deptIds.length,
+      costCenters: costCenterIds.length,
+      hasLicense: Boolean(company.license)
+    }
+  };
+}
+
+/**
+ * Deactivates a company and all its associated licenses, branches, and user accounts
+ */
+export async function deactivateCompany(companyCodeOrId) {
+  await ensureMultiTenantTables();
+
+  if (!isDbConnected()) {
+    throw new Error('Database is offline.');
+  }
+
+  const company = await prisma.company.findFirst({
+    where: {
+      OR: [{ id: companyCodeOrId }, { code: companyCodeOrId }]
+    }
+  });
+
+  if (!company) {
+    throw new Error(`Company "${companyCodeOrId}" not found in database.`);
+  }
+
+  await prisma.company.update({
+    where: { id: company.id },
+    data: { active: false }
+  });
+
+  await prisma.license.updateMany({
+    where: { companyId: company.id },
+    data: { isActive: false }
+  }).catch(() => null);
+
+  await prisma.branch.updateMany({
+    where: { companyId: company.id },
+    data: { isActive: false }
+  }).catch(() => null);
+
+  await prisma.user.updateMany({
+    where: { companyId: company.id },
+    data: { active: false }
+  }).catch(() => null);
+
+  return {
+    success: true,
+    company: { id: company.id, code: company.code, name: company.name, active: false }
+  };
+}
+
+/**
+ * Reactivates a company and all its associated licenses, branches, and user accounts
+ */
+export async function reactivateCompany(companyCodeOrId) {
+  await ensureMultiTenantTables();
+
+  if (!isDbConnected()) {
+    throw new Error('Database is offline.');
+  }
+
+  const company = await prisma.company.findFirst({
+    where: {
+      OR: [{ id: companyCodeOrId }, { code: companyCodeOrId }]
+    }
+  });
+
+  if (!company) {
+    throw new Error(`Company "${companyCodeOrId}" not found in database.`);
+  }
+
+  await prisma.company.update({
+    where: { id: company.id },
+    data: { active: true }
+  });
+
+  await prisma.license.updateMany({
+    where: { companyId: company.id },
+    data: { isActive: true }
+  }).catch(() => null);
+
+  await prisma.branch.updateMany({
+    where: { companyId: company.id },
+    data: { isActive: true }
+  }).catch(() => null);
+
+  await prisma.user.updateMany({
+    where: { companyId: company.id },
+    data: { active: true }
+  }).catch(() => null);
+
+  return {
+    success: true,
+    company: { id: company.id, code: company.code, name: company.name, active: true }
+  };
+}

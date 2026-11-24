@@ -8777,3 +8777,22 @@ export async function createBranch(req, res, next) {
     next(err);
   }
 }
+
+export async function deleteBranch(req, res, next) {
+  try {
+    const { id } = req.params;
+    if (isDbConnected()) {
+      // Unlink users referencing this branch
+      await prisma.user.updateMany({
+        where: { branchId: id },
+        data: { branchId: null }
+      }).catch(() => null);
+
+      await prisma.branch.delete({ where: { id } }).catch(() => null);
+      return res.json({ success: true, message: 'Branch deleted successfully.' });
+    }
+    return res.json({ success: true, message: 'Branch deleted.' });
+  } catch (err) {
+    next(err);
+  }
+}

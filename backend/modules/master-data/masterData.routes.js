@@ -3,7 +3,7 @@ import {
   getMasterDataStats,
   getAssetGroups, createAssetGroup, updateAssetGroup, deleteAssetGroup,
   getCompanies, createCompany, updateCompany, deleteCompany,
-  getBranches, createBranch,
+  getBranches, createBranch, deleteBranch,
   getSites, createSite, updateSite, deleteSite,
   getBuildings, createBuilding,
   getFloors, createFloor,
@@ -57,6 +57,7 @@ router.delete('/companies/:id', deleteCompany);
 
 router.get('/branches', getBranches);
 router.post('/branches', createBranch);
+router.delete('/branches/:id', deleteBranch);
 
 router.get('/sites', getSites);
 router.post('/sites', createSite);

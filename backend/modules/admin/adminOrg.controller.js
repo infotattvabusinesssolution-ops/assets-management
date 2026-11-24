@@ -5,6 +5,7 @@ import { generateAutoCode } from '../master-data/masterData.controller.js';
 import { getPolicyForCompany, validatePasswordAgainstPolicy, generateCompliantPassword } from './passwordPolicy.service.js';
 import { validateCanAddCompany, validateCanAddUser } from './license.service.js';
 import { sendNewUserWelcomeEmail } from '../../config/mailer.js';
+import { deleteCompanyCascade } from './superAdmin.service.js';
 
 // ==========================================
 // SEED DATA PRE-LOADED WITH SCREENSHOT MATCH
@@ -772,6 +773,7 @@ export async function deleteAdminUser(req, res) {
     memoryUsers = memoryUsers.filter(u => u.id !== id);
 
     try {
+      await prisma.userDataScope.deleteMany({ where: { userId: id } }).catch(() => null);
       await prisma.user.delete({ where: { id } }).catch(() => null);
     } catch (e) {}
 
@@ -1420,14 +1422,40 @@ export async function updateCompany(req, res) {
 export async function deleteCompany(req, res) {
   try {
     const { id } = req.params;
-    try {
-      await prisma.company.delete({ where: { id } }).catch(() => null);
-    } catch (e) {}
+    const force = req.query.force === 'true';
+    const action = req.query.action;
+
+    if (action === 'deactivate') {
+      const { deactivateCompany } = await import('./superAdmin.service.js');
+      const deactivated = await deactivateCompany(id);
+      const index = memoryCompanies.findIndex(c => c.id === id);
+      if (index !== -1) memoryCompanies[index].status = 'Inactive';
+      return res.json({ success: true, message: 'Company deactivated successfully.', company: deactivated.company });
+    }
+
+    const { getCompanyDeletionAudit, deleteCompanyCascade } = await import('./superAdmin.service.js');
+    const audit = await getCompanyDeletionAudit(id).catch(() => null);
+
+    if (audit && audit.counts.assets > 0 && !force) {
+      return res.status(400).json({
+        success: false,
+        requiresConfirmation: true,
+        linkedCount: audit.counts.assets,
+        details: audit.counts,
+        message: `Company "${audit.company.name}" has ${audit.counts.assets} active asset(s) and historical transactions. To preserve audit and compliance records, deactivation is recommended. Or pass force=true to purge.`
+      });
+    }
+
+    const cascadeResult = await deleteCompanyCascade(id, { force });
 
     const index = memoryCompanies.findIndex(c => c.id === id);
     if (index !== -1) memoryCompanies.splice(index, 1);
 
-    res.json({ success: true, message: 'Company deleted successfully' });
+    res.json({
+      success: true,
+      message: 'Company and associated records deleted successfully',
+      details: cascadeResult
+    });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }
