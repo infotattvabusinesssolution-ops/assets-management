@@ -3883,34 +3883,49 @@ export async function getManufacturers(req, res, next) {
   try {
     const includeInactive = req.query.includeInactive !== 'false';
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+
     if (isDbConnected()) {
       try {
-        const where = {
-          ...(includeInactive ? {} : { active: true }),
-          ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
-        };
-        const manufacturers = await prisma.manufacturer.findMany({ where, orderBy: { name: 'asc' } });
-        if (Array.isArray(manufacturers)) {
-          const list = manufacturers.map(m => ({
+        const tenantFilter = (tenantCompanyId && !isSuperAdmin)
+          ? `WHERE (m.companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR m.companyId IS NULL)`
+          : '';
+        const activeFilter = includeInactive
+          ? ''
+          : (tenantFilter ? 'AND m.active = 1' : 'WHERE m.active = 1');
+
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT m.id, m.name, m.supportContact, m.website, m.active, m.companyId
+          FROM manufacturers m
+          ${tenantFilter} ${activeFilter}
+          ORDER BY m.name ASC
+        `);
+
+        if (Array.isArray(rows)) {
+          const list = rows.map(m => ({
             id: m.id,
-            code: m.code || `MFG-${(m.name || '').substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`,
+            code: `MFG-${(m.name || '').substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`,
             name: m.name,
             website: m.website || '',
             supportContact: m.supportContact || '',
-            country: m.country || '',
-            active: m.active !== false
+            country: '',
+            companyId: m.companyId || null,
+            active: m.active !== false && m.active !== 0
           }));
-          inMemoryManufacturers = list;
-          writeManufacturersToFile(list);
           return res.json({ success: true, manufacturers: list });
         }
       } catch (dbErr) {
         console.warn('DB getManufacturers query skipped:', dbErr.message);
       }
     }
-    const list = includeInactive
-      ? inMemoryManufacturers
-      : inMemoryManufacturers.filter(m => m.active !== false);
+
+    let list = inMemoryManufacturers;
+    if (tenantCompanyId && !isSuperAdmin) {
+      list = list.filter(m => !m.companyId || m.companyId === tenantCompanyId);
+    }
+    if (!includeInactive) {
+      list = list.filter(m => m.active !== false);
+    }
     res.json({ success: true, manufacturers: list });
   } catch (err) { next(err); }
 }
@@ -3921,57 +3936,61 @@ export async function createManufacturer(req, res, next) {
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Manufacturer Name is required.' });
 
     const cleanName = name.trim();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const tenantMfrs = inMemoryManufacturers.filter(m => !tenantCompanyId || !m.companyId || m.companyId === tenantCompanyId);
     const cleanCode = (code && code.trim())
       ? code.trim().toUpperCase()
-      : await generateAutoCode('manufacturer', cleanName, inMemoryManufacturers, 'manufacturers');
+      : await generateAutoCode('manufacturer', cleanName, tenantMfrs, 'manufacturers');
 
-    // Duplicate check
-    if (inMemoryManufacturers.some(m => (m.code || '').toUpperCase() === cleanCode)) {
+    if (tenantMfrs.some(m => (m.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Manufacturer with code "${cleanCode}" already exists. Duplicate manufacturer codes are not allowed.` });
     }
-    if (inMemoryManufacturers.some(m => (m.name || '').toLowerCase() === cleanName.toLowerCase())) {
+    if (tenantMfrs.some(m => (m.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists. Duplicate manufacturer names are not allowed.` });
     }
 
     if (isDbConnected()) {
       try {
-        const existingMfr = await prisma.manufacturer.findFirst({
-          where: { name: cleanName }
-        });
-        if (existingMfr) {
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
+        const existingMfr = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 id FROM manufacturers 
+          WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}
+        `);
+        if (Array.isArray(existingMfr) && existingMfr.length > 0) {
           return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists.` });
         }
-      } catch (err) {}
+      } catch (err) {
+        if (err.statusCode || err.status) throw err;
+      }
     }
 
-    const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
+    const isAct = active !== undefined ? (Boolean(active) ? 1 : 0) : (status ? (status === 'Active' ? 1 : 0) : 1);
+    const id = crypto.randomUUID();
+    const cleanCompany = tenantCompanyId ? `'${tenantCompanyId.replace(/'/g, "''")}'` : 'NULL';
+    const cleanWebsite = website ? `'${website.replace(/'/g, "''")}'` : 'NULL';
+    const cleanContact = supportContact ? `'${supportContact.replace(/'/g, "''")}'` : 'NULL';
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO manufacturers (id, name, website, supportContact, companyId, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanName.replace(/'/g, "''")}', ${cleanWebsite}, ${cleanContact}, ${cleanCompany}, ${isAct}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB create manufacturer skipped:', dbErr.message);
+      }
+    }
+
     const newMfr = {
-      id: `mfr-${Date.now()}`,
+      id,
       code: cleanCode,
       name: cleanName,
       website: website || '',
       supportContact: supportContact || '',
       country: country || '',
-      active: isAct
+      companyId: tenantCompanyId || null,
+      active: Boolean(isAct)
     };
-
-    if (isDbConnected()) {
-      try {
-        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-        const created = await prisma.manufacturer.create({
-          data: {
-            name: cleanName,
-            website: website || null,
-            supportContact: supportContact || null,
-            companyId: tenantCompanyId || null,
-            active: isAct
-          }
-        });
-        if (created?.id) newMfr.id = created.id;
-      } catch (dbErr) {
-        console.warn('DB create manufacturer skipped:', dbErr.message);
-      }
-    }
 
     inMemoryManufacturers.unshift(newMfr);
     writeManufacturersToFile(inMemoryManufacturers);
@@ -3983,115 +4002,101 @@ export async function updateManufacturer(req, res, next) {
   try {
     const { id } = req.params;
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
 
-    if (tenantCompanyId && isDbConnected()) {
+    let dbMfr = null;
+    if (isDbConnected()) {
       try {
-        const mfr = await prisma.manufacturer.findFirst({ where: { OR: [{ id }, { code: id }] } }).catch(() => null);
-        if (mfr) {
-          if (mfr.companyId && mfr.companyId !== tenantCompanyId) {
-            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
-          }
-          if (!mfr.companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
-            return res.status(403).json({ success: false, message: 'Cannot modify system default manufacturers.' });
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 * FROM manufacturers WHERE id = '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(rows) && rows.length > 0) {
+          dbMfr = rows[0];
+          if (tenantCompanyId && !isSuperAdmin) {
+            if (dbMfr.companyId && dbMfr.companyId !== tenantCompanyId) {
+              return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+            }
+            if (!dbMfr.companyId) {
+              return res.status(403).json({ success: false, message: 'Cannot modify system default manufacturers.' });
+            }
           }
         }
       } catch (_) {}
     }
 
     let idx = inMemoryManufacturers.findIndex(m => m.id === id || m.code === id);
-    if (idx !== -1 && tenantCompanyId && inMemoryManufacturers[idx].companyId && inMemoryManufacturers[idx].companyId !== tenantCompanyId) {
-      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+    if (!dbMfr && idx === -1) {
+      return res.status(404).json({ success: false, message: 'Manufacturer not found' });
     }
-    if (idx === -1 && isDbConnected()) {
-      try {
-        const dbMfr = await prisma.manufacturer.findFirst({ where: { OR: [{ id }, { code: id }] } });
-        if (dbMfr) {
-          const loaded = {
-            id: dbMfr.id,
-            code: dbMfr.code || `MFG-${(dbMfr.name || '').substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`,
-            name: dbMfr.name,
-            website: dbMfr.website || '',
-            supportContact: dbMfr.supportContact || '',
-            country: dbMfr.country || '',
-            active: dbMfr.active !== false
-          };
-          inMemoryManufacturers.push(loaded);
-          idx = inMemoryManufacturers.length - 1;
-        }
-      } catch (_) {}
-    }
-    if (idx === -1) return res.status(404).json({ success: false, message: 'Manufacturer not found' });
 
-    const existing = inMemoryManufacturers[idx];
+    const existingName = dbMfr?.name || inMemoryManufacturers[idx]?.name || '';
     const { code, name, website, supportContact, country, active, status } = req.body;
-    const cleanCode = code ? code.trim().toUpperCase() : existing.code;
-    const cleanName = name ? name.trim() : existing.name;
-
-    // Duplicate check excluding self
-    if (cleanCode && inMemoryManufacturers.some(m => m.id !== existing.id && (m.code || '').toUpperCase() === cleanCode)) {
-      return res.status(409).json({ success: false, message: `Manufacturer with code "${cleanCode}" already exists.` });
-    }
-    if (cleanName && inMemoryManufacturers.some(m => m.id !== existing.id && (m.name || '').toLowerCase() === cleanName.toLowerCase())) {
-      return res.status(409).json({ success: false, message: `Manufacturer with name "${cleanName}" already exists.` });
-    }
+    const cleanName = name ? name.trim() : existingName;
+    const cleanCode = code ? code.trim().toUpperCase() : (inMemoryManufacturers[idx]?.code || `MFG-${cleanName.substring(0, 4).toUpperCase().replace(/[^A-Z0-9]/g, '')}`);
 
     if (isDbConnected() && cleanName) {
       try {
-        const existingMfr = await prisma.manufacturer.findFirst({
-          where: {
-            id: { not: existing.id },
-            name: cleanName
-          }
-        });
-        if (existingMfr) {
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
+        const dup = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 id FROM manufacturers 
+          WHERE id != '${(dbMfr?.id || id).replace(/'/g, "''")}'
+            AND UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'
+            ${tenantFilter}
+        `);
+        if (Array.isArray(dup) && dup.length > 0) {
           return res.status(409).json({ success: false, message: `Another manufacturer with name "${cleanName}" already exists.` });
         }
-      } catch (err) {}
+      } catch (err) {
+        if (err.statusCode || err.status) throw err;
+      }
     }
 
-    const updated = {
-      ...existing,
-      ...req.body,
-      code: cleanCode,
-      name: cleanName
-    };
-    if (active !== undefined) updated.active = Boolean(active);
-    else if (status !== undefined) updated.active = status === 'Active';
+    let isAct = dbMfr ? (dbMfr.active !== false && dbMfr.active !== 0) : inMemoryManufacturers[idx]?.active;
+    if (active !== undefined) isAct = Boolean(active);
+    else if (status !== undefined) isAct = status === 'Active';
 
-    inMemoryManufacturers[idx] = updated;
-
-    if (isDbConnected()) {
+    if (isDbConnected() && dbMfr) {
       try {
-        await prisma.manufacturer.update({
-          where: { id: existing.id },
-          data: {
-            name: cleanName,
-            website: updated.website || null,
-            supportContact: updated.supportContact || null,
-            active: updated.active
-          }
-        });
+        const cleanWebsite = website !== undefined ? (website ? `'${website.replace(/'/g, "''")}'` : 'NULL') : (dbMfr.website ? `'${dbMfr.website.replace(/'/g, "''")}'` : 'NULL');
+        const cleanContact = supportContact !== undefined ? (supportContact ? `'${supportContact.replace(/'/g, "''")}'` : 'NULL') : (dbMfr.supportContact ? `'${dbMfr.supportContact.replace(/'/g, "''")}'` : 'NULL');
+        const actBit = isAct ? 1 : 0;
 
-        // Cascade deactivation to brands when manufacturer is deactivated
-        if (updated.active === false) {
-          await prisma.brand.updateMany({
-            where: { manufacturerId: existing.id },
-            data: { active: false }
-          }).catch(e => console.warn('Cascade deactivation to brands error:', e.message));
+        await prisma.$executeRawUnsafe(`
+          UPDATE manufacturers 
+          SET name = '${cleanName.replace(/'/g, "''")}',
+              website = ${cleanWebsite},
+              supportContact = ${cleanContact},
+              active = ${actBit},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${dbMfr.id.replace(/'/g, "''")}'
+        `);
 
-          inMemoryBrands = inMemoryBrands.map(b =>
-            (b.manufacturerId === existing.id || (b.manufacturerName || '').toLowerCase() === cleanName.toLowerCase())
-              ? { ...b, active: false, status: 'Inactive' }
-              : b
-          );
-          writeBrandsToFile(inMemoryBrands);
+        if (!isAct) {
+          await prisma.$executeRawUnsafe(`
+            UPDATE brands SET active = 0, updatedAt = CURRENT_TIMESTAMP
+            WHERE manufacturerId = '${dbMfr.id.replace(/'/g, "''")}'
+          `).catch(() => null);
         }
       } catch (dbErr) {
         console.warn('DB update manufacturer skipped:', dbErr.message);
       }
     }
 
-    writeManufacturersToFile(inMemoryManufacturers);
+    const updated = {
+      id: dbMfr?.id || id,
+      code: cleanCode,
+      name: cleanName,
+      website: website !== undefined ? website : (dbMfr?.website || ''),
+      supportContact: supportContact !== undefined ? supportContact : (dbMfr?.supportContact || ''),
+      country: country || '',
+      companyId: dbMfr?.companyId || tenantCompanyId || null,
+      active: Boolean(isAct)
+    };
+
+    if (idx !== -1) {
+      inMemoryManufacturers[idx] = updated;
+      writeManufacturersToFile(inMemoryManufacturers);
+    }
     res.json({ success: true, manufacturer: updated });
   } catch (err) { next(err); }
 }
@@ -4100,76 +4105,61 @@ export async function deleteManufacturer(req, res, next) {
   try {
     const { id } = req.params;
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    if (tenantCompanyId && isDbConnected()) {
-      const mfr = await prisma.manufacturer.findFirst({ where: { OR: [{ id }, { code: id }] } }).catch(() => null);
-      if (mfr) {
-        if (mfr.companyId && mfr.companyId !== tenantCompanyId) {
-          return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
-        }
-        if (!mfr.companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
-          return res.status(403).json({ success: false, message: 'Cannot delete system default manufacturers.' });
-        }
-      }
-    }
-    const action = req.query.action;
-    const force = req.query.force === 'true' || action === 'force_delete';
-    const deactivateOnly = action === 'deactivate';
-
-    let mfr = inMemoryManufacturers.find(m => m.id === id || m.code === id);
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
 
     let dbMfr = null;
     if (isDbConnected()) {
       try {
-        dbMfr = await prisma.manufacturer.findFirst({
-          where: {
-            OR: [
-              { id },
-              ...(mfr ? [{ name: mfr.name }] : [])
-            ]
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 * FROM manufacturers WHERE id = '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(rows) && rows.length > 0) {
+          dbMfr = rows[0];
+          if (tenantCompanyId && !isSuperAdmin) {
+            if (dbMfr.companyId && dbMfr.companyId !== tenantCompanyId) {
+              return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+            }
+            if (!dbMfr.companyId) {
+              return res.status(403).json({ success: false, message: 'Cannot delete system default manufacturers.' });
+            }
           }
-        });
-      } catch (e) {
-        console.warn('DB find manufacturer error:', e.message);
-      }
+        }
+      } catch (_) {}
     }
 
+    let mfr = inMemoryManufacturers.find(m => m.id === id || m.code === id);
     if (!mfr && !dbMfr) return res.status(404).json({ success: false, message: 'Manufacturer not found' });
 
     const targetId = dbMfr?.id || mfr?.id || id;
-    const targetName = dbMfr?.name || mfr?.name;
-    const targetCode = mfr?.code;
+    const action = req.query.action;
+    const force = req.query.force === 'true' || action === 'force_delete';
+    const deactivateOnly = action === 'deactivate';
 
-    // Check dependencies: assets, models, brands
     let assetsCount = 0;
     let modelCount = 0;
     let brandsCount = 0;
 
     if (isDbConnected()) {
       try {
-        const [aCnt, mCnt, bCnt] = await Promise.all([
-          prisma.asset.count({ where: { manufacturerId: targetId } }).catch(() => 0),
-          prisma.assetModel.count({ where: { manufacturerId: targetId } }).catch(() => 0),
-          prisma.brand.count({ where: { manufacturerId: targetId } }).catch(() => 0)
+        const [aRows, mRows, bRows] = await Promise.all([
+          prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM assets WHERE manufacturerId = '${targetId.replace(/'/g, "''")}'`).catch(() => []),
+          prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM asset_models WHERE manufacturerId = '${targetId.replace(/'/g, "''")}'`).catch(() => []),
+          prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM brands WHERE manufacturerId = '${targetId.replace(/'/g, "''")}'`).catch(() => [])
         ]);
-        assetsCount = aCnt;
-        modelCount = mCnt;
-        brandsCount = bCnt;
+        assetsCount = Number(aRows?.[0]?.cnt || 0);
+        modelCount = Number(mRows?.[0]?.cnt || 0);
+        brandsCount = Number(bRows?.[0]?.cnt || 0);
       } catch (_) {}
     }
 
     const totalLinked = assetsCount + modelCount + brandsCount;
-
     if (totalLinked > 0 && !force && !deactivateOnly) {
       return res.status(400).json({
         success: false,
         requiresConfirmation: true,
         linkedCount: totalLinked,
         entityName: 'Manufacturer',
-        details: {
-          assetsCount,
-          modelCount,
-          brandsCount
-        },
+        details: { assetsCount, modelCount, brandsCount },
         message: `This Manufacturer cannot be deleted because it is referenced by active records (${[
           assetsCount > 0 ? `${assetsCount} asset(s)` : '',
           modelCount > 0 ? `${modelCount} model(s)` : '',
@@ -4179,62 +4169,33 @@ export async function deleteManufacturer(req, res, next) {
     }
 
     if (deactivateOnly) {
+      if (isDbConnected() && dbMfr) {
+        await prisma.$executeRawUnsafe(`UPDATE manufacturers SET active = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = '${targetId.replace(/'/g, "''")}'`).catch(() => null);
+      }
       if (mfr) {
         mfr.active = false;
-        mfr.status = 'Inactive';
         writeManufacturersToFile(inMemoryManufacturers);
-      }
-      if (isDbConnected() && dbMfr) {
-        await prisma.manufacturer.update({
-          where: { id: dbMfr.id },
-          data: { active: false }
-        }).catch(() => null);
       }
       return res.json({ success: true, deactivated: true, message: `Manufacturer deactivated successfully (${totalLinked} linked records preserved).` });
     }
 
-    inMemoryManufacturers = inMemoryManufacturers.filter(m =>
-      m.id !== targetId &&
-      m.id !== id &&
-      (!targetCode || m.code !== targetCode) &&
-      (!targetName || m.name.toLowerCase() !== targetName.toLowerCase())
-    );
+    inMemoryManufacturers = inMemoryManufacturers.filter(m => m.id !== targetId && m.id !== id);
+    writeManufacturersToFile(inMemoryManufacturers);
 
     if (isDbConnected() && dbMfr) {
       try {
         if (force) {
-          await prisma.asset.updateMany({
-            where: { manufacturerId: dbMfr.id },
-            data: { manufacturerId: null }
-          }).catch(() => null);
-
-          const relatedModels = await prisma.assetModel.findMany({
-            where: { manufacturerId: dbMfr.id },
-            select: { id: true }
-          }).catch(() => []);
-
-          if (relatedModels.length > 0) {
-            const modelIds = relatedModels.map(rm => rm.id);
-            await prisma.asset.updateMany({
-              where: { modelId: { in: modelIds } },
-              data: { modelId: null }
-            }).catch(() => null);
-
-            await prisma.assetModel.deleteMany({
-              where: { manufacturerId: dbMfr.id }
-            }).catch(() => null);
-          }
+          await prisma.$executeRawUnsafe(`UPDATE assets SET manufacturerId = NULL WHERE manufacturerId = '${targetId.replace(/'/g, "''")}'`).catch(() => null);
+          await prisma.$executeRawUnsafe(`UPDATE assets SET modelId = NULL WHERE modelId IN (SELECT id FROM asset_models WHERE manufacturerId = '${targetId.replace(/'/g, "''")}')`).catch(() => null);
+          await prisma.$executeRawUnsafe(`DELETE FROM asset_models WHERE manufacturerId = '${targetId.replace(/'/g, "''")}'`).catch(() => null);
+          await prisma.$executeRawUnsafe(`UPDATE brands SET manufacturerId = NULL WHERE manufacturerId = '${targetId.replace(/'/g, "''")}'`).catch(() => null);
         }
-
-        await prisma.manufacturer.delete({
-          where: { id: dbMfr.id }
-        });
+        await prisma.$executeRawUnsafe(`DELETE FROM manufacturers WHERE id = '${targetId.replace(/'/g, "''")}'`);
       } catch (dbErr) {
         console.error('DB delete manufacturer failed:', dbErr.message);
       }
     }
 
-    writeManufacturersToFile(inMemoryManufacturers);
     res.json({ success: true, message: 'Manufacturer deleted successfully' });
   } catch (err) { next(err); }
 }
@@ -7611,48 +7572,58 @@ export async function getBrands(req, res, next) {
     await ensureBrandsTable();
     const includeInactive = req.query.includeInactive !== 'false';
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+
     if (isDbConnected()) {
       try {
-        const whereClause = {
-          ...(includeInactive ? {} : { active: true }),
-          ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
-        };
-        const rows = await prisma.brand.findMany({
-          where: whereClause,
-          include: {
-            manufacturer: {
-              select: { id: true, name: true, active: true }
-            }
-          },
-          orderBy: { name: 'asc' }
-        });
+        const tenantFilter = (tenantCompanyId && !isSuperAdmin)
+          ? `(b.companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR b.companyId IS NULL)`
+          : '1=1';
+        const activeFilter = includeInactive
+          ? ''
+          : 'AND b.active = 1';
+
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT b.id, b.code, b.name, b.manufacturerId, b.manufacturerName, b.description, b.active, b.companyId,
+                 m.name as mfrName, m.active as mfrActive
+          FROM brands b
+          LEFT JOIN manufacturers m ON b.manufacturerId = m.id
+          WHERE ${tenantFilter} ${activeFilter}
+          ORDER BY b.name ASC
+        `);
+
         if (Array.isArray(rows)) {
           const list = rows.map(r => {
-            const mfrActive = r.manufacturer ? r.manufacturer.active !== false : true;
-            const effectiveActive = mfrActive ? Boolean(r.active) : false;
+            const mfrActive = r.mfrActive !== undefined && r.mfrActive !== null ? (r.mfrActive !== false && r.mfrActive !== 0) : true;
+            const bActive = r.active !== false && r.active !== 0;
+            const effectiveActive = mfrActive ? bActive : false;
             return {
               id: r.id,
               code: r.code,
               name: r.name,
               manufacturerId: r.manufacturerId || '',
-              manufacturerName: r.manufacturer?.name || r.manufacturerName || '',
+              manufacturerName: r.mfrName || r.manufacturerName || '',
               manufacturerActive: mfrActive,
               description: r.description || '',
+              companyId: r.companyId || null,
               active: effectiveActive,
               status: effectiveActive ? 'Active' : 'Inactive'
             };
           });
-          inMemoryBrands = list;
-          writeBrandsToFile(list);
           return res.json({ success: true, brands: list });
         }
       } catch (dbErr) {
         console.warn('DB getBrands query skipped:', dbErr.message);
       }
     }
-    const list = includeInactive
-      ? inMemoryBrands
-      : inMemoryBrands.filter(b => b.active !== false);
+
+    let list = inMemoryBrands;
+    if (tenantCompanyId && !isSuperAdmin) {
+      list = list.filter(b => !b.companyId || b.companyId === tenantCompanyId);
+    }
+    if (!includeInactive) {
+      list = list.filter(b => b.active !== false);
+    }
     res.json({ success: true, brands: list });
   } catch (err) { next(err); }
 }
@@ -7664,67 +7635,85 @@ export async function createBrand(req, res, next) {
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Brand Name is required.' });
 
     const cleanName = name.trim();
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const tenantBrands = inMemoryBrands.filter(b => !tenantCompanyId || !b.companyId || b.companyId === tenantCompanyId);
     const cleanCode = (code && code.trim())
       ? code.trim().toUpperCase()
-      : await generateAutoCode('brand', cleanName, inMemoryBrands, 'brands');
+      : await generateAutoCode('brand', cleanName, tenantBrands, 'brands');
 
-    // Duplicate check on Code and Name
-    if (inMemoryBrands.some(b => (b.code || '').toUpperCase() === cleanCode)) {
+    if (tenantBrands.some(b => (b.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" already exists. Duplicate brand codes are not allowed.` });
     }
-    if (inMemoryBrands.some(b => (b.name || '').toLowerCase() === cleanName.toLowerCase())) {
+    if (tenantBrands.some(b => (b.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Brand with name "${cleanName}" already exists. Duplicate brand names are not allowed.` });
     }
 
     if (isDbConnected()) {
       try {
-        const existing = await prisma.brand.findFirst({
-          where: {
-            OR: [
-              { code: cleanCode },
-              { name: cleanName }
-            ]
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id FROM brands WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" already exists.` });
           }
-        });
-        if (existing) {
-          return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
-      } catch (dbErr) {
-        console.warn('DB check duplicate brand skipped:', dbErr.message);
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id FROM brands WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}
+          `);
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Brand with name "${cleanName}" already exists.` });
+          }
+        }
+      } catch (err) {
+        if (err.statusCode || err.status) throw err;
       }
     }
 
-    // Resolve and validate Manufacturer
+    // Resolve manufacturer
     let targetMfrId = (manufacturerId || '').trim();
     let targetMfrName = (manufacturerName || '').trim();
-    let mfrObj = null;
+    let mfrActive = true;
 
     if (isDbConnected() && (targetMfrId || targetMfrName)) {
       try {
-        if (targetMfrId) {
-          mfrObj = await prisma.manufacturer.findUnique({ where: { id: targetMfrId } });
+        const mfrRows = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 id, name, active FROM manufacturers
+          WHERE id = '${targetMfrId.replace(/'/g, "''")}' OR UPPER(name) = '${targetMfrName.toUpperCase().replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(mfrRows) && mfrRows.length > 0) {
+          targetMfrId = mfrRows[0].id;
+          targetMfrName = mfrRows[0].name;
+          mfrActive = mfrRows[0].active !== false && mfrRows[0].active !== 0;
+          if (!mfrActive) {
+            return res.status(400).json({
+              success: false,
+              message: `Cannot assign Brand to inactive Manufacturer "${mfrRows[0].name}". Please select an active Manufacturer.`
+            });
+          }
         }
-        if (!mfrObj && targetMfrName) {
-          mfrObj = await prisma.manufacturer.findFirst({ where: { name: targetMfrName } });
-        }
-      } catch (e) {
-        console.warn('Failed to find manufacturer:', e.message);
-      }
+      } catch (_) {}
     }
 
-    if (mfrObj) {
-      targetMfrId = mfrObj.id;
-      targetMfrName = mfrObj.name;
-      if (mfrObj.active === false || mfrObj.status === 'Inactive') {
-        return res.status(400).json({
-          success: false,
-          message: `Cannot assign Brand to inactive Manufacturer "${mfrObj.name}". Please select an active Manufacturer.`
-        });
+    const isAct = active !== undefined ? (Boolean(active) ? 1 : 0) : (status ? (status === 'Active' ? 1 : 0) : 1);
+    const id = crypto.randomUUID();
+    const cleanCompany = tenantCompanyId ? `'${tenantCompanyId.replace(/'/g, "''")}'` : 'NULL';
+    const cleanDesc = description ? `'${description.trim().replace(/'/g, "''")}'` : 'NULL';
+    const cleanMfrId = targetMfrId ? `'${targetMfrId.replace(/'/g, "''")}'` : 'NULL';
+    const cleanMfrName = targetMfrName ? `'${targetMfrName.replace(/'/g, "''")}'` : 'NULL';
+
+    if (isDbConnected()) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          INSERT INTO brands (id, code, name, manufacturerId, manufacturerName, description, companyId, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', ${cleanMfrId}, ${cleanMfrName}, ${cleanDesc}, ${cleanCompany}, ${isAct}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+        `);
+      } catch (dbErr) {
+        console.warn('DB create brand skipped:', dbErr.message);
       }
     }
-
-    const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
-    const id = `brd-${Date.now()}`;
 
     const newBrand = {
       id,
@@ -7732,31 +7721,13 @@ export async function createBrand(req, res, next) {
       name: cleanName,
       manufacturerId: targetMfrId || '',
       manufacturerName: targetMfrName || '',
+      manufacturerActive: mfrActive,
       description: description ? description.trim() : '',
-      active: isAct,
+      companyId: tenantCompanyId || null,
+      active: Boolean(isAct),
       status: isAct ? 'Active' : 'Inactive',
-      manufacturerActive: mfrObj ? mfrObj.active !== false : true,
       createdAt: new Date().toISOString()
     };
-
-    if (isDbConnected()) {
-      try {
-        await prisma.brand.create({
-          data: {
-            id,
-            code: cleanCode,
-            name: cleanName,
-            manufacturerId: targetMfrId || null,
-            manufacturerName: targetMfrName || null,
-            description: description ? description.trim() : null,
-            companyId: (req.tenantCompanyId || req.user?.companyId) || null,
-            active: isAct
-          }
-        });
-      } catch (dbErr) {
-        console.warn('DB insert brands skipped:', dbErr.message);
-      }
-    }
 
     inMemoryBrands.unshift(newBrand);
     writeBrandsToFile(inMemoryBrands);
@@ -7768,110 +7739,84 @@ export async function updateBrand(req, res, next) {
   try {
     const { id } = req.params;
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
 
-    if (tenantCompanyId && isDbConnected()) {
+    let dbBrand = null;
+    if (isDbConnected()) {
       try {
-        const dbBrand = await prisma.brand.findFirst({ where: { OR: [{ id }, { code: id }] } }).catch(() => null);
-        if (dbBrand) {
-          if (dbBrand.companyId && dbBrand.companyId !== tenantCompanyId) {
-            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
-          }
-          if (!dbBrand.companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
-            return res.status(403).json({ success: false, message: 'Cannot modify system default brands.' });
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 * FROM brands WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(rows) && rows.length > 0) {
+          dbBrand = rows[0];
+          if (tenantCompanyId && !isSuperAdmin) {
+            if (dbBrand.companyId && dbBrand.companyId !== tenantCompanyId) {
+              return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+            }
+            if (!dbBrand.companyId) {
+              return res.status(403).json({ success: false, message: 'Cannot modify system default brands.' });
+            }
           }
         }
       } catch (_) {}
     }
 
     let idx = inMemoryBrands.findIndex(b => b.id === id || b.code === id);
-    if (idx !== -1 && tenantCompanyId && inMemoryBrands[idx].companyId && inMemoryBrands[idx].companyId !== tenantCompanyId) {
-      return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
-    }
-    let existingDb = null;
-    if (isDbConnected()) {
-      try {
-        existingDb = await prisma.brand.findFirst({
-          where: { OR: [{ id }, { code: id }] },
-          include: { manufacturer: true }
-        });
-      } catch (_) {}
+    if (!dbBrand && idx === -1) {
+      return res.status(404).json({ success: false, message: 'Brand not found' });
     }
 
-    if (idx === -1 && existingDb) {
-      inMemoryBrands.push({
-        id: existingDb.id,
-        code: existingDb.code,
-        name: existingDb.name,
-        manufacturerId: existingDb.manufacturerId || '',
-        manufacturerName: existingDb.manufacturerName || '',
-        description: existingDb.description || '',
-        active: Boolean(existingDb.active),
-        status: existingDb.active ? 'Active' : 'Inactive'
-      });
-      idx = inMemoryBrands.length - 1;
-    }
-
-    if (idx === -1 && !existingDb) return res.status(404).json({ success: false, message: 'Brand not found' });
-
-    const existing = inMemoryBrands[idx] || existingDb;
+    const existing = dbBrand || inMemoryBrands[idx];
     const { code, name, manufacturerId, manufacturerName, description, active, status } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : existing.code;
     const cleanName = name ? name.trim() : existing.name;
 
-    // Duplicate check excluding current
-    if (cleanCode && inMemoryBrands.some(b => b.id !== existing.id && (b.code || '').toUpperCase() === cleanCode)) {
-      return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" already exists.` });
-    }
-    if (cleanName && inMemoryBrands.some(b => b.id !== existing.id && (b.name || '').toLowerCase() === cleanName.toLowerCase())) {
-      return res.status(409).json({ success: false, message: `Brand with name "${cleanName}" already exists.` });
-    }
-
-    if (isDbConnected() && (cleanCode || cleanName)) {
+    if (isDbConnected()) {
       try {
-        const dup = await prisma.brand.findFirst({
-          where: {
-            id: { not: existing.id },
-            OR: [
-              ...(cleanCode ? [{ code: cleanCode }] : []),
-              ...(cleanName ? [{ name: cleanName }] : [])
-            ]
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id FROM brands WHERE id != '${existing.id.replace(/'/g, "''")}' AND UPPER(code) = '${cleanCode.replace(/'/g, "''")}'
+          `);
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Brand with code "${cleanCode}" already exists.` });
           }
-        });
-        if (dup) {
-          return res.status(409).json({ success: false, message: `Another brand with this code or name already exists.` });
         }
-      } catch (dbErr) {
-        console.warn('DB check duplicate brand in update skipped:', dbErr.message);
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id FROM brands WHERE id != '${existing.id.replace(/'/g, "''")}' AND UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}
+          `);
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Another brand with name "${cleanName}" already exists.` });
+          }
+        }
+      } catch (err) {
+        if (err.statusCode || err.status) throw err;
       }
     }
 
-    // Resolve and validate Manufacturer
+    // Resolve manufacturer
     let targetMfrId = manufacturerId !== undefined ? (manufacturerId || '').trim() : (existing.manufacturerId || '').trim();
     let targetMfrName = manufacturerName !== undefined ? (manufacturerName || '').trim() : (existing.manufacturerName || '').trim();
     let mfrObj = null;
 
     if (isDbConnected() && (targetMfrId || targetMfrName)) {
       try {
-        if (targetMfrId) {
-          mfrObj = await prisma.manufacturer.findUnique({ where: { id: targetMfrId } });
+        const mfrRows = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 id, name, active FROM manufacturers
+          WHERE id = '${targetMfrId.replace(/'/g, "''")}' OR UPPER(name) = '${targetMfrName.toUpperCase().replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(mfrRows) && mfrRows.length > 0) {
+          mfrObj = mfrRows[0];
+          targetMfrId = mfrObj.id;
+          targetMfrName = mfrObj.name;
         }
-        if (!mfrObj && targetMfrName) {
-          mfrObj = await prisma.manufacturer.findFirst({ where: { name: targetMfrName } });
-        }
-      } catch (e) {
-        console.warn('Failed to find manufacturer:', e.message);
-      }
+      } catch (_) {}
     }
 
-    if (mfrObj) {
-      targetMfrId = mfrObj.id;
-      targetMfrName = mfrObj.name;
-    }
+    const nextActive = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : (existing.active !== false && existing.active !== 0));
 
-    const nextActive = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : existing.active);
-
-    // Validation: cannot assign to or activate under inactive manufacturer
-    if (mfrObj && (mfrObj.active === false || mfrObj.status === 'Inactive')) {
+    if (mfrObj && (mfrObj.active === false || mfrObj.active === 0)) {
       if (manufacturerId !== undefined || manufacturerName !== undefined) {
         if (targetMfrId !== existing.manufacturerId) {
           return res.status(400).json({
@@ -7888,42 +7833,45 @@ export async function updateBrand(req, res, next) {
       }
     }
 
-    const effectiveActive = (mfrObj && mfrObj.active === false) ? false : nextActive;
+    const effectiveActive = (mfrObj && (mfrObj.active === false || mfrObj.active === 0)) ? false : nextActive;
+    const actBit = effectiveActive ? 1 : 0;
+    const cleanDesc = description !== undefined ? (description ? `'${description.trim().replace(/'/g, "''")}'` : 'NULL') : (existing.description ? `'${existing.description.replace(/'/g, "''")}'` : 'NULL');
+    const cleanMfrId = targetMfrId ? `'${targetMfrId.replace(/'/g, "''")}'` : 'NULL';
+    const cleanMfrName = targetMfrName ? `'${targetMfrName.replace(/'/g, "''")}'` : 'NULL';
+
+    if (isDbConnected() && existing.id) {
+      try {
+        await prisma.$executeRawUnsafe(`
+          UPDATE brands
+          SET code = '${cleanCode.replace(/'/g, "''")}',
+              name = '${cleanName.replace(/'/g, "''")}',
+              manufacturerId = ${cleanMfrId},
+              manufacturerName = ${cleanMfrName},
+              description = ${cleanDesc},
+              active = ${actBit},
+              updatedAt = CURRENT_TIMESTAMP
+          WHERE id = '${existing.id.replace(/'/g, "''")}'
+        `);
+      } catch (dbErr) {
+        console.warn('DB update brands skipped:', dbErr.message);
+      }
+    }
 
     const updated = {
-      ...existing,
-      ...req.body,
+      id: existing.id,
       code: cleanCode,
       name: cleanName,
       manufacturerId: targetMfrId || '',
       manufacturerName: targetMfrName || '',
-      manufacturerActive: mfrObj ? mfrObj.active !== false : true,
+      manufacturerActive: mfrObj ? (mfrObj.active !== false && mfrObj.active !== 0) : true,
+      description: description !== undefined ? (description || '') : (existing.description || ''),
+      companyId: existing.companyId || tenantCompanyId || null,
       active: effectiveActive,
       status: effectiveActive ? 'Active' : 'Inactive',
       updatedAt: new Date().toISOString()
     };
 
     if (idx !== -1) inMemoryBrands[idx] = updated;
-
-    await ensureBrandsTable();
-    if (isDbConnected()) {
-      try {
-        await prisma.brand.update({
-          where: { id: existing.id },
-          data: {
-            code: cleanCode,
-            name: cleanName,
-            manufacturerId: targetMfrId || null,
-            manufacturerName: targetMfrName || null,
-            description: updated.description ? updated.description.trim() : null,
-            active: effectiveActive
-          }
-        });
-      } catch (dbErr) {
-        console.warn('DB update brands skipped:', dbErr.message);
-      }
-    }
-
     writeBrandsToFile(inMemoryBrands);
     res.json({ success: true, brand: updated });
   } catch (err) { next(err); }
@@ -7935,31 +7883,31 @@ export async function deleteBrand(req, res, next) {
     const action = req.query.action;
     const force = req.query.force === 'true' || action === 'force_delete';
     const deactivateOnly = action === 'deactivate';
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
 
-    let brand = inMemoryBrands.find(b => b.id === id || b.code === id);
-
-    await ensureBrandsTable();
     let dbBrand = null;
     if (isDbConnected()) {
       try {
-        dbBrand = await prisma.brand.findFirst({
-          where: { OR: [{ id }, { code: id }] }
-        });
-      } catch (e) {
-        console.warn('DB find brand error:', e.message);
-      }
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 * FROM brands WHERE id = '${id.replace(/'/g, "''")}' OR code = '${id.replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(rows) && rows.length > 0) {
+          dbBrand = rows[0];
+          if (tenantCompanyId && !isSuperAdmin) {
+            if (dbBrand.companyId && dbBrand.companyId !== tenantCompanyId) {
+              return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+            }
+            if (!dbBrand.companyId) {
+              return res.status(403).json({ success: false, message: 'Cannot delete system default brands.' });
+            }
+          }
+        }
+      } catch (_) {}
     }
 
+    let brand = inMemoryBrands.find(b => b.id === id || b.code === id);
     if (!brand && !dbBrand) return res.status(404).json({ success: false, message: 'Brand not found' });
-    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    if (tenantCompanyId && dbBrand) {
-      if (dbBrand.companyId && dbBrand.companyId !== tenantCompanyId) {
-        return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
-      }
-      if (!dbBrand.companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
-        return res.status(403).json({ success: false, message: 'Cannot delete system default brands.' });
-      }
-    }
 
     const targetId = dbBrand?.id || brand?.id || id;
     const targetCode = dbBrand?.code || brand?.code;
@@ -8001,28 +7949,25 @@ export async function deleteBrand(req, res, next) {
         writeBrandsToFile(inMemoryBrands);
       }
       if (isDbConnected() && dbBrand) {
-        await prisma.brand.update({
-          where: { id: dbBrand.id },
-          data: { active: false }
-        }).catch(() => null);
+        await prisma.$executeRawUnsafe(`UPDATE brands SET active = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = '${targetId.replace(/'/g, "''")}'`).catch(() => null);
       }
       return res.json({ success: true, deactivated: true, message: `Brand deactivated successfully (${totalLinked} linked records preserved).` });
     }
 
     inMemoryBrands = inMemoryBrands.filter(b => b.id !== targetId && b.id !== id && (!targetCode || b.code !== targetCode));
+    writeBrandsToFile(inMemoryBrands);
 
     if (isDbConnected()) {
       try {
         if (force) {
           await prisma.$executeRawUnsafe(`UPDATE assets SET brandId = NULL WHERE brandId = '${targetId.replace(/'/g, "''")}'`).catch(() => null);
         }
-        await prisma.brand.delete({ where: { id: targetId } });
+        await prisma.$executeRawUnsafe(`DELETE FROM brands WHERE id = '${targetId.replace(/'/g, "''")}'`);
       } catch (dbErr) {
         console.warn('DB delete brands skipped:', dbErr.message);
       }
     }
 
-    writeBrandsToFile(inMemoryBrands);
     res.json({ success: true, message: 'Brand deleted successfully' });
   } catch (err) { next(err); }
 }
