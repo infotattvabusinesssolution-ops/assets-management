@@ -6448,9 +6448,10 @@ async function ensureUomsTable() {
 }
 
 // Generate Next Item Code (e.g. ITM-000104)
-function generateNextItemCode() {
+function generateNextItemCode(tenantCompanyId = null) {
   const prefix = getPrefixForEntity('item_master') || 'ITM-';
-  const existingCodes = inMemoryItemMasters
+  const tenantItems = inMemoryItemMasters.filter(i => !tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId);
+  const existingCodes = tenantItems
     .map(i => i.itemCode || '')
     .filter(c => c.startsWith(prefix));
   let maxSeq = 100;
@@ -6646,30 +6647,31 @@ export async function createItemMaster(req, res, next) {
       return res.status(400).json({ success: false, message: 'Item Name is required.' });
     }
 
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const cleanName = itemName.trim();
-    const cleanCode = (itemCode && itemCode.trim()) ? itemCode.trim().toUpperCase() : generateNextItemCode();
+    const cleanCode = (itemCode && itemCode.trim()) ? itemCode.trim().toUpperCase() : generateNextItemCode(tenantCompanyId);
     const cleanBarcode = (supplierBarcode || '').trim();
     const isAct = active !== undefined ? Boolean(active) : true;
     const id = `ITM-${Date.now()}`;
 
-    // STRICT DUPLICATE VALIDATION ON ITEM CODE
-    if (inMemoryItemMasters.some(i => (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
+    // STRICT DUPLICATE VALIDATION ON IN-MEMORY ITEMS (SCOPED TO TENANT)
+    const tenantItems = inMemoryItemMasters.filter(i => !tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId);
+
+    if (cleanCode && tenantItems.some(i => (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
       return res.status(409).json({
         success: false,
         message: `An item with Item Code "${cleanCode}" already exists. Duplicate item codes are not allowed.`
       });
     }
 
-    // STRICT DUPLICATE VALIDATION ON ITEM NAME
-    if (inMemoryItemMasters.some(i => (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
+    if (cleanName && tenantItems.some(i => (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({
         success: false,
         message: `An item with Item Name "${cleanName}" already exists. Duplicate item names are not allowed.`
       });
     }
 
-    // STRICT DUPLICATE VALIDATION ON SUPPLIER BARCODE (IF PROVIDED)
-    if (cleanBarcode && inMemoryItemMasters.some(i => i.supplierBarcode && i.supplierBarcode.trim().toLowerCase() === cleanBarcode.toLowerCase())) {
+    if (cleanBarcode && tenantItems.some(i => i.supplierBarcode && i.supplierBarcode.trim().toLowerCase() === cleanBarcode.toLowerCase())) {
       return res.status(409).json({
         success: false,
         message: `An item with Supplier Barcode "${cleanBarcode}" already exists. Barcodes must be unique.`
@@ -6679,22 +6681,52 @@ export async function createItemMaster(req, res, next) {
     await ensureItemMastersTable();
     if (isDbConnected()) {
       try {
-        const whereParts = [
-          `UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}'`,
-          `UPPER(itemName) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
-        ];
-        if (cleanBarcode) whereParts.push(`UPPER(supplierBarcode) = '${cleanBarcode.toUpperCase().replace(/'/g, "''")}'`);
-        const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM item_masters WHERE ${whereParts.join(' OR ')}`
-        );
-        if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Item Master with code "${cleanCode}", name "${cleanName}" or barcode "${cleanBarcode}" already exists.` });
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
+
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id FROM item_masters 
+            WHERE UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}' ${tenantFilter}
+          `);
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({
+              success: false,
+              message: `An item with Item Code "${cleanCode}" already exists. Duplicate item codes are not allowed.`
+            });
+          }
         }
-      } catch (err) {}
+
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id FROM item_masters 
+            WHERE UPPER(itemName) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}
+          `);
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({
+              success: false,
+              message: `An item with Item Name "${cleanName}" already exists. Duplicate item names are not allowed.`
+            });
+          }
+        }
+
+        if (cleanBarcode) {
+          const dupBarcode = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id FROM item_masters 
+            WHERE UPPER(supplierBarcode) = '${cleanBarcode.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}
+          `);
+          if (Array.isArray(dupBarcode) && dupBarcode.length > 0) {
+            return res.status(409).json({
+              success: false,
+              message: `An item with Supplier Barcode "${cleanBarcode}" already exists. Barcodes must be unique.`
+            });
+          }
+        }
+      } catch (err) {
+        if (err.statusCode || err.status) throw err;
+      }
     }
 
-    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const cleanCompany = tenantCompanyId ? `'${tenantCompanyId}'` : 'NULL';
+    const cleanCompany = tenantCompanyId ? `'${tenantCompanyId.replace(/'/g, "''")}'` : 'NULL';
 
     const newItem = {
       id,
@@ -6882,28 +6914,30 @@ export async function updateItemMaster(req, res, next) {
     const cleanName = req.body.itemName ? req.body.itemName.trim() : existing.itemName;
     const cleanBarcode = req.body.supplierBarcode !== undefined ? req.body.supplierBarcode.trim() : (existing.supplierBarcode || '');
 
-    // Duplicate check on Item Code excluding current
-    if (cleanCode && inMemoryItemMasters.some(i => i.id !== existing.id && (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
+    // Duplicate check on Item Code excluding current (scoped to tenant)
+    const tenantItems = inMemoryItemMasters.filter(i => !tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId);
+
+    if (cleanCode && tenantItems.some(i => i.id !== existing.id && (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Another item with Item Code "${cleanCode}" already exists.` });
     }
 
     // Duplicate check on Item Name excluding current
-    if (cleanName && inMemoryItemMasters.some(i => i.id !== existing.id && (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
+    if (cleanName && tenantItems.some(i => i.id !== existing.id && (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Another item with Item Name "${cleanName}" already exists.` });
     }
 
     // Duplicate check on Barcode excluding current
-    if (cleanBarcode && inMemoryItemMasters.some(i => i.id !== existing.id && i.supplierBarcode && i.supplierBarcode.trim().toLowerCase() === cleanBarcode.toLowerCase())) {
+    if (cleanBarcode && tenantItems.some(i => i.id !== existing.id && i.supplierBarcode && i.supplierBarcode.trim().toLowerCase() === cleanBarcode.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Another item with Supplier Barcode "${cleanBarcode}" already exists.` });
     }
 
     if (isDbConnected() && (cleanCode || cleanName || cleanBarcode)) {
       try {
-        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
         const safeId = (id || '').replace(/'/g, "''");
         if (cleanCode) {
           const dupCode = await prisma.$queryRawUnsafe(
-            `SELECT id FROM item_masters WHERE id != '${safeId}' AND itemCode != '${safeId}' AND UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}'`
+            `SELECT id FROM item_masters WHERE id != '${safeId}' AND itemCode != '${safeId}' AND UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}' ${tenantFilter}`
           );
           if (Array.isArray(dupCode) && dupCode.length > 0) {
             return res.status(409).json({ success: false, message: `Another item with code "${cleanCode}" already exists.` });
