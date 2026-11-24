@@ -1297,8 +1297,10 @@ export async function createSite(req, res, next) {
 
     // Strict duplicate check on code and name
     const exists = inMemoryLocations.some(l => 
-      (l.code && l.code.toUpperCase() === cleanCode) || 
-      (l.name && l.name.toLowerCase() === cleanName.toLowerCase())
+      (!targetCompanyId || l.companyId === targetCompanyId) && (
+        (l.code && l.code.toUpperCase() === cleanCode) || 
+        (l.name && l.name.toLowerCase() === cleanName.toLowerCase())
+      )
     );
     if (exists) {
       return res.status(409).json({
@@ -1350,14 +1352,18 @@ export async function createSite(req, res, next) {
 
     if (isDbConnected()) {
       try {
-        const dbExisting = await prisma.$queryRawUnsafe(
-          `SELECT id FROM sites WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`
-        );
-        if (Array.isArray(dbExisting) && dbExisting.length > 0) {
-          return res.status(409).json({
-            success: false,
-            message: `Duplicate Error: Location with code "${cleanCode}" or name "${cleanName}" already exists.`
-          });
+        const tenantFilter = targetCompanyId ? `AND (companyId = '${targetCompanyId}' OR companyId IS NULL)` : '';
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(`SELECT id FROM sites WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Duplicate Error: Location with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(`SELECT id FROM sites WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`);
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Duplicate Error: Location with name "${cleanName}" already exists.` });
+          }
         }
       } catch (dbErr) {
         console.warn('DB check duplicate location skipped:', dbErr.message);
@@ -1468,12 +1474,15 @@ export async function updateSite(req, res, next) {
     const cleanLvl4 = locationLevel4 !== undefined ? locationLevel4.trim() : (inMemoryLocations[idx].locationLevel4 || '');
     const cleanAddress = address !== undefined ? address.trim() : (inMemoryLocations[idx].address || '');
 
-    const dup = inMemoryLocations.find(l => (l.id !== id && l.code !== id) && (
+    const dup = inMemoryLocations.find(l => (l.id !== id && l.code !== id) && (!tenantCompanyId || l.companyId === tenantCompanyId) && (
       (cleanCode && l.code && l.code.toUpperCase() === cleanCode) || 
       (cleanName && l.name && l.name.toLowerCase() === cleanName.toLowerCase())
     ));
     if (dup) {
-      return res.status(409).json({ success: false, message: `Duplicate Error: Location with code "${cleanCode}" or name "${cleanName}" already exists.` });
+      if (cleanCode && dup.code && dup.code.toUpperCase() === cleanCode) {
+        return res.status(409).json({ success: false, message: `Duplicate Error: Location with code "${cleanCode}" already exists.` });
+      }
+      return res.status(409).json({ success: false, message: `Duplicate Error: Location with name "${cleanName}" already exists.` });
     }
 
     // Strict duplicate check on hierarchy levels (Level 1 to Level 4)
@@ -1520,14 +1529,22 @@ export async function updateSite(req, res, next) {
     }
     if (isDbConnected() && (cleanCode || cleanName)) {
       try {
-        const whereParts = [];
-        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
-        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-        const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM sites WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
-        );
-        if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Duplicate Error: Location with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(
+            `SELECT id FROM sites WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Duplicate Error: Location with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(
+            `SELECT id FROM sites WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`
+          );
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Duplicate Error: Location with name "${cleanName}" already exists.` });
+          }
         }
       } catch (err) {}
     }
@@ -6921,16 +6938,31 @@ export async function updateItemMaster(req, res, next) {
 
     if (isDbConnected() && (cleanCode || cleanName || cleanBarcode)) {
       try {
-        const whereParts = [];
-        if (cleanCode) whereParts.push(`UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}'`);
-        if (cleanName) whereParts.push(`UPPER(itemName) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-        if (cleanBarcode) whereParts.push(`UPPER(supplierBarcode) = '${cleanBarcode.toUpperCase().replace(/'/g, "''")}'`);
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
         const safeId = (id || '').replace(/'/g, "''");
-        const existingDb = await prisma.$queryRawUnsafe(
-          `SELECT id FROM item_masters WHERE id != '${safeId}' AND itemCode != '${safeId}' AND (${whereParts.join(' OR ')})`
-        );
-        if (Array.isArray(existingDb) && existingDb.length > 0) {
-          return res.status(409).json({ success: false, message: `Another item with this code, name, or barcode already exists.` });
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(
+            `SELECT id FROM item_masters WHERE id != '${safeId}' AND itemCode != '${safeId}' AND UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Another item with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(
+            `SELECT id FROM item_masters WHERE id != '${safeId}' AND itemCode != '${safeId}' AND UPPER(itemName) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`
+          );
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Another item with name "${cleanName}" already exists.` });
+          }
+        }
+        if (cleanBarcode) {
+          const dupBarcode = await prisma.$queryRawUnsafe(
+            `SELECT id FROM item_masters WHERE id != '${safeId}' AND itemCode != '${safeId}' AND UPPER(supplierBarcode) = '${cleanBarcode.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`
+          );
+          if (Array.isArray(dupBarcode) && dupBarcode.length > 0) {
+            return res.status(409).json({ success: false, message: `Another item with barcode "${cleanBarcode}" already exists.` });
+          }
         }
       } catch (err) {}
     }
