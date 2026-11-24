@@ -1836,37 +1836,58 @@ export async function createRoom(req, res, next) {
 export async function getCategories(req, res, next) {
   try {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const where = {
-      ...(req.query.includeInactive !== 'false' ? {} : { active: true }),
-      ...(tenantCompanyId ? { companyId: tenantCompanyId } : {})
-    };
-    const categories = await prisma.category.findMany({ 
-      where, 
-      include: { 
-        assetSubGroup: {
-          include: { assetGroup: true }
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+
+    if (isDbConnected()) {
+      try {
+        const tenantFilter = (tenantCompanyId && !isSuperAdmin)
+          ? `(c.companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR c.companyId IS NULL)`
+          : '1=1';
+        const activeFilter = req.query.includeInactive !== 'false' ? '' : 'AND c.active = 1';
+        let subGroupFilter = '';
+        if (req.query.assetSubGroupId) {
+          subGroupFilter = `AND c.assetSubGroupId = '${String(req.query.assetSubGroupId).replace(/'/g, "''")}'`;
         }
-      },
-      orderBy: { name: 'asc' } 
-    });
-    const enriched = categories.map(c => {
-      const descClass = (c.description || '').match(/\[class:([^\]]+)\]/)?.[1];
-      const descGroup = (c.description || '').match(/\[group:([^\]]+)\]/)?.[1];
-      const subGroupName = c.assetSubGroup?.name || descClass || '';
-      const groupName = c.assetSubGroup?.assetGroup?.name || descGroup || (c.assetSubGroup?.assetGroupName || '');
-      const isSubGroupActive = c.assetSubGroup ? (c.assetSubGroup.active !== false && c.assetSubGroup.active !== 0) : true;
-      const isGroupActive = c.assetSubGroup?.assetGroup ? (c.assetSubGroup.assetGroup.active !== false && c.assetSubGroup.assetGroup.active !== 0) : true;
-      return {
-        ...c,
-        assetSubGroupId: c.assetSubGroupId || c.assetSubGroup?.id || null,
-        subGroupName,
-        className: subGroupName,
-        groupName: groupName || '-',
-        subGroupActive: isSubGroupActive,
-        groupActive: isGroupActive
-      };
-    });
-    res.json({ success: true, categories: enriched });
+
+        const query = `
+          SELECT c.*, 
+                 sg.name as subGroupName, 
+                 sg.active as subGroupActive, 
+                 ag.name as groupName, 
+                 ag.active as groupActive
+          FROM categories c
+          LEFT JOIN asset_sub_groups sg ON c.assetSubGroupId = sg.id
+          LEFT JOIN asset_groups ag ON sg.assetGroupId = ag.id
+          WHERE ${tenantFilter} ${activeFilter} ${subGroupFilter}
+          ORDER BY c.name ASC
+        `;
+        const rows = await prisma.$queryRawUnsafe(query);
+        const enriched = (rows || []).map(c => {
+          const descClass = (c.description || '').match(/\[class:([^\]]+)\]/)?.[1];
+          const descGroup = (c.description || '').match(/\[group:([^\]]+)\]/)?.[1];
+          const subGroupName = c.subGroupName || descClass || '';
+          const groupName = c.groupName || descGroup || '';
+          const isSubGroupActive = c.subGroupActive !== undefined && c.subGroupActive !== null ? Boolean(c.subGroupActive) : true;
+          const isGroupActive = c.groupActive !== undefined && c.groupActive !== null ? Boolean(c.groupActive) : true;
+          return {
+            ...c,
+            active: Boolean(c.active),
+            isSerialized: Boolean(c.isSerialized),
+            assetSubGroupId: c.assetSubGroupId || null,
+            subGroupName,
+            className: subGroupName,
+            groupName: groupName || '-',
+            subGroupActive: isSubGroupActive,
+            groupActive: isGroupActive
+          };
+        });
+        return res.json({ success: true, categories: enriched });
+      } catch (dbErr) {
+        console.warn('DB getCategories query failed, falling back:', dbErr.message);
+      }
+    }
+
+    res.json({ success: true, categories: [] });
   } catch (err) { next(err); }
 }
 
@@ -1875,6 +1896,7 @@ export async function createCategory(req, res, next) {
     const { 
       code, name, description, active, status, 
       depreciationMethod, annualDepreciationRatePercent, 
+      defaultUsefulLifeMonths, defaultResidualValuePercent, isSerialized,
       assetSubGroupId, className, subGroupName 
     } = req.body;
     if (!name || !name.trim()) {
@@ -1935,15 +1957,12 @@ export async function createCategory(req, res, next) {
           }
         }
 
-        const existing = await prisma.category.findFirst({
-          where: {
-            OR: [
-              { code: cleanCode },
-              { name: cleanName }
-            ]
-          }
-        });
-        if (existing) {
+        const existing = await prisma.$queryRawUnsafe(`
+          SELECT TOP 1 id, code, name FROM categories 
+          WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' 
+             OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'
+        `);
+        if (Array.isArray(existing) && existing.length > 0) {
           return res.status(409).json({ success: false, message: `Category with code "${cleanCode}" or name "${cleanName}" already exists.` });
         }
       } catch (dbErr) {
@@ -1951,22 +1970,83 @@ export async function createCategory(req, res, next) {
         console.warn('DB check duplicate category skipped:', dbErr.message);
       }
     }
-    const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
-    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const category = await prisma.category.create({
-      data: {
-        code: cleanCode,
-        name: cleanName,
-        description: description || '',
-        assetSubGroupId: resolvedSubGroupId,
-        companyId: tenantCompanyId || null,
-        active: isAct,
-        depreciationMethod: depreciationMethod || 'STRAIGHT_LINE',
-        annualDepreciationRatePercent: annualDepreciationRatePercent ? Number(annualDepreciationRatePercent) : 10
-      },
-      include: { assetSubGroup: true }
-    });
-    res.status(201).json({ success: true, category });
+
+    const id = crypto.randomUUID();
+    const isAct = active !== undefined ? (Boolean(active) ? 1 : 0) : (status ? (status === 'Active' ? 1 : 0) : 1);
+    const tenantCompanyId = req.tenantCompanyId || req.body.companyId || req.user?.companyId;
+    const cleanCompany = tenantCompanyId ? `'${tenantCompanyId.replace(/'/g, "''")}'` : 'NULL';
+    const cleanDesc = description ? `'${description.replace(/'/g, "''")}'` : 'NULL';
+    const cleanDeprec = depreciationMethod ? `'${depreciationMethod.replace(/'/g, "''")}'` : "'STRAIGHT_LINE'";
+    const cleanDeprecRate = annualDepreciationRatePercent !== undefined && annualDepreciationRatePercent !== null ? Number(annualDepreciationRatePercent) : 10;
+    const cleanLifeMonths = defaultUsefulLifeMonths !== undefined && defaultUsefulLifeMonths !== null ? Number(defaultUsefulLifeMonths) : 60;
+    const cleanResidual = defaultResidualValuePercent !== undefined && defaultResidualValuePercent !== null ? Number(defaultResidualValuePercent) : 0;
+    const cleanIsSerialized = isSerialized !== undefined ? (Boolean(isSerialized) ? 1 : 0) : 1;
+    const cleanSubGroup = resolvedSubGroupId ? `'${String(resolvedSubGroupId).replace(/'/g, "''")}'` : 'NULL';
+
+    if (isDbConnected()) {
+      await prisma.$executeRawUnsafe(`
+        INSERT INTO categories (
+          id, code, name, description, assetSubGroupId, companyId, active,
+          depreciationMethod, annualDepreciationRatePercent, defaultUsefulLifeMonths,
+          defaultResidualValuePercent, isSerialized, createdAt, updatedAt
+        ) VALUES (
+          '${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', ${cleanDesc}, ${cleanSubGroup}, ${cleanCompany}, ${isAct},
+          ${cleanDeprec}, ${cleanDeprecRate}, ${cleanLifeMonths},
+          ${cleanResidual}, ${cleanIsSerialized}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+        )
+      `);
+    }
+
+    let createdCategory = {
+      id,
+      code: cleanCode,
+      name: cleanName,
+      description: description || '',
+      assetSubGroupId: resolvedSubGroupId,
+      companyId: tenantCompanyId || null,
+      active: Boolean(isAct),
+      depreciationMethod: depreciationMethod || 'STRAIGHT_LINE',
+      annualDepreciationRatePercent: cleanDeprecRate,
+      defaultUsefulLifeMonths: cleanLifeMonths,
+      defaultResidualValuePercent: cleanResidual,
+      isSerialized: Boolean(cleanIsSerialized),
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      subGroupName: targetSubGroupName || '',
+      className: targetSubGroupName || '',
+      groupName: '-'
+    };
+
+    if (isDbConnected()) {
+      try {
+        const rows = await prisma.$queryRawUnsafe(`
+          SELECT c.*, 
+                 sg.name as subGroupName, 
+                 sg.active as subGroupActive, 
+                 ag.name as groupName, 
+                 ag.active as groupActive
+          FROM categories c
+          LEFT JOIN asset_sub_groups sg ON c.assetSubGroupId = sg.id
+          LEFT JOIN asset_groups ag ON sg.assetGroupId = ag.id
+          WHERE c.id = '${id}'
+        `);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const r = rows[0];
+          createdCategory = {
+            ...r,
+            active: Boolean(r.active),
+            isSerialized: Boolean(r.isSerialized),
+            subGroupName: r.subGroupName || targetSubGroupName || '',
+            className: r.subGroupName || targetSubGroupName || '',
+            groupName: r.groupName || '-',
+            subGroupActive: r.subGroupActive !== undefined && r.subGroupActive !== null ? Boolean(r.subGroupActive) : true,
+            groupActive: r.groupActive !== undefined && r.groupActive !== null ? Boolean(r.groupActive) : true
+          };
+        }
+      } catch (_) {}
+    }
+
+    res.status(201).json({ success: true, category: createdCategory });
   } catch (err) { next(err); }
 }
 
@@ -1974,17 +2054,24 @@ export async function updateCategory(req, res, next) {
   try {
     const { id } = req.params;
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+
     if (tenantCompanyId && isDbConnected()) {
-      const cat = await prisma.category.findUnique({ where: { id } }).catch(() => null);
-      if (cat) {
-        if (cat.companyId && cat.companyId !== tenantCompanyId) {
-          return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+      try {
+        const rows = await prisma.$queryRawUnsafe(`SELECT * FROM categories WHERE id = '${id.replace(/'/g, "''")}'`);
+        if (Array.isArray(rows) && rows.length > 0) {
+          const cat = rows[0];
+          if (cat.companyId && cat.companyId !== tenantCompanyId) {
+            return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
+          }
+          if (!cat.companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
+            return res.status(403).json({ success: false, message: 'Cannot modify system default categories.' });
+          }
         }
-        if (!cat.companyId && req.user?.role?.code !== 'SUPER_ADMIN') {
-          return res.status(403).json({ success: false, message: 'Cannot modify system default categories.' });
-        }
+      } catch (e) {
+        console.warn('DB check category company failed:', e.message);
       }
     }
+
     const { 
       code, name, description, active, status, 
       depreciationMethod, annualDepreciationRatePercent,
@@ -2046,16 +2133,14 @@ export async function updateCategory(req, res, next) {
         }
 
         if (cleanCode || cleanName) {
-          const existing = await prisma.category.findFirst({
-            where: {
-              id: { not: id },
-              OR: [
-                ...(cleanCode ? [{ code: cleanCode }] : []),
-                ...(cleanName ? [{ name: cleanName }] : [])
-              ]
-            }
-          });
-          if (existing) {
+          const whereParts = [];
+          if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+          if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
+          const existing = await prisma.$queryRawUnsafe(`
+            SELECT TOP 1 id FROM categories 
+            WHERE id != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})
+          `);
+          if (Array.isArray(existing) && existing.length > 0) {
             return res.status(409).json({ success: false, message: `Another category with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
           }
         }
@@ -2065,21 +2150,43 @@ export async function updateCategory(req, res, next) {
       }
     }
 
-    const updateData = {};
-    if (cleanCode) updateData.code = cleanCode;
-    if (cleanName) updateData.name = cleanName;
-    if (description !== undefined) updateData.description = description;
-    if (resolvedSubGroupId !== undefined) updateData.assetSubGroupId = resolvedSubGroupId;
-    if (depreciationMethod) updateData.depreciationMethod = depreciationMethod;
-    if (annualDepreciationRatePercent !== undefined) updateData.annualDepreciationRatePercent = Number(annualDepreciationRatePercent);
-    if (active !== undefined) updateData.active = Boolean(active);
-    else if (status !== undefined) updateData.active = status === 'Active';
+    const setClauses = ['updatedAt = CURRENT_TIMESTAMP'];
+    if (cleanCode) setClauses.push(`code = '${cleanCode.replace(/'/g, "''")}'`);
+    if (cleanName) setClauses.push(`name = '${cleanName.replace(/'/g, "''")}'`);
+    if (description !== undefined) {
+      setClauses.push(`description = ${description ? `'${description.replace(/'/g, "''")}'` : 'NULL'}`);
+    }
+    if (resolvedSubGroupId !== undefined) {
+      setClauses.push(`assetSubGroupId = ${resolvedSubGroupId ? `'${String(resolvedSubGroupId).replace(/'/g, "''")}'` : 'NULL'}`);
+    }
+    if (depreciationMethod) {
+      setClauses.push(`depreciationMethod = '${depreciationMethod.replace(/'/g, "''")}'`);
+    }
+    if (annualDepreciationRatePercent !== undefined && annualDepreciationRatePercent !== null) {
+      setClauses.push(`annualDepreciationRatePercent = ${Number(annualDepreciationRatePercent)}`);
+    }
+    if (req.body.defaultUsefulLifeMonths !== undefined && req.body.defaultUsefulLifeMonths !== null) {
+      setClauses.push(`defaultUsefulLifeMonths = ${Number(req.body.defaultUsefulLifeMonths)}`);
+    }
+    if (req.body.defaultResidualValuePercent !== undefined && req.body.defaultResidualValuePercent !== null) {
+      setClauses.push(`defaultResidualValuePercent = ${Number(req.body.defaultResidualValuePercent)}`);
+    }
+    if (req.body.isSerialized !== undefined) {
+      setClauses.push(`isSerialized = ${Boolean(req.body.isSerialized) ? 1 : 0}`);
+    }
 
-    if (updateData.active === true && isDbConnected()) {
+    let isAct = undefined;
+    if (active !== undefined) isAct = Boolean(active) ? 1 : 0;
+    else if (status !== undefined) isAct = status === 'Active' ? 1 : 0;
+    if (isAct !== undefined) {
+      setClauses.push(`active = ${isAct}`);
+    }
+
+    if (isAct === 1 && isDbConnected()) {
       let checkSgId = resolvedSubGroupId;
       if (!checkSgId) {
-        const curCat = await prisma.category.findUnique({ where: { id }, select: { assetSubGroupId: true } }).catch(() => null);
-        checkSgId = curCat?.assetSubGroupId;
+        const curRows = await prisma.$queryRawUnsafe(`SELECT assetSubGroupId FROM categories WHERE id = '${id.replace(/'/g, "''")}'`).catch(() => []);
+        checkSgId = curRows?.[0]?.assetSubGroupId;
       }
       if (checkSgId) {
         const matchedSg = await prisma.$queryRawUnsafe(`
@@ -2105,42 +2212,69 @@ export async function updateCategory(req, res, next) {
       }
     }
 
-    const category = await prisma.category.update({
-      where: { id },
-      data: updateData,
-      include: { assetSubGroup: true }
-    });
+    if (isDbConnected()) {
+      await prisma.$executeRawUnsafe(`
+        UPDATE categories 
+        SET ${setClauses.join(', ')}
+        WHERE id = '${id.replace(/'/g, "''")}'
+      `);
 
-    // Cascade deactivation to sub_categories
-    if (updateData.active === false && isDbConnected()) {
-      const catName = cleanName || category?.name;
-      const catCode = cleanCode || category?.code;
-      await prisma.subCategory.updateMany({
-        where: {
-          OR: [
-            { categoryId: id },
-            ...(catCode ? [{ categoryId: catCode }] : []),
-            ...(catName ? [{ categoryName: catName }] : [])
-          ]
-        },
-        data: { active: false }
-      }).catch(e => console.warn('Cascade deactivation to sub_categories error:', e.message));
+      // Cascade deactivation to sub_categories
+      if (isAct === 0) {
+        const catName = cleanName;
+        const catCode = cleanCode;
+        await prisma.$executeRawUnsafe(`
+          UPDATE sub_categories
+          SET active = 0, updatedAt = CURRENT_TIMESTAMP
+          WHERE categoryId = '${id.replace(/'/g, "''")}'
+             ${catCode ? `OR categoryId = '${catCode.replace(/'/g, "''")}'` : ''}
+             ${catName ? `OR categoryName = '${catName.replace(/'/g, "''")}'` : ''}
+        `).catch(e => console.warn('Cascade deactivation to sub_categories error:', e.message));
 
-      try {
-        const fileSubCats = readSubCategoriesFromFile();
-        let scChanged = false;
-        fileSubCats.forEach(sc => {
-          if (sc.categoryId === id || (catCode && sc.categoryId === catCode) || (catName && (sc.categoryName === catName || sc.category === catName))) {
-            sc.active = false;
-            sc.status = 'Inactive';
-            scChanged = true;
-          }
-        });
-        if (scChanged) writeSubCategoriesToFile(fileSubCats);
-      } catch (_) {}
+        try {
+          const fileSubCats = readSubCategoriesFromFile();
+          let scChanged = false;
+          fileSubCats.forEach(sc => {
+            if (sc.categoryId === id || (catCode && sc.categoryId === catCode) || (catName && (sc.categoryName === catName || sc.category === catName))) {
+              sc.active = false;
+              sc.status = 'Inactive';
+              scChanged = true;
+            }
+          });
+          if (scChanged) writeSubCategoriesToFile(fileSubCats);
+        } catch (_) {}
+      }
     }
 
-    res.json({ success: true, category });
+    let updatedCategory = null;
+    if (isDbConnected()) {
+      const rows = await prisma.$queryRawUnsafe(`
+        SELECT c.*, 
+               sg.name as subGroupName, 
+               sg.active as subGroupActive, 
+               ag.name as groupName, 
+               ag.active as groupActive
+        FROM categories c
+        LEFT JOIN asset_sub_groups sg ON c.assetSubGroupId = sg.id
+        LEFT JOIN asset_groups ag ON sg.assetGroupId = ag.id
+        WHERE c.id = '${id.replace(/'/g, "''")}'
+      `);
+      if (Array.isArray(rows) && rows.length > 0) {
+        const r = rows[0];
+        updatedCategory = {
+          ...r,
+          active: Boolean(r.active),
+          isSerialized: Boolean(r.isSerialized),
+          subGroupName: r.subGroupName || '',
+          className: r.subGroupName || '',
+          groupName: r.groupName || '-',
+          subGroupActive: r.subGroupActive !== undefined && r.subGroupActive !== null ? Boolean(r.subGroupActive) : true,
+          groupActive: r.groupActive !== undefined && r.groupActive !== null ? Boolean(r.groupActive) : true
+        };
+      }
+    }
+
+    res.json({ success: true, category: updatedCategory || { id, ...req.body } });
   } catch (err) { next(err); }
 }
 
@@ -2151,8 +2285,11 @@ export async function deleteCategory(req, res, next) {
     const force = req.query.force === 'true' || action === 'force_delete';
     const deactivateOnly = action === 'deactivate';
 
-    // Check if category exists
-    const category = await prisma.category.findUnique({ where: { id } }).catch(() => null);
+    let category = null;
+    if (isDbConnected()) {
+      const rows = await prisma.$queryRawUnsafe(`SELECT * FROM categories WHERE id = '${id.replace(/'/g, "''")}'`);
+      if (Array.isArray(rows) && rows.length > 0) category = rows[0];
+    }
     if (!category) {
       return res.json({ success: true, message: 'Category not found or already deleted.' });
     }
@@ -2170,11 +2307,37 @@ export async function deleteCategory(req, res, next) {
     const catCode = (req.query.code || req.body?.code || category?.code || '').trim();
 
     // Check dependencies
-    let [assetCount, modelCount, classCount] = await Promise.all([
-      prisma.asset.count({ where: { OR: [{ categoryId: id }, ...(catCode ? [{ categoryId: catCode }] : [])] } }).catch(() => 0),
-      prisma.assetModel.count({ where: { OR: [{ categoryId: id }, ...(catCode ? [{ categoryId: catCode }] : [])] } }).catch(() => 0),
-      prisma.subCategory.count({ where: { OR: [{ categoryId: id }, ...(catCode ? [{ categoryId: catCode }] : []), ...(catName ? [{ categoryName: catName }] : [])] } }).catch(() => 0)
-    ]);
+    let assetCount = 0;
+    let modelCount = 0;
+    let classCount = 0;
+
+    if (isDbConnected()) {
+      try {
+        const aRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM assets
+          WHERE categoryId = '${id.replace(/'/g, "''")}'
+             ${catCode ? `OR categoryId = '${catCode.replace(/'/g, "''")}'` : ''}
+        `);
+        assetCount = Number(aRows?.[0]?.cnt || 0);
+
+        const mRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM asset_models
+          WHERE categoryId = '${id.replace(/'/g, "''")}'
+             ${catCode ? `OR categoryId = '${catCode.replace(/'/g, "''")}'` : ''}
+        `).catch(() => []);
+        modelCount = Number(mRows?.[0]?.cnt || 0);
+
+        const scRows = await prisma.$queryRawUnsafe(`
+          SELECT COUNT(*) as cnt FROM sub_categories
+          WHERE categoryId = '${id.replace(/'/g, "''")}'
+             OR categoryId = '${catCode.replace(/'/g, "''")}'
+             OR (categoryName IS NOT NULL AND (categoryName = '${catName.replace(/'/g, "''")}' OR UPPER(categoryName) = '${catName.toUpperCase().replace(/'/g, "''")}'))
+        `).catch(() => []);
+        classCount = Number(scRows?.[0]?.cnt || 0);
+      } catch (dbErr) {
+        console.warn('DB check dependencies in deleteCategory skipped:', dbErr.message);
+      }
+    }
 
     // Check sub_categories in JSON file
     try {
@@ -2188,31 +2351,6 @@ export async function deleteCategory(req, res, next) {
       }
     } catch (_) {}
 
-    // Check sub_categories in DB
-    if (isDbConnected()) {
-      try {
-        const scRows = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*) as cnt FROM sub_categories
-          WHERE categoryId = '${id.replace(/'/g, "''")}'
-             OR categoryId = '${catCode.replace(/'/g, "''")}'
-             OR (categoryName IS NOT NULL AND (categoryName = '${catName.replace(/'/g, "''")}' OR UPPER(categoryName) = '${catName.toUpperCase().replace(/'/g, "''")}'))
-        `);
-        const dbScCount = Number(scRows?.[0]?.cnt || 0);
-        if (dbScCount > classCount) classCount = dbScCount;
-      } catch (dbErr) {
-        console.warn('DB check sub_categories in deleteCategory skipped:', dbErr.message);
-      }
-
-      try {
-        const dbAssets = await prisma.$queryRawUnsafe(`
-          SELECT COUNT(*) as cnt FROM assets
-          WHERE categoryId = '${id.replace(/'/g, "''")}'
-             OR categoryId = '${catCode.replace(/'/g, "''")}'
-        `);
-        const dbAssetCount = Number(dbAssets?.[0]?.cnt || 0);
-        if (dbAssetCount > assetCount) assetCount = dbAssetCount;
-      } catch (_) {}
-    }
     const totalLinked = assetCount + modelCount + classCount;
 
     if (totalLinked > 0 && !deactivateOnly) {
@@ -2227,23 +2365,19 @@ export async function deleteCategory(req, res, next) {
     }
 
     if (deactivateOnly) {
-      await prisma.category.update({
-        where: { id },
-        data: { active: false }
-      }).catch(() => null);
-
       if (isDbConnected()) {
-        await prisma.subCategory.updateMany({
-          where: {
-            OR: [
-              { categoryId: id },
-              ...(catCode ? [{ categoryId: catCode }] : []),
-              ...(catName ? [{ categoryName: catName }] : [])
-            ]
-          },
-          data: { active: false }
-        }).catch(() => null);
+        await prisma.$executeRawUnsafe(`
+          UPDATE categories SET active = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = '${id.replace(/'/g, "''")}'
+        `);
+        await prisma.$executeRawUnsafe(`
+          UPDATE sub_categories
+          SET active = 0, updatedAt = CURRENT_TIMESTAMP
+          WHERE categoryId = '${id.replace(/'/g, "''")}'
+             ${catCode ? `OR categoryId = '${catCode.replace(/'/g, "''")}'` : ''}
+             ${catName ? `OR categoryName = '${catName.replace(/'/g, "''")}'` : ''}
+        `).catch(() => null);
       }
+
       try {
         const fileSubCats = readSubCategoriesFromFile();
         let scChanged = false;
@@ -2306,17 +2440,17 @@ export async function deleteCategory(req, res, next) {
       }
 
       // 2. Unlink custom field definitions & receipt line items
-      await tx.customFieldDefinition.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
-      await tx.receiptLineItem.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
+      await tx.$executeRawUnsafe(`UPDATE custom_field_definitions SET categoryId = NULL WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => null);
+      await tx.$executeRawUnsafe(`UPDATE receipt_line_items SET categoryId = NULL WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => null);
 
       // 3. Delete or unlink child asset models
-      await tx.assetModel.deleteMany({ where: { categoryId: id } }).catch(() => null);
+      await tx.$executeRawUnsafe(`DELETE FROM asset_models WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => null);
 
       // 4. Delete child sub-categories
-      await tx.subCategory.deleteMany({ where: { categoryId: id } }).catch(() => null);
+      await tx.$executeRawUnsafe(`DELETE FROM sub_categories WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => null);
 
       // 5. Delete category permanently from SQL database
-      await tx.category.delete({ where: { id } });
+      await tx.$executeRawUnsafe(`DELETE FROM categories WHERE id = '${id.replace(/'/g, "''")}'`);
     });
 
     return res.json({ success: true, hardDeleted: true, message: 'Category permanently deleted from database.' });
@@ -2338,17 +2472,23 @@ export async function bulkDeleteCategories(req, res, next) {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     for (const id of ids) {
       try {
-        if (tenantCompanyId) {
-          const cat = await prisma.category.findUnique({ where: { id } }).catch(() => null);
+        if (tenantCompanyId && isDbConnected()) {
+          const rows = await prisma.$queryRawUnsafe(`SELECT companyId FROM categories WHERE id = '${id.replace(/'/g, "''")}'`).catch(() => []);
+          const cat = rows?.[0];
           if (cat?.companyId && cat.companyId !== tenantCompanyId) continue;
           if (!cat?.companyId && req.user?.role?.code !== 'SUPER_ADMIN') continue;
         }
-        const assetCount = await prisma.asset.count({ where: { categoryId: id } }).catch(() => 0);
+
+        let assetCount = 0;
+        if (isDbConnected()) {
+          const aRows = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM assets WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => []);
+          assetCount = Number(aRows?.[0]?.cnt || 0);
+        }
+
         if (assetCount > 0 && !force) {
-          await prisma.category.update({
-            where: { id },
-            data: { active: false }
-          }).catch(() => null);
+          if (isDbConnected()) {
+            await prisma.$executeRawUnsafe(`UPDATE categories SET active = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = '${id.replace(/'/g, "''")}'`).catch(() => null);
+          }
           deactivatedCount++;
         } else {
           await prisma.$transaction(async (tx) => {
@@ -2390,16 +2530,18 @@ export async function bulkDeleteCategories(req, res, next) {
               }
             }
 
-            await tx.customFieldDefinition.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
-            await tx.receiptLineItem.updateMany({ where: { categoryId: id }, data: { categoryId: null } }).catch(() => null);
-            await tx.assetModel.deleteMany({ where: { categoryId: id } }).catch(() => null);
-            await tx.subCategory.deleteMany({ where: { categoryId: id } }).catch(() => null);
-            await tx.category.delete({ where: { id } });
+            await tx.$executeRawUnsafe(`UPDATE custom_field_definitions SET categoryId = NULL WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => null);
+            await tx.$executeRawUnsafe(`UPDATE receipt_line_items SET categoryId = NULL WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => null);
+            await tx.$executeRawUnsafe(`DELETE FROM asset_models WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => null);
+            await tx.$executeRawUnsafe(`DELETE FROM sub_categories WHERE categoryId = '${id.replace(/'/g, "''")}'`).catch(() => null);
+            await tx.$executeRawUnsafe(`DELETE FROM categories WHERE id = '${id.replace(/'/g, "''")}'`);
           });
           deletedCount++;
         }
       } catch (e) {
-        await prisma.category.update({ where: { id }, data: { active: false } }).catch(() => null);
+        if (isDbConnected()) {
+          await prisma.$executeRawUnsafe(`UPDATE categories SET active = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = '${id.replace(/'/g, "''")}'`).catch(() => null);
+        }
         deactivatedCount++;
       }
     }
