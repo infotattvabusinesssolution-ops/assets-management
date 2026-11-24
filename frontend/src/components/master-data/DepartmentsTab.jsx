@@ -90,7 +90,7 @@ export function DepartmentsTab({
             ? dept.costCenters
             : loadedCCs.filter((c) => c.departmentId === dept.id || c.department?.id === dept.id);
 
-          const matchedEmps = combinedEmployees.filter(c => {
+          const matchedEmps = allLoadedEmployees.filter(c => {
             if (!c) return false;
             const targetId = String(dept.id || '').trim().toLowerCase();
             const targetCode = String(dept.code || '').trim().toLowerCase();
