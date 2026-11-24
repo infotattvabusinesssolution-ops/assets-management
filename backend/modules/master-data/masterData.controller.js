@@ -446,12 +446,18 @@ export async function createAssetGroup(req, res, next) {
     // Try checking duplicate in DB if connected
     if (isDbConnected()) {
       try {
-        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}')` : '';
-        const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM asset_groups WHERE (code = '${cleanCode.replace(/'/g, "''")}' OR name = '${cleanName.replace(/'/g, "''")}') ${tenantFilter}`
-        );
-        if (existing && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Asset Group with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(`SELECT id FROM asset_groups WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Asset Group with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
+          const dupName = await prisma.$queryRawUnsafe(`SELECT id FROM asset_groups WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`);
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Asset Group with name "${cleanName}" already exists.` });
+          }
         }
       } catch (dbErr) {
         console.warn('DB check duplicate skipped (offline/error):', dbErr.message);
@@ -540,14 +546,22 @@ export async function updateAssetGroup(req, res, next) {
 
     if (isDbConnected() && (cleanCode || cleanName)) {
       try {
-        const whereParts = [];
-        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
-        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-        const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM asset_groups WHERE id != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
-        );
-        if (existing && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Another Asset Group with this code or name already exists.` });
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(
+            `SELECT id FROM asset_groups WHERE id != '${id.replace(/'/g, "''")}' AND UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Another Asset Group with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
+          const dupName = await prisma.$queryRawUnsafe(
+            `SELECT id FROM asset_groups WHERE id != '${id.replace(/'/g, "''")}' AND UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`
+          );
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Another Asset Group with name "${cleanName}" already exists.` });
+          }
         }
       } catch (dbErr) {
         console.warn('DB check duplicate asset group skipped:', dbErr.message);
@@ -1957,13 +1971,18 @@ export async function createCategory(req, res, next) {
           }
         }
 
-        const existing = await prisma.$queryRawUnsafe(`
-          SELECT TOP 1 id, code, name FROM categories 
-          WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' 
-             OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'
-        `);
-        if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Category with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM categories WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Category with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM categories WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`);
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Category with name "${cleanName}" already exists.` });
+          }
         }
       } catch (dbErr) {
         if (dbErr.statusCode || dbErr.status) throw dbErr;
@@ -2132,16 +2151,17 @@ export async function updateCategory(req, res, next) {
           }
         }
 
-        if (cleanCode || cleanName) {
-          const whereParts = [];
-          if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
-          if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-          const existing = await prisma.$queryRawUnsafe(`
-            SELECT TOP 1 id FROM categories 
-            WHERE id != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})
-          `);
-          if (Array.isArray(existing) && existing.length > 0) {
-            return res.status(409).json({ success: false, message: `Another category with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM categories WHERE id != '${id.replace(/'/g, "''")}' AND UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Another category with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM categories WHERE id != '${id.replace(/'/g, "''")}' AND UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`);
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Another category with name "${cleanName}" already exists.` });
           }
         }
       } catch (dbErr) {
@@ -2764,21 +2784,34 @@ export async function createAssetSubGroup(req, res, next) {
       updatedAt: new Date().toISOString()
     };
 
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
     const current = readAssetSubGroupsFromFile();
-    if (current.some(sg => (sg.code || '').toUpperCase() === cleanCode)) {
+    if (cleanCode && current.some(sg => (sg.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Asset Sub Group with code "${cleanCode}" already exists.` });
     }
-    if (current.some(sg => (sg.name || '').toLowerCase() === cleanName.toLowerCase())) {
+    if (cleanName && current.some(sg => (!tenantCompanyId || sg.companyId === tenantCompanyId) && (sg.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Asset Sub Group with name "${cleanName}" already exists.` });
     }
 
     if (isDbConnected()) {
       try {
-        const existing = await prisma.$queryRawUnsafe(`SELECT id FROM asset_sub_groups WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-        if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Asset Sub Group with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(
+            `SELECT id FROM asset_sub_groups WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Asset Sub Group with code "${cleanCode}" already exists.` });
+          }
         }
-        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(
+            `SELECT id FROM asset_sub_groups WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`
+          );
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Asset Sub Group with name "${cleanName}" already exists.` });
+          }
+        }
         const cleanCompany = tenantCompanyId ? `'${tenantCompanyId}'` : 'NULL';
         await prisma.$executeRawUnsafe(`
           INSERT INTO asset_sub_groups (id, code, name, assetGroupId, assetGroupName, assetType, description, totalAssets, active, companyId, createdAt, updatedAt)
@@ -2841,23 +2874,31 @@ export async function updateAssetSubGroup(req, res, next) {
       return res.status(403).json({ success: false, message: 'Access denied: record belongs to another company.' });
     }
 
+    const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
     if (cleanCode && current.some(s => s.id !== id && s.code !== id && (s.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Another Asset Sub Group with code "${cleanCode}" already exists.` });
     }
-    if (cleanName && current.some(s => s.id !== id && s.code !== id && (s.name || '').toLowerCase() === cleanName.toLowerCase())) {
+    if (cleanName && current.some(s => s.id !== id && s.code !== id && (!tenantCompanyId || s.companyId === tenantCompanyId) && (s.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Another Asset Sub Group with name "${cleanName}" already exists.` });
     }
 
     if (isDbConnected() && (cleanCode || cleanName)) {
       try {
-        const whereParts = [];
-        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
-        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-        const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM asset_sub_groups WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
-        );
-        if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Another Asset Sub Group with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(
+            `SELECT id FROM asset_sub_groups WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Another Asset Sub Group with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(
+            `SELECT id FROM asset_sub_groups WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`
+          );
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Another Asset Sub Group with name "${cleanName}" already exists.` });
+          }
         }
       } catch (dbErr) {
         console.warn('DB check duplicate asset sub group skipped:', dbErr.message);
@@ -3307,21 +3348,34 @@ export async function createSubCategory(req, res, next) {
       updatedAt: new Date().toISOString()
     };
 
+    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
     const current = readSubCategoriesFromFile();
-    if (current.some(sc => (sc.code || '').toUpperCase() === cleanCode)) {
+    if (cleanCode && current.some(sc => (sc.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" already exists.` });
     }
-    if (current.some(sc => (sc.name || '').toLowerCase() === cleanName.toLowerCase())) {
+    if (cleanName && current.some(sc => (!tenantCompanyId || sc.companyId === tenantCompanyId) && (sc.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Sub Category with name "${cleanName}" already exists.` });
     }
 
     if (isDbConnected()) {
       try {
-        const existing = await prisma.$queryRawUnsafe(`SELECT id FROM sub_categories WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}' OR UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-        if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" or name "${cleanName}" already exists.` });
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(
+            `SELECT id FROM sub_categories WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" already exists.` });
+          }
         }
-        const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(
+            `SELECT id FROM sub_categories WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`
+          );
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Sub Category with name "${cleanName}" already exists.` });
+          }
+        }
         const cleanCompany = tenantCompanyId ? `'${tenantCompanyId}'` : 'NULL';
         await prisma.$executeRawUnsafe(`
           INSERT INTO sub_categories (id, code, name, categoryId, categoryName, assetSubGroupId, assetSubGroupName, assetGroupId, assetGroupName, description, totalAssets, active, lifeInMonths, prefix, minCapitalizationValue, companyId, createdAt, updatedAt)
@@ -3452,23 +3506,31 @@ export async function updateSubCategory(req, res, next) {
       }
     }
 
+    const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
     if (cleanCode && current.some(s => s.id !== id && s.code !== id && (s.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Another Sub Category with code "${cleanCode}" already exists.` });
     }
-    if (cleanName && current.some(s => s.id !== id && s.code !== id && (s.name || '').toLowerCase() === cleanName.toLowerCase())) {
+    if (cleanName && current.some(s => s.id !== id && s.code !== id && (!tenantCompanyId || s.companyId === tenantCompanyId) && (s.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Another Sub Category with name "${cleanName}" already exists.` });
     }
 
     if (isDbConnected() && (cleanCode || cleanName)) {
       try {
-        const whereParts = [];
-        if (cleanCode) whereParts.push(`UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
-        if (cleanName) whereParts.push(`UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}'`);
-        const existing = await prisma.$queryRawUnsafe(
-          `SELECT id FROM sub_categories WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND (${whereParts.join(' OR ')})`
-        );
-        if (Array.isArray(existing) && existing.length > 0) {
-          return res.status(409).json({ success: false, message: `Another Sub Category with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+        if (cleanCode) {
+          const dupCode = await prisma.$queryRawUnsafe(
+            `SELECT id FROM sub_categories WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
+          );
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Another Sub Category with code "${cleanCode}" already exists.` });
+          }
+        }
+        if (cleanName) {
+          const dupName = await prisma.$queryRawUnsafe(
+            `SELECT id FROM sub_categories WHERE id != '${id.replace(/'/g, "''")}' AND code != '${id.replace(/'/g, "''")}' AND UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`
+          );
+          if (Array.isArray(dupName) && dupName.length > 0) {
+            return res.status(409).json({ success: false, message: `Another Sub Category with name "${cleanName}" already exists.` });
+          }
         }
       } catch (dbErr) {
         console.warn('DB check duplicate sub category skipped:', dbErr.message);
