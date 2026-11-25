@@ -15,21 +15,55 @@ export function getDbConnected() {
 
 const DROPPED_MODELS = new Set(['building', 'floor', 'room', 'zone', 'floorMap', 'floorMapZone', 'assetMapPosition']);
 const DROPPED_RELATIONS = ['building', 'floor', 'room', 'zone', 'mapPosition', 'floorMap', 'buildings', 'floors', 'rooms', 'zones', 'mapZones', 'assetPositions'];
+const DROPPED_RELATIONS_SET = new Set(DROPPED_RELATIONS);
 
 function sanitizeArgs(args) {
   if (!args || typeof args !== 'object') return args;
-  if (args.include && typeof args.include === 'object') {
-    for (const rel of DROPPED_RELATIONS) {
-      if (rel in args.include) delete args.include[rel];
-    }
-    if (Object.keys(args.include).length === 0) delete args.include;
+  if (Array.isArray(args)) {
+    return args.map(item => sanitizeArgs(item));
   }
-  if (args.select && typeof args.select === 'object') {
-    for (const rel of DROPPED_RELATIONS) {
-      if (rel in args.select) delete args.select[rel];
+  const result = {};
+  for (const [key, val] of Object.entries(args)) {
+    if (key === 'include' || key === 'select') {
+      if (val && typeof val === 'object' && !Array.isArray(val)) {
+        const sanitizedClause = {};
+        for (const [clauseKey, clauseVal] of Object.entries(val)) {
+          let mappedKey = clauseKey;
+          if (clauseKey === 'costCenter') mappedKey = 'section';
+          else if (clauseKey === 'costCenters') mappedKey = 'sections';
+
+          if (DROPPED_RELATIONS_SET.has(clauseKey)) {
+            continue; // drop decommissioned relation
+          }
+
+          if (clauseVal && typeof clauseVal === 'object') {
+            sanitizedClause[mappedKey] = sanitizeArgs(clauseVal);
+          } else {
+            sanitizedClause[mappedKey] = clauseVal;
+          }
+        }
+        if (key === 'include') {
+          if (Object.keys(sanitizedClause).length > 0) {
+            result[key] = sanitizedClause;
+          }
+        } else {
+          result[key] = sanitizedClause;
+        }
+        continue;
+      }
+    }
+
+    let mappedKey = key;
+    if (key === 'costCenter') mappedKey = 'section';
+    else if (key === 'costCenters') mappedKey = 'sections';
+
+    if (val && typeof val === 'object') {
+      result[mappedKey] = sanitizeArgs(val);
+    } else {
+      result[mappedKey] = val;
     }
   }
-  return args;
+  return result;
 }
 
 const dummyModelHandler = {
@@ -97,6 +131,9 @@ if (PrismaClient) {
 
   prismaInstance = new Proxy(prismaInstance, {
     get(target, prop, receiver) {
+      if (prop === 'costCenter' || prop === 'costCenters') {
+        return target.section;
+      }
       if (typeof prop === 'string' && DROPPED_MODELS.has(prop)) {
         return dummyModelHandler;
       }

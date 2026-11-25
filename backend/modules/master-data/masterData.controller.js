@@ -1817,7 +1817,7 @@ export async function createRoom(req, res, next) {
 export async function getCategories(req, res, next) {
   try {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
 
     if (isDbConnected()) {
       try {
@@ -3838,7 +3838,7 @@ export async function getManufacturers(req, res, next) {
   try {
     const includeInactive = req.query.includeInactive !== 'false';
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
 
     if (isDbConnected()) {
       try {
@@ -3957,7 +3957,7 @@ export async function updateManufacturer(req, res, next) {
   try {
     const { id } = req.params;
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
 
     let dbMfr = null;
     if (isDbConnected()) {
@@ -4060,7 +4060,7 @@ export async function deleteManufacturer(req, res, next) {
   try {
     const { id } = req.params;
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
 
     let dbMfr = null;
     if (isDbConnected()) {
@@ -6430,7 +6430,7 @@ export async function getItemMasters(req, res, next) {
     const includeInactive = req.query.includeInactive !== 'false';
     await ensureItemMastersTable();
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
     if (isDbConnected()) {
       try {
         const tenantFilter = (tenantCompanyId && !isSuperAdmin) 
@@ -6466,6 +6466,15 @@ export async function getItemMasters(req, res, next) {
             createdAt: r.createdAt,
             updatedAt: r.updatedAt
           }));
+
+          const fileRecords = readItemMastersFromFile().filter(i => !tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId);
+          const dbIds = new Set(list.map(i => i.id));
+          const dbCodes = new Set(list.map(i => (i.itemCode || '').toUpperCase()));
+          for (const fi of fileRecords) {
+            if (!dbIds.has(fi.id) && !dbCodes.has((fi.itemCode || '').toUpperCase())) {
+              list.push(fi);
+            }
+          }
           return res.json({ success: true, items: list });
         } else if (isDbConnected()) {
           // If DB table is empty, auto-sync file records into database
@@ -6767,7 +6776,51 @@ export async function createItemMaster(req, res, next) {
           )
         `);
       } catch (dbErr) {
-        console.warn('DB insert item_masters skipped:', dbErr.message);
+        if (dbErr.message?.includes('2627') || dbErr.message?.includes('duplicate key')) {
+          try {
+            cleanCode = await generateNextItemCode(tenantCompanyId);
+            newItem.itemCode = cleanCode;
+            await prisma.$executeRawUnsafe(`
+              INSERT INTO item_masters (
+                id, itemCode, itemName, supplierBarcode, description,
+                assetGroupId, assetGroupName, assetSubGroupId, assetSubGroupName,
+                categoryId, categoryName, subCategoryId, subCategoryName,
+                manufacturerId, manufacturerName, brandId, brandName, model, uom,
+                specifications, imageUrl, active, companyId, createdAt, updatedAt
+              ) VALUES (
+                '${id}',
+                '${cleanCode.replace(/'/g, "''")}',
+                '${cleanName.replace(/'/g, "''")}',
+                '${cleanBarcode.replace(/'/g, "''")}',
+                '${(description || '').replace(/'/g, "''")}',
+                '${(assetGroupId || '').replace(/'/g, "''")}',
+                '${(assetGroupName || '').replace(/'/g, "''")}',
+                '${(assetSubGroupId || '').replace(/'/g, "''")}',
+                '${(assetSubGroupName || '').replace(/'/g, "''")}',
+                '${(categoryId || '').replace(/'/g, "''")}',
+                '${(categoryName || '').replace(/'/g, "''")}',
+                '${(subCategoryId || '').replace(/'/g, "''")}',
+                '${(subCategoryName || '').replace(/'/g, "''")}',
+                '${(manufacturerId || '').replace(/'/g, "''")}',
+                '${(manufacturerName || '').replace(/'/g, "''")}',
+                '${(brandId || '').replace(/'/g, "''")}',
+                '${(brandName || '').replace(/'/g, "''")}',
+                '${(model || '').replace(/'/g, "''")}',
+                '${(uom || 'Each').replace(/'/g, "''")}',
+                '${(specifications || '').replace(/'/g, "''")}',
+                '${(imageUrl || '').replace(/'/g, "''")}',
+                ${isAct ? 1 : 0},
+                ${cleanCompany},
+                CURRENT_TIMESTAMP,
+                CURRENT_TIMESTAMP
+              )
+            `);
+          } catch (retryErr) {
+            console.warn('DB retry insert item_masters failed:', retryErr.message);
+          }
+        } else {
+          console.warn('DB insert item_masters skipped:', dbErr.message);
+        }
       }
     }
 
@@ -7578,7 +7631,7 @@ export async function getBrands(req, res, next) {
     await ensureBrandsTable();
     const includeInactive = req.query.includeInactive !== 'false';
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
 
     if (isDbConnected()) {
       try {
@@ -7745,7 +7798,7 @@ export async function updateBrand(req, res, next) {
   try {
     const { id } = req.params;
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
 
     let dbBrand = null;
     if (isDbConnected()) {
@@ -7890,7 +7943,7 @@ export async function deleteBrand(req, res, next) {
     const force = req.query.force === 'true' || action === 'force_delete';
     const deactivateOnly = action === 'deactivate';
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
+    const isSuperAdmin = req.user?.role === 'SUPER_ADMIN' || req.user?.role?.code === 'SUPER_ADMIN';
 
     let dbBrand = null;
     if (isDbConnected()) {

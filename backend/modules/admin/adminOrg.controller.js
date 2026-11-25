@@ -264,7 +264,7 @@ export async function getAdminUsers(req, res) {
           department: true,
           site: true,
           company: true,
-          costCenter: true,
+          section: true,
           employee: true
         },
         orderBy: { createdAt: 'desc' }
@@ -1201,7 +1201,7 @@ export async function getCompaniesList(req, res) {
 
     const dbCompanies = await prisma.company.findMany({
       where,
-      include: { sites: true, departments: true, costCenters: true },
+      include: { sites: true, departments: true, sections: true },
       orderBy: { name: 'asc' }
     });
     const mapped = dbCompanies.map(c => ({

@@ -211,11 +211,14 @@ export async function login(req, res, next) {
             company: true,
             site: true,
             department: true,
-            costCenter: true
+            section: true
           }
         });
 
         if (user) {
+          if (user.section && !user.costCenter) {
+            user.costCenter = user.section;
+          }
           if (!user.active) {
             return res.status(401).json({ success: false, message: 'Invalid credentials or inactive account' });
           }
@@ -415,10 +418,13 @@ export async function getProfile(req, res, next) {
             company: true,
             site: true,
             department: true,
-            costCenter: true
+            section: true
           }
         });
         if (user) {
+          if (user.section && !user.costCenter) {
+            user.costCenter = user.section;
+          }
           return res.json({
             success: true,
             user: {
@@ -468,7 +474,7 @@ export async function getUsers(req, res, next) {
             company: true,
             site: true,
             department: true,
-            costCenter: true
+            section: true
           },
           orderBy: { createdAt: 'desc' }
         });
@@ -477,6 +483,7 @@ export async function getUsers(req, res, next) {
             success: true,
             users: users.map(u => ({
               ...u,
+              costCenter: u.costCenter || u.section,
               role: formatUserRole(u.role)
             }))
           });
@@ -609,7 +616,7 @@ export async function createUser(req, res, next) {
             company: true,
             site: true,
             department: true,
-            costCenter: true
+            section: true
           }
         });
 
@@ -780,7 +787,7 @@ export async function updateUser(req, res, next) {
               company: true,
               site: true,
               department: true,
-              costCenter: true
+              section: true
             }
           });
 
@@ -1322,7 +1329,7 @@ export async function activateLicense(req, res, next) {
             company: true,
             site: true,
             department: true,
-            costCenter: true
+            section: true
           }
         });
       } catch (err) {
