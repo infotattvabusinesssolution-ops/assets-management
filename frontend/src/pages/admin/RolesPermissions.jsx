@@ -32,6 +32,7 @@ import {
 import clsx from 'clsx';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
+import { RowActionsMenu } from '../../components/common/RowActionsMenu';
 
 export const MASTER_DATA_DEFAULT_ACTIONS = ['View', 'Create', 'Edit', 'Delete', 'Duplicate', 'Activate/Deactivate', 'Import', 'Export'];
 
@@ -1245,105 +1246,116 @@ export function RolesPermissions() {
                       <td className="p-3 text-slate-500 font-mono text-[11px]">{role.dateCreated}</td>
                       <td className="p-3 text-slate-700 font-medium">{role.createdBy}</td>
                       <td className="p-3 text-center relative">
-                        <button
-                          onClick={() => setActiveDropdownId(activeDropdownId === role.id ? null : role.id)}
+                        <RowActionsMenu
+                          isOpen={activeDropdownId === role.id}
+                          onToggle={() => setActiveDropdownId(activeDropdownId === role.id ? null : role.id)}
+                          onClose={() => setActiveDropdownId(null)}
                           className="p-1 text-slate-400 hover:text-slate-700 rounded-lg border border-slate-200 hover:bg-slate-100 cursor-pointer"
+                          menuClassName="py-1.5"
                         >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
+                          <button
+                            onClick={() => {
+                              setSelectedRole(role);
+                              setShowViewDetailsModal(true);
+                              setActiveDropdownId(null);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold text-left cursor-pointer"
+                          >
+                            <Eye className="w-4 h-4 text-[#6C2BD9]" />
+                            View Details
+                          </button>
+                          <button
+                            onClick={() => {
+                              setEditingRole(role);
+                              setRoleForm({
+                                name: role.name,
+                                description: role.description || '',
+                                roleType: role.roleType || 'Custom Role',
+                                status: role.status
+                              });
+                              setRoleFormError('');
+                              setShowAddRoleModal(true);
+                              setActiveDropdownId(null);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold text-left cursor-pointer"
+                          >
+                            <Edit2 className="w-4 h-4 text-[#6C2BD9]" />
+                            Edit Role
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleOpenPermissions(role);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold text-left cursor-pointer"
+                          >
+                            <ShieldCheck className="w-4 h-4 text-[#6C2BD9]" />
+                            Manage Permissions
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleCloneRole(role);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold text-left cursor-pointer"
+                          >
+                            <Copy className="w-4 h-4 text-[#6C2BD9]" />
+                            Clone Role
+                          </button>
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleOpenAssignUsers(role);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold text-left cursor-pointer"
+                          >
+                            <Users className="w-4 h-4 text-[#6C2BD9]" />
+                            Assign Users
+                          </button>
+                          <button
+                            onClick={() => {
+                              triggerToast(`Exporting role "${role.name}" specification...`);
+                              setActiveDropdownId(null);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold text-left cursor-pointer"
+                          >
+                            <Download className="w-4 h-4 text-[#6C2BD9]" />
+                            Export Role
+                          </button>
 
-                        {/* Row Actions Context Dropdown Menu matching Screenshot */}
-                        {activeDropdownId === role.id && (
-                          <div className="absolute right-4 top-10 w-48 bg-white border border-slate-200 rounded-2xl shadow-xl z-50 py-1.5 text-left animate-fadeIn">
-                            <button
-                              onClick={() => {
-                                setSelectedRole(role);
-                                setShowViewDetailsModal(true);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
-                            >
-                              <Eye className="w-4 h-4 text-[#6C2BD9]" />
-                              View Details
-                            </button>
-                            <button
-                              onClick={() => {
-                                setEditingRole(role);
-                                setRoleForm({
-                                  name: role.name,
-                                  description: role.description || '',
-                                  roleType: role.roleType || 'Custom Role',
-                                  status: role.status
-                                });
-                                setRoleFormError('');
-                                setShowAddRoleModal(true);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
-                            >
-                              <Edit2 className="w-4 h-4 text-[#6C2BD9]" />
-                              Edit Role
-                            </button>
-                            <button
-                              onClick={() => handleOpenPermissions(role)}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
-                            >
-                              <ShieldCheck className="w-4 h-4 text-[#6C2BD9]" />
-                              Manage Permissions
-                            </button>
-                            <button
-                              onClick={() => handleCloneRole(role)}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
-                            >
-                              <Copy className="w-4 h-4 text-[#6C2BD9]" />
-                              Clone Role
-                            </button>
-                            <button
-                              onClick={() => handleOpenAssignUsers(role)}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
-                            >
-                              <Users className="w-4 h-4 text-[#6C2BD9]" />
-                              Assign Users
-                            </button>
-                            <button
-                              onClick={() => {
-                                triggerToast(`Exporting role "${role.name}" specification...`);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
-                            >
-                              <Download className="w-4 h-4 text-[#6C2BD9]" />
-                              Export Role
-                            </button>
+                          <div className="border-t border-slate-100 my-1"></div>
 
-                            <div className="border-t border-slate-100 my-1"></div>
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleToggleStatus(role);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold text-left cursor-pointer"
+                          >
+                            {role.status === 'Active' ? (
+                              <>
+                                <XCircle className="w-4 h-4 text-rose-500" />
+                                <span>Deactivate</span>
+                              </>
+                            ) : (
+                              <>
+                                <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                                <span>Activate</span>
+                              </>
+                            )}
+                          </button>
 
-                            <button
-                              onClick={() => handleToggleStatus(role)}
-                              className="w-full px-3.5 py-2 text-xs text-slate-700 hover:bg-slate-50 hover:text-[#6C2BD9] flex items-center gap-2.5 font-semibold"
-                            >
-                              {role.status === 'Active' ? (
-                                <>
-                                  <XCircle className="w-4 h-4 text-rose-500" />
-                                  <span>Deactivate</span>
-                                </>
-                              ) : (
-                                <>
-                                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-                                  <span>Activate</span>
-                                </>
-                              )}
-                            </button>
-
-                            <button
-                              onClick={() => handleDeleteRole(role)}
-                              className="w-full px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 font-semibold"
-                            >
-                              <Trash2 className="w-4 h-4 text-rose-600" />
-                              Delete Role
-                            </button>
-                          </div>
-                        )}
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleDeleteRole(role);
+                            }}
+                            className="w-full px-3.5 py-2 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2.5 font-semibold text-left cursor-pointer"
+                          >
+                            <Trash2 className="w-4 h-4 text-rose-600" />
+                            Delete Role
+                          </button>
+                        </RowActionsMenu>
                       </td>
                     </tr>
                   );

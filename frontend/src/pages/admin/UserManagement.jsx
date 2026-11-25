@@ -42,6 +42,7 @@ import {
 } from 'lucide-react';
 import { DeleteConfirmModal } from '../../components/common/DeleteConfirmModal';
 import { StatusConfirmModal } from '../../components/common/StatusConfirmModal';
+import { RowActionsMenu } from '../../components/common/RowActionsMenu';
 import { MODULE_STRUCTURE, MASTER_DATA_ENTITIES } from './RolesPermissions';
 import { PasswordRequirementsTracker, DEFAULT_FRONTEND_POLICY, generateCompliantPasswordBrowser } from '../../components/common/PasswordRequirementsTracker';
 
@@ -1575,135 +1576,146 @@ export function UserManagement() {
                         {user.lastLogin}
                       </td>
                       <td className="p-3 text-right pr-4 relative">
-                        <button
-                          onClick={() =>
+                        <RowActionsMenu
+                          isOpen={activeDropdownId === user.id}
+                          onToggle={() =>
                             setActiveDropdownId(activeDropdownId === user.id ? null : user.id)
                           }
-                          className="p-1 text-slate-400 hover:text-slate-700 rounded border border-slate-200 hover:bg-slate-50 transition"
+                          onClose={() => setActiveDropdownId(null)}
+                          className="p-1 text-slate-400 hover:text-slate-700 rounded border border-slate-200 hover:bg-slate-50 transition cursor-pointer"
+                          menuClassName="py-1"
                         >
-                          <MoreHorizontal className="w-4 h-4" />
-                        </button>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowDetailsDrawer(true);
+                              setActiveDropdownId(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <Eye className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            View Details
+                          </button>
 
-                        {/* 10-ACTION ROW DROPDOWN (EXACT MATCH SCREENSHOT 1) */}
-                        {activeDropdownId === user.id && (
-                          <div className="absolute right-4 top-10 w-48 bg-white border border-slate-200 rounded-lg shadow-xl z-30 py-1 text-left animate-in fade-in duration-100">
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setShowDetailsDrawer(true);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
-                            >
-                              <Eye className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              View Details
-                            </button>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setUserFormData({ ...user });
+                              fetchPasswordPolicyForUser(user.company);
+                              setEmployeeLookupCode(user.employeeId || '');
+                              setEmployeeLookupStatus(null);
+                              setCustodianLinkedFields({
+                                name: Boolean(user.employeeId && user.name),
+                                email: Boolean(user.employeeId && user.email),
+                                phone: Boolean(user.employeeId && user.phone),
+                                company: Boolean(user.employeeId && user.company),
+                                department: Boolean(user.employeeId && user.department),
+                                section: Boolean(user.employeeId && (user.section || user.costCenter))
+                              });
+                              setShowEditModal(true);
+                              setActiveDropdownId(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <Edit2 className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            Edit User
+                          </button>
 
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setUserFormData({ ...user });
-                                fetchPasswordPolicyForUser(user.company);
-                                setEmployeeLookupCode(user.employeeId || '');
-                                setEmployeeLookupStatus(null);
-                                setCustodianLinkedFields({
-                                  name: Boolean(user.employeeId && user.name),
-                                  email: Boolean(user.employeeId && user.email),
-                                  phone: Boolean(user.employeeId && user.phone),
-                                  company: Boolean(user.employeeId && user.company),
-                                  department: Boolean(user.employeeId && user.department),
-                                  section: Boolean(user.employeeId && (user.section || user.costCenter))
-                                });
-                                setShowEditModal(true);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
-                            >
-                              <Edit2 className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              Edit User
-                            </button>
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleOpenResetPasswordModal(user);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <Lock className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            Reset Password
+                          </button>
 
-                            <button
-                              onClick={() => handleOpenResetPasswordModal(user)}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
-                            >
-                              <Lock className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              Reset Password
-                            </button>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              const currentRole = rolesList.find(r => r.name === user.role || r.id === user.roleId);
+                              setSelectedRoleForAssignment(currentRole?.id || currentRole?.name || user.role || (rolesList[0]?.id || ''));
+                              setShowAssignRolesModal(true);
+                              setActiveDropdownId(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <Users className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            Assign Roles
+                          </button>
 
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                const currentRole = rolesList.find(r => r.name === user.role || r.id === user.roleId);
-                                setSelectedRoleForAssignment(currentRole?.id || currentRole?.name || user.role || (rolesList[0]?.id || ''));
-                                setShowAssignRolesModal(true);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
-                            >
-                              <Users className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              Assign Roles
-                            </button>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowPermissionsModal(true);
+                              setActiveDropdownId(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <ShieldCheck className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            Manage Permissions
+                          </button>
 
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setShowPermissionsModal(true);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
-                            >
-                              <ShieldCheck className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              Manage Permissions
-                            </button>
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleToggleMfa(user);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <Smartphone className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            {user.mfaEnabled ? 'Disable MFA' : 'Enable MFA'}
+                          </button>
 
-                            <button
-                              onClick={() => handleToggleMfa(user)}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
-                            >
-                              <Smartphone className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              {user.mfaEnabled ? 'Disable MFA' : 'Enable MFA'}
-                            </button>
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleToggleStatus(user);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <RotateCcw className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            {user.status === 'Active' ? 'Deactivate' : 'Activate'}
+                          </button>
 
-                            <button
-                              onClick={() => handleToggleStatus(user)}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
-                            >
-                              <RotateCcw className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              {user.status === 'Active' ? 'Deactivate' : 'Activate'}
-                            </button>
+                          <button
+                            onClick={() => {
+                              setSelectedUser(user);
+                              setShowSendEmailModal(true);
+                              setActiveDropdownId(null);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <Mail className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            Send Email
+                          </button>
 
-                            <button
-                              onClick={() => {
-                                setSelectedUser(user);
-                                setShowSendEmailModal(true);
-                                setActiveDropdownId(null);
-                              }}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2"
-                            >
-                              <Mail className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              Send Email
-                            </button>
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleLoginAsUser(user);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 text-left cursor-pointer"
+                          >
+                            <LogIn className="w-3.5 h-3.5 text-[#6C2BD9]" />
+                            Login As User
+                          </button>
 
-                            <button
-                              onClick={() => handleLoginAsUser(user)}
-                              className="w-full px-3 py-1.5 text-xs text-slate-700 hover:bg-[#F5F3FF] hover:text-[#6C2BD9] flex items-center gap-2 cursor-pointer"
-                            >
-                              <LogIn className="w-3.5 h-3.5 text-[#6C2BD9]" />
-                              Login As User
-                            </button>
+                          <div className="border-t border-slate-100 my-1"></div>
 
-                            <div className="border-t border-slate-100 my-1"></div>
-
-                            <button
-                              onClick={() => handleDeleteUser(user)}
-                              className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium"
-                            >
-                              <Trash2 className="w-3.5 h-3.5 text-rose-500" />
-                              Delete User
-                            </button>
-                          </div>
-                        )}
+                          <button
+                            onClick={() => {
+                              setActiveDropdownId(null);
+                              handleDeleteUser(user);
+                            }}
+                            className="w-full px-3 py-1.5 text-xs text-rose-600 hover:bg-rose-50 flex items-center gap-2 font-medium text-left cursor-pointer"
+                          >
+                            <Trash2 className="w-3.5 h-3.5 text-rose-500" />
+                            Delete User
+                          </button>
+                        </RowActionsMenu>
                       </td>
                     </tr>
                   );

@@ -8,9 +8,12 @@ export function RowActionsMenu({
   onToggle,
   onClose,
   children,
-  className
+  className,
+  menuClassName,
+  widthClass = "w-48"
 }) {
   const buttonRef = useRef(null);
+  const menuRef = useRef(null);
   const [coords, setCoords] = useState(null);
 
   useEffect(() => {
@@ -20,7 +23,7 @@ export function RowActionsMenu({
         const rect = buttonRef.current.getBoundingClientRect();
         const spaceBelow = window.innerHeight - rect.bottom;
         const spaceAbove = rect.top;
-        const openUpwards = spaceBelow < 220 && spaceAbove > 160;
+        const openUpwards = spaceBelow < 320 && spaceAbove > spaceBelow;
 
         setCoords({
           openUpwards,
@@ -36,12 +39,34 @@ export function RowActionsMenu({
         if (onClose) onClose();
       };
 
+      const handlePointerDown = (e) => {
+        if (buttonRef.current && buttonRef.current.contains(e.target)) {
+          return;
+        }
+        if (menuRef.current && menuRef.current.contains(e.target)) {
+          return;
+        }
+        if (onClose) onClose();
+      };
+
+      const handleKeyDown = (e) => {
+        if (e.key === 'Escape' && onClose) {
+          onClose();
+        }
+      };
+
       window.addEventListener('scroll', handleScrollOrResize, true);
       window.addEventListener('resize', handleScrollOrResize);
+      document.addEventListener('mousedown', handlePointerDown);
+      document.addEventListener('touchstart', handlePointerDown);
+      document.addEventListener('keydown', handleKeyDown);
 
       return () => {
         window.removeEventListener('scroll', handleScrollOrResize, true);
         window.removeEventListener('resize', handleScrollOrResize);
+        document.removeEventListener('mousedown', handlePointerDown);
+        document.removeEventListener('touchstart', handlePointerDown);
+        document.removeEventListener('keydown', handleKeyDown);
       };
     }
   }, [isOpen, onClose]);
@@ -78,6 +103,7 @@ export function RowActionsMenu({
 
       {isOpen && coords && createPortal(
         <div
+          ref={menuRef}
           style={{
             position: 'fixed',
             top: coords.top,
@@ -86,7 +112,11 @@ export function RowActionsMenu({
             zIndex: 9999
           }}
           onClick={(e) => e.stopPropagation()}
-          className="relative w-48 max-h-[calc(100vh-32px)] overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl p-1 text-left space-y-0.5 animate-in fade-in zoom-in-95 duration-100"
+          className={clsx(
+            "fixed max-h-[calc(100vh-32px)] overflow-y-auto bg-white border border-slate-200 rounded-xl shadow-xl text-left animate-in fade-in zoom-in-95 duration-100",
+            widthClass,
+            menuClassName || "p-1 space-y-0.5"
+          )}
         >
           {children}
         </div>,
