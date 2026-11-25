@@ -217,7 +217,6 @@ const NAV_STRUCTURE = [
       { name: 'Roles & Permissions', path: '/admin/roles' },
       { name: 'License & Companies', path: '/admin/system-config?tab=license' },
       { name: 'System Configuration', path: '/admin/system-config' },
-      { name: 'Master Data Setup', path: '/admin/master-data' },
       { name: 'Code Prefix Settings', path: '/admin/master-data?tab=code-prefixes' },
       { name: 'Integrations', path: '/admin/integrations' },
       { name: 'Audit Logs', path: '/admin/audit-logs' },
