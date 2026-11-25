@@ -1078,6 +1078,13 @@ export function AssetForm() {
     }));
   };
 
+  // Auto-select single Item Master if exactly 1 is present; if 2 or more, user chooses
+  useEffect(() => {
+    if (!selectedItemMasterId && !userClearedItemMasterRef.current && Array.isArray(itemMasters) && itemMasters.length === 1) {
+      handleSelectItemMaster(itemMasters[0].id);
+    }
+  }, [itemMasters, selectedItemMasterId]);
+
   // Top-Down Step 1: Change Asset Type
   const handleAssetTypeChange = (newType) => {
     const nextGroups = (assetGroups || []).filter(g => matchesGroupToType(g, newType));
