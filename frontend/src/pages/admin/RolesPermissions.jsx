@@ -126,7 +126,7 @@ export const MODULE_STRUCTURE = [
   {
     key: 'administration',
     name: 'Administration',
-    screens: ['Company & Organization', 'System Configuration', 'Audit Logs', 'Email Notifications', 'Backup & Scheduler'],
+    screens: ['System Configuration', 'Audit Logs', 'Email Notifications', 'Backup & Scheduler'],
     actions: ['View', 'Create', 'Edit', 'Delete', 'Administer', 'Export']
   }
 ];

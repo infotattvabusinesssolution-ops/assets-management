@@ -216,11 +216,6 @@ const NAV_STRUCTURE = [
       { name: 'User Management', path: '/admin/users' },
       { name: 'Roles & Permissions', path: '/admin/roles' },
       { name: 'License & Companies', path: '/admin/system-config?tab=license' },
-      { name: 'Company & Organization', path: '/admin/organization' },
-      { name: 'Business Units', path: '/admin/organization?tab=businessUnits' },
-      { name: 'Departments', path: '/admin/departments' },
-      { name: 'Locations', path: '/admin/locations' },
-      { name: 'Sections', path: '/admin/cost-centers' },
       { name: 'System Configuration', path: '/admin/system-config' },
       { name: 'Master Data Setup', path: '/admin/master-data' },
       { name: 'Code Prefix Settings', path: '/admin/master-data?tab=code-prefixes' },
@@ -228,8 +223,7 @@ const NAV_STRUCTURE = [
       { name: 'Audit Logs', path: '/admin/audit-logs' },
       { name: 'Email Notifications', path: '/admin/notifications' },
       { name: 'Notification Templates', path: '/admin/notifications?tab=TEMPLATES' },
-      { name: 'Backup & Scheduler', path: '/admin/backup-scheduler' },
-      { name: 'Data Import / Export', path: '/admin/master-data' }
+      { name: 'Backup & Scheduler', path: '/admin/backup-scheduler' }
     ]
   }
 ];
@@ -265,7 +259,6 @@ const getBestActiveSubPath = (subItems, pathname, search) => {
   const exactPathMatch = subItems.find(sub => {
     if (sub.path.includes('?')) return false;
     return sub.path === pathname ||
-      (sub.path === '/admin/organization' && pathname === '/admin/organization' && !search.includes('tab=')) ||
       (sub.path === '/admin/integrations' && (pathname === '/admin/integrations' || pathname === '/integrations')) ||
       (sub.path === '/admin/audit-logs' && (pathname === '/admin/audit-logs' || pathname === '/audit-logs' || pathname === '/audit-trail')) ||
       (sub.path === '/admin/notifications' && (pathname === '/admin/notifications' || pathname === '/notifications')) ||
