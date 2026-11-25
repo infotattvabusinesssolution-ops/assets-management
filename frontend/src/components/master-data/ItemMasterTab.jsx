@@ -581,12 +581,11 @@ export function ItemMasterTab({
     setModalFieldErrors({});
 
     try {
-      const finalCode = cleanCode || nextItemCodePreview;
+      const finalCode = cleanCode || (editingItem ? editingItem.itemCode : undefined);
       const payload = {
         ...formState,
         companyId: user?.companyId || undefined,
-        itemCode: finalCode,
-        code: finalCode,
+        ...(finalCode ? { itemCode: finalCode, code: finalCode } : {}),
         active: formState.status === 'Active'
       };
 

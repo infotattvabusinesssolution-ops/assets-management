@@ -54,7 +54,7 @@ const MASTER_DATA_CARDS = [
   {
     id: 'locations',
     title: 'Locations Management',
-    desc: 'Manage countries, regions, sites, buildings, floors, rooms, zones and storage areas.',
+    desc: 'Manage countries, regions, sites and 4-level location hierarchy.',
     icon: MapPin,
     modal: 'site'
   },
@@ -174,12 +174,6 @@ const MASTER_DATA_CARDS = [
     title: 'Auto Discovery Configuration',
     desc: 'Configure network auto discovery, discovery tools and matching rules.',
     icon: Monitor
-  },
-  {
-    id: 'floor_plans',
-    title: 'Map & Floor Plans',
-    desc: 'Manage maps, floor plans, zones and asset positioning settings.',
-    icon: Map
   },
   {
     id: 'integrations',

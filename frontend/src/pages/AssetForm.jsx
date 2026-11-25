@@ -3245,16 +3245,13 @@ export function AssetForm() {
       <h3 className="text-sm font-extrabold text-slate-900">Location &amp; Ownership by Asset</h3>
       {renderItemSelector('Select asset to assign its location and custodian')}
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        {select('Company', 'companyId', companies, { siteId: '', buildingId: '', floorId: '', roomId: '', departmentId: '', costCenterId: '', custodianId: '' })}
-        {select('Site', 'siteId', availableSites, { buildingId: '', floorId: '', roomId: '', departmentId: '', costCenterId: '', custodianId: '' })}
-        {select('Building', 'buildingId', availableBuildings, { floorId: '', roomId: '' })}
-        {select('Floor', 'floorId', availableFloors, { roomId: '' })}
-        {select('Room', 'roomId', availableRooms)}
+        {select('Company', 'companyId', companies, { siteId: '', departmentId: '', costCenterId: '', custodianId: '' })}
+        {select('Site / Location', 'siteId', availableSites, { departmentId: '', costCenterId: '', custodianId: '' })}
         {select('Department', 'departmentId', availableDepartments, { costCenterId: '' })}
         {select('Section', 'costCenterId', availableCostCenters)}
         {select('Custodian', 'custodianId', availableEmployees)}
       </div>
-      <p className="text-xs text-slate-500">Each item can have a separate company, site, room, department and custodian. Empty company, site, department and section use registration defaults; an empty custodian leaves the item unassigned.</p>
+      <p className="text-xs text-slate-500">Each item can have a separate company, site, department, section and custodian. Empty company, site, department and section use registration defaults; an empty custodian leaves the item unassigned.</p>
     </section>;
   };
   const renderLocationOwnership = () => {
@@ -5037,7 +5034,7 @@ export function AssetForm() {
 
                 <div className="grid grid-cols-2 gap-2 text-xs">
                   <div>
-                    <label className="font-bold text-slate-700 block mb-1">Site</label>
+                    <label className="font-bold text-slate-700 block mb-1">Site / Location</label>
                     <select
                       value={formData.siteId || (sites.find(s => s.name === formData.site || s.code === formData.site)?.id || '')}
                       onChange={(e) => {
@@ -5047,8 +5044,8 @@ export function AssetForm() {
                           ...prev,
                           siteId: selectedId,
                           site: found ? (found.name || found.code) : '',
-                          buildingId: '',
-                          building: ''
+                          locationId: selectedId,
+                          location: found ? (found.fullPath || found.name || found.code) : ''
                         }));
                       }}
                       className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
@@ -5060,79 +5057,6 @@ export function AssetForm() {
                           <option key={s.id} value={s.id}>{s.fullPath || s.name || s.code}</option>
                         ))}
                     </select>
-                  </div>
-                  <div>
-                    <div className="flex items-center justify-between mb-1">
-                      <label className="font-bold text-slate-700">Building</label>
-                      <button
-                        type="button"
-                        onClick={handleQuickAddBuilding}
-                        className="text-[11px] font-bold text-[#6C2BD9] hover:underline flex items-center gap-0.5 cursor-pointer"
-                      >
-                        <Plus className="w-3 h-3 stroke-[3]" /> Add
-                      </button>
-                    </div>
-                    <select
-                      value={formData.buildingId || (buildings.find(b => b.name === formData.building || b.code === formData.building)?.id || '')}
-                      onChange={(e) => {
-                        if (e.target.value === '__NEW__') {
-                          handleQuickAddBuilding();
-                        } else {
-                          const selectedId = e.target.value;
-                          const found = buildings.find(b => b.id === selectedId);
-                          setFormData(prev => ({
-                            ...prev,
-                            buildingId: selectedId,
-                            building: found ? (found.name || found.code) : ''
-                          }));
-                        }
-                      }}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    >
-                      <option value="">Select Building (Optional)</option>
-                      {buildings
-                        .filter(b => !formData.siteId || b.siteId === formData.siteId)
-                        .map(b => (
-                          <option key={b.id} value={b.id}>{b.name || b.code}</option>
-                        ))}
-
-                    </select>
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Floor</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Floor 2"
-                      value={formData.floor}
-                      onChange={(e) => setFormData({ ...formData, floor: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    />
-                  </div>
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Room</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Room 204"
-                      value={formData.room}
-                      onChange={(e) => setFormData({ ...formData, room: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-2 text-xs">
-                  <div>
-                    <label className="font-bold text-slate-700 block mb-1">Zone / Area</label>
-                    <input
-                      type="text"
-                      placeholder="e.g. Main Office / Server Hall"
-                      value={formData.zoneArea}
-                      onChange={(e) => setFormData({ ...formData, zoneArea: e.target.value })}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
-                    />
                   </div>
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Storage Area</label>
