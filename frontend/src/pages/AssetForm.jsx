@@ -1703,16 +1703,16 @@ export function AssetForm() {
         if (!firstWarning) firstWarning = 'Warning: Asset Name is required. Please fill in the Asset Name before proceeding.';
       }
       if (!formData.assetGroup?.trim()) {
-        errors.assetGroup = 'Asset Group is required.';
-        if (!firstWarning) firstWarning = 'Warning: Asset Group is required. Please select an Asset Group.';
+        errors.assetGroup = 'Asset Group is required. Please select an Item Master above.';
+        if (!firstWarning) firstWarning = 'Warning: Please select an Item from the Item Master above to auto-fill Asset Group.';
       }
       if (!formData.assetClass?.trim()) {
-        errors.assetClass = 'Asset Sub Group is required.';
-        if (!firstWarning) firstWarning = 'Warning: Asset Sub Group is required. Please select an Asset Sub Group.';
+        errors.assetClass = 'Asset Sub Group is required. Please select an Item Master above.';
+        if (!firstWarning) firstWarning = 'Warning: Please select an Item from the Item Master above to auto-fill Asset Sub Group.';
       }
       if (!formData.category?.trim()) {
-        errors.category = 'Category is required.';
-        if (!firstWarning) firstWarning = 'Warning: Category is required. Please select a Category.';
+        errors.category = 'Category is required. Please select an Item Master above.';
+        if (!firstWarning) firstWarning = 'Warning: Please select an Item from the Item Master above to auto-fill Category.';
       } else {
         if (!formData.categoryId) {
           const found = categories.find(c => c.name === formData.category || c.id === formData.category);
@@ -1723,17 +1723,17 @@ export function AssetForm() {
       }
 
       if (!formData.subcategory?.trim() && !formData.assetClassId) {
-        errors.subcategory = 'Sub Category is required.';
-        if (!firstWarning) firstWarning = 'Warning: Sub Category is required. Please select a Sub Category.';
+        errors.subcategory = 'Sub Category is required. Please select an Item Master above.';
+        if (!firstWarning) firstWarning = 'Warning: Please select an Item from the Item Master above to auto-fill Sub Category.';
       }
 
       if (!formData.manufacturer?.trim()) {
-        errors.manufacturer = 'Manufacturer is required.';
-        if (!firstWarning) firstWarning = 'Warning: Manufacturer is required. Please select a Manufacturer.';
+        errors.manufacturer = 'Manufacturer is required. Please select an Item Master above.';
+        if (!firstWarning) firstWarning = 'Warning: Please select an Item from the Item Master above to auto-fill Manufacturer.';
       }
       if (!formData.brand?.trim()) {
-        errors.brand = 'Brand is required.';
-        if (!firstWarning) firstWarning = 'Warning: Brand is required. Please select a Brand.';
+        errors.brand = 'Brand is required. Please select an Item Master above.';
+        if (!firstWarning) firstWarning = 'Warning: Please select an Item from the Item Master above to auto-fill Brand.';
       }
       if (!formData.model?.trim()) {
         errors.model = 'Model is required.';
@@ -2483,13 +2483,11 @@ export function AssetForm() {
           <input
             type="text"
             value={formData.assetName}
-            readOnly={Boolean(selectedItemMasterId)}
             onChange={(e) => {
               setFormData({ ...formData, assetName: e.target.value });
               if (e.target.value.trim()) clearFieldError('assetName');
             }}
-            className={`w-full border rounded-xl p-2 font-semibold outline-none transition-colors ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-500' : 'bg-white text-slate-900'
-              } ${fieldErrors.assetName
+            className={`w-full border rounded-xl p-2 font-semibold outline-none transition-colors bg-white text-slate-900 ${fieldErrors.assetName
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
                 : 'border-slate-200 focus:border-[#6C2BD9]'
               }`}
@@ -2509,15 +2507,12 @@ export function AssetForm() {
           </label>
           <select
             value={formData.assetGroup || ''}
-            onChange={(e) => {
-              handleAssetGroupChange(e.target.value);
-              if (e.target.value) clearFieldError('assetGroup');
-            }}
-            disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'} ${fieldErrors.assetGroup ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
+            disabled={true}
+            className={`w-full border rounded-xl p-2 font-semibold outline-none bg-slate-100 cursor-not-allowed text-slate-600 ${fieldErrors.assetGroup ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
               }`}
           >
-            <option value="">{availableAssetGroups.length > 0 ? '-- Select Asset Group * --' : 'No asset groups linked to this asset type'}</option>
+            <option value="">{formData.assetGroup || '-- Auto-filled from Item Master --'}</option>
+            {formData.assetGroup && <option value={formData.assetGroup}>{formData.assetGroup}</option>}
             {availableAssetGroups.map((g) => {
               const gName = g.name || g.code;
               return (
@@ -2541,15 +2536,12 @@ export function AssetForm() {
           </label>
           <select
             value={formData.assetClass || ''}
-            onChange={(e) => {
-              handleAssetClassChange(e.target.value);
-              if (e.target.value) clearFieldError('assetClass');
-            }}
-            disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'} ${fieldErrors.assetClass ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
+            disabled={true}
+            className={`w-full border rounded-xl p-2 font-semibold outline-none bg-slate-100 cursor-not-allowed text-slate-600 ${fieldErrors.assetClass ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
               }`}
           >
-            <option value="">{availableAssetClassesDropdown.length > 0 ? '-- Select Asset Sub Group * --' : (formData.assetGroup ? 'No asset sub groups linked to this group' : '-- Select Asset Group first --')}</option>
+            <option value="">{formData.assetClass || '-- Auto-filled from Item Master --'}</option>
+            {formData.assetClass && <option value={formData.assetClass}>{formData.assetClass}</option>}
             {availableAssetClassesDropdown.map((cls) => {
               const cName = cls.name || cls.code;
               return (
@@ -2572,19 +2564,15 @@ export function AssetForm() {
             Category <span className="text-rose-500">*</span>
           </label>
           <select
-            value={formData.category}
-            disabled={Boolean(selectedItemMasterId)}
-            onChange={(e) => {
-              handleCategoryChange(e.target.value);
-              if (e.target.value) clearFieldError('category');
-            }}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none transition-colors ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
-              } ${fieldErrors.category
+            value={formData.category || ''}
+            disabled={true}
+            className={`w-full border rounded-xl p-2 font-semibold outline-none bg-slate-100 cursor-not-allowed text-slate-600 ${fieldErrors.category
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
-                : 'border-slate-200 focus:border-[#6C2BD9]'
+                : 'border-slate-200'
               }`}
           >
-            <option value="">Select Category *</option>
+            <option value="">{formData.category || '-- Auto-filled from Item Master --'}</option>
+            {formData.category && <option value={formData.category}>{formData.category}</option>}
             {availableCategories.map(c => (
               <option key={c.id} value={c.name}>{c.name}</option>
             ))}
@@ -2594,8 +2582,6 @@ export function AssetForm() {
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               {fieldErrors.category}
             </p>
-          ) : availableCategories.length === 0 ? (
-            <p className="text-[11px] text-amber-600 mt-1">No categories found.</p>
           ) : null}
         </div>
       </div>
@@ -2608,18 +2594,14 @@ export function AssetForm() {
           </label>
           <select
             value={formData.subcategory || formData.assetClassId || ''}
-            onChange={(e) => {
-              handleSubCategoryChange(e.target.value);
-              if (e.target.value) clearFieldError('subcategory');
-            }}
-            disabled={Boolean(selectedItemMasterId && (formData.subcategory || formData.assetClassId)) || !formData.category}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold outline-none disabled:bg-slate-100 disabled:text-slate-400 transition-colors ${selectedItemMasterId && (formData.subcategory || formData.assetClassId) ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'
-              } ${fieldErrors.subcategory
+            disabled={true}
+            className={`w-full border rounded-xl p-2 font-semibold outline-none bg-slate-100 cursor-not-allowed text-slate-600 ${fieldErrors.subcategory
                 ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30'
-                : 'border-slate-200 focus:border-[#6C2BD9]'
+                : 'border-slate-200'
               }`}
           >
-            <option value="">{formData.category ? (availableAssetClasses.length > 0 ? 'Select Sub Category *' : 'No sub categories registered') : 'Select a Category first'}</option>
+            <option value="">{formData.subcategory || '-- Auto-filled from Item Master --'}</option>
+            {formData.subcategory && <option value={formData.subcategory}>{formData.subcategory}</option>}
             {availableAssetClasses.map(assetClass => {
               const val = assetClass.name || assetClass.id;
               return (
@@ -2629,14 +2611,12 @@ export function AssetForm() {
               );
             })}
           </select>
-          {fieldErrors.subcategory ? (
+          {fieldErrors.subcategory && (
             <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
               <AlertCircle className="w-3.5 h-3.5 shrink-0" />
               {fieldErrors.subcategory}
             </p>
-          ) : formData.category && availableAssetClasses.length === 0 ? (
-            <p className="text-[11px] text-slate-400 mt-1">No sub categories under {formData.category}.</p>
-          ) : null}
+          )}
         </div>
 
         <div>
@@ -2645,39 +2625,20 @@ export function AssetForm() {
           </label>
           <select
             value={formData.manufacturer || ''}
-            onChange={(e) => {
-              const newMfr = e.target.value;
-              setFormData(prev => {
-                const updated = { ...prev, manufacturer: newMfr };
-                if (prev.brand) {
-                  const bObj = brands.find(b => (b.name || b.title || b).toLowerCase() === prev.brand.toLowerCase());
-                  const mName = bObj?.manufacturerName || bObj?.manufacturer;
-                  if (mName && newMfr && mName.toLowerCase() !== newMfr.toLowerCase()) {
-                    updated.brand = '';
-                  }
-                }
-                return updated;
-              });
-              if (newMfr) clearFieldError('manufacturer');
-            }}
-            disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'} ${fieldErrors.manufacturer ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
+            disabled={true}
+            className={`w-full border rounded-xl p-2 font-semibold outline-none bg-slate-100 cursor-not-allowed text-slate-600 ${fieldErrors.manufacturer ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
               }`}
           >
-            <option value="">-- Select Manufacturer * --</option>
-            {availableManufacturers && availableManufacturers.length > 0 ? (
-              availableManufacturers.map((m) => {
-                const name = m.name || m.title || m;
-                const isInactive = m.active === false || m.status === 'Inactive';
-                return (
-                  <option key={m.id || m._id || name} value={name} disabled={isInactive}>
-                    {name}{isInactive ? ' (Inactive)' : ''}
-                  </option>
-                );
-              })
-            ) : (
-              <option value="" disabled>No manufacturers registered</option>
-            )}
+            <option value="">{formData.manufacturer || '-- Auto-filled from Item Master --'}</option>
+            {formData.manufacturer && <option value={formData.manufacturer}>{formData.manufacturer}</option>}
+            {availableManufacturers && availableManufacturers.map((m) => {
+              const name = m.name || m.title || m;
+              return (
+                <option key={m.id || m._id || name} value={name}>
+                  {name}
+                </option>
+              );
+            })}
           </select>
           {fieldErrors.manufacturer && (
             <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
@@ -2693,35 +2654,20 @@ export function AssetForm() {
           </label>
           <select
             value={formData.brand || ''}
-            onChange={(e) => {
-              const bName = e.target.value;
-              const bObj = availableBrands.find(b => (b.name || b.title || b) === bName);
-              const autoMfr = bObj?.manufacturerName || bObj?.manufacturer;
-              setFormData(prev => ({
-                ...prev,
-                brand: bName,
-                manufacturer: autoMfr || prev.manufacturer
-              }));
-              if (bName) clearFieldError('brand');
-            }}
-            disabled={Boolean(selectedItemMasterId)}
-            className={`w-full border rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 cursor-not-allowed text-slate-600' : 'bg-slate-50'} ${fieldErrors.brand ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
+            disabled={true}
+            className={`w-full border rounded-xl p-2 font-semibold outline-none bg-slate-100 cursor-not-allowed text-slate-600 ${fieldErrors.brand ? 'border-rose-500 ring-2 ring-rose-200 bg-rose-50/30' : 'border-slate-200'
               }`}
           >
-            <option value="">-- Select Brand * --</option>
-            {availableBrands && availableBrands.length > 0 ? (
-              availableBrands.map((b) => {
-                const name = b.name || b.title || b;
-                const isInactive = b.active === false || b.status === 'Inactive' || b.manufacturerActive === false;
-                return (
-                  <option key={b.id || b._id || name} value={name} disabled={isInactive}>
-                    {name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}{isInactive ? ' (Inactive)' : ''}
-                  </option>
-                );
-              })
-            ) : (
-              <option value="" disabled>No brands registered</option>
-            )}
+            <option value="">{formData.brand || '-- Auto-filled from Item Master --'}</option>
+            {formData.brand && <option value={formData.brand}>{formData.brand}</option>}
+            {availableBrands && availableBrands.map((b) => {
+              const name = b.name || b.title || b;
+              return (
+                <option key={b.id || b._id || name} value={name}>
+                  {name}
+                </option>
+              );
+            })}
           </select>
           {fieldErrors.brand && (
             <p className="text-[11px] text-rose-600 font-semibold mt-1 flex items-center gap-1 animate-in fade-in">
@@ -4549,10 +4495,9 @@ export function AssetForm() {
                   <input
                     type="text"
                     required
-                    readOnly={Boolean(selectedItemMasterId)}
                     value={formData.assetName}
                     onChange={(e) => setFormData({ ...formData, assetName: e.target.value })}
-                    className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
+                    className="w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none bg-white text-slate-900"
                   />
                 </div>
 
@@ -4649,12 +4594,12 @@ export function AssetForm() {
                 <div className="space-y-1 text-xs">
                   <label className="font-bold text-slate-700 block">Asset Group *</label>
                   <select
-                    value={formData.assetGroup}
-                    disabled={Boolean(selectedItemMasterId)}
-                    onChange={(e) => handleAssetGroupChange(e.target.value)}
-                    className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
+                    value={formData.assetGroup || ''}
+                    disabled={true}
+                    className="w-full border border-slate-200 rounded-xl p-2 font-semibold bg-slate-100 text-slate-600 cursor-not-allowed outline-none"
                   >
-                    <option value="">-- Select Asset Group --</option>
+                    <option value="">{formData.assetGroup || '-- Auto-filled from Item Master --'}</option>
+                    {formData.assetGroup && <option value={formData.assetGroup}>{formData.assetGroup}</option>}
                     {assetGroups.map((g) => {
                       const name = g.name || g.code;
                       return <option key={g.id || name} value={name}>{name}</option>;
@@ -4665,12 +4610,12 @@ export function AssetForm() {
                 <div className="space-y-1 text-xs">
                   <label className="font-bold text-slate-700 block">Asset Sub Group</label>
                   <select
-                    value={formData.assetClass}
-                    disabled={Boolean(selectedItemMasterId)}
-                    onChange={(e) => handleAssetClassChange(e.target.value)}
-                    className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
+                    value={formData.assetClass || ''}
+                    disabled={true}
+                    className="w-full border border-slate-200 rounded-xl p-2 font-semibold bg-slate-100 text-slate-600 cursor-not-allowed outline-none"
                   >
-                    <option value="">-- Select Sub Group --</option>
+                    <option value="">{formData.assetClass || '-- Auto-filled from Item Master --'}</option>
+                    {formData.assetClass && <option value={formData.assetClass}>{formData.assetClass}</option>}
                     {availableAssetClassesDropdown.map((cls) => {
                       const name = cls.name || cls.code;
                       return <option key={cls.id || name} value={name}>{name}</option>;
@@ -4682,11 +4627,12 @@ export function AssetForm() {
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Category *</label>
                     <select
-                      value={formData.category}
-                      onChange={(e) => handleCategoryChange(e.target.value)}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none"
+                      value={formData.category || ''}
+                      disabled={true}
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-600 font-semibold cursor-not-allowed outline-none"
                     >
-                      <option value="">Select Category</option>
+                      <option value="">{formData.category || '-- Auto-filled from Item Master --'}</option>
+                      {formData.category && <option value={formData.category}>{formData.category}</option>}
                       {availableCategories.map(category => <option key={category.id} value={category.name}>{category.name}</option>)}
                     </select>
                     {availableCategories.length === 0 && (
@@ -4696,12 +4642,12 @@ export function AssetForm() {
                   <div>
                     <label className="font-bold text-slate-700 block mb-1">Subcategory *</label>
                     <select
-                      value={formData.assetClassId || formData.subcategory}
-                      onChange={(e) => handleSubCategoryChange(e.target.value)}
-                      disabled={!formData.category}
-                      className="w-full bg-slate-50 border border-slate-200 rounded-xl p-2 text-slate-900 font-semibold focus:border-[#6C2BD9] outline-none disabled:bg-slate-100 disabled:text-slate-400"
+                      value={formData.subcategory || formData.assetClassId || ''}
+                      disabled={true}
+                      className="w-full bg-slate-100 border border-slate-200 rounded-xl p-2 text-slate-600 font-semibold cursor-not-allowed outline-none"
                     >
-                      <option value="">{formData.category ? 'Select Sub Category *' : 'Select Category first'}</option>
+                      <option value="">{formData.subcategory || '-- Auto-filled from Item Master --'}</option>
+                      {formData.subcategory && <option value={formData.subcategory}>{formData.subcategory}</option>}
                       {availableAssetClasses.map(assetClass => <option key={assetClass.id} value={assetClass.id}>{assetClass.name}</option>)}
                     </select>
                   </div>
@@ -4762,38 +4708,20 @@ export function AssetForm() {
                 <div className="space-y-1 text-xs">
                   <label className="font-bold text-slate-700 block">Manufacturer *</label>
                   <select
-                    value={formData.manufacturer}
-                    onChange={(e) => {
-                      const newMfr = e.target.value;
-                      setFormData(prev => {
-                        const updated = { ...prev, manufacturer: newMfr };
-                        if (prev.brand) {
-                          const bObj = brands.find(b => (b.name || b.title || b).toLowerCase() === prev.brand.toLowerCase());
-                          const mName = bObj?.manufacturerName || bObj?.manufacturer;
-                          if (mName && newMfr && mName.toLowerCase() !== newMfr.toLowerCase()) {
-                            updated.brand = '';
-                          }
-                        }
-                        return updated;
-                      });
-                    }}
-                    disabled={Boolean(selectedItemMasterId)}
-                    className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
+                    value={formData.manufacturer || ''}
+                    disabled={true}
+                    className="w-full border border-slate-200 rounded-xl p-2 font-semibold bg-slate-100 text-slate-600 cursor-not-allowed outline-none"
                   >
-                    <option value="">-- Select Manufacturer --</option>
-                    {availableManufacturers && availableManufacturers.length > 0 ? (
-                      availableManufacturers.map((m) => {
-                        const name = m.name || m.title || m;
-                        const isInactive = m.active === false || m.status === 'Inactive';
-                        return (
-                          <option key={m.id || m._id || name} value={name} disabled={isInactive}>
-                            {name}{isInactive ? ' (Inactive)' : ''}
-                          </option>
-                        );
-                      })
-                    ) : (
-                      <option value="" disabled>No manufacturers registered</option>
-                    )}
+                    <option value="">{formData.manufacturer || '-- Auto-filled from Item Master --'}</option>
+                    {formData.manufacturer && <option value={formData.manufacturer}>{formData.manufacturer}</option>}
+                    {availableManufacturers && availableManufacturers.map((m) => {
+                      const name = m.name || m.title || m;
+                      return (
+                        <option key={m.id || m._id || name} value={name}>
+                          {name}
+                        </option>
+                      );
+                    })}
                   </select>
                 </div>
 
@@ -4802,33 +4730,19 @@ export function AssetForm() {
                     <label className="font-bold text-slate-700 block mb-1">Brand</label>
                     <select
                       value={formData.brand || ''}
-                      onChange={(e) => {
-                        const bName = e.target.value;
-                        const bObj = availableBrands.find(b => (b.name || b.title || b) === bName);
-                        const autoMfr = bObj?.manufacturerName || bObj?.manufacturer;
-                        setFormData(prev => ({
-                          ...prev,
-                          brand: bName,
-                          manufacturer: autoMfr || prev.manufacturer
-                        }));
-                      }}
-                      disabled={Boolean(selectedItemMasterId)}
-                      className={`w-full border border-slate-200 rounded-xl p-2 font-semibold focus:border-[#6C2BD9] outline-none ${selectedItemMasterId ? 'bg-slate-100 text-slate-500 cursor-not-allowed' : 'bg-white text-slate-900'}`}
+                      disabled={true}
+                      className="w-full border border-slate-200 rounded-xl p-2 font-semibold bg-slate-100 text-slate-600 cursor-not-allowed outline-none"
                     >
-                      <option value="">-- Select Brand --</option>
-                      {availableBrands && availableBrands.length > 0 ? (
-                        availableBrands.map((b) => {
-                          const name = b.name || b.title || b;
-                          const isInactive = b.active === false || b.status === 'Inactive' || b.manufacturerActive === false;
-                          return (
-                            <option key={b.id || b._id || name} value={name} disabled={isInactive}>
-                              {name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}{isInactive ? ' (Inactive)' : ''}
-                            </option>
-                          );
-                        })
-                      ) : (
-                        <option value="" disabled>No brands registered</option>
-                      )}
+                      <option value="">{formData.brand || '-- Auto-filled from Item Master --'}</option>
+                      {formData.brand && <option value={formData.brand}>{formData.brand}</option>}
+                      {availableBrands && availableBrands.map((b) => {
+                        const name = b.name || b.title || b;
+                        return (
+                          <option key={b.id || b._id || name} value={name}>
+                            {name}
+                          </option>
+                        );
+                      })}
                     </select>
                   </div>
                   <div>
