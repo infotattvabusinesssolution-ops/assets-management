@@ -188,9 +188,9 @@ export async function getMasterDataStats(req, res, next) {
     let assetGroupsCount = tenantCompanyId ? 0 : memoryAssetGroups.length;
     let companiesCount = tenantCompanyId ? 1 : 12;
     let sitesCount = tenantCompanyId ? 0 : 8;
-    let buildingsCount = tenantCompanyId ? 0 : 16;
-    let floorsCount = tenantCompanyId ? 0 : 42;
-    let roomsCount = tenantCompanyId ? 0 : 138;
+    let buildingsCount = 0;
+    let floorsCount = 0;
+    let roomsCount = 0;
     let categoriesCount = tenantCompanyId ? 0 : 24;
     let activeCategoriesCount = tenantCompanyId ? 0 : 22;
     let manufacturersCount = tenantCompanyId ? 0 : 45;
@@ -204,7 +204,7 @@ export async function getMasterDataStats(req, res, next) {
     let tagsCount = tenantCompanyId ? 0 : 52;
     let contractsCount = tenantCompanyId ? 0 : 19;
     let workflowsCount = tenantCompanyId ? 0 : 7;
-    let mapsCount = tenantCompanyId ? 0 : 4;
+    let mapsCount = 0;
     let activeSitesCount = tenantCompanyId ? 0 : 8;
 
     if (isDbConnected()) {
@@ -220,18 +220,18 @@ export async function getMasterDataStats(req, res, next) {
 
           const counts = await Promise.all([
             prisma.company.count({ where: { id: tenantCompanyId } }).catch(() => 1),
-            tenantSiteIds.length ? prisma.building.count({ where: { siteId: { in: tenantSiteIds } } }).catch(() => 0) : 0,
-            tenantSiteIds.length ? prisma.floor.count({ where: { building: { siteId: { in: tenantSiteIds } } } }).catch(() => 0) : 0,
-            tenantSiteIds.length ? prisma.room.count({ where: { floor: { building: { siteId: { in: tenantSiteIds } } } } }).catch(() => 0) : 0,
+            0,
+            0,
+            0,
             prisma.category.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
             prisma.manufacturer.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
             prisma.assetModel.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
             prisma.department.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
-            prisma.costCenter.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
+            prisma.section.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
             prisma.employee.count({ where: { companyId: tenantCompanyId } }).catch(() => 0),
             prisma.tag.count({ where: { asset: { companyId: tenantCompanyId } } }).catch(() => 0),
             prisma.contract.count({ where: { coveredAssets: { some: { asset: { companyId: tenantCompanyId } } } } }).catch(() => 0),
-            tenantSiteIds.length ? prisma.floorMap.count({ where: { floor: { building: { siteId: { in: tenantSiteIds } } } } }).catch(() => 0) : 0
+            0
           ]);
 
           companiesCount = counts[0];
@@ -261,20 +261,20 @@ export async function getMasterDataStats(req, res, next) {
           const counts = await Promise.all([
             prisma.company.count().catch(() => companiesCount),
             prisma.site.count().catch(() => sitesCount),
-            prisma.building.count().catch(() => buildingsCount),
-            prisma.floor.count().catch(() => floorsCount),
-            prisma.room.count().catch(() => roomsCount),
+            0,
+            0,
+            0,
             prisma.category.count().catch(() => categoriesCount),
             prisma.manufacturer.count().catch(() => manufacturersCount),
             prisma.assetModel.count().catch(() => modelsCount),
             prisma.department.count().catch(() => departmentsCount),
-            prisma.costCenter.count().catch(() => costCentersCount),
+            prisma.section.count().catch(() => costCentersCount),
             prisma.employee.count().catch(() => employeesCount),
             prisma.customFieldDefinition.count().catch(() => customFieldsCount),
             prisma.tag.count().catch(() => tagsCount),
             prisma.contract.count().catch(() => contractsCount),
             prisma.workflowDefinition.count().catch(() => workflowsCount),
-            prisma.floorMap.count().catch(() => mapsCount)
+            0
           ]);
 
           companiesCount = counts[0];
@@ -968,7 +968,7 @@ export async function updateCompany(req, res, next) {
             where: { companyId: id },
             data: { active: false }
           }).catch(e => console.warn('Cascade deactivation to departments error:', e.message));
-          await prisma.costCenter.updateMany({
+          await prisma.section.updateMany({
             where: { companyId: id },
             data: { active: false }
           }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
@@ -1009,7 +1009,7 @@ export async function deleteCompany(req, res, next) {
         prisma.site.count({ where: { companyId: id } }).catch(() => 0),
         prisma.department.count({ where: { companyId: id } }).catch(() => 0),
         prisma.employee.count({ where: { companyId: id } }).catch(() => 0),
-        prisma.costCenter.count({ where: { companyId: id } }).catch(() => 0),
+        prisma.section.count({ where: { companyId: id } }).catch(() => 0),
         prisma.user.count({ where: { companyId: id } }).catch(() => 0)
       ]);
       const totalLinked = assetsCount + sitesCount + deptsCount + employeesCount + costCentersCount + usersCount;
@@ -1034,7 +1034,7 @@ export async function deleteCompany(req, res, next) {
           where: { companyId: id },
           data: { active: false }
         }).catch(e => console.warn('Cascade deactivation to departments error:', e.message));
-        await prisma.costCenter.updateMany({
+        await prisma.section.updateMany({
           where: { companyId: id },
           data: { active: false }
         }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
@@ -1049,7 +1049,7 @@ export async function deleteCompany(req, res, next) {
       if (force && totalLinked > 0) {
         await prisma.asset.deleteMany({ where: { companyId: id } }).catch(() => null);
         await prisma.site.deleteMany({ where: { companyId: id } }).catch(() => null);
-        await prisma.costCenter.deleteMany({ where: { companyId: id } }).catch(() => null);
+        await prisma.section.deleteMany({ where: { companyId: id } }).catch(() => null);
         await prisma.department.deleteMany({ where: { companyId: id } }).catch(() => null);
         await prisma.employee.deleteMany({ where: { companyId: id } }).catch(() => null);
         await prisma.user.updateMany({ where: { companyId: id }, data: { companyId: null } }).catch(() => null);
@@ -1176,14 +1176,12 @@ export async function getSites(req, res, next) {
           // Pre-fetch relation counts for all sites in bulk
           const siteAssetCounts = {};
           const siteChildCounts = {};
-          const siteBuildingCounts = {};
           const siteDeptCounts = {};
 
           try {
-            const [assetRows, childRows, bldgRows, deptRows] = await Promise.all([
+            const [assetRows, childRows, deptRows] = await Promise.all([
               prisma.$queryRawUnsafe(`SELECT siteId, COUNT(*) as cnt FROM assets WHERE siteId IS NOT NULL GROUP BY siteId`).catch(() => []),
               prisma.$queryRawUnsafe(`SELECT parentLocation, COUNT(*) as cnt FROM sites WHERE parentLocation IS NOT NULL AND parentLocation != '-' GROUP BY parentLocation`).catch(() => []),
-              prisma.$queryRawUnsafe(`SELECT siteId, COUNT(*) as cnt FROM buildings WHERE siteId IS NOT NULL GROUP BY siteId`).catch(() => []),
               prisma.$queryRawUnsafe(`SELECT location, COUNT(*) as cnt FROM departments WHERE location IS NOT NULL GROUP BY location`).catch(() => [])
             ]);
 
@@ -1192,9 +1190,6 @@ export async function getSites(req, res, next) {
             }
             if (Array.isArray(childRows)) {
               childRows.forEach(r => { if (r.parentLocation) siteChildCounts[r.parentLocation] = Number(r.cnt || 0); });
-            }
-            if (Array.isArray(bldgRows)) {
-              bldgRows.forEach(r => { if (r.siteId) siteBuildingCounts[r.siteId] = Number(r.cnt || 0); });
             }
             if (Array.isArray(deptRows)) {
               deptRows.forEach(r => { if (r.location) siteDeptCounts[r.location] = Number(r.cnt || 0); });
@@ -1206,7 +1201,7 @@ export async function getSites(req, res, next) {
           const raw = rows.map(r => {
             const directAssets = (siteAssetCounts[r.id] || 0) + (siteAssetCounts[r.code] || 0);
             const childLocs = (siteChildCounts[r.id] || 0) + (siteChildCounts[r.code] || 0) + (r.name ? (siteChildCounts[r.name] || 0) : 0);
-            const bldgs = (siteBuildingCounts[r.id] || 0) + (siteBuildingCounts[r.code] || 0);
+            const bldgs = 0;
             const depts = (siteDeptCounts[r.id] || 0) + (siteDeptCounts[r.code] || 0) + (r.name ? (siteDeptCounts[r.name] || 0) : 0);
 
             return {
@@ -1796,72 +1791,27 @@ export async function deleteSite(req, res, next) {
 }
 
 export async function getBuildings(req, res, next) {
-  try {
-    const where = {};
-    if (req.query.siteId) where.siteId = req.query.siteId;
-    if (req.query.includeInactive !== 'true') where.active = true;
-    const buildings = await prisma.building.findMany({ where, orderBy: { name: 'asc' } });
-    res.json({ success: true, buildings });
-  } catch (err) { next(err); }
+  res.json({ success: true, buildings: [] });
 }
 
 export async function createBuilding(req, res, next) {
-  try {
-    const payload = { ...req.body };
-    if (!payload.code || !payload.code.trim()) {
-      payload.code = await generateAutoCode('building', payload.name, [], 'buildings');
-    } else {
-      payload.code = payload.code.trim().toUpperCase();
-    }
-    const building = await prisma.building.create({ data: payload });
-    res.status(201).json({ success: true, building });
-  } catch (err) { next(err); }
+  res.status(400).json({ success: false, message: 'Buildings have been decommissioned.' });
 }
 
 export async function getFloors(req, res, next) {
-  try {
-    const where = {};
-    if (req.query.buildingId) where.buildingId = req.query.buildingId;
-    if (req.query.includeInactive !== 'true') where.active = true;
-    const floors = await prisma.floor.findMany({ where, orderBy: { floorNumber: 'asc' } });
-    res.json({ success: true, floors });
-  } catch (err) { next(err); }
+  res.json({ success: true, floors: [] });
 }
 
 export async function createFloor(req, res, next) {
-  try {
-    const payload = { ...req.body };
-    if (!payload.code || !payload.code.trim()) {
-      payload.code = await generateAutoCode('floor', payload.name, [], 'floors');
-    } else {
-      payload.code = payload.code.trim().toUpperCase();
-    }
-    const floor = await prisma.floor.create({ data: payload });
-    res.status(201).json({ success: true, floor });
-  } catch (err) { next(err); }
+  res.status(400).json({ success: false, message: 'Floors have been decommissioned.' });
 }
 
 export async function getRooms(req, res, next) {
-  try {
-    const where = {};
-    if (req.query.floorId) where.floorId = req.query.floorId;
-    if (req.query.includeInactive !== 'true') where.active = true;
-    const rooms = await prisma.room.findMany({ where, orderBy: { name: 'asc' } });
-    res.json({ success: true, rooms });
-  } catch (err) { next(err); }
+  res.json({ success: true, rooms: [] });
 }
 
 export async function createRoom(req, res, next) {
-  try {
-    const payload = { ...req.body };
-    if (!payload.code || !payload.code.trim()) {
-      payload.code = await generateAutoCode('room', payload.name, [], 'rooms');
-    } else {
-      payload.code = payload.code.trim().toUpperCase();
-    }
-    const room = await prisma.room.create({ data: payload });
-    res.status(201).json({ success: true, room });
-  } catch (err) { next(err); }
+  res.status(400).json({ success: false, message: 'Rooms have been decommissioned.' });
 }
 
 export async function getCategories(req, res, next) {
@@ -4410,7 +4360,7 @@ export async function createDepartment(req, res, next) {
       },
       include: {
         company: true,
-        costCenters: {
+        sections: {
           select: { id: true, code: true, name: true, active: true }
         }
       }
@@ -4533,14 +4483,14 @@ export async function updateDepartment(req, res, next) {
       data: updateData,
       include: {
         company: true,
-        costCenters: {
+        sections: {
           select: { id: true, code: true, name: true, active: true }
         }
       }
     });
 
     if (updateData.active === false && isDbConnected()) {
-      await prisma.costCenter.updateMany({
+      await prisma.section.updateMany({
         where: { departmentId: id },
         data: { active: false }
       }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
@@ -4569,7 +4519,7 @@ export async function deleteDepartment(req, res, next) {
     }
 
     const assetCount = await prisma.asset.count({ where: { departmentId: id } }).catch(() => 0);
-    const costCenterCount = await prisma.costCenter.count({ where: { departmentId: id } }).catch(() => 0);
+    const costCenterCount = await prisma.section.count({ where: { departmentId: id } }).catch(() => 0);
     const userCount = await prisma.user.count({ where: { departmentId: id } }).catch(() => 0);
     const totalLinked = assetCount + costCenterCount + userCount;
 
@@ -4595,7 +4545,7 @@ export async function deleteDepartment(req, res, next) {
       await prisma.asset.updateMany({ where: { departmentId: id }, data: { departmentId: null } }).catch(() => null);
     }
     if (costCenterCount > 0 && force) {
-      await prisma.costCenter.updateMany({ where: { departmentId: id }, data: { departmentId: null } }).catch(() => null);
+      await prisma.section.updateMany({ where: { departmentId: id }, data: { departmentId: null } }).catch(() => null);
     }
     await prisma.department.delete({ where: { id } });
     res.json({ success: true, message: 'Department deleted successfully.' });
@@ -4623,19 +4573,19 @@ export async function getCostCenters(req, res, next) {
     }
     let costCenters;
     try {
-      costCenters = await prisma.costCenter.findMany({
+      costCenters = await prisma.section.findMany({
         where,
         include: { company: true, department: true },
         orderBy: { name: 'asc' }
       });
     } catch (relErr) {
-      costCenters = await prisma.costCenter.findMany({
+      costCenters = await prisma.section.findMany({
         where,
         include: { company: true },
         orderBy: { name: 'asc' }
       });
     }
-    res.json({ success: true, costCenters });
+    res.json({ success: true, costCenters, sections: costCenters });
   } catch (err) { next(err); }
 }
 
@@ -4652,7 +4602,7 @@ export async function createCostCenter(req, res, next) {
 
     if (isDbConnected()) {
       try {
-        const existing = await prisma.costCenter.findFirst({
+        const existing = await prisma.section.findFirst({
           where: {
             OR: [
               { code: cleanCode },
@@ -4680,7 +4630,7 @@ export async function createCostCenter(req, res, next) {
       targetCompanyId = firstComp ? firstComp.id : null;
     }
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
-    const costCenter = await prisma.costCenter.create({
+    const costCenter = await prisma.section.create({
       data: {
         code: cleanCode,
         name: cleanName,
@@ -4693,7 +4643,7 @@ export async function createCostCenter(req, res, next) {
       },
       include: { company: true, department: true }
     });
-    res.status(201).json({ success: true, costCenter });
+    res.status(201).json({ success: true, costCenter, section: costCenter });
   } catch (err) { next(err); }
 }
 
@@ -4704,7 +4654,7 @@ export async function updateCostCenter(req, res, next) {
 
     if (tenantCompanyId && isDbConnected()) {
       try {
-        const cc = await prisma.costCenter.findUnique({ where: { id } }).catch(() => null);
+        const cc = await prisma.section.findUnique({ where: { id } }).catch(() => null);
         if (cc && cc.companyId && cc.companyId !== tenantCompanyId) {
           return res.status(403).json({ success: false, message: 'Access denied: section belongs to another company.' });
         }
@@ -4717,7 +4667,7 @@ export async function updateCostCenter(req, res, next) {
 
     if (isDbConnected() && (cleanCode || cleanName)) {
       try {
-        const existing = await prisma.costCenter.findFirst({
+        const existing = await prisma.section.findFirst({
           where: {
             id: { not: id },
             OR: [
@@ -4746,7 +4696,7 @@ export async function updateCostCenter(req, res, next) {
     if (description !== undefined) updateData.description = description ? description.trim() : null;
 
     if (updateData.active === true && isDbConnected()) {
-      const curCC = await prisma.costCenter.findUnique({
+      const curCC = await prisma.section.findUnique({
         where: { id },
         include: { company: true, department: true }
       }).catch(() => null);
@@ -4774,12 +4724,12 @@ export async function updateCostCenter(req, res, next) {
       }
     }
 
-    const costCenter = await prisma.costCenter.update({
+    const costCenter = await prisma.section.update({
       where: { id },
       data: updateData,
       include: { company: true, department: true }
     });
-    res.json({ success: true, costCenter });
+    res.json({ success: true, costCenter, section: costCenter });
   } catch (err) { next(err); }
 }
 
@@ -4788,7 +4738,7 @@ export async function deleteCostCenter(req, res, next) {
     const { id } = req.params;
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     if (tenantCompanyId && isDbConnected()) {
-      const cc = await prisma.costCenter.findUnique({ where: { id } }).catch(() => null);
+      const cc = await prisma.section.findUnique({ where: { id } }).catch(() => null);
       if (cc && cc.companyId && cc.companyId !== tenantCompanyId) {
         return res.status(403).json({ success: false, message: 'Access denied: section belongs to another company.' });
       }
@@ -4797,7 +4747,7 @@ export async function deleteCostCenter(req, res, next) {
     const action = req.query.action;
 
     if (action === 'deactivate') {
-      await prisma.costCenter.update({ where: { id }, data: { active: false } }).catch(() => null);
+      await prisma.section.update({ where: { id }, data: { active: false } }).catch(() => null);
       return res.json({ success: true, message: 'Section marked Inactive.' });
     }
 
@@ -4824,11 +4774,11 @@ export async function deleteCostCenter(req, res, next) {
     if (assetCount > 0 && force) {
       await prisma.asset.updateMany({ where: { costCenterId: id }, data: { costCenterId: null } }).catch(() => null);
     }
-    await prisma.costCenter.delete({ where: { id } });
+    await prisma.section.delete({ where: { id } });
     res.json({ success: true, message: 'Section deleted successfully.' });
   } catch (err) {
     try {
-      await prisma.costCenter.update({ where: { id: req.params.id }, data: { active: false } }).catch(() => null);
+      await prisma.section.update({ where: { id: req.params.id }, data: { active: false } }).catch(() => null);
       return res.json({ success: true, message: 'Section deactivated successfully.' });
     } catch (_) {}
     res.json({ success: true, message: 'Section removed from view.' });
@@ -5221,7 +5171,7 @@ export async function updateMasterEntity(req, res, next) {
         where: { companyId: id },
         data: { active: false }
       }).catch(e => console.warn('Cascade deactivation to departments error:', e.message));
-      await prisma.costCenter.updateMany({
+      await prisma.section.updateMany({
         where: { companyId: id },
         data: { active: false }
       }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
@@ -5341,7 +5291,7 @@ export async function toggleMasterEntityStatus(req, res, next) {
         where: { companyId: id },
         data: { active: false }
       }).catch(e => console.warn('Cascade deactivation to departments error:', e.message));
-      await prisma.costCenter.updateMany({
+      await prisma.section.updateMany({
         where: { companyId: id },
         data: { active: false }
       }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
@@ -5350,7 +5300,7 @@ export async function toggleMasterEntityStatus(req, res, next) {
         data: { status: 'INACTIVE' }
       }).catch(e => console.warn('Cascade deactivation to suppliers error:', e.message));
     } else if ((entityType === 'department' || modelName === 'department') && updated.active === false) {
-      await prisma.costCenter.updateMany({
+      await prisma.section.updateMany({
         where: { departmentId: id },
         data: { active: false }
       }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
@@ -5442,7 +5392,7 @@ export async function deleteMasterEntity(req, res, next) {
       }
     } else if (entityType === 'department') {
       const assetCount = await prisma.asset.count({ where: { departmentId: id } }).catch(() => 0);
-      const costCenterCount = await prisma.costCenter.count({ where: { departmentId: id } }).catch(() => 0);
+      const costCenterCount = await prisma.section.count({ where: { departmentId: id } }).catch(() => 0);
       const userCount = await prisma.user.count({ where: { departmentId: id } }).catch(() => 0);
       const totalLinked = assetCount + costCenterCount + userCount;
       if (totalLinked > 0) {
@@ -6452,15 +6402,23 @@ async function ensureUomsTable() {
   }
 }
 
-// Generate Next Item Code (e.g. ITM-000104)
-function generateNextItemCode(tenantCompanyId = null) {
+// Generate Next Item Code (e.g. ITM-000106)
+async function generateNextItemCode(tenantCompanyId = null) {
   const prefix = getPrefixForEntity('item_master') || 'ITM-';
-  const tenantItems = inMemoryItemMasters.filter(i => !tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId);
-  const existingCodes = tenantItems
-    .map(i => i.itemCode || '')
-    .filter(c => c.startsWith(prefix));
+  let allCodes = [];
+  if (Array.isArray(inMemoryItemMasters)) {
+    allCodes = inMemoryItemMasters.map(i => i.itemCode || '').filter(c => c && c.startsWith(prefix));
+  }
+  if (isDbConnected()) {
+    try {
+      const rows = await prisma.$queryRawUnsafe(`SELECT itemCode FROM item_masters WHERE itemCode LIKE '${prefix}%'`);
+      if (Array.isArray(rows)) {
+        allCodes.push(...rows.map(r => r.itemCode || ''));
+      }
+    } catch (_) {}
+  }
   let maxSeq = 100;
-  for (const c of existingCodes) {
+  for (const c of allCodes) {
     const num = parseInt(c.replace(prefix, ''), 10);
     if (!isNaN(num) && num > maxSeq) maxSeq = num;
   }
@@ -6472,9 +6430,12 @@ export async function getItemMasters(req, res, next) {
     const includeInactive = req.query.includeInactive !== 'false';
     await ensureItemMastersTable();
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
+    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
     if (isDbConnected()) {
       try {
-        const tenantFilter = tenantCompanyId ? `(companyId = '${tenantCompanyId}')` : '1=1';
+        const tenantFilter = (tenantCompanyId && !isSuperAdmin) 
+          ? `(companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` 
+          : '1=1';
         const activeFilter = includeInactive ? '' : 'AND active = 1';
         const query = `SELECT * FROM item_masters WHERE ${tenantFilter} ${activeFilter} ORDER BY itemCode ASC`;
         const rows = await prisma.$queryRawUnsafe(query);
@@ -6654,20 +6615,40 @@ export async function createItemMaster(req, res, next) {
 
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const cleanName = itemName.trim();
-    const cleanCode = (itemCode && itemCode.trim()) ? itemCode.trim().toUpperCase() : generateNextItemCode(tenantCompanyId);
     const cleanBarcode = (supplierBarcode || '').trim();
     const isAct = active !== undefined ? Boolean(active) : true;
     const id = `ITM-${Date.now()}`;
+    const prefix = getPrefixForEntity('item_master') || 'ITM-';
 
-    // STRICT DUPLICATE VALIDATION ON IN-MEMORY ITEMS (SCOPED TO TENANT)
-    const tenantItems = inMemoryItemMasters.filter(i => !tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId);
+    await ensureItemMastersTable();
 
-    if (cleanCode && tenantItems.some(i => (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
+    // Determine cleanCode with auto-advance on collisions
+    let cleanCode = (itemCode && itemCode.trim()) ? itemCode.trim().toUpperCase() : '';
+    let isCodeTaken = false;
+    if (cleanCode) {
+      if (inMemoryItemMasters.some(i => (i.itemCode || '').trim().toUpperCase() === cleanCode)) {
+        isCodeTaken = true;
+      }
+      if (!isCodeTaken && isDbConnected()) {
+        try {
+          const dup = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM item_masters WHERE UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}'`);
+          if (Array.isArray(dup) && dup.length > 0) isCodeTaken = true;
+        } catch (_) {}
+      }
+    }
+
+    if (!cleanCode || (isCodeTaken && cleanCode.startsWith(prefix))) {
+      cleanCode = await generateNextItemCode(tenantCompanyId);
+      isCodeTaken = false;
+    } else if (isCodeTaken) {
       return res.status(409).json({
         success: false,
         message: `An item with Item Code "${cleanCode}" already exists. Duplicate item codes are not allowed.`
       });
     }
+
+    // STRICT DUPLICATE VALIDATION ON IN-MEMORY ITEMS (SCOPED TO TENANT)
+    const tenantItems = inMemoryItemMasters.filter(i => !tenantCompanyId || !i.companyId || i.companyId === tenantCompanyId);
 
     if (cleanName && tenantItems.some(i => (i.itemName || '').trim().toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({
@@ -6683,23 +6664,9 @@ export async function createItemMaster(req, res, next) {
       });
     }
 
-    await ensureItemMastersTable();
     if (isDbConnected()) {
       try {
         const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
-
-        if (cleanCode) {
-          const dupCode = await prisma.$queryRawUnsafe(`
-            SELECT TOP 1 id FROM item_masters 
-            WHERE UPPER(itemCode) = '${cleanCode.replace(/'/g, "''")}' ${tenantFilter}
-          `);
-          if (Array.isArray(dupCode) && dupCode.length > 0) {
-            return res.status(409).json({
-              success: false,
-              message: `An item with Item Code "${cleanCode}" already exists. Duplicate item codes are not allowed.`
-            });
-          }
-        }
 
         if (cleanName) {
           const dupName = await prisma.$queryRawUnsafe(`

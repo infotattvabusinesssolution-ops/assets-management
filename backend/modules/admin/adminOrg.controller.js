@@ -1307,7 +1307,7 @@ export async function getCostCentersList(req, res) {
     const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
     const where = (tenantCompanyId && !isSuperAdmin) ? { companyId: tenantCompanyId } : {};
 
-    const dbCC = await prisma.costCenter.findMany({
+    const dbCC = await prisma.section.findMany({
       where,
       include: { company: true },
       orderBy: { code: 'asc' }
@@ -1327,7 +1327,7 @@ export async function getCostCentersList(req, res) {
       status: c.active ? 'Active' : 'Inactive',
       createdOn: new Date(c.createdAt).toLocaleDateString('en-GB')
     }));
-    return res.json({ success: true, costCenters: mapped, total: mapped.length });
+    return res.json({ success: true, costCenters: mapped, sections: mapped, total: mapped.length });
   } catch (err) {
     res.json({ success: true, costCenters: memoryCostCenters, total: memoryCostCenters.length });
   }

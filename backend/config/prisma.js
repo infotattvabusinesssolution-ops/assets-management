@@ -13,6 +13,38 @@ export function getDbConnected() {
   return isConnected;
 }
 
+const DROPPED_MODELS = new Set(['building', 'floor', 'room', 'zone', 'floorMap', 'floorMapZone', 'assetMapPosition']);
+const DROPPED_RELATIONS = ['building', 'floor', 'room', 'zone', 'mapPosition', 'floorMap', 'buildings', 'floors', 'rooms', 'zones', 'mapZones', 'assetPositions'];
+
+function sanitizeArgs(args) {
+  if (!args || typeof args !== 'object') return args;
+  if (args.include && typeof args.include === 'object') {
+    for (const rel of DROPPED_RELATIONS) {
+      if (rel in args.include) delete args.include[rel];
+    }
+    if (Object.keys(args.include).length === 0) delete args.include;
+  }
+  if (args.select && typeof args.select === 'object') {
+    for (const rel of DROPPED_RELATIONS) {
+      if (rel in args.select) delete args.select[rel];
+    }
+  }
+  return args;
+}
+
+const dummyModelHandler = {
+  findMany: async () => [],
+  findFirst: async () => null,
+  findUnique: async () => null,
+  count: async () => 0,
+  create: async ({ data } = {}) => ({ id: 'removed', ...(data || {}) }),
+  update: async ({ data } = {}) => ({ id: 'removed', ...(data || {}) }),
+  updateMany: async () => ({ count: 0 }),
+  delete: async () => null,
+  deleteMany: async () => ({ count: 0 }),
+  upsert: async () => null,
+};
+
 if (PrismaClient) {
   const globalForPrisma = globalThis;
   const basePrisma = globalForPrisma.basePrisma || new PrismaClient({
@@ -57,9 +89,18 @@ if (PrismaClient) {
           if (!isConnected) {
             throw new Error(`Database is offline (Resilient mode active). Skipping Prisma query on ${model}.${operation}`);
           }
-          return query(args);
+          return query(sanitizeArgs(args));
         }
       }
+    }
+  });
+
+  prismaInstance = new Proxy(prismaInstance, {
+    get(target, prop, receiver) {
+      if (typeof prop === 'string' && DROPPED_MODELS.has(prop)) {
+        return dummyModelHandler;
+      }
+      return Reflect.get(target, prop, receiver);
     }
   });
 } else {

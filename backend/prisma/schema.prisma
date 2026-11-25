@@ -87,7 +87,7 @@ model Company {
   license          License?
   branches         Branch[]
   departments      Department[]
-  costCenters      CostCenter[]
+  sections         Section[]
   sites            Site[]
   employees        Employee[]
   assets           Asset[]
@@ -138,7 +138,7 @@ model Department {
   updatedAt        DateTime @updatedAt
 
   company     Company      @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  costCenters CostCenter[]
+  sections    Section[]
   employees   Employee[]
   assets      Asset[]
   users       User[]
@@ -147,7 +147,7 @@ model Department {
   @@map("departments")
 }
 
-model CostCenter {
+model Section {
   id            String   @id @default(uuid())
   legacyMongoId String?
   companyId     String
@@ -168,7 +168,7 @@ model CostCenter {
   users      User[]
 
   @@unique([companyId, code])
-  @@map("cost_centers")
+  @@map("sections")
 }
 
 model Site {
@@ -188,85 +188,12 @@ model Site {
   updatedAt     DateTime @updatedAt
 
   company   Company    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  buildings Building[]
   assets    Asset[]
   users     User[]
   receipts  Receipt[]
 
   @@unique([companyId, code])
   @@map("sites")
-}
-
-model Building {
-  id            String   @id @default(uuid())
-  legacyMongoId String?
-  siteId        String
-  code          String
-  name          String
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  site   Site    @relation(fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  floors Floor[]
-  assets Asset[]
-
-  @@map("buildings")
-}
-
-model Floor {
-  id            String   @id @default(uuid())
-  legacyMongoId String?
-  buildingId    String
-  code          String
-  name          String
-  floorNumber   Int?
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  building Building  @relation(fields: [buildingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  rooms    Room[]
-  assets   Asset[]
-  floorMap FloorMap?
-
-  @@map("floors")
-}
-
-model Room {
-  id            String   @id @default(uuid())
-  legacyMongoId String?
-  floorId       String
-  code          String
-  name          String
-  roomType      String   @default("General")
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  floor  Floor   @relation(fields: [floorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  zones  Zone[]
-  assets Asset[]
-
-  @@map("rooms")
-}
-
-model Zone {
-  id            String   @id @default(uuid())
-  legacyMongoId String?
-  roomId        String
-  code          String
-  name          String
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  room         Room               @relation(fields: [roomId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  assets       Asset[]
-  mapZones     FloorMapZone[]
-  mapPositions AssetMapPosition[]
-
-  @@map("zones")
 }
 
 model Employee {
@@ -287,9 +214,9 @@ model Employee {
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  company    Company     @relation(fields: [companyId], references: [id])
-  department Department? @relation(fields: [departmentId], references: [id])
-  costCenter CostCenter? @relation(fields: [costCenterId], references: [id])
+  company         Company     @relation(fields: [companyId], references: [id])
+  department      Department? @relation(fields: [departmentId], references: [id])
+  assignedSection Section?    @relation(fields: [costCenterId], references: [id])
 
   custodyAssets  Asset[]                @relation("AssetCustodian")
   custodyRecords CustodyAssignment[]
@@ -590,12 +517,8 @@ model Asset {
 
   company    Company     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   site       Site        @relation(fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  building   Building?   @relation(fields: [buildingId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  floor      Floor?      @relation(fields: [floorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  room       Room?       @relation(fields: [roomId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  zone       Zone?       @relation(fields: [zoneId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  section    Section?    @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   custodian  Employee?   @relation("AssetCustodian", fields: [custodianId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   creator User? @relation("AssetCreator", fields: [createdByUserId], references: [id], onDelete: NoAction, onUpdate: NoAction)
@@ -612,7 +535,6 @@ model Asset {
   warranty           Warranty?
   tags               Tag[]
   tagHistories       TagHistory[]
-  mapPosition        AssetMapPosition?
   discoveryMatches   DiscoveryMatch[]
   aiRecommendations  AIRecommendation[]
   transactions       AssetTransaction[]
@@ -712,7 +634,7 @@ model User {
   branch     Branch?     @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   site       Site?       @relation(fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  costCenter CostCenter? @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  section    Section?    @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   employee   Employee?   @relation(fields: [employeeId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   dataScopes          UserDataScope[]
@@ -1587,59 +1509,6 @@ model DiscoveryMatch {
   matchedAsset Asset?               @relation(fields: [matchedAssetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
 
   @@map("discovery_matches")
-}
-
-model FloorMap {
-  id            String   @id @default(uuid())
-  legacyMongoId String?
-  title         String
-  floorId       String   @unique
-  imageUrl      String
-  widthMeters   Decimal  @default(50) @db.Decimal(10, 2)
-  heightMeters  Decimal  @default(30) @db.Decimal(10, 2)
-  active        Boolean  @default(true)
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  floor          Floor              @relation(fields: [floorId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  zones          FloorMapZone[]
-  assetPositions AssetMapPosition[]
-
-  @@map("floor_maps")
-}
-
-model FloorMapZone {
-  id         String  @id @default(uuid())
-  floorMapId String
-  zoneId     String?
-  name       String
-  color      String  @default("#3B82F6")
-  points     String // JSON String array of {x, y} coordinates
-
-  floorMap FloorMap @relation(fields: [floorMapId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  zone     Zone?    @relation(fields: [zoneId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@map("floor_map_zones")
-}
-
-model AssetMapPosition {
-  id              String   @id @default(uuid())
-  legacyMongoId   String?
-  assetId         String   @unique
-  floorMapId      String
-  xRatio          Decimal  @db.Decimal(6, 4)
-  yRatio          Decimal  @db.Decimal(6, 4)
-  zoneId          String?
-  updatedByUserId String
-  active          Boolean  @default(true)
-  createdAt       DateTime @default(now())
-  updatedAt       DateTime @updatedAt
-
-  asset    Asset    @relation(fields: [assetId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  floorMap FloorMap @relation(fields: [floorMapId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  zone     Zone?    @relation(fields: [zoneId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-
-  @@map("asset_map_positions")
 }
 
 // ------------------------------------------------------

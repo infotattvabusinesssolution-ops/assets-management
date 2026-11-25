@@ -134,6 +134,11 @@ router.post('/cost-centers', createCostCenter);
 router.put('/cost-centers/:id', updateCostCenter);
 router.delete('/cost-centers/:id', deleteCostCenter);
 
+router.get('/sections', getCostCenters);
+router.post('/sections', createCostCenter);
+router.put('/sections/:id', updateCostCenter);
+router.delete('/sections/:id', deleteCostCenter);
+
 router.get('/employees', getEmployees);
 router.post('/employees', createEmployee);
 router.put('/employees/:id', updateEmployee);
