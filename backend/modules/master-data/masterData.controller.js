@@ -2654,6 +2654,11 @@ async function ensureSubCategoriesTable() {
 
       IF NOT EXISTS (SELECT * FROM syscolumns WHERE id=object_id('sub_categories') AND name='minCapitalizationValue')
       ALTER TABLE sub_categories ADD minCapitalizationValue FLOAT NULL DEFAULT 0;
+
+      IF NOT EXISTS (SELECT * FROM sysobjects WHERE name='FK_sub_categories_categories' and xtype='F')
+      BEGIN
+        ALTER TABLE sub_categories ADD CONSTRAINT FK_sub_categories_categories FOREIGN KEY (categoryId) REFERENCES categories(id) ON DELETE SET NULL;
+      END
     `);
     subCategoriesTableEnsured = true;
   } catch (err) {
@@ -3246,7 +3251,7 @@ export async function getSubCategories(req, res, next) {
           whereClause += ` AND sc.categoryId = '${String(req.query.categoryId).replace(/'/g, "''")}'`;
         }
         if (req.query.assetSubGroupId) {
-          whereClause += ` AND sc.assetSubGroupId = '${String(req.query.assetSubGroupId).replace(/'/g, "''")}'`;
+          whereClause += ` AND (c.assetSubGroupId = '${String(req.query.assetSubGroupId).replace(/'/g, "''")}' OR sc.assetSubGroupId = '${String(req.query.assetSubGroupId).replace(/'/g, "''")}')`;
         }
         const query = `
           SELECT sc.*, c.name as resolvedCategoryName, c.description as categoryDesc

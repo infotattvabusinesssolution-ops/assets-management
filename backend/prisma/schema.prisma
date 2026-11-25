@@ -414,6 +414,7 @@ model Category {
   updatedAt                     DateTime           @updatedAt
 
   assetSubGroup    AssetSubGroup?          @relation(fields: [assetSubGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
+  subCategories    SubCategory[]
   models           AssetModel[]
   assets           Asset[]
   customFields     CustomFieldDefinition[]
@@ -460,6 +461,8 @@ model SubCategory {
   minCapitalizationValue Float? @default(0)
   createdAt         DateTime? @default(now())
   updatedAt         DateTime? @updatedAt
+
+  category          Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@map("sub_categories")
 }
