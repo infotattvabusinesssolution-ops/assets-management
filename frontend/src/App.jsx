@@ -212,11 +212,11 @@ export function App() {
                 <Route path="admin/users" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><UserManagement /></RoleRoute>} />
                 <Route path="admin/roles" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><RolesPermissions /></RoleRoute>} />
                 <Route path="admin/roles-permissions" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><RolesPermissions /></RoleRoute>} />
-                <Route path="admin/organization" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
-                <Route path="admin/companies" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
-                <Route path="admin/departments" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
-                <Route path="admin/locations" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
-                <Route path="admin/cost-centers" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><CompanyOrganization /></RoleRoute>} />
+                <Route path="admin/organization" element={<Navigate to="/admin/master-data" replace />} />
+                <Route path="admin/companies" element={<Navigate to="/admin/master-data" replace />} />
+                <Route path="admin/departments" element={<Navigate to="/admin/master-data?tab=departments" replace />} />
+                <Route path="admin/locations" element={<Navigate to="/admin/master-data?tab=locations" replace />} />
+                <Route path="admin/cost-centers" element={<Navigate to="/admin/master-data?tab=cost-centers" replace />} />
                 <Route path="admin/system-config" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><SystemConfiguration /></RoleRoute>} />
                 <Route path="admin/settings" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><SystemConfiguration /></RoleRoute>} />
                 <Route path="admin/configuration" element={<RoleRoute allowedRoles={['SYS_ADMIN']}><SystemConfiguration /></RoleRoute>} />

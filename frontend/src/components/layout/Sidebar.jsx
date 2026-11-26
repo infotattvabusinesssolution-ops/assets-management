@@ -215,7 +215,6 @@ const NAV_STRUCTURE = [
       { name: 'Workflow Configuration', path: '/admin/workflows' },
       { name: 'User Management', path: '/admin/users' },
       { name: 'Roles & Permissions', path: '/admin/roles' },
-      { name: 'License & Companies', path: '/admin/system-config?tab=license' },
       { name: 'System Configuration', path: '/admin/system-config' },
       { name: 'Code Prefix Settings', path: '/admin/master-data?tab=code-prefixes' },
       { name: 'Integrations', path: '/admin/integrations' },
