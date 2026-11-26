@@ -407,6 +407,7 @@ model Manufacturer {
 
   models AssetModel[]
   assets Asset[]
+  brands Brand[]
 
   @@map("manufacturers")
 }
@@ -415,11 +416,15 @@ model Brand {
   id               String        @id @default(uuid())
   code             String        @unique
   name             String
+  manufacturerId   String?       @db.NVarChar(1000)
+  manufacturerName String?       @db.NVarChar(200)
   description      String?       @db.NVarChar(500)
   active           Boolean?      @default(true)
   companyId        String?
   createdAt        DateTime?     @default(now())
   updatedAt        DateTime?     @updatedAt
+
+  manufacturer     Manufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@map("brands")
 }
