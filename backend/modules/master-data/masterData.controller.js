@@ -85,38 +85,85 @@ export function getPrefixForEntity(entityKey) {
   return `${normKey.slice(0, 3).toUpperCase()}-`;
 }
 
+function getCodeColumnForTable(table) {
+  if (!table) return 'code';
+  const t = String(table).toLowerCase();
+  if (t === 'employees') return 'employeeCode';
+  if (t === 'service_providers') return 'providerCode';
+  if (t === 'asset_models') return 'modelNumber';
+  if (t === 'manufacturers') return null; // manufacturers table has no code column in DB schema
+  if (t === 'custom_fields') return 'name';
+  return 'code';
+}
+
 export async function generateAutoCode(entityKey, fallbackSeed = '', existingList = [], dbTable = null) {
   const cleanPrefix = getPrefixForEntity(entityKey);
-  
-  let count = Array.isArray(existingList) ? existingList.length : 0;
-  if (dbTable && isDbConnected()) {
-    try {
-      const res = await prisma.$queryRawUnsafe(`SELECT COUNT(*) as cnt FROM ${dbTable}`);
-      if (res && res[0] && res[0].cnt !== undefined) {
-        count = Math.max(count, Number(res[0].cnt));
+  const codeCol = getCodeColumnForTable(dbTable);
+
+  const existingCodes = new Set();
+  let maxNumericSuffix = 0;
+
+  // 1. Ingest existing codes from in-memory / file cache list
+  if (Array.isArray(existingList)) {
+    for (const item of existingList) {
+      if (!item) continue;
+      const c = item.code || item.itemCode || item.employeeCode || item.providerCode || item.modelNumber || item.name;
+      if (typeof c === 'string' && c.trim()) {
+        const upper = c.trim().toUpperCase();
+        existingCodes.add(upper);
+        if (upper.startsWith(cleanPrefix.toUpperCase())) {
+          const numPart = upper.slice(cleanPrefix.length).replace(/\D.*$/, '');
+          const parsed = parseInt(numPart, 10);
+          if (!isNaN(parsed) && parsed > maxNumericSuffix) {
+            maxNumericSuffix = parsed;
+          }
+        }
       }
-    } catch (_) {}
+    }
   }
-  
-  let nextNum = count + 1;
+
+  // 2. Ingest existing codes from SQL database table
+  if (dbTable && codeCol && isDbConnected()) {
+    try {
+      const sanitizedPrefix = cleanPrefix.replace(/'/g, "''").toUpperCase();
+      const rows = await prisma.$queryRawUnsafe(
+        `SELECT UPPER(${codeCol}) AS c FROM ${dbTable} WHERE ${codeCol} IS NOT NULL AND UPPER(${codeCol}) LIKE '${sanitizedPrefix}%'`
+      );
+      if (Array.isArray(rows)) {
+        for (const row of rows) {
+          if (row && row.c) {
+            const upper = String(row.c).trim().toUpperCase();
+            existingCodes.add(upper);
+            if (upper.startsWith(cleanPrefix.toUpperCase())) {
+              const numPart = upper.slice(cleanPrefix.length).replace(/\D.*$/, '');
+              const parsed = parseInt(numPart, 10);
+              if (!isNaN(parsed) && parsed > maxNumericSuffix) {
+                maxNumericSuffix = parsed;
+              }
+            }
+          }
+        }
+      }
+    } catch (dbErr) {
+      console.warn(`[generateAutoCode] DB lookup for ${dbTable}.${codeCol} skipped:`, dbErr.message);
+    }
+  }
+
+  // 3. Increment sequentially starting from max(maxNumericSuffix, count) + 1
+  let nextNum = maxNumericSuffix + 1;
   let candidate = `${cleanPrefix}${String(nextNum).padStart(3, '0')}`;
-  
-  const isCodeTaken = (code) => {
-    return Array.isArray(existingList) && existingList.some(item => {
-      const c = item.code || item.itemCode || item.employeeCode || item.providerCode;
-      return c && c.toUpperCase() === code.toUpperCase();
-    });
-  };
-  
-  while (isCodeTaken(candidate) && nextNum < count + 1000) {
+
+  while (existingCodes.has(candidate.toUpperCase()) && nextNum < maxNumericSuffix + 10000) {
     nextNum++;
     candidate = `${cleanPrefix}${String(nextNum).padStart(3, '0')}`;
   }
-  
-  if (isCodeTaken(candidate)) {
-    candidate = `${cleanPrefix}${Date.now().toString().slice(-4)}`;
+
+  // 4. Guaranteed non-colliding fallback if sequential loop exhausted
+  while (existingCodes.has(candidate.toUpperCase())) {
+    const randSuffix = Math.floor(1000 + Math.random() * 9000);
+    candidate = `${cleanPrefix}${randSuffix}`;
   }
-  
+
   return candidate;
 }
 
