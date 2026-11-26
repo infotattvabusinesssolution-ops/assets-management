@@ -97,7 +97,15 @@ export function GenericMasterTab({
     return m.active === false || m.status === 'Inactive';
   };
 
-  const isParentMfrInactive = () => false;
+  const isParentMfrInactive = (brandItem) => {
+    if (!brandItem) return false;
+    if (brandItem.manufacturerActive === false) return true;
+    const found = realManufacturers.find(m =>
+      (brandItem.manufacturerId && (m.id === brandItem.manufacturerId || m.code === brandItem.manufacturerId)) ||
+      (brandItem.manufacturerName && (m.name || '').toLowerCase() === (brandItem.manufacturerName || '').toLowerCase())
+    );
+    return Boolean(found && isMfrInactive(found));
+  };
 
   const sortedManufacturers = useMemo(() => {
     return [...realManufacturers].sort((a, b) => {
@@ -227,13 +235,17 @@ export function GenericMasterTab({
         const res = await api.get('/master-data/brands?includeInactive=true').catch(() => null);
         if (res?.brands && Array.isArray(res.brands)) {
           const serverBrands = res.brands.map((b) => {
+            const mfrInactive = b.manufacturerActive === false;
             return {
               id: b.id,
               code: b.code || `BRD-${(b.name || '').substring(0, 4).toUpperCase()}`,
               name: b.name,
+              manufacturerId: b.manufacturerId || '',
+              manufacturerName: b.manufacturerName || '',
+              manufacturerActive: b.manufacturerActive !== undefined ? b.manufacturerActive : !mfrInactive,
               description: b.description || '',
-              status: b.active === false ? 'Inactive' : (b.status || 'Active'),
-              active: b.active !== false,
+              status: (b.active === false || mfrInactive) ? 'Inactive' : (b.status || 'Active'),
+              active: b.active !== false && !mfrInactive,
               totalAssets: b.totalAssets || 0
             };
           });
@@ -390,6 +402,12 @@ export function GenericMasterTab({
       triggerToast && triggerToast('System enumeration status cannot be changed.');
       return;
     }
+    const nextStatus = item.status === 'Active' ? 'Inactive' : 'Active';
+    const nextActive = nextStatus === 'Active';
+    if (activeTab === 'brands' && nextActive && isParentMfrInactive(item)) {
+      triggerToast && triggerToast(`Cannot activate Brand because parent Manufacturer "${item.manufacturerName || 'Selected'}" is inactive.`);
+      return;
+    }
     setActiveRowMenuId && setActiveRowMenuId(null);
     setGenericToToggleStatus(item);
   };
@@ -486,6 +504,21 @@ export function GenericMasterTab({
       return;
     }
 
+    if (activeTab === 'brands') {
+      const chosenMfr = realManufacturers.find(m =>
+        (formState.manufacturerId && m.id === formState.manufacturerId) ||
+        (formState.manufacturerName && (m.name || '').toLowerCase() === (formState.manufacturerName || '').toLowerCase())
+      );
+      if (chosenMfr && isMfrInactive(chosenMfr)) {
+        if (!editingItem || chosenMfr.id !== editingItem.manufacturerId || formState.status === 'Active') {
+          const msg = `Cannot assign or activate Brand with inactive Manufacturer "${chosenMfr.name}". Please select an active Manufacturer.`;
+          setModalError(msg);
+          triggerToast && triggerToast(msg);
+          return;
+        }
+      }
+    }
+
     try {
       if (editingItem) {
         if (activeTab === 'uom') {
@@ -500,9 +533,9 @@ export function GenericMasterTab({
         }
         if (activeTab === 'brands') {
           await api.put(`/master-data/brands/${editingItem.id}`, {
-            code: formState.code,
-            name: formState.name,
-            description: formState.description || '',
+            ...formState,
+            manufacturerId: formState.manufacturerId || '',
+            manufacturerName: formState.manufacturerName || '',
             active: formState.status === 'Active'
           });
           try {
@@ -576,12 +609,17 @@ export function GenericMasterTab({
           const res = await api.post('/master-data/brands', {
             code: newItem.code,
             name: newItem.name,
+            manufacturerId: formState.manufacturerId || '',
+            manufacturerName: formState.manufacturerName || '',
             description: newItem.description || '',
             active: newItem.status === 'Active'
           });
           if (res?.brand?.id) {
             newItem.id = res.brand.id;
             if (res.brand.code) newItem.code = res.brand.code;
+            if (res.brand.manufacturerId) newItem.manufacturerId = res.brand.manufacturerId;
+            if (res.brand.manufacturerName) newItem.manufacturerName = res.brand.manufacturerName;
+            newItem.manufacturerActive = res.brand.manufacturerActive !== undefined ? res.brand.manufacturerActive : true;
           }
           try {
             const custom = JSON.parse(localStorage.getItem(getScopedKey('fams_custom_brands')) || '[]');
@@ -933,6 +971,7 @@ export function GenericMasterTab({
                   <th className="py-3 px-3">Name</th>
                   {activeTab === 'manufacturers' && <th className="py-3 px-3">Support Contact</th>}
                   {activeTab === 'manufacturers' && <th className="py-3 px-3">Website</th>}
+                  {activeTab === 'brands' && <th className="py-3 px-3">Manufacturer</th>}
                   {activeTab === 'brands' && <th className="py-3 px-3">Description</th>}
                   {activeTab === 'uom' && <th className="py-3 px-3 text-center">Symbol</th>}
                   {activeTab === 'uom' && <th className="py-3 px-3">Category</th>}
@@ -994,6 +1033,20 @@ export function GenericMasterTab({
                           </td>
                         )}
                         {activeTab === 'brands' && (
+                          <td className="py-2.5 px-3 font-semibold text-slate-800">
+                            {item.manufacturerName ? (
+                              <div className="flex items-center gap-1.5 flex-wrap">
+                                <span>{item.manufacturerName}</span>
+                                {isParentMfrInactive(item) && (
+                                  <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-50 text-rose-600 border border-rose-200">
+                                    (Parent Inactive)
+                                  </span>
+                                )}
+                              </div>
+                            ) : <span className="text-slate-300 italic">None</span>}
+                          </td>
+                        )}
+                        {activeTab === 'brands' && (
                           <td className="py-2.5 px-3 text-slate-500 max-w-[240px] truncate">
                             {item.description || '-'}
                           </td>
@@ -1031,12 +1084,12 @@ export function GenericMasterTab({
                           <span
                             className={clsx(
                               'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-                              item.status === 'Active'
+                              (item.status === 'Active' && !isParentMfrInactive(item))
                                 ? 'bg-emerald-100 text-emerald-700'
                                 : 'bg-rose-100 text-rose-700'
                             )}
                           >
-                            {item.status === 'Active' ? 'Active' : 'Inactive'}
+                            {(item.status === 'Active' && !isParentMfrInactive(item)) ? 'Active' : 'Inactive'}
                           </span>
                         </td>
                         <td className="py-2.5 px-3 text-center" onClick={(e) => e.stopPropagation()}>
@@ -1204,6 +1257,20 @@ export function GenericMasterTab({
 
 
 
+                {activeTab === 'brands' && selectedItem.manufacturerName && (
+                  <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
+                    <span className="text-slate-500 font-semibold">Manufacturer</span>
+                    <span className="font-semibold text-slate-900 inline-flex items-center gap-1.5">
+                      <span>{selectedItem.manufacturerName}</span>
+                      {isParentMfrInactive(selectedItem) && (
+                        <span className="text-[10px] px-1.5 py-0.5 rounded-full font-bold bg-rose-50 text-rose-600 border border-rose-200">
+                          (Inactive)
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                )}
+
                 {activeTab === 'uom' && selectedItem.category && (
                   <div className="flex items-center justify-between p-2 rounded-xl bg-slate-50 border border-slate-100">
                     <span className="text-slate-500 font-semibold">Category Type</span>
@@ -1222,11 +1289,11 @@ export function GenericMasterTab({
                   <span className="text-slate-500 font-semibold">Status</span>
                   <span className={clsx(
                     'inline-flex items-center px-2.5 py-0.5 rounded-full text-[11px] font-bold',
-                    selectedItem.status === 'Active'
+                    (selectedItem.status === 'Active' && !isParentMfrInactive(selectedItem))
                       ? 'bg-emerald-100 text-emerald-700'
                       : 'bg-rose-100 text-rose-700'
                   )}>
-                    {selectedItem.status === 'Active' ? 'Active' : 'Inactive'}
+                    {(selectedItem.status === 'Active' && !isParentMfrInactive(selectedItem)) ? 'Active' : 'Inactive'}
                   </span>
                 </div>
               </div>
@@ -1315,6 +1382,59 @@ export function GenericMasterTab({
                       className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none"
                     />
                   </div>
+                </div>
+              )}
+
+              {activeTab === 'brands' && (
+                <div>
+                  <div className="flex items-center justify-between mb-1">
+                    <label className="block font-semibold text-slate-700">
+                      Manufacturer <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <span className="text-[10px] text-slate-400 font-medium">From Manufacturer Master</span>
+                  </div>
+                  <select
+                    value={formState.manufacturerId || formState.manufacturerName || ''}
+                    onChange={(e) => {
+                      const val = e.target.value;
+                      const sel = realManufacturers.find(m => m.id === val || m.name === val);
+                      if (sel && isMfrInactive(sel)) {
+                        triggerToast && triggerToast(`Manufacturer "${sel.name}" is inactive and cannot be selected.`);
+                        return;
+                      }
+                      setFormState({
+                        ...formState,
+                        manufacturerId: sel ? sel.id : '',
+                        manufacturerName: sel ? sel.name : ''
+                      });
+                    }}
+                    className="w-full border border-slate-200 rounded-xl px-3 py-2 text-xs focus:border-[#6C2BD9] focus:outline-none bg-white cursor-pointer font-medium text-slate-800"
+                  >
+                    <option value="">-- Select Manufacturer --</option>
+                    {sortedManufacturers.map((m) => {
+                      const isInactive = isMfrInactive(m);
+                      return (
+                        <option
+                          key={m.id || m.code || m.name}
+                          value={m.id || m.name}
+                          disabled={isInactive}
+                          className={isInactive ? 'text-slate-400 italic bg-slate-100 cursor-not-allowed' : 'text-slate-900'}
+                        >
+                          {m.name}{isInactive ? ' (Inactive)' : ''}
+                        </option>
+                      );
+                    })}
+                  </select>
+                  {realManufacturers.length === 0 ? (
+                    <p className="text-[11px] text-amber-600 mt-1 flex items-center gap-1 font-medium">
+                      <AlertTriangle className="w-3 h-3 shrink-0" />
+                      <span>No manufacturers defined yet. Add manufacturers in the Manufacturers tab to link them here.</span>
+                    </p>
+                  ) : (
+                    <p className="text-[10px] text-slate-400 mt-1">
+                      Active manufacturers can be selected. Inactive manufacturers appear as (Inactive) and are disabled.
+                    </p>
+                  )}
                 </div>
               )}
 
