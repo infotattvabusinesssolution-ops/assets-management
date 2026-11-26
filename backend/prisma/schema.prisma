@@ -198,7 +198,6 @@ model Site {
 
   company   Company    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   assets    Asset[]
-  users     User[]
   receipts  Receipt[]
 
   @@unique([companyId, code])
@@ -643,7 +642,6 @@ model User {
   roleId        String
   companyId     String?
   branchId      String?
-  siteId        String?
   departmentId  String?
   costCenterId  String?
   employeeId          String?
@@ -656,7 +654,6 @@ model User {
   role       Role        @relation(fields: [roleId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   company    Company?    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   branch     Branch?     @relation(fields: [branchId], references: [id], onDelete: NoAction, onUpdate: NoAction)
-  site       Site?       @relation(fields: [siteId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   department Department? @relation(fields: [departmentId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   section    Section?    @relation(fields: [costCenterId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   employee   Employee?   @relation(fields: [employeeId], references: [id], onDelete: NoAction, onUpdate: NoAction)

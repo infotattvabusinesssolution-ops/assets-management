@@ -209,7 +209,6 @@ export async function login(req, res, next) {
           include: {
             role: true,
             company: true,
-            site: true,
             department: true,
             section: true
           }
@@ -318,7 +317,7 @@ export async function login(req, res, next) {
               email: user.email,
               role: formatUserRole(user.role),
               company: user.company,
-              site: user.site,
+              site: null,
               department: user.department,
               forcePasswordChange: Boolean(user.forcePasswordChange)
             }
@@ -392,7 +391,7 @@ export async function login(req, res, next) {
         email: user.email,
         role: user.role,
         company: user.company,
-        site: user.site,
+        site: null,
         department: user.department,
         forcePasswordChange: Boolean(user.forcePasswordChange)
       }
@@ -416,7 +415,6 @@ export async function getProfile(req, res, next) {
             active: true,
             role: true,
             company: true,
-            site: true,
             department: true,
             section: true
           }
@@ -472,7 +470,6 @@ export async function getUsers(req, res, next) {
           include: {
             role: true,
             company: true,
-            site: true,
             department: true,
             section: true
           },
@@ -614,7 +611,6 @@ export async function createUser(req, res, next) {
           include: {
             role: true,
             company: true,
-            site: true,
             department: true,
             section: true
           }
@@ -777,7 +773,6 @@ export async function updateUser(req, res, next) {
               phone: phone !== undefined ? phone.trim() : undefined,
               roleId: resolvedRoleId,
               companyId: req.tenantCompanyId ? undefined : (companyId !== undefined ? (companyId || null) : undefined),
-              siteId: siteId !== undefined ? (siteId || null) : undefined,
               departmentId: departmentId !== undefined ? (departmentId || null) : undefined,
               costCenterId: costCenterId !== undefined ? (costCenterId || null) : undefined,
               active: active !== undefined ? Boolean(active) : undefined
@@ -785,7 +780,6 @@ export async function updateUser(req, res, next) {
             include: {
               role: true,
               company: true,
-              site: true,
               department: true,
               section: true
             }
@@ -1327,7 +1321,6 @@ export async function activateLicense(req, res, next) {
           include: {
             role: true,
             company: true,
-            site: true,
             department: true,
             section: true
           }
@@ -1426,7 +1419,7 @@ export async function activateLicense(req, res, next) {
         email: user.email,
         role: formatUserRole(user.role),
         company: user.company,
-        site: user.site,
+        site: null,
         department: user.department,
         forcePasswordChange: Boolean(user.forcePasswordChange)
       }

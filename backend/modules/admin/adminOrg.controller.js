@@ -262,7 +262,6 @@ export async function getAdminUsers(req, res) {
         include: {
           role: true,
           department: true,
-          site: true,
           company: true,
           section: true,
           employee: true
@@ -283,7 +282,7 @@ export async function getAdminUsers(req, res) {
       role: u.role?.name || 'Standard User',
       roleId: u.role?.id || u.roleId,
       department: u.department?.name || '',
-      location: u.site?.name || '',
+      location: '',
       company: u.company?.name || '',
       businessUnit: 'Corporate Operations',
       costCenter: u.costCenter?.name || u.costCenter?.code || '',
@@ -294,7 +293,7 @@ export async function getAdminUsers(req, res) {
       mfaEnabled: true,
       lastLogin: u.lastLogin ? new Date(u.lastLogin).toLocaleDateString('en-GB') : 'Recently',
       createdDate: new Date(u.createdAt).toISOString().split('T')[0],
-      assignedLocations: [u.site?.name].filter(Boolean),
+      assignedLocations: [],
       assignedCompanies: [u.company?.name].filter(Boolean)
     }));
 
@@ -448,7 +447,6 @@ export async function createAdminUser(req, res) {
               phone: data.phone || '',
               passwordHash,
               roleId: roleRecord.id,
-              siteId: siteRecord ? siteRecord.id : null,
               departmentId: deptRecord ? deptRecord.id : null,
               companyId: compRecord ? compRecord.id : null,
               costCenterId: costCenterRecord ? costCenterRecord.id : null,
@@ -589,7 +587,6 @@ export async function updateAdminUser(req, res) {
         active: req.body.status ? String(req.body.status).toLowerCase() === 'active' : true
       };
       if (roleRecord) updateData.roleId = roleRecord.id;
-      if (siteRecord) updateData.siteId = siteRecord.id;
       if (deptRecord) updateData.departmentId = deptRecord.id;
       if (compRecord) updateData.companyId = compRecord.id;
       if (costCenterRecord) updateData.costCenterId = costCenterRecord.id;
