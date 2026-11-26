@@ -995,19 +995,14 @@ export function AssetForm() {
     return mfrs;
   }, [manufacturers, formData.manufacturer]);
 
-  // 6. Cascading / Linked Brands based on Manufacturer
+  // 6. Available Brands (standalone, independent from manufacturer)
   const availableBrands = useMemo(() => {
     let brds = (brands && brands.length > 0) ? brands : [];
-    if (formData.manufacturer) {
-      const mName = formData.manufacturer.toLowerCase().trim();
-      const filtered = brds.filter(b => (b.manufacturerName || b.manufacturer || '').toLowerCase().trim() === mName);
-      if (filtered.length > 0) brds = filtered;
-    }
     if (formData.brand && !brds.some(b => (b.name || b.title || b).toLowerCase() === formData.brand.toLowerCase())) {
       brds = [{ id: 'sel-brand', name: formData.brand }, ...brds];
     }
     return brds;
-  }, [brands, formData.manufacturer, formData.brand]);
+  }, [brands, formData.brand]);
 
   // --- Handlers for Seamless Top-Down & Bottom-Up Cascades ---
 

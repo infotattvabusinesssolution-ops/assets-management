@@ -366,16 +366,15 @@ const MASTER_CONFIGS = {
     endpoint: '/master-data/brands?includeInactive=true',
     postEndpoint: '/master-data/brands',
     dataKey: 'brands',
-    headers: ['Brand Code', 'Brand Name', 'Manufacturer', 'Description', 'Status'],
-    fields: ['code', 'name', 'manufacturerName', 'description', 'status'],
+    headers: ['Brand Code', 'Brand Name', 'Description', 'Status'],
+    fields: ['code', 'name', 'description', 'status'],
     sampleRows: [
-      ['BRD-LAT', 'Latitude', 'Dell Technologies Inc.', 'Enterprise business laptops and convertibles', 'Active'],
-      ['BRD-CAT', 'Catalyst', 'Cisco Systems Inc.', 'Enterprise ethernet switches and routers', 'Active']
+      ['BRD-LAT', 'Latitude', 'Enterprise business laptops and convertibles', 'Active'],
+      ['BRD-CAT', 'Catalyst', 'Enterprise ethernet switches and routers', 'Active']
     ],
     mapRow: (r) => ({
       code: r.code || r['brand code'] || '',
       name: r.name || r['brand name'] || '',
-      manufacturerName: r.manufacturerName || r['manufacturer'] || '',
       description: r.description || r['description'] || '',
       status: r.status || r['status'] || 'Active'
     })

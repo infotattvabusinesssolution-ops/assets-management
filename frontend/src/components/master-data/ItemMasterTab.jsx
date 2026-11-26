@@ -292,16 +292,10 @@ export function ItemMasterTab({
     });
   }, [subCategories, formState.categoryId, formState.categoryName, formState.assetSubGroupName, formState.assetGroupName]);
 
-  // Derived Brands matching selected Manufacturer (or all brands if no manufacturer selected)
+  // Available Brands (standalone master, not filtered by manufacturer)
   const availableModalBrands = useMemo(() => {
-    if (!formState.manufacturerName) return brands;
-    const targetMfr = formState.manufacturerName.toLowerCase();
-    const filtered = brands.filter(b => {
-      const mfr = (b.manufacturerName || '').toLowerCase();
-      return mfr === targetMfr || mfr.includes(targetMfr) || targetMfr.includes(mfr);
-    });
-    return filtered.length > 0 ? filtered : brands;
-  }, [brands, formState.manufacturerName]);
+    return brands;
+  }, [brands]);
 
   // Filtered Items for List
   const filteredItems = useMemo(() => {
@@ -1525,14 +1519,10 @@ export function ItemMasterTab({
                       value={formState.brandName}
                       onChange={(e) => {
                         const brd = brands.find(b => b.name === e.target.value);
-                        const autoMfr = brd?.manufacturerName || formState.manufacturerName;
-                        const mfrObj = manufacturers.find(m => m.name === autoMfr);
                         setFormState({
                           ...formState,
                           brandName: e.target.value,
-                          brandId: brd?.id || '',
-                          manufacturerName: autoMfr,
-                          manufacturerId: mfrObj?.id || formState.manufacturerId
+                          brandId: brd?.id || ''
                         });
                         if (e.target.value) clearModalFieldError('brandName');
                       }}
@@ -1545,7 +1535,7 @@ export function ItemMasterTab({
                       <option value="">-- Select Brand * --</option>
                       {availableModalBrands.map(b => (
                         <option key={b.id || b.name} value={b.name}>
-                          {b.name} {b.manufacturerName ? `(${b.manufacturerName})` : ''}
+                          {b.name}
                         </option>
                       ))}
                     </select>

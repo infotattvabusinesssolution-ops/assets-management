@@ -5150,18 +5150,6 @@ export async function updateMasterEntity(req, res, next) {
           });
         }
       }
-    } else if ((entityType === 'brand' || modelName === 'brand') && req.body.active === true) {
-      const existing = await prisma.brand.findUnique({ where: { id } });
-      const targetMfrId = req.body.manufacturerId || existing?.manufacturerId;
-      if (targetMfrId) {
-        const mfr = await prisma.manufacturer.findUnique({ where: { id: targetMfrId } });
-        if (mfr && (mfr.active === false || mfr.status === 'Inactive')) {
-          return res.status(400).json({
-            success: false,
-            message: `Cannot activate Brand because parent Manufacturer "${mfr.name}" is inactive.`
-          });
-        }
-      }
     }
 
     const updated = await prisma[modelName].update({ where: { id }, data: req.body });
@@ -5179,15 +5167,6 @@ export async function updateMasterEntity(req, res, next) {
         where: { companyId: id },
         data: { status: 'INACTIVE' }
       }).catch(e => console.warn('Cascade deactivation to suppliers error:', e.message));
-    } else if ((entityType === 'manufacturer' || modelName === 'manufacturer') && req.body.active === false) {
-      await prisma.brand.updateMany({
-        where: { manufacturerId: id },
-        data: { active: false }
-      }).catch(e => console.warn('Cascade deactivation to brands error:', e.message));
-      inMemoryBrands = inMemoryBrands.map(b =>
-        b.manufacturerId === id ? { ...b, active: false, status: 'Inactive' } : b
-      );
-      writeBrandsToFile(inMemoryBrands);
     }
 
     res.json({ success: true, entity: updated });
@@ -5304,15 +5283,6 @@ export async function toggleMasterEntityStatus(req, res, next) {
         where: { departmentId: id },
         data: { active: false }
       }).catch(e => console.warn('Cascade deactivation to cost centers error:', e.message));
-    } else if ((entityType === 'manufacturer' || modelName === 'manufacturer') && updated.active === false) {
-      await prisma.brand.updateMany({
-        where: { manufacturerId: id },
-        data: { active: false }
-      }).catch(e => console.warn('Cascade deactivation to brands error:', e.message));
-      inMemoryBrands = inMemoryBrands.map(b =>
-        b.manufacturerId === id ? { ...b, active: false, status: 'Inactive' } : b
-      );
-      writeBrandsToFile(inMemoryBrands);
     } else if ((entityType === 'category' || modelName === 'category') && updated.active === false) {
       await prisma.subCategory.updateMany({
         where: {
@@ -5427,13 +5397,6 @@ export async function deleteMasterEntity(req, res, next) {
         return res.status(400).json({
           success: false,
           message: `This manufacturer is referenced by ${modelCount} asset model(s) and cannot be deleted.`
-        });
-      }
-      const brandCount = await prisma.brand.count({ where: { manufacturerId: id } }).catch(() => 0);
-      if (brandCount > 0) {
-        return res.status(400).json({
-          success: false,
-          message: `This manufacturer is referenced by ${brandCount} brand(s) and cannot be deleted.`
         });
       }
     }
@@ -6220,29 +6183,19 @@ async function ensureBrandsTable() {
         id NVARCHAR(100) PRIMARY KEY,
         code NVARCHAR(50) NOT NULL UNIQUE,
         name NVARCHAR(100) NOT NULL,
-        manufacturerId NVARCHAR(1000) NULL,
-        manufacturerName NVARCHAR(200) NULL,
         description NVARCHAR(500) NULL,
         active BIT DEFAULT 1,
+        companyId NVARCHAR(100) NULL,
         createdAt DATETIME DEFAULT CURRENT_TIMESTAMP,
         updatedAt DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
-      IF EXISTS (SELECT * FROM sys.columns WHERE object_id = OBJECT_ID('brands') AND name = 'manufacturerId' AND max_length < 2000)
-      BEGIN
-        ALTER TABLE brands ALTER COLUMN manufacturerId NVARCHAR(1000) NULL;
-      END
-
-      IF NOT EXISTS (
+      IF EXISTS (
         SELECT * FROM sys.foreign_keys 
         WHERE name = 'FK_brands_manufacturers' AND parent_object_id = OBJECT_ID('brands')
       )
       BEGIN
-        ALTER TABLE brands
-        ADD CONSTRAINT FK_brands_manufacturers
-        FOREIGN KEY (manufacturerId) REFERENCES manufacturers(id)
-        ON DELETE SET NULL
-        ON UPDATE NO ACTION;
+        ALTER TABLE brands DROP CONSTRAINT FK_brands_manufacturers;
       END
     `);
     brandsTableEnsured = true;
@@ -7643,30 +7596,23 @@ export async function getBrands(req, res, next) {
           : 'AND b.active = 1';
 
         const rows = await prisma.$queryRawUnsafe(`
-          SELECT b.id, b.code, b.name, b.manufacturerId, b.manufacturerName, b.description, b.active, b.companyId,
-                 m.name as mfrName, m.active as mfrActive
+          SELECT b.id, b.code, b.name, b.description, b.active, b.companyId
           FROM brands b
-          LEFT JOIN manufacturers m ON b.manufacturerId = m.id
           WHERE ${tenantFilter} ${activeFilter}
           ORDER BY b.name ASC
         `);
 
         if (Array.isArray(rows)) {
           const list = rows.map(r => {
-            const mfrActive = r.mfrActive !== undefined && r.mfrActive !== null ? (r.mfrActive !== false && r.mfrActive !== 0) : true;
             const bActive = r.active !== false && r.active !== 0;
-            const effectiveActive = mfrActive ? bActive : false;
             return {
               id: r.id,
               code: r.code,
               name: r.name,
-              manufacturerId: r.manufacturerId || '',
-              manufacturerName: r.mfrName || r.manufacturerName || '',
-              manufacturerActive: mfrActive,
               description: r.description || '',
               companyId: r.companyId || null,
-              active: effectiveActive,
-              status: effectiveActive ? 'Active' : 'Inactive'
+              active: bActive,
+              status: bActive ? 'Active' : 'Inactive'
             };
           });
           return res.json({ success: true, brands: list });
@@ -7690,7 +7636,7 @@ export async function getBrands(req, res, next) {
 export async function createBrand(req, res, next) {
   try {
     await ensureBrandsTable();
-    const { code, name, manufacturerId, manufacturerName, description, active, status } = req.body;
+    const { code, name, description, active, status } = req.body;
     if (!name || !name.trim()) return res.status(400).json({ success: false, message: 'Brand Name is required.' });
 
     const cleanName = name.trim();
@@ -7731,43 +7677,16 @@ export async function createBrand(req, res, next) {
       }
     }
 
-    // Resolve manufacturer
-    let targetMfrId = (manufacturerId || '').trim();
-    let targetMfrName = (manufacturerName || '').trim();
-    let mfrActive = true;
-
-    if (isDbConnected() && (targetMfrId || targetMfrName)) {
-      try {
-        const mfrRows = await prisma.$queryRawUnsafe(`
-          SELECT TOP 1 id, name, active FROM manufacturers
-          WHERE id = '${targetMfrId.replace(/'/g, "''")}' OR UPPER(name) = '${targetMfrName.toUpperCase().replace(/'/g, "''")}'
-        `);
-        if (Array.isArray(mfrRows) && mfrRows.length > 0) {
-          targetMfrId = mfrRows[0].id;
-          targetMfrName = mfrRows[0].name;
-          mfrActive = mfrRows[0].active !== false && mfrRows[0].active !== 0;
-          if (!mfrActive) {
-            return res.status(400).json({
-              success: false,
-              message: `Cannot assign Brand to inactive Manufacturer "${mfrRows[0].name}". Please select an active Manufacturer.`
-            });
-          }
-        }
-      } catch (_) {}
-    }
-
     const isAct = active !== undefined ? (Boolean(active) ? 1 : 0) : (status ? (status === 'Active' ? 1 : 0) : 1);
     const id = crypto.randomUUID();
     const cleanCompany = tenantCompanyId ? `'${tenantCompanyId.replace(/'/g, "''")}'` : 'NULL';
     const cleanDesc = description ? `'${description.trim().replace(/'/g, "''")}'` : 'NULL';
-    const cleanMfrId = targetMfrId ? `'${targetMfrId.replace(/'/g, "''")}'` : 'NULL';
-    const cleanMfrName = targetMfrName ? `'${targetMfrName.replace(/'/g, "''")}'` : 'NULL';
 
     if (isDbConnected()) {
       try {
         await prisma.$executeRawUnsafe(`
-          INSERT INTO brands (id, code, name, manufacturerId, manufacturerName, description, companyId, active, createdAt, updatedAt)
-          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', ${cleanMfrId}, ${cleanMfrName}, ${cleanDesc}, ${cleanCompany}, ${isAct}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+          INSERT INTO brands (id, code, name, description, companyId, active, createdAt, updatedAt)
+          VALUES ('${id}', '${cleanCode.replace(/'/g, "''")}', '${cleanName.replace(/'/g, "''")}', ${cleanDesc}, ${cleanCompany}, ${isAct}, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
         `);
       } catch (dbErr) {
         console.warn('DB create brand skipped:', dbErr.message);
@@ -7778,9 +7697,6 @@ export async function createBrand(req, res, next) {
       id,
       code: cleanCode,
       name: cleanName,
-      manufacturerId: targetMfrId || '',
-      manufacturerName: targetMfrName || '',
-      manufacturerActive: mfrActive,
       description: description ? description.trim() : '',
       companyId: tenantCompanyId || null,
       active: Boolean(isAct),
@@ -7826,7 +7742,7 @@ export async function updateBrand(req, res, next) {
     }
 
     const existing = dbBrand || inMemoryBrands[idx];
-    const { code, name, manufacturerId, manufacturerName, description, active, status } = req.body;
+    const { code, name, description, active, status } = req.body;
     const cleanCode = code ? code.trim().toUpperCase() : existing.code;
     const cleanName = name ? name.trim() : existing.name;
 
@@ -7854,49 +7770,9 @@ export async function updateBrand(req, res, next) {
       }
     }
 
-    // Resolve manufacturer
-    let targetMfrId = manufacturerId !== undefined ? (manufacturerId || '').trim() : (existing.manufacturerId || '').trim();
-    let targetMfrName = manufacturerName !== undefined ? (manufacturerName || '').trim() : (existing.manufacturerName || '').trim();
-    let mfrObj = null;
-
-    if (isDbConnected() && (targetMfrId || targetMfrName)) {
-      try {
-        const mfrRows = await prisma.$queryRawUnsafe(`
-          SELECT TOP 1 id, name, active FROM manufacturers
-          WHERE id = '${targetMfrId.replace(/'/g, "''")}' OR UPPER(name) = '${targetMfrName.toUpperCase().replace(/'/g, "''")}'
-        `);
-        if (Array.isArray(mfrRows) && mfrRows.length > 0) {
-          mfrObj = mfrRows[0];
-          targetMfrId = mfrObj.id;
-          targetMfrName = mfrObj.name;
-        }
-      } catch (_) {}
-    }
-
     const nextActive = active !== undefined ? Boolean(active) : (status !== undefined ? status === 'Active' : (existing.active !== false && existing.active !== 0));
-
-    if (mfrObj && (mfrObj.active === false || mfrObj.active === 0)) {
-      if (manufacturerId !== undefined || manufacturerName !== undefined) {
-        if (targetMfrId !== existing.manufacturerId) {
-          return res.status(400).json({
-            success: false,
-            message: `Cannot assign Brand to inactive Manufacturer "${mfrObj.name}". Please select an active Manufacturer.`
-          });
-        }
-      }
-      if (nextActive && (!existing.active || active === true || status === 'Active')) {
-        return res.status(400).json({
-          success: false,
-          message: `Cannot activate Brand because parent Manufacturer "${mfrObj.name}" is inactive.`
-        });
-      }
-    }
-
-    const effectiveActive = (mfrObj && (mfrObj.active === false || mfrObj.active === 0)) ? false : nextActive;
-    const actBit = effectiveActive ? 1 : 0;
+    const actBit = nextActive ? 1 : 0;
     const cleanDesc = description !== undefined ? (description ? `'${description.trim().replace(/'/g, "''")}'` : 'NULL') : (existing.description ? `'${existing.description.replace(/'/g, "''")}'` : 'NULL');
-    const cleanMfrId = targetMfrId ? `'${targetMfrId.replace(/'/g, "''")}'` : 'NULL';
-    const cleanMfrName = targetMfrName ? `'${targetMfrName.replace(/'/g, "''")}'` : 'NULL';
 
     if (isDbConnected() && existing.id) {
       try {
@@ -7904,8 +7780,6 @@ export async function updateBrand(req, res, next) {
           UPDATE brands
           SET code = '${cleanCode.replace(/'/g, "''")}',
               name = '${cleanName.replace(/'/g, "''")}',
-              manufacturerId = ${cleanMfrId},
-              manufacturerName = ${cleanMfrName},
               description = ${cleanDesc},
               active = ${actBit},
               updatedAt = CURRENT_TIMESTAMP
@@ -7920,13 +7794,10 @@ export async function updateBrand(req, res, next) {
       id: existing.id,
       code: cleanCode,
       name: cleanName,
-      manufacturerId: targetMfrId || '',
-      manufacturerName: targetMfrName || '',
-      manufacturerActive: mfrObj ? (mfrObj.active !== false && mfrObj.active !== 0) : true,
       description: description !== undefined ? (description || '') : (existing.description || ''),
       companyId: existing.companyId || tenantCompanyId || null,
-      active: effectiveActive,
-      status: effectiveActive ? 'Active' : 'Inactive',
+      active: nextActive,
+      status: nextActive ? 'Active' : 'Inactive',
       updatedAt: new Date().toISOString()
     };
 
