@@ -98,6 +98,13 @@ model Company {
   receipts         Receipt[]
   serviceProviders ServiceProvider[]
   passwordPolicy   CompanyPasswordPolicy?
+  assetGroups      AssetGroup[]
+  assetSubGroups   AssetSubGroup[]
+  categories       Category[]
+  subCategories    SubCategory[]
+  manufacturers    Manufacturer[]
+  brands           Brand[]
+  assetModels      AssetModel[]
 
   @@map("companies")
 }
@@ -242,6 +249,8 @@ model AssetGroup {
   companyId      String?
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
+
+  company        Company?        @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   assetSubGroups AssetSubGroup[]
 
   @@map("asset_groups")
@@ -340,6 +349,7 @@ model Category {
   createdAt                     DateTime           @default(now())
   updatedAt                     DateTime           @updatedAt
 
+  company          Company?                @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   assetSubGroup    AssetSubGroup?          @relation(fields: [assetSubGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   subCategories    SubCategory[]
   models           AssetModel[]
@@ -363,6 +373,8 @@ model AssetSubGroup {
   companyId      String?
   createdAt      DateTime?   @default(now())
   updatedAt      DateTime?   @updatedAt
+
+  company        Company?    @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   assetGroup     AssetGroup? @relation(fields: [assetGroupId], references: [id], onDelete: SetNull, onUpdate: NoAction)
   categories     Category[]
 
@@ -389,6 +401,7 @@ model SubCategory {
   createdAt         DateTime? @default(now())
   updatedAt         DateTime? @updatedAt
 
+  company           Company?  @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   category          Category? @relation(fields: [categoryId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@map("sub_categories")
@@ -405,6 +418,7 @@ model Manufacturer {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
+  company        Company? @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   models AssetModel[]
   assets Asset[]
   brands Brand[]
@@ -424,6 +438,7 @@ model Brand {
   createdAt        DateTime?     @default(now())
   updatedAt        DateTime?     @updatedAt
 
+  company          Company?      @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
   manufacturer     Manufacturer? @relation(fields: [manufacturerId], references: [id], onDelete: SetNull, onUpdate: NoAction)
 
   @@map("brands")
@@ -442,7 +457,8 @@ model AssetModel {
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
-  manufacturer Manufacturer @relation(fields: [manufacturerId], references: [id])
+  company        Company?     @relation(fields: [companyId], references: [id], onDelete: NoAction, onUpdate: NoAction)
+  manufacturer   Manufacturer @relation(fields: [manufacturerId], references: [id])
   category     Category     @relation(fields: [categoryId], references: [id])
   assets       Asset[]
 
