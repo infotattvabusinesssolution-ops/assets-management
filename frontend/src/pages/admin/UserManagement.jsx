@@ -474,7 +474,9 @@ export function UserManagement() {
 
   const openAddUserModal = () => {
     fetchPasswordPolicyForUser('');
-    const defaultCompany = companiesList.length === 1 ? companiesList[0].name : '';
+    const activeComp = companiesList.find(c => c.id === user?.companyId || c.name === user?.company?.name) || (companiesList.length === 1 ? companiesList[0] : null);
+    const defaultCompany = activeComp?.name || user?.company?.name || '';
+    const defaultCompanyId = activeComp?.id || user?.companyId || '';
     const filteredDepts = defaultCompany
       ? departmentsList.filter(d => !d.companyId || d.company === defaultCompany || d.companyName === defaultCompany)
       : departmentsList;
@@ -497,6 +499,7 @@ export function UserManagement() {
       costCenter: defaultSec,
       location: '',
       company: defaultCompany,
+      companyId: defaultCompanyId,
       businessUnit: 'Corporate Operations',
       password: '',
       passwordOption: 'custom',
@@ -527,8 +530,10 @@ export function UserManagement() {
         let updated = { ...prev };
         let changed = false;
 
-        if (!updated.company && companiesList.length === 1) {
-          updated.company = companiesList[0].name;
+        const activeComp = companiesList.find(c => c.id === user?.companyId || c.name === user?.company?.name) || (companiesList.length === 1 ? companiesList[0] : null);
+        if (!updated.company && activeComp) {
+          updated.company = activeComp.name;
+          updated.companyId = activeComp.id;
           changed = true;
         }
 
@@ -579,6 +584,7 @@ export function UserManagement() {
           department: advancedFilters.department,
           location: advancedFilters.location,
           company: advancedFilters.company,
+          companyId: user?.companyId || undefined,
           accountStatus: advancedFilters.accountStatus,
           mfaEnabled: advancedFilters.mfaEnabled
         }
@@ -871,10 +877,19 @@ export function UserManagement() {
     }
     let savedUser = null;
     let createRes = null;
+    const activeComp = companiesList.find(c => c.id === user?.companyId || c.name === user?.company?.name || c.name === userFormData.company);
+    const resolvedCompanyId = userFormData.companyId || activeComp?.id || user?.companyId || null;
+    const resolvedCompany = userFormData.company || activeComp?.name || user?.company?.name || '';
+    const payload = {
+      ...userFormData,
+      companyId: resolvedCompanyId,
+      company: resolvedCompany
+    };
+
     try {
       const res = showEditModal
-        ? await api.put(`/admin/users/${selectedUser.id}`, userFormData).catch(() => null)
-        : await api.post('/admin/users', userFormData).catch(() => null);
+        ? await api.put(`/admin/users/${selectedUser.id}`, payload).catch(() => null)
+        : await api.post('/admin/users', payload).catch(() => null);
       if (res && res.user) {
         savedUser = res.user;
         createRes = res;
@@ -883,7 +898,7 @@ export function UserManagement() {
 
     const targetUser = savedUser || {
       id: showEditModal ? selectedUser.id : `USR-${Date.now()}`,
-      ...userFormData,
+      ...payload,
       lastLogin: showEditModal ? (selectedUser.lastLogin || 'Never') : 'Never',
       createdDate: showEditModal ? (selectedUser.createdDate || new Date().toISOString().split('T')[0]) : new Date().toISOString().split('T')[0]
     };
@@ -2192,7 +2207,15 @@ export function UserManagement() {
                   <select
                     disabled={isCustodianLinked && custodianLinkedFields.company}
                     value={userFormData.company}
-                    onChange={(e) => setUserFormData({ ...userFormData, company: e.target.value })}
+                    onChange={(e) => {
+                      const selectedName = e.target.value;
+                      const matched = companiesList.find(c => c.name === selectedName || c.id === selectedName);
+                      setUserFormData({
+                        ...userFormData,
+                        company: selectedName,
+                        companyId: matched ? matched.id : ''
+                      });
+                    }}
                     className={`w-full px-3 py-2 border rounded-lg text-xs transition-colors ${
                       isCustodianLinked && custodianLinkedFields.company
                         ? 'bg-slate-100/90 text-slate-600 border-slate-200 cursor-not-allowed'

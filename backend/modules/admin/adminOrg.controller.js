@@ -247,13 +247,22 @@ export async function getAdminUsers(req, res) {
       department = '',
       location = '',
       company = '',
+      companyId = '',
       userType = '',
       accountStatus = ''
     } = req.query;
 
-    const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
-    const isSuperAdmin = req.user?.role?.code === 'SUPER_ADMIN';
-    const userWhere = (tenantCompanyId && !isSuperAdmin) ? { companyId: tenantCompanyId } : {};
+    let requestedCompanyId = companyId || null;
+    if (!requestedCompanyId && company && company !== 'All Companies' && company !== 'ALL') {
+      const matchedComp = await prisma.company.findFirst({
+        where: { OR: [{ id: company }, { name: company }, { code: company }] },
+        select: { id: true }
+      }).catch(() => null);
+      if (matchedComp) requestedCompanyId = matchedComp.id;
+    }
+
+    const tenantCompanyId = requestedCompanyId || req.tenantCompanyId || req.user?.companyId || null;
+    const userWhere = tenantCompanyId ? { companyId: tenantCompanyId } : {};
 
     let dbUsers = [];
     try {
@@ -298,7 +307,10 @@ export async function getAdminUsers(req, res) {
     }));
 
     const existingIds = new Set(filtered.map(u => u.id));
-    const memoryOnly = memoryUsers.filter(mu => !existingIds.has(mu.id));
+    const memoryOnly = memoryUsers.filter(mu =>
+      !existingIds.has(mu.id) &&
+      (!tenantCompanyId || mu.companyId === tenantCompanyId || (req.user?.company?.name && mu.company === req.user.company.name))
+    );
     filtered = [...memoryOnly, ...filtered];
 
     // Status filter
@@ -381,6 +393,9 @@ export async function createAdminUser(req, res) {
       }).catch(() => null);
       if (comp) companyId = comp.id;
     }
+    if (!companyId) {
+      companyId = req.tenantCompanyId || req.user?.companyId || null;
+    }
     const policy = await getPolicyForCompany(companyId);
 
     if (!data.password || !data.password.trim()) {
@@ -421,11 +436,12 @@ export async function createAdminUser(req, res) {
         }
 
         let compRecord = null;
-        if (data.company || data.companyId) {
+        if (companyId || data.company || data.companyId) {
           compRecord = await prisma.company.findFirst({
-            where: { OR: [{ id: data.companyId || '' }, { name: data.company || '' }, { code: data.company || '' }] }
+            where: { OR: [{ id: companyId || '' }, { id: data.companyId || '' }, { name: data.company || '' }, { code: data.company || '' }] }
           }).catch(() => null);
         }
+        const finalCompanyId = compRecord ? compRecord.id : companyId;
 
         let costCenterRecord = null;
         if (data.section || data.costCenter || data.costCenterId) {
@@ -448,7 +464,7 @@ export async function createAdminUser(req, res) {
               passwordHash,
               roleId: roleRecord.id,
               departmentId: deptRecord ? deptRecord.id : null,
-              companyId: compRecord ? compRecord.id : null,
+              companyId: finalCompanyId,
               costCenterId: costCenterRecord ? costCenterRecord.id : null,
               active: data.status ? String(data.status).toLowerCase() === 'active' : true,
               forcePasswordChange: data.forcePasswordChange !== false
@@ -504,7 +520,8 @@ export async function createAdminUser(req, res) {
       roleId: data.roleId || 'ROLE-006',
       department: data.department || '',
       location: data.location || '',
-      company: data.company || '',
+      company: compRecord ? compRecord.name : (data.company || ''),
+      companyId: finalCompanyId,
       businessUnit: data.businessUnit || '',
       costCenter: data.section || data.costCenter || '',
       section: data.section || data.costCenter || '',
@@ -518,7 +535,7 @@ export async function createAdminUser(req, res) {
       expiresInMinutes: 20,
       mustChangePassword: true,
       assignedLocations: data.assignedLocations || [data.location].filter(Boolean),
-      assignedCompanies: data.assignedCompanies || [data.company].filter(Boolean)
+      assignedCompanies: data.assignedCompanies || [compRecord ? compRecord.name : data.company].filter(Boolean)
     };
 
     memoryUsers.unshift(newUser);
