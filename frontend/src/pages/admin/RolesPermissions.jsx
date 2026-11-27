@@ -282,7 +282,7 @@ export function RolesPermissions() {
         } catch (_) {}
 
         const params = {};
-        if (user?.companyId && user?.role?.name !== 'System Administrator') {
+        if (user?.companyId) {
           params.companyId = user.companyId;
         }
 
@@ -315,7 +315,7 @@ export function RolesPermissions() {
                 company: r.company || null,
                 description: r.description || '',
                 roleType: r.isSystem ? 'System Role' : 'Custom Role',
-                userCount: r._count?.users || r.userCount || 0,
+                userCount: r.userCount !== undefined ? r.userCount : (r._count?.users || 0),
                 status: r.active ? 'Active' : (r.status || 'Active'),
                 active: r.active !== undefined ? r.active : (r.status === 'Active'),
                 dateCreated: new Date(r.createdAt || Date.now()).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),

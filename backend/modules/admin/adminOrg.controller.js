@@ -798,14 +798,17 @@ export async function getAdminRoles(req, res) {
         }
       : {};
 
+    const userWhere = targetCompanyId ? { companyId: targetCompanyId } : {};
+
     const dbRoles = await prisma.role.findMany({
       where: whereClause,
       include: {
         company: {
           select: { id: true, name: true, code: true }
         },
-        _count: {
-          select: { users: true }
+        users: {
+          where: userWhere,
+          select: { id: true }
         }
       },
       orderBy: { name: 'asc' }
@@ -821,7 +824,7 @@ export async function getAdminRoles(req, res) {
         company: r.company || null,
         description: r.description || `Enterprise ${r.name} role`,
         roleType: r.isSystem ? 'System Role' : 'Custom Role',
-        userCount: r._count?.users || 0,
+        userCount: r.users ? r.users.length : 0,
         status: r.active ? 'Active' : 'Inactive',
         active: r.active,
         dateCreated: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
@@ -1213,7 +1216,10 @@ export async function assignUsersToRole(req, res) {
       }).catch(err => console.warn('Prisma updateMany assigned error:', err.message));
     }
 
-    // 2. For users who had this role but were unselected, reassign them to Standard User
+    const targetCompanyId = req.tenantCompanyId || req.user?.companyId || null;
+    const userCompanyWhere = targetCompanyId ? { companyId: targetCompanyId } : {};
+
+    // 2. For users who had this role in THIS company but were unselected, reassign them to Standard User
     const standardRole = await prisma.role.findFirst({
       where: { OR: [{ code: 'STANDARD_USER' }, { name: 'Standard User' }] }
     }).catch(() => null);
@@ -1222,7 +1228,8 @@ export async function assignUsersToRole(req, res) {
       await prisma.user.updateMany({
         where: {
           roleId: role.id,
-          id: { notIn: userIds }
+          id: { notIn: userIds },
+          ...userCompanyWhere
         },
         data: { roleId: standardRole.id }
       }).catch(err => console.warn('Prisma updateMany unassigned error:', err.message));
@@ -1239,7 +1246,12 @@ export async function assignUsersToRole(req, res) {
       return u;
     });
 
-    const userCount = await prisma.user.count({ where: { roleId: role.id } }).catch(() => userIds.length);
+    const userCount = await prisma.user.count({
+      where: {
+        roleId: role.id,
+        ...userCompanyWhere
+      }
+    }).catch(() => userIds.length);
 
     // Also update role's userCount in memoryRoles
     const memRoleIndex = memoryRoles.findIndex(r => r.id === role.id || r.code === role.code);
