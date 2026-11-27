@@ -98,7 +98,8 @@ function getCodeColumnForTable(table) {
 
 export async function generateAutoCode(entityKey, fallbackSeed = '', existingList = [], dbTable = null) {
   const cleanPrefix = getPrefixForEntity(entityKey);
-  const codeCol = getCodeColumnForTable(dbTable);
+  const resolvedTable = (dbTable === 'cost_centers' || dbTable === 'cost_center') ? 'sections' : dbTable;
+  const codeCol = getCodeColumnForTable(resolvedTable);
 
   const existingCodes = new Set();
   let maxNumericSuffix = 0;
@@ -123,11 +124,11 @@ export async function generateAutoCode(entityKey, fallbackSeed = '', existingLis
   }
 
   // 2. Ingest existing codes from SQL database table
-  if (dbTable && codeCol && isDbConnected()) {
+  if (resolvedTable && codeCol && isDbConnected()) {
     try {
       const sanitizedPrefix = cleanPrefix.replace(/'/g, "''").toUpperCase();
       const rows = await prisma.$queryRawUnsafe(
-        `SELECT UPPER(${codeCol}) AS c FROM ${dbTable} WHERE ${codeCol} IS NOT NULL AND UPPER(${codeCol}) LIKE '${sanitizedPrefix}%'`
+        `SELECT UPPER(${codeCol}) AS c FROM ${resolvedTable} WHERE ${codeCol} IS NOT NULL AND UPPER(${codeCol}) LIKE '${sanitizedPrefix}%'`
       );
       if (Array.isArray(rows)) {
         for (const row of rows) {
@@ -145,7 +146,7 @@ export async function generateAutoCode(entityKey, fallbackSeed = '', existingLis
         }
       }
     } catch (dbErr) {
-      console.warn(`[generateAutoCode] DB lookup for ${dbTable}.${codeCol} skipped:`, dbErr.message);
+      console.warn(`[generateAutoCode] DB lookup for ${resolvedTable}.${codeCol} skipped:`, dbErr.message);
     }
   }
 
@@ -4664,7 +4665,7 @@ export async function createCostCenter(req, res, next) {
     const cleanName = name.trim();
     const cleanCode = (code && code.trim())
       ? code.trim().toUpperCase()
-      : await generateAutoCode('cost_center', cleanName, [], 'cost_centers');
+      : await generateAutoCode('cost_center', cleanName, [], 'sections');
 
     if (isDbConnected()) {
       try {
@@ -4677,7 +4678,10 @@ export async function createCostCenter(req, res, next) {
           }
         });
         if (existing) {
-          return res.status(409).json({ success: false, message: `Section with code "${cleanCode}" or name "${cleanName}" already exists.` });
+          if (existing.code === cleanCode) {
+            return res.status(409).json({ success: false, message: `Section with code "${cleanCode}" already exists.` });
+          }
+          return res.status(409).json({ success: false, message: `Section with name "${cleanName}" already exists.` });
         }
       } catch (dbErr) {
         console.warn('DB check duplicate cost center skipped:', dbErr.message);
