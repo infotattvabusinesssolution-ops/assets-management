@@ -21,6 +21,20 @@ const warrantyEndFor = (start, years) => {
   return date;
 };
 
+export const toValidDateOrNull = (val) => {
+  if (!val) return null;
+  if (val instanceof Date) return Number.isNaN(val.getTime()) ? null : val;
+  if (typeof val === 'string' && val.trim()) {
+    const d = new Date(val.trim());
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  if (typeof val === 'number' && !Number.isNaN(val)) {
+    const d = new Date(val);
+    return Number.isNaN(d.getTime()) ? null : d;
+  }
+  return null;
+};
+
 export const ASSET_STATUSES = [
   'REQUESTED',
   'ORDERED',
@@ -745,8 +759,8 @@ export async function createAsset(req, res, next) {
         data: {
           ...req.body,
           ...item,
-          purchaseDate: item.poDate ?? item.purchaseDate ?? item.acquisitionDate ?? req.body.poDate ?? req.body.purchaseDate ?? req.body.acquisitionDate,
-          inServiceDate: item.depreciationStartDate ?? item.invoiceDate ?? item.inServiceDate ?? item.purchaseDate ?? item.acquisitionDate ?? req.body.depreciationStartDate ?? req.body.invoiceDate ?? req.body.inServiceDate ?? req.body.purchaseDate ?? req.body.acquisitionDate
+          purchaseDate: toValidDateOrNull(item.poDate) || toValidDateOrNull(item.purchaseDate) || toValidDateOrNull(item.acquisitionDate) || toValidDateOrNull(req.body.poDate) || toValidDateOrNull(req.body.purchaseDate) || toValidDateOrNull(req.body.acquisitionDate) || null,
+          inServiceDate: toValidDateOrNull(item.depreciationStartDate) || toValidDateOrNull(item.invoiceDate) || toValidDateOrNull(item.inServiceDate) || toValidDateOrNull(item.purchaseDate) || toValidDateOrNull(item.acquisitionDate) || toValidDateOrNull(req.body.depreciationStartDate) || toValidDateOrNull(req.body.invoiceDate) || toValidDateOrNull(req.body.inServiceDate) || toValidDateOrNull(req.body.purchaseDate) || toValidDateOrNull(req.body.acquisitionDate) || null
         },
         companyId: effectiveCompanyId,
         siteId: itemSite?.id || siteId,
@@ -836,12 +850,14 @@ export async function createAsset(req, res, next) {
       for (let itemIndex = 0; itemIndex < quantity; itemIndex += 1) {
       const itemRecord = quantity > 1 ? resolvedItems[itemIndex] : null;
       const itemData = itemRecord?.data || req.body;
-      const itemWarrantyEnd = itemData.warrantyYears
+      const rawWarrantyStart = toValidDateOrNull(itemData.warrantyStartDate);
+      const rawWarrantyEnd = toValidDateOrNull(itemData.warrantyEndDate);
+      const itemWarrantyEnd = itemData.warrantyYears && rawWarrantyStart
         ? warrantyEndFor(itemData.warrantyStartDate, itemData.warrantyYears)
-        : itemData.warrantyEndDate ? new Date(itemData.warrantyEndDate) : null;
-      if ((itemData.warrantyStartDate || itemData.warrantyYears || itemData.warrantyEndDate) &&
-          (!itemData.warrantyStartDate || !itemWarrantyEnd || Number.isNaN(itemWarrantyEnd.getTime()) ||
-            itemWarrantyEnd < new Date(itemData.warrantyStartDate))) {
+        : rawWarrantyEnd;
+      if ((rawWarrantyStart || itemData.warrantyYears || rawWarrantyEnd) &&
+          (!rawWarrantyStart || !itemWarrantyEnd || Number.isNaN(itemWarrantyEnd.getTime()) ||
+            itemWarrantyEnd < rawWarrantyStart)) {
         throw new Error(`Invalid warranty dates for item ${itemIndex + 1}.`);
       }
       const itemCostRaw = itemData.acquisitionValue || itemData.acquisitionCost || itemData.purchaseCost || 0;
@@ -894,8 +910,8 @@ export async function createAsset(req, res, next) {
           currency: itemData.currency || 'USD',
           poNumber: itemData.poNumber || itemData.poInvoiceNo || null,
           supplierName: itemData.supplierName || itemData.supplier || itemData.vendorSupplier || null,
-          purchaseDate: itemData.purchaseDate || itemData.poDate || itemData.acquisitionDate ? new Date(itemData.purchaseDate || itemData.poDate || itemData.acquisitionDate) : null,
-          inServiceDate: itemData.depreciationStartDate || itemData.invoiceDate || itemData.inServiceDate || itemData.purchaseDate || itemData.acquisitionDate ? new Date(itemData.depreciationStartDate || itemData.invoiceDate || itemData.inServiceDate || itemData.purchaseDate || itemData.acquisitionDate) : null,
+          purchaseDate: toValidDateOrNull(itemData.purchaseDate) || toValidDateOrNull(itemData.poDate) || toValidDateOrNull(itemData.acquisitionDate) || null,
+          inServiceDate: toValidDateOrNull(itemData.depreciationStartDate) || toValidDateOrNull(itemData.invoiceDate) || toValidDateOrNull(itemData.inServiceDate) || toValidDateOrNull(itemData.purchaseDate) || toValidDateOrNull(itemData.acquisitionDate) || null,
           hostname: itemObservation?.hostname || itemDiscovery.hostname || null,
           macAddress: itemObservation?.macAddress || itemDiscovery.macAddress || null,
           ipAddress: itemObservation?.ipAddress || itemDiscovery.ipAddress || null,
@@ -943,8 +959,8 @@ export async function createAsset(req, res, next) {
           ipAddress: itemDiscovery.ipAddress || null,
           macAddress: itemDiscovery.macAddress || null,
           serialNumber: itemDiscovery.discoveredSerial || serialNumbers[itemIndex] || null,
-          firstSeen: itemDiscovery.firstSeen ? new Date(itemDiscovery.firstSeen) : new Date(),
-          lastSeen: itemDiscovery.lastSeen ? new Date(itemDiscovery.lastSeen) : new Date()
+          firstSeen: toValidDateOrNull(itemDiscovery.firstSeen) || new Date(),
+          lastSeen: toValidDateOrNull(itemDiscovery.lastSeen) || new Date()
         } });
         if (!itemObservation) await tx.asset.update({ where: { id: newAsset.id }, data: { discoveryId: linkedObservation.id } });
         await tx.discoveryMatch.deleteMany({ where: { observationId: linkedObservation.id, status: { not: 'CONFIRMED' } } });
@@ -1011,7 +1027,7 @@ export async function createAsset(req, res, next) {
             data: {
               assetId: newAsset.id,
               bookType: 'CORPORATE',
-              capitalizationDate: newAsset.inServiceDate || newAsset.purchaseDate || new Date(),
+              capitalizationDate: toValidDateOrNull(newAsset.inServiceDate) || toValidDateOrNull(newAsset.purchaseDate) || new Date(),
               capitalizationValue: itemAcqValue,
               usefulLifeMonths: categoryRate > 0 ? Math.round(1200 / categoryRate) : categoryLife,
               depreciationMethod: category.depreciationMethod || 'STRAIGHT_LINE',
@@ -1425,9 +1441,9 @@ export async function updateAsset(req, res, next) {
     if (poNumber !== undefined) updateData.poNumber = poNumber;
     const finalSupplier = supplierName || supplier;
     if (finalSupplier !== undefined) updateData.supplierName = finalSupplier;
-    if (purchaseDate !== undefined) updateData.purchaseDate = purchaseDate ? new Date(purchaseDate) : null;
+    if (purchaseDate !== undefined) updateData.purchaseDate = toValidDateOrNull(purchaseDate);
     const finalInService = inServiceDate || acquisitionDate;
-    if (finalInService !== undefined) updateData.inServiceDate = finalInService ? new Date(finalInService) : null;
+    if (finalInService !== undefined) updateData.inServiceDate = toValidDateOrNull(finalInService);
 
     // Technical Details
     if (hostname !== undefined) updateData.hostname = hostname;
@@ -3343,7 +3359,7 @@ export async function createChildAsset(req, res, next) {
           criticality: (['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'].includes(String(criticality).toUpperCase())) ? String(criticality).toUpperCase() : 'MEDIUM',
           acquisitionValue: acqValue,
           currency: currency || parent.currency || 'USD',
-          purchaseDate: purchaseDate ? new Date(purchaseDate) : (parent.purchaseDate || new Date()),
+          purchaseDate: toValidDateOrNull(purchaseDate) || toValidDateOrNull(parent.purchaseDate) || new Date(),
           createdByUserId: finalUserId,
           updatedByUserId: finalUserId
         }
@@ -3367,8 +3383,8 @@ export async function createChildAsset(req, res, next) {
         await tx.warranty.create({
           data: {
             assetId: created.id,
-            startDate: purchaseDate ? new Date(purchaseDate) : (parent.purchaseDate || new Date()),
-            endDate: new Date(warrantyExpiry),
+            startDate: toValidDateOrNull(purchaseDate) || toValidDateOrNull(parent.purchaseDate) || new Date(),
+            endDate: toValidDateOrNull(warrantyExpiry) || new Date(),
             providerName: rawWarrantyProvider || rawMfr || 'OEM Supplier',
             warrantyNumber: `WAR-${created.assetId}`,
             terms: rawWarrantyCoverage || 'Parts & Labor',
