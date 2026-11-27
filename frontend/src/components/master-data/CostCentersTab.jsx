@@ -299,29 +299,37 @@ export function CostCentersTab({
       return;
     }
 
+    const matchedComp = companiesList.find(c => c.name === ccFormState.company || c.code === ccFormState.company || c.id === ccFormState.company);
+    let companyId = matchedComp?.id || user?.companyId || null;
+    if (!companyId && ccFormState.departmentId) {
+      const matchedDept = departmentsList.find(d => d.id === ccFormState.departmentId);
+      if (matchedDept?.companyId) companyId = matchedDept.companyId;
+    }
+
     if (cleanCode) {
-      const dupCode = costCentersList.find(c => (c.code || '').trim().toUpperCase() === cleanCode && (!editingCostCenter || c.id !== editingCostCenter.id));
+      const dupCode = costCentersList.find(c => 
+        (c.code || '').trim().toUpperCase() === cleanCode && 
+        (!editingCostCenter || c.id !== editingCostCenter.id) &&
+        (!companyId || !c.companyId || c.companyId === companyId)
+      );
       if (dupCode) {
-        const msg = `Section code "${cleanCode}" already exists. Duplicate codes are not allowed.`;
+        const msg = `Section code "${cleanCode}" already exists in this company. Duplicate codes are not allowed.`;
         setModalError(msg);
         triggerToast && triggerToast(msg);
         return;
       }
     }
 
-    const dupName = costCentersList.find(c => (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && (!editingCostCenter || c.id !== editingCostCenter.id));
+    const dupName = costCentersList.find(c => 
+      (c.name || '').trim().toLowerCase() === cleanName.toLowerCase() && 
+      (!editingCostCenter || c.id !== editingCostCenter.id) &&
+      (!companyId || !c.companyId || c.companyId === companyId)
+    );
     if (dupName) {
-      const msg = `Section name "${cleanName}" already exists. Duplicate names are not allowed.`;
+      const msg = `Section name "${cleanName}" already exists in this company. Duplicate names are not allowed.`;
       setModalError(msg);
       triggerToast && triggerToast(msg);
       return;
-    }
-
-    const matchedComp = companiesList.find(c => c.name === ccFormState.company || c.code === ccFormState.company || c.id === ccFormState.company);
-    let companyId = matchedComp?.id || user?.companyId || null;
-    if (!companyId && ccFormState.departmentId) {
-      const matchedDept = departmentsList.find(d => d.id === ccFormState.departmentId);
-      if (matchedDept?.companyId) companyId = matchedDept.companyId;
     }
 
     const payload = {

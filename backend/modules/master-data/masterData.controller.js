@@ -96,7 +96,7 @@ function getCodeColumnForTable(table) {
   return 'code';
 }
 
-export async function generateAutoCode(entityKey, fallbackSeed = '', existingList = [], dbTable = null) {
+export async function generateAutoCode(entityKey, fallbackSeed = '', existingList = [], dbTable = null, companyId = null) {
   const cleanPrefix = getPrefixForEntity(entityKey);
   const resolvedTable = (dbTable === 'cost_centers' || dbTable === 'cost_center') ? 'sections' : dbTable;
   const codeCol = getCodeColumnForTable(resolvedTable);
@@ -104,22 +104,26 @@ export async function generateAutoCode(entityKey, fallbackSeed = '', existingLis
   const existingCodes = new Set();
   let maxNumericSuffix = 0;
 
+  const recordCode = (rawCode) => {
+    if (typeof rawCode === 'string' && rawCode.trim()) {
+      const upper = rawCode.trim().toUpperCase();
+      existingCodes.add(upper);
+      if (upper.startsWith(cleanPrefix.toUpperCase())) {
+        const numPart = upper.slice(cleanPrefix.length).replace(/\D.*$/, '');
+        const parsed = parseInt(numPart, 10);
+        if (!isNaN(parsed) && parsed > maxNumericSuffix) {
+          maxNumericSuffix = parsed;
+        }
+      }
+    }
+  };
+
   // 1. Ingest existing codes from in-memory / file cache list
   if (Array.isArray(existingList)) {
     for (const item of existingList) {
       if (!item) continue;
       const c = item.code || item.itemCode || item.employeeCode || item.providerCode || item.modelNumber || item.name;
-      if (typeof c === 'string' && c.trim()) {
-        const upper = c.trim().toUpperCase();
-        existingCodes.add(upper);
-        if (upper.startsWith(cleanPrefix.toUpperCase())) {
-          const numPart = upper.slice(cleanPrefix.length).replace(/\D.*$/, '');
-          const parsed = parseInt(numPart, 10);
-          if (!isNaN(parsed) && parsed > maxNumericSuffix) {
-            maxNumericSuffix = parsed;
-          }
-        }
-      }
+      recordCode(c);
     }
   }
 
@@ -127,22 +131,17 @@ export async function generateAutoCode(entityKey, fallbackSeed = '', existingLis
   if (resolvedTable && codeCol && isDbConnected()) {
     try {
       const sanitizedPrefix = cleanPrefix.replace(/'/g, "''").toUpperCase();
+      const isCompanyScoped = ['sections', 'departments', 'sites', 'employees'].includes(resolvedTable);
+      const companyFilter = (isCompanyScoped && companyId)
+        ? `AND (companyId = '${companyId.replace(/'/g, "''")}' OR companyId IS NULL)`
+        : '';
       const rows = await prisma.$queryRawUnsafe(
-        `SELECT UPPER(${codeCol}) AS c FROM ${resolvedTable} WHERE ${codeCol} IS NOT NULL AND UPPER(${codeCol}) LIKE '${sanitizedPrefix}%'`
+        `SELECT UPPER(${codeCol}) AS c FROM ${resolvedTable} WHERE ${codeCol} IS NOT NULL AND UPPER(${codeCol}) LIKE '${sanitizedPrefix}%' ${companyFilter}`
       );
       if (Array.isArray(rows)) {
         for (const row of rows) {
-          if (row && row.c) {
-            const upper = String(row.c).trim().toUpperCase();
-            existingCodes.add(upper);
-            if (upper.startsWith(cleanPrefix.toUpperCase())) {
-              const numPart = upper.slice(cleanPrefix.length).replace(/\D.*$/, '');
-              const parsed = parseInt(numPart, 10);
-              if (!isNaN(parsed) && parsed > maxNumericSuffix) {
-                maxNumericSuffix = parsed;
-              }
-            }
-          }
+          const val = row ? (row.c ?? row.C ?? Object.values(row)[0]) : null;
+          recordCode(val);
         }
       }
     } catch (dbErr) {
@@ -159,13 +158,109 @@ export async function generateAutoCode(entityKey, fallbackSeed = '', existingLis
     candidate = `${cleanPrefix}${String(nextNum).padStart(3, '0')}`;
   }
 
-  // 4. Guaranteed non-colliding fallback if sequential loop exhausted
+  // 4. Actively verify candidate against the database directly to prevent collisions
+  if (resolvedTable && codeCol && isDbConnected()) {
+    try {
+      let isColliding = true;
+      let checkAttempts = 0;
+      const isCompanyScoped = ['sections', 'departments', 'sites', 'employees'].includes(resolvedTable);
+      const companyFilter = (isCompanyScoped && companyId)
+        ? `AND (companyId = '${companyId.replace(/'/g, "''")}' OR companyId IS NULL)`
+        : '';
+      while (isColliding && checkAttempts < 50) {
+        checkAttempts++;
+        const checkSql = `SELECT TOP 1 1 as ex FROM ${resolvedTable} WHERE UPPER(${codeCol}) = '${candidate.replace(/'/g, "''").toUpperCase()}' ${companyFilter}`;
+        const dupRows = await prisma.$queryRawUnsafe(checkSql);
+        if (Array.isArray(dupRows) && dupRows.length > 0) {
+          existingCodes.add(candidate.toUpperCase());
+          nextNum++;
+          candidate = `${cleanPrefix}${String(nextNum).padStart(3, '0')}`;
+        } else {
+          isColliding = false;
+        }
+      }
+    } catch (dbErr) {
+      console.warn(`[generateAutoCode] Direct uniqueness check skipped:`, dbErr.message);
+    }
+  }
+
+  // 5. Guaranteed non-colliding fallback if sequential loop exhausted or still colliding
   while (existingCodes.has(candidate.toUpperCase())) {
     const randSuffix = Math.floor(1000 + Math.random() * 9000);
     candidate = `${cleanPrefix}${randSuffix}`;
   }
 
   return candidate;
+}
+
+export async function getGuaranteedUniqueCode({
+  entityKey,
+  providedCode,
+  name,
+  existingList = [],
+  dbTable = null,
+  companyId = null,
+  prefix = null
+}) {
+  const userProvided = Boolean(providedCode && String(providedCode).trim());
+  if (userProvided) {
+    return { code: String(providedCode).trim().toUpperCase(), isAuto: false };
+  }
+
+  const cleanPrefix = prefix || getPrefixForEntity(entityKey);
+  const resolvedTable = (dbTable === 'cost_centers' || dbTable === 'cost_center') ? 'sections' : dbTable;
+  const codeCol = getCodeColumnForTable(resolvedTable);
+
+  let candidate = await generateAutoCode(entityKey, name, existingList, resolvedTable, companyId);
+
+  let isUnique = false;
+  let attempts = 0;
+
+  const isCodeTakenInMemory = (cd) => {
+    if (!Array.isArray(existingList)) return false;
+    const target = cd.toUpperCase();
+    return existingList.some(item => {
+      if (!item) return false;
+      const c = item.code || item.itemCode || item.employeeCode || item.providerCode || item.modelNumber || item.name;
+      return typeof c === 'string' && c.trim().toUpperCase() === target;
+    });
+  };
+
+  const isCodeTakenInDb = async (cd) => {
+    if (!resolvedTable || !codeCol || !isDbConnected()) return false;
+    try {
+      const isCompanyScoped = ['sections', 'departments', 'sites', 'employees'].includes(resolvedTable);
+      const companyFilter = (isCompanyScoped && companyId)
+        ? `AND (companyId = '${companyId.replace(/'/g, "''")}' OR companyId IS NULL)`
+        : '';
+      const checkSql = `SELECT TOP 1 1 as ex FROM ${resolvedTable} WHERE UPPER(${codeCol}) = '${cd.replace(/'/g, "''").toUpperCase()}' ${companyFilter}`;
+      const rows = await prisma.$queryRawUnsafe(checkSql);
+      return Array.isArray(rows) && rows.length > 0;
+    } catch (_) {
+      return false;
+    }
+  };
+
+  while (!isUnique && attempts < 30) {
+    attempts++;
+    const memTaken = isCodeTakenInMemory(candidate);
+    const dbTaken = await isCodeTakenInDb(candidate);
+    if (!memTaken && !dbTaken) {
+      isUnique = true;
+      break;
+    }
+    if (attempts < 10) {
+      const numPart = candidate.slice(cleanPrefix.length).replace(/\D.*$/, '');
+      const parsed = parseInt(numPart, 10);
+      const nextNum = (!isNaN(parsed) ? parsed : 100) + 1;
+      candidate = `${cleanPrefix}${String(nextNum).padStart(3, '0')}`;
+    } else {
+      const rand = Math.floor(1000 + Math.random() * 9000);
+      candidate = `${cleanPrefix}${rand}`;
+    }
+  }
+
+  return { code: candidate, isAuto: true };
 }
 
 export async function getCodePrefixes(req, res, next) {
@@ -481,12 +576,32 @@ export async function createAssetGroup(req, res, next) {
       return res.status(400).json({ success: false, message: 'Asset Group Name is required.' });
     }
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : await generateAutoCode('asset_group', cleanName, memoryAssetGroups, 'asset_groups');
 
-    // Check duplicate in memory first
-    if (memoryAssetGroups.some(g => (g.code || '').toUpperCase() === cleanCode)) {
-      return res.status(409).json({ success: false, message: `Asset Group code "${cleanCode}" already exists. Duplicate codes are not allowed.` });
+    const { code: cleanCode, isAuto } = await getGuaranteedUniqueCode({
+      entityKey: 'asset_group',
+      providedCode: code,
+      name: cleanName,
+      existingList: memoryAssetGroups,
+      dbTable: 'asset_groups'
+    });
+
+    // Check duplicate code only if user manually specified a code
+    if (!isAuto) {
+      if (memoryAssetGroups.some(g => (g.code || '').toUpperCase() === cleanCode)) {
+        return res.status(409).json({ success: false, message: `Asset Group code "${cleanCode}" already exists. Duplicate codes are not allowed.` });
+      }
+      if (isDbConnected()) {
+        try {
+          const dupCode = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM asset_groups WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
+          if (Array.isArray(dupCode) && dupCode.length > 0) {
+            return res.status(409).json({ success: false, message: `Asset Group with code "${cleanCode}" already exists.` });
+          }
+        } catch (dbErr) {
+          console.warn('DB check duplicate code skipped (offline/error):', dbErr.message);
+        }
+      }
     }
+
     if (memoryAssetGroups.some(g => (g.name || '').toLowerCase() === cleanName.toLowerCase())) {
       return res.status(409).json({ success: false, message: `Asset Group name "${cleanName}" already exists. Duplicate names are not allowed.` });
     }
@@ -494,15 +609,9 @@ export async function createAssetGroup(req, res, next) {
     // Try checking duplicate in DB if connected
     if (isDbConnected()) {
       try {
-        if (cleanCode) {
-          const dupCode = await prisma.$queryRawUnsafe(`SELECT id FROM asset_groups WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
-          if (Array.isArray(dupCode) && dupCode.length > 0) {
-            return res.status(409).json({ success: false, message: `Asset Group with code "${cleanCode}" already exists.` });
-          }
-        }
         if (cleanName) {
           const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
-          const dupName = await prisma.$queryRawUnsafe(`SELECT id FROM asset_groups WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`);
+          const dupName = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM asset_groups WHERE UPPER(name) = '${cleanName.toUpperCase().replace(/'/g, "''")}' ${tenantFilter}`);
           if (Array.isArray(dupName) && dupName.length > 0) {
             return res.status(409).json({ success: false, message: `Asset Group with name "${cleanName}" already exists.` });
           }
@@ -1327,7 +1436,14 @@ export async function createSite(req, res, next) {
     }
 
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : await generateAutoCode('site', cleanName, inMemoryLocations, 'sites');
+    const { code: cleanCode, isAuto } = await getGuaranteedUniqueCode({
+      entityKey: 'site',
+      providedCode: code,
+      name: cleanName,
+      existingList: inMemoryLocations,
+      dbTable: 'sites',
+      companyId: targetCompanyId
+    });
     // System enumeration: strictly 'Internal' or 'External'
     const cleanType = (type === 'External') ? 'External' : 'Internal';
     const cleanLevel = ['Level 1', 'Level 2', 'Level 3', 'Level 4'].includes(level) ? level : 'Level 1';
@@ -1342,7 +1458,7 @@ export async function createSite(req, res, next) {
     // Strict duplicate check on code and name
     const exists = inMemoryLocations.some(l => 
       (!targetCompanyId || l.companyId === targetCompanyId) && (
-        (l.code && l.code.toUpperCase() === cleanCode) || 
+        (!isAuto && l.code && l.code.toUpperCase() === cleanCode) || 
         (l.name && l.name.toLowerCase() === cleanName.toLowerCase())
       )
     );
@@ -1951,7 +2067,13 @@ export async function createCategory(req, res, next) {
       return res.status(400).json({ success: false, message: 'Category Name is required.' });
     }
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim()) ? code.trim().toUpperCase() : await generateAutoCode('category', cleanName, [], 'categories');
+    const { code: cleanCode, isAuto } = await getGuaranteedUniqueCode({
+      entityKey: 'category',
+      providedCode: code,
+      name: cleanName,
+      existingList: [],
+      dbTable: 'categories'
+    });
     const classFromDesc = (description || '').match(/\[class:([^\]]+)\]/)?.[1];
     const targetSubGroupName = (className || subGroupName || classFromDesc || '').trim();
 
@@ -2006,7 +2128,7 @@ export async function createCategory(req, res, next) {
         }
 
         const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId.replace(/'/g, "''")}' OR companyId IS NULL)` : '';
-        if (cleanCode) {
+        if (!isAuto && cleanCode) {
           const dupCode = await prisma.$queryRawUnsafe(`SELECT TOP 1 id FROM categories WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`);
           if (Array.isArray(dupCode) && dupCode.length > 0) {
             return res.status(409).json({ success: false, message: `Category with code "${cleanCode}" already exists.` });
@@ -2757,9 +2879,13 @@ export async function createAssetSubGroup(req, res, next) {
       return res.status(400).json({ success: false, message: 'Asset Sub Group Name is required.' });
     }
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim())
-      ? code.trim().toUpperCase()
-      : await generateAutoCode('asset_sub_group', cleanName, readAssetSubGroupsFromFile(), 'asset_sub_groups');
+    const { code: cleanCode, isAuto } = await getGuaranteedUniqueCode({
+      entityKey: 'asset_sub_group',
+      providedCode: code,
+      name: cleanName,
+      existingList: readAssetSubGroupsFromFile(),
+      dbTable: 'asset_sub_groups'
+    });
     const cleanGroup = (groupName || assetGroupName || '').trim();
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
 
@@ -2826,7 +2952,7 @@ export async function createAssetSubGroup(req, res, next) {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
     const current = readAssetSubGroupsFromFile();
-    if (cleanCode && current.some(sg => (sg.code || '').toUpperCase() === cleanCode)) {
+    if (!isAuto && cleanCode && current.some(sg => (sg.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Asset Sub Group with code "${cleanCode}" already exists.` });
     }
     if (cleanName && current.some(sg => (!tenantCompanyId || sg.companyId === tenantCompanyId) && (sg.name || '').toLowerCase() === cleanName.toLowerCase())) {
@@ -2835,7 +2961,7 @@ export async function createAssetSubGroup(req, res, next) {
 
     if (isDbConnected()) {
       try {
-        if (cleanCode) {
+        if (!isAuto && cleanCode) {
           const dupCode = await prisma.$queryRawUnsafe(
             `SELECT id FROM asset_sub_groups WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
           );
@@ -3329,9 +3455,13 @@ export async function createSubCategory(req, res, next) {
       return res.status(400).json({ success: false, message: 'Sub Category Name is required.' });
     }
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim())
-      ? code.trim().toUpperCase()
-      : await generateAutoCode('sub_category', cleanName, readSubCategoriesFromFile(), 'sub_categories');
+    const { code: cleanCode, isAuto } = await getGuaranteedUniqueCode({
+      entityKey: 'sub_category',
+      providedCode: code,
+      name: cleanName,
+      existingList: readSubCategoriesFromFile(),
+      dbTable: 'sub_categories'
+    });
     let resolvedCatName = (categoryName || '').trim();
     let cleanSubGroup = (assetSubGroupName || className || '').trim();
     let cleanGroup = (assetGroupName || groupName || '').trim();
@@ -3390,7 +3520,7 @@ export async function createSubCategory(req, res, next) {
     const tenantCompanyId = req.tenantCompanyId || req.user?.companyId;
     const tenantFilter = tenantCompanyId ? `AND (companyId = '${tenantCompanyId}' OR companyId IS NULL)` : '';
     const current = readSubCategoriesFromFile();
-    if (cleanCode && current.some(sc => (sc.code || '').toUpperCase() === cleanCode)) {
+    if (!isAuto && cleanCode && current.some(sc => (sc.code || '').toUpperCase() === cleanCode)) {
       return res.status(409).json({ success: false, message: `Sub Category with code "${cleanCode}" already exists.` });
     }
     if (cleanName && current.some(sc => (!tenantCompanyId || sc.companyId === tenantCompanyId) && (sc.name || '').toLowerCase() === cleanName.toLowerCase())) {
@@ -3399,7 +3529,7 @@ export async function createSubCategory(req, res, next) {
 
     if (isDbConnected()) {
       try {
-        if (cleanCode) {
+        if (!isAuto && cleanCode) {
           const dupCode = await prisma.$queryRawUnsafe(
             `SELECT id FROM sub_categories WHERE UPPER(code) = '${cleanCode.replace(/'/g, "''")}'`
           );
@@ -4355,9 +4485,6 @@ export async function createDepartment(req, res, next) {
       return res.status(400).json({ success: false, message: 'Department Name is required.' });
     }
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim())
-      ? code.trim().toUpperCase()
-      : await generateAutoCode('department', cleanName, [], 'departments');
 
     let targetCompanyId = req.tenantCompanyId || req.user?.companyId || companyId || req.body.companyId;
     if (!targetCompanyId && req.body.company) {
@@ -4379,19 +4506,36 @@ export async function createDepartment(req, res, next) {
       return res.status(400).json({ success: false, message: 'An active Company is required to create a Department.' });
     }
 
+    const { code: cleanCode, isAuto } = await getGuaranteedUniqueCode({
+      entityKey: 'department',
+      providedCode: code,
+      name: cleanName,
+      existingList: [],
+      dbTable: 'departments',
+      companyId: targetCompanyId
+    });
+
     if (isDbConnected()) {
       try {
-        const existing = await prisma.department.findFirst({
+        if (!isAuto) {
+          const existingCode = await prisma.department.findFirst({
+            where: {
+              companyId: targetCompanyId,
+              code: cleanCode
+            }
+          });
+          if (existingCode) {
+            return res.status(409).json({ success: false, message: `Department with code "${cleanCode}" already exists in this company.` });
+          }
+        }
+        const existingName = await prisma.department.findFirst({
           where: {
             companyId: targetCompanyId,
-            OR: [
-              { code: cleanCode },
-              { name: cleanName }
-            ]
+            name: cleanName
           }
         });
-        if (existing) {
-          return res.status(409).json({ success: false, message: `Department with code "${cleanCode}" or name "${cleanName}" already exists in this company.` });
+        if (existingName) {
+          return res.status(409).json({ success: false, message: `Department with name "${cleanName}" already exists in this company.` });
         }
       } catch (dbErr) {
         console.warn('DB check duplicate department skipped:', dbErr.message);
@@ -4663,30 +4807,6 @@ export async function createCostCenter(req, res, next) {
       return res.status(400).json({ success: false, message: 'Section Name is required.' });
     }
     const cleanName = name.trim();
-    const cleanCode = (code && code.trim())
-      ? code.trim().toUpperCase()
-      : await generateAutoCode('cost_center', cleanName, [], 'sections');
-
-    if (isDbConnected()) {
-      try {
-        const existing = await prisma.section.findFirst({
-          where: {
-            OR: [
-              { code: cleanCode },
-              { name: cleanName }
-            ]
-          }
-        });
-        if (existing) {
-          if (existing.code === cleanCode) {
-            return res.status(409).json({ success: false, message: `Section with code "${cleanCode}" already exists.` });
-          }
-          return res.status(409).json({ success: false, message: `Section with name "${cleanName}" already exists.` });
-        }
-      } catch (dbErr) {
-        console.warn('DB check duplicate cost center skipped:', dbErr.message);
-      }
-    }
 
     let targetCompanyId = req.tenantCompanyId || req.user?.companyId || companyId;
     if (!targetCompanyId && departmentId) {
@@ -4699,6 +4819,43 @@ export async function createCostCenter(req, res, next) {
       const firstComp = await prisma.company.findFirst();
       targetCompanyId = firstComp ? firstComp.id : null;
     }
+
+    const { code: cleanCode, isAuto } = await getGuaranteedUniqueCode({
+      entityKey: 'cost_center',
+      providedCode: code,
+      name: cleanName,
+      existingList: [],
+      dbTable: 'sections',
+      companyId: targetCompanyId
+    });
+
+    if (isDbConnected()) {
+      try {
+        if (!isAuto) {
+          const existingCode = await prisma.section.findFirst({
+            where: {
+              companyId: targetCompanyId,
+              code: cleanCode
+            }
+          });
+          if (existingCode) {
+            return res.status(409).json({ success: false, message: `Section with code "${cleanCode}" already exists in this company.` });
+          }
+        }
+        const existingName = await prisma.section.findFirst({
+          where: {
+            companyId: targetCompanyId,
+            name: cleanName
+          }
+        });
+        if (existingName) {
+          return res.status(409).json({ success: false, message: `Section with name "${cleanName}" already exists in this company.` });
+        }
+      } catch (dbErr) {
+        console.warn('DB check duplicate cost center skipped:', dbErr.message);
+      }
+    }
+
     const isAct = active !== undefined ? Boolean(active) : (status ? status === 'Active' : true);
     const costCenter = await prisma.section.create({
       data: {
@@ -4737,9 +4894,11 @@ export async function updateCostCenter(req, res, next) {
 
     if (isDbConnected() && (cleanCode || cleanName)) {
       try {
+        const targetComp = companyId || tenantCompanyId;
         const existing = await prisma.section.findFirst({
           where: {
             id: { not: id },
+            ...(targetComp ? { companyId: targetComp } : {}),
             OR: [
               ...(cleanCode ? [{ code: cleanCode }] : []),
               ...(cleanName ? [{ name: cleanName }] : [])
@@ -4747,7 +4906,10 @@ export async function updateCostCenter(req, res, next) {
           }
         });
         if (existing) {
-          return res.status(409).json({ success: false, message: `Another Section with code "${cleanCode || ''}" or name "${cleanName || ''}" already exists.` });
+          if (cleanCode && existing.code === cleanCode) {
+            return res.status(409).json({ success: false, message: `Another Section with code "${cleanCode}" already exists in this company.` });
+          }
+          return res.status(409).json({ success: false, message: `Another Section with name "${cleanName || ''}" already exists in this company.` });
         }
       } catch (dbErr) {
         console.warn('DB check duplicate cost center skipped:', dbErr.message);

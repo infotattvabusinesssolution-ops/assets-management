@@ -786,8 +786,24 @@ export async function deleteAdminUser(req, res) {
 
 export async function getAdminRoles(req, res) {
   try {
+    const targetCompanyId = req.query.companyId || req.tenantCompanyId || req.user?.companyId;
+
+    const whereClause = targetCompanyId
+      ? {
+          OR: [
+            { isSystem: true },
+            { companyId: null },
+            { companyId: targetCompanyId }
+          ]
+        }
+      : {};
+
     const dbRoles = await prisma.role.findMany({
+      where: whereClause,
       include: {
+        company: {
+          select: { id: true, name: true, code: true }
+        },
         _count: {
           select: { users: true }
         }
@@ -800,6 +816,9 @@ export async function getAdminRoles(req, res) {
         id: r.id,
         name: r.name,
         code: r.code,
+        companyId: r.companyId,
+        companyName: r.company?.name || null,
+        company: r.company || null,
         description: r.description || `Enterprise ${r.name} role`,
         roleType: r.isSystem ? 'System Role' : 'Custom Role',
         userCount: r._count?.users || 0,
@@ -812,10 +831,13 @@ export async function getAdminRoles(req, res) {
       }));
       return res.json({ success: true, roles: mapped, total: mapped.length, availableModules: DEFAULT_PERMISSIONS });
     }
+    const filteredMemoryRoles = targetCompanyId
+      ? memoryRoles.filter(r => r.isSystem || !r.companyId || r.companyId === targetCompanyId)
+      : memoryRoles;
     res.json({
       success: true,
-      roles: memoryRoles,
-      total: memoryRoles.length,
+      roles: filteredMemoryRoles,
+      total: filteredMemoryRoles.length,
       availableModules: DEFAULT_PERMISSIONS
     });
   } catch (err) {
@@ -837,11 +859,22 @@ export async function createAdminRole(req, res) {
     }
 
     const trimmedName = data.name.trim();
+    const targetCompanyId = data.companyId || req.tenantCompanyId || req.user?.companyId || null;
 
-    // Check if a role with this name already exists (case-insensitive check)
-    const allDbRoles = await prisma.role.findMany({ select: { id: true, name: true, code: true } }).catch(() => []);
+    // Check if a role with this name already exists in this scope
+    const allDbRoles = await prisma.role.findMany({
+      where: {
+        OR: [
+          { isSystem: true },
+          { companyId: null },
+          ...(targetCompanyId ? [{ companyId: targetCompanyId }] : [])
+        ]
+      },
+      select: { id: true, name: true, code: true, companyId: true }
+    }).catch(() => []);
+
     const isDuplicateName = allDbRoles.some(r => r.name.trim().toLowerCase() === trimmedName.toLowerCase()) ||
-      memoryRoles.some(r => r.name.trim().toLowerCase() === trimmedName.toLowerCase());
+      memoryRoles.some(r => (!r.companyId || r.companyId === targetCompanyId) && r.name.trim().toLowerCase() === trimmedName.toLowerCase());
 
     if (isDuplicateName) {
       return res.status(400).json({ success: false, error: `A role named "${trimmedName}" already exists. Duplicate roles are not allowed.` });
@@ -852,10 +885,11 @@ export async function createAdminRole(req, res) {
       generatedCode = 'ROLE_' + trimmedName.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 15);
     }
 
-    // Ensure generated code is unique
+    // Role table has @unique on code. Ensure generated code is unique across all roles
+    const allGlobalCodes = await prisma.role.findMany({ select: { code: true } }).catch(() => []);
     let uniqueCode = generatedCode;
     let codeSuffix = 1;
-    while (allDbRoles.some(r => r.code === uniqueCode) || memoryRoles.some(r => r.code === uniqueCode)) {
+    while (allGlobalCodes.some(r => r.code === uniqueCode) || memoryRoles.some(r => r.code === uniqueCode)) {
       uniqueCode = `${generatedCode}_${codeSuffix++}`;
     }
     generatedCode = uniqueCode;
@@ -872,10 +906,16 @@ export async function createAdminRole(req, res) {
         data: {
           name: trimmedName,
           code: generatedCode,
+          companyId: targetCompanyId,
           description: data.description?.trim() || '',
           permissions: permissionsString,
-          isSystem: false, // Newly created roles are always custom roles
+          isSystem: false,
           active: isActive
+        },
+        include: {
+          company: {
+            select: { id: true, name: true, code: true }
+          }
         }
       });
     } catch (dbErr) {
@@ -890,6 +930,9 @@ export async function createAdminRole(req, res) {
       id: createdDbRole.id,
       name: createdDbRole.name,
       code: createdDbRole.code,
+      companyId: createdDbRole.companyId,
+      companyName: createdDbRole.company?.name || null,
+      company: createdDbRole.company || null,
       description: createdDbRole.description || '',
       roleType: 'Custom Role',
       userCount: 0,
@@ -915,6 +958,7 @@ export async function createAdminRole(req, res) {
       id: `ROLE-${Date.now()}`,
       name: req.body.name,
       code: 'ROLE_' + req.body.name.toUpperCase().replace(/[^A-Z0-9]/g, '_'),
+      companyId: req.body.companyId || req.tenantCompanyId || req.user?.companyId || null,
       description: req.body.description || '',
       roleType: 'Custom Role',
       userCount: 0,
@@ -949,13 +993,25 @@ export async function updateAdminRole(req, res) {
       const updateData = {};
       if (data.name && !targetRole.isSystem) {
         const trimmedUpdateName = data.name.trim();
-        const allDbRoles = await prisma.role.findMany({ select: { id: true, name: true } }).catch(() => []);
-        const isDuplicate = allDbRoles.some(r => r.id !== targetRole.id && r.name.trim().toLowerCase() === trimmedUpdateName.toLowerCase());
+        const targetCompany = data.companyId !== undefined ? data.companyId : targetRole.companyId;
+        const allDbRoles = await prisma.role.findMany({
+          where: {
+            id: { not: targetRole.id },
+            OR: [
+              { isSystem: true },
+              { companyId: null },
+              ...(targetCompany ? [{ companyId: targetCompany }] : [])
+            ]
+          },
+          select: { id: true, name: true }
+        }).catch(() => []);
+        const isDuplicate = allDbRoles.some(r => r.name.trim().toLowerCase() === trimmedUpdateName.toLowerCase());
         if (isDuplicate) {
           return res.status(400).json({ success: false, error: `A role named "${trimmedUpdateName}" already exists.` });
         }
         updateData.name = trimmedUpdateName;
       }
+      if (data.companyId !== undefined && !targetRole.isSystem) updateData.companyId = data.companyId || null;
       if (data.description !== undefined) updateData.description = data.description?.trim() || '';
       if (data.status !== undefined) updateData.active = data.status === 'Active';
       if (data.active !== undefined) updateData.active = Boolean(data.active);
@@ -965,13 +1021,21 @@ export async function updateAdminRole(req, res) {
 
       const updated = await prisma.role.update({
         where: { id: targetRole.id },
-        data: updateData
+        data: updateData,
+        include: {
+          company: {
+            select: { id: true, name: true, code: true }
+          }
+        }
       });
 
       const mapped = {
         id: updated.id,
         name: updated.name,
         code: updated.code,
+        companyId: updated.companyId,
+        companyName: updated.company?.name || null,
+        company: updated.company || null,
         description: updated.description || '',
         roleType: updated.isSystem ? 'System Role' : 'Custom Role',
         userCount: data.userCount || 0,
@@ -1017,10 +1081,16 @@ export async function cloneAdminRole(req, res) {
         data: {
           name: cloneName,
           code: cloneCode,
+          companyId: source.companyId || null,
           description: `Cloned from ${source.name}. ${source.description || ''}`,
           permissions: source.permissions || JSON.stringify({}),
           isSystem: false,
           active: true
+        },
+        include: {
+          company: {
+            select: { id: true, name: true, code: true }
+          }
         }
       });
 
@@ -1028,6 +1098,9 @@ export async function cloneAdminRole(req, res) {
         id: cloned.id,
         name: cloned.name,
         code: cloned.code,
+        companyId: cloned.companyId,
+        companyName: cloned.company?.name || null,
+        company: cloned.company || null,
         description: cloned.description,
         roleType: 'Custom Role',
         userCount: 0,
