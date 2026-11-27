@@ -2082,15 +2082,13 @@ export function AssetForm() {
           : targetStatus === 'SUBMITTED'
             ? `Asset ${res.asset?.assetId} submitted for approval successfully.`
             : `Asset draft ${res.asset?.assetId} saved in ${res.category?.name || formData.category}.`);
-        if (quantity === 1) {
-          setTimeout(() => {
-            if (targetStatus === 'SUBMITTED') {
-              navigate('/assets/approvals');
-            } else {
-              navigate(res.asset?.id ? `/assets/${encodeURIComponent(res.asset.id)}?tab=financial` : '/assets');
-            }
-          }, 1200);
-        }
+        setTimeout(() => {
+          if (targetStatus === 'SUBMITTED') {
+            navigate('/assets/approvals');
+          } else {
+            navigate(res.asset?.id ? `/assets/${encodeURIComponent(res.asset.id)}?tab=financial` : '/assets');
+          }
+        }, 1000);
       } else {
         showToast('error', res?.message || 'Error submitting asset form.');
       }
