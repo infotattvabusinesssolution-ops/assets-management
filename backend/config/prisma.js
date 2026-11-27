@@ -17,15 +17,25 @@ const DROPPED_MODELS = new Set(['building', 'floor', 'room', 'zone', 'floorMap',
 const DROPPED_RELATIONS = ['building', 'floor', 'room', 'zone', 'mapPosition', 'floorMap', 'buildings', 'floors', 'rooms', 'zones', 'mapZones', 'assetPositions'];
 const DROPPED_RELATIONS_SET = new Set(DROPPED_RELATIONS);
 
+function isSpecialValue(val) {
+  if (!val || typeof val !== 'object') return false;
+  if (val instanceof Date) return true;
+  if (typeof Buffer !== 'undefined' && Buffer.isBuffer(val)) return true;
+  if (val instanceof RegExp) return true;
+  if (val.constructor && val.constructor.name === 'Decimal') return true;
+  return false;
+}
+
 function sanitizeArgs(args) {
   if (!args || typeof args !== 'object') return args;
+  if (isSpecialValue(args)) return args;
   if (Array.isArray(args)) {
     return args.map(item => sanitizeArgs(item));
   }
   const result = {};
   for (const [key, val] of Object.entries(args)) {
     if (key === 'include' || key === 'select') {
-      if (val && typeof val === 'object' && !Array.isArray(val)) {
+      if (val && typeof val === 'object' && !Array.isArray(val) && !isSpecialValue(val)) {
         const sanitizedClause = {};
         for (const [clauseKey, clauseVal] of Object.entries(val)) {
           let mappedKey = clauseKey;
@@ -36,7 +46,7 @@ function sanitizeArgs(args) {
             continue; // drop decommissioned relation
           }
 
-          if (clauseVal && typeof clauseVal === 'object') {
+          if (clauseVal && typeof clauseVal === 'object' && !isSpecialValue(clauseVal)) {
             sanitizedClause[mappedKey] = sanitizeArgs(clauseVal);
           } else {
             sanitizedClause[mappedKey] = clauseVal;
@@ -57,7 +67,7 @@ function sanitizeArgs(args) {
     if (key === 'costCenter') mappedKey = 'section';
     else if (key === 'costCenters') mappedKey = 'sections';
 
-    if (val && typeof val === 'object') {
+    if (val && typeof val === 'object' && !isSpecialValue(val)) {
       result[mappedKey] = sanitizeArgs(val);
     } else {
       result[mappedKey] = val;
