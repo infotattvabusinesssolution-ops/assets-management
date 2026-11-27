@@ -241,9 +241,6 @@ export function RolesPermissions() {
   const savedPermsStorageKey = user?.companyId ? `fams_saved_role_permissions_${user.companyId}` : 'fams_saved_role_permissions';
   const customUsersStorageKey = user?.companyId ? `fams_custom_users_${user.companyId}` : 'fams_custom_users';
 
-  const [companiesList, setCompaniesList] = useState([]);
-  const [companyFilter, setCompanyFilter] = useState(() => user?.companyId || 'ALL');
-
   const [roles, setRoles] = useState(() => {
     try {
       const cached = localStorage.getItem(cachedRolesStorageKey);
@@ -265,14 +262,7 @@ export function RolesPermissions() {
     return true;
   });
 
-  // Fetch companies for company-scoped role management
-  useEffect(() => {
-    api.get('/master-data/companies?includeInactive=false').then(res => {
-      if (res && Array.isArray(res.companies)) {
-        setCompaniesList(res.companies.map(c => ({ id: c.id, name: c.name, code: c.code })));
-      }
-    }).catch(() => {});
-  }, []);
+
 
   // Keep cache synced with state updates
   useEffect(() => {
@@ -292,9 +282,7 @@ export function RolesPermissions() {
         } catch (_) {}
 
         const params = {};
-        if (companyFilter && companyFilter !== 'ALL') {
-          params.companyId = companyFilter;
-        } else if (user?.companyId && user?.role?.name !== 'System Administrator') {
+        if (user?.companyId && user?.role?.name !== 'System Administrator') {
           params.companyId = user.companyId;
         }
 
@@ -361,7 +349,7 @@ export function RolesPermissions() {
       }
     };
     fetchRoles();
-  }, [companyFilter, savedPermsStorageKey, user?.companyId, user?.role?.name]);
+  }, [savedPermsStorageKey, user?.companyId, user?.role?.name]);
   const [selectedRoleIds, setSelectedRoleIds] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [statusFilter, setStatusFilter] = useState('All Status');
@@ -416,15 +404,9 @@ export function RolesPermissions() {
       const matchesCreatedBy =
         createdByFilter === 'All Users' || createdByFilter === 'All' || role.createdBy === createdByFilter;
 
-      const matchesCompany =
-        companyFilter === 'ALL' ||
-        role.isSystem ||
-        !role.companyId ||
-        role.companyId === companyFilter;
-
-      return matchesSearch && matchesStatus && matchesType && matchesCreatedBy && matchesCompany;
+      return matchesSearch && matchesStatus && matchesType && matchesCreatedBy;
     });
-  }, [roles, searchQuery, statusFilter, roleTypeFilter, createdByFilter, companyFilter]);
+  }, [roles, searchQuery, statusFilter, roleTypeFilter, createdByFilter]);
 
   // Pagination State
   const [page, setPage] = useState(1);
@@ -432,7 +414,7 @@ export function RolesPermissions() {
 
   useEffect(() => {
     setPage(1);
-  }, [searchQuery, statusFilter, roleTypeFilter, createdByFilter, companyFilter]);
+  }, [searchQuery, statusFilter, roleTypeFilter, createdByFilter]);
 
   const totalPages = Math.ceil(filteredRoles.length / pageSize) || 1;
   const paginatedRoles = useMemo(() => {
@@ -467,7 +449,6 @@ export function RolesPermissions() {
     setRoleTypeFilter('All Types');
     setModuleFilter('All Modules');
     setCreatedByFilter('All Users');
-    setCompanyFilter('ALL');
     setFromDate('');
     setToDate('');
   };
@@ -532,7 +513,7 @@ export function RolesPermissions() {
     } else {
       let createdRole = null;
       try {
-        const targetCompId = (companyFilter && companyFilter !== 'ALL' ? companyFilter : null) || user?.companyId || null;
+        const targetCompId = user?.companyId || null;
         const res = await api.post('/admin/roles', {
           name: trimmedName,
           code: trimmedName.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 20),
@@ -1053,24 +1034,7 @@ export function RolesPermissions() {
           </button>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-5 gap-3 text-xs">
-          {/* Company Filter */}
-          <div>
-            <label className="block text-slate-700 font-bold mb-1">Company</label>
-            <div className="relative">
-              <select
-                value={companyFilter}
-                onChange={(e) => setCompanyFilter(e.target.value)}
-                className="w-full px-3 py-2 bg-white border border-slate-200 rounded-xl text-xs font-medium text-slate-800 focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9] appearance-none cursor-pointer"
-              >
-                <option value="ALL">All Companies</option>
-                {companiesList.map(c => (
-                  <option key={c.id} value={c.id}>{c.name}</option>
-                ))}
-              </select>
-              <ChevronDown className="w-3.5 h-3.5 text-slate-400 absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none" />
-            </div>
-          </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-3 text-xs">
 
           {/* Status Filter */}
           <div>
@@ -1214,7 +1178,6 @@ export function RolesPermissions() {
                     <ArrowUpDown className="w-3 h-3 text-slate-400" />
                   </div>
                 </th>
-                <th className="p-3 font-bold text-slate-900">Company</th>
                 <th className="p-3 font-bold text-slate-900">Description</th>
                 <th className="p-3 font-bold text-slate-900">
                   <div className="flex items-center gap-1 cursor-pointer hover:text-[#6C2BD9]">
@@ -1246,14 +1209,14 @@ export function RolesPermissions() {
             <tbody className="divide-y divide-slate-100 font-medium">
               {loadingRoles && roles.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="p-12 text-center text-slate-400">
+                  <td colSpan="9" className="p-12 text-center text-slate-400">
                     <RefreshCw className="w-6 h-6 animate-spin mx-auto mb-2 text-[#6C2BD9]" />
                     <span className="text-xs font-semibold text-slate-500">Loading roles from database...</span>
                   </td>
                 </tr>
               ) : filteredRoles.length === 0 ? (
                 <tr>
-                  <td colSpan="10" className="p-8 text-center text-slate-500 font-semibold">
+                  <td colSpan="9" className="p-8 text-center text-slate-500 font-semibold">
                     No roles match current filter criteria.
                   </td>
                 </tr>
@@ -1284,17 +1247,6 @@ export function RolesPermissions() {
                         >
                           {role.name}
                         </span>
-                      </td>
-                      <td className="p-3">
-                        {role.isSystem || !role.companyId ? (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-sky-50 text-sky-700 border border-sky-200">
-                            Global (System)
-                          </span>
-                        ) : (
-                          <span className="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-purple-50 text-[#6C2BD9] border border-purple-200">
-                            {role.companyName || role.company?.name || companiesList.find(c => c.id === role.companyId)?.name || 'Company Scoped'}
-                          </span>
-                        )}
                       </td>
                       <td className="p-3 text-slate-600 max-w-xs truncate">{role.description}</td>
                       <td className="p-3 text-slate-800 font-mono font-bold">{role.userCount}</td>
@@ -1543,14 +1495,6 @@ export function RolesPermissions() {
                 <span className="font-bold text-slate-800">{selectedRole.description}</span>
               </div>
               <div className="grid grid-cols-2 gap-3 bg-slate-50 p-3 rounded-2xl border border-slate-100">
-                <div>
-                  <span className="text-slate-400 font-medium block text-[11px]">Company Scope</span>
-                  <span className="font-bold text-slate-800">
-                    {selectedRole.isSystem || !selectedRole.companyId
-                      ? 'Global / System'
-                      : (selectedRole.companyName || selectedRole.company?.name || companiesList.find(c => c.id === selectedRole.companyId)?.name || 'Company Scoped')}
-                  </span>
-                </div>
                 <div>
                   <span className="text-slate-400 font-medium block text-[11px]">Assigned Users</span>
                   <span className="font-mono font-bold text-[#6C2BD9] text-sm">{selectedRole.userCount} Users</span>
