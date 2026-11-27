@@ -384,7 +384,7 @@ export function RolesPermissions() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [roleToToggleStatus, setRoleToToggleStatus] = useState(null);
   const [isStatusUpdating, setIsStatusUpdating] = useState(false);
-  const [roleForm, setRoleForm] = useState({ name: '', description: '', roleType: 'Custom Role', status: 'Active', companyId: '' });
+  const [roleForm, setRoleForm] = useState({ name: '', description: '', roleType: 'Custom Role', status: 'Active' });
   const [roleFormError, setRoleFormError] = useState('');
 
   // Assign Users Dynamic State
@@ -480,12 +480,11 @@ export function RolesPermissions() {
       return;
     }
 
-    // Check for duplicate role name (case-insensitive) within selected scope
+    // Check for duplicate role name (case-insensitive)
     const isDuplicate = roles.some(
       (r) =>
         r.name.trim().toLowerCase() === trimmedName.toLowerCase() &&
-        (!editingRole || r.id !== editingRole.id) &&
-        (!roleForm.companyId || !r.companyId || r.companyId === roleForm.companyId)
+        (!editingRole || r.id !== editingRole.id)
     );
 
     if (isDuplicate) {
@@ -499,7 +498,7 @@ export function RolesPermissions() {
       try {
         const res = await api.put(`/admin/roles/${editingRole.id}`, {
           name: trimmedName,
-          companyId: roleForm.companyId || null,
+          companyId: editingRole.companyId || null,
           description: roleForm.description,
           status: roleForm.status,
           active: roleForm.status === 'Active'
@@ -514,15 +513,12 @@ export function RolesPermissions() {
         setRoleFormError(errMsg);
         return;
       }
-      const updatedComp = companiesList.find(c => c.id === roleForm.companyId);
       setRoles(
         roles.map((r) =>
           r.id === editingRole.id
             ? {
                 ...r,
                 name: trimmedName,
-                companyId: roleForm.companyId || null,
-                companyName: updatedComp?.name || null,
                 description: roleForm.description,
                 roleType: editingRole.isSystem ? 'System Role' : 'Custom Role',
                 status: roleForm.status
@@ -536,7 +532,7 @@ export function RolesPermissions() {
     } else {
       let createdRole = null;
       try {
-        const targetCompId = roleForm.companyId || (companyFilter !== 'ALL' ? companyFilter : null) || user?.companyId || null;
+        const targetCompId = (companyFilter && companyFilter !== 'ALL' ? companyFilter : null) || user?.companyId || null;
         const res = await api.post('/admin/roles', {
           name: trimmedName,
           code: trimmedName.toUpperCase().replace(/[^A-Z0-9]/g, '_').slice(0, 20),
@@ -1027,8 +1023,7 @@ export function RolesPermissions() {
                   name: '',
                   description: '',
                   roleType: 'Custom Role',
-                  status: 'Active',
-                  companyId: companyFilter !== 'ALL' ? companyFilter : (user?.companyId || (companiesList[0]?.id || ''))
+                  status: 'Active'
                 });
                 setRoleFormError('');
                 setShowAddRoleModal(true);
@@ -1343,8 +1338,7 @@ export function RolesPermissions() {
                                 name: role.name,
                                 description: role.description || '',
                                 roleType: role.roleType || 'Custom Role',
-                                status: role.status,
-                                companyId: role.companyId || ''
+                                status: role.status
                               });
                               setRoleFormError('');
                               setShowAddRoleModal(true);
@@ -1876,23 +1870,7 @@ export function RolesPermissions() {
                 )}
               </div>
 
-              <div>
-                <label className="block font-bold text-slate-700 mb-1">Company Scope</label>
-                <select
-                  value={roleForm.companyId || ''}
-                  onChange={(e) => setRoleForm({ ...roleForm, companyId: e.target.value })}
-                  disabled={editingRole?.isSystem}
-                  className="w-full px-3 py-2 border border-slate-200 rounded-xl bg-white font-medium cursor-pointer focus:ring-2 focus:ring-[#6C2BD9]/20 focus:border-[#6C2BD9]"
-                >
-                  <option value="">Global / System (Available to All Companies)</option>
-                  {companiesList.map(c => (
-                    <option key={c.id} value={c.id}>{c.name}</option>
-                  ))}
-                </select>
-                <p className="text-[11px] text-slate-400 mt-1">
-                  Assign this role to a specific company so only that company's users and managers have access to it.
-                </p>
-              </div>
+
 
               <div>
                 <label className="block font-bold text-slate-700 mb-1">Description</label>
